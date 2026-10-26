@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#ffffff"/>
+  <!-- Spark chevron: the logo's red "A" mark, redrawn as a vector so the icon stays sharp at any size. Clipped so the feet sit flat. -->
+  <clipPath id="feet"><rect width="512" height="346"/></clipPath>
+  <path clip-path="url(#feet)" d="M112 376 L256 196 L400 376" fill="none" stroke="#b72126" stroke-width="42" stroke-linejoin="round"/>
+</svg>

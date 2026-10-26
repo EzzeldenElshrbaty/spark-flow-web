@@ -1,0 +1,256 @@
+@import 'tailwindcss';
+/* Spark Flow: the design kit's reference code is documentation, not app code; keep its classes out of the build. */
+@source not '../design';
+
+/* Dark mode follows the `dark` class on <html>, set by ThemeProvider (and the inline script in index.html). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Design tokens: Spark Systems brand palette (Spark red and maroon, with neutral greys).
+ * Change the brand scale here to re-color the whole app.
+ */
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  /* Spark red. 500 is the logo red (#B72126); 900 is the brand maroon. */
+  --color-brand-50: #fcf1f1;
+  --color-brand-100: #f9e0e1;
+  --color-brand-200: #f4c1c2;
+  --color-brand-300: #eea1a4;
+  --color-brand-400: #dd4449;
+  --color-brand-500: #b72126;
+  --color-brand-600: #9e1d21;
+  --color-brand-700: #88191d;
+  --color-brand-800: #711518;
+  --color-brand-900: #671416;
+
+  /* Ink: neutral greys for the sidebar and other dark elements. */
+  --color-ink-50: #f4f4f5;
+  --color-ink-100: #e4e4e7;
+  --color-ink-200: #d4d4d8;
+  --color-ink-700: #3f3f46;
+  --color-ink-800: #2a2a2d;
+  --color-ink-900: #1c1c1e;
+  --color-ink-950: #141415;
+
+  /* Motion. Used with motion-safe: so people who prefer reduced motion don't get it. */
+  --animate-fade-up: fade-up 0.32s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-fade-in: fade-in 0.18s ease-out both;
+  --animate-slide-in-right: slide-in-right 0.28s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-pop-in: pop-in 0.2s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes slide-in-right {
+    from {
+      transform: translateX(24px);
+      opacity: 0;
+    }
+  }
+  /* Charts: bars grow from their baseline, lines draw in. */
+  --animate-grow-x: grow-x 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-grow-y: grow-y 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-draw: draw 0.9s cubic-bezier(0.4, 0, 0.2, 1) both;
+
+  @keyframes grow-x {
+    from {
+      transform: scaleX(0);
+    }
+  }
+  @keyframes grow-y {
+    from {
+      transform: scaleY(0);
+    }
+  }
+  --animate-ring: ring 0.9s cubic-bezier(0.4, 0, 0.2, 1) both;
+
+  @keyframes ring {
+    from {
+      stroke-dasharray: 0 100;
+    }
+  }
+  @keyframes draw {
+    from {
+      stroke-dashoffset: 1;
+    }
+  }
+  --animate-shimmer: shimmer 2.4s ease-in-out infinite;
+
+  @keyframes shimmer {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(100%);
+    }
+  }
+  /* The top loading bar: quick at first, then slower and slower, never quite reaching the end. */
+  --animate-loading-bar: loading-bar 12s cubic-bezier(0.1, 0.7, 0.2, 1) forwards;
+
+  @keyframes loading-bar {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(0.92);
+    }
+  }
+  /* Sign-in page: a slow glow drift and a gently floating card. */
+  --animate-drift: drift 14s ease-in-out infinite alternate;
+  --animate-float: float 6s ease-in-out infinite;
+
+  @keyframes drift {
+    to {
+      transform: translate(-60px, 50px) scale(1.15);
+    }
+  }
+  @keyframes float {
+    50% {
+      transform: translateY(-8px);
+    }
+  }
+  @keyframes pop-in {
+    from {
+      transform: scale(0.97) translateY(4px);
+      opacity: 0;
+    }
+  }
+}
+
+/*
+ * Semantic tokens: use these (bg-surface, text-fg-muted, border-line, text-accent…) instead of raw
+ * slate/white classes so a screen works in both themes. Values swap under .dark below.
+ */
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-surface-muted: var(--surface-muted);
+  --color-surface-strong: var(--surface-strong);
+  --color-line: var(--line);
+  --color-line-subtle: var(--line-subtle);
+  --color-line-strong: var(--line-strong);
+  --color-fg: var(--fg);
+  --color-fg-secondary: var(--fg-secondary);
+  --color-fg-tertiary: var(--fg-tertiary);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-line: var(--accent-line);
+
+  /* Charts (validated for colour-blind separation and contrast on each theme's surface). */
+  --color-chart-primary: var(--chart-primary);
+  --color-chart-context: var(--chart-context);
+  --color-chart-egypt: var(--chart-egypt);
+  --color-chart-saudi: var(--chart-saudi);
+  --color-chart-grid: var(--chart-grid);
+  --color-chart-axis: var(--chart-axis);
+  --color-chart-step-1: var(--chart-step-1);
+  --color-chart-step-2: var(--chart-step-2);
+  --color-chart-step-3: var(--chart-step-3);
+  --color-chart-step-4: var(--chart-step-4);
+  --color-chart-step-5: var(--chart-step-5);
+}
+
+:root {
+  color-scheme: light;
+  --canvas: #f8fafc;
+  --surface: #ffffff;
+  --surface-sunken: #f8fafc;
+  --surface-muted: #f1f5f9;
+  --surface-strong: #e2e8f0;
+  --line: #e2e8f0;
+  --line-subtle: #f1f5f9;
+  --line-strong: #cbd5e1;
+  --fg: #0f172a;
+  --fg-secondary: #334155;
+  --fg-tertiary: #475569;
+  --fg-muted: #64748b;
+  --fg-subtle: #94a3b8;
+  --accent: #9e1d21;
+  --accent-strong: #88191d;
+  --accent-soft: #fcf1f1;
+  --accent-line: #f4c1c2;
+  /* Charts: Spark red for a single series, grey for context, one fixed colour per market. */
+  --chart-primary: #b72126;
+  --chart-context: #a1a1aa;
+  --chart-egypt: #2a78d6;
+  --chart-saudi: #eb6834;
+  --chart-grid: #eef1f5;
+  --chart-axis: #cbd5e1;
+  /* Ordered steps (funnel, stages): light to dark, the lightest still 2:1 on the surface. */
+  --chart-step-1: #eea1a4;
+  --chart-step-2: #e0676b;
+  --chart-step-3: #c8353a;
+  --chart-step-4: #9e1d21;
+  --chart-step-5: #711518;
+}
+
+.dark {
+  color-scheme: dark;
+  --canvas: #141414;
+  --surface: #1c1c1d;
+  --surface-sunken: #171718;
+  --surface-muted: #262628;
+  --surface-strong: #303033;
+  --line: #2c2c2f;
+  --line-subtle: #232325;
+  --line-strong: #3d3d41;
+  --fg: #ececed;
+  --fg-secondary: #cdcdd0;
+  --fg-tertiary: #b0b0b5;
+  --fg-muted: #929297;
+  --fg-subtle: #6c6c71;
+  --accent: #f0979a;
+  --accent-strong: #f6bfc1;
+  --accent-soft: #351d1e;
+  --accent-line: #5a2a2c;
+  --chart-primary: #dd4449;
+  --chart-context: #5b5b61;
+  --chart-egypt: #3987e5;
+  --chart-saudi: #d95926;
+  --chart-grid: #29292c;
+  --chart-axis: #3d3d41;
+  /* On dark, later steps get brighter. */
+  --chart-step-1: #93292d;
+  --chart-step-2: #bb3439;
+  --chart-step-3: #dd4449;
+  --chart-step-4: #ec7f82;
+  --chart-step-5: #f5b0b2;
+}
+
+body {
+  @apply bg-canvas text-fg antialiased;
+}
+
+/*
+ * App feel on phones: no double-tap zoom, no grey tap flash, no rubber-band/pull-to-refresh on the page,
+ * and no auto text enlarging on rotate.
+ */
+html {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overscroll-behavior-y: none;
+}
+
+/* Dropdowns: our own chevron, inset from the right edge (pair with pr-9 via selectClass in Field.tsx). */
+@utility select-chevron {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%2394a3b8' stroke-width='1.7'%3E%3Cpath d='M6 8l4 4 4-4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+}

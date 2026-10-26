@@ -1,0 +1,140 @@
+/* The guide's own markup (from the API), styled with the app's colours so it follows light and dark. */
+.help-doc {
+  color: var(--fg-secondary);
+  font-size: 0.9375rem;
+  line-height: 1.7;
+}
+.help-doc h2 {
+  margin: 0.25rem 0 0.5rem;
+  color: var(--fg);
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+}
+.help-doc .lead {
+  margin-bottom: 1.75rem;
+  color: var(--fg-muted);
+  font-size: 1.0625rem;
+}
+.help-doc h3 {
+  scroll-margin-top: 5.5rem;
+  margin: 2.25rem 0 0.75rem;
+  color: var(--fg);
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+.help-doc h4 {
+  margin: 0 0 0.25rem;
+  color: var(--fg);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+.help-doc p { margin: 0 0 0.875rem; }
+.help-doc b { color: var(--fg); font-weight: 600; }
+.help-doc a[data-chapter] { color: var(--accent); font-weight: 500; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.help-doc ul { margin: 0 0 1rem; padding-left: 1.25rem; list-style: disc; }
+.help-doc ol { margin: 0 0 1rem; padding-left: 1.25rem; list-style: decimal; }
+.help-doc li { margin-bottom: 0.4rem; }
+.help-doc li::marker { color: var(--fg-muted); }
+
+/* Numbered steps. */
+.help-doc .steps { counter-reset: step; list-style: none; padding: 0; }
+.help-doc .steps > li { counter-increment: step; position: relative; padding-left: 2.25rem; margin-bottom: 0.75rem; }
+.help-doc .steps > li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0.15rem;
+  display: flex;
+  width: 1.5rem;
+  height: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* Buttons and statuses named in the text. */
+.help-doc .ui {
+  display: inline-block;
+  padding: 0 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 0.375rem;
+  background: var(--surface-muted);
+  color: var(--fg);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+.help-doc .ui.primary { border-color: var(--accent); background: var(--accent); color: #fff; }
+.help-doc .tag {
+  display: inline-block;
+  padding: 0 0.5rem;
+  border-radius: 9999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Tips and notes. */
+.help-doc .callout {
+  margin: 1.25rem 0;
+  padding: 0.875rem 1.125rem;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 0.75rem 0.75rem 0;
+  background: var(--accent-soft);
+}
+.help-doc .callout.note { border-left-color: var(--fg-muted); background: var(--surface-muted); }
+.help-doc .callout b.t {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: var(--accent);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.help-doc .callout.note b.t { color: var(--fg-muted); }
+
+/* Screenshots: click to see full size. */
+.help-doc figure { margin: 1.5rem 0; }
+.help-doc figure img { display: block; width: 100%; border: 1px solid var(--line); border-radius: 0.75rem; cursor: zoom-in; }
+.help-doc figure.phone { max-width: 16rem; }
+.help-doc figcaption { margin-top: 0.5rem; color: var(--fg-muted); font-size: 0.8125rem; }
+.help-doc figcaption b { color: var(--accent); }
+.help-doc .clear { clear: both; }
+
+/* Tables. */
+.help-doc table { width: 100%; margin: 1rem 0 1.5rem; border-collapse: collapse; font-size: 0.875rem; }
+.help-doc th { padding: 0.6rem 0.875rem; border-bottom: 1px solid var(--line); background: var(--surface-muted); color: var(--fg); font-weight: 600; text-align: left; }
+.help-doc td { padding: 0.6rem 0.875rem; border-bottom: 1px solid var(--line-subtle); vertical-align: top; }
+.help-doc table { border: 1px solid var(--line); border-radius: 0.75rem; border-collapse: separate; border-spacing: 0; overflow: hidden; }
+.help-doc tr:last-child td { border-bottom: 0; }
+
+/* Cards and the stage strip. */
+.help-doc .grid2 { display: grid; gap: 0.875rem; margin: 1rem 0 1.25rem; }
+@media (min-width: 640px) { .help-doc .grid2 { grid-template-columns: 1fr 1fr; } }
+.help-doc .card { padding: 1rem 1.125rem; border: 1px solid var(--line); border-radius: 0.75rem; background: var(--surface); font-size: 0.875rem; }
+.help-doc .card h4 { color: var(--accent); }
+.help-doc .flow { display: flex; flex-wrap: wrap; gap: 0.375rem; margin: 0.75rem 0 1rem; }
+.help-doc .flow span { flex: 1; min-width: 6rem; padding: 0.5rem; border: 1px solid var(--line); border-radius: 0.5rem; background: var(--surface-muted); color: var(--fg); font-size: 0.8125rem; font-weight: 600; text-align: center; }
+.help-doc .flow span.on { border-color: var(--accent); background: var(--accent); color: #fff; }
+
+/* The same guide, smaller, in the Help panel beside a page. */
+.help-doc.compact { font-size: 0.875rem; line-height: 1.6; }
+.help-doc.compact .lead { margin-bottom: 1rem; font-size: 0.9375rem; }
+.help-doc.compact h3 { scroll-margin-top: 1rem; margin: 1.5rem 0 0.5rem; font-size: 0.9375rem; }
+.help-doc.compact > :first-child { margin-top: 0; }
+.help-doc.compact figure { margin: 1rem 0; }
+.help-doc.compact .grid2 { grid-template-columns: 1fr 1fr; gap: 0.5rem; margin: 0.75rem 0 1rem; }
+.help-doc.compact .card { padding: 0.625rem 0.75rem; font-size: 0.8125rem; }
+.help-doc.compact .card h4 { font-size: 0.8125rem; }
+.help-doc.compact .callout { margin: 1rem 0; padding: 0.625rem 0.875rem; }
+.help-doc.compact table { font-size: 0.8125rem; }
+.help-doc.compact th, .help-doc.compact td { padding: 0.5rem 0.625rem; }
