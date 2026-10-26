@@ -1,45 +1,29 @@
-import { useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from 'react-router'
-import { useResetDemo } from '@/api/db'
-import { Button } from '@/components/ui/Button'
-import { Card, CardHeader } from '@/components/ui/Card'
+import { ChevronRight, Database } from 'lucide-react'
+import { Link, useParams } from 'react-router'
+import { Card } from '@/components/ui/Card'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { backendOn } from '@/lib/api'
-import { useUiStore } from '@/lib/uiStore'
+import { paths } from '@/lib/paths'
+import { usePermission } from '@/lib/usePermission'
 
 export function SettingsPage() {
-  const queryClient = useQueryClient()
-  const navigate = useNavigate()
-  const reset = useResetDemo()
-  const forgetPlaces = useUiStore((state) => state.forgetPlaces)
-
-  const resetDemo = () =>
-    reset.mutate(undefined, {
-      onSuccess: () => {
-        queryClient.clear() // everything on screen was the old sample data
-        forgetPlaces() // the places last visited may be gone, so start again from #general
-        navigate('/')
-      },
-    })
+  const { ws = '' } = useParams()
+  const can = usePermission()
 
   return (
     <>
       <PageHeader title="Settings" subtitle="Demo data and preferences." />
-      {/* The demo data only exists in the prototype; with the backend on there is nothing to reset. */}
-      {!backendOn && (
+      {/* The demo data only exists in the prototype; with the backend on there is no Database page. */}
+      {!backendOn && can('database.manage') && (
         <Card className="max-w-2xl">
-          <CardHeader title="Demo data" />
-          <div className="px-5 py-4">
-            <p className="text-sm text-fg-secondary">Puts back the sample workspaces, channels, messages and tickets. Your changes in this browser are removed.</p>
-            <Button variant="secondary" className="mt-4" onClick={resetDemo} disabled={reset.isPending}>
-              {reset.isPending ? 'Resetting…' : 'Reset demo data'}
-            </Button>
-            {reset.isError && (
-              <p role="alert" className="mt-3 text-sm text-red-600 dark:text-red-400">
-                Demo data didn't reset. Try again.
-              </p>
-            )}
-          </div>
+          <Link to={paths.database(ws)} className="flex items-center gap-3 rounded-xl px-5 py-4 hover:bg-surface-sunken">
+            <Database className="size-5 text-fg-tertiary" />
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold text-fg">Database</span>
+              <span className="block text-sm text-fg-muted">Export, reload seed data or reset the demo data in this browser.</span>
+            </span>
+            <ChevronRight className="size-4 text-fg-muted rtl:-scale-x-100" />
+          </Link>
         </Card>
       )}
     </>

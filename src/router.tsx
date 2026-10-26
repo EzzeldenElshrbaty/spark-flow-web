@@ -16,6 +16,7 @@ function page<K extends string>(load: () => Promise<Record<K, ComponentType>>, n
 const ChannelPage = page(() => import('@/pages/chat/ChannelPage'), 'ChannelPage')
 const ProjectPage = page(() => import('@/pages/projects/ProjectPage'), 'ProjectPage')
 const SettingsPage = page(() => import('@/pages/settings/SettingsPage'), 'SettingsPage')
+const DatabasePage = page(() => import('@/pages/settings/DatabasePage'), 'DatabasePage')
 
 /** `/w/:ws/p/:projectKey` has no page of its own: it opens the board. */
 function ProjectBoardRedirect() {
@@ -37,6 +38,7 @@ export const router = createBrowserRouter([
           { path: 'p/:projectKey', element: <ProjectBoardRedirect /> },
           { path: 'p/:projectKey/:view', element: <ProjectPage /> },
           { path: 'settings', element: <SettingsPage /> },
+          { path: 'settings/database', element: <DatabasePage /> },
         ],
       },
       // Old or mistyped links go to where you were last.

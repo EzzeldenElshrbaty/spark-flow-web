@@ -7,6 +7,7 @@ export const paths = {
   channel: (ws: string, id: string) => `/w/${ws}/c/${id}`,
   project: (ws: string, key: string, view: ProjectView = 'board') => `/w/${ws}/p/${key}/${view}`,
   settings: (ws: string) => `/w/${ws}/settings`,
+  database: (ws: string) => `/w/${ws}/settings/database`,
 }
 
 /** The place last visited in a workspace, if the saved path really is inside it. */
