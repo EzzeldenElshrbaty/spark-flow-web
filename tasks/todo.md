@@ -53,19 +53,56 @@ Plan: `docs/superpowers/plans/2026-10-26-spark-flow-shell-data-layer.md` (execut
 
 ## Plan
 
-- [ ] Task 0 — Git baseline
-- [ ] Task 1 — Tooling: `@/` alias, dev proxy, prod guard, Vitest, Zustand
-- [ ] Task 2 — RTL readiness (logical classes, `dir`, `slide-in-end`)
-- [ ] Task 3 — Contracts, `ApiError`, mock database
-- [ ] Task 4 — Seed data
-- [ ] Task 5 — Realtime interface and mock hub
-- [ ] Task 6 — Mock API
-- [ ] Task 7 — `lib/api.ts`, query keys, hooks
-- [ ] Task 8 — UI store, `RealtimeBridge`, persona from `useMe`
-- [ ] Task 9 — Routes, landing redirect, sidebar groups, switcher, search, settings
-- [ ] Task 10 — Channel and project pages, inspector
-- [ ] Task 11 — CLAUDE.md rules, gates, Playwright run, review
+- [x] Task 0 — Git baseline
+- [x] Task 1 — Tooling: `@/` alias, dev proxy, prod guard, Vitest, Zustand
+- [x] Task 2 — RTL readiness (logical classes, `dir`, `slide-in-end`)
+- [x] Task 3 — Contracts, `ApiError`, mock database
+- [x] Task 4 — Seed data
+- [x] Task 5 — Realtime interface and mock hub
+- [x] Task 6 — Mock API
+- [x] Task 7 — `lib/api.ts`, query keys, hooks
+- [x] Task 8 — UI store, `RealtimeBridge`, persona from `useMe`
+- [x] Task 9 — Routes, landing redirect, sidebar groups, switcher, search, settings
+- [x] Task 10 — Channel and project pages, inspector
+- [x] Task 11 — CLAUDE.md rules, gates, Playwright run, review
 
 ## Review
 
-(filled in at Task 11)
+### Gates
+
+- `npm test`: 17 files, 135 tests, all pass.
+- `npm run build:prototype`: passes (`tsc -b` + `vite build --mode prototype`), main chunk 324.51 kB (100.25 kB gzip).
+- `npm run lint`: exit 0, no warnings.
+- `npm run build` (no env): fails on purpose with "Production build needs VITE_BACKEND=on and VITE_API_URL." The guard works.
+
+### Browser checks (preview pane on `npm run dev`)
+
+1. 1440 light: `/` → `/w/engineering/c/c-general`. Sidebar groups CHANNELS / DIRECT MESSAGES / PROJECTS. `#frontend-dev` unread pill 3, cleared after opening (markRead). ✓
+2. Workspace switcher: check on the current workspace; Spark Design → `/w/design/c/c-design`, sidebar swaps; `/w/nope` → `/` → last workspace. ✓
+3. Nexus Core → Board (5 tinted columns, Board | Backlog control); Backlog grouped Active / Planned / No sprint. `/p/NEX` and `/p/NEX/timeline` → `/board`. ✓
+4. `?ticket=nex-101` → inspector beside the content at xl, `TICKET · NEX-101`, all fields. `Escape` closes and clears the param. `?ticket=NOPE-1` → "This ticket doesn't exist or was removed." `/p/NOPE/board` → project 404. ✓
+5. `?thread=m-g04` → thread inspector docked beside at 1440. The 1100px slide-over was not separately captured.
+6. Stale saved place (`/c/c-nope`) then `/` → `#general`. Settings → Reset demo data → `/w/engineering/c/c-general`; `/` again → `#general`. ✓
+7. Second tab: `window.__sparkFlowDev.sendMessage` in tab A → tab B on `#backend` shows it without a refresh. Tried 3 times; on the 2nd and 3rd attempts the message appeared live and persisted in storage. ✓
+   - ⚠️ On the 1st attempt, right after the second tab was created, the message was written (`sendMessage` returned it with `linkedTicketKeys: ["NEX-101"]`) but was later missing from `localStorage`; a later write did not include it. The same sequence (fresh tab + reload, then send) did not reproduce it. Cause unknown; see Known follow-ups.
+8. Dark mode: 375px dark channel page legible. Dark at 1440 was not separately captured for the board and inspector.
+9. 375px: bottom bar Chat · Projects · Search · More. No horizontal page scroll on channel, board and backlog (html scrollWidth 375). The inspector bottom sheet renders; its fade-up animation can't be observed because the preview pane freezes `document.timeline` at 0 (environment artifact).
+10. `dir="rtl"`: sidebar measures at x 1184–1440 (right side). Verified by measurement, since the screenshot tool shows stale frames.
+11. Console: no errors or warnings on any page checked. ✓
+
+Extra: `/w/design/c/c-general` (another workspace's channel) → "This channel doesn't exist or was removed." ✓
+
+### Left out on purpose
+
+See spec §10 (`docs/superpowers/specs/2026-10-26-spark-flow-shell-data-layer-design.md`). Later phases:
+
+- Phase 3: sending messages, reactions, attachment upload, typing indicators in the UI, simulated colleague messages.
+- Phase 4: drag-and-drop, backlog table, filters, create/edit ticket.
+- Phase 5: ticket unfurling, message → ticket, discussion tab, command palette, split view.
+- Later: sign-in and the real .NET/SignalR connection; Arabic strings, an i18n layer and an Arabic font (the layout is RTL-ready now).
+
+### Known follow-ups
+
+- FileViewer iframe sandbox (security): tighten before it renders untrusted files. Phase 3.
+- Unreproduced lost write (check 7 ⚠️): analyse the mock db write path in `src/mocks/` for a cross-tab read-modify-write race.
+- The mock backend's `markRead` triggers a broad refetch; narrow the invalidation.

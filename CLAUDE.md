@@ -25,7 +25,21 @@ Spark Flow is a sister product of **Spark CRM** (Spark Systems). The two apps mu
 - **Microcopy**: English, sentence case, verb-first buttons, `…` for pending ("Saving…"), ` · ` separators, `—` for empty.
 - **Formatting**: use `lib/format.ts` (money "EGP 1.2M", "3h ago", "Today 2:00 PM", "3 Oct 2026"). `tabular-nums` for numbers.
 - **One primary (red) button per view.**
+- **RTL-ready**: logical direction classes only (`ms-/me-/ps-/pe-/start-/end-/text-start/border-s…`); directional icons get `rtl:-scale-x-100`. `src/rtl.test.ts` enforces it.
+- **Voice** (from `spark-design-system.md`): specific, numbers over adjectives, no buzzwords, short active sentences, Western digits.
+- **Charts**: red for the key series plus greys, max 4 series, the takeaway in the title, no other hues.
+- **Data**: components import hooks from `@/api/*` only, never `@/mocks`. `src/api/*` holds hooks plus `types.ts` contracts; `src/lib/api.ts` + `src/lib/http.ts` + `src/lib/realtime.ts` are the only transport switch points; `src/mocks/*` is the localStorage mock backend. `src/layout/RealtimeBridge.tsx` turns live events into query invalidations.
 - When unsure how something should look, find the closest Spark CRM screen in `design/screenshots/` or pattern in `design/04-page-patterns.md` and match it.
+
+## Commands
+
+- `npm run dev`
+- `npm run build:prototype`: the demo build gate, `tsc -b && vite build --mode prototype`
+- `npm run build`: production build; fails unless `VITE_BACKEND=on` and `VITE_API_URL` are set
+- `npm run lint`
+- `npm test`
+- `npx vitest run <file>`
+- `npm run preview:prototype`
 
 ## Shared identity with Spark CRM
 
