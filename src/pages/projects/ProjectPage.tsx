@@ -1,9 +1,9 @@
 import clsx from 'clsx'
-import { Building2, CalendarDays, Layers, Link2, Pencil, UserRound } from 'lucide-react'
+import { Building2, CalendarDays, Layers, Link2, Pencil, Plus, UserRound } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { usePhases, useProjectSummary, useTeams } from '@/api/projects'
-import { useTickets } from '@/api/tickets'
+import { useSprints, useTickets } from '@/api/tickets'
 import type { ProjectStatus } from '@/api/types'
 import { useMe, useUsers } from '@/api/users'
 import { Badge, type BadgeTone } from '@/components/ui/Badge'
@@ -20,6 +20,7 @@ import { OverviewTab } from './OverviewTab'
 import { PhasesSheet } from './PhasesSheet'
 import { ProjectSheet } from './ProjectSheet'
 import { stagesOf } from './phases'
+import { TaskSheet } from './TaskSheet'
 import { TasksTab } from './TasksTab'
 
 const statusBadge: Record<ProjectStatus, [string, BadgeTone]> = {
@@ -102,7 +103,8 @@ export function ProjectPage() {
   const me = useMe().data
   const check = usePermission()
   const now = useMemo(() => new Date(), [])
-  const [sheet, setSheet] = useState<'edit' | 'phases' | null>(null)
+  const sprints = useSprints(project?.methodology === 'agile' ? project.id : undefined)
+  const [sheet, setSheet] = useState<'edit' | 'phases' | 'task' | null>(null)
 
   if (summary.isError) {
     return (
@@ -119,6 +121,7 @@ export function ProjectPage() {
   const canEdit = check('project.edit', ctx)
   const canPhases = check('phase.manage', ctx)
   const canPost = check('collab.post', ctx)
+  const canTasks = check('task.manage', ctx)
   const nameOf = (id: string) => people.find((u) => u.id === id)?.name ?? '—'
 
   const [statusLabel, statusTone] = statusBadge[project.status]
@@ -140,6 +143,7 @@ export function ProjectPage() {
       title: l.href,
     })),
   ]
+  const primary: RecordAction | undefined = canTasks ? { label: 'New task', icon: Plus, onSelect: () => setSheet('task') } : undefined
   const secondary: RecordAction[] = canEdit ? [{ label: 'Edit project', icon: Pencil, onSelect: () => setSheet('edit') }] : []
   const more: RecordAction[] = canPhases ? [{ label: 'Manage phases', icon: Layers, onSelect: () => setSheet('phases') }] : []
 
@@ -161,6 +165,7 @@ export function ProjectPage() {
           </>
         }
         meta={meta}
+        primary={primary}
         secondary={secondary}
         more={more}
       />
@@ -199,12 +204,13 @@ export function ProjectPage() {
       <Tabs ws={ws} projectKey={project.key} tab={tab} />
 
       {tab === 'overview' && <OverviewTab project={project} phases={phaseList} people={people} teams={teams} canEdit={canEdit} canPost={canPost} />}
-      {tab === 'tasks' && <TasksTab ws={ws} project={project} people={people} />}
+      {tab === 'tasks' && <TasksTab project={project} people={people} phases={phaseList} />}
       {(tab === 'chat' || tab === 'time') && <p className="text-sm text-fg-muted">—</p>}
 
       <RecordActionBarSpacer />
 
       {sheet === 'edit' && <ProjectSheet workspaceId={workspace.id} project={project} takenKeys={[]} onClose={() => setSheet(null)} onSaved={() => setSheet(null)} />}
+      {sheet === 'task' && <TaskSheet project={project} phases={phaseList} sprints={sprints.data ?? []} users={people} onClose={() => setSheet(null)} />}
       {sheet === 'phases' && <PhasesSheet project={project} phases={phaseList} onClose={() => setSheet(null)} />}
     </>
   )

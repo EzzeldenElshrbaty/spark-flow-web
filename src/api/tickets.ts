@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQueries, useQuery } from '@tanstack/react-query'
 import type { NewTicket, TicketPatch } from '@/api/types'
 import { qk } from '@/api/queryKeys'
 import { retryUnlessNotFound as retry } from '@/api/retry'
@@ -39,4 +39,17 @@ export function useCreateTask() {
 
 export function useUpdateTask() {
   return useMutation({ mutationFn: ({ key, patch }: { key: string; patch: TicketPatch }) => api.tasks.update(key, patch) })
+}
+
+/** Every task of several projects (one query each, shared with each project's Tasks tab). */
+export function useTasksOf(projectIds: string[]) {
+  return useQueries({
+    queries: projectIds.map((id) => ({ queryKey: qk.tickets(id), queryFn: () => api.tickets.list(id), retry })),
+    combine: (results) => ({
+      data: results.flatMap((r) => r.data ?? []),
+      isPending: results.some((r) => r.isPending),
+      isError: results.some((r) => r.isError),
+      refetch: () => results.forEach((r) => void r.refetch()),
+    }),
+  })
 }

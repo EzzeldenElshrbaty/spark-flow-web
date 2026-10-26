@@ -1,13 +1,20 @@
-import type { ReactNode } from 'react'
-import { useProjects, useSprints, useTicket } from '@/api/tickets'
+import { Pencil } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
+import { usePhases } from '@/api/projects'
+import { useProjects, useSprints, useTicket, useUpdateTask } from '@/api/tickets'
+import type { TicketStatus } from '@/api/types'
 import { useUsers } from '@/api/users'
 import { Avatar } from '@/components/ui/Avatar'
+import { Button } from '@/components/ui/Button'
+import { selectClass } from '@/components/ui/Field'
 import { QueryError } from '@/components/ui/QueryError'
 import { InspectorFrame, InspectorSkeleton, TitleSkeleton, type InspectorBodyProps } from '@/layout/InspectorFrame'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { ApiError } from '@/lib/api'
 import { formatDate } from '@/lib/format'
-import { PriorityPill, StatusPill } from '@/pages/projects/ticketPills'
+import { usePermission } from '@/lib/usePermission'
+import { TaskSheet } from '@/pages/projects/TaskSheet'
+import { BugPill, OverduePill, PriorityPill, StatusPill, hoursLabel, statuses } from '@/pages/projects/ticketPills'
 import { NotFound } from '@/pages/NotFound'
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -29,19 +36,27 @@ function Person({ name }: { name: string | null }) {
   )
 }
 
-/** A ticket's fields, read-only for now. Opens on any page of the workspace. */
+/**
+ * A task's fields. Opens on any page of the workspace. The project's manager gets "Edit task"; the assignee (and the
+ * manager) can change the status right here.
+ */
 export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: string } & InspectorBodyProps) {
   const { workspace } = useCurrentWorkspace()
   const ticket = useTicket(ticketKey)
   const users = useUsers(workspace?.id)
   const projects = useProjects(workspace?.id)
   const sprints = useSprints(ticket.data?.projectId)
+  const phases = usePhases(ticket.data?.projectId)
+  const update = useUpdateTask()
+  const check = usePermission()
+  const [editing, setEditing] = useState(false)
+  const project = projects.data?.find((p) => p.id === ticket.data?.projectId)
   // A ticket of another workspace's project is not found in this one.
   const foreign = Boolean(ticket.data && projects.data && !projects.data.some((p) => p.id === ticket.data.projectId))
 
   const eyebrow = (
     <>
-      Ticket · <bdi dir="ltr">{ticketKey}</bdi>
+      Task · <bdi dir="ltr">{ticketKey}</bdi>
     </>
   )
   const title = foreign ? 'Ticket' : ticket.data && projects.data ? ticket.data.title : ticket.isPending || projects.isLoading ? <TitleSkeleton /> : 'Ticket'
@@ -55,12 +70,45 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
     const t = ticket.data
     const nameOf = (id: string | null) => (id ? (users.data?.find((u) => u.id === id)?.name ?? 'Unknown person') : null)
     const sprint = t.sprintId ? sprints.data?.find((s) => s.id === t.sprintId) : undefined
+    const phase = t.phaseId ? phases.data?.find((p) => p.id === t.phaseId) : undefined
+    const canManage = project ? check('task.manage', { project }) : false
+    const canStatus = project ? check('task.updateOwnStatus', { project, taskAssigneeId: t.assigneeId }) : false
     body = (
       <>
+        {(t.type === 'bug' || t.overdue || canManage) && (
+          <div className="mb-3 flex items-center gap-2">
+            {t.type === 'bug' && <BugPill />}
+            {t.overdue && <OverduePill />}
+            {canManage && (
+              <Button variant="secondary" className="ms-auto" onClick={() => setEditing(true)}>
+                <Pencil className="size-4" /> Edit task
+              </Button>
+            )}
+          </div>
+        )}
         <dl className="divide-y divide-line-subtle text-sm">
           <Field label="Status">
-            <StatusPill status={t.status} />
+            {canStatus ? (
+              <select
+                className={selectClass}
+                aria-label="Status"
+                value={t.status}
+                disabled={update.isPending}
+                onChange={(e) => update.mutate({ key: t.key, patch: { status: e.target.value as TicketStatus } })}
+              >
+                {statuses.map((s) => (
+                  <option key={s.status} value={s.status}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <StatusPill status={t.status} />
+            )}
+            {update.error && <span className="mt-1 block text-xs text-red-600 dark:text-red-400">{(update.error as Error).message}</span>}
           </Field>
+          <Field label="Type">{t.type === 'bug' ? 'Bug' : 'Task'}</Field>
+          <Field label="Phase">{phase?.name ?? '—'}</Field>
           <Field label="Priority">
             <PriorityPill priority={t.priority} />
           </Field>
@@ -70,10 +118,14 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
           <Field label="Reporter">
             <Person name={nameOf(t.reporterId)} />
           </Field>
-          <Field label="Sprint">{t.sprintId ? (sprint?.name ?? (sprints.isLoading ? 'Loading…' : '—')) : '—'}</Field>
-          <Field label="Points">
-            <span className="tabular-nums">{t.storyPoints ?? '—'}</span>
+          <Field label="Due">
+            <span className={t.overdue && t.dueAt && new Date(t.dueAt).getTime() < Date.now() ? 'tabular-nums text-red-600 dark:text-red-400' : 'tabular-nums'}>{t.dueAt ? formatDate(t.dueAt) : '—'}</span>
           </Field>
+          <Field label="Hours">
+            <span className="tabular-nums">{hoursLabel(t.loggedHours, t.estimateHours)}</span>
+            <span className="block text-xs text-fg-muted">logged / estimate</span>
+          </Field>
+          {t.sprintId && <Field label="Sprint">{sprint?.name ?? (sprints.isLoading ? 'Loading…' : '—')}</Field>}
           <Field label="Created">
             <span className="tabular-nums">{formatDate(t.createdAt)}</span>
           </Field>
@@ -83,12 +135,15 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
         </dl>
         <h3 className="mt-5 text-xs font-medium uppercase tracking-wide text-fg-muted">Description</h3>
         <p className="mt-1.5 whitespace-pre-line break-words text-sm text-fg-secondary">{t.description.trim() || '—'}</p>
+        {editing && project && (
+          <TaskSheet project={project} phases={phases.data ?? []} sprints={sprints.data ?? []} users={users.data ?? []} task={t} onClose={() => setEditing(false)} />
+        )}
       </>
     )
   }
 
   return (
-    <InspectorFrame label="Ticket" eyebrow={eyebrow} title={title} onClose={onClose}>
+    <InspectorFrame label="Task" eyebrow={eyebrow} title={title} onClose={onClose}>
       {body}
     </InspectorFrame>
   )

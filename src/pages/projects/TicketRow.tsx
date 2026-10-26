@@ -1,9 +1,10 @@
 import clsx from 'clsx'
 import { Link, useSearchParams } from 'react-router'
-import type { Ticket } from '@/api/types'
+import type { TaskView } from '@/api/types'
 import { Avatar } from '@/components/ui/Avatar'
+import { formatDate } from '@/lib/format'
 import { parseInspector, withInspector } from '@/lib/inspector'
-import { PriorityPill, StatusPill, TicketKey, pointsLabel } from '@/pages/projects/ticketPills'
+import { BugPill, OverduePill, PriorityPill, StatusPill, TicketKey, hoursLabel } from '@/pages/projects/ticketPills'
 
 function Assignee({ name }: { name: string | null }) {
   if (!name) return <span className="size-6 shrink-0 rounded-full border border-dashed border-line-strong" title="Unassigned" aria-label="Unassigned" role="img" />
@@ -16,10 +17,10 @@ function Assignee({ name }: { name: string | null }) {
 }
 
 /**
- * A ticket as a board card or a backlog row. Either opens the ticket inspector (`?ticket=KEY`) and keeps the rest of
- * the URL; the open ticket stays outlined.
+ * A task as a board card or a list row: Bug and Overdue chips, hours against the estimate, and (rows) the due date.
+ * Either opens the ticket inspector (`?ticket=KEY`) and keeps the rest of the URL; the open ticket stays outlined.
  */
-export function TicketRow({ ticket, assignee, variant }: { ticket: Ticket; assignee: string | null; variant: 'card' | 'row' }) {
+export function TicketRow({ ticket, assignee, variant, project }: { ticket: TaskView; assignee: string | null; variant: 'card' | 'row'; project?: string }) {
   const [params] = useSearchParams()
   const open = parseInspector(params)
   const selected = open?.kind === 'ticket' && open.key === ticket.key
@@ -37,12 +38,16 @@ export function TicketRow({ ticket, assignee, variant }: { ticket: Ticket; assig
       >
         <div className="flex items-center justify-between gap-3">
           <TicketKey value={ticket.key} className="text-fg-muted" />
-          <PriorityPill priority={ticket.priority} />
+          <span className="flex items-center gap-1">
+            {ticket.type === 'bug' && <BugPill />}
+            {ticket.overdue && <OverduePill />}
+            <PriorityPill priority={ticket.priority} />
+          </span>
         </div>
         <p className="mt-1.5 line-clamp-2 text-sm font-medium text-fg">{ticket.title}</p>
         <div className="mt-2.5 flex items-center justify-between gap-3">
           <Assignee name={assignee} />
-          <span className="text-xs tabular-nums text-fg-muted">{pointsLabel(ticket.storyPoints)}</span>
+          <span className={clsx('text-xs tabular-nums', ticket.overdue ? 'text-red-600 dark:text-red-400' : 'text-fg-muted')}>{hoursLabel(ticket.loggedHours, ticket.estimateHours)}</span>
         </div>
       </Link>
     )
@@ -56,13 +61,21 @@ export function TicketRow({ ticket, assignee, variant }: { ticket: Ticket; assig
     >
       <TicketKey value={ticket.key} className="mt-0.5 w-16 shrink-0 text-fg-muted sm:mt-0" />
       <div className="min-w-0 flex-1 sm:flex sm:items-center sm:gap-3">
-        <p className="truncate text-sm text-fg sm:min-w-0 sm:flex-1">{ticket.title}</p>
-        <div className="mt-1.5 flex items-center gap-2 sm:mt-0 sm:shrink-0">
+        <p className="truncate text-sm text-fg sm:min-w-0 sm:flex-1">
+          {ticket.title}
+          {project && <span className="text-fg-muted"> · {project}</span>}
+        </p>
+        <div className="mt-1.5 flex flex-wrap items-center gap-2 sm:mt-0 sm:shrink-0 sm:flex-nowrap">
+          {ticket.type === 'bug' && <BugPill />}
+          {ticket.overdue && <OverduePill />}
           <StatusPill status={ticket.status} />
           <PriorityPill priority={ticket.priority} />
           <span className="ms-auto flex items-center gap-2 sm:ms-0">
+            <span className={clsx('w-20 text-end text-xs tabular-nums', ticket.overdue && ticket.dueAt && new Date(ticket.dueAt).getTime() < Date.now() ? 'text-red-600 dark:text-red-400' : 'text-fg-muted')}>
+              {ticket.dueAt ? formatDate(ticket.dueAt) : '—'}
+            </span>
+            <span className="w-20 text-end text-xs tabular-nums text-fg-muted">{hoursLabel(ticket.loggedHours, ticket.estimateHours)}</span>
             <Assignee name={assignee} />
-            <span className="w-12 text-end text-xs tabular-nums text-fg-muted">{pointsLabel(ticket.storyPoints)}</span>
           </span>
         </div>
       </div>

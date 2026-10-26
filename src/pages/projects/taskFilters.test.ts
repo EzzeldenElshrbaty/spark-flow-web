@@ -1,0 +1,44 @@
+import { describe, expect, it } from 'vitest'
+import type { Phase, TaskView } from '@/api/types'
+import { filterTasks, groupByPhase, myOpenTasks } from './taskFilters'
+
+const t = (over: Partial<TaskView>): TaskView =>
+  ({ id: over.key ?? 'x', key: 'P-1', status: 'todo', phaseId: null, sprintId: null, assigneeId: null, dueAt: null, overdue: false, rank: 0, ...over }) as TaskView
+const phase = (id: string, order: number): Phase => ({ id, projectId: 'p', name: id, order, startDate: '', dueDate: '', status: 'notStarted' })
+
+describe('filterTasks', () => {
+  const tasks = [t({ key: 'A', phaseId: 'ph1', sprintId: 's1' }), t({ key: 'B', phaseId: 'ph2', sprintId: 's1' }), t({ key: 'C', phaseId: 'ph1' })]
+  it('keeps all with no filter, and narrows by phase and sprint together', () => {
+    expect(filterTasks(tasks, {}).map((x) => x.key)).toEqual(['A', 'B', 'C'])
+    expect(filterTasks(tasks, { phase: 'ph1' }).map((x) => x.key)).toEqual(['A', 'C'])
+    expect(filterTasks(tasks, { sprint: 's1' }).map((x) => x.key)).toEqual(['A', 'B'])
+    expect(filterTasks(tasks, { phase: 'ph1', sprint: 's1' }).map((x) => x.key)).toEqual(['A'])
+  })
+})
+
+describe('groupByPhase', () => {
+  it('groups in phase order, "No phase" last; tasks of an unknown phase count as no phase', () => {
+    const phases = [phase('b', 2), phase('a', 1)]
+    const groups = groupByPhase([t({ key: 'X', phaseId: 'b' }), t({ key: 'Y' }), t({ key: 'Z', phaseId: 'a' }), t({ key: 'W', phaseId: 'gone' })], phases)
+    expect(groups.map((g) => [g.phase?.id ?? null, g.tasks.map((x) => x.key)])).toEqual([
+      ['a', ['Z']],
+      ['b', ['X']],
+      [null, ['Y', 'W']],
+    ])
+  })
+})
+
+describe('myOpenTasks', () => {
+  it('mine and not done; overdue first, then due ascending (no due last), then key', () => {
+    const tasks = [
+      t({ key: 'P-5', assigneeId: 'me', dueAt: '2026-11-02T00:00:00Z' }),
+      t({ key: 'P-4', assigneeId: 'me' }),
+      t({ key: 'P-3', assigneeId: 'me', dueAt: '2026-11-01T00:00:00Z' }),
+      t({ key: 'P-2', assigneeId: 'me', overdue: true, dueAt: '2026-11-09T00:00:00Z' }),
+      t({ key: 'P-1', assigneeId: 'me', status: 'done' }),
+      t({ key: 'P-0', assigneeId: 'other' }),
+      t({ key: 'P-10', assigneeId: 'me' }),
+    ]
+    expect(myOpenTasks(tasks, 'me').map((x) => x.key)).toEqual(['P-2', 'P-3', 'P-5', 'P-4', 'P-10'])
+  })
+})
