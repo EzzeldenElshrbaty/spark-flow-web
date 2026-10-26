@@ -16,7 +16,19 @@ const toIso = (value: string) => new Date(`${value}T00:00:00.000Z`).toISOString(
 function initial(project: Project | undefined): ProjectFormValues {
   const today = toLocalInput(new Date()).slice(0, 10)
   return project
-    ? { ...project, startDate: day(project.startDate), dueDate: day(project.dueDate) }
+    ? {
+        name: project.name,
+        key: project.key,
+        clientName: project.clientName,
+        description: project.description,
+        links: project.links,
+        managerId: project.managerId,
+        memberIds: project.memberIds,
+        teamIds: project.teamIds,
+        methodology: project.methodology,
+        startDate: day(project.startDate),
+        dueDate: day(project.dueDate),
+      }
     : { name: '', key: '', clientName: '', description: '', links: [], managerId: '', memberIds: [], teamIds: [], methodology: 'waterfall', startDate: today, dueDate: today }
 }
 

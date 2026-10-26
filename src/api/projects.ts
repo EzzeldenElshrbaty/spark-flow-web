@@ -64,3 +64,6 @@ export function useProjectFiles(projectId: string | undefined) {
 export function useUploadFile() {
   return useMutation({ mutationFn: ({ projectId, file }: { projectId: string; file: UploadFile }) => api.files.upload(projectId, file) })
 }
+
+/** A blob: address for a stored file, to show it; the caller revokes it (URL.revokeObjectURL) when done. Not a query: it isn't cached. */
+export const openFile = (id: string) => api.files.url(id)

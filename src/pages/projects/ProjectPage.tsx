@@ -1,99 +1,211 @@
 import clsx from 'clsx'
-import { Columns3, List } from 'lucide-react'
-import { useEffect } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router'
-import { useProject, useSprints, useTickets } from '@/api/tickets'
-import { useUsers } from '@/api/users'
+import { Building2, CalendarDays, Layers, Link2, Pencil, UserRound } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Link, useParams } from 'react-router'
+import { usePhases, useProjectSummary, useTeams } from '@/api/projects'
+import { useTickets } from '@/api/tickets'
+import type { ProjectStatus } from '@/api/types'
+import { useMe, useUsers } from '@/api/users'
+import { Badge, type BadgeTone } from '@/components/ui/Badge'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
+import { RecordActionBarSpacer, RecordHeader, type RecordAction, type RecordMeta } from '@/components/ui/RecordHeader'
+import { StageProgress } from '@/components/ui/StageProgress'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
-import { paths } from '@/lib/paths'
-import { useUiStore, type ProjectView } from '@/lib/uiStore'
+import { formatDate } from '@/lib/format'
+import { paths, projectTabs, type ProjectTab } from '@/lib/paths'
+import { usePermission } from '@/lib/usePermission'
 import { NotFound } from '@/pages/NotFound'
-import { BacklogSkeleton, ProjectBacklog } from '@/pages/projects/ProjectBacklog'
-import { BoardSkeleton, ProjectBoard } from '@/pages/projects/ProjectBoard'
+import { OverviewTab } from './OverviewTab'
+import { PhasesSheet } from './PhasesSheet'
+import { ProjectSheet } from './ProjectSheet'
+import { stagesOf } from './phases'
+import { TasksTab } from './TasksTab'
 
-const views = [
-  ['board', 'Board', Columns3],
-  ['list', 'List', List],
-] as const
+const statusBadge: Record<ProjectStatus, [string, BadgeTone]> = {
+  planned: ['Planned', 'neutral'],
+  active: ['Active', 'info'],
+  onHold: ['On hold', 'warning'],
+  delivered: ['Delivered', 'success'],
+}
+const tabLabels: Record<ProjectTab, string> = { overview: 'Overview', tasks: 'Tasks', chat: 'Chat', time: 'Time' }
 
-const isView = (value: string | null): value is ProjectView => value === 'board' || value === 'list'
+const initials = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]!.toUpperCase())
+    .join('')
 
-/** Board | List, the raised pill on a muted track (as on Spark CRM's Opportunities). Each is its own address. */
-function ViewSwitch({ ws, projectKey, view }: { ws: string; projectKey: string; view: ProjectView }) {
+/** Only https links are shown as links; anything else is left out. */
+const safeLink = (url: string) => {
+  try {
+    return new URL(url).protocol === 'https:' ? url : null
+  } catch {
+    return null
+  }
+}
+
+function Tabs({ ws, projectKey, tab }: { ws: string; projectKey: string; tab: ProjectTab }) {
   return (
-    <nav className="inline-flex rounded-lg bg-surface-muted p-0.5 ring-1 ring-line" aria-label="View">
-      {views.map(([value, label, Icon]) => (
+    <nav className="mb-5 flex gap-1 overflow-x-auto border-b border-line" aria-label="Project">
+      {projectTabs.map((value) => (
         <Link
           key={value}
-          to={paths.project(ws, projectKey, 'tasks', { view: value })}
-          aria-current={view === value ? 'page' : undefined}
-          className={clsx('inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium', view === value ? 'bg-surface text-fg shadow-sm ring-1 ring-line' : 'text-fg-muted hover:text-fg')}
+          to={paths.project(ws, projectKey, value)}
+          aria-current={tab === value ? 'page' : undefined}
+          className={clsx(
+            'relative flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-medium transition-colors',
+            "after:absolute after:inset-x-2 after:-bottom-px after:h-0.5 after:rounded-full after:bg-brand-500 after:transition-transform after:duration-200 after:content-['']",
+            tab === value ? 'text-fg after:scale-x-100' : 'text-fg-muted after:scale-x-0 hover:text-fg',
+          )}
         >
-          <Icon className="size-4" />
-          <span className="max-sm:sr-only">{label}</span>
+          {tabLabels[value]}
         </Link>
       ))}
     </nav>
   )
 }
 
-/** A project: its name and description, then the board or the backlog. Read-only in Phase 1. */
+function PageSkeleton() {
+  return (
+    <div aria-hidden>
+      <div className="mb-4 flex items-start gap-3">
+        <div className="size-10 animate-pulse rounded-full bg-surface-muted" />
+        <div className="space-y-2">
+          <div className="h-7 w-56 animate-pulse rounded-lg bg-surface-muted" />
+          <div className="h-4 w-80 max-w-full animate-pulse rounded bg-surface-muted" />
+        </div>
+      </div>
+      <div className="mb-5 h-11 animate-pulse rounded-lg bg-surface-muted" />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="h-24 animate-pulse rounded-xl bg-surface-muted" />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** A project: header, phases bar, and its four tabs (Overview, Tasks, Chat, Time), each its own address. */
 export function ProjectPage() {
-  const { ws = '', projectKey = '' } = useParams()
-  const [params] = useSearchParams()
-  const lastView = useUiStore((state) => state.lastProjectView[projectKey])
-  const asked = params.get('view')
-  const view: ProjectView = isView(asked) ? asked : (lastView ?? 'board')
+  const { ws = '', projectKey = '', tab: tabParam = '' } = useParams()
+  const tab = tabParam as ProjectTab // the router only renders this page for a known tab
   const { workspace } = useCurrentWorkspace()
-  const project = useProject(workspace?.id, projectKey)
-  const projectId = project.data?.id
-  const tickets = useTickets(projectId)
-  const sprints = useSprints(view === 'list' ? projectId : undefined)
-  const users = useUsers(workspace?.id)
-  const setProjectView = useUiStore((state) => state.setProjectView)
+  const summary = useProjectSummary(workspace?.id, projectKey)
+  const project = summary.data ?? undefined
+  const phases = usePhases(project?.id)
+  const tasks = useTickets(project?.id)
+  const people = useUsers(workspace?.id).data ?? []
+  const teams = useTeams(workspace?.id).data ?? []
+  const me = useMe().data
+  const check = usePermission()
+  const now = useMemo(() => new Date(), [])
+  const [sheet, setSheet] = useState<'edit' | 'phases' | null>(null)
 
-  // Remember the view shown (from the switch, the back button or a typed address) so the sidebar link reopens it.
-  const shown = projectId ? view : null
-  useEffect(() => {
-    if (shown) setProjectView(projectKey, shown)
-  }, [shown, projectKey, setProjectView])
-
-  if (project.isError) {
+  if (summary.isError) {
     return (
       <>
         <PageHeader title="Project" />
-        <QueryError what="Project" onRetry={() => void project.refetch()} />
+        <QueryError what="Project" onRetry={() => void summary.refetch()} />
       </>
     )
   }
-  if (project.isPending) {
-    return (
-      <>
-        <div className="mb-6 space-y-2" aria-hidden>
-          <div className="h-8 w-48 animate-pulse rounded-lg bg-surface-muted" />
-          <div className="h-4 w-72 max-w-full animate-pulse rounded bg-surface-muted" />
-        </div>
-        {view === 'board' ? <BoardSkeleton /> : <BacklogSkeleton />}
-      </>
-    )
-  }
-  if (!project.data) {
-    return <NotFound what="project" backTo={paths.workspace(ws)} backLabel={`Back to ${workspace?.name ?? 'the workspace'}`} />
-  }
+  if (summary.isPending || !workspace) return <PageSkeleton />
+  if (!project) return <NotFound what="project" backTo={paths.projects(ws)} backLabel="Back to projects" />
 
-  const people = users.data ?? []
-  let body
-  if (tickets.isError) body = <QueryError what="Tickets" onRetry={() => void tickets.refetch()} />
-  else if (view === 'list' && sprints.isError) body = <QueryError what="Sprints" onRetry={() => void sprints.refetch()} />
-  else if (view === 'board') body = tickets.isPending || users.isLoading ? <BoardSkeleton /> : <ProjectBoard tickets={tickets.data} users={people} />
-  else body = tickets.isPending || sprints.isPending || users.isLoading ? <BacklogSkeleton /> : <ProjectBacklog tickets={tickets.data} sprints={sprints.data ?? []} users={people} />
+  const ctx = { project, userTeamIds: me?.teamIds }
+  const canEdit = check('project.edit', ctx)
+  const canPhases = check('phase.manage', ctx)
+  const canPost = check('collab.post', ctx)
+  const nameOf = (id: string) => people.find((u) => u.id === id)?.name ?? '—'
+
+  const [statusLabel, statusTone] = statusBadge[project.status]
+  const links = project.links.flatMap((l) => {
+    const href = safeLink(l.url)
+    return href ? [{ ...l, href }] : []
+  })
+  const meta: RecordMeta[] = [
+    { icon: <Building2 />, label: project.clientName.trim() || '—', title: 'Client' },
+    { icon: <UserRound />, label: nameOf(project.managerId), title: 'Project manager' },
+    { icon: <CalendarDays />, label: `${formatDate(project.startDate)} – ${formatDate(project.dueDate)}`, title: 'Start and due' },
+    ...links.map((l) => ({
+      icon: <Link2 />,
+      label: (
+        <a href={l.href} target="_blank" rel="noopener noreferrer" className="hover:text-fg hover:underline">
+          {l.label}
+        </a>
+      ),
+      title: l.href,
+    })),
+  ]
+  const secondary: RecordAction[] = canEdit ? [{ label: 'Edit project', icon: Pencil, onSelect: () => setSheet('edit') }] : []
+  const more: RecordAction[] = canPhases ? [{ label: 'Manage phases', icon: Layers, onSelect: () => setSheet('phases') }] : []
+
+  const phaseList = phases.data ?? []
+  const stages = stagesOf(phaseList, tasks.data ?? [], now)
+  const currentIndex = Math.max(0, stages.findIndex((s) => s.id === project.currentPhaseId))
+  const allDone = stages.length > 0 && project.currentPhaseId === null
 
   return (
     <>
-      <PageHeader title={project.data.name} subtitle={project.data.description.trim() || '—'} actions={<ViewSwitch ws={ws} projectKey={projectKey} view={view} />} />
-      {body}
+      <RecordHeader
+        avatar={<span className="grid place-items-center rounded-full bg-accent-soft font-semibold text-accent">{initials(project.name)}</span>}
+        title={project.name}
+        badges={
+          <>
+            <Badge tone={statusTone}>{statusLabel}</Badge>
+            <Badge>{project.methodology === 'waterfall' ? 'Waterfall' : 'Agile'}</Badge>
+            <span className="font-mono text-xs text-fg-muted">{project.key}</span>
+          </>
+        }
+        meta={meta}
+        secondary={secondary}
+        more={more}
+      />
+
+      {phases.isError ? (
+        <p className="mb-5 text-sm text-red-600 dark:text-red-400">Phases couldn't be loaded.</p>
+      ) : phases.isPending ? (
+        <div className="mb-5 h-11 animate-pulse rounded-lg bg-surface-muted" aria-hidden />
+      ) : stages.length > 0 ? (
+        <div className="mb-5">
+          <StageProgress
+            label="Phases"
+            stages={stages}
+            current={currentIndex}
+            state={allDone ? 'done' : 'active'}
+            renderDetails={(_, index) => {
+              const s = stages[index]!
+              const status = s.phase.status === 'done' ? 'Done' : s.phase.status === 'inProgress' ? 'In progress' : 'Not started'
+              return (
+                <div className="space-y-1.5">
+                  <p className="font-semibold text-fg">{s.phase.name}</p>
+                  <p className="text-fg-secondary">
+                    {formatDate(s.phase.startDate)} – {formatDate(s.phase.dueDate)}
+                  </p>
+                  <p className="text-fg-muted">
+                    {status} · {s.taskCount} {s.taskCount === 1 ? 'task' : 'tasks'}
+                    {s.overdue && <span className="font-medium text-red-600 dark:text-red-400"> · Overdue</span>}
+                  </p>
+                </div>
+              )
+            }}
+          />
+        </div>
+      ) : null}
+
+      <Tabs ws={ws} projectKey={project.key} tab={tab} />
+
+      {tab === 'overview' && <OverviewTab project={project} phases={phaseList} people={people} teams={teams} canEdit={canEdit} canPost={canPost} />}
+      {tab === 'tasks' && <TasksTab ws={ws} project={project} people={people} />}
+      {(tab === 'chat' || tab === 'time') && <p className="text-sm text-fg-muted">—</p>}
+
+      <RecordActionBarSpacer />
+
+      {sheet === 'edit' && <ProjectSheet workspaceId={workspace.id} project={project} takenKeys={[]} onClose={() => setSheet(null)} onSaved={() => setSheet(null)} />}
+      {sheet === 'phases' && <PhasesSheet project={project} phases={phaseList} onClose={() => setSheet(null)} />}
     </>
   )
 }
