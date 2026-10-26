@@ -28,7 +28,9 @@ Spark Flow is a sister product of **Spark CRM** (Spark Systems). The two apps mu
 - **RTL-ready**: logical direction classes only (`ms-/me-/ps-/pe-/start-/end-/text-start/border-s…`); directional icons get `rtl:-scale-x-100`. `src/rtl.test.ts` enforces it.
 - **Voice** (from `spark-design-system.md`): specific, numbers over adjectives, no buzzwords, short active sentences, Western digits.
 - **Charts**: red for the key series plus greys, max 4 series, the takeaway in the title, no other hues.
-- **Data**: components import hooks from `@/api/*` only, never `@/mocks`. `src/api/*` holds hooks plus `types.ts` contracts; `src/lib/api.ts` + `src/lib/http.ts` + `src/lib/realtime.ts` are the only transport switch points; `src/mocks/*` is the localStorage mock backend. `src/layout/RealtimeBridge.tsx` turns live events into query invalidations.
+- **Data**: components import hooks from `@/api/*` only, never `@/mocks`. `src/api/*` holds hooks plus `types.ts` contracts; `src/lib/api.ts` + `src/lib/http.ts` + `src/lib/realtime.ts` are the only transport switch points; `src/mocks/*` is the mock backend: one document in IndexedDB (`spark-flow.mock`), each write one transaction (`src/mocks/store`), memory when IndexedDB is blocked. `src/layout/RealtimeBridge.tsx` turns live events into query invalidations.
+- **Roles & permissions**: roles are `admin`, `sales`, `pm`, `member`; whoever a project names as manager has PM rights on it. `src/lib/permissions.ts` `can()` is the one rule table (spec §4.3): the mock refuses with 403 by it and the UI hides by it (`usePermission`). "View as" (user menu) is demo only.
+- **Files**: every file `src`/`href` goes through `safeFileUrl`; PDFs preview only after the `%PDF-` check.
 - When unsure how something should look, find the closest Spark CRM screen in `design/screenshots/` or pattern in `design/04-page-patterns.md` and match it.
 
 ## Commands

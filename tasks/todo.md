@@ -119,3 +119,37 @@ See spec §10 (`docs/superpowers/specs/2026-10-26-spark-flow-shell-data-layer-de
 - Extract `backendOn` / `apiUrl` to `lib/env.ts` to remove the `lib/api.ts` ↔ `lib/http.ts` import cycle.
 - Before showing the demo: fix the seed narrative contradictions (messages that cite tickets created later, two "tonight 23:00", freeze dates).
 - The mock backend's `markRead` triggers a broad refetch; narrow the invalidation.
+
+---
+
+# M0 Foundation — company system — 2026-10-27
+
+Spec: `docs/superpowers/specs/2026-10-26-spark-flow-company-system-design.md`
+Plan: `docs/superpowers/plans/2026-10-26-m0-foundation.md` (executed inline)
+
+## Plan
+
+- [x] Task 1 — IndexedDB mock store with memory fallback
+- [x] Task 2 — Contracts and roles
+- [x] Task 3 — Async MockDb on the store, export/import, legacy localStorage cleanup
+- [x] Task 4 — Company-system seed story
+- [x] Task 5 — Permissions and View as
+- [x] Task 6 — Database page; safe file previews
+- [x] Task 7 — Verify, docs
+
+## Review — M0
+
+### Gates
+- `npm test`: 168 passed (19 files). `npm run build:prototype`: passes. `npm run lint`: clean.
+
+### Browser checks (preview pane, 1440 light unless noted)
+- A browser holding Phase 1+2 localStorage data: legacy keys removed, IndexedDB `spark-flow.mock` created, seed loads, no errors ✓
+- View as Salma (Member): Settings hidden; Database page shows "You don't have access to the database." with no actions ✓; back to Youssef (Admin): Settings shown ✓
+- Database: Export downloads `spark-flow-export-YYYY-MM-DD.json` that parses (5 projects, 9 users) ✓; Reload seed → `#general` ✓; Reset needs typing "reset", then → `#general` ✓
+- Two tabs, the Phase 1+2 lost-write sequence (fresh tab opening #backend while the other tab sends), 3 runs: all 3 messages stored and shown live, read markers kept ✓
+- Database page at 375px dark: no sideways scroll ✓; RTL mirrors ✓
+- New seed: `#mobile-app` project chat with an `@all` message renders ✓
+- FileViewer: covered by unit tests (`safeFileUrl`, `isPdf`); seeded PDF/PNG get a browser check in M1 when the project Files tab exists.
+
+### Left for later milestones
+- M1 projects/phases/tasks UI, M2 time, M3 chat writing and mentions UI, M4 dashboard (spec §8).
