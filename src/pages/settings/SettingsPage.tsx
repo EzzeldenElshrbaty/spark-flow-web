@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router'
-import { useResetDemoData } from '@/api/dev'
+import { useResetDemo } from '@/api/db'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -10,7 +10,7 @@ import { useUiStore } from '@/lib/uiStore'
 export function SettingsPage() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
-  const reset = useResetDemoData()
+  const reset = useResetDemo()
   const forgetPlaces = useUiStore((state) => state.forgetPlaces)
 
   const resetDemo = () =>

@@ -31,7 +31,7 @@ function addMessages(channelId: string, count: number) {
     for (let i = 0; i < count; i++) {
       d.messages.push({
         id: `m-extra-${i}`, channelId, senderId: 'u-2', content: `extra ${i}`,
-        attachments: [], reactions: [], threadCount: 0, lastReplyAt: null, linkedTicketKeys: [], editedAt: null,
+        attachments: [], reactions: [], threadCount: 0, lastReplyAt: null, linkedTicketKeys: [], mentions: [], editedAt: null,
         createdAt: new Date(Date.UTC(2030, 0, 1, 0, 0, i)).toISOString(),
       })
     }
@@ -86,7 +86,7 @@ describe('chat.messages', () => {
       for (let i = 0; i < 75; i++) {
         d.messages.push({
           id: `m-tie-${String(i).padStart(3, '0')}`, channelId: 'c-general', senderId: 'u-2', content: `tie ${i}`,
-          attachments: [], reactions: [], threadCount: 0, lastReplyAt: null, linkedTicketKeys: [], editedAt: null, createdAt: at,
+          attachments: [], reactions: [], threadCount: 0, lastReplyAt: null, linkedTicketKeys: [], mentions: [], editedAt: null, createdAt: at,
         })
       }
     })
@@ -155,7 +155,7 @@ describe('chat.channels and unreadCount', () => {
     db.update((d) => {
       d.messages.push({
         id: 'm-other', channelId: 'c-backend', senderId: 'u-2', content: 'theirs',
-        attachments: [], reactions: [], threadCount: 0, lastReplyAt: null, linkedTicketKeys: [], editedAt: null,
+        attachments: [], reactions: [], threadCount: 0, lastReplyAt: null, linkedTicketKeys: [], mentions: [], editedAt: null,
         createdAt: new Date(Date.now() + 60_000).toISOString(),
       })
     })
@@ -204,7 +204,7 @@ describe('sendMessage', () => {
   })
 
   it('stores the message as the current user, with no replies yet', async () => {
-    const attachment = { id: 'a1', name: 'log.txt', size: 12, mimeType: 'text/plain', url: '/log.txt' }
+    const attachment = { id: 'a1', name: 'log.txt', size: 12, mimeType: 'text/plain', createdAt: '2026-10-26T00:00:00.000Z' }
     const m = await sendMessage(db, hub, { channelId: 'c-backend', content: 'hi', attachments: [attachment] })
     expect(m).toMatchObject({ senderId: 'u-1', channelId: 'c-backend', threadCount: 0, lastReplyAt: null, editedAt: null, reactions: [] })
     expect(m.attachments).toEqual([attachment])

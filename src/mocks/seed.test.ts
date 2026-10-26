@@ -13,6 +13,15 @@ const latest = (times: string[]) => times.reduce((a, b) => (a >= b ? a : b))
 const keyNumber = (key: string) => Number(key.split('-')[1])
 
 describe('seed', () => {
+  it('roles cover all four', () => {
+    expect(new Set(data.users.map((u) => u.role))).toEqual(new Set(['admin', 'sales', 'pm', 'member']))
+  })
+
+  it('new collections exist', () => {
+    for (const name of ['teams', 'phases', 'deliverables', 'comments', 'attachments', 'projectFiles', 'timeEntries', 'checkIns', 'rates'] as const)
+      expect(Array.isArray(data[name])).toBe(true)
+  })
+
   it('matches the spec volumes', () => {
     expect(data.version).toBe(DB_VERSION)
     expect(data.workspaces.map((w) => w.slug)).toEqual(['engineering', 'design'])
@@ -25,7 +34,6 @@ describe('seed', () => {
     expect(data.channels.some((c) => c.isPrivate)).toBe(true)
     expect(data.messages.length).toBeGreaterThanOrEqual(55)
     expect(data.users).toHaveLength(8)
-    expect(data.users.every((u) => u.role === 'Management')).toBe(true)
   })
 
   it('uses the fixed ids the other tasks rely on', () => {
@@ -67,7 +75,7 @@ describe('seed', () => {
     expect(userIds.has(data.currentUserId)).toBe(true)
     for (const p of data.projects) {
       expect(workspaceIds.has(p.workspaceId)).toBe(true)
-      expect(userIds.has(p.leadId)).toBe(true)
+      expect(userIds.has(p.managerId)).toBe(true)
     }
     for (const s of data.sprints) expect(projectIds.has(s.projectId)).toBe(true)
     for (const t of data.tickets) {

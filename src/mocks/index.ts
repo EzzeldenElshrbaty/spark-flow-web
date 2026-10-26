@@ -1,7 +1,8 @@
 import type { Api, ChatMessage, NewTicket, ThreadReply, Ticket, TicketPatch } from '@/api/types'
 import { addReply, chatApi, sendMessage, type AddReplyInput, type SendMessageInput } from './chat'
 import { createDb, type KeyValueStorage, type MockDb } from './db'
-import { devApi } from './dev'
+import { dbApi } from './dbApi'
+import { filesApi } from './files'
 import { createMemoryStorage } from './memoryStore'
 import { mockHub, type MockHub } from './realtime'
 import { seed } from './seed'
@@ -33,7 +34,8 @@ export function createMockApi(db: MockDb, _hub: MockHub): Api {
     users: usersApi(db),
     chat: chatApi(db),
     tickets: ticketsApi(db),
-    dev: devApi(db),
+    files: filesApi(db),
+    db: dbApi(db),
   }
 }
 

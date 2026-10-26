@@ -23,7 +23,7 @@ export const settingsItem: NavItem = {
   label: 'Settings',
   permission: 'settings.manage',
   icon: Settings,
-  roles: ['Management'],
+  roles: ['admin'],
   description: 'Users, roles and the rules Spark Flow works by.',
 }
 

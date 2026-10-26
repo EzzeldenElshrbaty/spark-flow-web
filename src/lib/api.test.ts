@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Api } from '@/api/types'
 
-const fakeMockApi = { workspaces: { list: vi.fn(async () => []) }, users: {}, chat: {}, tickets: {}, dev: {} } as unknown as Api
+const fakeMockApi = { workspaces: { list: vi.fn(async () => []) }, users: {}, chat: {}, tickets: {}, files: {}, db: {} } as unknown as Api
 const getMockApi = vi.fn(() => fakeMockApi)
 vi.mock('@/mocks', () => ({ getMockApi }))
 
@@ -56,6 +56,6 @@ describe('lib/api', () => {
     await api.workspaces.list()
     expect(fetchSpy).toHaveBeenCalledWith('https://api.example.com/api/workspaces', expect.anything())
     expect(getMockApi).not.toHaveBeenCalled()
-    await expect(api.dev.resetDemoData()).rejects.toMatchObject({ status: 400 })
+    await expect(api.db.reset()).rejects.toMatchObject({ status: 400 })
   })
 })

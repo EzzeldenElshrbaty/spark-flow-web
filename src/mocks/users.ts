@@ -19,5 +19,14 @@ export function usersApi(db: MockDb): Api['users'] {
       // Users don't belong to a single workspace in the mock; everyone is in every workspace.
       return data.users
     },
+    async viewAs(userId) {
+      await delay()
+      return db.update((data) => {
+        const user = data.users.find((u) => u.id === userId)
+        if (!user) throw notFound('User', userId)
+        data.currentUserId = user.id
+        return user
+      })
+    },
   }
 }

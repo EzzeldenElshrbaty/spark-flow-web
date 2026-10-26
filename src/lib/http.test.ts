@@ -70,7 +70,7 @@ describe('createHttpApi', () => {
 
   it('rejects resetDemoData: the backend has no such route', async () => {
     const { calls, fetchFn } = recordingFetch()
-    await expect(createHttpApi(fetchFn).dev.resetDemoData()).rejects.toMatchObject({ name: 'ApiError', status: 400 })
+    await expect(createHttpApi(fetchFn).db.reset()).rejects.toMatchObject({ name: 'ApiError', status: 400 })
     expect(calls).toEqual([])
   })
 })

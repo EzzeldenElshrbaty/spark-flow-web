@@ -4,11 +4,25 @@ export type { Role }
 
 // ── Relational (PostgreSQL) ───────────────────────────────────────────────
 export type Presence = 'active' | 'away' | 'offline'
-export type User = { id: string; name: string; email: string; title: string; role: Role; presence: Presence }
+export type User = { id: string; name: string; email: string; title: string; role: Role; presence: Presence; teamIds: string[] }
+export type Team = { id: string; workspaceId: string; name: string; memberIds: string[] }
 
 export type Workspace = { id: string; slug: string; name: string }
 
-export type Project = { id: string; workspaceId: string; key: string; name: string; description: string; leadId: string }
+export type Methodology = 'waterfall' | 'agile'
+export type ProjectStatus = 'planned' | 'active' | 'onHold' | 'delivered'
+export type ProjectLink = { label: string; url: string }
+export type Project = {
+  id: string; workspaceId: string; key: string; name: string; description: string // description = "about"
+  clientName: string; logoFileId: string | null; links: ProjectLink[]
+  managerId: string; memberIds: string[]; teamIds: string[]
+  methodology: Methodology; status: ProjectStatus; startDate: string; dueDate: string
+  channelId: string                                      // the project's chat
+}
+
+export type PhaseStatus = 'notStarted' | 'inProgress' | 'done'
+export type Phase = { id: string; projectId: string; name: string; order: number; startDate: string; dueDate: string; status: PhaseStatus }
+export type Deliverable = { id: string; projectId: string; phaseId: string | null; title: string; dueDate: string; doneAt: string | null }
 
 export type SprintState = 'planned' | 'active' | 'closed'
 export type Sprint = {
@@ -26,10 +40,29 @@ export type Ticket = {
   rank: number                                           // order within a status column
   linkedChannelId: string | null; linkedMessageId: string | null
   createdAt: string; updatedAt: string
+  phaseId: string | null; type: TaskType
+  dueAt: string | null; estimateHours: number | null     // either, both or neither; overdue is derived
 }
+export type TaskType = 'task' | 'bug'
+/** The company system calls tickets tasks; the contract and keys (NEX-101) are the same. */
+export type Task = Ticket
+
+// ── Time and cost ─────────────────────────────────────────────────────────
+export type TimeEntry = {
+  id: string; userId: string; projectId: string; taskId: string | null
+  startedAt: string; endedAt: string | null              // null = running
+  source: 'timer' | 'manual'; note: string
+}
+export type CheckIn = { id: string; userId: string; day: string /* YYYY-MM-DD local */; checkedInAt: string; checkedOutAt: string | null; plan: string }
+export type Rate = { userId: string; hourlyCost: number; currency: 'EGP' } // admin only
 
 // ── Documents (MongoDB) ───────────────────────────────────────────────────
-export type Attachment = { id: string; name: string; size: number; mimeType: string; url: string }
+/** A stored file's details; its bytes live in the file store and are opened through api.files.url(id). */
+export type Attachment = { id: string; name: string; mimeType: string; size: number; createdAt: string }
+export type CommentKind = 'comment' | 'bug'
+export type Comment = { id: string; taskId: string; projectId: string; authorId: string; kind: CommentKind; body: string; attachmentIds: string[]; createdAt: string }
+export type ProjectFile = { id: string; projectId: string; attachmentId: string; uploadedBy: string; createdAt: string }
+export type Mention = { kind: 'user' | 'project' | 'task' | 'all'; id: string } // userId | project key | task key | 'all'
 export type Reaction = { emoji: string; userIds: string[] }
 
 export type ChannelKind = 'channel' | 'dm'
@@ -44,12 +77,12 @@ export type ChatMessage = {
   id: string; channelId: string; senderId: string; content: string
   attachments: Attachment[]; reactions: Reaction[]
   threadCount: number; lastReplyAt: string | null
-  linkedTicketKeys: string[]; editedAt: string | null; createdAt: string
+  linkedTicketKeys: string[]; mentions: Mention[]; editedAt: string | null; createdAt: string
 }
 
 export type ThreadReply = {
   id: string; messageId: string; channelId: string; senderId: string; content: string
-  attachments: Attachment[]; reactions: Reaction[]; createdAt: string
+  attachments: Attachment[]; reactions: Reaction[]; mentions: Mention[]; createdAt: string
 }
 
 // ── Transport ─────────────────────────────────────────────────────────────
@@ -68,16 +101,27 @@ export type NewTicket = Pick<
   Ticket,
   'projectId' | 'title' | 'description' | 'status' | 'priority' | 'storyPoints' | 'assigneeId' | 'sprintId'
 > &
-  Partial<Pick<Ticket, 'linkedChannelId' | 'linkedMessageId'>>
+  Partial<Pick<Ticket, 'linkedChannelId' | 'linkedMessageId' | 'phaseId' | 'type' | 'dueAt' | 'estimateHours'>>
 
 export type TicketPatch = Partial<
-  Pick<Ticket, 'title' | 'description' | 'status' | 'priority' | 'storyPoints' | 'assigneeId' | 'sprintId' | 'rank'>
+  Pick<
+    Ticket,
+    'title' | 'description' | 'status' | 'priority' | 'storyPoints' | 'assigneeId' | 'sprintId' | 'rank' | 'phaseId' | 'type' | 'dueAt' | 'estimateHours'
+  >
 >
 
 // ── The api object (src/lib/api.ts) ───────────────────────────────────────
+/** Everything in the mock database, as Database → Export data downloads it. File bytes are not included (spec §10). */
+export type ExportBundle = { app: 'spark-flow'; version: number; exportedAt: string; data: unknown }
+
 export interface Api {
   workspaces: { list(): Promise<Workspace[]> }
-  users: { me(): Promise<User>; list(workspaceId: string): Promise<User[]> }
+  users: {
+    me(): Promise<User>
+    list(workspaceId: string): Promise<User[]>
+    /** Demo only: act as another seeded person. Hidden when backendOn. */
+    viewAs(userId: string): Promise<User>
+  }
   chat: {
     channels(workspaceId: string): Promise<Channel[]>
     channel(id: string): Promise<Channel>
@@ -92,5 +136,7 @@ export interface Api {
     list(projectId: string): Promise<Ticket[]>
     get(key: string): Promise<Ticket>
   }
-  dev: { resetDemoData(): Promise<void> } // mock only; hidden when backendOn
+  files: { url(id: string): Promise<string> }
+  /** The Database page: mock only, hidden when backendOn. */
+  db: { export(): Promise<ExportBundle>; reloadSeed(): Promise<void>; reset(): Promise<void> }
 }

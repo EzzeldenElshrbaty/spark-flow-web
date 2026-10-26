@@ -107,6 +107,7 @@ export async function sendMessage(db: MockDb, hub: MockHub, input: SendMessageIn
       threadCount: 0,
       lastReplyAt: null,
       linkedTicketKeys: parseTicketKeys(input.content),
+      mentions: [],
       editedAt: null,
       createdAt,
     }
@@ -132,6 +133,7 @@ export async function addReply(db: MockDb, hub: MockHub, input: AddReplyInput): 
       content: input.content,
       attachments: [],
       reactions: [],
+      mentions: [],
       createdAt,
     }
     data.replies.push(created)

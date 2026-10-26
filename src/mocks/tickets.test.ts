@@ -150,7 +150,7 @@ describe('dev.resetDemoData', () => {
     await updateTicket(db, hub, 'NEX-101', { title: 'Changed' })
     await createTicket(db, hub, newTicket())
     events.length = 0
-    await api.dev.resetDemoData()
+    await api.db.reset()
     expect((await api.tickets.get('NEX-101')).title).toBe(original.title)
     await expect(api.tickets.get('NEX-111')).rejects.toMatchObject({ status: 404 })
     expect(events).toEqual([]) // the UI clears its own cache

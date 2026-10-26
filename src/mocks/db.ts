@@ -1,6 +1,15 @@
 import type {
+  Attachment,
   ChatMessage,
+  CheckIn,
+  Comment,
+  Deliverable,
+  Phase,
   Project,
+  ProjectFile,
+  Rate,
+  Team,
+  TimeEntry,
   Sprint,
   StoredChannel,
   ThreadReply,
@@ -10,7 +19,7 @@ import type {
 } from '@/api/types'
 
 export const DB_KEY = 'spark-flow.mockdb.v1'
-export const DB_VERSION = 1
+export const DB_VERSION = 2 // 2: the company-system document (spec §3)
 /** One key per channel holds the current user's read time (an ISO time), outside the shared document. */
 export const READ_KEY_PREFIX = `${DB_KEY}.read.`
 
@@ -25,6 +34,15 @@ export type DbData = {
   channels: StoredChannel[]
   messages: ChatMessage[]
   replies: ThreadReply[]
+  teams: Team[]
+  phases: Phase[]
+  deliverables: Deliverable[]
+  comments: Comment[]
+  attachments: Attachment[]
+  projectFiles: ProjectFile[]
+  timeEntries: TimeEntry[]
+  checkIns: CheckIn[]
+  rates: Rate[]
   /** channelId -> ISO time the current user last read it. Never in the saved document: it lives in per-channel keys. */
   reads: Record<string, string>
   counters: Record<string, number> // projectId -> next ticket number
@@ -43,7 +61,10 @@ export interface MockDb {
   reset(): void
 }
 
-const COLLECTIONS = ['users', 'workspaces', 'projects', 'sprints', 'tickets', 'channels', 'messages', 'replies'] as const
+const COLLECTIONS = [
+  'users', 'workspaces', 'projects', 'sprints', 'tickets', 'channels', 'messages', 'replies',
+  'teams', 'phases', 'deliverables', 'comments', 'attachments', 'projectFiles', 'timeEntries', 'checkIns', 'rates',
+] as const
 
 /** Whether a parsed document has the top-level shape the mock backend relies on. */
 function hasShape(value: unknown): value is Omit<DbData, 'reads'> {

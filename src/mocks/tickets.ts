@@ -78,6 +78,10 @@ export async function createTicket(db: MockDb, hub: MockHub, input: NewTicket): 
       linkedMessageId: input.linkedMessageId ?? null,
       createdAt: now,
       updatedAt: now,
+      phaseId: input.phaseId ?? null,
+      type: input.type ?? 'task',
+      dueAt: input.dueAt ?? null,
+      estimateHours: input.estimateHours ?? null,
     }
     data.tickets.push(created)
     data.counters[project.id] = number + 1

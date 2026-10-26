@@ -1,6 +1,6 @@
 import { ApiError } from '@/lib/apiError'
 
-export type Thing = 'Workspace' | 'User' | 'Channel' | 'Message' | 'Project' | 'Ticket'
+export type Thing = 'Workspace' | 'User' | 'Channel' | 'Message' | 'Project' | 'Ticket' | 'File'
 
 /** The 404 the mock throws for an unknown id or key. */
 export function notFound(thing: Thing, id: string): ApiError {

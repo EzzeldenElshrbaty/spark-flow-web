@@ -40,6 +40,10 @@ export async function request<T>(path: string, init?: RequestInit, fetchFn: type
 const enc = encodeURIComponent
 
 /** The Api over HTTP: one route per call, as the backend serves them. */
+/** For the demo-only actions: the real backend refuses them. */
+const mockOnly = (what: string): Promise<never> =>
+  Promise.reject(new ApiError({ title: 'Not available', status: 400, detail: `${what} isn't available with the backend on.` }))
+
 export function createHttpApi(fetchFn?: typeof fetch): Api {
   const get = <T>(path: string) => request<T>(path, undefined, fetchFn)
   return {
@@ -47,6 +51,7 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
     users: {
       me: () => get('/api/users/me'),
       list: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/users`),
+      viewAs: () => mockOnly('Viewing as another person'),
     },
     chat: {
       channels: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/channels`),
@@ -63,10 +68,12 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
       list: (projectId) => get(`/api/projects/${enc(projectId)}/tickets`),
       get: (key) => get(`/api/tickets/${enc(key)}`),
     },
-    dev: {
-      // The demo data lives in the browser's mock database; the real backend has nothing to reset.
-      resetDemoData: () =>
-        Promise.reject(new ApiError({ title: 'Not available', status: 400, detail: "Demo data can't be reset with the backend on." })),
+    files: { url: (id) => Promise.resolve(apiUrl(`/api/files/${enc(id)}`)) },
+    // The demo data lives in the browser's mock database; the real backend has none of these.
+    db: {
+      export: () => mockOnly('Exporting demo data'),
+      reloadSeed: () => mockOnly('Reloading demo data'),
+      reset: () => mockOnly('Resetting demo data'),
     },
   }
 }

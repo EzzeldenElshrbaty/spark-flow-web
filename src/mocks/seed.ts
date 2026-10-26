@@ -44,6 +44,7 @@ function buildMessages(raw: RawMessage[], replies: ThreadReply[]): ChatMessage[]
         threadCount: own.length,
         lastReplyAt: latestOf(own.map((r) => r.createdAt)),
         linkedTicketKeys: parseTicketKeys(m.content),
+        mentions: [],
         editedAt: null,
       }
     })
@@ -53,7 +54,7 @@ function buildMessages(raw: RawMessage[], replies: ThreadReply[]): ChatMessage[]
 function buildReplies(raw: RawReply[], messages: RawMessage[]): ThreadReply[] {
   const channelOf = new Map(messages.map((m) => [m.id, m.channelId]))
   return raw
-    .map((r) => ({ ...r, channelId: channelOf.get(r.messageId) ?? '', attachments: [] }))
+    .map((r) => ({ ...r, channelId: channelOf.get(r.messageId) ?? '', attachments: [], mentions: [] }))
     .sort(byTimeThenId)
 }
 
@@ -93,6 +94,10 @@ function buildTickets(raw: RawTicket[]): Ticket[] {
       linkedMessageId: t.link?.messageId ?? null,
       createdAt: t.createdAt,
       updatedAt: t.updatedAt,
+      phaseId: null,
+      type: 'task',
+      dueAt: null,
+      estimateHours: null,
     }
   })
 }
@@ -140,14 +145,14 @@ export function seed(now: Date): DbData {
 
   // ── Users ───────────────────────────────────────────────────────────────
   const users: User[] = [
-    { id: 'u-1', name: 'Youssef Abdelrahman', email: 'youssef.abdelrahman@spark-sys.com', title: 'Engineering Lead', role: 'Management', presence: 'active' },
-    { id: 'u-2', name: 'Nour El-Sayed', email: 'nour.elsayed@spark-sys.com', title: 'Senior Backend Engineer', role: 'Management', presence: 'active' },
-    { id: 'u-3', name: 'Mariam Fathy', email: 'mariam.fathy@spark-sys.com', title: 'Frontend Engineer', role: 'Management', presence: 'active' },
-    { id: 'u-4', name: 'Ahmed Shawky', email: 'ahmed.shawky@spark-sys.com', title: 'iOS Engineer', role: 'Management', presence: 'away' },
-    { id: 'u-5', name: 'Salma Ibrahim', email: 'salma.ibrahim@spark-sys.com', title: 'QA Engineer', role: 'Management', presence: 'active' },
-    { id: 'u-6', name: 'Hossam Gaber', email: 'hossam.gaber@spark-sys.com', title: 'DevOps Engineer', role: 'Management', presence: 'offline' },
-    { id: 'u-7', name: 'Dina Mansour', email: 'dina.mansour@spark-sys.com', title: 'Product Designer', role: 'Management', presence: 'away' },
-    { id: 'u-8', name: 'Tarek Lotfy', email: 'tarek.lotfy@spark-sys.com', title: 'Android Engineer', role: 'Management', presence: 'offline' },
+    { id: 'u-1', name: 'Youssef Abdelrahman', email: 'youssef.abdelrahman@spark-sys.com', title: 'Engineering Lead', role: 'admin', teamIds: [], presence: 'active' },
+    { id: 'u-2', name: 'Nour El-Sayed', email: 'nour.elsayed@spark-sys.com', title: 'Senior Backend Engineer', role: 'sales', teamIds: [], presence: 'active' },
+    { id: 'u-3', name: 'Mariam Fathy', email: 'mariam.fathy@spark-sys.com', title: 'Frontend Engineer', role: 'pm', teamIds: [], presence: 'active' },
+    { id: 'u-4', name: 'Ahmed Shawky', email: 'ahmed.shawky@spark-sys.com', title: 'iOS Engineer', role: 'pm', teamIds: [], presence: 'away' },
+    { id: 'u-5', name: 'Salma Ibrahim', email: 'salma.ibrahim@spark-sys.com', title: 'QA Engineer', role: 'member', teamIds: [], presence: 'active' },
+    { id: 'u-6', name: 'Hossam Gaber', email: 'hossam.gaber@spark-sys.com', title: 'DevOps Engineer', role: 'member', teamIds: [], presence: 'offline' },
+    { id: 'u-7', name: 'Dina Mansour', email: 'dina.mansour@spark-sys.com', title: 'Product Designer', role: 'member', teamIds: [], presence: 'away' },
+    { id: 'u-8', name: 'Tarek Lotfy', email: 'tarek.lotfy@spark-sys.com', title: 'Android Engineer', role: 'member', teamIds: [], presence: 'offline' },
   ]
 
   // ── Workspaces, projects and sprints ────────────────────────────────────
@@ -157,9 +162,9 @@ export function seed(now: Date): DbData {
   ]
 
   const projects = [
-    { id: 'p-nex', workspaceId: 'ws-eng', key: 'NEX', name: 'Nexus Core', description: 'API, database and web client for Spark Flow.', leadId: 'u-2' },
-    { id: 'p-mob', workspaceId: 'ws-eng', key: 'MOB', name: 'Mobile App', description: 'iOS and Android apps. Release 2.4.0 is the current target.', leadId: 'u-4' },
-    { id: 'p-brd', workspaceId: 'ws-design', key: 'BRD', name: 'Brand Refresh', description: 'Logo lockup, color tokens and illustrations for Spark Flow.', leadId: 'u-7' },
+    { id: 'p-nex', workspaceId: 'ws-eng', key: 'NEX', name: 'Nexus Core', description: 'API, database and web client for Spark Flow.', clientName: 'Spark Systems', logoFileId: null, links: [], managerId: 'u-2', memberIds: [], teamIds: [], methodology: 'agile' as const, status: 'active' as const, startDate: ago(30), dueDate: ago(-30), channelId: 'c-backend' },
+    { id: 'p-mob', workspaceId: 'ws-eng', key: 'MOB', name: 'Mobile App', description: 'iOS and Android apps. Release 2.4.0 is the current target.', clientName: 'Spark Systems', logoFileId: null, links: [], managerId: 'u-4', memberIds: [], teamIds: [], methodology: 'agile' as const, status: 'active' as const, startDate: ago(30), dueDate: ago(-30), channelId: 'c-release' },
+    { id: 'p-brd', workspaceId: 'ws-design', key: 'BRD', name: 'Brand Refresh', description: 'Logo lockup, color tokens and illustrations for Spark Flow.', clientName: 'Spark Systems', logoFileId: null, links: [], managerId: 'u-7', memberIds: [], teamIds: [], methodology: 'agile' as const, status: 'active' as const, startDate: ago(30), dueDate: ago(-30), channelId: 'c-design' },
   ]
 
   // Each project: one 14-day active sprint that started 7 days ago, then one planned sprint right after it.
@@ -338,6 +343,15 @@ export function seed(now: Date): DbData {
     channels,
     messages,
     replies,
+    teams: [],
+    phases: [],
+    deliverables: [],
+    comments: [],
+    attachments: [],
+    projectFiles: [],
+    timeEntries: [],
+    checkIns: [],
+    rates: [],
     reads: buildReads(rawChannels.map((c) => c.id), messages, { 'c-frontend': 3, 'c-dm-2': 1 }, now),
     counters: buildCounters(projects.map((p) => p.id), tickets),
   }
