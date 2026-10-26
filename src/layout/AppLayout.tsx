@@ -1,5 +1,6 @@
 import { Suspense, useState } from 'react'
 import { Outlet } from 'react-router'
+import { Inspector } from '@/layout/Inspector'
 import { PageSkeleton } from '@/layout/PageSkeleton'
 import { MobileBottomBar, MobileDrawer } from '@/layout/MobileNav'
 import { RealtimeBridge } from '@/layout/RealtimeBridge'
@@ -35,6 +36,8 @@ export function AppLayout() {
           </Suspense>
         </main>
       </div>
+      {/* Thread or ticket beside the content (xl), over it (sm–lg) or as a bottom sheet (phones); driven by the URL. */}
+      <Inspector />
       <MobileBottomBar onOpenMore={() => setDrawerOpen(true)} onOpenSearch={() => setSearchOpen(true)} />
       <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
     </div>

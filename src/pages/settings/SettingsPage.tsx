@@ -5,16 +5,19 @@ import { Button } from '@/components/ui/Button'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { backendOn } from '@/lib/api'
+import { useUiStore } from '@/lib/uiStore'
 
 export function SettingsPage() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const reset = useResetDemoData()
+  const forgetPlaces = useUiStore((state) => state.forgetPlaces)
 
   const resetDemo = () =>
     reset.mutate(undefined, {
       onSuccess: () => {
         queryClient.clear() // everything on screen was the old sample data
+        forgetPlaces() // the places last visited may be gone, so start again from #general
         navigate('/')
       },
     })
