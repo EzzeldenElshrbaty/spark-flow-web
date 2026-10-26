@@ -13,8 +13,9 @@ let hub: MockHub
 let db: MockDb
 // The seed is built around the real date with entries only on earlier working days, so "today" is the real today.
 let now: Date
+let today: Date // the test's day; at() counts from it, so moving the clock doesn't move the day
 const at = (h: number, m = 0, dayOffset = 0) => {
-  const d = new Date(now)
+  const d = new Date(today)
   d.setDate(d.getDate() + dayOffset)
   d.setHours(h, m, 0, 0)
   return d
@@ -27,6 +28,7 @@ beforeEach(() => {
   latency.min = latency.max = 0
   now = new Date()
   now.setHours(9, 0, 0, 0)
+  today = new Date(now)
   hub = createMockHub(`test-time-${Math.random()}`, null)
   db = createDb(createMemoryStore(), seed)
   api = createMockApi(db, hub, () => now)
@@ -151,5 +153,29 @@ describe('check-in, timer and manual time', () => {
       { type: 'timeLogged', userId: 'u-1', projectId: 'p-nex' },
       { type: 'timeLogged', userId: 'u-1', projectId: null },
     ])
+  })
+
+  it('a timer left running overnight is closed at 12 hours, and counts at most 12 hours meanwhile', async () => {
+    now = at(17)
+    const { running } = await api.time.checkIn({ plan: 'Late', target: { taskId: 't-nex-101' } })
+    const before = (await api.tickets.get('NEX-101')).loggedHours
+    now = at(9, 0, 1) // 16 hours later
+    expect((await api.tickets.get('NEX-101')).loggedHours).toBeCloseTo(before + 12, 5)
+    // Time after the 12 hours is free again for a manual entry.
+    await api.time.addManual({ taskId: 't-nex-102', startedAt: at(7, 0, 1).toISOString(), endedAt: at(8, 0, 1).toISOString(), note: '' })
+    await api.time.checkOut()
+    const closed = (await mine()).find((e) => e.id === running!.id)!
+    expect(closed.endedAt).toBe(new Date(new Date(closed.startedAt).getTime() + 12 * 3_600_000).toISOString())
+  })
+
+  it("checking in closes an earlier day's open check-in", async () => {
+    now = at(10, 0, -1)
+    await api.time.checkIn({ plan: 'Yesterday' })
+    await api.time.addManual({ taskId: 't-nex-101', startedAt: at(8, 0, -1).toISOString(), endedAt: at(9, 30, -1).toISOString(), note: '' })
+    now = at(9)
+    const day = await api.time.checkIn({ plan: 'Today' })
+    expect(day.openCheckIn).toBeNull()
+    const yesterday = (await db.read()).checkIns.find((c) => c.userId === 'u-1' && c.plan === 'Yesterday')!
+    expect(yesterday.checkedOutAt).toBe(at(10, 0, -1).toISOString()) // its own start: the manual entry ended earlier
   })
 })

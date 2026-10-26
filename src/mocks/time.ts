@@ -1,5 +1,6 @@
 import type { Api, MyDay, TimeEntry, TimeTarget } from '@/api/types'
 import { localDay } from '@/lib/dates'
+import { entryEnd, MAX_ENTRY_HOURS } from '@/lib/hours'
 import { can } from '@/lib/permissions'
 import type { DbData, MockDb } from './db'
 import { delay } from './latency'
@@ -8,7 +9,6 @@ import type { MockHub } from './realtime'
 import { badRequest, clone, currentUser, newId, requireCan } from './shared'
 
 const HOUR = 3_600_000
-const MAX_ENTRY_HOURS = 12
 const MAX_PLAN = 500
 const MAX_NOTE = 200
 
@@ -34,10 +34,10 @@ function myDay(data: DbData, userId: string, now: Date): MyDay {
   })
 }
 
-/** Closes my running entry (if any) at `at`. */
+/** Closes my running entry (if any) at `at`, or 12 hours after it started if it was forgotten that long. */
 function stopRunning(data: DbData, userId: string, at: string) {
   const running = data.timeEntries.find((e) => e.userId === userId && e.endedAt === null)
-  if (running) running.endedAt = at
+  if (running) running.endedAt = new Date(entryEnd(running, new Date(at))).toISOString()
   return running
 }
 
@@ -95,6 +95,11 @@ export function timeApi(db: MockDb, hub: MockHub, now: () => Date): Api['time'] 
         const day = localDay(at)
         if (data.checkIns.some((c) => c.userId === me.id && c.day === day)) throw badRequest("You've already checked in today.")
         const iso = at.toISOString()
+        // A check-in left open on an earlier day closes when its last entry of that day ended (else when it began).
+        for (const old of data.checkIns.filter((c) => c.userId === me.id && c.checkedOutAt === null && c.day < day)) {
+          const ends = data.timeEntries.filter((e) => e.userId === me.id && e.endedAt && localDay(new Date(e.startedAt)) === old.day).map((e) => e.endedAt!)
+          old.checkedOutAt = [old.checkedInAt, ...ends].sort().at(-1)!
+        }
         data.checkIns.push({ id: newId('ci'), userId: me.id, day, checkedInAt: iso, checkedOutAt: null, plan: text })
         return target ? startTimer(data, me.id, target, iso) : null
       }),
@@ -131,9 +136,9 @@ export function timeApi(db: MockDb, hub: MockHub, now: () => Date): Api['time'] 
         const note = input.note.trim()
         if (note.length > MAX_NOTE) throw badRequest(`Keep the note under ${MAX_NOTE} characters.`)
         const { projectId, taskId } = resolveTarget(data, input)
-        // My other entries, the running one counted up to now.
+        // My other entries, the running one counted up to now (at most 12 hours).
         const overlaps = data.timeEntries.some(
-          (e) => e.userId === me.id && new Date(e.startedAt).getTime() < end && (e.endedAt ? new Date(e.endedAt).getTime() : at) > start,
+          (e) => e.userId === me.id && new Date(e.startedAt).getTime() < end && entryEnd(e, new Date(at)) > start,
         )
         if (overlaps) throw badRequest('That overlaps time you already logged.')
         const entry: TimeEntry = { id: newId('te'), userId: me.id, projectId, taskId, startedAt: new Date(start).toISOString(), endedAt: new Date(end).toISOString(), source: 'manual', note }
