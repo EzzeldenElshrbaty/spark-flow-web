@@ -220,3 +220,34 @@ Plan: `docs/superpowers/plans/2026-10-27-m2-time.md` (executed inline)
 
 ### Left for later milestones
 - M3 chat writing, mentions and the Home mentions card; M4 dashboard (checked in now) and Time & cost page.
+
+---
+
+# M3 — Collaboration
+
+Plan: `docs/superpowers/plans/2026-10-28-m3-collaboration.md` (executed inline)
+
+## Plan
+
+- [x] Task 1 — M2 carry-over fixes (midnight entries, live clocks, timer a11y, Settings)
+- [x] Task 2 — Chat send and reply with parsed mentions
+- [x] Task 3 — Composer, mention autocomplete and chips
+- [x] Task 4 — Comments and bugs: API, task Activity, chat cards
+- [x] Task 5 — Mentions in the bell and on Home
+- [x] Task 6 — Verify, docs
+
+## Review — M3
+
+### Gates
+- `npm test`: 279 passed. `npm run build:prototype`: passes. `npm run lint`: clean. Seed reloaded before the checks.
+
+### Browser checks (preview pane)
+1. Admin in `#general`: typed `@no` → Nour (Enter), `@NEX-101` (Tab), `@NEX` (Tab), sent → person chip, task chip (`?ticket=NEX-101`), project chip (`/p/NEX/overview`) ✓; Shift+Enter makes a new line ✓
+2. Nour: bell "2 unread" with "Youssef Abdelrahman mentioned you" first ✓; clicking it opened `#general` and the count went to 1 ✓; Home's Mentions card lists it ✓. Nour replied in the `m-g01` thread with `@all` → Mariam's bell has "Nour El-Sayed mentioned you · @all token rotation ships Thursday.", and it opens the thread ✓
+3. Salma on NEX-105 → Activity: a Bug with repro.png + steps.pdf and `@Mariam` from the popup → image thumbnail, file row, chip ✓; a second comment with screen.mp4 plays in a `<video controls>` ✓ (found: video types weren't accepted — added MP4/WebM/MOV); a 0-byte file → "That file is empty.", nothing posted ✓. `#nexus-core` shows both cards (Bug, Comment) with NEX-105 links ✓. Mariam's bell has Salma's bug first ✓
+4. Tarek (not on NEX): `#nexus-core` has no composer, shows "You can read this channel. Only its project's people can write here." ✓; NEX-101 Activity shows "Only the project's people can comment here." ✓
+5. Two tabs: a message sent in tab A appeared in tab B live ✓. (Both tabs share one demo persona, so a cross-tab bell bump can't be staged; the bell's refresh on message/reply/comment events is covered by `keysForEvent`.)
+6. `<b>plain</b>` shows as literal text ✓. 390px dark, LTR and RTL: `#general`, NEX Chat tab, Home and the Activity panel have no sideways scroll ✓; the `@` popup opens above the composer ✓. A fresh tab through chat, Activity, Home and the bell has no console errors ✓
+
+### Left for later milestones
+- M4: dashboard (checked in now), Time & cost page, demo polish and the final review.

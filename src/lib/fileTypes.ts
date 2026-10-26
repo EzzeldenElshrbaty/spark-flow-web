@@ -3,6 +3,8 @@
 /** Shown inside the CRM's viewer. */
 const imageTypes = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
 const previewTypes = ['.pdf', ...imageTypes, '.txt', '.csv']
+/** Played in the page (task Activity and chat, spec §5); the viewer offers them to download. */
+const videoTypes = ['.mp4', '.webm', '.mov']
 /** Download only. */
 const downloadTypes = ['.docx', '.xlsx', '.pptx', '.doc', '.xls', '.ppt', '.zip', '.rar', '.ai', '.psd', '.heic']
 
@@ -12,13 +14,13 @@ const extension = (name: string) => {
 }
 
 /** For a file picker's `accept`. */
-export const acceptedFiles = [...previewTypes, ...downloadTypes].join(',')
+export const acceptedFiles = [...previewTypes, ...videoTypes, ...downloadTypes].join(',')
 
 export const maxFileMb = 25
 
-export const isAcceptedFile = (name: string) => [...previewTypes, ...downloadTypes].includes(extension(name))
+export const isAcceptedFile = (name: string) => [...previewTypes, ...videoTypes, ...downloadTypes].includes(extension(name))
 
-export const allowedFilesHint = 'PDF, images, Word, Excel, PowerPoint, CSV, text, ZIP/RAR, AI, PSD or HEIC, up to 25 MB'
+export const allowedFilesHint = 'PDF, images, video (MP4, WebM, MOV), Word, Excel, PowerPoint, CSV, text, ZIP/RAR, AI, PSD or HEIC, up to 25 MB'
 
 export type Preview = 'image' | 'pdf' | 'text' | 'csv' | 'none'
 

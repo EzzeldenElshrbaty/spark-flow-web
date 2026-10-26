@@ -58,6 +58,11 @@ describe('comments', () => {
     expect(await counts()).toEqual(before)
   })
 
+  it('takes videos (spec §5: bugs with video)', async () => {
+    const made = await api.comments.create({ taskKey: 'NEX-105', kind: 'bug', body: 'Screen recording', files: [file('screen.mp4', ['ftypmp42'], 'video/mp4'), file('clip.webm', ['webm'], 'video/webm'), file('take.mov', ['moov'], 'video/quicktime')] })
+    expect(made.attachments.map((a) => a.mimeType)).toEqual(['video/mp4', 'video/webm', 'video/quicktime'])
+  })
+
   it('publishes messageReceived then commentAdded', async () => {
     const events: RealtimeEvent[] = []
     hub.subscribe((e) => events.push(e))
