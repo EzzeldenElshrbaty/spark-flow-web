@@ -3,32 +3,35 @@ import { qk } from '@/api/queryKeys'
 import { retryUnlessNotFound as retry } from '@/api/retry'
 import { api } from '@/lib/api'
 
-export function useChannels(workspaceId: string) {
-  return useQuery({ queryKey: qk.channels(workspaceId), queryFn: () => api.chat.channels(workspaceId), retry })
+// Every hook below takes an id that may still be unknown (a route param, a lookup in progress): without one it
+// asks for nothing instead of firing a request for ''.
+export function useChannels(workspaceId: string | undefined) {
+  return useQuery({ queryKey: qk.channels(workspaceId ?? ''), queryFn: () => api.chat.channels(workspaceId!), retry, enabled: Boolean(workspaceId) })
 }
 
-export function useChannel(id: string) {
-  return useQuery({ queryKey: qk.channel(id), queryFn: () => api.chat.channel(id), retry })
+export function useChannel(id: string | undefined) {
+  return useQuery({ queryKey: qk.channel(id ?? ''), queryFn: () => api.chat.channel(id!), retry, enabled: Boolean(id) })
 }
 
 /** A channel's messages, newest first, a page at a time. */
-export function useMessages(channelId: string) {
+export function useMessages(channelId: string | undefined) {
   return useInfiniteQuery({
-    queryKey: qk.messages(channelId),
-    queryFn: ({ pageParam }) => api.chat.messages(channelId, pageParam),
+    queryKey: qk.messages(channelId ?? ''),
+    queryFn: ({ pageParam }) => api.chat.messages(channelId!, pageParam),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (page) => page.nextCursor ?? undefined,
     retry,
+    enabled: Boolean(channelId),
   })
 }
 
-export function useMessage(id: string) {
-  return useQuery({ queryKey: qk.message(id), queryFn: () => api.chat.message(id), retry })
+export function useMessage(id: string | undefined) {
+  return useQuery({ queryKey: qk.message(id ?? ''), queryFn: () => api.chat.message(id!), retry, enabled: Boolean(id) })
 }
 
 /** The replies under one message. */
-export function useThread(messageId: string) {
-  return useQuery({ queryKey: qk.replies(messageId), queryFn: () => api.chat.replies(messageId), retry })
+export function useThread(messageId: string | undefined) {
+  return useQuery({ queryKey: qk.replies(messageId ?? ''), queryFn: () => api.chat.replies(messageId!), retry, enabled: Boolean(messageId) })
 }
 
 export function useMarkRead() {

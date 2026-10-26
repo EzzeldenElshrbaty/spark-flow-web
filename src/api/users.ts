@@ -7,6 +7,7 @@ export function useMe() {
   return useQuery({ queryKey: qk.me(), queryFn: () => api.users.me(), retry })
 }
 
-export function useUsers(workspaceId: string) {
-  return useQuery({ queryKey: qk.users(workspaceId), queryFn: () => api.users.list(workspaceId), retry })
+/** A workspace's people. Pass undefined while the workspace is unknown: nothing is requested until there is an id. */
+export function useUsers(workspaceId: string | undefined) {
+  return useQuery({ queryKey: qk.users(workspaceId ?? ''), queryFn: () => api.users.list(workspaceId!), retry, enabled: Boolean(workspaceId) })
 }

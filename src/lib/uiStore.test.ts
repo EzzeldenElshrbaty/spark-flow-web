@@ -42,3 +42,18 @@ describe('uiStore', () => {
     expect(stored.state).not.toHaveProperty('typing')
   })
 })
+
+describe('uiStore storage', () => {
+  it('never throws when the browser refuses to save (quota, private mode)', async () => {
+    const { createUiStorage } = await import('@/lib/uiStore')
+    const stub = {
+      getItem: () => null,
+      setItem: () => { throw new DOMException('full', 'QuotaExceededError') },
+      removeItem: () => { throw new DOMException('blocked', 'SecurityError') },
+    }
+    const storage = createUiStorage(stub)
+    expect(() => storage.setItem('k', 'v')).not.toThrow()
+    expect(() => storage.removeItem('k')).not.toThrow()
+    expect(storage.getItem('k')).toBeNull()
+  })
+})

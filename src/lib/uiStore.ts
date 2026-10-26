@@ -35,21 +35,42 @@ export function activeTypers(typing: Record<string, Typer[]>, channelId: string,
   return (typing[channelId] ?? []).filter((typer) => typer.until > now).map((typer) => typer.userId)
 }
 
-// localStorage when the browser allows it; in memory otherwise (Node tests, blocked storage).
-function createStorage(): StateStorage {
-  try {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.getItem('spark-flow.ui') // throws when storage is blocked
-      return localStorage
-    }
-  } catch {
-    // fall through to memory
-  }
+/**
+ * localStorage when the browser allows it; in memory otherwise (Node tests, blocked storage). Saving never
+ * throws: a full or private-mode storage only means the preference is forgotten on reload.
+ */
+export function createUiStorage(candidate?: StateStorage): StateStorage {
   const memory = new Map<string, string>()
-  return {
+  const inMemory: StateStorage = {
     getItem: (name) => memory.get(name) ?? null,
     setItem: (name, value) => void memory.set(name, value),
     removeItem: (name) => void memory.delete(name),
+  }
+  if (!candidate) return inMemory
+  try {
+    candidate.getItem('spark-flow.ui') // throws when storage is blocked
+  } catch {
+    return inMemory
+  }
+  const quietly = <T>(run: () => T, fallback: T): T => {
+    try {
+      return run()
+    } catch {
+      return fallback
+    }
+  }
+  return {
+    getItem: (name) => quietly(() => candidate.getItem(name), null),
+    setItem: (name, value) => quietly(() => candidate.setItem(name, value), undefined),
+    removeItem: (name) => quietly(() => candidate.removeItem(name), undefined),
+  }
+}
+
+const browserStorage = (): StateStorage | undefined => {
+  try {
+    return typeof localStorage === 'undefined' ? undefined : localStorage
+  } catch {
+    return undefined // reading the property itself throws when storage is blocked
   }
 }
 
@@ -71,7 +92,7 @@ export const useUiStore = create<UiState & UiActions>()(
     }),
     {
       name: 'spark-flow.ui',
-      storage: createJSONStorage(createStorage),
+      storage: createJSONStorage(() => createUiStorage(browserStorage())),
       partialize: ({ typing: _typing, ...persisted }) => persisted,
     },
   ),
