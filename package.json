@@ -6,9 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:prototype": "tsc -b && vite build --mode prototype",
     "lint": "oxlint",
     "test": "vitest run",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "preview:prototype": "vite preview --mode prototype"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.104.1",

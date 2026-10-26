@@ -54,7 +54,7 @@ export function BarList({ rows, max, color = 'var(--chart-primary)', markerColor
             <div className="relative h-2.5">
               {row.value > 0 && (
                 <div
-                  className="h-full origin-left rounded-r-[4px] transition-opacity group-hover:opacity-85 motion-safe:animate-grow-x"
+                  className="h-full origin-left rounded-e-[4px] transition-opacity group-hover:opacity-85 motion-safe:animate-grow-x"
                   style={{ width: `max(3px, ${share(row.value)}%)`, background: row.color ?? color, animationDelay: `${index * 50}ms` }}
                 />
               )}

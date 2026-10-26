@@ -57,11 +57,11 @@ export function FileViewer({ files, start = 0, onClose }: { files: ViewedFile[];
       <div className="relative flex min-h-0 flex-1 items-stretch justify-center px-2 pb-2 sm:px-14 sm:pb-4">
         {many && (
           <>
-            <button type="button" onClick={() => step(-1)} className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white hover:bg-black/80 sm:left-3" aria-label="Previous file">
-              <ChevronLeft className="size-6" />
+            <button type="button" onClick={() => step(-1)} className="absolute start-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white hover:bg-black/80 sm:start-3" aria-label="Previous file">
+              <ChevronLeft className="size-6 rtl:-scale-x-100" />
             </button>
-            <button type="button" onClick={() => step(1)} className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white hover:bg-black/80 sm:right-3" aria-label="Next file">
-              <ChevronRight className="size-6" />
+            <button type="button" onClick={() => step(1)} className="absolute end-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white hover:bg-black/80 sm:end-3" aria-label="Next file">
+              <ChevronRight className="size-6 rtl:-scale-x-100" />
             </button>
           </>
         )}
@@ -89,7 +89,7 @@ function ImageView({ file }: { file: ViewedFile }) {
           style={fitted ? undefined : { width: `${zoom * 100}%` }}
         />
       </div>
-      <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-black/70 px-2 py-1 text-white">
+      <div className="absolute bottom-3 start-1/2 flex -translate-x-1/2 rtl:translate-x-1/2 items-center gap-1 rounded-full bg-black/70 px-2 py-1 text-white">
         <button type="button" className="rounded-full p-1.5 hover:bg-white/10 disabled:opacity-40" disabled={zoom <= 1} onClick={() => setZoom((value) => Math.max(1, value - 0.5))} aria-label="Zoom out">
           <Minus className="size-4" />
         </button>

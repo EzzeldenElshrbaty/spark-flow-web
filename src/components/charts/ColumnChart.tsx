@@ -39,9 +39,9 @@ export function ColumnChart({
 
   return (
     <div className="flex gap-2 pt-3" role="group" aria-label={label}>
-      <div className="relative min-w-6 shrink-0 text-right text-[11px] tabular-nums text-fg-muted" style={{ height: PLOT_HEIGHT }} aria-hidden>
+      <div className="relative min-w-6 shrink-0 text-end text-[11px] tabular-nums text-fg-muted" style={{ height: PLOT_HEIGHT }} aria-hidden>
         {ticks.map((tick) => (
-          <span key={tick} className="absolute right-0 -translate-y-1/2" style={{ bottom: height(tick) }}>
+          <span key={tick} className="absolute end-0 -translate-y-1/2" style={{ bottom: height(tick) }}>
             {tickFormat(tick)}
           </span>
         ))}

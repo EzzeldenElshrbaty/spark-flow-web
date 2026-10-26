@@ -40,7 +40,7 @@ export function UserMenu() {
         <span className={clsx(roundButtonClass, 'bg-ink-800 text-xs font-semibold text-white hover:bg-ink-700 group-focus-visible:ring-2 group-focus-visible:ring-brand-500 dark:bg-surface-strong')}>
           {initials}
         </span>
-        <span className="hidden text-left leading-tight xl:block">
+        <span className="hidden text-start leading-tight xl:block">
           <span className="block text-sm font-medium text-fg">{persona.name}</span>
           <span className="block text-xs text-fg-muted">{persona.title}</span>
         </span>
@@ -92,7 +92,7 @@ export function UserMenu() {
                   ['Log out', LogOut],
                 ] as const
               ).map(([label, Icon]) => (
-                <button key={label} type="button" role="menuitem" disabled className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-fg-muted">
+                <button key={label} type="button" role="menuitem" disabled className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start text-sm text-fg-muted">
                   <Icon className="size-4" />
                   <span className="flex-1">{label}</span>
                   <span className="rounded bg-surface-muted px-1.5 py-0.5 text-[10px] font-medium">Soon</span>

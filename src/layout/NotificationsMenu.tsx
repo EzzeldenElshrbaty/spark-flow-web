@@ -56,7 +56,7 @@ export function NotificationsMenu() {
         <Bell className="size-[18px]" />
         {/* Unread count on the circle's top-right edge. */}
         {unread > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-500 px-1 text-[10px] font-semibold text-white ring-2 ring-surface">
+          <span className="absolute -end-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-500 px-1 text-[10px] font-semibold text-white ring-2 ring-surface">
             {unread > 99 ? '99+' : unread}
           </span>
         )}
@@ -106,7 +106,7 @@ export function NotificationsMenu() {
               const { icon: Icon, tone } = kindStyle[item.kind]
               return (
                 <li key={item.id}>
-                  <button type="button" role="menuitem" onClick={() => pick(item)} className={clsx('flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-surface-muted', !item.read && 'bg-accent-soft/40')}>
+                  <button type="button" role="menuitem" onClick={() => pick(item)} className={clsx('flex w-full items-start gap-3 px-4 py-3 text-start hover:bg-surface-muted', !item.read && 'bg-accent-soft/40')}>
                     <span className={clsx('mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full', tone)}>
                       <Icon className="size-4" />
                     </span>

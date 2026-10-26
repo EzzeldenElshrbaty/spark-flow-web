@@ -80,7 +80,7 @@ export function Logo({ collapsed = false, onClick }: { collapsed?: boolean; onCl
       ) : (
         <>
           <img src="/spark-logo-white.png" alt="Spark Systems" className="h-7 w-auto" />
-          <span className="border-l border-white/15 pl-3 text-[13px] font-semibold tracking-[0.2em] text-neutral-400">FLOW</span>
+          <span className="border-s border-white/15 ps-3 text-[13px] font-semibold tracking-[0.2em] text-neutral-400">FLOW</span>
         </>
       )}
     </Link>

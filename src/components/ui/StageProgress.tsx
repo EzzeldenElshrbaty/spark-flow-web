@@ -104,7 +104,7 @@ export function StageProgress({
                 style={shape(index, count, index * 70)}
                 className={clsx(
                   'relative flex size-full items-center justify-center gap-1.5 overflow-hidden text-sm transition-colors duration-500 motion-safe:animate-fade-in',
-                  index === 0 ? 'pl-3 pr-5' : 'px-5',
+                  index === 0 ? 'ps-3 pe-5' : 'px-5',
                   segmentClass[kind],
                   renderDetails && 'cursor-pointer hover:brightness-95',
                 )}

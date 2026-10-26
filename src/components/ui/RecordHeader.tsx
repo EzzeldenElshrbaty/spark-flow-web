@@ -137,7 +137,7 @@ export function MoreMenu({ actions }: { actions: RecordAction[] }) {
               action.onSelect()
             }}
             className={clsx(
-              'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50',
+              'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start text-sm hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50',
               action.danger ? 'text-red-600 dark:text-red-400' : 'text-fg-secondary',
             )}
           >

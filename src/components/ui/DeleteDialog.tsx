@@ -60,7 +60,7 @@ export function DeleteDialog({
           <TriangleAlert className="mt-0.5 size-4 shrink-0" />
           <div>
             <p className="font-medium">This can't be undone.</p>
-            <ul className="mt-1 list-disc space-y-0.5 pl-4">
+            <ul className="mt-1 list-disc space-y-0.5 ps-4">
               {removes.map((line) => (
                 <li key={line}>{line}</li>
               ))}

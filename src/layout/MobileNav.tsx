@@ -46,7 +46,7 @@ export function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => 
   return (
     <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true">
       <button type="button" className="absolute inset-0 bg-black/50" onClick={onClose} aria-label="Close menu" />
-      <div className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col bg-ink-900 shadow-xl dark:bg-surface-sunken">
+      <div className="absolute inset-y-0 start-0 flex w-72 max-w-[85vw] flex-col bg-ink-900 shadow-xl dark:bg-surface-sunken">
         <div className="flex h-16 items-center justify-between border-b border-white/10 px-4">
           <Logo onClick={onClose} />
           <button type="button" onClick={onClose} className="rounded-md p-1 text-neutral-400 hover:text-white" aria-label="Close menu">

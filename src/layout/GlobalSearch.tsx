@@ -100,7 +100,7 @@ function Option({ id, active, onPick, children }: { id: string; active: boolean;
       // Keep focus in the input on desktop so typing carries on.
       onMouseDown={(event) => event.preventDefault()}
       onClick={onPick}
-      className={clsx('flex w-full items-center gap-2 px-4 py-2 text-left hover:bg-surface-muted', active && 'bg-surface-muted')}
+      className={clsx('flex w-full items-center gap-2 px-4 py-2 text-start hover:bg-surface-muted', active && 'bg-surface-muted')}
     >
       {children}
     </button>
@@ -176,7 +176,7 @@ export function DesktopSearch() {
 
   return (
     <div ref={boxRef} className="relative hidden max-w-md flex-1 md:block">
-      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-fg-subtle" />
+      <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-fg-subtle" />
       <input
         ref={inputRef}
         type="text"
@@ -195,7 +195,7 @@ export function DesktopSearch() {
         onFocus={() => setOpen(true)}
         onKeyDown={keys.onKeyDown}
         placeholder="Search pages and actions…"
-        className="w-full rounded-lg border border-line bg-surface-sunken py-2 pl-9 pr-3 text-sm placeholder:text-fg-subtle focus:border-brand-500 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent-soft"
+        className="w-full rounded-lg border border-line bg-surface-sunken py-2 ps-9 pe-3 text-sm placeholder:text-fg-subtle focus:border-brand-500 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent-soft"
       />
       {open && term.trim() && (
         <div className="absolute inset-x-0 top-full z-50 mt-2 max-h-[70vh] overflow-y-auto rounded-xl border border-line bg-surface shadow-xl motion-safe:animate-pop-in">
@@ -240,7 +240,7 @@ function SearchScreen({ onClose }: { onClose: () => void }) {
     <div className="fixed inset-0 z-50 flex flex-col bg-surface motion-safe:animate-fade-in md:hidden" role="dialog" aria-modal="true" aria-label="Search">
       <div className="flex shrink-0 items-center gap-2 border-b border-line-subtle px-3 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))]">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-fg-subtle" />
+          <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-fg-subtle" />
           <input
             ref={inputRef}
             type="text"
@@ -257,10 +257,10 @@ function SearchScreen({ onClose }: { onClose: () => void }) {
             }}
             onKeyDown={keys.onKeyDown}
             placeholder="Search"
-            className="w-full rounded-lg border border-line bg-surface-sunken py-2.5 pl-9 pr-9 text-base placeholder:text-fg-subtle focus:border-brand-500 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent-soft"
+            className="w-full rounded-lg border border-line bg-surface-sunken py-2.5 ps-9 pe-9 text-base placeholder:text-fg-subtle focus:border-brand-500 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent-soft"
           />
           {term && (
-            <button type="button" onClick={() => setTerm('')} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-fg-muted hover:text-fg" aria-label="Clear search">
+            <button type="button" onClick={() => setTerm('')} className="absolute end-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-fg-muted hover:text-fg" aria-label="Clear search">
               <X className="size-4" />
             </button>
           )}
