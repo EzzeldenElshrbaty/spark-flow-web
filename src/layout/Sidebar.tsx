@@ -78,10 +78,10 @@ export function Logo({ collapsed = false, onClick }: { collapsed?: boolean; onCl
       {collapsed ? (
         <img src="/spark-mark-white.png" alt="Spark Flow" className="h-4 w-auto" />
       ) : (
-        <>
+        <span dir="ltr" className="flex items-center gap-3">
           <img src="/spark-logo-white.png" alt="Spark Systems" className="h-7 w-auto" />
           <span className="border-s border-white/15 ps-3 text-[13px] font-semibold tracking-[0.2em] text-neutral-400">FLOW</span>
-        </>
+        </span>
       )}
     </Link>
   )
