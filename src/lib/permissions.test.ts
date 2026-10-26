@@ -1,21 +1,23 @@
 import { describe, expect, it } from 'vitest'
 import type { Role } from '@/api/types'
-import { accessOf, can, type Action, type PermissionContext } from './permissions'
+import { accessOf, can, type Action, type PermissionContext, type ProjectRef, type ProjectScoped } from './permissions'
 
 const project = { managerId: 'u-pm', memberIds: ['u-pm', 'u-m'], teamIds: ['t-qa'] }
 const other = { managerId: 'u-x', memberIds: ['u-x'], teamIds: [] }
-const as = (role: Role, userId = `u-${role}`, extra: Partial<PermissionContext> = {}): PermissionContext => ({ role, userId, ...extra })
+// For loops over mixed actions: every call passes a project, so any action is allowed to type-check.
+const canWith = (action: Action, ctx: PermissionContext & { project: ProjectRef }) => can(action as ProjectScoped, ctx)
+const as = <E extends Partial<PermissionContext> = {}>(role: Role, userId = `u-${role}`, extra: E = {} as E): PermissionContext & E => ({ role, userId, ...extra })
 
 describe('can (spec §4.3)', () => {
   it('admin can do everything', () => {
     const all: Action[] = ['rates.view', 'cost.view', 'project.create', 'project.edit', 'phase.manage', 'task.manage', 'task.updateOwnStatus', 'time.logOwn', 'collab.post', 'dashboard.view', 'timeCost.view', 'database.manage']
-    for (const action of all) expect(can(action, as('admin', 'u-a', { project: other })), action).toBe(true)
+    for (const action of all) expect(canWith(action, { ...as('admin', 'u-a'), project: other }), action).toBe(true)
   })
 
   it('only admin sees rates, cost, the Time & cost page and the database', () => {
     for (const role of ['sales', 'pm', 'member'] as const)
       for (const action of ['rates.view', 'cost.view', 'timeCost.view', 'database.manage'] as const)
-        expect(can(action, as(role, 'u-pm', { project })), `${role} ${action}`).toBe(false)
+        expect(canWith(action, { ...as(role, 'u-pm'), project }), `${role} ${action}`).toBe(false)
   })
 
   it('sales creates and edits projects but does not manage phases or tasks', () => {
@@ -29,8 +31,8 @@ describe('can (spec §4.3)', () => {
   it('a PM manages phases, tasks and edits only projects they manage', () => {
     expect(can('project.create', as('pm', 'u-pm'))).toBe(false)
     for (const action of ['project.edit', 'phase.manage', 'task.manage', 'dashboard.view'] as const) {
-      expect(can(action, as('pm', 'u-pm', { project })), `${action} own`).toBe(true)
-      expect(can(action, as('pm', 'u-pm', { project: other })), `${action} other`).toBe(false)
+      expect(canWith(action, { ...as('pm', 'u-pm'), project }), `${action} own`).toBe(true)
+      expect(canWith(action, { ...as('pm', 'u-pm'), project: other }), `${action} other`).toBe(false)
     }
   })
 
@@ -53,6 +55,19 @@ describe('can (spec §4.3)', () => {
 
   it('everyone logs their own time', () => {
     for (const role of ['admin', 'sales', 'pm', 'member'] as const) expect(can('time.logOwn', as(role))).toBe(true)
+  })
+
+  it('project-scoped actions require a project (type-level)', () => {
+    const withoutProject: PermissionContext = { userId: 'u-pm', role: 'pm' }
+    // @ts-expect-error a PM's rights are per project: without one, task.manage must not compile
+    expect(can('task.manage', withoutProject)).toBe(false) // and at run time it is refused
+    expect(can('task.manage', as('pm', 'u-pm', { project }))).toBe(true)
+  })
+
+  it('a member who manages a project can view the dashboard', () => {
+    expect(can('dashboard.view', as('member', 'u-7', { managesAny: true }))).toBe(true)
+    expect(can('dashboard.view', as('member', 'u-7', { managesAny: false }))).toBe(false)
+    expect(can('dashboard.view', as('pm', 'u-pm', { managesAny: false }))).toBe(false)
   })
 
   it('member cannot open database or the dashboard', () => {

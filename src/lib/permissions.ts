@@ -7,17 +7,24 @@ export type Action =
   | 'rates.view' | 'cost.view' | 'project.create' | 'project.edit' | 'phase.manage' | 'task.manage' | 'task.updateOwnStatus'
   | 'time.logOwn' | 'collab.post' | 'dashboard.view' | 'timeCost.view' | 'database.manage'
 
+export type ProjectRef = Pick<Project, 'managerId' | 'memberIds' | 'teamIds'>
+
 export type PermissionContext = {
   userId: string
   role: Role
   /** The project the action is about, when there is one. */
-  project?: Pick<Project, 'managerId' | 'memberIds' | 'teamIds'>
+  project?: ProjectRef
   userTeamIds?: string[]
   taskAssigneeId?: string | null
+  /** Whether the person manages at least one project (a member can be named a project's manager). */
+  managesAny?: boolean
 }
 
-/** Whoever a project names as its manager has PM rights on it. With no project in view, the pm role stands in. */
-const manages = (ctx: PermissionContext) => (ctx.project ? ctx.project.managerId === ctx.userId : ctx.role === 'pm')
+/** Actions that are always about one project: PM rights are per project, so these need it. */
+export type ProjectScoped = 'project.edit' | 'phase.manage' | 'task.manage' | 'task.updateOwnStatus'
+
+/** Whoever a project names as its manager has PM rights on it. */
+const manages = (ctx: PermissionContext) => (ctx.project ? ctx.project.managerId === ctx.userId : false)
 
 const isOn = (ctx: PermissionContext) =>
   !ctx.project ||
@@ -25,6 +32,8 @@ const isOn = (ctx: PermissionContext) =>
   ctx.project.memberIds.includes(ctx.userId) ||
   ctx.project.teamIds.some((id) => ctx.userTeamIds?.includes(id))
 
+export function can(action: Exclude<Action, ProjectScoped>, ctx: PermissionContext): boolean
+export function can(action: ProjectScoped, ctx: PermissionContext & { project: ProjectRef }): boolean
 export function can(action: Action, ctx: PermissionContext): boolean {
   if (ctx.role === 'admin') return true
   switch (action) {
@@ -47,7 +56,8 @@ export function can(action: Action, ctx: PermissionContext): boolean {
     case 'collab.post':
       return ctx.role === 'sales' || manages(ctx) || isOn(ctx)
     case 'dashboard.view':
-      return ctx.role === 'sales' || manages(ctx)
+      // About one project: manages that one. Otherwise: manages any (the pm role stands in when unknown).
+      return ctx.role === 'sales' || (ctx.project ? manages(ctx) : (ctx.managesAny ?? ctx.role === 'pm'))
   }
 }
 

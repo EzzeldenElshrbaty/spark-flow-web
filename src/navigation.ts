@@ -1,13 +1,14 @@
-// Side menu of Spark Flow. Add each section here as its feature is built; `roles` limits who sees an item.
+// Side menu of Spark Flow. Add each section here as its feature is built; `permission` (the can() table) limits who sees an item.
 import { Settings, type LucideIcon } from 'lucide-react'
+import { can, type Action, type ProjectScoped } from '@/lib/permissions'
 import type { Role } from '@/lib/roles'
 
 export type NavItem = {
   path: string
   label: string
-  permission: string
+  /** Who sees it, from the one permission table. Absent: everyone. */
+  permission?: Exclude<Action, ProjectScoped>
   icon?: LucideIcon
-  roles?: Role[]
   description?: string
   children?: NavItem[]
 }
@@ -21,14 +22,13 @@ export const navGroups: NavGroup[] = []
 export const settingsItem: NavItem = {
   path: '/settings',
   label: 'Settings',
-  permission: 'settings.manage',
+  permission: 'database.manage', // Settings only holds the Database page so far
   icon: Settings,
-  roles: ['admin'],
   description: 'Users, roles and the rules Spark Flow works by.',
 }
 
 export const allNavItems: NavItem[] = [...navGroups.flatMap((group) => group.items), settingsItem]
 
 export function canSee(item: NavItem, role: Role) {
-  return !item.roles || item.roles.includes(role)
+  return !item.permission || can(item.permission, { userId: '', role })
 }
