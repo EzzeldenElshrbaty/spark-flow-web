@@ -1,6 +1,7 @@
 import clsx from 'clsx'
 import { Link } from 'react-router'
 import { useCheckedIn, useDashboard } from '@/api/dashboard'
+import { useProjectSummaries } from '@/api/projects'
 import { useTasksOf } from '@/api/tickets'
 import type { CheckedInNow, DashboardProject, User } from '@/api/types'
 import { useUsers } from '@/api/users'
@@ -127,7 +128,10 @@ export function DashboardPage() {
   const projects = useDashboard(workspace?.id, allowed)
   const checkedIn = useCheckedIn(workspace?.id, allowed)
   const people = useUsers(workspace?.id).data ?? []
-  const tasks = useTasksOf((projects.data ?? []).map((p) => p.id)).data
+  // Someone checked in may be working on a project outside this dashboard's scope: name their task from any project.
+  const everyProject = useProjectSummaries(workspace?.id).data ?? []
+  const runningProjects = [...new Set((checkedIn.data ?? []).flatMap((c) => (c.running ? [c.running.projectId] : [])))]
+  const tasks = useTasksOf(runningProjects).data
   const now = useNow(60_000)
   const ws = workspace?.slug ?? ''
   const broad = persona.role === 'admin' || persona.role === 'sales'
@@ -152,7 +156,7 @@ export function DashboardPage() {
   const cost = list.reduce((s, p) => s + (p.cost ?? 0), 0)
   const label = (taskId: string | null, projectId: string) => {
     const t = taskId ? tasks.find((x) => x.id === taskId) : undefined
-    return t ? `${t.key} · ${t.title}` : (list.find((p) => p.id === projectId)?.name ?? '—')
+    return t ? `${t.key} · ${t.title}` : (everyProject.find((p) => p.id === projectId)?.name ?? '—')
   }
   const loading = access === 'loading' || projects.isPending
 
