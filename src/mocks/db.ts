@@ -40,7 +40,7 @@ export interface MockDb {
 
 /**
  * The mock backend's database, kept as one JSON document in storage. It is parsed on every call so writes
- * from other tabs are seen. If storage can't be written (full, or blocked), it carries on from memory.
+ * from other tabs are seen. If storage can't be read or written (full, or blocked), it carries on from memory.
  */
 export function createDb(
   storage: KeyValueStorage,
@@ -48,6 +48,7 @@ export function createDb(
   now: () => Date = () => new Date(),
 ): MockDb {
   let memory: DbData | null = null // only set while storage can't be written
+  let unreadable = false // storage threw on read: stay in memory, or the next read would reseed over our writes
   let warned = false
 
   const warnOnce = (message: string, error: unknown) => {
@@ -57,11 +58,16 @@ export function createDb(
   }
 
   const persist = (data: DbData) => {
+    if (unreadable) {
+      memory = structuredClone(data)
+      return
+    }
     try {
       storage.setItem(DB_KEY, JSON.stringify(data))
       memory = null
     } catch (error) {
-      memory = data
+      // A copy, so a value update's callback handed back can't change what is stored.
+      memory = structuredClone(data)
       warnOnce('Mock database could not be saved; keeping it in memory for this session.', error)
     }
   }
@@ -75,7 +81,14 @@ export function createDb(
   // Always returns a copy the caller may change freely.
   const load = (): DbData => {
     if (memory) return structuredClone(memory)
-    const raw = storage.getItem(DB_KEY)
+    let raw: string | null
+    try {
+      raw = storage.getItem(DB_KEY)
+    } catch (error) {
+      unreadable = true
+      warnOnce('Mock database could not be read; keeping it in memory for this session.', error)
+      return reseed()
+    }
     if (raw === null) return reseed()
     try {
       const parsed = JSON.parse(raw) as DbData | null

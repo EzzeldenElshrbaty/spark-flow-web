@@ -92,4 +92,35 @@ describe('createDb', () => {
     expect(() => db.update((d) => { d.users[0].name = 'Half'; throw new Error('boom') })).toThrow('boom')
     expect(db.read().users[0].name).toBe('Ada')
   })
+
+  it('keeps working in memory when getItem throws, and warns once', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const storage = { ...memoryStorage(), getItem: () => { throw new Error('SecurityError') } }
+    const db = createDb(storage, fakeSeed)
+    expect(db.read().users).toHaveLength(1)
+    db.update((d) => { d.users[0].name = 'Kept' })
+    db.update((d) => { d.reads.c1 = 'T' })
+    expect(db.read().users[0].name).toBe('Kept')
+    expect(db.read().reads).toEqual({ c1: 'T' })
+    expect(warn).toHaveBeenCalledOnce()
+  })
+
+  it('does not lose writes when getItem throws but setItem works', () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const storage = { ...memoryStorage(), getItem: () => { throw new Error('SecurityError') } }
+    const db = createDb(storage, fakeSeed)
+    db.update((d) => { d.users[0].name = 'First' })
+    expect(db.read().users[0].name).toBe('First')
+    db.update((d) => { d.users[0].title = 'Second' })
+    expect(db.read().users[0]).toMatchObject({ name: 'First', title: 'Second' })
+  })
+
+  it('in-memory fallback: a value returned from update does not alias stored state', () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const storage = { ...memoryStorage(), setItem: () => { throw new Error('QuotaExceededError') } }
+    const db = createDb(storage, fakeSeed)
+    const user = db.update((d) => { d.users[0].name = 'Kept'; return d.users[0] })
+    user.name = 'Tampered'
+    expect(db.read().users[0].name).toBe('Kept')
+  })
 })
