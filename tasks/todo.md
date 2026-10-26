@@ -153,3 +153,38 @@ Plan: `docs/superpowers/plans/2026-10-26-m0-foundation.md` (executed inline)
 
 ### Left for later milestones
 - M1 projects/phases/tasks UI, M2 time, M3 chat writing and mentions UI, M4 dashboard (spec §8).
+
+---
+
+# M1 — Projects & tasks
+
+Plan: `docs/superpowers/plans/2026-10-27-m1-projects-tasks.md` (executed inline)
+
+## Plan
+
+- [x] Task 1 — Project-scoped permissions
+- [x] Task 2 — Derived values
+- [x] Task 3 — Project, phase, deliverable, task and file APIs
+- [x] Task 4 — Projects list and New project
+- [x] Task 5 — Project page: header, phases, Overview
+- [x] Task 6 — Tasks tab, task form, inspector edits, My tasks
+- [x] Task 7 — Chat and Time tabs
+- [x] Task 8 — Verify, docs
+
+## Review — M1
+
+### Gates
+- `npm test`: 218 passed (32 files). `npm run build:prototype`: passes. `npm run lint`: clean. (Seed reloaded before the checks.)
+
+### Browser checks (preview pane)
+1. Admin: Projects shows 4 Engineering rows (the seed's 5th project, BRD, is in Design), tiles Active 2 · Overdue 2 · Due this month 1 · Delivered 1, Cost column ✓. NEX Overview: phases, deliverables, team, files ✓. Tasks board/list; QA chip → 1 task; Sprint 14 → 7; cleared → 10 ✓. New task → NEX-111 listed; renamed through the inspector's Edit task ✓
+2. Sales (Karim): New project "Sela kiosk" (key SK, waterfall) → 5 phases, channel `c-p-sk` in the sidebar, no Cost column, no Manage phases ✓
+3. PM (Ahmed): NEX has no Edit project or New task; MOB About edited; QA moved up and back; "Hypercare" added and deleted (typed confirm) ✓
+4. Member (Tarek): `/projects?new=1` shows no New project and no form; My tasks: MOB-102 (Bug, Overdue), MOB-104 (Overdue), MOB-108; MOB-104 status → In review from the inspector; no Edit task ✓
+5. Upload on MOB: swatch.png previews as an image, handover.pdf and the seeded mobile-2.4.0-scope.pdf preview in the frame; a 0-byte file → "That file is empty." ✓
+6. `/p/NEX/board` → `tasks?view=board`, `/p/NEX/backlog` → `tasks?view=list`, `/p/NEX` and `/p/NEX/bogus` → `overview` ✓
+7. 390px light and dark, LTR and RTL: Projects, NEX Overview, Tasks list, MOB Time, My tasks have no sideways scroll ✓. The TaskSheet's 24px is the pane's frozen slide-in animation (translateX 24), not layout. Phase chips moved to their own row on phones. No console errors after reload ✓
+8. Two tabs: a task created in tab A appeared on tab B's board without a reload ✓
+
+### Left for later milestones
+- M2 time logging (timer, manual), M3 chat writing and mentions, M4 dashboard.

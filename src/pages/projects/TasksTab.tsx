@@ -85,7 +85,7 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
     <>
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {phases.length > 0 && (
-          <div className="-mx-4 flex min-w-0 flex-1 gap-2 overflow-x-auto px-4 sm:mx-0 sm:px-0" role="group" aria-label="Phase">
+          <div className="-mx-4 flex w-[calc(100%+2rem)] min-w-0 gap-2 overflow-x-auto px-4 sm:mx-0 sm:w-auto sm:flex-1 sm:px-0" role="group" aria-label="Phase">
             <button type="button" aria-pressed={!phase} onClick={() => setParam('phase', null)} className={chip(!phase)}>
               All phases
             </button>
