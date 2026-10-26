@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { Folder, FolderKanban, Hash, ListChecks, Lock } from 'lucide-react'
+import { Folder, FolderKanban, Hash, House, ListChecks, Lock } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router'
 import type { Presence } from '@/api/types'
@@ -16,17 +16,20 @@ type SidebarLinkProps = {
   badge?: number
   /** The row is active anywhere under this path (a project's link goes to one view but stays lit on the other). */
   within?: string
+  /** Active only on this exact path (Home, whose path is the start of every other). */
+  end?: boolean
   collapsed: boolean
   onNavigate?: () => void
 }
 
 /** One row of the sidebar. The icon is whatever marks the row: a lucide icon, a presence dot. */
-function SidebarLink({ to, label, icon, badge, within, collapsed, onNavigate }: SidebarLinkProps) {
+function SidebarLink({ to, label, icon, badge, within, end, collapsed, onNavigate }: SidebarLinkProps) {
   const { pathname } = useLocation()
   const inside = within ? pathname === within || pathname.startsWith(`${within}/`) : undefined
   return (
     <NavLink
       to={to}
+      end={end}
       onClick={onNavigate}
       title={collapsed ? label : undefined}
       className={({ isActive }) =>
@@ -93,6 +96,9 @@ export function SidebarContent({ collapsed = false, onNavigate }: { collapsed?: 
           <div>
             <GroupLabel collapsed={collapsed}>Work</GroupLabel>
             <ul className="space-y-0.5">
+              <li>
+                <SidebarLink to={paths.home(slug)} end label="Home" icon={<House className="size-[18px]" />} collapsed={collapsed} onNavigate={onNavigate} />
+              </li>
               <li>
                 <SidebarLink to={paths.projects(slug)} label="Projects" icon={<FolderKanban className="size-[18px]" />} collapsed={collapsed} onNavigate={onNavigate} />
               </li>

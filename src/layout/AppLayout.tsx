@@ -13,7 +13,7 @@ export function AppLayout() {
   const collapsed = useUiStore((state) => state.sidebarCollapsed)
   const toggleSidebar = useUiStore((state) => state.toggleSidebar)
   const [drawerOpen, setDrawerOpen] = useState(false)
-  // The phone search screen belongs to the top bar but the bottom bar opens it too, so its state lives here.
+  // The phone search screen opens from the top bar; its state lives here with the other overlays.
   const [searchOpen, setSearchOpen] = useState(false)
 
   return (
@@ -40,7 +40,7 @@ export function AppLayout() {
       {/* Thread or ticket beside the content (xl), over it (sm–lg) or as a bottom sheet (phones); driven by the URL. */}
       <Inspector />
       <PhoneTimerBar />
-      <MobileBottomBar onOpenMore={() => setDrawerOpen(true)} onOpenSearch={() => setSearchOpen(true)} />
+      <MobileBottomBar onOpenMore={() => setDrawerOpen(true)} />
       <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
     </div>
   )

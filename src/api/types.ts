@@ -144,8 +144,11 @@ export type UploadFile = Blob & { name: string }
 export type ProjectTime = { entries: TimeEntry[]; rates: Rate[] | null }
 /** What a timer or a manual entry is for: a task (its project follows), or a project as a whole. */
 export type TimeTarget = { taskId: string } | { projectId: string }
-/** My day: today's check-in, my running entry (from any day) and my entries that started today, newest first. */
-export type MyDay = { day: string; checkIn: CheckIn | null; running: TimeEntry | null; entries: TimeEntry[] }
+/**
+ * My day: today's check-in, a check-in still open from an earlier day (forgot to check out), my running entry (from
+ * any day) and my entries that started today, newest first.
+ */
+export type MyDay = { day: string; checkIn: CheckIn | null; openCheckIn: CheckIn | null; running: TimeEntry | null; entries: TimeEntry[] }
 export type NewManualEntry = TimeTarget & { startedAt: string; endedAt: string; note: string }
 
 /** Everything in the mock database, as Database → Export data downloads it. File bytes are not included (spec §10). */

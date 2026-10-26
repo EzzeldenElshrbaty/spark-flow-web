@@ -28,6 +28,7 @@ function myDay(data: DbData, userId: string, now: Date): MyDay {
   return clone({
     day,
     checkIn: data.checkIns.find((c) => c.userId === userId && c.day === day) ?? null,
+    openCheckIn: data.checkIns.filter((c) => c.userId === userId && c.day < day && c.checkedOutAt === null).sort((a, b) => (a.checkedInAt < b.checkedInAt ? 1 : -1))[0] ?? null,
     running: mine.find((e) => e.endedAt === null) ?? null,
     entries: mine.filter((e) => localDay(new Date(e.startedAt)) === day).sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1)),
   })

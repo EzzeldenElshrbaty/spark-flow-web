@@ -15,6 +15,7 @@ function page<K extends string>(load: () => Promise<Record<K, ComponentType>>, n
 
 const ChannelPage = page(() => import('@/pages/chat/ChannelPage'), 'ChannelPage')
 const ProjectPage = page(() => import('@/pages/projects/ProjectPage'), 'ProjectPage')
+const HomePage = page(() => import('@/pages/home/HomePage'), 'HomePage')
 const ProjectsPage = page(() => import('@/pages/projects/ProjectsPage'), 'ProjectsPage')
 const MyTasksPage = page(() => import('@/pages/tasks/MyTasksPage'), 'MyTasksPage')
 const SettingsPage = page(() => import('@/pages/settings/SettingsPage'), 'SettingsPage')
@@ -44,7 +45,7 @@ export const router = createBrowserRouter([
         path: '/w/:ws',
         element: <WorkspaceGate />,
         children: [
-          { index: true, element: <LastVisitRedirect /> },
+          { index: true, element: <HomePage /> },
           { path: 'c/:channelId', element: <ChannelPage /> },
           { path: 'projects', element: <ProjectsPage /> },
           { path: 'tasks', element: <MyTasksPage /> },

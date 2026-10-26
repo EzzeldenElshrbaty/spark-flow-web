@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { Ellipsis, FolderKanban, MessagesSquare, Search, X, type LucideIcon } from 'lucide-react'
+import { Ellipsis, FolderKanban, House, MessagesSquare, X, type LucideIcon } from 'lucide-react'
 import { NavLink, useMatch } from 'react-router'
 import { useChannels } from '@/api/chat'
 import { useProjects } from '@/api/tickets'
@@ -27,13 +27,14 @@ function TabLink({ to, active, icon: Icon, label }: { to: string | undefined; ac
   )
 }
 
-/** Chat · Projects · Search · More. Chat and Projects reopen what you last had open there. */
-export function MobileBottomBar({ onOpenMore, onOpenSearch }: { onOpenMore: () => void; onOpenSearch: () => void }) {
+/** Home · Projects · Chat · More (search is in the top bar). Chat and Projects reopen what you last had open there. */
+export function MobileBottomBar({ onOpenMore }: { onOpenMore: () => void }) {
   const { workspace } = useCurrentWorkspace()
   const lastVisited = useUiStore((state) => state.lastVisited)
   const channels = useChannels(workspace?.id).data
   const projects = useProjects(workspace?.id).data
   const inChat = useMatch('/w/:ws/c/*') !== null
+  const inHome = useMatch({ path: '/w/:ws', end: true }) !== null
   // Every hook runs every render: the three matches are read first, then combined.
   const inProject = useMatch('/w/:ws/p/*') !== null
   const inProjectList = useMatch('/w/:ws/projects') !== null
@@ -51,17 +52,13 @@ export function MobileBottomBar({ onOpenMore, onOpenSearch }: { onOpenMore: () =
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden" aria-label="Main">
       <ul className="flex">
         <li className="flex-1">
-          <TabLink to={chatTo} active={inChat} icon={MessagesSquare} label="Chat" />
+          <TabLink to={slug ? paths.home(slug) : undefined} active={inHome} icon={House} label="Home" />
         </li>
         <li className="flex-1">
           <TabLink to={projectsTo} active={inProjects} icon={FolderKanban} label="Projects" />
         </li>
-        {/* From tablet width the top bar has its own search box. */}
-        <li className="flex-1 md:hidden">
-          <button type="button" onClick={onOpenSearch} className={clsx(itemClass, 'text-fg-muted')}>
-            <Search className="size-5" />
-            Search
-          </button>
+        <li className="flex-1">
+          <TabLink to={chatTo} active={inChat} icon={MessagesSquare} label="Chat" />
         </li>
         <li className="flex-1">
           <button type="button" onClick={onOpenMore} className={clsx(itemClass, 'text-fg-muted')}>

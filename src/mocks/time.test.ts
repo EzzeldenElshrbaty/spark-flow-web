@@ -105,9 +105,11 @@ describe('check-in, timer and manual time', () => {
     now = at(9, 0, 1)
     const day = await api.time.today()
     expect(day.checkIn).toBeNull()
+    expect(day.openCheckIn?.plan).toBe('Late start') // still open from yesterday
     expect(day.running?.taskId).toBe('t-nex-101')
     const out = await api.time.checkOut()
     expect(out.running).toBeNull()
+    expect(out.openCheckIn).toBeNull()
     const checkIns = (await db.read()).checkIns.filter((c) => c.userId === 'u-1')
     expect(checkIns.every((c) => c.checkedOutAt !== null)).toBe(true)
     await expect(api.time.checkOut()).rejects.toMatchObject({ detail: "You haven't checked in today." })

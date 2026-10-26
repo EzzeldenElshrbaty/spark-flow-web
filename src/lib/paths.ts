@@ -14,6 +14,7 @@ const query = (q: TasksQuery = {}) => {
 /** Every route of the app in one place, so a link and its route cannot drift apart. */
 export const paths = {
   workspace: (ws: string) => `/w/${ws}`,
+  home: (ws: string) => `/w/${ws}`, // Home / My day is the workspace's own page
   channel: (ws: string, id: string) => `/w/${ws}/c/${id}`,
   projects: (ws: string) => `/w/${ws}/projects`,
   tasks: (ws: string) => `/w/${ws}/tasks`,
