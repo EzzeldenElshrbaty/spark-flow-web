@@ -37,3 +37,11 @@ export function useThread(messageId: string | undefined) {
 export function useMarkRead() {
   return useMutation({ mutationFn: (channelId: string) => api.chat.markRead(channelId) })
 }
+
+/** Posts in a channel as the current user. The feed refreshes from the live event and the global invalidate. */
+export function useSendMessage() {
+  return useMutation({ mutationFn: ({ channelId, content }: { channelId: string; content: string }) => api.chat.send(channelId, content) })
+}
+export function useReply() {
+  return useMutation({ mutationFn: ({ messageId, content }: { messageId: string; content: string }) => api.chat.reply(messageId, content) })
+}

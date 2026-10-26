@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseMentions, parseTicketKeys } from './text'
+import { parseMentions, parseTicketKeys } from './mentions'
 
 describe('parseTicketKeys', () => {
   it('returns unique keys in the order they first appear', () => {

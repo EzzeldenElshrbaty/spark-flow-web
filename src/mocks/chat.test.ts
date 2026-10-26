@@ -255,3 +255,35 @@ describe('api results are copies', () => {
     expect((await api.chat.channel('c-general')).memberIds).not.toContain('zzz')
   })
 })
+
+describe('send and reply', () => {
+  it('send stores trimmed text with its mentions', async () => {
+    const message = await api.chat.send('c-general', '  Hi @[Nour](u-2) about @NEX-101 and @all ')
+    expect(message.content).toBe('Hi @[Nour](u-2) about @NEX-101 and @all')
+    expect(message.mentions).toEqual([
+      { kind: 'user', id: 'u-2' },
+      { kind: 'task', id: 'NEX-101' },
+      { kind: 'all', id: 'all' },
+    ])
+    expect(message.linkedTicketKeys).toEqual(['NEX-101'])
+    expect(message.senderId).toBe('u-1')
+    expect(events.some((e) => e.type === 'messageReceived' && e.message.id === message.id)).toBe(true)
+  })
+
+  it('send refuses empty text, long text, a project the member is not on, and a private channel', async () => {
+    await expect(api.chat.send('c-general', '  ')).rejects.toMatchObject({ status: 400, detail: 'Write a message first.' })
+    await expect(api.chat.send('c-general', 'x'.repeat(4001))).rejects.toMatchObject({ detail: 'Keep the message under 4000 characters.' })
+    await api.users.viewAs('u-8') // Tarek: not on Nexus Core, not in the DM
+    await expect(api.chat.send('c-p-nex', 'x')).rejects.toMatchObject({ status: 403, detail: "You don't have access to this project." })
+    await expect(api.chat.send('c-dm-1', 'x')).rejects.toMatchObject({ status: 403, detail: "You're not in this channel." })
+    expect((await db.read()).messages.filter((m) => m.senderId === 'u-8' && m.content === 'x')).toHaveLength(0)
+  })
+
+  it('reply stores mentions and bumps the thread', async () => {
+    const parent = (await db.read()).messages.find((m) => m.channelId === 'c-general')!
+    const reply = await api.chat.reply(parent.id, 'ok @[Mariam](u-3)')
+    expect(reply.mentions).toEqual([{ kind: 'user', id: 'u-3' }])
+    expect((await db.read()).messages.find((m) => m.id === parent.id)!.threadCount).toBe(parent.threadCount + 1)
+    await expect(api.chat.reply(parent.id, ' ')).rejects.toMatchObject({ detail: 'Write a message first.' })
+  })
+})

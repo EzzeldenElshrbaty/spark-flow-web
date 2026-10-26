@@ -68,6 +68,8 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
       message: (id) => get(`/api/messages/${enc(id)}`),
       replies: (messageId) => get(`/api/messages/${enc(messageId)}/replies`),
       markRead: (channelId) => request<void>(`/api/channels/${enc(channelId)}/read`, { method: 'POST' }, fetchFn),
+      send: (channelId, content) => send('POST', `/api/channels/${enc(channelId)}/messages`, { content }),
+      reply: (messageId, content) => send('POST', `/api/messages/${enc(messageId)}/replies`, { content }),
     },
     tickets: {
       projects: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/projects`),

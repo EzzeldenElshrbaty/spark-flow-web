@@ -42,6 +42,16 @@ describe('createHttpApi', () => {
     expect(JSON.parse(String(calls[5].init?.body))).toEqual(entry)
   })
 
+  it('maps the chat writes', async () => {
+    const { calls, fetchFn } = recordingFetch()
+    const api = createHttpApi(fetchFn)
+    await api.chat.send('c1', 'hi')
+    await api.chat.reply('m1', 'ok')
+    expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url}`)).toEqual(['POST /api/channels/c1/messages', 'POST /api/messages/m1/replies'])
+    expect(JSON.parse(String(calls[0].init?.body))).toEqual({ content: 'hi' })
+    expect(JSON.parse(String(calls[1].init?.body))).toEqual({ content: 'ok' })
+  })
+
   it('maps the rates calls', async () => {
     const { calls, fetchFn } = recordingFetch()
     const api = createHttpApi(fetchFn)

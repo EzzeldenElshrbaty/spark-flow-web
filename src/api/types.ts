@@ -91,6 +91,8 @@ export type ChatMessage = {
   attachments: Attachment[]; reactions: Reaction[]
   threadCount: number; lastReplyAt: string | null
   linkedTicketKeys: string[]; mentions: Mention[]; editedAt: string | null; createdAt: string
+  /** Set on the card a task comment or bug posts in its project's chat. */
+  commentId?: string
 }
 
 export type ThreadReply = {
@@ -169,6 +171,9 @@ export interface Api {
     message(id: string): Promise<ChatMessage>
     replies(messageId: string): Promise<ThreadReply[]>
     markRead(channelId: string): Promise<void>
+    /** Posts as the current user; mentions are worked out from the text. */
+    send(channelId: string, content: string): Promise<ChatMessage>
+    reply(messageId: string, content: string): Promise<ThreadReply>
   }
   tickets: {
     /** The same list as projects.list; kept for the Phase 1+2 pages. */
