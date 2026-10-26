@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Role } from '@/api/types'
-import { can, type Action, type PermissionContext } from './permissions'
+import { accessOf, can, type Action, type PermissionContext } from './permissions'
 
 const project = { managerId: 'u-pm', memberIds: ['u-pm', 'u-m'], teamIds: ['t-qa'] }
 const other = { managerId: 'u-x', memberIds: ['u-x'], teamIds: [] }
@@ -58,5 +58,13 @@ describe('can (spec §4.3)', () => {
   it('member cannot open database or the dashboard', () => {
     expect(can('database.manage', as('member'))).toBe(false)
     expect(can('dashboard.view', as('member'))).toBe(false)
+  })
+})
+
+describe('accessOf', () => {
+  it('waits while the account loads instead of refusing', () => {
+    expect(accessOf(true, false)).toBe('loading') // the placeholder persona is a member: never show its refusal
+    expect(accessOf(false, true)).toBe('allowed')
+    expect(accessOf(false, false)).toBe('denied')
   })
 })

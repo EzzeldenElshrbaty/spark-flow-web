@@ -178,7 +178,7 @@ flowchart LR
   W --> D[Dashboard: progress, hours,<br/>expected finish, cost]
 ```
 
-Demo personas in the seed: Admin (the manager), Sales, two PMs, four Members; 4 projects in different phases
+Demo personas in the seed: Admin (the manager), Sales, two PMs, five Members; 4 projects in different phases
 (one delivered, one overdue, one agile with sprints, one just sold); a week of check-ins and time entries; comments,
 bugs with images, and project chats that mention tasks and people.
 

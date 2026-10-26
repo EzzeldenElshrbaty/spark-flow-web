@@ -100,3 +100,28 @@ describe('openStore', () => {
     expect(warn).toHaveBeenCalledOnce()
   })
 })
+
+describe('indexeddb resilience', () => {
+  it('falls back to memory when indexedDB.open never answers', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const silent = { open: () => ({}) } as unknown as IDBFactory // a request that never fires (known WebKit bugs)
+    expect((await openStore(silent, 50)).kind).toBe('memory')
+    expect(warn).toHaveBeenCalledOnce()
+  })
+
+  it('reconnects after the browser closes the connection (Clear site data / versionchange)', async () => {
+    const factory = new IDBFactory()
+    const store = await createIdbStore(factory)
+    await store.transact(() => ({ doc: { n: 1 }, result: null }))
+    await new Promise<void>((resolve, reject) => {
+      const request = factory.deleteDatabase('spark-flow.mock')
+      request.onsuccess = () => resolve()
+      request.onerror = () => reject(request.error)
+      request.onblocked = () => reject(new Error('blocked: the open connection did not close on versionchange'))
+    })
+    await store.transact((doc) => ({ doc: { n: doc === null ? 'fresh' : 'stale' }, result: null }))
+    expect(await store.readDoc()).toEqual({ n: 'fresh' })
+    await store.putFile('a-1', new Blob(['x']))
+    expect(await store.getFile('a-1')).not.toBeNull()
+  })
+})

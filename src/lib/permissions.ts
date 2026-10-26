@@ -50,3 +50,10 @@ export function can(action: Action, ctx: PermissionContext): boolean {
       return ctx.role === 'sales' || manages(ctx)
   }
 }
+
+export type Access = 'loading' | 'allowed' | 'denied'
+
+/** What a gated page shows: nothing is refused until the account has loaded, so an admin never sees a refusal flash. */
+export function accessOf(loading: boolean, allowed: boolean): Access {
+  return loading ? 'loading' : allowed ? 'allowed' : 'denied'
+}

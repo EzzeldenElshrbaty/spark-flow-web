@@ -87,6 +87,18 @@ function hasShape(value: unknown): value is DbData {
   )
 }
 
+/**
+ * Whether an imported document's records are usable, not just its top-level shape: every record has a string id
+ * (rates are keyed by userId), and the current user exists, or nobody could sign in as admin to reset it.
+ */
+function hasUsableRecords(data: DbData): boolean {
+  const keyed = (list: unknown[], key: 'id' | 'userId') => list.every((item) => isRecord(item) && typeof item[key] === 'string')
+  return (
+    COLLECTIONS.every((name) => keyed(data[name], name === 'rates' ? 'userId' : 'id')) &&
+    data.users.some((user) => user.id === data.currentUserId)
+  )
+}
+
 type Condition = 'ok' | 'missing' | 'outdated' | 'newer'
 
 function conditionOf(doc: unknown): Condition {
@@ -191,7 +203,7 @@ export function createDb(store: MockStore, seed: (now: Date) => SeedResult, now:
     async importAll(bundle) {
       if (!isRecord(bundle) || bundle.app !== 'spark-flow' || bundle.version !== DB_VERSION) throw badImport()
       const data = bundle.data
-      if (!hasShape(data) || data.version !== DB_VERSION) throw badImport()
+      if (!hasShape(data) || data.version !== DB_VERSION || !hasUsableRecords(data)) throw badImport()
       if (memory) {
         memory = structuredClone(data)
         return

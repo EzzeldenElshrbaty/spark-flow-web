@@ -188,3 +188,20 @@ describe('removeLegacyStorage', () => {
     expect(() => removeLegacyStorage(blocked)).not.toThrow()
   })
 })
+
+describe('importAll contents', () => {
+  it('rejects a well-shaped bundle whose records are broken, and writes nothing', async () => {
+    const db = createDb(createMemoryStore(), fakeSeed)
+    const before = await db.read()
+    const good = (await db.exportAll()).data
+    const broken = [
+      { ...good, currentUserId: 'u-missing' }, // nobody to be: me() would 404 and lock the admin out
+      { ...good, users: [{ name: 'No id' }] },
+      { ...good, workspaces: [42] },
+      { ...good, rates: [{ hourlyCost: 1 }] }, // rates are keyed by userId, not id
+    ]
+    for (const data of broken)
+      await expect(db.importAll({ app: 'spark-flow', version: DB_VERSION, data })).rejects.toMatchObject({ name: 'ApiError', status: 400 })
+    expect(await db.read()).toEqual(before)
+  })
+})

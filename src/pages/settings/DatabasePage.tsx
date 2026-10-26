@@ -10,7 +10,7 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { backendOn } from '@/lib/api'
 import { paths } from '@/lib/paths'
 import { useUiStore } from '@/lib/uiStore'
-import { usePermission } from '@/lib/usePermission'
+import { useAccess } from '@/lib/usePermission'
 
 const errorText = 'mt-3 text-sm text-red-600 dark:text-red-400'
 
@@ -39,14 +39,15 @@ function download(json: unknown) {
 /** The demo's data in this browser: export it, reload the sample company, or wipe it. Admins only (spec §4.3). */
 export function DatabasePage() {
   const { ws = '' } = useParams()
-  const allowed = usePermission()('database.manage')
+  const access = useAccess('database.manage')
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const forgetPlaces = useUiStore((state) => state.forgetPlaces)
   const exportData = useExportData()
   const reloadSeed = useReloadSeed()
   const reset = useResetDemo()
-  const [confirming, setConfirming] = useState(false)
+  // Both wipe this browser's data, so both ask the person to type a word first.
+  const [confirming, setConfirming] = useState<'reload' | 'reset' | null>(null)
 
   // Everything on screen was the old data, and the places last visited may be gone.
   const startOver = () => {
@@ -61,7 +62,21 @@ export function DatabasePage() {
     </Link>
   )
 
-  if (backendOn || !allowed) {
+  if (!backendOn && access === 'loading') {
+    return (
+      <>
+        {back}
+        <PageHeader title="Database" subtitle="Demo data in this browser." />
+        <div className="grid max-w-2xl gap-4" aria-busy="true">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-32 animate-pulse rounded-xl bg-surface-strong" />
+          ))}
+        </div>
+      </>
+    )
+  }
+
+  if (backendOn || access === 'denied') {
     return (
       <>
         {back}
@@ -88,21 +103,37 @@ export function DatabasePage() {
           {exportData.isError && <p role="alert" className={errorText}>The export didn't work. Try again.</p>}
         </Section>
 
-        <Section title="Reload seed data" about="Replaces everything with the sample company.">
-          <Button variant="secondary" className="mt-4" disabled={reloadSeed.isPending} onClick={() => reloadSeed.mutate(undefined, { onSuccess: startOver })}>
-            {reloadSeed.isPending ? 'Reloading…' : 'Reload seed data'}
+        <Section title="Reload seed data" about="Replaces every record with the sample company. Uploaded files are deleted too.">
+          <Button variant="secondary" className="mt-4" onClick={() => setConfirming('reload')}>
+            Reload seed data
           </Button>
-          {reloadSeed.isError && <p role="alert" className={errorText}>The seed data didn't reload. Try again.</p>}
         </Section>
 
         <Section title="Reset" about="Deletes everything in this browser, then loads the sample company again.">
-          <Button variant="danger" className="mt-4" onClick={() => setConfirming(true)}>
+          <Button variant="danger" className="mt-4" onClick={() => setConfirming('reset')}>
             Reset data
           </Button>
         </Section>
       </div>
 
-      {confirming && (
+      {confirming === 'reload' && (
+        <DeleteDialog
+          title="Reload seed data"
+          description="Every project, task, message and time entry in this browser is replaced by the sample company."
+          confirmText="reload"
+          removes={['All records in this browser', 'Every uploaded file']}
+          onDelete={async () => {
+            await reloadSeed.mutateAsync()
+            setConfirming(null)
+            startOver()
+          }}
+          onClose={() => setConfirming(null)}
+          actionLabel="Reload seed data"
+          pendingLabel="Reloading…"
+        />
+      )}
+
+      {confirming === 'reset' && (
         <DeleteDialog
           title="Reset data"
           description="Every project, task, message, time entry and file in this browser is deleted, then the sample company loads again."
@@ -110,10 +141,10 @@ export function DatabasePage() {
           removes={['All records in this browser', 'Every uploaded file', 'Your saved places']}
           onDelete={async () => {
             await reset.mutateAsync()
-            setConfirming(false)
+            setConfirming(null)
             startOver()
           }}
-          onClose={() => setConfirming(false)}
+          onClose={() => setConfirming(null)}
           actionLabel="Reset data"
           pendingLabel="Resetting…"
         />
