@@ -12,10 +12,21 @@ export interface MockHub {
  */
 export function createMockHub(
   channelName = 'spark-flow.realtime',
-  Broadcast: typeof BroadcastChannel | undefined = globalThis.BroadcastChannel,
+  // null means there is no BroadcastChannel to use (an old browser), so the hub stays in this tab.
+  Broadcast: typeof BroadcastChannel | null = globalThis.BroadcastChannel ?? null,
 ): MockHub {
   const listeners = new Set<(event: RealtimeEvent) => void>()
-  const deliver = (event: RealtimeEvent) => listeners.forEach((listener) => listener(event))
+  // One listener failing must not stop the others, or the post to the other tabs.
+  const deliver = (event: RealtimeEvent) => {
+    // A copy, so a listener can unsubscribe while this runs.
+    for (const listener of Array.from(listeners)) {
+      try {
+        listener(event)
+      } catch (error) {
+        console.error('A real-time listener threw.', error)
+      }
+    }
+  }
 
   const channel = Broadcast ? new Broadcast(channelName) : null
   if (channel) channel.onmessage = (e: MessageEvent<RealtimeEvent>) => deliver(e.data)

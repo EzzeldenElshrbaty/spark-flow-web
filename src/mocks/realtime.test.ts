@@ -85,12 +85,54 @@ describe('createMockRealtimeClient', () => {
 })
 
 describe('createMockHub', () => {
-  it('works without BroadcastChannel', () => {
-    const hub = makeHub('t', undefined)
+  it('works without BroadcastChannel', async () => {
+    const name = uniqueName()
+    const alone = makeHub(name, null)
+    const other = makeHub(name) // a real hub on the same name: it must hear nothing from `alone`
     const seen: string[] = []
-    createMockRealtimeClient(hub).onTicketUpdated((t) => seen.push(t.key))
-    hub.publish({ type: 'ticketUpdated', ticket: { ...sampleTicket, key: 'NEX-101' } })
+    const heardByOther = vi.fn()
+    createMockRealtimeClient(alone).onTicketUpdated((t) => seen.push(t.key))
+    other.subscribe(heardByOther)
+
+    alone.publish({ type: 'ticketUpdated', ticket: { ...sampleTicket, key: 'NEX-101' } })
+
     expect(seen).toEqual(['NEX-101'])
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(heardByOther).not.toHaveBeenCalled()
+  })
+
+  it('opens and posts to the channel it is given', () => {
+    const postMessage = vi.fn()
+    const constructed: string[] = []
+    class SpyChannel {
+      onmessage: unknown = null
+      constructor(name: string) { constructed.push(name) }
+      postMessage = postMessage
+      close() {}
+    }
+    const hub = makeHub('spy', SpyChannel as unknown as typeof BroadcastChannel)
+    hub.publish({ type: 'userTyping', channelId: 'c1', userId: 'u1' })
+    expect(constructed).toEqual(['spy'])
+    expect(postMessage).toHaveBeenCalledOnce()
+  })
+
+  it('keeps delivering and posting when a listener throws', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const name = uniqueName()
+    const a = makeHub(name)
+    const b = makeHub(name)
+    const afterThrow = vi.fn()
+    a.subscribe(() => { throw new Error('boom') })
+    a.subscribe(afterThrow)
+    const arrived = new Promise<RealtimeEvent>((resolve) => b.subscribe(resolve))
+    const event: RealtimeEvent = { type: 'userTyping', channelId: 'c1', userId: 'u1' }
+
+    expect(() => a.publish(event)).not.toThrow()
+
+    expect(afterThrow).toHaveBeenCalledOnce()
+    await expect(arrived).resolves.toEqual(event)
+    expect(error).toHaveBeenCalledOnce()
+    error.mockRestore()
   })
 
   it('relays between two hubs on the same channel without echo loops', async () => {
