@@ -22,6 +22,16 @@ export type Project = {
 
 export type PhaseStatus = 'notStarted' | 'inProgress' | 'done'
 export type Phase = { id: string; projectId: string; name: string; order: number; startDate: string; dueDate: string; status: PhaseStatus }
+/** A project as lists and pages show it, with the values the server works out (spec §3). */
+export type ProjectSummary = Project & {
+  progress: number               // 0..1, done tasks ÷ all tasks
+  loggedHours: number
+  cost: number | null            // admin only
+  expectedFinish: string         // ISO
+  currentPhaseId: string | null  // first phase not done, by order
+  overdueCount: number
+  taskCount: number
+}
 export type Deliverable = { id: string; projectId: string; phaseId: string | null; title: string; dueDate: string; doneAt: string | null }
 
 export type SprintState = 'planned' | 'active' | 'closed'
@@ -46,6 +56,9 @@ export type Ticket = {
 export type TaskType = 'task' | 'bug'
 /** The company system calls tickets tasks; the contract and keys (NEX-101) are the same. */
 export type Task = Ticket
+
+/** A task as the API returns it: with the hours logged so far and whether it is overdue (spec §3). */
+export type TaskView = Task & { loggedHours: number; overdue: boolean }
 
 // ── Time and cost ─────────────────────────────────────────────────────────
 export type TimeEntry = {
