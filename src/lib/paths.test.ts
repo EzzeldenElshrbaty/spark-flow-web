@@ -57,6 +57,8 @@ describe('validSavedPlace', () => {
     expect(validSavedPlace('/w/engineering/settings/rates', engineering, engineeringProjects)).toBe(true)
     expect(paths.rates('engineering')).toBe('/w/engineering/settings/rates')
     expect(paths.home('engineering')).toBe('/w/engineering')
+    expect(paths.dashboard('engineering')).toBe('/w/engineering/dashboard')
+    expect(validSavedPlace('/w/engineering/dashboard', engineering, engineeringProjects)).toBe(true)
   })
 
   it('rejects a channel that is gone', () => {

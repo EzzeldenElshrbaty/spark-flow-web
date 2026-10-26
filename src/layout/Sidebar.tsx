@@ -1,10 +1,11 @@
 import clsx from 'clsx'
-import { Folder, FolderKanban, Hash, House, ListChecks, Lock } from 'lucide-react'
+import { Folder, FolderKanban, Hash, House, LayoutDashboard, ListChecks, Lock } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router'
 import type { Presence } from '@/api/types'
 import { useSidebarGroups } from '@/layout/useSidebarGroups'
 import { paths } from '@/lib/paths'
+import { usePermission } from '@/lib/usePermission'
 import { useRole } from '@/lib/useRole'
 import { canSee, settingsItem } from '@/navigation'
 
@@ -86,6 +87,7 @@ function GroupSkeleton() {
 
 export function SidebarContent({ collapsed = false, onNavigate }: { collapsed?: boolean; onNavigate?: () => void }) {
   const { role } = useRole()
+  const check = usePermission()
   const { workspace, channels, dms, projects, chatLoading, projectsLoading, failed } = useSidebarGroups()
   const slug = workspace?.slug
 
@@ -104,6 +106,17 @@ export function SidebarContent({ collapsed = false, onNavigate }: { collapsed?: 
               </li>
               <li>
                 <SidebarLink to={paths.tasks(slug)} label="My tasks" icon={<ListChecks className="size-[18px]" />} collapsed={collapsed} onNavigate={onNavigate} />
+              </li>
+            </ul>
+          </div>
+        )}
+
+        {slug && check('dashboard.view') && (
+          <div>
+            <GroupLabel collapsed={collapsed}>Manage</GroupLabel>
+            <ul className="space-y-0.5">
+              <li>
+                <SidebarLink to={paths.dashboard(slug)} label="Dashboard" icon={<LayoutDashboard className="size-[18px]" />} collapsed={collapsed} onNavigate={onNavigate} />
               </li>
             </ul>
           </div>
