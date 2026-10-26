@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isPastDue, localDay } from './dates'
+import { isPastDue, localDay, weekStart } from './dates'
 
 describe('isPastDue', () => {
   it('a due date counts as the whole of that day', () => {
@@ -15,5 +15,12 @@ describe('localDay', () => {
   it("is the browser's own calendar day", () => {
     expect(localDay(new Date(2026, 9, 28, 23, 30))).toBe('2026-10-28')
     expect(localDay(new Date(2026, 0, 5, 0, 10))).toBe('2026-01-05')
+  })
+})
+
+describe('weekStart', () => {
+  it('is the Sunday at midnight, local time, that starts the week', () => {
+    expect(weekStart(new Date(2026, 9, 28, 15))).toEqual(new Date(2026, 9, 25)) // Wednesday → Sunday 25 Oct
+    expect(weekStart(new Date(2026, 9, 25, 0, 30))).toEqual(new Date(2026, 9, 25))
   })
 })

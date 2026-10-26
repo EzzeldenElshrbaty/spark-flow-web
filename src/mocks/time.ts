@@ -6,7 +6,8 @@ import type { DbData, MockDb } from './db'
 import { delay } from './latency'
 import { findProject } from './projects'
 import type { MockHub } from './realtime'
-import { badRequest, clone, currentUser, newId, requireCan } from './shared'
+import { buildReport } from './report'
+import { badRequest, clone, currentUser, newId, notFound, requireCan } from './shared'
 
 const HOUR = 3_600_000
 const MAX_PLAN = 500
@@ -79,6 +80,17 @@ export function timeApi(db: MockDb, hub: MockHub, now: () => Date): Api['time'] 
       const entries = data.timeEntries.filter((e) => e.projectId === projectId).sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1))
       const rates = can('timeCost.view', { userId: me.id, role: me.role }) ? data.rates : null
       return clone({ entries, rates })
+    },
+
+    async report(workspaceId, days) {
+      await delay()
+      const data = await db.read()
+      if (!data.workspaces.some((w) => w.id === workspaceId)) throw notFound('Workspace', workspaceId)
+      requireCan(data, 'timeCost.view')
+      const to = now()
+      const from = new Date(to.getTime() - days * 24 * HOUR)
+      const projectIds = data.projects.filter((p) => p.workspaceId === workspaceId).map((p) => p.id)
+      return clone(buildReport(data.timeEntries, data.rates, projectIds, from, to))
     },
 
     async today() {

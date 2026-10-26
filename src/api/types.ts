@@ -144,6 +144,16 @@ export type StoredFile = ProjectFile & { attachment: Attachment }
 export type UploadFile = Blob & { name: string }
 /** A task comment or bug with its files' details. */
 export type CommentView = Comment & { attachments: Attachment[] }
+export type ReportPeriod = 7 | 30 | 90
+export type ReportRow = { hours: number; cost: number }
+/** Hours and cost for a period (Admin only), by project, person and week; the groupings add up to the totals. */
+export type TimeReport = {
+  from: string; to: string
+  totals: ReportRow & { people: number }
+  byProject: (ReportRow & { projectId: string })[]       // most hours first
+  byPerson: (ReportRow & { userId: string; rate: number })[]
+  byWeek: (ReportRow & { weekStart: string })[]           // oldest first, every week in range
+}
 /** A project as the manager dashboard shows it. */
 export type DashboardProject = ProjectSummary & {
   phaseName: string | null                        // the current phase; null when every phase is done or there are none
@@ -231,6 +241,8 @@ export interface Api {
     start(target: TimeTarget): Promise<MyDay>
     stop(): Promise<MyDay>
     addManual(entry: NewManualEntry): Promise<TimeEntry>
+    /** The Time & cost page (Admin only): the last `days` days, ending now. */
+    report(workspaceId: string, days: ReportPeriod): Promise<TimeReport>
   }
   files: {
     url(id: string): Promise<string>

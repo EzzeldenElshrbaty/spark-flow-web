@@ -80,6 +80,12 @@ describe('createHttpApi', () => {
     expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url}`)).toEqual(['GET /api/workspaces/w1/dashboard', 'GET /api/workspaces/w1/dashboard/checked-in'])
   })
 
+  it('maps the time report', async () => {
+    const { calls, fetchFn } = recordingFetch()
+    await createHttpApi(fetchFn).time.report('w1', 30)
+    expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url}`)).toEqual(['GET /api/workspaces/w1/time-report?days=30'])
+  })
+
   it('maps the rates calls', async () => {
     const { calls, fetchFn } = recordingFetch()
     const api = createHttpApi(fetchFn)

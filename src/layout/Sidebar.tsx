@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { Folder, FolderKanban, Hash, House, LayoutDashboard, ListChecks, Lock } from 'lucide-react'
+import { Clock, Folder, FolderKanban, Hash, House, LayoutDashboard, ListChecks, Lock } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router'
 import type { Presence } from '@/api/types'
@@ -111,13 +111,20 @@ export function SidebarContent({ collapsed = false, onNavigate }: { collapsed?: 
           </div>
         )}
 
-        {slug && check('dashboard.view') && (
+        {slug && (check('dashboard.view') || check('timeCost.view')) && (
           <div>
             <GroupLabel collapsed={collapsed}>Manage</GroupLabel>
             <ul className="space-y-0.5">
-              <li>
-                <SidebarLink to={paths.dashboard(slug)} label="Dashboard" icon={<LayoutDashboard className="size-[18px]" />} collapsed={collapsed} onNavigate={onNavigate} />
-              </li>
+              {check('dashboard.view') && (
+                <li>
+                  <SidebarLink to={paths.dashboard(slug)} label="Dashboard" icon={<LayoutDashboard className="size-[18px]" />} collapsed={collapsed} onNavigate={onNavigate} />
+                </li>
+              )}
+              {check('timeCost.view') && (
+                <li>
+                  <SidebarLink to={paths.timeCost(slug)} label="Time & cost" icon={<Clock className="size-[18px]" />} collapsed={collapsed} onNavigate={onNavigate} />
+                </li>
+              )}
             </ul>
           </div>
         )}

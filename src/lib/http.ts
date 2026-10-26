@@ -108,6 +108,7 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
       start: (target) => send('POST', '/api/time/start', target),
       stop: () => send('POST', '/api/time/stop'),
       addManual: (entry) => send('POST', '/api/time/entries', entry),
+      report: (workspaceId, days) => get(`/api/workspaces/${enc(workspaceId)}/time-report?days=${days}`),
     },
     comments: {
       list: (taskKey) => get(`/api/tasks/${enc(taskKey)}/comments`),

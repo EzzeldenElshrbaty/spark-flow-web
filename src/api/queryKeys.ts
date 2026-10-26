@@ -23,6 +23,7 @@ export const qk = {
   time: (projectId: string) => ['projects', 'time', projectId],
   timeAll: () => ['projects', 'time'],                    // prefix of every project's time
   myDay: () => ['time', 'me'],
+  timeReport: (workspaceId: string, days: number) => ['time', 'report', workspaceId, days],
   rates: () => ['rates'],
   comments: (taskKey: string) => ['comments', taskKey],
   mentions: () => ['mentions', 'me'],
@@ -45,7 +46,7 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
       return [qk.tickets(event.ticket.projectId), qk.ticket(event.ticket.key)]
     case 'timeLogged':
       // Hours change everywhere: my day, every task and project summary (under 'tickets'), and the Time tabs.
-      return [qk.myDay(), ['tickets'], qk.timeAll(), ['dashboard']]
+      return [qk.myDay(), ['tickets'], qk.timeAll(), ['dashboard'], ['time', 'report']]
     case 'commentAdded':
       return [qk.comments(event.taskKey), qk.mentions()]
     case 'userTyping':

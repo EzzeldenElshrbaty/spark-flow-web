@@ -11,3 +11,10 @@ export function localDay(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
+
+/** The Sunday, 00:00 local, that starts the week holding `date` (Spark Systems works Sunday to Thursday). */
+export function weekStart(date: Date): Date {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  d.setDate(d.getDate() - d.getDay())
+  return d
+}
