@@ -5,6 +5,7 @@ import { PageSkeleton } from '@/layout/PageSkeleton'
 import { MobileBottomBar, MobileDrawer } from '@/layout/MobileNav'
 import { RealtimeBridge } from '@/layout/RealtimeBridge'
 import { Sidebar } from '@/layout/Sidebar'
+import { PhoneTimerBar } from '@/layout/TimerBar'
 import { TopBar } from '@/layout/TopBar'
 import { useUiStore } from '@/lib/uiStore'
 
@@ -29,7 +30,7 @@ export function AppLayout() {
           searchOpen={searchOpen}
           onSearchOpenChange={setSearchOpen}
         />
-        <main className="w-full flex-1 px-4 pb-24 pt-6 md:px-6 lg:pb-10 xl:px-8">
+        <main className="w-full flex-1 px-4 pb-[calc(6rem+var(--timer-bar,0px))] pt-6 md:px-6 lg:pb-10 xl:px-8">
           {/* Each page's code loads when it's first opened; this shows meanwhile (usually a blink). */}
           <Suspense fallback={<PageSkeleton />}>
             <Outlet />
@@ -38,6 +39,7 @@ export function AppLayout() {
       </div>
       {/* Thread or ticket beside the content (xl), over it (sm–lg) or as a bottom sheet (phones); driven by the URL. */}
       <Inspector />
+      <PhoneTimerBar />
       <MobileBottomBar onOpenMore={() => setDrawerOpen(true)} onOpenSearch={() => setSearchOpen(true)} />
       <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
     </div>

@@ -1,6 +1,7 @@
 import { Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { DesktopSearch, PhoneSearch } from '@/layout/GlobalSearch'
 import { NotificationsMenu } from '@/layout/NotificationsMenu'
+import { TimerPill } from '@/layout/TimerBar'
 import { UserMenu } from '@/layout/UserMenu'
 import { WorkspaceSwitcher } from '@/layout/WorkspaceSwitcher'
 
@@ -35,6 +36,8 @@ export function TopBar({
       <DesktopSearch />
 
       <div className="ms-auto flex items-center gap-1 sm:gap-2">
+        <TimerPill />
+
         <PhoneSearch open={searchOpen} onOpenChange={onSearchOpenChange} />
 
         <NotificationsMenu />

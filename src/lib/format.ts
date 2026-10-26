@@ -78,3 +78,16 @@ export const isPast = (iso: string, now = Date.now()) => new Date(iso).getTime()
 
 /** Whether a time falls on today's date. */
 export const isToday = (iso: string, now = new Date()) => new Date(iso).toDateString() === now.toDateString()
+
+/** How long a running timer has run: always from its start, so a reload or a sleeping laptop shows the true time. */
+export const elapsedMs = (startedAt: string, now: Date) => Math.max(0, now.getTime() - new Date(startedAt).getTime())
+
+/** A running clock: "1:05:09". */
+export function formatClock(ms: number) {
+  const total = Math.floor(ms / 1000)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${Math.floor(total / 3600)}:${pad(Math.floor((total % 3600) / 60))}:${pad(total % 60)}`
+}
+
+/** Hours with one decimal: "7.5h", "115h", "0h". */
+export const formatHours = (hours: number) => `${Math.round(hours * 10) / 10}h`
