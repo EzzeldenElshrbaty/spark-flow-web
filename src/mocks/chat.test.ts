@@ -44,9 +44,11 @@ describe('chat.messages', () => {
     const first = await api.chat.messages('c-general')
     expect(first.items).toHaveLength(30) // page size 30
     expect(first.items[0].createdAt >= first.items[1].createdAt).toBe(true)
-    expect(first.nextCursor).toBe(first.items[29].createdAt) // cursor = createdAt of the last item
+    expect(typeof first.nextCursor).toBe('string') // opaque: only passed back
     const next = await api.chat.messages('c-general', first.nextCursor!)
-    expect(next.items.every((m) => m.createdAt < first.nextCursor!)).toBe(true)
+    const last = first.items[29].createdAt
+    expect(next.items.every((m) => m.createdAt <= last)).toBe(true)
+    expect(next.items.some((m) => first.items.some((f) => f.id === m.id))).toBe(false)
   })
 
   it('walks every message exactly once, then ends with a null cursor', async () => {
@@ -78,6 +80,29 @@ describe('chat.messages', () => {
     expect(page.nextCursor).toBeNull()
   })
 
+  it('never drops or repeats messages that share one timestamp across a page boundary', async () => {
+    const at = new Date(Date.UTC(2030, 0, 1)).toISOString()
+    db.update((d) => {
+      for (let i = 0; i < 75; i++) {
+        d.messages.push({
+          id: `m-tie-${String(i).padStart(3, '0')}`, channelId: 'c-general', senderId: 'u-2', content: `tie ${i}`,
+          attachments: [], reactions: [], threadCount: 0, lastReplyAt: null, linkedTicketKeys: [], editedAt: null, createdAt: at,
+        })
+      }
+    })
+    const seen: string[] = []
+    let cursor: string | undefined
+    do {
+      const page = await api.chat.messages('c-general', cursor)
+      seen.push(...page.items.map((m) => m.id))
+      cursor = page.nextCursor ?? undefined
+    } while (cursor)
+    const expected = db.read().messages.filter((m) => m.channelId === 'c-general').length
+    expect(seen).toHaveLength(expected)
+    expect(new Set(seen).size).toBe(expected)
+    expect(seen.slice(0, 3)).toEqual(['m-tie-074', 'm-tie-073', 'm-tie-072'])
+  })
+
   it('throws ApiError 404 for an unknown channel', async () => {
     await expect(api.chat.messages('nope')).rejects.toMatchObject({ status: 404, detail: "Channel nope doesn't exist." })
   })
@@ -89,6 +114,22 @@ describe('chat.channels and unreadCount', () => {
     expect(before.unreadCount).toBe(3)
     await api.chat.markRead('c-frontend')
     expect((await api.chat.channel('c-frontend')).unreadCount).toBe(0)
+  })
+
+  it('leaves 1 unread in one DM at the start', async () => {
+    const dms = (await api.chat.channels('ws-eng')).filter((c) => c.kind === 'dm').map((c) => c.unreadCount)
+    expect(dms.filter((n) => n > 0)).toEqual([1])
+  })
+
+  it('markRead does not rewrite the main document', async () => {
+    const storage = memoryStorage()
+    const own = createDb(storage, seed)
+    const ownApi = createMockApi(own, hub)
+    own.read()
+    const before = storage.getItem('spark-flow.mockdb.v1')
+    await ownApi.chat.markRead('c-frontend')
+    expect(storage.getItem('spark-flow.mockdb.v1')).toBe(before)
+    expect((await ownApi.chat.channel('c-frontend')).unreadCount).toBe(0)
   })
 
   it('markRead saves the read time for that channel only', async () => {
@@ -106,7 +147,7 @@ describe('chat.channels and unreadCount', () => {
   })
 
   it('own messages do not count as unread', async () => {
-    db.update((d) => { d.reads['c-backend'] = new Date(Date.now() - 3_600_000).toISOString() }) // read an hour ago
+    db.markRead('c-backend', new Date(Date.now() - 3_600_000).toISOString()) // read an hour ago
     expect((await api.chat.channel('c-backend')).unreadCount).toBe(0)
     await sendMessage(db, hub, { channelId: 'c-backend', content: 'mine' })
     expect((await api.chat.channel('c-backend')).unreadCount).toBe(0)

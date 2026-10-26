@@ -7,6 +7,20 @@ import { parseTicketKeys } from './text'
 
 const PAGE_SIZE = 30
 
+type SortKey = Pick<ChatMessage, 'createdAt' | 'id'>
+
+/** Newest first; ties on createdAt fall back to id, so the order is total. */
+const compareDesc = (a: SortKey, b: SortKey) =>
+  a.createdAt === b.createdAt ? (a.id < b.id ? 1 : a.id > b.id ? -1 : 0) : a.createdAt < b.createdAt ? 1 : -1
+
+const encodeCursor = (m: SortKey) => `${m.createdAt}|${m.id}`
+
+/** A cursor that doesn't parse reads as the start of the list, like any unknown cursor would. */
+function decodeCursor(cursor: string): SortKey | null {
+  const at = cursor.indexOf('|')
+  return at < 0 ? null : { createdAt: cursor.slice(0, at), id: cursor.slice(at + 1) }
+}
+
 /** The current user's unread count: messages after their read time that someone else sent. */
 function withUnread(data: DbData, channel: StoredChannel): Channel {
   const readAt = data.reads[channel.id] ?? ''
@@ -45,12 +59,14 @@ export function chatApi(db: MockDb): Api['chat'] {
       await delay()
       const data = db.read()
       findChannel(data, channelId)
-      // Newest first. The cursor is the createdAt of the last message of the previous page.
+      // Newest first, by (createdAt, id) descending. The cursor is opaque: the sort key of the last message of the
+      // previous page, so messages that share a timestamp across a page boundary are neither dropped nor repeated.
+      const before = cursor === undefined ? null : decodeCursor(cursor)
       const older = data.messages
-        .filter((m) => m.channelId === channelId && (cursor === undefined || m.createdAt < cursor))
-        .sort((a, b) => (a.createdAt === b.createdAt ? (a.id < b.id ? 1 : -1) : a.createdAt < b.createdAt ? 1 : -1))
+        .filter((m) => m.channelId === channelId && (before === null || compareDesc(before, m) < 0))
+        .sort(compareDesc)
       const items = older.slice(0, PAGE_SIZE)
-      return { items, nextCursor: older.length > PAGE_SIZE ? items[items.length - 1].createdAt : null }
+      return { items, nextCursor: older.length > PAGE_SIZE ? encodeCursor(items[items.length - 1]) : null }
     },
     async message(id) {
       await delay()
@@ -64,10 +80,8 @@ export function chatApi(db: MockDb): Api['chat'] {
     },
     async markRead(channelId) {
       await delay()
-      db.update((data) => {
-        findChannel(data, channelId)
-        data.reads[channelId] = new Date().toISOString()
-      })
+      findChannel(db.read(), channelId)
+      db.markRead(channelId, new Date().toISOString()) // its own key: never rewrites the shared document
     },
   }
 }

@@ -53,7 +53,11 @@ export type ThreadReply = {
 }
 
 // ── Transport ─────────────────────────────────────────────────────────────
-export type Page<T> = { items: T[]; nextCursor: string | null } // messages: newest first, cursor = createdAt
+/**
+ * One page of a list. `nextCursor` is opaque: clients pass it back unchanged as the next request's cursor and never
+ * build or read it. It is null on the last page. Messages come newest first.
+ */
+export type Page<T> = { items: T[]; nextCursor: string | null }
 export type ProblemDetails = { title: string; status: number; detail?: string }
 
 // ── Derived shapes ────────────────────────────────────────────────────────

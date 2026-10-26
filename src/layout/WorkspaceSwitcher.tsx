@@ -6,8 +6,7 @@ import type { Workspace } from '@/api/types'
 import { MenuPanel } from '@/components/ui/Menu'
 import { roundButtonClass, roundButtonFill } from '@/components/ui/styles'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
-import { paths, savedPlace } from '@/lib/paths'
-import { useUiStore } from '@/lib/uiStore'
+import { paths } from '@/lib/paths'
 
 /** "Spark Engineering" → "SE". */
 const initialsOf = (name: string) =>
@@ -30,7 +29,6 @@ function Initials({ workspace, className }: { workspace: Workspace; className: s
 /** Round workspace button in the top bar; its menu lists the workspaces, with a check on the open one. */
 export function WorkspaceSwitcher() {
   const { workspace, workspaces } = useCurrentWorkspace()
-  const lastVisited = useUiStore((state) => state.lastVisited)
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -42,8 +40,8 @@ export function WorkspaceSwitcher() {
     setOpen(false)
     triggerRef.current?.focus()
     if (target.slug === workspace.slug) return
-    // Back to where you left off there; a workspace not opened yet decides for itself (#general, else its first channel).
-    navigate(savedPlace(target.slug, lastVisited) ?? paths.workspace(target.slug))
+    // The workspace's own landing route checks the place last visited there (it may be gone) and falls back to #general.
+    navigate(paths.workspace(target.slug))
   }
 
   return (

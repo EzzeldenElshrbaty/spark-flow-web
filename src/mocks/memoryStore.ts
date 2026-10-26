@@ -7,5 +7,9 @@ export function createMemoryStorage(initial: Record<string, string> = {}): KeyVa
     getItem: (key) => map.get(key) ?? null,
     setItem: (key, value) => void map.set(key, value),
     removeItem: (key) => void map.delete(key),
+    get length() {
+      return map.size
+    },
+    key: (index) => [...map.keys()][index] ?? null,
   }
 }

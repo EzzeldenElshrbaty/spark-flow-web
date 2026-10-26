@@ -1,4 +1,4 @@
-# Scaffold Spark Flow app from the design kit — 2026-10-26
+# Scaffold Spark Flow app from the design kit — 2026-10-26 — scaffold
 
 Why: `Spark-Flow-Design-Kit/reference-code/` couldn't run. It's 84 files copied out of Spark CRM that import 84 modules
 never included (`api/*`, `mocks/*`, `lib/useRole|useAuth|useMarket`, ~35 pages), with no `tsconfig.json`, root-absolute
@@ -17,7 +17,7 @@ imports in `main.tsx`, and a CRM-backend guard in `vite.config.ts`. The kit READ
 - [x] Kit copied to `design/`, `CLAUDE.md` at root
 - [x] `npm install`
 
-## Review
+## Review — scaffold
 
 - `npm run build`: passes (tsc + vite). CSS 52 kB.
 - `npm run lint`: clean.
@@ -31,7 +31,7 @@ imports in `main.tsx`, and a CRM-backend guard in `vite.config.ts`. The kit READ
   (104 kB). Fixed with `@source not '../design'` in `index.css` (the one change to that file). oxlint likewise
   ignores `design/` via `.oxlintrc.json`.
 
-## Left out on purpose (copy from `design/reference-code` when the feature arrives)
+## Left out on purpose — scaffold (copy from `design/reference-code` when the feature arrives)
 
 - Sign-in, View as, change password (needs auth + API): ActivityTracker, ViewingAsBanner, ChangePasswordSheet, lib/api.
 - Markets (CRM-only): MarketSwitcher, PhoneInput, lib/phone, Flags.
@@ -66,7 +66,7 @@ Plan: `docs/superpowers/plans/2026-10-26-spark-flow-shell-data-layer.md` (execut
 - [x] Task 10 — Channel and project pages, inspector
 - [x] Task 11 — CLAUDE.md rules, gates, Playwright run, review
 
-## Review
+## Review — Phase 1 + 2
 
 ### Gates
 
@@ -90,9 +90,16 @@ Plan: `docs/superpowers/plans/2026-10-26-spark-flow-shell-data-layer.md` (execut
 10. `dir="rtl"`: sidebar measures at x 1184–1440 (right side). Verified by measurement, since the screenshot tool shows stale frames.
 11. Console: no errors or warnings on any page checked. ✓
 
+Added after the Task 11 review (same preview, 1440 light):
+
+- Check 2: Engineering `#backend` → Design → `/w/engineering` lands on `/w/engineering/c/c-backend` (last place) ✓
+- Check 3: after opening Backlog, the sidebar Nexus Core link is `/w/engineering/p/NEX/backlog` (choice remembered) ✓
+- Check 4: `?ticket=NEX-101` → Escape closes → browser back reopens `?ticket=NEX-101` with the inspector ✓
+- Check 6: reload keeps `/w/engineering/p/NEX/board?ticket=NEX-101`, the ticket is shown, and earlier writes ("Fourth check") are still in storage ✓
+
 Extra: `/w/design/c/c-general` (another workspace's channel) → "This channel doesn't exist or was removed." ✓
 
-### Left out on purpose
+### Left out on purpose — Phase 1 + 2
 
 See spec §10 (`docs/superpowers/specs/2026-10-26-spark-flow-shell-data-layer-design.md`). Later phases:
 
@@ -104,5 +111,11 @@ See spec §10 (`docs/superpowers/specs/2026-10-26-spark-flow-shell-data-layer-de
 ### Known follow-ups
 
 - FileViewer iframe sandbox (security): tighten before it renders untrusted files. Phase 3.
-- Unreproduced lost write (check 7 ⚠️): analyse the mock db write path in `src/mocks/` for a cross-tab read-modify-write race.
+- Lost write across tabs (check 7 ⚠️), explained:
+  - Root cause: Chromium caches localStorage per renderer, the mock db writes the whole document, and a fresh tab's mount-time `markRead` wrote its stale copy last, erasing the other tab's message.
+  - Mitigation done: the current user's read markers moved out of the document into per-channel keys (`spark-flow.mockdb.v1.read.<channelId>`), so `markRead` never rewrites the document.
+  - Phase 3 prerequisite, still open: serialise mock writes across tabs (an IndexedDB transaction, or a single writer tab via `navigator.locks`). Two tabs writing the document at the same moment can still lose one write; Review Focus #2 holds for sequential writes only.
+- Before the first production build: load `@/mocks` with a dynamic `import()` behind `backendOn`. Today it ships in the production bundle and opens a BroadcastChannel.
+- Extract `backendOn` / `apiUrl` to `lib/env.ts` to remove the `lib/api.ts` ↔ `lib/http.ts` import cycle.
+- Before showing the demo: fix the seed narrative contradictions (messages that cite tickets created later, two "tonight 23:00", freeze dates).
 - The mock backend's `markRead` triggers a broad refetch; narrow the invalidation.

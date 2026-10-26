@@ -10,14 +10,67 @@ const fakeSeed = (_now: Date): DbData => ({
   projects: [],
   sprints: [],
   tickets: [],
-  channels: [],
+  channels: [{ id: 'c1', workspaceId: 'w1', kind: 'channel', name: 'general' } as never],
   messages: [],
   replies: [],
-  reads: {},
+  reads: { c1: '2026-01-01T00:00:00.000Z' },
   counters: {},
 })
 
 afterEach(() => vi.restoreAllMocks())
+
+const MARK = (id: string) => `spark-flow.mockdb.v1.read.${id}`
+
+describe('read markers', () => {
+  it('are seeded into per-channel keys, not the main document', () => {
+    const storage = memoryStorage()
+    const db = createDb(storage, fakeSeed)
+    db.read()
+    expect(storage.getItem(MARK('c1'))).toBe('2026-01-01T00:00:00.000Z')
+    expect(JSON.parse(storage.getItem(DB_KEY)!)).not.toHaveProperty('reads')
+    expect(db.read().reads).toEqual({ c1: '2026-01-01T00:00:00.000Z' })
+  })
+
+  it('markRead writes only its own key and never rewrites the main document', () => {
+    const storage = memoryStorage()
+    const db = createDb(storage, fakeSeed)
+    db.read()
+    const before = storage.getItem(DB_KEY)
+    db.markRead('c1', '2026-02-02T00:00:00.000Z')
+    expect(storage.getItem(DB_KEY)).toBe(before)
+    expect(storage.getItem(MARK('c1'))).toBe('2026-02-02T00:00:00.000Z')
+    expect(db.read().reads.c1).toBe('2026-02-02T00:00:00.000Z')
+  })
+
+  it('a stale instance cannot erase another instance\'s message by marking read', () => {
+    const storage = memoryStorage()
+    const stale = createDb(storage, fakeSeed)
+    const other = createDb(storage, fakeSeed)
+    stale.read()
+    other.update((d) => { d.users[0].name = 'Fresh' })
+    stale.markRead('c1', '2026-03-03T00:00:00.000Z')
+    expect(other.read().users[0].name).toBe('Fresh')
+  })
+
+  it('reset clears every marker and reseeds them', () => {
+    const storage = memoryStorage({ [MARK('gone')]: 'x' })
+    const db = createDb(storage, fakeSeed)
+    db.markRead('c1', '2026-02-02T00:00:00.000Z')
+    storage.setItem(MARK('other'), 'y')
+    db.reset()
+    expect(storage.getItem(MARK('c1'))).toBe('2026-01-01T00:00:00.000Z')
+    expect(storage.getItem(MARK('other'))).toBeNull()
+    expect(storage.getItem(MARK('gone'))).toBeNull()
+  })
+
+  it('fall back to memory when storage cannot be written', () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const storage = { ...memoryStorage(), setItem: () => { throw new Error('QuotaExceededError') } }
+    const db = createDb(storage, fakeSeed)
+    db.markRead('c1', '2026-02-02T00:00:00.000Z')
+    expect(db.read().reads.c1).toBe('2026-02-02T00:00:00.000Z')
+  })
+})
 
 describe('createDb', () => {
   it('seeds on empty storage and saves under DB_KEY', () => {
@@ -27,8 +80,34 @@ describe('createDb', () => {
     expect(JSON.parse(storage.getItem(DB_KEY)!).version).toBe(DB_VERSION)
   })
 
-  it('reseeds when the saved version differs', () => {
-    const storage = memoryStorage({ [DB_KEY]: JSON.stringify({ ...fakeSeed(new Date()), version: 0, users: [] }) })
+  it('reseeds when the saved version is older', () => {
+    const storage = memoryStorage({ [DB_KEY]: JSON.stringify({ ...fakeSeed(new Date()), version: DB_VERSION - 1, users: [] }) })
+    expect(createDb(storage, fakeSeed).read().users).toHaveLength(1)
+    expect(JSON.parse(storage.getItem(DB_KEY)!).version).toBe(DB_VERSION)
+  })
+
+  it('keeps a newer saved version untouched, works from memory, and warns once', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const newer = JSON.stringify({ ...fakeSeed(new Date()), version: DB_VERSION + 1, users: [] })
+    const storage = memoryStorage({ [DB_KEY]: newer })
+    const db = createDb(storage, fakeSeed)
+    expect(db.read().users).toHaveLength(0)
+    db.update((d) => { d.workspaces.push({ id: 'w', name: 'W', slug: 'w' } as never) })
+    db.markRead('c1', '2026-01-01T00:00:00.000Z')
+    expect(db.read().workspaces).toHaveLength(1)
+    expect(db.read().reads).toEqual({ c1: '2026-01-01T00:00:00.000Z' })
+    expect(storage.getItem(DB_KEY)).toBe(newer)
+    expect(storage.getItem(MARK('c1'))).toBeNull() // nothing written
+    expect(warn).toHaveBeenCalledOnce()
+  })
+
+  it.each([
+    ['a missing collection', { users: undefined }],
+    ['a collection of the wrong type', { messages: {} }],
+    ['counters of the wrong type', { counters: [] }],
+  ])('reseeds when the saved document has %s', (_name, broken) => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const storage = memoryStorage({ [DB_KEY]: JSON.stringify({ ...fakeSeed(new Date()), ...broken }) })
     expect(createDb(storage, fakeSeed).read().users).toHaveLength(1)
   })
 
@@ -50,9 +129,9 @@ describe('createDb', () => {
     const storage = memoryStorage()
     const a = createDb(storage, fakeSeed)
     const b = createDb(storage, fakeSeed)
-    a.update((d) => { d.reads.c1 = 'A' })
-    b.update((d) => { d.reads.c2 = 'B' })
-    expect(a.read().reads).toEqual({ c1: 'A', c2: 'B' })
+    a.update((d) => { d.users[0].name = 'A' })
+    b.update((d) => { d.users[0].title = 'B' })
+    expect(a.read().users[0]).toMatchObject({ name: 'A', title: 'B' })
   })
 
   it('keeps working when setItem throws', () => {
@@ -99,7 +178,7 @@ describe('createDb', () => {
     const db = createDb(storage, fakeSeed)
     expect(db.read().users).toHaveLength(1)
     db.update((d) => { d.users[0].name = 'Kept' })
-    db.update((d) => { d.reads.c1 = 'T' })
+    db.markRead('c1', 'T')
     expect(db.read().users[0].name).toBe('Kept')
     expect(db.read().reads).toEqual({ c1: 'T' })
     expect(warn).toHaveBeenCalledOnce()

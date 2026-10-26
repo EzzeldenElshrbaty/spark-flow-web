@@ -5,7 +5,7 @@ import { useChannels } from '@/api/chat'
 import { useProjects } from '@/api/tickets'
 import { Logo, SidebarContent } from '@/layout/Sidebar'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
-import { landingPath, paths, savedPlace } from '@/lib/paths'
+import { landingPath, paths, savedPlace, validSavedPlace } from '@/lib/paths'
 import { useUiStore } from '@/lib/uiStore'
 
 const itemClass = 'flex w-full flex-col items-center gap-1 py-2 text-[11px] font-medium'
@@ -39,10 +39,18 @@ export function MobileBottomBar({ onOpenMore, onOpenSearch }: { onOpenMore: () =
 
   const slug = workspace?.slug
   const saved = slug ? savedPlace(slug, lastVisited) : undefined
-  const chatTo = slug && channels ? (saved?.startsWith(`/w/${slug}/c/`) ? saved : landingPath(slug, {}, channels)) : undefined
+  // A saved place is only used while it still leads somewhere (its channel or project may be gone).
+  const usable = saved && channels && projects && validSavedPlace(saved, channels, projects) ? saved : undefined
+  const chatTo = slug && channels ? (usable?.startsWith(`/w/${slug}/c/`) ? usable : landingPath(slug, {}, channels)) : undefined
   const firstProject = projects?.[0]
   const projectsTo =
-    slug && projects ? (saved?.startsWith(`/w/${slug}/p/`) ? saved : firstProject ? paths.project(slug, firstProject.key, lastProjectView[firstProject.key]) : undefined) : undefined
+    slug && projects
+      ? usable?.startsWith(`/w/${slug}/p/`)
+        ? usable
+        : firstProject
+          ? paths.project(slug, firstProject.key, lastProjectView[firstProject.key])
+          : undefined
+      : undefined
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden" aria-label="Main">
