@@ -55,7 +55,7 @@ All paths relative to `spark-flow-web/`. Branch: `feat/company-system` (spec alr
    with a link home, never a crash or a blank page. Test: Task 5 `permissions.test.ts › member cannot open database`,
    plus a browser check in Task 7.
 4. **Importing a malformed or other-version export** → rejected with a sentence, and nothing is written. Test:
-   Task 2 `db.test.ts › importAll rejects bad bundles without writing`.
+   Task 3 `db.test.ts › importAll rejects bad bundles without writing`.
 5. **A browser that still holds Phase 1+2 `localStorage` data** → keys removed, the app starts from the seed with
    no console errors. Test: Task 3 `db.test.ts › removes legacy localStorage keys on first start`, plus a browser
    check in Task 7.
