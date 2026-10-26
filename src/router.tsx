@@ -19,6 +19,7 @@ const ProjectsPage = page(() => import('@/pages/projects/ProjectsPage'), 'Projec
 const MyTasksPage = page(() => import('@/pages/tasks/MyTasksPage'), 'MyTasksPage')
 const SettingsPage = page(() => import('@/pages/settings/SettingsPage'), 'SettingsPage')
 const DatabasePage = page(() => import('@/pages/settings/DatabasePage'), 'DatabasePage')
+const RatesPage = page(() => import('@/pages/settings/RatesPage'), 'RatesPage')
 
 /** `/w/:ws/p/:projectKey` has no page of its own: it opens the Overview tab. */
 function ProjectOverviewRedirect() {
@@ -51,6 +52,7 @@ export const router = createBrowserRouter([
           { path: 'p/:projectKey/:tab', element: <ProjectTabRoute /> },
           { path: 'settings', element: <SettingsPage /> },
           { path: 'settings/database', element: <DatabasePage /> },
+          { path: 'settings/rates', element: <RatesPage /> },
         ],
       },
       // Old or mistyped links go to where you were last.

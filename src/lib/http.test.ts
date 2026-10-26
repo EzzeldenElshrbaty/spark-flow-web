@@ -42,6 +42,15 @@ describe('createHttpApi', () => {
     expect(JSON.parse(String(calls[5].init?.body))).toEqual(entry)
   })
 
+  it('maps the rates calls', async () => {
+    const { calls, fetchFn } = recordingFetch()
+    const api = createHttpApi(fetchFn)
+    await api.rates.list()
+    await api.rates.update('u 3', 320)
+    expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url}`)).toEqual(['GET /api/rates', 'PUT /api/rates/u%203'])
+    expect(JSON.parse(String(calls[1].init?.body))).toEqual({ hourlyCost: 320 })
+  })
+
   it('maps the M1 writes to their routes, methods and bodies', async () => {
     const { calls, fetchFn } = recordingFetch()
     const api = createHttpApi(fetchFn)

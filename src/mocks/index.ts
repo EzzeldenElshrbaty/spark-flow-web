@@ -8,6 +8,7 @@ import { seed } from './seed'
 import { openStore } from './store'
 import { projectsApi } from './projects'
 import { teamsApi } from './teams'
+import { ratesApi } from './rates'
 import { timeApi } from './time'
 import { createTicket, tasksApi, ticketsApi, updateTicket } from './tickets'
 import { usersApi } from './users'
@@ -42,6 +43,7 @@ export function createMockApi(db: MockDb, hub: MockHub, now: () => Date = () => 
     tasks: tasksApi(db, hub, now),
     teams: teamsApi(db),
     time: timeApi(db, hub, now),
+    rates: ratesApi(db),
     files: filesApi(db, now),
     db: dbApi(db),
   }

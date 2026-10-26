@@ -23,6 +23,7 @@ export const qk = {
   time: (projectId: string) => ['projects', 'time', projectId],
   timeAll: () => ['projects', 'time'],                    // prefix of every project's time
   myDay: () => ['time', 'me'],
+  rates: () => ['rates'],
 } as const
 
 /** The queries a live update makes stale. Typing is not data, so it touches none. */

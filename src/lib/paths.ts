@@ -20,6 +20,7 @@ export const paths = {
   project: (ws: string, key: string, tab: ProjectTab = 'overview', q?: TasksQuery) => `/w/${ws}/p/${key}/${tab}${query(q)}`,
   settings: (ws: string) => `/w/${ws}/settings`,
   database: (ws: string) => `/w/${ws}/settings/database`,
+  rates: (ws: string) => `/w/${ws}/settings/rates`,
 }
 
 /** The place last visited in a workspace, if the saved path really is inside it. */
@@ -42,7 +43,7 @@ export function landingPath(workspaceSlug: string, lastVisited: Record<string, s
   return target ? paths.channel(workspaceSlug, target.id) : paths.settings(workspaceSlug)
 }
 
-const PLACE = /^\/w\/[^/]+\/(?:c\/([^/]+)|p\/([^/]+)\/([^/?]+)(?:\?.*)?|settings(?:\/database)?|projects|tasks)$/
+const PLACE = /^\/w\/[^/]+\/(?:c\/([^/]+)|p\/([^/]+)\/([^/?]+)(?:\?.*)?|settings(?:\/(?:database|rates))?|projects|tasks)$/
 
 /**
  * Whether a saved place still leads somewhere: a channel that is still in the list, a project that still exists on

@@ -214,6 +214,8 @@ export interface Api {
     list(projectId: string): Promise<StoredFile[]>
     upload(projectId: string, file: UploadFile): Promise<StoredFile>
   }
+  /** Hourly cost per person: Admin only (spec §4.3). */
+  rates: { list(): Promise<Rate[]>; update(userId: string, hourlyCost: number): Promise<Rate> }
   /** The Database page: mock only, hidden when backendOn. */
   db: { export(): Promise<ExportBundle>; reloadSeed(): Promise<void>; reset(): Promise<void> }
 }

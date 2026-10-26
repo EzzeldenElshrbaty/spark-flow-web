@@ -107,6 +107,10 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
       stop: () => send('POST', '/api/time/stop'),
       addManual: (entry) => send('POST', '/api/time/entries', entry),
     },
+    rates: {
+      list: () => get('/api/rates'),
+      update: (userId, hourlyCost) => send('PUT', `/api/rates/${enc(userId)}`, { hourlyCost }),
+    },
     files: {
       url: (id) => Promise.resolve(apiUrl(`/api/files/${enc(id)}`)),
       list: (projectId) => get(`/api/projects/${enc(projectId)}/files`),
