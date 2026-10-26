@@ -25,3 +25,7 @@ export function sortChannels(channels: Channel[]): { channels: Channel[]; dms: C
 export function inWorkspace(channel: Pick<Channel, 'workspaceId'>, workspaceId: string | undefined): boolean {
   return Boolean(workspaceId) && channel.workspaceId === workspaceId
 }
+
+/** The line shown instead of the composer to someone who may read a channel but not write in it. */
+export const readOnlyFor = (isProjectChannel: boolean) =>
+  isProjectChannel ? 'You can read this channel. Only its project’s people can write here.' : 'You can read this channel. Only its members can write here.'

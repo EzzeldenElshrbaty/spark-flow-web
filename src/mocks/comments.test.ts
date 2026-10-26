@@ -63,6 +63,14 @@ describe('comments', () => {
     expect(made.attachments.map((a) => a.mimeType)).toEqual(['video/mp4', 'video/webm', 'video/quicktime'])
   })
 
+  it('a bug with only a file is fine; neither text nor file is refused', async () => {
+    const made = await api.comments.create({ taskKey: 'NEX-105', kind: 'bug', body: '  ', files: [png()] })
+    expect(made.body).toBe('')
+    const card = (await db.read()).messages.find((m) => m.commentId === made.id)!
+    expect(card.content).toBe('Bug on NEX-105')
+    await expect(api.comments.create({ taskKey: 'NEX-105', kind: 'bug', body: ' ', files: [] })).rejects.toMatchObject({ detail: 'Write a comment first.' })
+  })
+
   it('publishes messageReceived then commentAdded', async () => {
     const events: RealtimeEvent[] = []
     hub.subscribe((e) => events.push(e))

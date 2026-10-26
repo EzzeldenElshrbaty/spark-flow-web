@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { MessageSquare } from 'lucide-react'
 import { Link } from 'react-router'
 import { useChannel, useSendMessage } from '@/api/chat'
@@ -6,13 +7,16 @@ import { useRole } from '@/lib/useRole'
 import { paths } from '@/lib/paths'
 import { ChannelFeed } from '@/pages/chat/ChannelFeed'
 import { Composer } from '@/pages/chat/Composer'
-import { readOnlyLine, useCanPost } from '@/pages/chat/useCanPost'
+import { useCanPost, useReadOnlyLine } from '@/pages/chat/useCanPost'
 
 /** The project's channel, to read and write in; "Open in Chat" goes to the full channel. */
 export function ChatTab({ ws, project, people, usersLoading }: { ws: string; project: ProjectSummary; people: User[]; usersLoading: boolean }) {
   const channel = useChannel(project.channelId)
   const canPost = useCanPost(channel.data)
+  const readOnly = useReadOnlyLine(channel.data)
   const send = useSendMessage()
+  const { reset } = send
+  useEffect(() => reset(), [project.channelId, reset])
   const { persona } = useRole()
   return (
     <>
@@ -30,7 +34,7 @@ export function ChatTab({ ws, project, people, usersLoading }: { ws: string; pro
         meId={persona.id}
         composer={
           canPost === false ? (
-            <p className="text-sm text-fg-muted">{readOnlyLine}</p>
+            <p className="text-sm text-fg-muted">{readOnly}</p>
           ) : canPost ? (
             <Composer
               quiet

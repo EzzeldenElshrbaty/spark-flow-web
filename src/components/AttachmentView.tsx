@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { openFile } from '@/api/projects'
 import type { Attachment } from '@/api/types'
 import { FileViewer } from '@/components/ui/FileViewer'
+import { previewOf } from '@/lib/fileTypes'
 import { safeFileUrl } from '@/lib/safeFileUrl'
 
 /** A blob: address for a stored file while the component is on screen; freed when it goes. */
@@ -33,7 +34,9 @@ const sizeText = (bytes: number) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1
 function One({ attachment }: { attachment: Attachment }) {
   const { url, failed } = useFileUrl(attachment.id)
   const [viewing, setViewing] = useState(false)
-  const kind = attachment.mimeType.startsWith('image/') ? 'image' : attachment.mimeType.startsWith('video/') ? 'video' : 'file'
+  // Images the browser shows (not HEIC), and videos it can play; anything else is a file row that opens to download.
+  const playable = attachment.mimeType.startsWith('video/') && typeof document !== 'undefined' && document.createElement('video').canPlayType(attachment.mimeType) !== ''
+  const kind = previewOf(attachment.name) === 'image' ? 'image' : playable ? 'video' : 'file'
   const viewer = viewing && url && <FileViewer files={[{ name: attachment.name, url, sizeKb: Math.round(attachment.size / 1024) }]} onClose={() => setViewing(false)} />
 
   if (failed) return <p className="text-xs text-red-600 dark:text-red-400">{attachment.name} couldn't be opened.</p>

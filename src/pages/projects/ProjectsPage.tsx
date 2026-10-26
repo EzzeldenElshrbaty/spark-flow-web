@@ -229,7 +229,11 @@ export function ProjectsPage() {
           workspaceId={workspace.id}
           takenKeys={list.map((p) => p.key)}
           onClose={() => setParam('new', null)}
-          onSaved={(project) => navigate(paths.project(ws, project.key))}
+          onSaved={(project) => {
+            // Drop ?new first, so Back from the new project returns to the list, not to an empty form.
+            setParam('new', null)
+            navigate(paths.project(ws, project.key))
+          }}
         />
       )}
     </>

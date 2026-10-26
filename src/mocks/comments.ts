@@ -45,7 +45,8 @@ export function commentsApi(db: MockDb, hub: MockHub, now: () => Date): Api['com
       const before = await db.read()
       const task = findTask(before, taskKey)
       requireCan(before, 'collab.post', findProject(before, task.projectId))
-      if (!text) throw badRequest('Write a comment first.')
+      // A bug can be just a screenshot; with no file, there must be words.
+      if (!text && files.length === 0) throw badRequest('Write a comment first.')
       if (text.length > MAX_BODY) throw badRequest(`Keep the comment under ${MAX_BODY} characters.`)
       if (files.length > MAX_FILES) throw badRequest(`Add up to ${MAX_FILES} files at a time.`)
       files.forEach(checkUpload)
@@ -62,7 +63,7 @@ export function commentsApi(db: MockDb, hub: MockHub, now: () => Date): Api['com
         data.attachments.push(...attachments)
         data.comments.push(comment)
         const label = kind === 'bug' ? 'Bug' : 'Comment'
-        const card = postMessage(data, { channelId: project.channelId, content: `${label} on ${task.key}: ${text}`, attachments }, { commentId: comment.id })
+        const card = postMessage(data, { channelId: project.channelId, content: text ? `${label} on ${task.key}: ${text}` : `${label} on ${task.key}`, attachments }, { commentId: comment.id })
         // The card names its task even when the body doesn't.
         card.linkedTicketKeys = [task.key]
         return { comment: withAttachments(data, comment), card: clone(card) }

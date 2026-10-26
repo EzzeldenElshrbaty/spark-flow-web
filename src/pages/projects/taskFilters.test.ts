@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Phase, TaskView } from '@/api/types'
-import { filterTasks, groupByPhase, myOpenTasks } from './taskFilters'
+import { filterTasks, groupByPhase, myOpenTasks, validSprint, viewOf } from './taskFilters'
 
 const t = (over: Partial<TaskView>): TaskView =>
   ({ id: over.key ?? 'x', key: 'P-1', status: 'todo', phaseId: null, sprintId: null, assigneeId: null, dueAt: null, overdue: false, rank: 0, ...over }) as TaskView
@@ -40,5 +40,21 @@ describe('myOpenTasks', () => {
       t({ key: 'P-10', assigneeId: 'me' }),
     ]
     expect(myOpenTasks(tasks, 'me').map((x) => x.key)).toEqual(['P-2', 'P-3', 'P-5', 'P-4', 'P-10'])
+  })
+})
+
+describe('viewOf and validSprint', () => {
+  it('an old saved view (backlog) or none falls back to the board; the address wins', () => {
+    expect(viewOf(null, 'backlog')).toBe('board')
+    expect(viewOf(null, undefined)).toBe('board')
+    expect(viewOf(null, 'list')).toBe('list')
+    expect(viewOf('list', 'board')).toBe('list')
+    expect(viewOf('nonsense', 'list')).toBe('list')
+  })
+  it('an unknown sprint id is ignored', () => {
+    const sprints = [{ id: 's-1' }, { id: 's-2' }]
+    expect(validSprint('s-2', sprints)).toBe('s-2')
+    expect(validSprint('s-gone', sprints)).toBeNull()
+    expect(validSprint(null, sprints)).toBeNull()
   })
 })

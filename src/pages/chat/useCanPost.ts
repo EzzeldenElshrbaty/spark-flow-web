@@ -1,6 +1,7 @@
 import { useProjectSummaries } from '@/api/projects'
 import type { Channel } from '@/api/types'
 import { useMe } from '@/api/users'
+import { readOnlyFor } from '@/lib/channels'
 import { usePermission } from '@/lib/usePermission'
 
 /**
@@ -17,4 +18,8 @@ export function useCanPost(channel: Channel | undefined): boolean | null {
   return !channel.isPrivate || channel.memberIds.includes(me.id)
 }
 
-export const readOnlyLine = 'You can read this channel. Only its project’s people can write here.'
+/** The line shown instead of the composer: who can write in this channel. */
+export function useReadOnlyLine(channel: Channel | undefined) {
+  const projects = useProjectSummaries(channel?.workspaceId)
+  return readOnlyFor(Boolean(channel && projects.data?.some((p) => p.channelId === channel.id)))
+}

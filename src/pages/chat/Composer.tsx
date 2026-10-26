@@ -31,6 +31,7 @@ export function Composer({
   error,
   extra,
   quiet = false,
+  allowEmpty = false,
 }: {
   placeholder: string
   submitLabel: string
@@ -41,6 +42,8 @@ export function Composer({
   extra?: ReactNode
   /** A secondary Send, where the page already has its one primary button. */
   quiet?: boolean
+  /** Send with no text (a bug that is only a screenshot). */
+  allowEmpty?: boolean
 }) {
   const { users, projects, tasks } = useMentionDirectory()
   const [text, setText] = useState('')
@@ -84,7 +87,7 @@ export function Composer({
     })
   }
   const submit = async () => {
-    if (!text.trim() || pending) return
+    if ((!text.trim() && !allowEmpty) || pending) return
     setPending(true)
     try {
       await onSubmit(text)
@@ -170,7 +173,7 @@ export function Composer({
           onChange={(e) => {
             setText(e.target.value)
             setCaret(e.target.selectionStart)
-            setDismissedAt(null)
+            // A dismissed list stays shut for the same @word; a new @ elsewhere opens it again.
           }}
           onKeyDown={onKeyDown}
           onKeyUp={sync}
@@ -183,7 +186,7 @@ export function Composer({
             <AtSign className="size-3.5" /> to mention · Shift+Enter for a new line
           </span>
           {extra}
-          <Button variant={quiet ? 'secondary' : 'primary'} className="ms-auto" onClick={() => void submit()} disabled={pending || !text.trim()}>
+          <Button variant={quiet ? 'secondary' : 'primary'} className="ms-auto" onClick={() => void submit()} disabled={pending || (!text.trim() && !allowEmpty)}>
             <SendHorizontal className="size-4 rtl:-scale-x-100" /> {pending ? pendingLabel : submitLabel}
           </Button>
         </div>

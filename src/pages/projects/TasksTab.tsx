@@ -10,14 +10,13 @@ import { useUiStore, type ProjectView } from '@/lib/uiStore'
 import { BacklogSkeleton, ProjectBacklog } from '@/pages/projects/ProjectBacklog'
 import { BoardSkeleton, ProjectBoard } from '@/pages/projects/ProjectBoard'
 import { byOrder } from './phases'
-import { filterTasks } from './taskFilters'
+import { filterTasks, validSprint, viewOf } from './taskFilters'
 
 const views = [
   ['board', 'Board', Columns3],
   ['list', 'List', List],
 ] as const
 
-const isView = (value: string | null): value is ProjectView => value === 'board' || value === 'list'
 
 /** Board | List, the raised pill on a muted track. Each is its own address; the filters stay. */
 function ViewSwitch({ view }: { view: ProjectView }) {
@@ -50,12 +49,12 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
   const lastView = useUiStore((state) => state.lastProjectView[project.key])
   const setProjectView = useUiStore((state) => state.setProjectView)
   const asked = params.get('view')
-  const view: ProjectView = isView(asked) ? asked : (lastView ?? 'board')
+  const view: ProjectView = viewOf(asked, lastView)
   const agile = project.methodology === 'agile'
   const tickets = useTickets(project.id)
   const sprints = useSprints(agile ? project.id : undefined)
   const phase = phases.some((p) => p.id === params.get('phase')) ? params.get('phase') : null
-  const sprint = agile ? params.get('sprint') : null
+  const sprint = agile ? validSprint(params.get('sprint'), sprints.data ?? []) : null
 
   // Remember the view shown so the tab reopens it.
   useEffect(() => setProjectView(project.key, view), [view, project.key, setProjectView])

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Channel } from '@/api/types'
-import { channelLabel, inWorkspace, sortChannels } from '@/lib/channels'
+import { channelLabel, inWorkspace, readOnlyFor, sortChannels } from '@/lib/channels'
 import { seed } from '@/mocks/seed'
 
 const data = seed(new Date('2026-10-26T09:00:00Z')).data
@@ -58,5 +58,12 @@ describe('inWorkspace', () => {
   it('rejects a channel of another workspace, or when the workspace is unknown', () => {
     expect(inWorkspace(channel('general'), 'ws-design')).toBe(false)
     expect(inWorkspace(channel('general'), undefined)).toBe(false)
+  })
+})
+
+describe('readOnlyFor', () => {
+  it('says who can write, for a project channel or a private one', () => {
+    expect(readOnlyFor(true)).toBe('You can read this channel. Only its project’s people can write here.')
+    expect(readOnlyFor(false)).toBe('You can read this channel. Only its members can write here.')
   })
 })

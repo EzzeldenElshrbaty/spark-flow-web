@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useParams } from 'react-router'
 import { useChannel, useSendMessage } from '@/api/chat'
 import { useUsers } from '@/api/users'
@@ -11,7 +12,7 @@ import { useRole } from '@/lib/useRole'
 import { NotFound } from '@/pages/NotFound'
 import { ChannelFeed } from '@/pages/chat/ChannelFeed'
 import { Composer } from '@/pages/chat/Composer'
-import { readOnlyLine, useCanPost } from '@/pages/chat/useCanPost'
+import { useCanPost, useReadOnlyLine } from '@/pages/chat/useCanPost'
 import { MessageSkeleton } from '@/pages/chat/MessageRow'
 
 /** A channel or DM: its name and topic, then its messages with the newest at the bottom. Read-only in Phase 1. */
@@ -23,6 +24,10 @@ export function ChannelPage() {
   const users = useUsers(workspace?.id)
   const canPost = useCanPost(channel.data)
   const send = useSendMessage()
+  const readOnly = useReadOnlyLine(channel.data)
+  // An error belongs to the channel it happened in.
+  const { reset } = send
+  useEffect(() => reset(), [channelId, reset])
   // A channel id from another workspace is not a channel of this one: it reads as not found, and is never marked read.
   const foreign = Boolean(channel.data && workspace && !inWorkspace(channel.data, workspace.id))
 
@@ -64,7 +69,7 @@ export function ChannelPage() {
         meId={persona.id}
         composer={
           canPost === false ? (
-            <p className="text-sm text-fg-muted">{readOnlyLine}</p>
+            <p className="text-sm text-fg-muted">{readOnly}</p>
           ) : canPost ? (
             <Composer
               placeholder={`Message ${title}`}

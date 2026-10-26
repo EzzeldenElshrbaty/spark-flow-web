@@ -1,6 +1,6 @@
 import clsx from 'clsx'
 import { FileUp, X } from 'lucide-react'
-import { useId, useState, type DragEvent } from 'react'
+import { useEffect, useId, useState, type DragEvent } from 'react'
 import { acceptedFiles, acceptFiles } from '@/lib/fileTypes'
 
 const sizeText = (bytes: number) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`)
@@ -26,6 +26,10 @@ export function FileDrop({
   const inputId = useId()
   const [over, setOver] = useState(false)
   const [refused, setRefused] = useState<string[]>([])
+  // Once the form is sent and its files cleared, yesterday's "left out" lines go too.
+  useEffect(() => {
+    if (files.length === 0) setRefused([])
+  }, [files])
 
   const add = (picked: File[]) => {
     const { files: next, refused: why } = acceptFiles(multiple ? files : [], multiple ? picked : picked.slice(0, 1), multiple ? max : 1)

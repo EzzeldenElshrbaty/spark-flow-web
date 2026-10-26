@@ -29,3 +29,10 @@ export const myOpenTasks = (tasks: TaskView[], userId: string) =>
         (a.dueAt ?? '￿').localeCompare(b.dueAt ?? '￿') ||
         keys.compare(a.key, b.key),
     )
+
+/** The Tasks tab's view: the address first, else the saved one if it is still a view (old saves said 'backlog'). */
+export const viewOf = (asked: string | null, saved: string | undefined): 'board' | 'list' =>
+  asked === 'board' || asked === 'list' ? asked : saved === 'list' || saved === 'board' ? saved : 'board'
+
+/** A sprint filter only counts when that sprint exists, as an unknown phase doesn't. */
+export const validSprint = (id: string | null, sprints: { id: string }[]) => (id && sprints.some((s) => s.id === id) ? id : null)

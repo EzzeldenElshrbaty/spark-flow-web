@@ -56,6 +56,7 @@ export function TaskActivity({ task, project, users }: { task: TaskView; project
       {canPost ? (
         <Composer
           quiet
+          allowEmpty={files.length > 0}
           placeholder={kind === 'bug' ? 'What goes wrong, and how to see it' : 'Write a comment'}
           submitLabel={kind === 'bug' ? 'Report bug' : 'Post comment'}
           pendingLabel="Posting…"

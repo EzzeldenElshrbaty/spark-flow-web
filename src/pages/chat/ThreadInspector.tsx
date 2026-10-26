@@ -10,7 +10,7 @@ import { useRole } from '@/lib/useRole'
 import { NotFound } from '@/pages/NotFound'
 import { Composer } from '@/pages/chat/Composer'
 import { MessageRow } from '@/pages/chat/MessageRow'
-import { readOnlyLine, useCanPost } from '@/pages/chat/useCanPost'
+import { useCanPost, useReadOnlyLine } from '@/pages/chat/useCanPost'
 
 const isNotFound = (error: Error | null) => error instanceof ApiError && error.status === 404
 
@@ -23,6 +23,7 @@ export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: st
   const users = useUsers(channel.data?.workspaceId)
   const replies = useThread(message.data ? messageId : undefined)
   const canPost = useCanPost(channel.data)
+  const readOnly = useReadOnlyLine(channel.data)
   const reply = useReply()
 
   // A message from another workspace's channel is not found in this one.
@@ -66,7 +67,7 @@ export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: st
         )}
         <div className="mt-4">
           {canPost === false ? (
-            <p className="text-sm text-fg-muted">{readOnlyLine}</p>
+            <p className="text-sm text-fg-muted">{readOnly}</p>
           ) : canPost ? (
             <Composer quiet placeholder="Reply in the thread" submitLabel="Reply" pendingLabel="Replying…" error={reply.error as Error | null} onSubmit={(content) => reply.mutateAsync({ messageId, content })} />
           ) : null}

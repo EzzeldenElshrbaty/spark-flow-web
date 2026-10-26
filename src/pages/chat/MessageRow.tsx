@@ -29,7 +29,7 @@ function Reactions({ reactions, users }: { reactions: Reaction[]; users: User[] 
   )
 }
 
-const CARD = /^(Bug|Comment) on ([A-Z]{2,5}-\d+): /
+const CARD = /^(Bug|Comment) on ([A-Z]{2,5}-\d+)(?:: |$)/
 
 /** The card a task comment or bug posts in its project's chat: the task, the kind, the text and its files. */
 function CommentCard({ message }: { message: ChatMessage }) {

@@ -96,7 +96,11 @@ export function NotificationsMenu() {
         </div>
 
         {!data ? (
-          <p className="px-4 py-8 text-center text-sm text-fg-muted">Loading…</p>
+          <div className="space-y-3 p-4" aria-busy="true">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-12 animate-pulse rounded-lg bg-surface-muted" />
+            ))}
+          </div>
         ) : items.length === 0 ? (
           <p className="px-4 py-8 text-center text-sm text-fg-muted">{unreadOnly ? 'You’re all caught up.' : 'No mentions yet.'}</p>
         ) : (
