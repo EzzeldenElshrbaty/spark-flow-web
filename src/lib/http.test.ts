@@ -52,6 +52,17 @@ describe('createHttpApi', () => {
     expect(JSON.parse(String(calls[1].init?.body))).toEqual({ content: 'ok' })
   })
 
+  it('maps the comments calls', async () => {
+    const { calls, fetchFn } = recordingFetch()
+    const api = createHttpApi(fetchFn)
+    await api.comments.list('NEX-1')
+    await api.comments.create({ taskKey: 'NEX-1', kind: 'bug', body: 'b', files: [Object.assign(new Blob(['x']), { name: 'a.png' })] })
+    expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url}`)).toEqual(['GET /api/tasks/NEX-1/comments', 'POST /api/tasks/NEX-1/comments'])
+    const form = calls[1].init?.body as FormData
+    expect(form).toBeInstanceOf(FormData)
+    expect([form.get('kind'), form.get('body'), (form.getAll('files')[0] as File).name]).toEqual(['bug', 'b', 'a.png'])
+  })
+
   it('maps the rates calls', async () => {
     const { calls, fetchFn } = recordingFetch()
     const api = createHttpApi(fetchFn)

@@ -24,6 +24,8 @@ export const qk = {
   timeAll: () => ['projects', 'time'],                    // prefix of every project's time
   myDay: () => ['time', 'me'],
   rates: () => ['rates'],
+  comments: (taskKey: string) => ['comments', taskKey],
+  mentions: () => ['mentions', 'me'],
 } as const
 
 /** The queries a live update makes stale. Typing is not data, so it touches none. */
@@ -42,6 +44,8 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
     case 'timeLogged':
       // Hours change everywhere: my day, every task and project summary (under 'tickets'), and the Time tabs.
       return [qk.myDay(), ['tickets'], qk.timeAll()]
+    case 'commentAdded':
+      return [qk.comments(event.taskKey), qk.mentions()]
     case 'userTyping':
       return []
   }

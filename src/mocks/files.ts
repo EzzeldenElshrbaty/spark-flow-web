@@ -5,6 +5,13 @@ import { delay } from './latency'
 import { findProject } from './projects'
 import { badRequest, clone, newId, notFound, requireCan } from './shared'
 
+/** The upload rules (empty, too big, a type we don't take), with the sentence the form shows. */
+export function checkUpload(file: { size: number; name: string }) {
+  if (file.size === 0) throw badRequest('That file is empty.')
+  if (file.size > maxFileMb * 1024 * 1024) throw badRequest(`Files can be up to ${maxFileMb} MB.`)
+  if (!isAcceptedFile(file.name)) throw badRequest("That type of file can't be added.")
+}
+
 export function filesApi(db: MockDb, now: () => Date): Api['files'] {
   return {
     /** A blob: address for a stored file. The page that shows it frees it with URL.revokeObjectURL when done. */
@@ -28,9 +35,7 @@ export function filesApi(db: MockDb, now: () => Date): Api['files'] {
       await delay()
       const before = await db.read()
       requireCan(before, 'collab.post', findProject(before, projectId))
-      if (file.size === 0) throw badRequest('That file is empty.')
-      if (file.size > maxFileMb * 1024 * 1024) throw badRequest(`Files can be up to ${maxFileMb} MB.`)
-      if (!isAcceptedFile(file.name)) throw badRequest("That type of file can't be added.")
+      checkUpload(file)
       const at = now().toISOString()
       const attachment: Attachment = { id: newId('a'), name: file.name, mimeType: file.type || 'application/octet-stream', size: file.size, createdAt: at }
       // Bytes first, then the record: a record never points at bytes that weren't saved.

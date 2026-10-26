@@ -1,10 +1,13 @@
 import { MessageSquare } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router'
 import type { ChatMessage, Reaction, ThreadReply, User } from '@/api/types'
+import { AttachmentView } from '@/components/AttachmentView'
 import { MentionText } from '@/components/MentionText'
+import { Badge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
 import { formatWhen, timeAgo } from '@/lib/format'
 import { withInspector } from '@/lib/inspector'
+import { TicketKey } from '@/pages/projects/ticketPills'
 
 /** Reaction pills: the emoji is the people's own content, the count is ours. */
 function Reactions({ reactions, users }: { reactions: Reaction[]; users: User[] }) {
@@ -23,6 +26,31 @@ function Reactions({ reactions, users }: { reactions: Reaction[]; users: User[] 
         </li>
       ))}
     </ul>
+  )
+}
+
+const CARD = /^(Bug|Comment) on ([A-Z]{2,5}-\d+): /
+
+/** The card a task comment or bug posts in its project's chat: the task, the kind, the text and its files. */
+function CommentCard({ message }: { message: ChatMessage }) {
+  const [params] = useSearchParams()
+  const match = CARD.exec(message.content)
+  const bug = match?.[1] === 'Bug'
+  const key = match?.[2] ?? message.linkedTicketKeys[0]
+  const body = match ? message.content.slice(match[0].length) : message.content
+  return (
+    <div className="mt-1 rounded-xl border border-line bg-surface p-3">
+      <div className="flex items-center gap-2">
+        {key && (
+          <Link to={{ search: withInspector(params, { kind: 'ticket', key }).toString() }} className="hover:underline">
+            <TicketKey value={key} className="text-fg-secondary" />
+          </Link>
+        )}
+        <Badge tone={bug ? 'danger' : 'neutral'}>{bug ? 'Bug' : 'Comment'}</Badge>
+      </div>
+      <MentionText text={body} className="mt-1.5 text-sm text-fg" />
+      <AttachmentView attachments={message.attachments} />
+    </div>
   )
 }
 
@@ -58,7 +86,14 @@ export function MessageRow({ message, users, showThread = true }: { message: Cha
             {edited && ' · edited'}
           </time>
         </p>
-        <MentionText text={message.content} />
+        {'commentId' in message && message.commentId ? (
+          <CommentCard message={message} />
+        ) : (
+          <>
+            <MentionText text={message.content} />
+            <AttachmentView attachments={message.attachments} />
+          </>
+        )}
         <Reactions reactions={message.reactions} users={users} />
         {showThread && 'threadCount' in message && message.threadCount > 0 && <ThreadLink message={message} />}
       </div>

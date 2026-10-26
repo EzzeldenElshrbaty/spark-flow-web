@@ -1,5 +1,7 @@
+import clsx from 'clsx'
 import { Clock, Pencil, Play, Square } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
+import { useComments } from '@/api/comments'
 import { usePhases } from '@/api/projects'
 import { useProjects, useSprints, useTicket, useUpdateTask } from '@/api/tickets'
 import { useMyDay, useStartTimer, useStopTimer } from '@/api/time'
@@ -16,6 +18,7 @@ import { formatDate } from '@/lib/format'
 import { usePermission } from '@/lib/usePermission'
 import { TaskSheet } from '@/pages/projects/TaskSheet'
 import { AddTimeSheet } from '@/pages/time/AddTimeSheet'
+import { TaskActivity } from '@/pages/projects/TaskActivity'
 import { BugPill, OverduePill, PriorityPill, StatusPill, hoursLabel, statuses } from '@/pages/projects/ticketPills'
 import { NotFound } from '@/pages/NotFound'
 import { isPastDue } from '@/lib/dates'
@@ -54,6 +57,8 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
   const check = usePermission()
   const [editing, setEditing] = useState(false)
   const [addingTime, setAddingTime] = useState(false)
+  const [tab, setTab] = useState<'details' | 'activity'>('details')
+  const comments = useComments(ticketKey)
   const myDay = useMyDay()
   const start = useStartTimer()
   const stop = useStopTimer()
@@ -80,7 +85,7 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
     const phase = t.phaseId ? phases.data?.find((p) => p.id === t.phaseId) : undefined
     const canManage = project ? check('task.manage', { project }) : false
     const canStatus = project ? check('task.updateOwnStatus', { project, taskAssigneeId: t.assigneeId }) : false
-    body = (
+    const details = (
       <>
         {(t.type === 'bug' || t.overdue || canManage) && (
           <div className="mb-3 flex items-center gap-2">
@@ -162,6 +167,36 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
         {editing && project && (
           <TaskSheet project={project} phases={phases.data ?? []} sprints={sprints.data ?? []} users={users.data ?? []} task={t} onClose={() => setEditing(false)} />
         )}
+      </>
+    )
+    const count = comments.data?.length ?? 0
+    body = (
+      <>
+        <div className="-mt-1 mb-3 flex gap-1 border-b border-line" role="tablist" aria-label="Task">
+          {(
+            [
+              ['details', 'Details'],
+              ['activity', 'Activity'],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              role="tab"
+              aria-selected={tab === value}
+              onClick={() => setTab(value)}
+              className={clsx(
+                'relative flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-medium transition-colors',
+                "after:absolute after:inset-x-2 after:-bottom-px after:h-0.5 after:rounded-full after:bg-brand-500 after:transition-transform after:duration-200 after:content-['']",
+                tab === value ? 'text-fg after:scale-x-100' : 'text-fg-muted after:scale-x-0 hover:text-fg',
+              )}
+            >
+              {label}
+              {value === 'activity' && count > 0 && <span className="rounded-full bg-surface-muted px-1.5 py-0.5 text-[11px] leading-none tabular-nums text-fg-tertiary">{count}</span>}
+            </button>
+          ))}
+        </div>
+        {tab === 'details' ? details : <TaskActivity task={t} project={project} users={users.data ?? []} />}
       </>
     )
   }

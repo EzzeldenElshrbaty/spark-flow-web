@@ -109,6 +109,16 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
       stop: () => send('POST', '/api/time/stop'),
       addManual: (entry) => send('POST', '/api/time/entries', entry),
     },
+    comments: {
+      list: (taskKey) => get(`/api/tasks/${enc(taskKey)}/comments`),
+      create: ({ taskKey, kind, body, files }) => {
+        const form = new FormData()
+        form.append('kind', kind)
+        form.append('body', body)
+        for (const file of files) form.append('files', file, file.name)
+        return request(`/api/tasks/${enc(taskKey)}/comments`, { method: 'POST', body: form }, fetchFn)
+      },
+    },
     rates: {
       list: () => get('/api/rates'),
       update: (userId, hourlyCost) => send('PUT', `/api/rates/${enc(userId)}`, { hourlyCost }),

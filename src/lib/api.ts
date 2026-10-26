@@ -32,6 +32,7 @@ export const api: Api = {
   get teams() { return resolve().teams },
   get time() { return resolve().time },
   get rates() { return resolve().rates },
+  get comments() { return resolve().comments },
   get files() { return resolve().files },
   get db() { return resolve().db },
 }

@@ -142,6 +142,8 @@ export type DeliverablePatch = Partial<Pick<Deliverable, 'phaseId' | 'title' | '
 export type StoredFile = ProjectFile & { attachment: Attachment }
 /** What an upload hands over: the bytes plus the file's name (a File in the browser). */
 export type UploadFile = Blob & { name: string }
+/** A task comment or bug with its files' details. */
+export type CommentView = Comment & { attachments: Attachment[] }
 /** A project's time: every entry, and the hourly costs only for people who may see cost (else null). */
 export type ProjectTime = { entries: TimeEntry[]; rates: Rate[] | null }
 /** What a timer or a manual entry is for: a task (its project follows), or a project as a whole. */
@@ -221,6 +223,11 @@ export interface Api {
     url(id: string): Promise<string>
     list(projectId: string): Promise<StoredFile[]>
     upload(projectId: string, file: UploadFile): Promise<StoredFile>
+  }
+  /** Task comments and bugs (spec §2): each also posts a card in the project's chat. */
+  comments: {
+    list(taskKey: string): Promise<CommentView[]>
+    create(input: { taskKey: string; kind: CommentKind; body: string; files: UploadFile[] }): Promise<CommentView>
   }
   /** Hourly cost per person: Admin only (spec §4.3). */
   rates: { list(): Promise<Rate[]>; update(userId: string, hourlyCost: number): Promise<Rate> }
