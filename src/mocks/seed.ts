@@ -465,7 +465,9 @@ export function seed(now: Date): SeedResult {
 
   // Right now: three people checked in with a timer running, so the dashboard's "Checked in now" has a story. Admin,
   // Ahmed, Salma and Tarek stay free to check in live during the demo.
-  const shift = (ms: number) => new Date(now.getTime() - ms).toISOString()
+  // Never before today's midnight, so a seed made just after midnight still checks people in today.
+  const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  const shift = (ms: number) => new Date(Math.max(now.getTime() - ms, midnight)).toISOString()
   for (const [userId, taskKey] of [['u-2', 'NEX-101'], ['u-3', 'NEX-106'], ['u-6', 'NEX-107']] as const) {
     checkIns.push({ id: `ci-${userId}-now`, userId, day: localDay(now), checkedInAt: shift(3 * 3_600_000), checkedOutAt: null, plan: `${taskKey} first, then reviews.` })
     timeEntries.push({ id: `te-${userId}-now`, userId, projectId: 'p-nex', taskId: `t-${taskKey.toLowerCase()}`, startedAt: shift(3_600_000), endedAt: null, source: 'timer', note: '' })

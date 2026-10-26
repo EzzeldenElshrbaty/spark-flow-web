@@ -200,4 +200,11 @@ describe('demo story for now', () => {
     expect(data.timeEntries.filter((e) => e.endedAt === null).map((e) => e.userId).sort()).toEqual(['u-2', 'u-3', 'u-6'])
     for (const userId of ['u-1', 'u-4', 'u-5', 'u-8']) expect(data.checkIns.some((c) => c.userId === userId && c.day === today)).toBe(false)
   })
+
+  it('just after midnight the live check-ins still fall on today', () => {
+    const early = new Date(2026, 9, 28, 0, 40)
+    const { data } = seed(early)
+    for (const c of data.checkIns.filter((x) => x.id.endsWith('-now'))) expect(localDay(new Date(c.checkedInAt))).toBe(c.day)
+    for (const e of data.timeEntries.filter((x) => x.id.endsWith('-now'))) expect(localDay(new Date(e.startedAt))).toBe(localDay(early))
+  })
 })
