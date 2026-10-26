@@ -1,6 +1,6 @@
 import clsx from 'clsx'
-import { directionLabels, type ColumnSort, type SortKind } from '../../lib/sorting'
-import { selectClass } from './Field'
+import { directionLabels, type ColumnSort, type SortKind } from '@/lib/sorting'
+import { selectClass } from '@/components/ui/Field'
 
 type Option = { value: string; label: string }
 

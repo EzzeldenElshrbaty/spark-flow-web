@@ -1,10 +1,10 @@
 import clsx from 'clsx'
 import { ChevronDown, KeyRound, LogOut, Moon, Sun } from 'lucide-react'
 import { useRef, useState } from 'react'
-import { MenuPanel } from '../components/ui/Menu'
-import { roundButtonClass } from '../components/ui/styles'
-import { useRole } from '../lib/useRole'
-import { useTheme } from '../lib/useTheme'
+import { MenuPanel } from '@/components/ui/Menu'
+import { roundButtonClass } from '@/components/ui/styles'
+import { useRole } from '@/lib/useRole'
+import { useTheme } from '@/lib/useTheme'
 
 /**
  * The account menu behind the avatar: who you are, Preferences, and Change password / Log out (once sign-in exists).

@@ -1,9 +1,9 @@
 import clsx from 'clsx'
 import { Ellipsis, X } from 'lucide-react'
 import { NavLink } from 'react-router'
-import { useRole } from '../lib/useRole'
-import { allNavItems, canSee, mobilePrimaryPaths } from '../navigation'
-import { Logo, SidebarContent } from './Sidebar'
+import { useRole } from '@/lib/useRole'
+import { allNavItems, canSee, mobilePrimaryPaths } from '@/navigation'
+import { Logo, SidebarContent } from '@/layout/Sidebar'
 
 export function MobileBottomBar({ onOpenMore }: { onOpenMore: () => void }) {
   const { role } = useRole()

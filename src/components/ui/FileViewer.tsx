@@ -2,7 +2,7 @@ import clsx from 'clsx'
 import { ChevronLeft, ChevronRight, Download, FileText, Minus, Plus, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { downloadUrl, previewOf } from '../../lib/fileTypes'
+import { downloadUrl, previewOf } from '@/lib/fileTypes'
 
 type ViewedFile = { name: string; url: string; sizeKb?: number }
 

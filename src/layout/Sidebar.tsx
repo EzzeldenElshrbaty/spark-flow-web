@@ -1,7 +1,7 @@
 import clsx from 'clsx'
 import { Link, NavLink } from 'react-router'
-import { canSee, navGroups, settingsItem, type NavItem } from '../navigation'
-import { useRole } from '../lib/useRole'
+import { canSee, navGroups, settingsItem, type NavItem } from '@/navigation'
+import { useRole } from '@/lib/useRole'
 
 /** Counts beside menu items, by path (e.g. items waiting for the viewer). None yet. */
 function useBadges(): Record<string, number> {

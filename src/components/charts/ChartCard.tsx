@@ -1,8 +1,8 @@
 import clsx from 'clsx'
 import { ChartColumnBig, Table2 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
-import { Card } from '../ui/Card'
-import type { ChartTableData } from './chartUtils'
+import { Card } from '@/components/ui/Card'
+import type { ChartTableData } from '@/components/charts/chartUtils'
 
 export type LegendItem = { label: string; color: string; kind?: 'bar' | 'line' | 'dashed' | 'tick' }
 

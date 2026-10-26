@@ -1,7 +1,7 @@
 import clsx from 'clsx'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { selectClass } from './Field'
-import { pageSizes } from './styles'
+import { selectClass } from '@/components/ui/Field'
+import { pageSizes } from '@/components/ui/styles'
 
 /** Page numbers with ellipses: 1 … 4 5 6 … 50. */
 function pageList(page: number, pageCount: number): (number | '…')[] {

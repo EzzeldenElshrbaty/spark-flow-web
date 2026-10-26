@@ -1,4 +1,4 @@
-import type { Role } from './roles'
+import type { Role } from '@/lib/roles'
 
 export type Persona = { id: string; name: string; title: string; role: Role }
 

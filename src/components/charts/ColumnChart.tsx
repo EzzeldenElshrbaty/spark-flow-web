@@ -1,8 +1,8 @@
 import clsx from 'clsx'
 import { useState } from 'react'
-import { ChartTooltip, TooltipRow } from './ChartTooltip'
-import { niceTicks } from './chartUtils'
-import { useElementWidth } from './useElementWidth'
+import { ChartTooltip, TooltipRow } from '@/components/charts/ChartTooltip'
+import { niceTicks } from '@/components/charts/chartUtils'
+import { useElementWidth } from '@/components/charts/useElementWidth'
 
 export type ColumnSeries = { key: string; label: string; color: string }
 export type Column = { label: string; title: string; values: Record<string, number>; highlight?: boolean }

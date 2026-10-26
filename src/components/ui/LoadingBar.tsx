@@ -1,6 +1,6 @@
 import { useIsFetching, useIsMutating } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
-import { useTrackedLoading } from '../../lib/loading'
+import { useTrackedLoading } from '@/lib/loading'
 
 /** Loads quicker than this never show the bar, so instant pages don't flicker. */
 const showAfterMs = 200

@@ -1,6 +1,6 @@
 // Side menu of Spark Flow. Add each section here as its feature is built; `roles` limits who sees an item.
 import { House, Settings, type LucideIcon } from 'lucide-react'
-import type { Role } from './lib/roles'
+import type { Role } from '@/lib/roles'
 
 export type NavItem = {
   path: string

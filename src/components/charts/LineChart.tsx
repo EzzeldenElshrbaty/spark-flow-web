@@ -1,7 +1,7 @@
 import { useState, type KeyboardEvent, type PointerEvent } from 'react'
-import { ChartTooltip, TooltipRow } from './ChartTooltip'
-import { compactNumber, niceTicks } from './chartUtils'
-import { useElementWidth } from './useElementWidth'
+import { ChartTooltip, TooltipRow } from '@/components/charts/ChartTooltip'
+import { compactNumber, niceTicks } from '@/components/charts/chartUtils'
+import { useElementWidth } from '@/components/charts/useElementWidth'
 
 export type LineSeries = {
   key: string

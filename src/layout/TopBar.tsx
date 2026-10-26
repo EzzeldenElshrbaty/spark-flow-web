@@ -1,7 +1,7 @@
 import { Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
-import { DesktopSearch, PhoneSearch } from './GlobalSearch'
-import { NotificationsMenu } from './NotificationsMenu'
-import { UserMenu } from './UserMenu'
+import { DesktopSearch, PhoneSearch } from '@/layout/GlobalSearch'
+import { NotificationsMenu } from '@/layout/NotificationsMenu'
+import { UserMenu } from '@/layout/UserMenu'
 
 export function TopBar({
   onOpenMenu,

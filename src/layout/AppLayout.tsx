@@ -1,8 +1,8 @@
 import { Suspense, useState } from 'react'
 import { Outlet } from 'react-router'
-import { MobileBottomBar, MobileDrawer } from './MobileNav'
-import { Sidebar } from './Sidebar'
-import { TopBar } from './TopBar'
+import { MobileBottomBar, MobileDrawer } from '@/layout/MobileNav'
+import { Sidebar } from '@/layout/Sidebar'
+import { TopBar } from '@/layout/TopBar'
 
 export function AppLayout() {
   const [collapsed, setCollapsed] = useState(false)

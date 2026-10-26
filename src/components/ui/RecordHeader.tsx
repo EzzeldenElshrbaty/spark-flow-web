@@ -1,8 +1,8 @@
 import clsx from 'clsx'
 import { MoreHorizontal, type LucideIcon } from 'lucide-react'
 import { useRef, useState, type ReactNode } from 'react'
-import { Button } from './Button'
-import { MenuPanel } from './Menu'
+import { Button } from '@/components/ui/Button'
+import { MenuPanel } from '@/components/ui/Menu'
 
 /** `disabledHint` disables the action and explains why (tooltip). */
 export type RecordAction = { label: string; icon: LucideIcon; onSelect: () => void; danger?: boolean; disabledHint?: string }

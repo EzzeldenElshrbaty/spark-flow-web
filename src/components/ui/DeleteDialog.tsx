@@ -1,9 +1,9 @@
 import { useMutation } from '@tanstack/react-query'
 import { TriangleAlert } from 'lucide-react'
 import { useState } from 'react'
-import { Button } from './Button'
-import { Field, inputClass } from './Field'
-import { Sheet } from './Sheet'
+import { Button } from '@/components/ui/Button'
+import { Field, inputClass } from '@/components/ui/Field'
+import { Sheet } from '@/components/ui/Sheet'
 
 /**
  * Management deletes a lead, opportunity or client for good. The person types the record's number (or the client's

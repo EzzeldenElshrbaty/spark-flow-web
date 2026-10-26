@@ -1,6 +1,6 @@
 import { Construction } from 'lucide-react'
-import { PageHeader } from '../components/ui/PageHeader'
-import type { NavItem } from '../navigation'
+import { PageHeader } from '@/components/ui/PageHeader'
+import type { NavItem } from '@/navigation'
 
 /** A menu section that isn't built yet: its title and what it will hold. */
 export function PlaceholderPage({ item }: { item: NavItem }) {

@@ -1,7 +1,7 @@
 import clsx from 'clsx'
 import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react'
 import { useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
-import { nextColumnSort, type ColumnSort, type SortKind } from '../../lib/sorting'
+import { nextColumnSort, type ColumnSort, type SortKind } from '@/lib/sorting'
 
 export type Column<T> = {
   id: string

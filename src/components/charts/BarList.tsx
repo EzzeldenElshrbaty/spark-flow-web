@@ -1,6 +1,6 @@
 import { useState, type FocusEvent, type MouseEvent, type ReactNode } from 'react'
-import { ChartTooltip, TooltipRow } from './ChartTooltip'
-import { useElementWidth } from './useElementWidth'
+import { ChartTooltip, TooltipRow } from '@/components/charts/ChartTooltip'
+import { useElementWidth } from '@/components/charts/useElementWidth'
 
 export type BarRow = {
   label: string

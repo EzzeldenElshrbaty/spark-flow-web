@@ -3,9 +3,9 @@ import { LayoutGrid, Search, X, Zap, type LucideIcon } from 'lucide-react'
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router'
-import { roundButtonClass, roundButtonFill } from '../components/ui/styles'
-import { useRole } from '../lib/useRole'
-import { findShortcuts, shortcutsFor } from './searchShortcuts'
+import { roundButtonClass, roundButtonFill } from '@/components/ui/styles'
+import { useRole } from '@/lib/useRole'
+import { findShortcuts, shortcutsFor } from '@/layout/searchShortcuts'
 
 // TODO(api): when Spark Flow has records, add them below the pages and actions from the server, as Spark CRM's
 // GlobalSearch does (design/reference-code/src/layout/GlobalSearch.tsx).

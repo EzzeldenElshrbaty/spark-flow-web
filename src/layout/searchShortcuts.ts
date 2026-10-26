@@ -2,8 +2,8 @@
 // do there. Each role only gets the pages its menu shows and the actions it may take. An action opens its form where
 // it can (?new=1) or the page, tab or filter where it's done.
 import type { LucideIcon } from 'lucide-react'
-import type { Role } from '../lib/roles'
-import { allNavItems, canSee, settingsItem } from '../navigation'
+import type { Role } from '@/lib/roles'
+import { allNavItems, canSee, settingsItem } from '@/navigation'
 
 export type Shortcut = { id: string; title: string; subtitle: string; link: string; icon?: LucideIcon; keywords: string[] }
 

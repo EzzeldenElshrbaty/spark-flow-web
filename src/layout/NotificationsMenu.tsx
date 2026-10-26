@@ -3,11 +3,11 @@ import clsx from 'clsx'
 import { Bell, Info, type LucideIcon } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { MenuPanel } from '../components/ui/Menu'
-import { roundButtonClass, roundButtonFill } from '../components/ui/styles'
-import { timeAgo } from '../lib/format'
-import { useRole } from '../lib/useRole'
-import { notificationsApi, type AppNotification, type NotificationKind } from '../api/notifications'
+import { MenuPanel } from '@/components/ui/Menu'
+import { roundButtonClass, roundButtonFill } from '@/components/ui/styles'
+import { timeAgo } from '@/lib/format'
+import { useRole } from '@/lib/useRole'
+import { notificationsApi, type AppNotification, type NotificationKind } from '@/api/notifications'
 
 const kindStyle: Record<NotificationKind, { icon: LucideIcon; tone: string }> = {
   update: { icon: Info, tone: 'bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300' },
