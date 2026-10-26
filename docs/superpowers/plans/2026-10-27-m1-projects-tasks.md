@@ -162,6 +162,7 @@ tasks: { create(input: NewTicket): Promise<TaskView>; update(key, patch: TicketP
 teams: { list(workspaceId): Promise<Team[]> }
 files: { url(id); upload(projectId: string, file: File): Promise<ProjectFile & { attachment: Attachment }>; list(projectId): Promise<(ProjectFile & { attachment: Attachment })[]> }
 ```
+- `createMockApi(db, hub, now: () => Date = () => new Date())` passes `now` to every derived value, so tests can inject a fixed clock.
 - `tickets.list` / `tickets.get` return `TaskView`.
 - `tickets.projects` stays, as an alias of `projects.list`, for Phase 1+2 callers.
 - **Types:**
