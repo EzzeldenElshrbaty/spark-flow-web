@@ -17,7 +17,7 @@ let n = 0
 
 beforeEach(() => {
   latency.min = latency.max = 0
-  db = createDb(createMemoryStore(), (now) => ({ data: seed(now), files: {} }))
+  db = createDb(createMemoryStore(), seed)
   hub = createMockHub(`test-chat-${++n}`, null)
   api = createMockApi(db, hub)
   events = []

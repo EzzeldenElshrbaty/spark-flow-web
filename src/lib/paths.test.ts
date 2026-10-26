@@ -3,7 +3,7 @@ import type { Channel, Project } from '@/api/types'
 import { landingPath, paths, validSavedPlace } from '@/lib/paths'
 import { seed } from '@/mocks/seed'
 
-const data = seed(new Date('2026-10-26T09:00:00Z'))
+const data = seed(new Date('2026-10-26T09:00:00Z')).data
 const toChannel = (c: (typeof data.channels)[number]): Channel => ({ ...c, unreadCount: 0 })
 const engineering = data.channels.filter((c) => c.workspaceId === 'ws-eng').map(toChannel)
 const design = data.channels.filter((c) => c.workspaceId === 'ws-design').map(toChannel)

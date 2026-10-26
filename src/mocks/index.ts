@@ -1,6 +1,6 @@
 import type { Api, ChatMessage, NewTicket, ThreadReply, Ticket, TicketPatch } from '@/api/types'
 import { addReply, chatApi, sendMessage, type AddReplyInput, type SendMessageInput } from './chat'
-import { createDb, removeLegacyStorage, type MockDb, type SeedResult } from './db'
+import { createDb, removeLegacyStorage, type MockDb } from './db'
 import { dbApi } from './dbApi'
 import { filesApi } from './files'
 import { mockHub, type MockHub } from './realtime'
@@ -39,9 +39,6 @@ export function createMockApi(db: MockDb, _hub: MockHub): Api {
   }
 }
 
-// Until the seed ships file bytes (M0 Task 4), it hands over the document alone.
-const seedResult = (now: Date): SeedResult => ({ data: seed(now), files: {} })
-
 /** Reading these browser properties can throw when storage is blocked; then they count as missing. */
 function safely<T>(read: () => T): T | undefined {
   try {
@@ -60,7 +57,7 @@ function lazyDb(): MockDb {
   const ready = () =>
     (opening ??= (async () => {
       removeLegacyStorage(safely(() => window.localStorage))
-      return createDb(await openStore(safely(() => globalThis.indexedDB)), seedResult)
+      return createDb(await openStore(safely(() => globalThis.indexedDB)), seed)
     })())
   return {
     read: () => ready().then((db) => db.read()),

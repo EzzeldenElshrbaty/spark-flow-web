@@ -17,7 +17,7 @@ let n = 0
 
 beforeEach(() => {
   latency.min = latency.max = 0
-  db = createDb(createMemoryStore(), (now) => ({ data: seed(now), files: {} }))
+  db = createDb(createMemoryStore(), seed)
   hub = createMockHub(`test-tickets-${++n}`, null)
   api = createMockApi(db, hub)
   events = []
@@ -50,7 +50,7 @@ describe('tickets reads', () => {
   })
 
   it('lists projects and sprints', async () => {
-    expect((await api.tickets.projects('ws-eng')).map((p) => p.key)).toEqual(['NEX', 'MOB'])
+    expect((await api.tickets.projects('ws-eng')).map((p) => p.key)).toEqual(['NEX', 'MOB', 'ELM', 'SEL'])
     const sprints = await api.tickets.sprints('p-nex')
     expect(sprints.length).toBeGreaterThan(0)
     expect(sprints.every((s) => s.projectId === 'p-nex')).toBe(true)

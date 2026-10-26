@@ -3,7 +3,7 @@ import type { Channel } from '@/api/types'
 import { channelLabel, inWorkspace, sortChannels } from '@/lib/channels'
 import { seed } from '@/mocks/seed'
 
-const data = seed(new Date('2026-10-26T09:00:00Z'))
+const data = seed(new Date('2026-10-26T09:00:00Z')).data
 const users = data.users
 const me = users.find((u) => u.id === 'u-1')!
 const other = users.find((u) => u.id === 'u-2')!

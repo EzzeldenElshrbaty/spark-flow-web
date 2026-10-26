@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseTicketKeys } from './text'
+import { parseMentions, parseTicketKeys } from './text'
 
 describe('parseTicketKeys', () => {
   it('returns unique keys in the order they first appear', () => {
@@ -12,5 +12,20 @@ describe('parseTicketKeys', () => {
 
   it('returns an empty list for text without keys', () => {
     expect(parseTicketKeys('')).toEqual([])
+  })
+})
+
+describe('parseMentions', () => {
+  it('reads @all, @[Name](userId), @PROJECTKEY and @TASK-KEY once each, in order', () => {
+    expect(parseMentions('@all ship @MOB-104 then @MOB, ask @[Mariam Fathy](u-3) and @all again')).toEqual([
+      { kind: 'all', id: 'all' },
+      { kind: 'task', id: 'MOB-104' },
+      { kind: 'project', id: 'MOB' },
+      { kind: 'user', id: 'u-3' },
+    ])
+  })
+
+  it('ignores e-mail addresses, lowercase keys and bare words', () => {
+    expect(parseMentions('mail ops@spark-sys.com about @mob-1 and @everyone')).toEqual([])
   })
 })

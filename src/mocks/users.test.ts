@@ -13,7 +13,7 @@ let hub: MockHub
 beforeEach(() => {
   latency.min = latency.max = 0
   hub = createMockHub(`test-users-${Math.random()}`, null)
-  api = createMockApi(createDb(createMemoryStore(), (now) => ({ data: seed(now), files: {} })), hub)
+  api = createMockApi(createDb(createMemoryStore(), seed), hub)
 })
 afterEach(() => hub.close())
 

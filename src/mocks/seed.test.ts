@@ -1,213 +1,185 @@
 import { describe, expect, it } from 'vitest'
-import type { ChatMessage, ThreadReply } from '@/api/types'
 import { DB_VERSION } from './db'
 import { seed } from './seed'
-import { parseTicketKeys } from './text'
+import { parseMentions, parseTicketKeys } from './text'
 
-const now = new Date('2026-10-26T12:00:00Z')
-const data = seed(now)
-const DAY = 24 * 60 * 60 * 1000
-
-const ids = (rows: { id: string }[]) => rows.map((r) => r.id)
-const latest = (times: string[]) => times.reduce((a, b) => (a >= b ? a : b))
-const keyNumber = (key: string) => Number(key.split('-')[1])
+const now = new Date('2026-10-26T12:00:00Z') // a Monday
+const { data, files } = seed(now)
+const hours = (e: { startedAt: string; endedAt: string | null }) =>
+  ((e.endedAt ? new Date(e.endedAt).getTime() : now.getTime()) - new Date(e.startedAt).getTime()) / 3_600_000
 
 describe('seed', () => {
-  it('roles cover all four', () => {
-    expect(new Set(data.users.map((u) => u.role))).toEqual(new Set(['admin', 'sales', 'pm', 'member']))
-  })
-
-  it('new collections exist', () => {
-    for (const name of ['teams', 'phases', 'deliverables', 'comments', 'attachments', 'projectFiles', 'timeEntries', 'checkIns', 'rates'] as const)
-      expect(Array.isArray(data[name])).toBe(true)
-  })
-
-  it('matches the spec volumes', () => {
+  it('has the people, roles and teams of the demo story', () => {
     expect(data.version).toBe(DB_VERSION)
-    expect(data.workspaces.map((w) => w.slug)).toEqual(['engineering', 'design'])
-    expect(data.projects.map((p) => p.key)).toEqual(['NEX', 'MOB', 'BRD'])
-    expect(data.tickets.filter((t) => t.projectId !== 'p-brd').length).toBeGreaterThanOrEqual(14)
-    expect(data.tickets.filter((t) => t.projectId === 'p-brd')).toHaveLength(4)
-    expect(data.channels.filter((c) => c.kind === 'channel').map((c) => c.name)).toEqual(
-      expect.arrayContaining(['general', 'frontend-dev', 'backend', 'release-v2', 'design']))
-    expect(data.channels.filter((c) => c.kind === 'dm')).toHaveLength(3)
-    expect(data.channels.some((c) => c.isPrivate)).toBe(true)
-    expect(data.messages.length).toBeGreaterThanOrEqual(55)
-    expect(data.users).toHaveLength(8)
-  })
-
-  it('uses the fixed ids the other tasks rely on', () => {
+    expect(data.users).toHaveLength(9)
     expect(data.currentUserId).toBe('u-1')
-    expect(ids(data.users)).toEqual(['u-1', 'u-2', 'u-3', 'u-4', 'u-5', 'u-6', 'u-7', 'u-8'])
-    expect(ids(data.workspaces)).toEqual(['ws-eng', 'ws-design'])
-    expect(ids(data.projects)).toEqual(['p-nex', 'p-mob', 'p-brd'])
-    expect(data.projects.map((p) => p.workspaceId)).toEqual(['ws-eng', 'ws-eng', 'ws-design'])
-    expect(ids(data.channels)).toEqual(
-      expect.arrayContaining(['c-general', 'c-frontend', 'c-backend', 'c-release', 'c-design', 'c-dm-1', 'c-dm-2', 'c-dm-3']))
-    expect(data.channels.filter((c) => c.kind === 'dm' && c.workspaceId === 'ws-eng').length).toBeGreaterThanOrEqual(2)
-    expect(data.channels.find((c) => c.id === 'c-design')?.workspaceId).toBe('ws-design')
-    expect(data.workspaces.map((w) => w.name)).toEqual(['Spark Engineering', 'Spark Design'])
-    expect(data.projects.map((p) => p.name)).toEqual(['Nexus Core', 'Mobile App', 'Brand Refresh'])
+    const roleOf = Object.fromEntries(data.users.map((u) => [u.id, u.role]))
+    expect(roleOf['u-1']).toBe('admin')
+    expect(roleOf['u-9']).toBe('sales')
+    expect([roleOf['u-2'], roleOf['u-4']]).toEqual(['pm', 'pm'])
+    expect(new Set(data.users.map((u) => u.role))).toEqual(new Set(['admin', 'sales', 'pm', 'member']))
+    expect(data.teams.map((t) => t.id)).toEqual(['t-frontend', 't-backend', 't-mobile', 't-qa'])
+    for (const team of data.teams) for (const id of team.memberIds) expect(data.users.find((u) => u.id === id)?.teamIds).toContain(team.id)
   })
 
-  it('covers every status and priority, unassigned, unpointed and sprintless tickets', () => {
-    expect(new Set(data.tickets.map((t) => t.status))).toEqual(
-      new Set(['backlog', 'todo', 'inProgress', 'inReview', 'done']))
-    expect(new Set(data.tickets.map((t) => t.priority))).toEqual(new Set(['urgent', 'high', 'medium', 'low']))
-    expect(data.tickets.some((t) => t.assigneeId === null)).toBe(true)
-    expect(data.tickets.some((t) => t.storyPoints === null)).toBe(true)
-    expect(data.tickets.some((t) => t.sprintId === null)).toBe(true)
-    // Engineering alone covers all five statuses and four priorities.
-    const eng = data.tickets.filter((t) => t.projectId !== 'p-brd')
-    expect(new Set(eng.map((t) => t.status)).size).toBe(5)
-    expect(new Set(eng.map((t) => t.priority)).size).toBe(4)
+  it('has 4 Engineering projects in different states, plus Brand Refresh', () => {
+    const byKey = Object.fromEntries(data.projects.map((p) => [p.key, p]))
+    expect(Object.keys(byKey)).toEqual(['NEX', 'MOB', 'ELM', 'SEL', 'BRD'])
+    expect(byKey.NEX).toMatchObject({ methodology: 'agile', status: 'active', managerId: 'u-2' })
+    expect(byKey.MOB).toMatchObject({ methodology: 'waterfall', status: 'active', managerId: 'u-4' })
+    expect(byKey.ELM).toMatchObject({ methodology: 'waterfall', status: 'delivered' })
+    expect(byKey.SEL).toMatchObject({ methodology: 'waterfall', status: 'planned' })
+    expect(byKey.BRD.workspaceId).toBe('ws-design')
+    expect(byKey.MOB.dueDate < now.toISOString()).toBe(true) // MOB is late
+  })
+
+  it('gives every project phases, deliverables and 2+ tasks; sprints only on agile projects', () => {
+    for (const p of data.projects) {
+      expect(data.phases.filter((ph) => ph.projectId === p.id).length).toBeGreaterThanOrEqual(2)
+      expect(data.deliverables.filter((d) => d.projectId === p.id).length).toBeGreaterThanOrEqual(1)
+      expect(data.tickets.filter((t) => t.projectId === p.id).length).toBeGreaterThanOrEqual(2)
+      const sprints = data.sprints.filter((s) => s.projectId === p.id)
+      if (p.methodology === 'agile') expect(sprints.map((s) => s.state).sort()).toEqual(['active', 'planned'])
+      else expect(sprints).toEqual([])
+    }
+    for (const t of data.tickets) if (t.sprintId) expect(data.projects.find((p) => p.id === t.projectId)?.methodology).toBe('agile')
+    expect(data.tickets.filter((t) => t.projectId === 'p-elm').every((t) => t.status === 'done')).toBe(true)
+    expect(data.phases.filter((ph) => ph.projectId === 'p-elm').every((ph) => ph.status === 'done')).toBe(true)
+  })
+
+  it('has bugs, and MOB has overdue tasks by both rules', () => {
+    expect(data.tickets.filter((t) => t.type === 'bug').length).toBeGreaterThanOrEqual(5)
+    const mob = data.tickets.filter((t) => t.projectId === 'p-mob')
+    const pastDue = mob.filter((t) => t.status !== 'done' && t.dueAt !== null && t.dueAt < now.toISOString())
+    expect(pastDue.length).toBeGreaterThanOrEqual(1)
+    const logged = (taskId: string) => data.timeEntries.filter((e) => e.taskId === taskId).reduce((sum, e) => sum + hours(e), 0)
+    const overEstimate = mob.filter((t) => t.estimateHours !== null && logged(t.id) > t.estimateHours)
+    expect(overEstimate.map((t) => t.key)).toContain('MOB-104')
   })
 
   it('resolves every reference', () => {
-    const userIds = new Set(ids(data.users))
-    const workspaceIds = new Set(ids(data.workspaces))
-    const projectIds = new Set(ids(data.projects))
-    const sprintById = new Map(data.sprints.map((s) => [s.id, s]))
-    const channelIds = new Set(ids(data.channels))
-    const messageById = new Map(data.messages.map((m) => [m.id, m]))
-    const ticketKeys = new Set(data.tickets.map((t) => t.key))
-
-    expect(userIds.has(data.currentUserId)).toBe(true)
+    const ids = (list: { id: string }[]) => new Set(list.map((x) => x.id))
+    const users = ids(data.users), teams = ids(data.teams), projects = ids(data.projects), phases = ids(data.phases)
+    const sprints = ids(data.sprints), channels = ids(data.channels), messages = ids(data.messages)
+    const attachments = ids(data.attachments), workspaces = ids(data.workspaces)
     for (const p of data.projects) {
-      expect(workspaceIds.has(p.workspaceId)).toBe(true)
-      expect(userIds.has(p.managerId)).toBe(true)
+      expect(workspaces.has(p.workspaceId)).toBe(true)
+      expect(users.has(p.managerId)).toBe(true)
+      expect(channels.has(p.channelId)).toBe(true)
+      for (const id of p.memberIds) expect(users.has(id)).toBe(true)
+      for (const id of p.teamIds) expect(teams.has(id)).toBe(true)
     }
-    for (const s of data.sprints) expect(projectIds.has(s.projectId)).toBe(true)
+    for (const ph of data.phases) expect(projects.has(ph.projectId)).toBe(true)
+    for (const d of data.deliverables) {
+      expect(projects.has(d.projectId)).toBe(true)
+      if (d.phaseId) expect(phases.has(d.phaseId)).toBe(true)
+    }
+    for (const s of data.sprints) expect(projects.has(s.projectId)).toBe(true)
     for (const t of data.tickets) {
-      expect(projectIds.has(t.projectId)).toBe(true)
-      if (t.assigneeId) expect(userIds.has(t.assigneeId)).toBe(true)
-      expect(userIds.has(t.reporterId)).toBe(true)
-      if (t.sprintId) expect(sprintById.get(t.sprintId)?.projectId).toBe(t.projectId)
-      if (t.linkedMessageId || t.linkedChannelId) {
-        expect(messageById.get(t.linkedMessageId ?? '')?.channelId).toBe(t.linkedChannelId)
-      }
+      expect(projects.has(t.projectId)).toBe(true)
+      if (t.phaseId) expect(data.phases.find((ph) => ph.id === t.phaseId)?.projectId).toBe(t.projectId)
+      if (t.assigneeId) expect(users.has(t.assigneeId)).toBe(true)
+      expect(users.has(t.reporterId)).toBe(true)
+      if (t.sprintId) expect(sprints.has(t.sprintId)).toBe(true)
+      if (t.linkedMessageId) expect(messages.has(t.linkedMessageId)).toBe(true)
+      if (t.linkedChannelId) expect(channels.has(t.linkedChannelId)).toBe(true)
     }
-    for (const c of data.channels) {
-      expect(workspaceIds.has(c.workspaceId)).toBe(true)
-      expect(c.memberIds.length).toBeGreaterThan(0)
-      for (const id of c.memberIds) expect(userIds.has(id)).toBe(true)
-    }
+    for (const c of data.channels) for (const id of c.memberIds) expect(users.has(id)).toBe(true)
     for (const m of data.messages) {
-      expect(channelIds.has(m.channelId)).toBe(true)
-      const channel = data.channels.find((c) => c.id === m.channelId)
-      expect(channel?.memberIds).toContain(m.senderId)
-      for (const key of m.linkedTicketKeys) expect(ticketKeys.has(key)).toBe(true)
-      for (const r of m.reactions) for (const id of r.userIds) expect(userIds.has(id)).toBe(true)
+      expect(channels.has(m.channelId)).toBe(true)
+      expect(users.has(m.senderId)).toBe(true)
     }
-    for (const r of data.replies) {
-      const parent = messageById.get(r.messageId)
-      expect(parent).toBeDefined()
-      expect(r.channelId).toBe(parent?.channelId)
-      expect(userIds.has(r.senderId)).toBe(true)
-      for (const x of r.reactions) for (const id of x.userIds) expect(userIds.has(id)).toBe(true)
+    for (const r of data.replies) expect(data.messages.find((m) => m.id === r.messageId)?.channelId).toBe(r.channelId)
+    for (const c of data.comments) {
+      expect(data.tickets.find((t) => t.id === c.taskId)?.projectId).toBe(c.projectId)
+      expect(users.has(c.authorId)).toBe(true)
+      for (const id of c.attachmentIds) expect(attachments.has(id)).toBe(true)
     }
-    for (const channelId of Object.keys(data.reads)) expect(channelIds.has(channelId)).toBe(true)
+    for (const f of data.projectFiles) {
+      expect(projects.has(f.projectId)).toBe(true)
+      expect(attachments.has(f.attachmentId)).toBe(true)
+    }
+    for (const a of data.attachments) expect(files[a.id]?.mimeType).toBe(a.mimeType)
+    for (const e of data.timeEntries) {
+      expect(users.has(e.userId)).toBe(true)
+      expect(data.tickets.find((t) => t.id === e.taskId)?.projectId).toBe(e.projectId)
+    }
+    for (const r of data.rates) expect(users.has(r.userId)).toBe(true)
+    expect(users.has(data.currentUserId)).toBe(true)
   })
 
-  it('has unique ids and ticket keys numbered from 101 per project', () => {
-    for (const rows of [data.users, data.workspaces, data.projects, data.sprints, data.tickets, data.channels]) {
-      expect(new Set(ids(rows)).size).toBe(rows.length)
+  it('has unique ids and keys numbered from 101 per project', () => {
+    for (const list of [data.users, data.projects, data.phases, data.tickets, data.channels, data.messages, data.replies, data.comments, data.timeEntries, data.checkIns]) {
+      expect(new Set(list.map((x) => x.id)).size).toBe(list.length)
     }
-    const messageAndReplyIds = [...ids(data.messages), ...ids(data.replies)]
-    expect(new Set(messageAndReplyIds).size).toBe(messageAndReplyIds.length)
-    expect(new Set(data.tickets.map((t) => t.key)).size).toBe(data.tickets.length)
-
-    for (const t of data.tickets) expect(t.key).toMatch(/^(NEX|MOB|BRD)-1\d\d$/)
     for (const p of data.projects) {
-      const own = data.tickets.filter((t) => t.projectId === p.id)
-      expect(own.every((t) => t.key.startsWith(`${p.key}-`))).toBe(true)
-      const numbers = own.map((t) => keyNumber(t.key))
+      const numbers = data.tickets.filter((t) => t.projectId === p.id).map((t) => Number(t.key.split('-')[1]))
       expect(Math.min(...numbers)).toBe(101)
       expect(data.counters[p.id]).toBe(Math.max(...numbers) + 1)
     }
-    expect(Object.keys(data.counters).sort()).toEqual(['p-brd', 'p-mob', 'p-nex'])
   })
 
-  it('keeps derived fields consistent', () => {
+  it('never mentions a ticket before it exists', () => {
+    const created = new Map(data.tickets.map((t) => [t.key, t.createdAt]))
+    const said = [...data.messages, ...data.replies, ...data.comments.map((c) => ({ ...c, content: c.body }))]
+    for (const item of said) {
+      for (const key of parseTicketKeys(item.content)) {
+        expect(created.has(key), `${key} in ${item.id}`).toBe(true)
+        expect(created.get(key)! <= item.createdAt, `${key} mentioned in ${item.id} before it was created`).toBe(true)
+      }
+    }
+    for (const c of data.comments) expect(created.get(data.tickets.find((t) => t.id === c.taskId)!.key)! <= c.createdAt).toBe(true)
+  })
+
+  it('keeps derived chat fields consistent', () => {
     for (const m of data.messages) {
-      const replies = data.replies.filter((r) => r.messageId === m.id)
-      expect(m.threadCount).toBe(replies.length)
-      expect(m.lastReplyAt).toBe(replies.length ? latest(replies.map((r) => r.createdAt)) : null)
+      const own = data.replies.filter((r) => r.messageId === m.id)
+      expect(m.threadCount).toBe(own.length)
       expect(m.linkedTicketKeys).toEqual(parseTicketKeys(m.content))
+      expect(m.mentions).toEqual(parseMentions(m.content))
     }
+    expect(data.messages.some((m) => m.mentions.some((x) => x.kind === 'all'))).toBe(true)
     for (const c of data.channels) {
-      const times = [
-        ...data.messages.filter((m) => m.channelId === c.id).map((m) => m.createdAt),
-        ...data.replies.filter((r) => r.channelId === c.id).map((r) => r.createdAt),
-      ]
-      expect(c.lastMessageAt).toBe(times.length ? latest(times) : null)
+      const times = data.messages.filter((m) => m.channelId === c.id).map((m) => m.createdAt)
+      expect(new Set(times).size).toBe(times.length) // no two messages in a channel at the same moment
     }
   })
 
-  it('has one active and one planned sprint per project', () => {
-    for (const p of data.projects) {
-      const own = data.sprints.filter((s) => s.projectId === p.id)
-      expect(own.filter((s) => s.state === 'active')).toHaveLength(1)
-      expect(own.filter((s) => s.state === 'planned')).toHaveLength(1)
-      const active = own.find((s) => s.state === 'active')!
-      const planned = own.find((s) => s.state === 'planned')!
-      expect(active.startDate <= now.toISOString() && now.toISOString() <= active.endDate).toBe(true)
-      expect(planned.startDate > active.endDate).toBe(true)
+  it('logs a working week: Sun–Thu only, no overlaps, nothing running, all before now', () => {
+    expect(new Set(data.checkIns.map((c) => c.day)).size).toBe(5)
+    for (const e of data.timeEntries) {
+      expect(e.endedAt).not.toBeNull()
+      expect(e.endedAt! <= now.toISOString()).toBe(true)
+      expect([5, 6]).not.toContain(new Date(e.startedAt).getUTCDay())
     }
+    for (const user of data.users) {
+      const mine = data.timeEntries.filter((e) => e.userId === user.id).sort((a, b) => (a.startedAt < b.startedAt ? -1 : 1))
+      for (let i = 1; i < mine.length; i++) expect(mine[i - 1].endedAt! <= mine[i].startedAt).toBe(true)
+    }
+    expect(data.timeEntries.some((e) => e.source === 'manual')).toBe(true)
+    for (const c of data.checkIns) expect(data.checkIns.filter((x) => x.userId === c.userId && x.day === c.day)).toHaveLength(1)
   })
 
-  it('puts every message within the last 7 days', () => {
-    const oldest = new Date(now.getTime() - 7 * DAY).toISOString()
-    const newest = now.toISOString()
-    for (const row of [...data.messages, ...data.replies]) {
-      expect(row.createdAt >= oldest).toBe(true)
-      expect(row.createdAt <= newest).toBe(true)
-    }
+  it('has rates for everyone, between 180 and 650 EGP an hour', () => {
+    expect(data.rates.map((r) => r.userId).sort()).toEqual(data.users.map((u) => u.id).sort())
+    for (const r of data.rates) expect(r.hourlyCost >= 180 && r.hourlyCost <= 650).toBe(true)
   })
 
-  it('leaves exactly 3 messages unread in #frontend-dev and 1 in one DM', () => {
+  it('ships real file bytes: a PDF, a PNG and a text file', () => {
+    expect(atob(files['a-mob-scope'].base64).startsWith('%PDF-')).toBe(true)
+    expect(atob(files['a-shot-105'].base64).startsWith('\x89PNG')).toBe(true)
+    expect(atob(files['a-mob-checklist'].base64)).toContain('Release 2.4.0 checklist')
+    for (const a of data.attachments) expect(a.size).toBe(atob(files[a.id].base64).length)
+  })
+
+  it('leaves exactly 3 messages unread in #frontend-dev and 1 in one DM, all from others', () => {
     const unread = (channelId: string) =>
-      data.messages.filter(
-        (m) => m.channelId === channelId && m.createdAt > data.reads[channelId] && m.senderId !== data.currentUserId,
-      )
+      data.messages.filter((m) => m.channelId === channelId && m.createdAt > (data.reads[channelId] ?? '') && m.senderId !== data.currentUserId)
     expect(unread('c-frontend')).toHaveLength(3)
-    const dmUnread = data.channels.filter((c) => c.kind === 'dm').map((c) => unread(c.id).length)
-    expect(dmUnread.filter((n) => n > 0)).toEqual([1])
-    for (const c of data.channels) {
-      if (c.id !== 'c-frontend' && c.kind !== 'dm') expect(unread(c.id)).toHaveLength(0)
-      expect(typeof data.reads[c.id]).toBe('string')
-      expect(data.reads[c.id] <= now.toISOString()).toBe(true)
-    }
+    expect(data.channels.filter((c) => c.kind === 'dm').map((c) => unread(c.id).length).filter((n) => n > 0)).toEqual([1])
   })
 
-  it('has threads, reactions, ticket mentions and one ticket linked back to its message', () => {
-    expect(data.messages.filter((m) => m.linkedTicketKeys.length > 0).length).toBeGreaterThanOrEqual(8)
-    const threads = data.messages.filter((m) => m.threadCount > 0)
-    expect(threads).toHaveLength(4)
-    for (const m of threads) {
-      expect(m.threadCount).toBeGreaterThanOrEqual(2)
-      expect(m.threadCount).toBeLessThanOrEqual(5)
-    }
-    expect(data.messages.filter((m) => m.reactions.length > 0).length).toBeGreaterThanOrEqual(6)
-    expect(data.tickets.filter((t) => t.linkedMessageId !== null)).toHaveLength(1)
-  })
-
-  it('orders time sensibly', () => {
-    const messageById = new Map<string, ChatMessage>(data.messages.map((m) => [m.id, m]))
-    for (const r of data.replies as ThreadReply[]) {
-      expect(r.createdAt > messageById.get(r.messageId)!.createdAt).toBe(true)
-    }
-    for (const t of data.tickets) {
-      expect(t.createdAt <= t.updatedAt).toBe(true)
-      expect(t.updatedAt <= now.toISOString()).toBe(true)
-      if (t.linkedMessageId) expect(t.createdAt > messageById.get(t.linkedMessageId)!.createdAt).toBe(true)
-    }
-  })
-
-  it('is deterministic for a given now and shifts with it', () => {
-    expect(seed(now)).toEqual(data)
-    const later = seed(new Date(now.getTime() + DAY))
-    expect(later.messages[0].id).toBe(data.messages[0].id)
-    expect(later.messages[0].createdAt).not.toBe(data.messages[0].createdAt)
+  it('is deterministic for a given now', () => {
+    expect(seed(now)).toEqual(seed(now))
   })
 })
