@@ -43,8 +43,8 @@ export function HomePage() {
   return (
     <>
       <PageHeader title={persona.name ? greeting(now, persona.name) : 'Home'} subtitle={loading ? undefined : subtitle} />
-      <div className="grid gap-5 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+        <div className="min-w-0 lg:col-span-2">
           {day.isError ? (
             <QueryError what="Your day" onRetry={() => void day.refetch()} />
           ) : loading ? (
@@ -53,7 +53,7 @@ export function HomePage() {
             <CheckInCard day={day.data} tasks={mine} label={label} />
           )}
         </div>
-        <Card>
+        <Card className="min-w-0">
           <CardHeader title="Due today and overdue" />
           {projects.isError || tasks.isError ? (
             <div className="p-5">

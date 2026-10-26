@@ -52,7 +52,8 @@ export function TimerPill() {
     <>
       <Dot />
       {task && <bdi dir="ltr" className="font-mono text-xs">{task.key}</bdi>}
-      <span className="max-w-48 truncate">{label}</span>
+      {/* The title only where the top bar has room for it beside the search box; the key and clock always show. */}
+      <span className={clsx('max-w-48 truncate', task && 'hidden xl:inline')}>{label}</span>
       <span className="tabular-nums">{clock}</span>
     </>
   )

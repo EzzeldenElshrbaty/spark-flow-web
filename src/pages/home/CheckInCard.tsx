@@ -154,7 +154,8 @@ export function CheckInCard({ day, tasks, label }: { day: MyDay; tasks: TaskView
       />
       <div className="space-y-4 p-5">
         <p className="whitespace-pre-line text-sm text-fg-secondary">{checkIn.plan}</p>
-        {!out && <TimerRow day={day} tasks={tasks} label={label} />}
+        {/* After check-out a timer can still be started from a task; it shows here so it can be stopped. */}
+        {(!out || day.running) && <TimerRow day={day} tasks={tasks} label={label} />}
         <Entries day={day} label={label} />
         {!out && (
           <div className="flex items-center justify-end gap-2 border-t border-line-subtle pt-4">

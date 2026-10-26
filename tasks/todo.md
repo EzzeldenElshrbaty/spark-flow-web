@@ -188,3 +188,35 @@ Plan: `docs/superpowers/plans/2026-10-27-m1-projects-tasks.md` (executed inline)
 
 ### Left for later milestones
 - M2 time logging (timer, manual), M3 chat writing and mentions, M4 dashboard.
+
+---
+
+# M2 — Time
+
+Plan: `docs/superpowers/plans/2026-10-27-m2-time.md` (executed inline)
+
+## Plan
+
+- [x] Task 1 — Time API: check-in, one running timer, manual entries
+- [x] Task 2 — Rates API and the Hourly cost page
+- [x] Task 3 — Time hooks, live clock and the timer bar
+- [x] Task 4 — Add time, and timer controls on tasks
+- [x] Task 5 — Home / My day, and its navigation
+- [x] Task 6 — Verify, docs
+
+## Review — M2
+
+### Gates
+- `npm test`: 248 passed. `npm run build:prototype`: passes. `npm run lint`: clean. Seed reloaded before the checks.
+
+### Browser checks (preview pane; it was about 1:30 AM locally, so manual time went on yesterday)
+1. Admin: `/` → `/w/engineering` Home, lit in the sidebar ✓. Checked in with a plan ✓. Start timer on NEX-101 (pill NEX-101), then NEX-102 → pill NEX-102 and NEX-101's entry closed ✓. Add time 07:00–08:00 yesterday on NEX ✓; the same window again → "That overlaps time you already logged." ✓. Check out → "Checked out at 1:29 AM" ✓. NEX on Projects 115h · EGP 38,200 → 116h · EGP 38,854 ✓
+2. Member (Tarek) at 390px: checked in with MOB-104; the phone timer bar sits right above the bottom nav (bar 744–788, nav from 787) and `--timer-bar` is set ✓; bottom bar is Home · Projects · Chat · More ✓; `/settings/rates` → "You don't have access to hourly costs." ✓. As Ahmed (PM) on MOB, the RecordHeader action bar ends exactly where the timer bar starts (744) ✓. A done task (MOB-101, MOB-105) has no Start timer ✓
+3. Admin, Hourly cost: Mariam 300 → 500 saved; NEX cost EGP 38,854 → 46,354 (her 37.5 h × 200) ✓
+4. Two tabs: tab B showed tab A's running MOB-103; starting MOB-102 in tab B moved tab A's bar to MOB-102 without a reload ✓
+5. Reload with a timer running: the clock went on from its true start (0:00:16 after a reload at ~0:00:10), not from zero ✓
+6. 390px, light and dark, LTR and RTL: Home, Hourly cost and Add time have no sideways scroll ✓ (Home first overflowed by 132px: grid columns got `min-w-0`). No console errors ✓
+   - Found and fixed: a timer started after check-out was hidden on the checked-out card (it now shows with Stop); on a 1024px desktop the pill squeezed the search box (the task title now shows from `xl`; key and clock always).
+
+### Left for later milestones
+- M3 chat writing, mentions and the Home mentions card; M4 dashboard (checked in now) and Time & cost page.
