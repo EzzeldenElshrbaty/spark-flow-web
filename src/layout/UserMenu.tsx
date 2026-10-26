@@ -17,6 +17,8 @@ export function UserMenu() {
   const [open, setOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
 
+  // The account loads after the shell: until the name is known, the avatar is a pulse placeholder.
+  const loaded = Boolean(persona.name)
   const initials = persona.name
     .split(' ')
     .map((part) => part[0])
@@ -33,17 +35,27 @@ export function UserMenu() {
         onClick={() => setOpen((value) => !value)}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`Account menu for ${persona.name}`}
+        aria-label={loaded ? `Account menu for ${persona.name}` : 'Account menu'}
         className="group flex items-center gap-2.5 rounded-full focus-visible:outline-none"
       >
         {/* Same circle as the notifications button, filled with the initials. */}
-        <span className={clsx(roundButtonClass, 'bg-ink-800 text-xs font-semibold text-white hover:bg-ink-700 group-focus-visible:ring-2 group-focus-visible:ring-brand-500 dark:bg-surface-strong')}>
+        <span
+          className={clsx(
+            roundButtonClass,
+            'text-xs font-semibold group-focus-visible:ring-2 group-focus-visible:ring-brand-500',
+            loaded ? 'bg-ink-800 text-white hover:bg-ink-700 dark:bg-surface-strong' : 'animate-pulse bg-surface-strong',
+          )}
+        >
           {initials}
         </span>
-        <span className="hidden text-start leading-tight xl:block">
-          <span className="block text-sm font-medium text-fg">{persona.name}</span>
-          <span className="block text-xs text-fg-muted">{persona.title}</span>
-        </span>
+        {loaded ? (
+          <span className="hidden text-start leading-tight xl:block">
+            <span className="block text-sm font-medium text-fg">{persona.name}</span>
+            <span className="block text-xs text-fg-muted">{persona.title}</span>
+          </span>
+        ) : (
+          <span className="hidden h-8 w-28 animate-pulse rounded-md bg-surface-strong xl:block" aria-hidden />
+        )}
         <ChevronDown className={clsx('hidden size-4 text-fg-muted transition-transform sm:block', open && 'rotate-180')} />
       </button>
 

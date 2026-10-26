@@ -4,30 +4,42 @@ import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type R
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router'
 import { roundButtonClass, roundButtonFill } from '@/components/ui/styles'
+import { useChannels } from '@/api/chat'
+import { useProjects } from '@/api/tickets'
+import { useUsers } from '@/api/users'
+import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { useRole } from '@/lib/useRole'
-import { findShortcuts, shortcutsFor } from '@/layout/searchShortcuts'
+import { findShortcuts, shortcutsFor, workspaceShortcuts } from '@/layout/searchShortcuts'
 
-// TODO(api): when Spark Flow has records, add them below the pages and actions from the server, as Spark CRM's
-// GlobalSearch does (design/reference-code/src/layout/GlobalSearch.tsx).
+// TODO(api): search messages and tickets on the server too, as Spark CRM's GlobalSearch does for its records
+// (design/reference-code/src/layout/GlobalSearch.tsx). For now it finds pages and the open workspace's channels, DMs and projects.
 
 /** Fewer letters than this match too much to be useful. */
 const minSearchLength = 2
 
-const searchLabel = 'Search pages and actions'
+const searchLabel = 'Search pages, channels and projects'
 
 type Hit = { id: string; title: string; subtitle: string; link: string; icon?: LucideIcon }
 /** A block of results: pages or actions. */
 type Group = { kind: string; label: string; icon: LucideIcon; total: number; hits: Hit[] }
 
-/** Pages and actions this role can use, as soon as something is typed. */
+/** Pages and actions this role can use, plus the open workspace's channels, DMs and projects, as soon as something is typed. */
 function useSearch(term: string) {
-  const { role } = useRole()
-  const all = useMemo(() => shortcutsFor(role), [role])
+  const { role, persona } = useRole()
+  const { workspace } = useCurrentWorkspace()
+  const channels = useChannels(workspace?.id).data
+  const projects = useProjects(workspace?.id).data
+  const users = useUsers(workspace?.id).data
+  const all = useMemo(() => {
+    const base = shortcutsFor(role, workspace?.slug ?? null)
+    if (!workspace) return base
+    return { ...base, pages: [...base.pages, ...workspaceShortcuts(workspace, channels ?? [], projects ?? [], users ?? [], persona.id)] }
+  }, [role, workspace, channels, projects, users, persona.id])
   const typed = term.trim()
   const groups = useMemo(() => {
     const found = typed.length >= minSearchLength ? findShortcuts(all, typed) : { pages: [], actions: [] }
     return [
-      ...(found.pages.length ? [{ kind: 'pages', label: 'Pages', icon: LayoutGrid, total: found.pages.length, hits: found.pages }] : []),
+      ...(found.pages.length ? [{ kind: 'pages', label: 'Go to', icon: LayoutGrid, total: found.pages.length, hits: found.pages }] : []),
       ...(found.actions.length ? [{ kind: 'actions', label: 'Actions', icon: Zap, total: found.actions.length, hits: found.actions }] : []),
     ]
   }, [all, typed])
@@ -108,7 +120,7 @@ function Option({ id, active, onPick, children }: { id: string; active: boolean;
 }
 
 function Status({ term, empty }: { term: string; empty: boolean }) {
-  if (term.trim().length < minSearchLength) return <p className="px-4 py-6 text-center text-sm text-fg-muted">Search pages and actions.</p>
+  if (term.trim().length < minSearchLength) return <p className="px-4 py-6 text-center text-sm text-fg-muted">Search pages, channels and projects.</p>
   if (empty) return <p className="px-4 py-6 text-center text-sm text-fg-muted">Nothing matches “{term.trim()}”.</p>
   return null
 }
@@ -194,7 +206,7 @@ export function DesktopSearch() {
         }}
         onFocus={() => setOpen(true)}
         onKeyDown={keys.onKeyDown}
-        placeholder="Search pages and actions…"
+        placeholder="Search pages, channels, projects…"
         className="w-full rounded-lg border border-line bg-surface-sunken py-2 ps-9 pe-3 text-sm placeholder:text-fg-subtle focus:border-brand-500 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent-soft"
       />
       {open && term.trim() && (
@@ -208,14 +220,13 @@ export function DesktopSearch() {
 }
 
 /** Phones: a round search button that opens search full screen. */
-export function PhoneSearch() {
-  const [open, setOpen] = useState(false)
+export function PhoneSearch({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className={clsx(roundButtonClass, roundButtonFill, 'text-fg-tertiary md:hidden')} aria-label="Search" title="Search">
+      <button type="button" onClick={() => onOpenChange(true)} className={clsx(roundButtonClass, roundButtonFill, 'text-fg-tertiary md:hidden')} aria-label="Search" title="Search">
         <Search className="size-[18px]" />
       </button>
-      {open && createPortal(<SearchScreen onClose={() => setOpen(false)} />, document.body)}
+      {open && createPortal(<SearchScreen onClose={() => onOpenChange(false)} />, document.body)}
     </>
   )
 }

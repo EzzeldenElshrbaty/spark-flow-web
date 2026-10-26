@@ -23,7 +23,7 @@ export function NotificationsMenu() {
   const triggerRef = useRef<HTMLButtonElement>(null)
   const key = ['notifications', persona.id]
   // Refreshed every minute and on every open, like a push from the server would; quietly, without the top loading bar.
-  const { data } = useQuery({ queryKey: key, queryFn: () => notificationsApi.list(persona.id), refetchInterval: 120_000, meta: { silent: true } })
+  const { data } = useQuery({ queryKey: key, queryFn: () => notificationsApi.list(persona.id), refetchInterval: 120_000, meta: { silent: true }, enabled: Boolean(persona.id) })
   const markRead = useMutation({
     mutationFn: (ids: string[]) => notificationsApi.markRead(persona.id, ids),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),

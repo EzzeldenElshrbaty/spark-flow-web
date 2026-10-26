@@ -1,37 +1,67 @@
 import clsx from 'clsx'
-import { Ellipsis, X } from 'lucide-react'
-import { NavLink } from 'react-router'
-import { useRole } from '@/lib/useRole'
-import { allNavItems, canSee, mobilePrimaryPaths } from '@/navigation'
+import { Ellipsis, FolderKanban, MessagesSquare, Search, X, type LucideIcon } from 'lucide-react'
+import { NavLink, useMatch } from 'react-router'
+import { useChannels } from '@/api/chat'
+import { useProjects } from '@/api/tickets'
 import { Logo, SidebarContent } from '@/layout/Sidebar'
+import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
+import { landingPath, paths, savedPlace } from '@/lib/paths'
+import { useUiStore } from '@/lib/uiStore'
 
-export function MobileBottomBar({ onOpenMore }: { onOpenMore: () => void }) {
-  const { role } = useRole()
-  // The first four pinned items this role can open.
-  const items = allNavItems.filter((item) => mobilePrimaryPaths.includes(item.path) && canSee(item, role)).slice(0, 4)
+const itemClass = 'flex w-full flex-col items-center gap-1 py-2 text-[11px] font-medium'
+
+/** A bottom-bar tab that is a link; without a place to go yet (the workspace is still loading) it waits, dimmed. */
+function TabLink({ to, active, icon: Icon, label }: { to: string | undefined; active: boolean; icon: LucideIcon; label: string }) {
+  if (!to)
+    return (
+      <button type="button" disabled className={clsx(itemClass, 'text-fg-muted opacity-50')}>
+        <Icon className="size-5" />
+        {label}
+      </button>
+    )
+  return (
+    <NavLink to={to} className={clsx(itemClass, active ? 'text-accent' : 'text-fg-muted')}>
+      <Icon className="size-5" />
+      {label}
+    </NavLink>
+  )
+}
+
+/** Chat · Projects · Search · More. Chat and Projects reopen what you last had open there. */
+export function MobileBottomBar({ onOpenMore, onOpenSearch }: { onOpenMore: () => void; onOpenSearch: () => void }) {
+  const { workspace } = useCurrentWorkspace()
+  const lastVisited = useUiStore((state) => state.lastVisited)
+  const lastProjectView = useUiStore((state) => state.lastProjectView)
+  const channels = useChannels(workspace?.id).data
+  const projects = useProjects(workspace?.id).data
+  const inChat = useMatch('/w/:ws/c/*') !== null
+  const inProjects = useMatch('/w/:ws/p/*') !== null
+
+  const slug = workspace?.slug
+  const saved = slug ? savedPlace(slug, lastVisited) : undefined
+  const chatTo = slug && channels ? (saved?.startsWith(`/w/${slug}/c/`) ? saved : landingPath(slug, {}, channels)) : undefined
+  const firstProject = projects?.[0]
+  const projectsTo =
+    slug && projects ? (saved?.startsWith(`/w/${slug}/p/`) ? saved : firstProject ? paths.project(slug, firstProject.key, lastProjectView[firstProject.key]) : undefined) : undefined
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden" aria-label="Main">
       <ul className="flex">
-        {items.map((item) => {
-          const Icon = item.icon
-          return (
-            <li key={item.path} className="flex-1">
-              <NavLink
-                to={item.path}
-                end={item.path === '/'}
-                className={({ isActive }) =>
-                  clsx('flex flex-col items-center gap-1 py-2 text-[11px] font-medium', isActive ? 'text-accent' : 'text-fg-muted')
-                }
-              >
-                {Icon && <Icon className="size-5" />}
-                {item.label}
-              </NavLink>
-            </li>
-          )
-        })}
         <li className="flex-1">
-          <button type="button" onClick={onOpenMore} className="flex w-full flex-col items-center gap-1 py-2 text-[11px] font-medium text-fg-muted">
+          <TabLink to={chatTo} active={inChat} icon={MessagesSquare} label="Chat" />
+        </li>
+        <li className="flex-1">
+          <TabLink to={projectsTo} active={inProjects} icon={FolderKanban} label="Projects" />
+        </li>
+        {/* From tablet width the top bar has its own search box. */}
+        <li className="flex-1 md:hidden">
+          <button type="button" onClick={onOpenSearch} className={clsx(itemClass, 'text-fg-muted')}>
+            <Search className="size-5" />
+            Search
+          </button>
+        </li>
+        <li className="flex-1">
+          <button type="button" onClick={onOpenMore} className={clsx(itemClass, 'text-fg-muted')}>
             <Ellipsis className="size-5" />
             More
           </button>

@@ -1,5 +1,6 @@
 import { Suspense, useState } from 'react'
 import { Outlet } from 'react-router'
+import { PageSkeleton } from '@/layout/PageSkeleton'
 import { MobileBottomBar, MobileDrawer } from '@/layout/MobileNav'
 import { RealtimeBridge } from '@/layout/RealtimeBridge'
 import { Sidebar } from '@/layout/Sidebar'
@@ -10,6 +11,8 @@ export function AppLayout() {
   const collapsed = useUiStore((state) => state.sidebarCollapsed)
   const toggleSidebar = useUiStore((state) => state.toggleSidebar)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  // The phone search screen belongs to the top bar but the bottom bar opens it too, so its state lives here.
+  const [searchOpen, setSearchOpen] = useState(false)
 
   return (
     // On desktop the content floats as a rounded panel on the sidebar's colour and scrolls on its own.
@@ -22,15 +25,17 @@ export function AppLayout() {
           onOpenMenu={() => setDrawerOpen(true)}
           sidebarCollapsed={collapsed}
           onToggleSidebar={toggleSidebar}
+          searchOpen={searchOpen}
+          onSearchOpenChange={setSearchOpen}
         />
         <main className="w-full flex-1 px-4 pb-24 pt-6 md:px-6 lg:pb-10 xl:px-8">
           {/* Each page's code loads when it's first opened; this shows meanwhile (usually a blink). */}
-          <Suspense fallback={<div className="h-64 animate-pulse rounded-xl bg-surface-strong" />}>
+          <Suspense fallback={<PageSkeleton />}>
             <Outlet />
           </Suspense>
         </main>
       </div>
-      <MobileBottomBar onOpenMore={() => setDrawerOpen(true)} />
+      <MobileBottomBar onOpenMore={() => setDrawerOpen(true)} onOpenSearch={() => setSearchOpen(true)} />
       <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
     </div>
   )
