@@ -1,5 +1,6 @@
 import type { Phase, TaskView } from '@/api/types'
 import type { Stage } from '@/components/ui/StageProgress'
+import { isPastDue } from '@/lib/dates'
 
 export type PhaseStage = Stage & { phase: Phase; taskCount: number; overdue: boolean }
 
@@ -7,7 +8,7 @@ const shortDay = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { da
 
 export const byOrder = (phases: Phase[]) => [...phases].sort((a, b) => a.order - b.order)
 
-/** One stage per phase, in order: "Done", or "Due 3 Oct"; overdue when past due and not done. */
+/** One stage per phase, in order: "Done", or "Due 3 Oct"; overdue once its due day is over and it isn't done. */
 export function stagesOf(phases: Phase[], tasks: TaskView[], now: Date): PhaseStage[] {
   return byOrder(phases).map((phase) => ({
     id: phase.id,
@@ -15,7 +16,7 @@ export function stagesOf(phases: Phase[], tasks: TaskView[], now: Date): PhaseSt
     meta: phase.status === 'done' ? 'Done' : `Due ${shortDay(phase.dueDate)}`,
     phase,
     taskCount: tasks.filter((t) => t.phaseId === phase.id).length,
-    overdue: phase.status !== 'done' && new Date(phase.dueDate) < now,
+    overdue: phase.status !== 'done' && isPastDue(phase.dueDate, now),
   }))
 }
 

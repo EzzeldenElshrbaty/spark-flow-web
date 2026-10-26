@@ -2,14 +2,21 @@ import clsx from 'clsx'
 import { Plus, X } from 'lucide-react'
 import { useState } from 'react'
 import { useCreateProject, useTeams, useUpdateProject } from '@/api/projects'
-import type { Project, ProjectSummary } from '@/api/types'
+import type { Project, ProjectStatus, ProjectSummary } from '@/api/types'
 import { useUsers } from '@/api/users'
 import { Button } from '@/components/ui/Button'
 import { Field, inputClass, selectClass } from '@/components/ui/Field'
 import { Sheet } from '@/components/ui/Sheet'
 import { toLocalInput } from '@/lib/format'
+import { usePermission } from '@/lib/usePermission'
 import { keyFromName, validateProject, type ProjectFormErrors, type ProjectFormValues } from './projectForm'
 
+const statuses: [ProjectStatus, string][] = [
+  ['planned', 'Planned'],
+  ['active', 'Active'],
+  ['onHold', 'On hold'],
+  ['delivered', 'Delivered'],
+]
 const day = (iso: string) => iso.slice(0, 10)
 const toIso = (value: string) => new Date(`${value}T00:00:00.000Z`).toISOString()
 
@@ -55,6 +62,10 @@ export function ProjectSheet({
   const update = useUpdateProject()
   const [values, setValues] = useState<ProjectFormValues>(() => initial(project))
   const [keyTouched, setKeyTouched] = useState(Boolean(project))
+  const [status, setStatus] = useState<ProjectStatus>(project?.status ?? 'planned')
+  const check = usePermission()
+  // People and teams are assigned by the manager and Admin; Sales picks them only when creating (spec §4.3).
+  const canPeople = project ? check('phase.manage', { project }) : true
   const [errors, setErrors] = useState<ProjectFormErrors>({})
   const saving = create.isPending || update.isPending
   const failure = (create.error ?? update.error) as Error | null
@@ -70,8 +81,9 @@ export function ProjectSheet({
     const dates = { startDate: toIso(values.startDate), dueDate: toIso(values.dueDate) }
     const links = values.links.map((l) => ({ label: l.label.trim(), url: l.url.trim() }))
     if (project) {
-      const { key: _key, methodology: _m, ...editable } = values
-      update.mutate({ id: project.id, patch: { ...editable, ...dates, links } }, { onSuccess: onSaved })
+      const { key: _key, methodology: _m, managerId, memberIds, teamIds, ...editable } = values
+      const people = canPeople ? { managerId, memberIds, teamIds } : {}
+      update.mutate({ id: project.id, patch: { ...editable, ...people, ...dates, links, status } }, { onSuccess: onSaved })
     } else {
       create.mutate({ ...values, ...dates, links, workspaceId }, { onSuccess: onSaved })
     }
@@ -169,8 +181,20 @@ export function ProjectSheet({
           </Field>
         </div>
 
-        <Field label="Project manager" required error={errors.managerId}>
-          <select className={selectClass} value={values.managerId} aria-invalid={Boolean(errors.managerId)} onChange={(e) => set('managerId', e.target.value)}>
+        {project && (
+          <Field label="Status">
+            <select className={selectClass} value={status} onChange={(e) => setStatus(e.target.value as ProjectStatus)}>
+              {statuses.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
+
+        <Field label="Project manager" required error={errors.managerId} hint={canPeople ? undefined : 'The project manager or Admin assigns people and teams.'}>
+          <select className={selectClass} value={values.managerId} disabled={!canPeople} aria-invalid={Boolean(errors.managerId)} onChange={(e) => set('managerId', e.target.value)}>
             <option value="">Choose…</option>
             {people.map((u) => (
               <option key={u.id} value={u.id}>
@@ -185,7 +209,7 @@ export function ProjectSheet({
           <div className="grid max-h-44 gap-1 overflow-y-auto rounded-lg border border-line p-2 sm:grid-cols-2">
             {people.map((u) => (
               <label key={u.id} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-fg-secondary hover:bg-surface-muted">
-                <input type="checkbox" checked={values.memberIds.includes(u.id)} onChange={() => toggle('memberIds', u.id)} className="accent-brand-500" />
+                <input type="checkbox" disabled={!canPeople} checked={values.memberIds.includes(u.id)} onChange={() => toggle('memberIds', u.id)} className="accent-brand-500" />
                 <span className="truncate">{u.name}</span>
               </label>
             ))}
@@ -201,8 +225,9 @@ export function ProjectSheet({
                   key={t.id}
                   type="button"
                   aria-pressed={values.teamIds.includes(t.id)}
+                  disabled={!canPeople}
                   onClick={() => toggle('teamIds', t.id)}
-                  className={clsx('rounded-full px-3 py-1 text-sm ring-1', values.teamIds.includes(t.id) ? 'bg-accent-soft text-accent ring-accent-line' : 'text-fg-secondary ring-line hover:bg-surface-muted')}
+                  className={clsx('rounded-full px-3 py-1 text-sm ring-1 disabled:cursor-default disabled:opacity-60', values.teamIds.includes(t.id) ? 'bg-accent-soft text-accent ring-accent-line' : 'text-fg-secondary ring-line hover:bg-surface-muted')}
                 >
                   {t.name}
                 </button>

@@ -5,6 +5,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { formatDate } from '@/lib/format'
 import { parseInspector, withInspector } from '@/lib/inspector'
 import { BugPill, OverduePill, PriorityPill, StatusPill, TicketKey, hoursLabel } from '@/pages/projects/ticketPills'
+import { isPastDue } from '@/lib/dates'
 
 function Assignee({ name }: { name: string | null }) {
   if (!name) return <span className="size-6 shrink-0 rounded-full border border-dashed border-line-strong" title="Unassigned" aria-label="Unassigned" role="img" />
@@ -71,7 +72,7 @@ export function TicketRow({ ticket, assignee, variant, project }: { ticket: Task
           <StatusPill status={ticket.status} />
           <PriorityPill priority={ticket.priority} />
           <span className="ms-auto flex items-center gap-2 sm:ms-0">
-            <span className={clsx('w-20 text-end text-xs tabular-nums', ticket.overdue && ticket.dueAt && new Date(ticket.dueAt).getTime() < Date.now() ? 'text-red-600 dark:text-red-400' : 'text-fg-muted')}>
+            <span className={clsx('w-20 text-end text-xs tabular-nums', ticket.dueAt && ticket.status !== 'done' && isPastDue(ticket.dueAt, new Date()) ? 'text-red-600 dark:text-red-400' : 'text-fg-muted')}>
               {ticket.dueAt ? formatDate(ticket.dueAt) : '—'}
             </span>
             <span className="w-20 text-end text-xs tabular-nums text-fg-muted">{hoursLabel(ticket.loggedHours, ticket.estimateHours)}</span>

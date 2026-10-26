@@ -37,6 +37,7 @@ describe('overdue edge cases', () => {
     expect(isOverdue(task({ status: 'done', dueAt: day(-2) }), 0, now)).toBe(false) // done is never overdue
     expect(isOverdue(task({ dueAt: day(-2) }), 0, now)).toBe(true)
     expect(isOverdue(task({ dueAt: day(2) }), 0, now)).toBe(false)
+    expect(isOverdue(task({ dueAt: '2026-10-26T00:00:00.000Z' }), 0, now)).toBe(false) // due today is not overdue
     expect(isOverdue(task({ estimateHours: 4 }), 4.5, now)).toBe(true)
     expect(isOverdue(task({ estimateHours: 4 }), 4, now)).toBe(false)
     expect(isOverdue(task({ estimateHours: 0 }), 0, now)).toBe(false)

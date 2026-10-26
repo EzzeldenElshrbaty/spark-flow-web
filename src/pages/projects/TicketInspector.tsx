@@ -16,6 +16,7 @@ import { usePermission } from '@/lib/usePermission'
 import { TaskSheet } from '@/pages/projects/TaskSheet'
 import { BugPill, OverduePill, PriorityPill, StatusPill, hoursLabel, statuses } from '@/pages/projects/ticketPills'
 import { NotFound } from '@/pages/NotFound'
+import { isPastDue } from '@/lib/dates'
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -119,7 +120,7 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
             <Person name={nameOf(t.reporterId)} />
           </Field>
           <Field label="Due">
-            <span className={t.overdue && t.dueAt && new Date(t.dueAt).getTime() < Date.now() ? 'tabular-nums text-red-600 dark:text-red-400' : 'tabular-nums'}>{t.dueAt ? formatDate(t.dueAt) : '—'}</span>
+            <span className={t.dueAt && t.status !== 'done' && isPastDue(t.dueAt, new Date()) ? 'tabular-nums text-red-600 dark:text-red-400' : 'tabular-nums'}>{t.dueAt ? formatDate(t.dueAt) : '—'}</span>
           </Field>
           <Field label="Hours">
             <span className="tabular-nums">{hoursLabel(t.loggedHours, t.estimateHours)}</span>

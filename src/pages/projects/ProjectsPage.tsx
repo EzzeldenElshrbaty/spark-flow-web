@@ -16,13 +16,13 @@ import { paths } from '@/lib/paths'
 import { columnSortFrom, sortByColumn, sortParams, type SortKeys } from '@/lib/sorting'
 import { usePermission } from '@/lib/usePermission'
 import { ProjectSheet } from './ProjectSheet'
-import { isLate, projectStats, type ProjectFilter } from './projectStats'
+import { dueLate, projectStats, type ProjectFilter } from './projectStats'
 
 const tiles: [ProjectFilter, string][] = [
   ['active', 'Active'],
   ['overdue', 'Overdue'],
   ['month', 'Due this month'],
-  ['delivered', 'Delivered'],
+  ['onHold', 'On hold'],
 ]
 const isFilter = (value: string | null): value is ProjectFilter => tiles.some(([key]) => key === value)
 
@@ -112,7 +112,7 @@ export function ProjectsPage() {
       header: 'Due',
       width: 120,
       sort: 'date',
-      cell: (p) => <span className={clsx('tabular-nums', isLate(p, now) && p.status !== 'delivered' ? 'text-red-600 dark:text-red-400' : 'text-fg-secondary')}>{formatDate(p.dueDate)}</span>,
+      cell: (p) => <span className={clsx('tabular-nums', dueLate(p, now) ? 'text-red-600 dark:text-red-400' : 'text-fg-secondary')}>{formatDate(p.dueDate)}</span>,
     },
     {
       id: 'progress',
@@ -214,7 +214,7 @@ export function ProjectsPage() {
                           {p.key} · {p.clientName.trim() || '—'} · {Math.round(p.progress * 100)}%
                         </span>
                       </span>
-                      <span className={clsx('text-xs tabular-nums', isLate(p, now) ? 'text-red-600 dark:text-red-400' : 'text-fg-muted')}>{formatDate(p.dueDate)}</span>
+                      <span className={clsx('text-xs tabular-nums', dueLate(p, now) ? 'text-red-600 dark:text-red-400' : 'text-fg-muted')}>{formatDate(p.dueDate)}</span>
                     </Link>
                   </li>
                 ))}

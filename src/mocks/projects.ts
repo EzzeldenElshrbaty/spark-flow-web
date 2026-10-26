@@ -104,6 +104,11 @@ export function projectsApi(db: MockDb, now: () => Date): Pick<Api, 'projects' |
             const project = findProject(data, id)
             requireCan(data, 'project.edit', project)
             const next = { ...project, ...Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)) }
+            // Assigning people and teams is the manager's (and Admin's), not Sales' (spec §4.3).
+            const same = (x: string[], y: string[]) => [...x].sort().join() === [...y].sort().join()
+            if (next.managerId !== project.managerId || !same(next.memberIds, project.memberIds) || !same(next.teamIds, project.teamIds)) {
+              requireCan(data, 'phase.manage', project)
+            }
             if (!next.name.trim()) throw badRequest('Give the project a name.')
             checkDates(next.startDate, next.dueDate)
             Object.assign(project, next)

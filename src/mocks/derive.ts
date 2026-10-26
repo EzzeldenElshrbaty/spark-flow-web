@@ -1,6 +1,7 @@
 import type { Phase, Project, ProjectSummary, Rate, Role, TaskView, Ticket, TimeEntry } from '@/api/types'
 import { entryHours } from '@/lib/hours'
 import { can } from '@/lib/permissions'
+import { isPastDue } from '@/lib/dates'
 
 // What the server works out and never stores (spec §3). Pure: the same data and `now` always give the same answer.
 
@@ -16,7 +17,7 @@ export function loggedHours(taskId: string, entries: TimeEntry[], now: Date): nu
 /** Past its due date and not done, or past its estimate. */
 export function isOverdue(task: Ticket, logged: number, now: Date): boolean {
   if (task.status === 'done') return false
-  const late = task.dueAt !== null && new Date(task.dueAt).getTime() < now.getTime()
+  const late = task.dueAt !== null && isPastDue(task.dueAt, now)
   const over = task.estimateHours !== null && task.estimateHours > 0 && logged > task.estimateHours
   return late || over
 }

@@ -115,4 +115,14 @@ describe('teams', () => {
     expect((await api.teams.list('ws-eng')).map((t) => t.name)).toEqual(['Frontend', 'Backend', 'Mobile', 'QA'])
     await expect(api.teams.list('ws-nope')).rejects.toMatchObject({ status: 404 })
   })
+
+  it('sales edits dates and client but not people; the manager can', async () => {
+    await api.users.viewAs('u-9') // Sales
+    await expect(api.projects.update('p-mob', { managerId: 'u-2' })).rejects.toMatchObject({ status: 403 })
+    await expect(api.projects.update('p-mob', { memberIds: ['u-4'] })).rejects.toMatchObject({ status: 403 })
+    await expect(api.projects.update('p-mob', { clientName: 'Spark' })).resolves.toMatchObject({ clientName: 'Spark' })
+    await expect(api.projects.update('p-mob', { managerId: 'u-4', status: 'onHold' })).resolves.toMatchObject({ status: 'onHold' }) // unchanged people pass
+    await api.users.viewAs('u-4') // MOB's manager
+    await expect(api.projects.update('p-mob', { memberIds: ['u-4', 'u-8'] })).resolves.toMatchObject({ memberIds: ['u-4', 'u-8'] })
+  })
 })

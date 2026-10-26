@@ -9,6 +9,7 @@ import { ProgressBar } from '@/components/ui/ProgressBar'
 import { formatDate, formatMoney } from '@/lib/format'
 import { DeliverableSheet } from './DeliverableSheet'
 import { ProjectFiles } from './ProjectFiles'
+import { isPastDue } from '@/lib/dates'
 
 function Stat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: 'danger' }) {
   return (
@@ -25,7 +26,7 @@ function Deliverables({ project, phases, canEdit }: { project: ProjectSummary; p
   const update = useUpdateDeliverable()
   const [adding, setAdding] = useState(false)
   const phaseName = (id: string | null) => phases.find((p) => p.id === id)?.name ?? '—'
-  const now = Date.now()
+  const now = new Date()
   const rows = [...(deliverables.data ?? [])].sort((a, b) => (a.dueDate < b.dueDate ? -1 : 1))
 
   return (
@@ -51,7 +52,7 @@ function Deliverables({ project, phases, canEdit }: { project: ProjectSummary; p
           <ul className="divide-y divide-line-subtle">
             {rows.map((d) => {
               const done = Boolean(d.doneAt)
-              const late = !done && new Date(d.dueDate).getTime() < now
+              const late = !done && isPastDue(d.dueDate, now)
               return (
                 <li key={d.id} className="flex items-center gap-3 py-2.5">
                   <button

@@ -26,6 +26,10 @@ describe('stagesOf', () => {
   })
 })
 
+it('a phase due today is not overdue', () => {
+  expect(stagesOf([phase({ dueDate: '2026-10-26T00:00:00Z' })], [], now)[0]!.overdue).toBe(false)
+})
+
 describe('moveUp / moveDown', () => {
   const ids = ['a', 'b', 'c']
   it('swaps with the neighbour, and stays put at the ends', () => {
