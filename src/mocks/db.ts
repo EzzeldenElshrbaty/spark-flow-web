@@ -21,7 +21,7 @@ import type {
 import { ApiError } from '@/lib/apiError'
 import type { MockStore } from './store'
 
-export const DB_VERSION = 2 // 2: the company-system document (spec §3)
+export const DB_VERSION = 3 // 2: the company-system document (spec §3); 3: mention read state
 /** Phase 1+2 kept the mock database in localStorage under keys starting with this. */
 const LEGACY_PREFIX = 'spark-flow.mockdb.v1'
 
@@ -47,6 +47,8 @@ export type DbData = {
   rates: Rate[]
   /** channelId -> ISO time the current user last read it. */
   reads: Record<string, string>
+  /** userId -> ids of the mentions they have read. */
+  mentionReads: Record<string, string[]>
   counters: Record<string, number> // projectId -> next ticket number
 }
 
@@ -83,7 +85,8 @@ function hasShape(value: unknown): value is DbData {
     typeof value.currentUserId === 'string' &&
     COLLECTIONS.every((name) => Array.isArray(value[name])) &&
     isRecord(value.counters) &&
-    isRecord(value.reads)
+    isRecord(value.reads) &&
+    isRecord(value.mentionReads)
   )
 }
 

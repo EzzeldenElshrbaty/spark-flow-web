@@ -33,11 +33,11 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
   switch (event.type) {
     case 'messageReceived': {
       const { channelId } = event.message
-      return [qk.messages(channelId), qk.channelsAll(), qk.channel(channelId)]
+      return [qk.messages(channelId), qk.channelsAll(), qk.channel(channelId), qk.mentions()]
     }
     case 'replyReceived': {
       const { channelId, messageId } = event.reply
-      return [qk.replies(messageId), qk.message(messageId), qk.messages(channelId), qk.channelsAll(), qk.channel(channelId)]
+      return [qk.replies(messageId), qk.message(messageId), qk.messages(channelId), qk.channelsAll(), qk.channel(channelId), qk.mentions()]
     }
     case 'ticketUpdated':
       return [qk.tickets(event.ticket.projectId), qk.ticket(event.ticket.key)]

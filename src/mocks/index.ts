@@ -9,6 +9,7 @@ import { openStore } from './store'
 import { projectsApi } from './projects'
 import { teamsApi } from './teams'
 import { commentsApi } from './comments'
+import { mentionsApi } from './mentions'
 import { ratesApi } from './rates'
 import { timeApi } from './time'
 import { createTicket, tasksApi, ticketsApi, updateTicket } from './tickets'
@@ -46,6 +47,7 @@ export function createMockApi(db: MockDb, hub: MockHub, now: () => Date = () => 
     time: timeApi(db, hub, now),
     rates: ratesApi(db),
     comments: commentsApi(db, hub, now),
+    mentions: mentionsApi(db),
     files: filesApi(db, now),
     db: dbApi(db),
   }

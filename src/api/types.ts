@@ -144,6 +144,11 @@ export type StoredFile = ProjectFile & { attachment: Attachment }
 export type UploadFile = Blob & { name: string }
 /** A task comment or bug with its files' details. */
 export type CommentView = Comment & { attachments: Attachment[] }
+/** One mention of me: a message, a thread reply or a task comment, with where it opens. */
+export type MentionItem = {
+  id: string; source: 'message' | 'reply' | 'comment'; authorId: string; excerpt: string; createdAt: string; read: boolean
+  channelId: string | null; messageId: string | null; taskKey: string | null; projectId: string | null
+}
 /** A project's time: every entry, and the hourly costs only for people who may see cost (else null). */
 export type ProjectTime = { entries: TimeEntry[]; rates: Rate[] | null }
 /** What a timer or a manual entry is for: a task (its project follows), or a project as a whole. */
@@ -229,6 +234,8 @@ export interface Api {
     list(taskKey: string): Promise<CommentView[]>
     create(input: { taskKey: string; kind: CommentKind; body: string; files: UploadFile[] }): Promise<CommentView>
   }
+  /** Mentions of me (spec §5: the bell and Home), newest first, at most 50; read state is per person. */
+  mentions: { mine(): Promise<MentionItem[]>; markRead(ids: string[]): Promise<void> }
   /** Hourly cost per person: Admin only (spec §4.3). */
   rates: { list(): Promise<Rate[]>; update(userId: string, hourlyCost: number): Promise<Rate> }
   /** The Database page: mock only, hidden when backendOn. */

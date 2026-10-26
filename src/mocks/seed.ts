@@ -23,6 +23,7 @@ import type {
 } from '@/api/types'
 import { DB_VERSION, type SeedResult } from './db'
 import { checklistTxt, screenshotPng, scopePdf } from './seedFiles'
+import { mentionsFor } from './mentions'
 import { parseMentions, parseTicketKeys } from './text'
 
 // ── Builders and derived-field helpers ────────────────────────────────────
@@ -388,9 +389,11 @@ export function seed(now: Date): SeedResult {
     // Project channels
     msg('m-pn01', 'c-p-nex', 'u-2', ago(2, 9), '@all Build phase ends in 10 days. @NEX-101 and @NEX-105 are in review; NEX-103 shipped yesterday.'),
     msg('m-pn02', 'c-p-nex', 'u-5', ago(2, 8), 'I will run the token expiry cases on @NEX-101 first thing tomorrow.'),
+    msg('m-pn03', 'c-p-nex', 'u-5', ago(0, 5), '@[Nour El-Sayed](u-2) the 30-second window passes on staging. @NEX-101 is ready for your review.'),
+    msg('m-pn04', 'c-p-nex', 'u-2', ago(0, 3), '@[Mariam Fathy](u-3) can you take @NEX-106 today? The unread badge is next on the board.'),
     msg('m-pm01', 'c-p-mob', 'u-4', ago(1, 6), '@all Build is 5 days past its due date. @MOB-104 is over its 16-hour estimate and @MOB-103 was due yesterday.'),
     msg('m-pm02', 'c-p-mob', 'u-8', ago(1, 5), 'MOB-104: 2 offline cases left. I need 4 more hours.'),
-    msg('m-pm03', 'c-p-mob', 'u-1', ago(0, 8), '@MOB gets a new release date today. Ahmed, send me the plan before noon so I can tell the client.'),
+    msg('m-pm03', 'c-p-mob', 'u-1', ago(0, 8), '@MOB gets a new release date today. @[Ahmed Shawky](u-4), send me the plan before noon so I can tell the client.'),
     msg('m-pe01', 'c-p-elm', 'u-2', ago(20), 'The El Moasser portal is live. The client signed off on all 5 phases.', react('🎉', 'u-1', 'u-3', 'u-5', 'u-7')),
     msg('m-pe02', 'c-p-elm', 'u-1', ago(19, 20), 'Well done. Close the project after the handover training.'),
     msg('m-ps01', 'c-p-sel', 'u-9', ago(1, 4), '@all Sela signed: a booking portal for 3 branches, 90 days, kickoff in 3 days. Ahmed is the project manager.'),
@@ -510,6 +513,10 @@ export function seed(now: Date): SeedResult {
     rates,
     reads: buildReads(rawChannels.map((c) => c.id), messages, { 'c-frontend': 3, 'c-dm-2': 1 }, now),
     counters: buildCounters(projects.map((p) => p.id), tickets),
+    mentionReads: {} as Record<string, string[]>,
   }
+  // The bell starts with the last day's mentions only: everything older counts as read.
+  const dayAgo = new Date(now.getTime() - 24 * 3_600_000).toISOString()
+  for (const user of users) data.mentionReads[user.id] = mentionsFor(data, user.id).filter((m) => m.createdAt < dayAgo).map((m) => m.id)
   return { data, files: Object.fromEntries(files.map((f) => [f.attachment.id, f.bytes])) }
 }

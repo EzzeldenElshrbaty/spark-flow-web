@@ -1,41 +1,40 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import clsx from 'clsx'
-import { Bell, Info, type LucideIcon } from 'lucide-react'
+import { AtSign, Bell } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
+import { useMarkMentionsRead, useMyMentions } from '@/api/mentions'
+import { useProjectSummaries } from '@/api/projects'
+import type { MentionItem } from '@/api/types'
+import { useUsers } from '@/api/users'
 import { MenuPanel } from '@/components/ui/Menu'
 import { roundButtonClass, roundButtonFill } from '@/components/ui/styles'
+import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { timeAgo } from '@/lib/format'
+import { mentionLink } from '@/lib/mentionLink'
 import { useRole } from '@/lib/useRole'
-import { notificationsApi, type AppNotification, type NotificationKind } from '@/api/notifications'
 
-const kindStyle: Record<NotificationKind, { icon: LucideIcon; tone: string }> = {
-  update: { icon: Info, tone: 'bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300' },
-}
-
-/** The bell in the top bar: unread count, and the list as a dropdown (a bottom sheet on phones). */
+/** The bell in the top bar: mentions of me, with the unread count, as a dropdown (a bottom sheet on phones). */
 export function NotificationsMenu() {
   const { persona } = useRole()
-  const queryClient = useQueryClient()
+  const { workspace } = useCurrentWorkspace()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [unreadOnly, setUnreadOnly] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
-  const key = ['notifications', persona.id]
-  // Refreshed every minute and on every open, like a push from the server would; quietly, without the top loading bar.
-  const { data } = useQuery({ queryKey: key, queryFn: () => notificationsApi.list(persona.id), refetchInterval: 120_000, meta: { silent: true }, enabled: Boolean(persona.id) })
-  const markRead = useMutation({
-    mutationFn: (ids: string[]) => notificationsApi.markRead(persona.id, ids),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
-  })
+  const mentions = useMyMentions(Boolean(persona.id))
+  const markRead = useMarkMentionsRead()
+  const people = useUsers(workspace?.id).data ?? []
+  const projects = useProjectSummaries(workspace?.id).data ?? []
+  const data = mentions.data
+  const nameOf = (id: string) => people.find((u) => u.id === id)?.name ?? 'Someone'
 
-  const unread = data?.unread ?? 0
-  const items = (data?.items ?? []).filter((item) => !unreadOnly || !item.read)
+  const unread = (data ?? []).filter((item) => !item.read).length
+  const items = (data ?? []).filter((item) => !unreadOnly || !item.read)
 
-  const pick = (item: AppNotification) => {
+  const pick = (item: MentionItem) => {
     if (!item.read) markRead.mutate([item.id])
     setOpen(false)
-    navigate(item.link)
+    navigate(mentionLink(item, workspace?.slug ?? '', projects))
   }
 
   return (
@@ -44,7 +43,7 @@ export function NotificationsMenu() {
         ref={triggerRef}
         type="button"
         onClick={() => {
-          if (!open) queryClient.invalidateQueries({ queryKey: key })
+          if (!open) void mentions.refetch()
           setOpen((value) => !value)
         }}
         aria-haspopup="menu"
@@ -69,7 +68,7 @@ export function NotificationsMenu() {
             <button
               type="button"
               disabled={!unread}
-              onClick={() => markRead.mutate((data?.items ?? []).filter((item) => !item.read).map((item) => item.id))}
+              onClick={() => markRead.mutate((data ?? []).filter((item) => !item.read).map((item) => item.id))}
               className="text-xs font-medium text-accent hover:text-accent-strong disabled:text-fg-subtle"
             >
               Mark all as read
@@ -99,23 +98,22 @@ export function NotificationsMenu() {
         {!data ? (
           <p className="px-4 py-8 text-center text-sm text-fg-muted">Loading…</p>
         ) : items.length === 0 ? (
-          <p className="px-4 py-8 text-center text-sm text-fg-muted">{unreadOnly ? 'You’re all caught up.' : 'No notifications yet.'}</p>
+          <p className="px-4 py-8 text-center text-sm text-fg-muted">{unreadOnly ? 'You’re all caught up.' : 'No mentions yet.'}</p>
         ) : (
           <ul className="divide-y divide-line-subtle">
             {items.map((item) => {
-              const { icon: Icon, tone } = kindStyle[item.kind]
               return (
                 <li key={item.id}>
                   <button type="button" role="menuitem" onClick={() => pick(item)} className={clsx('flex w-full items-start gap-3 px-4 py-3 text-start hover:bg-surface-muted', !item.read && 'bg-accent-soft/40')}>
-                    <span className={clsx('mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full', tone)}>
-                      <Icon className="size-4" />
+                    <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+                      <AtSign className="size-4" />
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-baseline justify-between gap-2">
-                        <span className={clsx('truncate text-sm', item.read ? 'text-fg-secondary' : 'font-semibold text-fg')}>{item.title}</span>
-                        <span className="shrink-0 text-[11px] text-fg-muted">{timeAgo(item.at)}</span>
+                        <span className={clsx('truncate text-sm', item.read ? 'text-fg-secondary' : 'font-semibold text-fg')}>{nameOf(item.authorId)} mentioned you</span>
+                        <span className="shrink-0 text-[11px] text-fg-muted">{timeAgo(item.createdAt)}</span>
                       </span>
-                      <span className="mt-0.5 line-clamp-2 block text-xs text-fg-muted">{item.text}</span>
+                      <span className="mt-0.5 line-clamp-2 block text-xs text-fg-muted">{item.excerpt}</span>
                     </span>
                     {!item.read && <span className="mt-2 size-2 shrink-0 rounded-full bg-brand-500" aria-label="Unread" />}
                   </button>

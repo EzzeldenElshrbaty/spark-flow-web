@@ -26,6 +26,7 @@ const emptyData = (): DbData => ({
   checkIns: [],
   rates: [],
   reads: {},
+  mentionReads: {},
   counters: {},
 })
 
@@ -152,6 +153,8 @@ describe('createDb', () => {
       { app: 'other', version: DB_VERSION, data: emptyData() },
       { app: 'spark-flow', version: 99, data: emptyData() },
       { app: 'spark-flow', version: DB_VERSION, data: { users: 'x' } },
+      // Every collection there, but no mention read state: an export from before mentions existed.
+      { app: 'spark-flow', version: DB_VERSION, data: (({ mentionReads: _m, ...rest }) => rest)(emptyData()) },
     ])
       await expect(db.importAll(bad)).rejects.toMatchObject({ name: 'ApiError', status: 400 })
     expect(await db.read()).toEqual(before)

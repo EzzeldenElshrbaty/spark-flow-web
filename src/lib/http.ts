@@ -119,6 +119,10 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
         return request(`/api/tasks/${enc(taskKey)}/comments`, { method: 'POST', body: form }, fetchFn)
       },
     },
+    mentions: {
+      mine: () => get('/api/mentions'),
+      markRead: (ids) => send('POST', '/api/mentions/read', { ids }),
+    },
     rates: {
       list: () => get('/api/rates'),
       update: (userId, hourlyCost) => send('PUT', `/api/rates/${enc(userId)}`, { hourlyCost }),

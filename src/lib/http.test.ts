@@ -63,6 +63,15 @@ describe('createHttpApi', () => {
     expect([form.get('kind'), form.get('body'), (form.getAll('files')[0] as File).name]).toEqual(['bug', 'b', 'a.png'])
   })
 
+  it('maps the mentions calls', async () => {
+    const { calls, fetchFn } = recordingFetch()
+    const api = createHttpApi(fetchFn)
+    await api.mentions.mine()
+    await api.mentions.markRead(['m1'])
+    expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url}`)).toEqual(['GET /api/mentions', 'POST /api/mentions/read'])
+    expect(JSON.parse(String(calls[1].init?.body))).toEqual({ ids: ['m1'] })
+  })
+
   it('maps the rates calls', async () => {
     const { calls, fetchFn } = recordingFetch()
     const api = createHttpApi(fetchFn)

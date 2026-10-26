@@ -20,11 +20,12 @@ describe('qk', () => {
 describe('keysForEvent', () => {
   it('maps events to the keys to invalidate', () => {
     expect(keysForEvent({ type: 'messageReceived', message: { ...m, channelId: 'c1' } })).toEqual([
-      qk.messages('c1'), qk.channelsAll(), qk.channel('c1'),
+      qk.messages('c1'), qk.channelsAll(), qk.channel('c1'), qk.mentions(),
     ])
     expect(keysForEvent({ type: 'replyReceived', reply: { ...r, channelId: 'c1', messageId: 'm1' } })).toEqual([
-      qk.replies('m1'), qk.message('m1'), qk.messages('c1'), qk.channelsAll(), qk.channel('c1'),
+      qk.replies('m1'), qk.message('m1'), qk.messages('c1'), qk.channelsAll(), qk.channel('c1'), qk.mentions(),
     ])
+    expect(keysForEvent({ type: 'commentAdded', taskKey: 'NEX-1', projectId: 'p1' })).toEqual([qk.comments('NEX-1'), qk.mentions()])
     expect(keysForEvent({ type: 'ticketUpdated', ticket: { ...t, projectId: 'p1', key: 'NEX-1' } })).toEqual([
       qk.tickets('p1'), qk.ticket('NEX-1'),
     ])
