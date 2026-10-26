@@ -124,6 +124,23 @@ export type TicketPatch = Partial<
 >
 
 // ── The api object (src/lib/api.ts) ───────────────────────────────────────
+// ── Writes (M1) ───────────────────────────────────────────────────────────
+export type NewProject = Pick<
+  Project,
+  'workspaceId' | 'name' | 'key' | 'clientName' | 'description' | 'links' | 'managerId' | 'memberIds' | 'teamIds' | 'methodology' | 'startDate' | 'dueDate'
+>
+export type ProjectPatch = Partial<
+  Pick<Project, 'name' | 'clientName' | 'description' | 'links' | 'managerId' | 'memberIds' | 'teamIds' | 'status' | 'startDate' | 'dueDate' | 'logoFileId'>
+>
+export type NewPhase = Pick<Phase, 'projectId' | 'name' | 'startDate' | 'dueDate'>
+export type PhasePatch = Partial<Pick<Phase, 'name' | 'startDate' | 'dueDate' | 'status'>>
+export type NewDeliverable = Pick<Deliverable, 'projectId' | 'phaseId' | 'title' | 'dueDate'>
+export type DeliverablePatch = Partial<Pick<Deliverable, 'phaseId' | 'title' | 'dueDate' | 'doneAt'>>
+/** A project file with its details. */
+export type StoredFile = ProjectFile & { attachment: Attachment }
+/** What an upload hands over: the bytes plus the file's name (a File in the browser). */
+export type UploadFile = Blob & { name: string }
+
 /** Everything in the mock database, as Database → Export data downloads it. File bytes are not included (spec §10). */
 export type ExportBundle = { app: 'spark-flow'; version: number; exportedAt: string; data: unknown }
 
@@ -144,12 +161,40 @@ export interface Api {
     markRead(channelId: string): Promise<void>
   }
   tickets: {
-    projects(workspaceId: string): Promise<Project[]>
+    /** The same list as projects.list; kept for the Phase 1+2 pages. */
+    projects(workspaceId: string): Promise<ProjectSummary[]>
     sprints(projectId: string): Promise<Sprint[]>
-    list(projectId: string): Promise<Ticket[]>
-    get(key: string): Promise<Ticket>
+    list(projectId: string): Promise<TaskView[]>
+    get(key: string): Promise<TaskView>
   }
-  files: { url(id: string): Promise<string> }
+  projects: {
+    list(workspaceId: string): Promise<ProjectSummary[]>
+    get(workspaceId: string, key: string): Promise<ProjectSummary>
+    create(input: NewProject): Promise<Project>
+    update(id: string, patch: ProjectPatch): Promise<Project>
+  }
+  phases: {
+    list(projectId: string): Promise<Phase[]>
+    create(input: NewPhase): Promise<Phase>
+    update(id: string, patch: PhasePatch): Promise<Phase>
+    remove(id: string): Promise<void>
+    reorder(projectId: string, ids: string[]): Promise<Phase[]>
+  }
+  deliverables: {
+    list(projectId: string): Promise<Deliverable[]>
+    create(input: NewDeliverable): Promise<Deliverable>
+    update(id: string, patch: DeliverablePatch): Promise<Deliverable>
+  }
+  tasks: {
+    create(input: NewTicket): Promise<TaskView>
+    update(key: string, patch: TicketPatch): Promise<TaskView>
+  }
+  teams: { list(workspaceId: string): Promise<Team[]> }
+  files: {
+    url(id: string): Promise<string>
+    list(projectId: string): Promise<StoredFile[]>
+    upload(projectId: string, file: UploadFile): Promise<StoredFile>
+  }
   /** The Database page: mock only, hidden when backendOn. */
   db: { export(): Promise<ExportBundle>; reloadSeed(): Promise<void>; reset(): Promise<void> }
 }

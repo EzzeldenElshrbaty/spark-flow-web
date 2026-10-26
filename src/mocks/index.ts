@@ -6,7 +6,9 @@ import { filesApi } from './files'
 import { mockHub, type MockHub } from './realtime'
 import { seed } from './seed'
 import { openStore } from './store'
-import { createTicket, ticketsApi, updateTicket } from './tickets'
+import { projectsApi } from './projects'
+import { teamsApi } from './teams'
+import { createTicket, tasksApi, ticketsApi, updateTicket } from './tickets'
 import { usersApi } from './users'
 import { workspacesApi } from './workspaces'
 
@@ -25,16 +27,20 @@ declare global {
 }
 
 /**
- * The Api backed by the mock database. Reads wait like a network call and return copies. Writes are the
- * helpers above; they come to Api in Phases 3–4, and will publish on `_hub`.
+ * The Api backed by the mock database. Reads wait like a network call and return copies; writes check the permission
+ * table (403) and publish their event on `hub`. `now` drives every derived value, so tests can fix the clock.
  */
-export function createMockApi(db: MockDb, _hub: MockHub): Api {
+export function createMockApi(db: MockDb, hub: MockHub, now: () => Date = () => new Date()): Api {
+  const { summaries, ...projectParts } = projectsApi(db, now)
   return {
     workspaces: workspacesApi(db),
     users: usersApi(db),
     chat: chatApi(db),
-    tickets: ticketsApi(db),
-    files: filesApi(db),
+    tickets: ticketsApi(db, now, summaries),
+    ...projectParts,
+    tasks: tasksApi(db, hub, now),
+    teams: teamsApi(db),
+    files: filesApi(db, now),
     db: dbApi(db),
   }
 }

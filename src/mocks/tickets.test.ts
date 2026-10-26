@@ -102,7 +102,7 @@ describe('createTicket', () => {
       projectId: 'p-nex', status: 'inReview', rank: 1000, reporterId: 'u-1',
       linkedChannelId: 'c-backend', linkedMessageId: 'm-b01', createdAt: t.updatedAt,
     })
-    expect(await api.tickets.get(t.key)).toEqual(t)
+    expect(await api.tickets.get(t.key)).toMatchObject(t) // plus loggedHours and overdue
   })
 
   it('defaults the links to null and publishes ticketUpdated', async () => {
@@ -127,7 +127,7 @@ describe('updateTicket', () => {
     expect(t.description).toBe(before.description) // untouched fields stay
     expect(t.updatedAt > before.updatedAt).toBe(true)
     expect(t.createdAt).toBe(before.createdAt)
-    expect(await api.tickets.get('NEX-101')).toEqual(t)
+    expect(await api.tickets.get('NEX-101')).toMatchObject(t) // plus loggedHours and overdue
     expect(events).toEqual([{ type: 'ticketUpdated', ticket: t }])
   })
 

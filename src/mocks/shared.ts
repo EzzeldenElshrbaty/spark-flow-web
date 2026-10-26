@@ -1,7 +1,8 @@
 import type { User } from '@/api/types'
+import { can, type Action, type ProjectRef, type ProjectScoped } from '@/lib/permissions'
 import { ApiError } from '@/lib/apiError'
 
-export type Thing = 'Workspace' | 'User' | 'Channel' | 'Message' | 'Project' | 'Ticket' | 'File'
+export type Thing = 'Workspace' | 'User' | 'Channel' | 'Message' | 'Project' | 'Ticket' | 'File' | 'Phase' | 'Deliverable'
 
 /** The 404 the mock throws for an unknown id or key. */
 export function notFound(thing: Thing, id: string): ApiError {
@@ -34,5 +35,30 @@ export function forbidden(thing: string): ApiError {
 export function currentUser(data: { currentUserId: string; users: User[] }): User {
   const me = data.users.find((u) => u.id === data.currentUserId)
   if (!me) throw notFound('User', data.currentUserId)
+  return me
+}
+
+/** The 400 the mock throws for input it can't accept, with the sentence the form shows. */
+export function badRequest(detail: string): ApiError {
+  return new ApiError({ title: 'Bad request', status: 400, detail })
+}
+
+/** Throws 403 unless the current user may do `action` (on `project` when it is about one). */
+export function requireCan(
+  data: { currentUserId: string; users: User[]; projects: (ProjectRef & { managerId: string })[] },
+  action: Action,
+  project?: ProjectRef,
+  extra: { taskAssigneeId?: string | null } = {},
+): User {
+  const me = currentUser(data)
+  const ok = can(action as Exclude<Action, ProjectScoped>, {
+    userId: me.id,
+    role: me.role,
+    project,
+    userTeamIds: me.teamIds,
+    managesAny: data.projects.some((p) => p.managerId === me.id),
+    ...extra,
+  })
+  if (!ok) throw forbidden(project || action.startsWith('project.') ? 'this project' : 'this')
   return me
 }

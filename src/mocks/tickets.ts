@@ -1,8 +1,9 @@
 import type { Api, NewTicket, Ticket, TicketPatch, TicketStatus } from '@/api/types'
+import { taskView } from './derive'
 import type { DbData, MockDb } from './db'
 import { delay } from './latency'
 import type { MockHub } from './realtime'
-import { clone, notFound, stamp } from './shared'
+import { badRequest, clone, notFound, requireCan, stamp } from './shared'
 
 const STATUS_ORDER: TicketStatus[] = ['backlog', 'todo', 'inProgress', 'inReview', 'done']
 
@@ -11,11 +12,7 @@ const byStatusThenRank = (a: Ticket, b: Ticket) =>
 
 const ticketNumber = (t: Ticket) => Number(t.key.split('-')[1])
 
-function findProject(data: DbData, id: string) {
-  const project = data.projects.find((p) => p.id === id)
-  if (!project) throw notFound('Project', id)
-  return project
-}
+import { findProject } from './projects'
 
 function findTicket(data: DbData, key: string): Ticket {
   const ticket = data.tickets.find((t) => t.key === key)
@@ -23,14 +20,9 @@ function findTicket(data: DbData, key: string): Ticket {
   return ticket
 }
 
-export function ticketsApi(db: MockDb): Api['tickets'] {
+export function ticketsApi(db: MockDb, now: () => Date, projects: Api['tickets']['projects']): Api['tickets'] {
   return {
-    async projects(workspaceId) {
-      await delay()
-      const data = await db.read()
-      if (!data.workspaces.some((w) => w.id === workspaceId)) throw notFound('Workspace', workspaceId)
-      return data.projects.filter((p) => p.workspaceId === workspaceId)
-    },
+    projects,
     async sprints(projectId) {
       await delay()
       const data = await db.read()
@@ -41,11 +33,50 @@ export function ticketsApi(db: MockDb): Api['tickets'] {
       await delay()
       const data = await db.read()
       findProject(data, projectId)
-      return data.tickets.filter((t) => t.projectId === projectId).sort(byStatusThenRank)
+      return data.tickets.filter((t) => t.projectId === projectId).sort(byStatusThenRank).map((t) => taskView(t, data, now()))
     },
     async get(key) {
       await delay()
-      return findTicket(await db.read(), key)
+      const data = await db.read()
+      return taskView(findTicket(data, key), data, now())
+    },
+  }
+}
+
+const EDITABLE_BY_ASSIGNEE = new Set(['status'])
+
+function checkTaskInput(data: DbData, projectId: string, input: Pick<NewTicket, 'phaseId' | 'estimateHours' | 'title'>) {
+  if (input.title !== undefined && !input.title.trim()) throw badRequest('Give the task a title.')
+  if (input.phaseId && data.phases.find((p) => p.id === input.phaseId)?.projectId !== projectId) throw badRequest('That phase belongs to another project.')
+  if (input.estimateHours != null && (input.estimateHours < 0 || !Number.isFinite(input.estimateHours))) throw badRequest('The estimate is a number of hours, 0 or more.')
+}
+
+/** Task writes, checked against the permission table (spec §4.3). */
+export function tasksApi(db: MockDb, hub: MockHub, now: () => Date): Api['tasks'] {
+  return {
+    async create(input) {
+      await delay()
+      const before = await db.read()
+      requireCan(before, 'task.manage', findProject(before, input.projectId))
+      checkTaskInput(before, input.projectId, input)
+      const created = await createTicket(db, hub, input)
+      return taskView(created, await db.read(), now())
+    },
+    async update(key, patch) {
+      await delay()
+      const before = await db.read()
+      const ticket = findTicket(before, key)
+      const project = findProject(before, ticket.projectId)
+      const onlyStatus = Object.keys(patch).every((field) => EDITABLE_BY_ASSIGNEE.has(field))
+      try {
+        requireCan(before, 'task.manage', project)
+      } catch (error) {
+        if (!onlyStatus) throw error
+        requireCan(before, 'task.updateOwnStatus', project, { taskAssigneeId: ticket.assigneeId })
+      }
+      checkTaskInput(before, ticket.projectId, { phaseId: patch.phaseId, estimateHours: patch.estimateHours, title: patch.title as string })
+      const updated = await updateTicket(db, hub, key, patch)
+      return taskView(updated, await db.read(), now())
     },
   }
 }

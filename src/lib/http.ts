@@ -46,6 +46,13 @@ const mockOnly = (what: string): Promise<never> =>
 
 export function createHttpApi(fetchFn?: typeof fetch): Api {
   const get = <T>(path: string) => request<T>(path, undefined, fetchFn)
+  /** A JSON write: POST, PATCH or PUT with a body, or DELETE without one. */
+  const send = <T>(method: string, path: string, body?: unknown) =>
+    request<T>(
+      path,
+      body === undefined ? { method } : { method, body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } },
+      fetchFn,
+    )
   return {
     workspaces: { list: () => get('/api/workspaces') },
     users: {
@@ -68,7 +75,38 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
       list: (projectId) => get(`/api/projects/${enc(projectId)}/tickets`),
       get: (key) => get(`/api/tickets/${enc(key)}`),
     },
-    files: { url: (id) => Promise.resolve(apiUrl(`/api/files/${enc(id)}`)) },
+    projects: {
+      list: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/projects`),
+      get: (workspaceId, key) => get(`/api/workspaces/${enc(workspaceId)}/projects/${enc(key)}`),
+      create: (input) => send('POST', `/api/workspaces/${enc(input.workspaceId)}/projects`, input),
+      update: (id, patch) => send('PATCH', `/api/projects/${enc(id)}`, patch),
+    },
+    phases: {
+      list: (projectId) => get(`/api/projects/${enc(projectId)}/phases`),
+      create: (input) => send('POST', `/api/projects/${enc(input.projectId)}/phases`, input),
+      update: (id, patch) => send('PATCH', `/api/phases/${enc(id)}`, patch),
+      remove: (id) => send<void>('DELETE', `/api/phases/${enc(id)}`),
+      reorder: (projectId, ids) => send('PUT', `/api/projects/${enc(projectId)}/phases/order`, { ids }),
+    },
+    deliverables: {
+      list: (projectId) => get(`/api/projects/${enc(projectId)}/deliverables`),
+      create: (input) => send('POST', `/api/projects/${enc(input.projectId)}/deliverables`, input),
+      update: (id, patch) => send('PATCH', `/api/deliverables/${enc(id)}`, patch),
+    },
+    tasks: {
+      create: (input) => send('POST', `/api/projects/${enc(input.projectId)}/tasks`, input),
+      update: (key, patch) => send('PATCH', `/api/tasks/${enc(key)}`, patch),
+    },
+    teams: { list: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/teams`) },
+    files: {
+      url: (id) => Promise.resolve(apiUrl(`/api/files/${enc(id)}`)),
+      list: (projectId) => get(`/api/projects/${enc(projectId)}/files`),
+      upload: (projectId, file) => {
+        const form = new FormData()
+        form.append('file', file, file.name)
+        return request(`/api/projects/${enc(projectId)}/files`, { method: 'POST', body: form }, fetchFn)
+      },
+    },
     // The demo data lives in the browser's mock database; the real backend has none of these.
     db: {
       export: () => mockOnly('Exporting demo data'),

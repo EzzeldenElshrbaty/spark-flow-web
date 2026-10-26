@@ -1,0 +1,118 @@
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import type { Api, NewProject } from '@/api/types'
+import { createDb, type MockDb } from './db'
+import { createMockApi } from './index'
+import { latency } from './latency'
+import { createMockHub, type MockHub } from './realtime'
+import { seed } from './seed'
+import { createMemoryStore } from './store'
+
+let db: MockDb
+let api: Api
+let hub: MockHub
+const now = new Date('2026-10-26T12:00:00Z')
+
+beforeEach(() => {
+  latency.min = latency.max = 0
+  hub = createMockHub(`test-projects-${Math.random()}`, null)
+  db = createDb(createMemoryStore(), seed, () => now)
+  api = createMockApi(db, hub, () => now)
+})
+afterEach(() => hub.close())
+
+const newProject = (over: Partial<NewProject> = {}): NewProject => ({
+  workspaceId: 'ws-eng', name: 'Sela kiosk', key: 'ABC', clientName: 'Sela', description: 'Self-service kiosk for 3 branches.',
+  links: [], managerId: 'u-4', memberIds: ['u-8'], teamIds: ['t-qa'], methodology: 'waterfall',
+  startDate: '2026-11-01T00:00:00.000Z', dueDate: '2026-12-31T00:00:00.000Z', ...over,
+})
+
+describe('projects', () => {
+  it('sales creates a waterfall project with 5 phases, its own chat channel and numbering from 101', async () => {
+    await api.users.viewAs('u-9') // Sales
+    const created = await api.projects.create(newProject())
+    expect(created).toMatchObject({ key: 'ABC', status: 'planned', managerId: 'u-4' })
+    const phases = await api.phases.list(created.id)
+    expect(phases.map((p) => p.name)).toEqual(['Analysis', 'Design', 'Build', 'QA', 'Delivery'])
+    expect(phases[0].startDate).toBe(created.startDate)
+    expect(phases.at(-1)!.dueDate).toBe(created.dueDate)
+    const channel = await api.chat.channel(created.channelId)
+    expect(channel.memberIds.sort()).toEqual(['u-4', 'u-5', 'u-8', 'u-9'].sort()) // manager, member, QA team, and Sales who created it
+    const data = await db.read()
+    expect(data.counters[created.id]).toBe(101)
+  })
+
+  it('rejects a duplicate or malformed key and a due date before the start', async () => {
+    await expect(api.projects.create(newProject({ key: 'NEX' }))).rejects.toMatchObject({ status: 400, detail: 'Key NEX is already used.' })
+    await expect(api.projects.create(newProject({ key: 'a1' }))).rejects.toMatchObject({ status: 400 })
+    await expect(api.projects.create(newProject({ dueDate: '2026-10-01T00:00:00.000Z' }))).rejects.toMatchObject({ status: 400, detail: 'The due date is before the start date.' })
+  })
+
+  it('member cannot create or edit', async () => {
+    await api.users.viewAs('u-8') // Member
+    const before = await db.read()
+    await expect(api.projects.create(newProject())).rejects.toMatchObject({ status: 403, detail: "You don't have access to this project." })
+    await expect(api.projects.update('p-mob', { name: 'Hacked' })).rejects.toMatchObject({ status: 403 })
+    const after = await db.read()
+    expect(after.projects).toEqual(before.projects)
+  })
+
+  it('a PM edits a project they manage, not another', async () => {
+    await api.users.viewAs('u-4') // manages MOB
+    expect((await api.projects.update('p-mob', { clientName: 'Spark Systems' })).clientName).toBe('Spark Systems')
+    await expect(api.projects.update('p-nex', { name: 'Nope' })).rejects.toMatchObject({ status: 403 })
+  })
+
+  it('get returns the summary by key, 404 for an unknown key; cost only for admins', async () => {
+    const nex = await api.projects.get('ws-eng', 'NEX')
+    expect(nex).toMatchObject({ key: 'NEX', taskCount: 10 })
+    expect(typeof nex.cost).toBe('number')
+    await expect(api.projects.get('ws-eng', 'ZZZ')).rejects.toMatchObject({ status: 404 })
+    await api.users.viewAs('u-9')
+    expect((await api.projects.get('ws-eng', 'NEX')).cost).toBeNull()
+    expect((await api.projects.list('ws-eng')).map((p) => p.key)).toEqual(['NEX', 'MOB', 'ELM', 'SEL'])
+  })
+
+  it('MOB summary is overdue', async () => {
+    const mob = await api.projects.get('ws-eng', 'MOB')
+    expect(mob.overdueCount).toBeGreaterThanOrEqual(2)
+    expect(mob.currentPhaseId).toBe('ph-mob-build')
+  })
+})
+
+describe('phases and deliverables', () => {
+  it('a PM adds, renames, reorders and removes phases; removing moves its tasks to no phase', async () => {
+    await api.users.viewAs('u-4')
+    const qa = await api.phases.create({ projectId: 'p-mob', name: 'Store review', startDate: '2026-10-27T00:00:00.000Z', dueDate: '2026-10-29T00:00:00.000Z' })
+    expect(qa).toMatchObject({ order: 6, status: 'notStarted' })
+    expect((await api.phases.update(qa.id, { name: 'App store review' })).name).toBe('App store review')
+    const ids = (await api.phases.list('p-mob')).map((p) => p.id)
+    const reordered = await api.phases.reorder('p-mob', [qa.id, ...ids.filter((id) => id !== qa.id)])
+    expect(reordered[0].id).toBe(qa.id)
+    expect(reordered.map((p) => p.order)).toEqual([1, 2, 3, 4, 5, 6])
+    await api.phases.remove('ph-mob-build')
+    const tasks = await api.tickets.list('p-mob')
+    expect(tasks.filter((t) => t.phaseId === 'ph-mob-build')).toEqual([])
+    expect(tasks.find((t) => t.key === 'MOB-104')?.phaseId).toBeNull()
+  })
+
+  it('rejects an empty phase name, a reorder with the wrong ids, and phase edits by a non-manager', async () => {
+    await api.users.viewAs('u-4')
+    await expect(api.phases.create({ projectId: 'p-mob', name: ' ', startDate: '2026-10-27T00:00:00.000Z', dueDate: '2026-10-29T00:00:00.000Z' })).rejects.toMatchObject({ status: 400 })
+    await expect(api.phases.reorder('p-mob', ['ph-mob-build'])).rejects.toMatchObject({ status: 400 })
+    await expect(api.phases.update('ph-nex-build', { name: 'X' })).rejects.toMatchObject({ status: 403 })
+  })
+
+  it('deliverables: list, add, mark done', async () => {
+    const created = await api.deliverables.create({ projectId: 'p-nex', phaseId: 'ph-nex-build', title: 'Audit log on staging', dueDate: '2026-11-05T00:00:00.000Z' })
+    expect((await api.deliverables.list('p-nex')).map((d) => d.id)).toContain(created.id)
+    const done = await api.deliverables.update(created.id, { doneAt: now.toISOString() })
+    expect(done.doneAt).toBe(now.toISOString())
+  })
+})
+
+describe('teams', () => {
+  it('lists a workspace’s teams', async () => {
+    expect((await api.teams.list('ws-eng')).map((t) => t.name)).toEqual(['Frontend', 'Backend', 'Mobile', 'QA'])
+    await expect(api.teams.list('ws-nope')).rejects.toMatchObject({ status: 404 })
+  })
+})
