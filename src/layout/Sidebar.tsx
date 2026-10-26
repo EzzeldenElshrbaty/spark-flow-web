@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { Clock, Folder, FolderKanban, Hash, House, LayoutDashboard, ListChecks, Lock } from 'lucide-react'
+import { Clock, Folder, FolderKanban, Hash, House, LayoutDashboard, ListChecks, Lock, Users } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router'
 import type { Presence } from '@/api/types'
@@ -106,6 +106,9 @@ export function SidebarContent({ collapsed = false, onNavigate }: { collapsed?: 
               </li>
               <li>
                 <SidebarLink to={paths.tasks(slug)} label="My tasks" icon={<ListChecks className="size-[18px]" />} collapsed={collapsed} onNavigate={onNavigate} />
+              </li>
+              <li>
+                <SidebarLink to={paths.teams(slug)} label="Teams" icon={<Users className="size-[18px]" />} collapsed={collapsed} onNavigate={onNavigate} />
               </li>
             </ul>
           </div>

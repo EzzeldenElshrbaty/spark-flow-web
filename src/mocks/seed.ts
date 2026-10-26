@@ -23,6 +23,7 @@ import type {
 } from '@/api/types'
 import { DB_VERSION, type SeedResult } from './db'
 import { checklistTxt, screenshotPng, scopePdf } from './seedFiles'
+import { localDay } from '@/lib/dates'
 import { mentionsFor } from './mentions'
 import { parseMentions, parseTicketKeys } from './text'
 
@@ -461,6 +462,14 @@ export function seed(now: Date): SeedResult {
       )
     }
   })
+
+  // Right now: three people checked in with a timer running, so the dashboard's "Checked in now" has a story. Admin,
+  // Ahmed, Salma and Tarek stay free to check in live during the demo.
+  const shift = (ms: number) => new Date(now.getTime() - ms).toISOString()
+  for (const [userId, taskKey] of [['u-2', 'NEX-101'], ['u-3', 'NEX-106'], ['u-6', 'NEX-107']] as const) {
+    checkIns.push({ id: `ci-${userId}-now`, userId, day: localDay(now), checkedInAt: shift(3 * 3_600_000), checkedOutAt: null, plan: `${taskKey} first, then reviews.` })
+    timeEntries.push({ id: `te-${userId}-now`, userId, projectId: 'p-nex', taskId: `t-${taskKey.toLowerCase()}`, startedAt: shift(3_600_000), endedAt: null, source: 'timer', note: '' })
+  }
 
   // Hourly cost in EGP (Admin only)
   const rates: Rate[] = [

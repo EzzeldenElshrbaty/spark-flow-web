@@ -18,6 +18,7 @@ const ProjectPage = page(() => import('@/pages/projects/ProjectPage'), 'ProjectP
 const HomePage = page(() => import('@/pages/home/HomePage'), 'HomePage')
 const DashboardPage = page(() => import('@/pages/dashboard/DashboardPage'), 'DashboardPage')
 const TimeCostPage = page(() => import('@/pages/time/TimeCostPage'), 'TimeCostPage')
+const TeamsPage = page(() => import('@/pages/teams/TeamsPage'), 'TeamsPage')
 const ProjectsPage = page(() => import('@/pages/projects/ProjectsPage'), 'ProjectsPage')
 const MyTasksPage = page(() => import('@/pages/tasks/MyTasksPage'), 'MyTasksPage')
 const SettingsPage = page(() => import('@/pages/settings/SettingsPage'), 'SettingsPage')
@@ -53,6 +54,7 @@ export const router = createBrowserRouter([
           { path: 'tasks', element: <MyTasksPage /> },
           { path: 'dashboard', element: <DashboardPage /> },
           { path: 'time', element: <TimeCostPage /> },
+          { path: 'teams', element: <TeamsPage /> },
           { path: 'p/:projectKey', element: <ProjectOverviewRedirect /> },
           { path: 'p/:projectKey/:tab', element: <ProjectTabRoute /> },
           { path: 'settings', element: <SettingsPage /> },

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { localDay } from '@/lib/dates'
 import { DB_VERSION } from './db'
 import { seed } from './seed'
 import { parseMentions, parseTicketKeys } from './text'
@@ -146,17 +147,20 @@ describe('seed', () => {
   })
 
   it('logs a working week: Sun–Thu only, no overlaps, nothing running, all before now', () => {
-    expect(new Set(data.checkIns.map((c) => c.day)).size).toBe(5)
-    for (const e of data.timeEntries) {
+    // The past week; today's live check-ins and running timers ('-now') have their own test below.
+    const pastCheckIns = data.checkIns.filter((c) => !c.id.endsWith('-now'))
+    const past = data.timeEntries.filter((e) => !e.id.endsWith('-now'))
+    expect(new Set(pastCheckIns.map((c) => c.day)).size).toBe(5)
+    for (const e of past) {
       expect(e.endedAt).not.toBeNull()
       expect(e.endedAt! <= now.toISOString()).toBe(true)
       expect([5, 6]).not.toContain(new Date(e.startedAt).getUTCDay())
     }
     for (const user of data.users) {
-      const mine = data.timeEntries.filter((e) => e.userId === user.id).sort((a, b) => (a.startedAt < b.startedAt ? -1 : 1))
+      const mine = past.filter((e) => e.userId === user.id).sort((a, b) => (a.startedAt < b.startedAt ? -1 : 1))
       for (let i = 1; i < mine.length; i++) expect(mine[i - 1].endedAt! <= mine[i].startedAt).toBe(true)
     }
-    expect(data.timeEntries.some((e) => e.source === 'manual')).toBe(true)
+    expect(past.some((e) => e.source === 'manual')).toBe(true)
     for (const c of data.checkIns) expect(data.checkIns.filter((x) => x.userId === c.userId && x.day === c.day)).toHaveLength(1)
   })
 
@@ -181,5 +185,19 @@ describe('seed', () => {
 
   it('is deterministic for a given now', () => {
     expect(seed(now)).toEqual(seed(now))
+  })
+})
+
+describe('demo story for now', () => {
+  it('seed has three people checked in now, each with one running timer', () => {
+    const now = new Date()
+    const { data } = seed(now)
+    const today = localDay(now)
+    for (const userId of ['u-2', 'u-3', 'u-6']) {
+      expect(data.checkIns.some((c) => c.userId === userId && c.day === today && c.checkedOutAt === null)).toBe(true)
+      expect(data.timeEntries.filter((e) => e.userId === userId && e.endedAt === null)).toHaveLength(1)
+    }
+    expect(data.timeEntries.filter((e) => e.endedAt === null).map((e) => e.userId).sort()).toEqual(['u-2', 'u-3', 'u-6'])
+    for (const userId of ['u-1', 'u-4', 'u-5', 'u-8']) expect(data.checkIns.some((c) => c.userId === userId && c.day === today)).toBe(false)
   })
 })
