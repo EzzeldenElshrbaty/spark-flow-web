@@ -1,4 +1,5 @@
 import type { ChatMessage, ThreadReply, Ticket } from '@/api/types'
+import { backendOn } from '@/lib/api'
 import { createMockRealtimeClient, mockHub } from '@/mocks/realtime'
 
 /** What the app listens to for live updates. The mock hub and the SignalR connection both fit this. */
@@ -19,9 +20,6 @@ export type RealtimeEvent =
   | { type: 'replyReceived'; reply: ThreadReply }
   | { type: 'ticketUpdated'; ticket: Ticket }
   | { type: 'userTyping'; channelId: string; userId: string }
-
-// Task 7's lib/api.ts will own this switch; until then it is read here.
-const backendOn = import.meta.env.VITE_BACKEND === 'on'
 
 const noop = () => {}
 
