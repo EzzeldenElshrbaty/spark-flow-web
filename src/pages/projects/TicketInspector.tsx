@@ -1,7 +1,8 @@
-import { Pencil } from 'lucide-react'
+import { Clock, Pencil, Play, Square } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { usePhases } from '@/api/projects'
 import { useProjects, useSprints, useTicket, useUpdateTask } from '@/api/tickets'
+import { useMyDay, useStartTimer, useStopTimer } from '@/api/time'
 import type { TicketStatus } from '@/api/types'
 import { useUsers } from '@/api/users'
 import { Avatar } from '@/components/ui/Avatar'
@@ -14,6 +15,7 @@ import { ApiError } from '@/lib/api'
 import { formatDate } from '@/lib/format'
 import { usePermission } from '@/lib/usePermission'
 import { TaskSheet } from '@/pages/projects/TaskSheet'
+import { AddTimeSheet } from '@/pages/time/AddTimeSheet'
 import { BugPill, OverduePill, PriorityPill, StatusPill, hoursLabel, statuses } from '@/pages/projects/ticketPills'
 import { NotFound } from '@/pages/NotFound'
 import { isPastDue } from '@/lib/dates'
@@ -51,6 +53,10 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
   const update = useUpdateTask()
   const check = usePermission()
   const [editing, setEditing] = useState(false)
+  const [addingTime, setAddingTime] = useState(false)
+  const myDay = useMyDay()
+  const start = useStartTimer()
+  const stop = useStopTimer()
   const project = projects.data?.find((p) => p.id === ticket.data?.projectId)
   // A ticket of another workspace's project is not found in this one.
   const foreign = Boolean(ticket.data && projects.data && !projects.data.some((p) => p.id === ticket.data.projectId))
@@ -134,6 +140,23 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
             <span className="tabular-nums">{formatDate(t.updatedAt)}</span>
           </Field>
         </dl>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {t.status !== 'done' &&
+            (myDay.data?.running?.taskId === t.id ? (
+              <Button variant="secondary" onClick={() => stop.mutate()} disabled={stop.isPending}>
+                <Square className="size-3.5 fill-current" /> {stop.isPending ? 'Stopping…' : 'Stop timer'}
+              </Button>
+            ) : (
+              <Button variant="secondary" onClick={() => start.mutate({ taskId: t.id })} disabled={start.isPending}>
+                <Play className="size-4" /> {start.isPending ? 'Starting…' : 'Start timer'}
+              </Button>
+            ))}
+          <Button variant="ghost" onClick={() => setAddingTime(true)}>
+            <Clock className="size-4" /> Add time
+          </Button>
+        </div>
+        {(start.error || stop.error) && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{((start.error ?? stop.error) as Error).message}</p>}
+        {addingTime && <AddTimeSheet projectId={t.projectId} taskId={t.id} onClose={() => setAddingTime(false)} />}
         <h3 className="mt-5 text-xs font-medium uppercase tracking-wide text-fg-muted">Description</h3>
         <p className="mt-1.5 whitespace-pre-line break-words text-sm text-fg-secondary">{t.description.trim() || '—'}</p>
         {editing && project && (

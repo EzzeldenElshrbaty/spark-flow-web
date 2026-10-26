@@ -1,28 +1,46 @@
-import { useMemo } from 'react'
+import { Clock } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { useProjectTime } from '@/api/projects'
 import { useTickets } from '@/api/tickets'
 import type { ProjectSummary, TimeEntry, User } from '@/api/types'
 import { Avatar } from '@/components/ui/Avatar'
+import { Button } from '@/components/ui/Button'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { DataTable, TableSkeleton, type Column } from '@/components/ui/DataTable'
 import { QueryError } from '@/components/ui/QueryError'
 import { formatDate, formatMoney, formatTime } from '@/lib/format'
 import { entryHours } from '@/lib/hours'
+import { AddTimeSheet } from '@/pages/time/AddTimeSheet'
 import { totalsByPerson } from './timeTotals'
 
 const tenth = (n: number) => Math.round(n * 10) / 10
 
-/** Time logged on the project: totals per person, then every entry, newest first. Cost for admins only. Read-only until M2. */
+/** Time logged on the project: totals per person, then every entry, newest first. Cost for admins only; "Add time" logs your own. */
 export function TimeTab({ project, people }: { project: ProjectSummary; people: User[] }) {
   const time = useProjectTime(project.id)
   const tasks = useTickets(project.id).data ?? []
   const now = useMemo(() => new Date(), [])
+  const [adding, setAdding] = useState(false)
+  const addBar = (
+    <div className="mb-4 flex justify-end">
+      <Button variant="secondary" onClick={() => setAdding(true)}>
+        <Clock className="size-4" /> Add time
+      </Button>
+      {adding && <AddTimeSheet projectId={project.id} onClose={() => setAdding(false)} />}
+    </div>
+  )
 
   if (time.isError) return <QueryError what="Time" onRetry={() => void time.refetch()} />
   if (time.isPending) return <TableSkeleton rows={6} />
 
   const { entries, rates } = time.data
-  if (entries.length === 0) return <p className="rounded-xl border border-dashed border-line-strong p-10 text-center text-sm text-fg-secondary">No time logged yet.</p>
+  if (entries.length === 0)
+    return (
+      <>
+        {addBar}
+        <p className="rounded-xl border border-dashed border-line-strong p-10 text-center text-sm text-fg-secondary">No time logged yet.</p>
+      </>
+    )
 
   const nameOf = (id: string) => people.find((u) => u.id === id)?.name ?? 'Unknown person'
   const taskOf = (id: string | null) => (id ? tasks.find((t) => t.id === id) : undefined)
@@ -65,6 +83,7 @@ export function TimeTab({ project, people }: { project: ProjectSummary; people: 
 
   return (
     <div className="space-y-5">
+      {addBar}
       <Card>
         <CardHeader title={`${totals.hours}h logged${totals.cost !== null ? ` · ${formatMoney(totals.cost)}` : ''}`} />
         <ul className="divide-y divide-line-subtle px-5">
