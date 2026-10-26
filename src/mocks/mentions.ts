@@ -20,9 +20,12 @@ function projectPeople(data: DbData, projectId: string): Set<string> {
   return new Set([project.managerId, ...project.memberIds, ...team])
 }
 
-/** Whether these mentions reach `userId`: by name, or by @all when they are among `everyone`. */
-const reaches = (mentions: Mention[], userId: string, everyone: () => Set<string>) =>
-  mentions.some((m) => (m.kind === 'user' && m.id === userId) || (m.kind === 'all' && everyone().has(userId)))
+/**
+ * Whether these mentions reach `userId`: by name, or by @all when they are among `everyone`. In a private channel or
+ * a DM only its members can be reached, so its text never shows in anyone else's bell.
+ */
+const reaches = (mentions: Mention[], userId: string, everyone: () => Set<string>, closed = false) =>
+  (!closed || everyone().has(userId)) && mentions.some((m) => (m.kind === 'user' && m.id === userId) || (m.kind === 'all' && everyone().has(userId)))
 
 /**
  * Messages, replies and task comments by someone else that mention `userId` (by name, or @all where they are a
@@ -30,13 +33,14 @@ const reaches = (mentions: Mention[], userId: string, everyone: () => Set<string
  */
 export function mentionsFor(data: DbData, userId: string): Omit<MentionItem, 'read'>[] {
   const members = (channelId: string) => () => new Set(data.channels.find((c) => c.id === channelId)?.memberIds ?? [])
+  const closed = (channelId: string) => data.channels.find((c) => c.id === channelId)?.isPrivate ?? false
   const items: Omit<MentionItem, 'read'>[] = []
   for (const m of data.messages) {
-    if (m.commentId || m.senderId === userId || !reaches(m.mentions, userId, members(m.channelId))) continue
+    if (m.commentId || m.senderId === userId || !reaches(m.mentions, userId, members(m.channelId), closed(m.channelId))) continue
     items.push({ id: m.id, source: 'message', authorId: m.senderId, excerpt: excerptOf(m.content), createdAt: m.createdAt, channelId: m.channelId, messageId: m.id, taskKey: null, projectId: null })
   }
   for (const r of data.replies) {
-    if (r.senderId === userId || !reaches(r.mentions, userId, members(r.channelId))) continue
+    if (r.senderId === userId || !reaches(r.mentions, userId, members(r.channelId), closed(r.channelId))) continue
     items.push({ id: r.id, source: 'reply', authorId: r.senderId, excerpt: excerptOf(r.content), createdAt: r.createdAt, channelId: r.channelId, messageId: r.messageId, taskKey: null, projectId: null })
   }
   for (const c of data.comments) {

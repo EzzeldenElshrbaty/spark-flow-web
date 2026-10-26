@@ -1,7 +1,7 @@
 import clsx from 'clsx'
 import { FileUp, X } from 'lucide-react'
 import { useId, useState, type DragEvent } from 'react'
-import { acceptedFiles, isAcceptedFile, maxFileMb } from '@/lib/fileTypes'
+import { acceptedFiles, acceptFiles } from '@/lib/fileTypes'
 
 const sizeText = (bytes: number) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`)
 
@@ -14,28 +14,23 @@ export function FileDrop({
   onFiles,
   label = 'Drag files here, or click to choose',
   multiple = true,
+  max,
 }: {
   files: File[]
   onFiles: (files: File[]) => void
   label?: string
   multiple?: boolean
+  /** At most this many files; past it, a sentence says so. */
+  max?: number
 }) {
   const inputId = useId()
   const [over, setOver] = useState(false)
   const [refused, setRefused] = useState<string[]>([])
 
   const add = (picked: File[]) => {
-    const ok = picked.filter((file) => isAcceptedFile(file.name) && file.size <= maxFileMb * 1024 * 1024)
-    setRefused(
-      picked
-        .filter((file) => !ok.includes(file))
-        .map((file) => (isAcceptedFile(file.name) ? `${file.name} is over ${maxFileMb} MB.` : `${file.name}: this type of file can't be added.`)),
-    )
-    if (!ok.length) return
-    if (!multiple) return onFiles(ok.slice(0, 1))
-    // Picking the same file twice adds it once.
-    const known = new Set(files.map((file) => `${file.name}|${file.size}|${file.lastModified}`))
-    onFiles([...files, ...ok.filter((file) => !known.has(`${file.name}|${file.size}|${file.lastModified}`))])
+    const { files: next, refused: why } = acceptFiles(multiple ? files : [], multiple ? picked : picked.slice(0, 1), multiple ? max : 1)
+    setRefused(why)
+    if (next.length !== files.length || !multiple) onFiles(next)
   }
 
   const onDrop = (event: DragEvent) => {

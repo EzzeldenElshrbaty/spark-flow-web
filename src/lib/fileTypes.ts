@@ -35,3 +35,21 @@ export function previewOf(name: string): Preview {
 
 /** The address that saves the file. Files on the API need ?download=1: across addresses the browser ignores `download`. */
 export const downloadUrl = (url: string) => (url.includes('/api/documents/') ? `${url}${url.includes('?') ? '&' : '?'}download=1` : url)
+
+/**
+ * Files picked into a form: bad types, oversize files and repeats are left out, and so is anything past `max`, each
+ * with the sentence saying why.
+ */
+export function acceptFiles<F extends { name: string; size: number; lastModified: number }>(current: F[], picked: F[], max = Infinity): { files: F[]; refused: string[] } {
+  const ok = picked.filter((file) => isAcceptedFile(file.name) && file.size <= maxFileMb * 1024 * 1024)
+  const refused = picked
+    .filter((file) => !ok.includes(file))
+    .map((file) => (isAcceptedFile(file.name) ? `${file.name} is over ${maxFileMb} MB.` : `${file.name}: this type of file can't be added.`))
+  // Picking the same file twice adds it once.
+  const id = (file: F) => `${file.name}|${file.size}|${file.lastModified}`
+  const known = new Set(current.map(id))
+  const added = ok.filter((file) => !known.has(id(file)) && (known.add(id(file)), true))
+  const all = [...current, ...added]
+  if (all.length > max) refused.push(`Add up to ${max} files at a time.`)
+  return { files: all.slice(0, max), refused }
+}

@@ -1,13 +1,15 @@
 import clsx from 'clsx'
 import { AtSign, Folder, ListChecks, SendHorizontal, Users } from 'lucide-react'
-import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { inputClass } from '@/components/ui/Field'
 import { activeMention, insertMention, mentionOptions, type MentionOption } from '@/lib/mentionQuery'
+import { popupPlacement } from '@/lib/popupPlacement'
 import { useMentionDirectory } from '@/lib/useMentionDirectory'
 
 const MAX_ROWS = 8
+const LIST_HEIGHT = 288 // max-h-72
 
 function optionLabel(o: MentionOption) {
   if (o.kind === 'all') return { icon: <Users className="size-4" />, main: '@all', sub: 'Everyone here' }
@@ -54,6 +56,17 @@ export function Composer({
   const open = options.length > 0
   const active = Math.min(highlight, Math.max(0, options.length - 1))
   const rows = Math.min(MAX_ROWS, Math.max(1, text.split('\n').length))
+  // Above the box when there's room; in a short scrolling panel (a task with no comments yet) it opens below instead.
+  const [side, setSide] = useState<'above' | 'below'>('above')
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!open || !el) return
+    const box = el.getBoundingClientRect()
+    let parent = el.parentElement
+    while (parent && !/(auto|scroll|hidden)/.test(getComputedStyle(parent).overflowY)) parent = parent.parentElement
+    const area = parent ? parent.getBoundingClientRect() : { top: 0, bottom: window.innerHeight }
+    setSide(popupPlacement({ above: box.top - area.top, below: area.bottom - box.bottom }, LIST_HEIGHT))
+  }, [open])
 
   const sync = () => {
     const el = ref.current
@@ -114,7 +127,7 @@ export function Composer({
           id={listId}
           role="listbox"
           aria-label="Mention"
-          className="absolute inset-x-0 bottom-full z-30 mb-2 max-h-72 overflow-y-auto rounded-xl border border-line bg-surface p-1.5 shadow-xl"
+          className={clsx('absolute inset-x-0 z-30 max-h-72 overflow-y-auto rounded-xl border border-line bg-surface p-1.5 shadow-xl', side === 'above' ? 'bottom-full mb-2' : 'top-full mt-2')}
         >
           {options.map((o, i) => {
             const { icon, main, sub } = optionLabel(o)

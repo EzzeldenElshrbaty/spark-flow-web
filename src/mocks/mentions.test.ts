@@ -84,6 +84,26 @@ describe('mentions', () => {
     }
   })
 
+  it("a mention in a DM or private channel doesn't reach someone who isn't in it", async () => {
+    const dm = await api.chat.send('c-dm-2', '@[Nour El-Sayed](u-2) is late again') // a DM between u-1 and u-3
+    const release = await api.chat.send('c-release', 'Ask @[Mariam Fathy](u-3) about it') // private; Mariam isn't a member
+    const inside = await api.chat.send('c-release', 'Ping @[Nour El-Sayed](u-2)') // Nour is a member
+    await as('u-2')
+    const nour = (await api.mentions.mine()).map((m) => m.id)
+    expect(nour).not.toContain(dm.id)
+    expect(nour).toContain(inside.id)
+    await as('u-3')
+    expect((await api.mentions.mine()).map((m) => m.id)).not.toContain(release.id)
+  })
+
+  it('an unknown person in a mention notifies nobody', async () => {
+    const sent = await api.chat.send('c-general', 'Hi @[Ghost](u-nope)')
+    for (const userId of ['u-2', 'u-3']) {
+      await as(userId)
+      expect((await api.mentions.mine()).some((m) => m.id === sent.id)).toBe(false)
+    }
+  })
+
   it('excerpts are cut to 120 characters', async () => {
     const sent = await api.chat.send('c-general', `@[Nour](u-2) ${'x'.repeat(200)}`)
     await as('u-2')

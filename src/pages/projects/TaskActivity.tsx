@@ -85,7 +85,7 @@ export function TaskActivity({ task, project, users }: { task: TaskView; project
                   </button>
                 ))}
               </div>
-              <FileDrop files={files} onFiles={(next) => setFiles(next.slice(0, MAX_FILES))} label="Add images, video or files (up to 5)" />
+              <FileDrop files={files} onFiles={setFiles} max={MAX_FILES} label="Add images, video or files (up to 5)" />
             </div>
           }
         />
