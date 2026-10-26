@@ -140,6 +140,8 @@ export type DeliverablePatch = Partial<Pick<Deliverable, 'phaseId' | 'title' | '
 export type StoredFile = ProjectFile & { attachment: Attachment }
 /** What an upload hands over: the bytes plus the file's name (a File in the browser). */
 export type UploadFile = Blob & { name: string }
+/** A project's time: every entry, and the hourly costs only for people who may see cost (else null). */
+export type ProjectTime = { entries: TimeEntry[]; rates: Rate[] | null }
 
 /** Everything in the mock database, as Database → Export data downloads it. File bytes are not included (spec §10). */
 export type ExportBundle = { app: 'spark-flow'; version: number; exportedAt: string; data: unknown }
@@ -190,6 +192,8 @@ export interface Api {
     update(key: string, patch: TicketPatch): Promise<TaskView>
   }
   teams: { list(workspaceId: string): Promise<Team[]> }
+  /** Read-only until M2 adds the timer and manual entries. */
+  time: { list(projectId: string): Promise<ProjectTime> }
   files: {
     url(id: string): Promise<string>
     list(projectId: string): Promise<StoredFile[]>

@@ -20,6 +20,7 @@ export const qk = {
   deliverables: (projectId: string) => ['projects', 'deliverables', projectId],
   files: (projectId: string) => ['projects', 'files', projectId],
   teams: (workspaceId: string) => ['teams', workspaceId],
+  time: (projectId: string) => ['projects', 'time', projectId],
 } as const
 
 /** The queries a live update makes stale. Typing is not data, so it touches none. */

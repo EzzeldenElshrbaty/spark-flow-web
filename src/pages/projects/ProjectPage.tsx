@@ -21,7 +21,9 @@ import { PhasesSheet } from './PhasesSheet'
 import { ProjectSheet } from './ProjectSheet'
 import { stagesOf } from './phases'
 import { TaskSheet } from './TaskSheet'
+import { ChatTab } from './ChatTab'
 import { TasksTab } from './TasksTab'
+import { TimeTab } from './TimeTab'
 
 const statusBadge: Record<ProjectStatus, [string, BadgeTone]> = {
   planned: ['Planned', 'neutral'],
@@ -98,7 +100,8 @@ export function ProjectPage() {
   const project = summary.data ?? undefined
   const phases = usePhases(project?.id)
   const tasks = useTickets(project?.id)
-  const people = useUsers(workspace?.id).data ?? []
+  const users = useUsers(workspace?.id)
+  const people = users.data ?? []
   const teams = useTeams(workspace?.id).data ?? []
   const me = useMe().data
   const check = usePermission()
@@ -205,7 +208,8 @@ export function ProjectPage() {
 
       {tab === 'overview' && <OverviewTab project={project} phases={phaseList} people={people} teams={teams} canEdit={canEdit} canPost={canPost} />}
       {tab === 'tasks' && <TasksTab project={project} people={people} phases={phaseList} />}
-      {(tab === 'chat' || tab === 'time') && <p className="text-sm text-fg-muted">—</p>}
+      {tab === 'chat' && <ChatTab ws={ws} project={project} people={people} usersLoading={users.isLoading} />}
+      {tab === 'time' && <TimeTab project={project} people={people} />}
 
       <RecordActionBarSpacer />
 

@@ -67,3 +67,7 @@ export function useUploadFile() {
 
 /** A blob: address for a stored file, to show it; the caller revokes it (URL.revokeObjectURL) when done. Not a query: it isn't cached. */
 export const openFile = (id: string) => api.files.url(id)
+
+export function useProjectTime(projectId: string | undefined) {
+  return useQuery({ queryKey: qk.time(projectId ?? ''), queryFn: () => api.time.list(projectId!), retry, enabled: Boolean(projectId) })
+}

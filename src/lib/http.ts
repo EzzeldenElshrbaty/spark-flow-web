@@ -98,6 +98,7 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
       update: (key, patch) => send('PATCH', `/api/tasks/${enc(key)}`, patch),
     },
     teams: { list: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/teams`) },
+    time: { list: (projectId) => get(`/api/projects/${enc(projectId)}/time`) },
     files: {
       url: (id) => Promise.resolve(apiUrl(`/api/files/${enc(id)}`)),
       list: (projectId) => get(`/api/projects/${enc(projectId)}/files`),

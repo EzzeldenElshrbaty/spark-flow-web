@@ -30,6 +30,7 @@ export const api: Api = {
   get deliverables() { return resolve().deliverables },
   get tasks() { return resolve().tasks },
   get teams() { return resolve().teams },
+  get time() { return resolve().time },
   get files() { return resolve().files },
   get db() { return resolve().db },
 }

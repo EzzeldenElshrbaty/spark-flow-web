@@ -1,4 +1,5 @@
 import type { Phase, Project, ProjectSummary, Rate, Role, TaskView, Ticket, TimeEntry } from '@/api/types'
+import { entryHours } from '@/lib/hours'
 import { can } from '@/lib/permissions'
 
 // What the server works out and never stores (spec §3). Pure: the same data and `now` always give the same answer.
@@ -6,11 +7,7 @@ import { can } from '@/lib/permissions'
 const HOURS_PER_DAY = 8
 const HOUR = 3_600_000
 
-/** An entry's hours; a running entry counts up to now. */
-export function entryHours(entry: Pick<TimeEntry, 'startedAt' | 'endedAt'>, now: Date): number {
-  const end = entry.endedAt ? new Date(entry.endedAt).getTime() : now.getTime()
-  return Math.max(0, end - new Date(entry.startedAt).getTime()) / HOUR
-}
+export { entryHours }
 
 export function loggedHours(taskId: string, entries: TimeEntry[], now: Date): number {
   return entries.filter((e) => e.taskId === taskId).reduce((sum, e) => sum + entryHours(e, now), 0)

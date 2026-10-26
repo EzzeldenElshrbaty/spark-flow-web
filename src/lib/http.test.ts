@@ -38,6 +38,7 @@ describe('createHttpApi', () => {
     await api.tasks.create({ projectId: 'p1', title: 'T', description: '', status: 'todo', priority: 'low', storyPoints: null, assigneeId: null, sprintId: null })
     await api.tasks.update('NEX-1', { status: 'done' })
     await api.teams.list('w1')
+    await api.time.list('p1')
     await api.files.list('p1')
     await api.files.upload('p1', Object.assign(new Blob(['%PDF-']), { name: 'a.pdf' }))
     expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url}`)).toEqual([
@@ -56,13 +57,14 @@ describe('createHttpApi', () => {
       'POST /api/projects/p1/tasks',
       'PATCH /api/tasks/NEX-1',
       'GET /api/workspaces/w1/teams',
+      'GET /api/projects/p1/time',
       'GET /api/projects/p1/files',
       'POST /api/projects/p1/files',
     ])
     expect(JSON.parse(String(calls[3].init?.body))).toEqual({ name: 'M' })
     expect(calls[3].init?.headers).toMatchObject({ 'Content-Type': 'application/json' })
     expect(JSON.parse(String(calls[8].init?.body))).toEqual({ ids: ['ph2', 'ph1'] })
-    expect(calls[16].init?.body).toBeInstanceOf(FormData)
+    expect(calls[17].init?.body).toBeInstanceOf(FormData)
   })
 
   it('maps calls to the HTTP routes', async () => {
