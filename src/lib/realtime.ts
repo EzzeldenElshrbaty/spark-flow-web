@@ -12,6 +12,7 @@ export interface RealtimeClient {
   onReplyReceived(cb: (reply: ThreadReply) => void): () => void
   onTicketUpdated(cb: (ticket: Ticket) => void): () => void
   onUserTyping(cb: (event: { channelId: string; userId: string }) => void): () => void
+  onTimeLogged(cb: (event: { userId: string; projectId: string | null }) => void): () => void
 }
 
 /** One live update, as the mock hub carries it between tabs. */
@@ -20,6 +21,7 @@ export type RealtimeEvent =
   | { type: 'replyReceived'; reply: ThreadReply }
   | { type: 'ticketUpdated'; ticket: Ticket }
   | { type: 'userTyping'; channelId: string; userId: string }
+  | { type: 'timeLogged'; userId: string; projectId: string | null }
 
 const noop = () => {}
 
@@ -39,6 +41,7 @@ function createUnconnectedClient(): RealtimeClient {
     onReplyReceived: () => noop,
     onTicketUpdated: () => noop,
     onUserTyping: () => noop,
+    onTimeLogged: () => noop,
   }
 }
 

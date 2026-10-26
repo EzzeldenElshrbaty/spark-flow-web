@@ -142,6 +142,11 @@ export type StoredFile = ProjectFile & { attachment: Attachment }
 export type UploadFile = Blob & { name: string }
 /** A project's time: every entry, and the hourly costs only for people who may see cost (else null). */
 export type ProjectTime = { entries: TimeEntry[]; rates: Rate[] | null }
+/** What a timer or a manual entry is for: a task (its project follows), or a project as a whole. */
+export type TimeTarget = { taskId: string } | { projectId: string }
+/** My day: today's check-in, my running entry (from any day) and my entries that started today, newest first. */
+export type MyDay = { day: string; checkIn: CheckIn | null; running: TimeEntry | null; entries: TimeEntry[] }
+export type NewManualEntry = TimeTarget & { startedAt: string; endedAt: string; note: string }
 
 /** Everything in the mock database, as Database → Export data downloads it. File bytes are not included (spec §10). */
 export type ExportBundle = { app: 'spark-flow'; version: number; exportedAt: string; data: unknown }
@@ -192,8 +197,18 @@ export interface Api {
     update(key: string, patch: TicketPatch): Promise<TaskView>
   }
   teams: { list(workspaceId: string): Promise<Team[]> }
-  /** Read-only until M2 adds the timer and manual entries. */
-  time: { list(projectId: string): Promise<ProjectTime> }
+  time: {
+    list(projectId: string): Promise<ProjectTime>
+    today(): Promise<MyDay>
+    /** Once per day; with a target it starts a timer too. */
+    checkIn(input: { plan: string; target?: TimeTarget }): Promise<MyDay>
+    /** Closes the latest open check-in and stops the running timer. */
+    checkOut(): Promise<MyDay>
+    /** One running timer per person: starting stops the last. */
+    start(target: TimeTarget): Promise<MyDay>
+    stop(): Promise<MyDay>
+    addManual(entry: NewManualEntry): Promise<TimeEntry>
+  }
   files: {
     url(id: string): Promise<string>
     list(projectId: string): Promise<StoredFile[]>

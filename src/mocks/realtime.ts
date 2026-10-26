@@ -69,6 +69,7 @@ export function createMockRealtimeClient(hub: MockHub): RealtimeClient {
     onReplyReceived: (cb) => on(hub, 'replyReceived', (e) => cb(e.reply)),
     onTicketUpdated: (cb) => on(hub, 'ticketUpdated', (e) => cb(e.ticket)),
     onUserTyping: (cb) => on(hub, 'userTyping', (e) => cb({ channelId: e.channelId, userId: e.userId })),
+    onTimeLogged: (cb) => on(hub, 'timeLogged', (e) => cb({ userId: e.userId, projectId: e.projectId })),
   }
 }
 

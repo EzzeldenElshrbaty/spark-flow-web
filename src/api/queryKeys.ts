@@ -21,6 +21,8 @@ export const qk = {
   files: (projectId: string) => ['projects', 'files', projectId],
   teams: (workspaceId: string) => ['teams', workspaceId],
   time: (projectId: string) => ['projects', 'time', projectId],
+  timeAll: () => ['projects', 'time'],                    // prefix of every project's time
+  myDay: () => ['time', 'me'],
 } as const
 
 /** The queries a live update makes stale. Typing is not data, so it touches none. */
@@ -36,6 +38,9 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
     }
     case 'ticketUpdated':
       return [qk.tickets(event.ticket.projectId), qk.ticket(event.ticket.key)]
+    case 'timeLogged':
+      // Hours change everywhere: my day, every task and project summary (under 'tickets'), and the Time tabs.
+      return [qk.myDay(), ['tickets'], qk.timeAll()]
     case 'userTyping':
       return []
   }

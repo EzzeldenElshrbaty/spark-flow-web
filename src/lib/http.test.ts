@@ -19,6 +19,29 @@ const fetchReturning = (status: number, body: unknown, headers?: HeadersInit) =>
     new Response(body === null ? null : typeof body === 'string' ? body : JSON.stringify(body), { status, headers })) as typeof fetch
 
 describe('createHttpApi', () => {
+  it('maps the M2 time calls to their routes, methods and bodies', async () => {
+    const { calls, fetchFn } = recordingFetch()
+    const api = createHttpApi(fetchFn)
+    const entry = { taskId: 't1', startedAt: 's', endedAt: 'e', note: '' }
+    await api.time.today()
+    await api.time.checkIn({ plan: 'p', target: { taskId: 't1' } })
+    await api.time.checkOut()
+    await api.time.start({ projectId: 'p1' })
+    await api.time.stop()
+    await api.time.addManual(entry)
+    expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url}`)).toEqual([
+      'GET /api/time/today',
+      'POST /api/time/check-in',
+      'POST /api/time/check-out',
+      'POST /api/time/start',
+      'POST /api/time/stop',
+      'POST /api/time/entries',
+    ])
+    expect(JSON.parse(String(calls[1].init?.body))).toEqual({ plan: 'p', target: { taskId: 't1' } })
+    expect(JSON.parse(String(calls[3].init?.body))).toEqual({ projectId: 'p1' })
+    expect(JSON.parse(String(calls[5].init?.body))).toEqual(entry)
+  })
+
   it('maps the M1 writes to their routes, methods and bodies', async () => {
     const { calls, fetchFn } = recordingFetch()
     const api = createHttpApi(fetchFn)

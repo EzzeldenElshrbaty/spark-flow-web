@@ -5,3 +5,9 @@ export function isPastDue(iso: string, now: Date): boolean {
   const d = new Date(iso)
   return now.getTime() >= Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) + DAY
 }
+
+/** The browser's own calendar day, 'YYYY-MM-DD': what a check-in's `day` means (spec §3). */
+export function localDay(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
