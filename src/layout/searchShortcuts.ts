@@ -60,7 +60,7 @@ export function workspaceShortcuts(ws: Workspace, channels: Channel[], projects:
       id: `project:${project.key}`,
       title: `${project.name} · Board`,
       subtitle: `Project ${project.key}`,
-      link: paths.project(ws.slug, project.key),
+      link: paths.project(ws.slug, project.key, 'tasks', { view: 'board' }),
       icon: FolderKanban,
       keywords: [project.key, 'project', 'board'],
     })),

@@ -1,7 +1,7 @@
 import clsx from 'clsx'
 import { Columns3, List } from 'lucide-react'
 import { useEffect } from 'react'
-import { Link, Navigate, useParams } from 'react-router'
+import { Link, useParams, useSearchParams } from 'react-router'
 import { useProject, useSprints, useTickets } from '@/api/tickets'
 import { useUsers } from '@/api/users'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -15,19 +15,19 @@ import { BoardSkeleton, ProjectBoard } from '@/pages/projects/ProjectBoard'
 
 const views = [
   ['board', 'Board', Columns3],
-  ['backlog', 'Backlog', List],
+  ['list', 'List', List],
 ] as const
 
-const isView = (value: string): value is ProjectView => value === 'board' || value === 'backlog'
+const isView = (value: string | null): value is ProjectView => value === 'board' || value === 'list'
 
-/** Board | Backlog, the raised pill on a muted track (as on Spark CRM's Opportunities). Each is its own address. */
+/** Board | List, the raised pill on a muted track (as on Spark CRM's Opportunities). Each is its own address. */
 function ViewSwitch({ ws, projectKey, view }: { ws: string; projectKey: string; view: ProjectView }) {
   return (
     <nav className="inline-flex rounded-lg bg-surface-muted p-0.5 ring-1 ring-line" aria-label="View">
       {views.map(([value, label, Icon]) => (
         <Link
           key={value}
-          to={paths.project(ws, projectKey, value)}
+          to={paths.project(ws, projectKey, 'tasks', { view: value })}
           aria-current={view === value ? 'page' : undefined}
           className={clsx('inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium', view === value ? 'bg-surface text-fg shadow-sm ring-1 ring-line' : 'text-fg-muted hover:text-fg')}
         >
@@ -41,22 +41,24 @@ function ViewSwitch({ ws, projectKey, view }: { ws: string; projectKey: string; 
 
 /** A project: its name and description, then the board or the backlog. Read-only in Phase 1. */
 export function ProjectPage() {
-  const { ws = '', projectKey = '', view = '' } = useParams()
+  const { ws = '', projectKey = '' } = useParams()
+  const [params] = useSearchParams()
+  const lastView = useUiStore((state) => state.lastProjectView[projectKey])
+  const asked = params.get('view')
+  const view: ProjectView = isView(asked) ? asked : (lastView ?? 'board')
   const { workspace } = useCurrentWorkspace()
   const project = useProject(workspace?.id, projectKey)
   const projectId = project.data?.id
   const tickets = useTickets(projectId)
-  const sprints = useSprints(view === 'backlog' ? projectId : undefined)
+  const sprints = useSprints(view === 'list' ? projectId : undefined)
   const users = useUsers(workspace?.id)
   const setProjectView = useUiStore((state) => state.setProjectView)
 
   // Remember the view shown (from the switch, the back button or a typed address) so the sidebar link reopens it.
-  const shown = isView(view) && Boolean(projectId) ? view : null
+  const shown = projectId ? view : null
   useEffect(() => {
     if (shown) setProjectView(projectKey, shown)
   }, [shown, projectKey, setProjectView])
-
-  if (!isView(view)) return <Navigate to={paths.project(ws, projectKey)} replace />
 
   if (project.isError) {
     return (
@@ -84,7 +86,7 @@ export function ProjectPage() {
   const people = users.data ?? []
   let body
   if (tickets.isError) body = <QueryError what="Tickets" onRetry={() => void tickets.refetch()} />
-  else if (view === 'backlog' && sprints.isError) body = <QueryError what="Sprints" onRetry={() => void sprints.refetch()} />
+  else if (view === 'list' && sprints.isError) body = <QueryError what="Sprints" onRetry={() => void sprints.refetch()} />
   else if (view === 'board') body = tickets.isPending || users.isLoading ? <BoardSkeleton /> : <ProjectBoard tickets={tickets.data} users={people} />
   else body = tickets.isPending || sprints.isPending || users.isLoading ? <BacklogSkeleton /> : <ProjectBacklog tickets={tickets.data} sprints={sprints.data ?? []} users={people} />
 

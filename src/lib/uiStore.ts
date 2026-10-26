@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware'
 
-export type ProjectView = 'board' | 'backlog'
+export type ProjectView = 'board' | 'list' // the Tasks tab's view
 export type Typer = { userId: string; until: number }
 
 /** How long someone stays "typing" after their last keystroke event. */
@@ -11,7 +11,7 @@ type UiState = {
   sidebarCollapsed: boolean
   lastWorkspace: string | null
   lastVisited: Record<string, string>            // workspace slug → last path opened in it
-  lastProjectView: Record<string, ProjectView>   // project key → board or backlog
+  lastProjectView: Record<string, ProjectView>   // project key → board or list on its Tasks tab
   typing: Record<string, Typer[]>                // channel id → who is typing; never persisted
 }
 

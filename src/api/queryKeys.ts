@@ -16,6 +16,10 @@ export const qk = {
   sprints: (projectId: string) => ['tickets', 'sprints', projectId],
   tickets: (projectId: string) => ['tickets', 'list', projectId],
   ticket: (key: string) => ['tickets', 'one', key],
+  phases: (projectId: string) => ['projects', 'phases', projectId],
+  deliverables: (projectId: string) => ['projects', 'deliverables', projectId],
+  files: (projectId: string) => ['projects', 'files', projectId],
+  teams: (workspaceId: string) => ['teams', workspaceId],
 } as const
 
 /** The queries a live update makes stale. Typing is not data, so it touches none. */

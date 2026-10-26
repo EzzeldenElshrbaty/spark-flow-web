@@ -19,7 +19,7 @@ describe('workspaceShortcuts', () => {
   it('links with the route helpers', () => {
     expect(shortcuts.find((s) => s.title === '#general')!.link).toBe('/w/engineering/c/c-general')
     expect(shortcuts.find((s) => s.title === nour.name)!.link).toBe('/w/engineering/c/c-dm-1')
-    expect(shortcuts.find((s) => s.title === 'Nexus Core · Board')!.link).toBe('/w/engineering/p/NEX/board')
+    expect(shortcuts.find((s) => s.title === 'Nexus Core · Board')!.link).toBe('/w/engineering/p/NEX/tasks?view=board')
   })
 
   it('leaves out channels of other workspaces', () => {

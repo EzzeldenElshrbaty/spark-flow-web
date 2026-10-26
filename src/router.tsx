@@ -1,9 +1,9 @@
 import { lazy, type ComponentType } from 'react'
-import { createBrowserRouter, Navigate, useParams } from 'react-router'
+import { createBrowserRouter, Navigate, useLocation, useParams } from 'react-router'
 import { AppLayout } from '@/layout/AppLayout'
 import { LastVisitRedirect } from '@/layout/LastVisitRedirect'
 import { WorkspaceGate } from '@/layout/WorkspaceGate'
-import { paths } from '@/lib/paths'
+import { legacyProjectPath, paths, projectTabs } from '@/lib/paths'
 
 /**
  * A page whose code downloads the first time it's opened, so the first visit only loads what it shows.
@@ -15,13 +15,23 @@ function page<K extends string>(load: () => Promise<Record<K, ComponentType>>, n
 
 const ChannelPage = page(() => import('@/pages/chat/ChannelPage'), 'ChannelPage')
 const ProjectPage = page(() => import('@/pages/projects/ProjectPage'), 'ProjectPage')
+const ProjectsPage = page(() => import('@/pages/projects/ProjectsPage'), 'ProjectsPage')
+const MyTasksPage = page(() => import('@/pages/tasks/MyTasksPage'), 'MyTasksPage')
 const SettingsPage = page(() => import('@/pages/settings/SettingsPage'), 'SettingsPage')
 const DatabasePage = page(() => import('@/pages/settings/DatabasePage'), 'DatabasePage')
 
-/** `/w/:ws/p/:projectKey` has no page of its own: it opens the board. */
-function ProjectBoardRedirect() {
+/** `/w/:ws/p/:projectKey` has no page of its own: it opens the Overview tab. */
+function ProjectOverviewRedirect() {
   const { ws = '', projectKey = '' } = useParams()
   return <Navigate to={paths.project(ws, projectKey)} replace />
+}
+
+/** A project tab; old board/backlog links (and unknown tabs) are sent to the tab they now live on. */
+function ProjectTabRoute() {
+  const { ws = '', projectKey = '', tab = '' } = useParams()
+  const { pathname } = useLocation()
+  if ((projectTabs as readonly string[]).includes(tab)) return <ProjectPage />
+  return <Navigate to={legacyProjectPath(pathname) ?? paths.project(ws, projectKey)} replace />
 }
 
 export const router = createBrowserRouter([
@@ -35,8 +45,10 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <LastVisitRedirect /> },
           { path: 'c/:channelId', element: <ChannelPage /> },
-          { path: 'p/:projectKey', element: <ProjectBoardRedirect /> },
-          { path: 'p/:projectKey/:view', element: <ProjectPage /> },
+          { path: 'projects', element: <ProjectsPage /> },
+          { path: 'tasks', element: <MyTasksPage /> },
+          { path: 'p/:projectKey', element: <ProjectOverviewRedirect /> },
+          { path: 'p/:projectKey/:tab', element: <ProjectTabRoute /> },
           { path: 'settings', element: <SettingsPage /> },
           { path: 'settings/database', element: <DatabasePage /> },
         ],

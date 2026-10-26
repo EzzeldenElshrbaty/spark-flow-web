@@ -31,26 +31,21 @@ function TabLink({ to, active, icon: Icon, label }: { to: string | undefined; ac
 export function MobileBottomBar({ onOpenMore, onOpenSearch }: { onOpenMore: () => void; onOpenSearch: () => void }) {
   const { workspace } = useCurrentWorkspace()
   const lastVisited = useUiStore((state) => state.lastVisited)
-  const lastProjectView = useUiStore((state) => state.lastProjectView)
   const channels = useChannels(workspace?.id).data
   const projects = useProjects(workspace?.id).data
   const inChat = useMatch('/w/:ws/c/*') !== null
-  const inProjects = useMatch('/w/:ws/p/*') !== null
+  // Every hook runs every render: the three matches are read first, then combined.
+  const inProject = useMatch('/w/:ws/p/*') !== null
+  const inProjectList = useMatch('/w/:ws/projects') !== null
+  const inMyTasks = useMatch('/w/:ws/tasks') !== null
+  const inProjects = inProject || inProjectList || inMyTasks
 
   const slug = workspace?.slug
   const saved = slug ? savedPlace(slug, lastVisited) : undefined
   // A saved place is only used while it still leads somewhere (its channel or project may be gone).
   const usable = saved && channels && projects && validSavedPlace(saved, channels, projects) ? saved : undefined
   const chatTo = slug && channels ? (usable?.startsWith(`/w/${slug}/c/`) ? usable : landingPath(slug, {}, channels)) : undefined
-  const firstProject = projects?.[0]
-  const projectsTo =
-    slug && projects
-      ? usable?.startsWith(`/w/${slug}/p/`)
-        ? usable
-        : firstProject
-          ? paths.project(slug, firstProject.key, lastProjectView[firstProject.key])
-          : undefined
-      : undefined
+  const projectsTo = slug ? (usable?.startsWith(`/w/${slug}/p/`) ? usable : paths.projects(slug)) : undefined
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden" aria-label="Main">

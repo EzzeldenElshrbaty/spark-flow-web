@@ -1,12 +1,11 @@
 import clsx from 'clsx'
-import { FolderKanban, Hash, Lock } from 'lucide-react'
+import { Folder, FolderKanban, Hash, ListChecks, Lock } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router'
 import type { Presence } from '@/api/types'
 import { useSidebarGroups } from '@/layout/useSidebarGroups'
 import { paths } from '@/lib/paths'
 import { useRole } from '@/lib/useRole'
-import { useUiStore } from '@/lib/uiStore'
 import { canSee, settingsItem } from '@/navigation'
 
 type SidebarLinkProps = {
@@ -84,13 +83,26 @@ function GroupSkeleton() {
 
 export function SidebarContent({ collapsed = false, onNavigate }: { collapsed?: boolean; onNavigate?: () => void }) {
   const { role } = useRole()
-  const lastProjectView = useUiStore((state) => state.lastProjectView)
   const { workspace, channels, dms, projects, chatLoading, projectsLoading, failed } = useSidebarGroups()
   const slug = workspace?.slug
 
   return (
     <div className="flex h-full flex-col">
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4" aria-label="Workspace">
+        {slug && (
+          <div>
+            <GroupLabel collapsed={collapsed}>Work</GroupLabel>
+            <ul className="space-y-0.5">
+              <li>
+                <SidebarLink to={paths.projects(slug)} label="Projects" icon={<FolderKanban className="size-[18px]" />} collapsed={collapsed} onNavigate={onNavigate} />
+              </li>
+              <li>
+                <SidebarLink to={paths.tasks(slug)} label="My tasks" icon={<ListChecks className="size-[18px]" />} collapsed={collapsed} onNavigate={onNavigate} />
+              </li>
+            </ul>
+          </div>
+        )}
+
         {slug && (chatLoading || channels.length > 0) && (
           <div>
             <GroupLabel collapsed={collapsed}>Channels</GroupLabel>
@@ -149,10 +161,10 @@ export function SidebarContent({ collapsed = false, onNavigate }: { collapsed?: 
                 {projects.map((project) => (
                   <li key={project.id}>
                     <SidebarLink
-                      to={paths.project(slug, project.key, lastProjectView[project.key])}
+                      to={paths.project(slug, project.key)}
                       label={project.name}
                       within={paths.project(slug, project.key).replace(/\/[^/]+$/, '')}
-                      icon={<FolderKanban className="size-[18px]" />}
+                      icon={<Folder className="size-[18px]" />}
                       collapsed={collapsed}
                       onNavigate={onNavigate}
                     />

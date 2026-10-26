@@ -24,10 +24,10 @@ describe('uiStore', () => {
 
   it('forgetPlaces clears the last places but keeps other preferences', () => {
     useUiStore.getState().visit('engineering', '/w/engineering/c/c-backend')
-    useUiStore.getState().setProjectView('NEX', 'backlog')
+    useUiStore.getState().setProjectView('NEX', 'list')
     useUiStore.getState().toggleSidebar()
     useUiStore.getState().forgetPlaces()
-    expect(useUiStore.getState()).toMatchObject({ lastWorkspace: null, lastVisited: {}, lastProjectView: { NEX: 'backlog' }, sidebarCollapsed: true })
+    expect(useUiStore.getState()).toMatchObject({ lastWorkspace: null, lastVisited: {}, lastProjectView: { NEX: 'list' }, sidebarCollapsed: true })
   })
 
   it('toggleSidebar flips the collapsed flag', () => {
@@ -38,8 +38,8 @@ describe('uiStore', () => {
   })
 
   it('setProjectView remembers the view per project', () => {
-    useUiStore.getState().setProjectView('p1', 'backlog')
-    expect(useUiStore.getState().lastProjectView).toEqual({ p1: 'backlog' })
+    useUiStore.getState().setProjectView('p1', 'list')
+    expect(useUiStore.getState().lastProjectView).toEqual({ p1: 'list' })
   })
 
   it('does not persist typing', () => {

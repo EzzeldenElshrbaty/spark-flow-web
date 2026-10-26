@@ -1,11 +1,23 @@
 import type { Channel, Project } from '@/api/types'
-import type { ProjectView } from '@/lib/uiStore'
+
+export type ProjectTab = 'overview' | 'tasks' | 'chat' | 'time'
+export const projectTabs: readonly ProjectTab[] = ['overview', 'tasks', 'chat', 'time']
+/** The Tasks tab's own address bar state. */
+export type TasksQuery = { view?: 'board' | 'list'; phase?: string; sprint?: string }
+
+const query = (q: TasksQuery = {}) => {
+  const params = new URLSearchParams(Object.entries(q).filter((entry): entry is [string, string] => Boolean(entry[1])))
+  const text = params.toString()
+  return text ? `?${text}` : ''
+}
 
 /** Every route of the app in one place, so a link and its route cannot drift apart. */
 export const paths = {
   workspace: (ws: string) => `/w/${ws}`,
   channel: (ws: string, id: string) => `/w/${ws}/c/${id}`,
-  project: (ws: string, key: string, view: ProjectView = 'board') => `/w/${ws}/p/${key}/${view}`,
+  projects: (ws: string) => `/w/${ws}/projects`,
+  tasks: (ws: string) => `/w/${ws}/tasks`,
+  project: (ws: string, key: string, tab: ProjectTab = 'overview', q?: TasksQuery) => `/w/${ws}/p/${key}/${tab}${query(q)}`,
   settings: (ws: string) => `/w/${ws}/settings`,
   database: (ws: string) => `/w/${ws}/settings/database`,
 }
@@ -30,8 +42,7 @@ export function landingPath(workspaceSlug: string, lastVisited: Record<string, s
   return target ? paths.channel(workspaceSlug, target.id) : paths.settings(workspaceSlug)
 }
 
-const PLACE = /^\/w\/[^/]+\/(?:c\/([^/]+)|p\/([^/]+)\/([^/]+)|settings)$/
-const VIEWS: readonly string[] = ['board', 'backlog'] satisfies ProjectView[]
+const PLACE = /^\/w\/[^/]+\/(?:c\/([^/]+)|p\/([^/]+)\/([^/?]+)(?:\?.*)?|settings(?:\/database)?|projects|tasks)$/
 
 /**
  * Whether a saved place still leads somewhere: a channel that is still in the list, a project that still exists on
@@ -42,6 +53,18 @@ export function validSavedPlace(path: string, channels: Channel[], projects: Pro
   if (!match) return false
   const [, channelId, projectKey, view] = match
   if (channelId) return channels.some((c) => c.id === channelId)
-  if (projectKey) return VIEWS.includes(view) && projects.some((p) => p.key === projectKey)
+  if (projectKey) return (projectTabs as readonly string[]).includes(view) && projects.some((p) => p.key === projectKey)
   return true
+}
+
+const LEGACY = /^(\/w\/[^/]+\/p\/[^/]+)(?:\/(board|backlog))?\/?$/
+
+/** Phase 1+2 project addresses, mapped to the new tabs: board and backlog are now the Tasks tab's views. */
+export function legacyProjectPath(path: string): string | null {
+  const match = LEGACY.exec(path)
+  if (!match) return null
+  const [, base, view] = match
+  if (view === 'board') return `${base}/tasks?view=board`
+  if (view === 'backlog') return `${base}/tasks?view=list`
+  return `${base}/overview`
 }
