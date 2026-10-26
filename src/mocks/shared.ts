@@ -59,6 +59,6 @@ export function requireCan(
     managesAny: data.projects.some((p) => p.managerId === me.id),
     ...extra,
   })
-  if (!ok) throw forbidden(project || action.startsWith('project.') ? 'this project' : action === 'rates.view' ? 'hourly costs' : 'this')
+  if (!ok) throw forbidden(project || action.startsWith('project.') ? 'this project' : action === 'rates.view' ? 'hourly costs' : action === 'dashboard.view' ? 'the dashboard' : action === 'timeCost.view' ? 'time and cost' : 'this')
   return me
 }

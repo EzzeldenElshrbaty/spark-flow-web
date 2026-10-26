@@ -144,6 +144,14 @@ export type StoredFile = ProjectFile & { attachment: Attachment }
 export type UploadFile = Blob & { name: string }
 /** A task comment or bug with its files' details. */
 export type CommentView = Comment & { attachments: Attachment[] }
+/** A project as the manager dashboard shows it. */
+export type DashboardProject = ProjectSummary & {
+  phaseName: string | null                        // the current phase; null when every phase is done or there are none
+  estimateHours: number | null                    // Σ task estimates; null when no task has one
+  week: { userId: string; hours: number }[]       // the last 7 days, most hours first
+}
+/** Someone checked in today and not out yet, with their running timer. */
+export type CheckedInNow = { userId: string; since: string; running: { taskId: string | null; projectId: string; startedAt: string } | null }
 /** One mention of me: a message, a thread reply or a task comment, with where it opens. */
 export type MentionItem = {
   id: string; source: 'message' | 'reply' | 'comment'; authorId: string; excerpt: string; createdAt: string; read: boolean
@@ -236,6 +244,8 @@ export interface Api {
   }
   /** Mentions of me (spec §5: the bell and Home), newest first, at most 50; read state is per person. */
   mentions: { mine(): Promise<MentionItem[]>; markRead(ids: string[]): Promise<void> }
+  /** The manager dashboard (spec §5): Admin and Sales see every project, a PM the ones they manage. */
+  dashboard: { projects(workspaceId: string): Promise<DashboardProject[]>; checkedIn(workspaceId: string): Promise<CheckedInNow[]> }
   /** Hourly cost per person: Admin only (spec §4.3). */
   rates: { list(): Promise<Rate[]>; update(userId: string, hourlyCost: number): Promise<Rate> }
   /** The Database page: mock only, hidden when backendOn. */

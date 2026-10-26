@@ -34,6 +34,7 @@ export const api: Api = {
   get rates() { return resolve().rates },
   get comments() { return resolve().comments },
   get mentions() { return resolve().mentions },
+  get dashboard() { return resolve().dashboard },
   get files() { return resolve().files },
   get db() { return resolve().db },
 }

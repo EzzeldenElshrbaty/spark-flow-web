@@ -72,6 +72,14 @@ describe('createHttpApi', () => {
     expect(JSON.parse(String(calls[1].init?.body))).toEqual({ ids: ['m1'] })
   })
 
+  it('maps the dashboard calls', async () => {
+    const { calls, fetchFn } = recordingFetch()
+    const api = createHttpApi(fetchFn)
+    await api.dashboard.projects('w1')
+    await api.dashboard.checkedIn('w1')
+    expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url}`)).toEqual(['GET /api/workspaces/w1/dashboard', 'GET /api/workspaces/w1/dashboard/checked-in'])
+  })
+
   it('maps the rates calls', async () => {
     const { calls, fetchFn } = recordingFetch()
     const api = createHttpApi(fetchFn)
