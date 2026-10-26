@@ -1,22 +1,10 @@
 import { MessageSquare } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router'
 import type { ChatMessage, Reaction, ThreadReply, User } from '@/api/types'
+import { MentionText } from '@/components/MentionText'
 import { Avatar } from '@/components/ui/Avatar'
 import { formatWhen, timeAgo } from '@/lib/format'
 import { withInspector } from '@/lib/inspector'
-import { TicketKey } from '@/pages/projects/ticketPills'
-
-// Same shape as the keys the server picks out of a message (NEX-101). The capture keeps them in the split.
-const TICKET_KEY = /\b([A-Z]{2,5}-\d+)\b/
-
-/** Plain text, with ticket keys set apart so they never reorder in right-to-left text. No markdown. */
-function Content({ text }: { text: string }) {
-  return (
-    <p className="whitespace-pre-wrap break-words text-sm text-fg">
-      {text.split(TICKET_KEY).map((part, index) => (index % 2 === 1 ? <TicketKey key={index} value={part} className="text-fg-secondary" /> : part))}
-    </p>
-  )
-}
 
 /** Reaction pills: the emoji is the people's own content, the count is ours. */
 function Reactions({ reactions, users }: { reactions: Reaction[]; users: User[] }) {
@@ -70,7 +58,7 @@ export function MessageRow({ message, users, showThread = true }: { message: Cha
             {edited && ' · edited'}
           </time>
         </p>
-        <Content text={message.content} />
+        <MentionText text={message.content} />
         <Reactions reactions={message.reactions} users={users} />
         {showThread && 'threadCount' in message && message.threadCount > 0 && <ThreadLink message={message} />}
       </div>

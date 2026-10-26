@@ -1,4 +1,4 @@
-import { useChannel, useMessage, useThread } from '@/api/chat'
+import { useChannel, useMessage, useReply, useThread } from '@/api/chat'
 import { useUsers } from '@/api/users'
 import { QueryError } from '@/components/ui/QueryError'
 import { InspectorFrame, InspectorSkeleton, TitleSkeleton, type InspectorBodyProps } from '@/layout/InspectorFrame'
@@ -8,11 +8,13 @@ import { channelLabel, inWorkspace } from '@/lib/channels'
 import { firstLine } from '@/lib/inspector'
 import { useRole } from '@/lib/useRole'
 import { NotFound } from '@/pages/NotFound'
+import { Composer } from '@/pages/chat/Composer'
 import { MessageRow } from '@/pages/chat/MessageRow'
+import { readOnlyLine, useCanPost } from '@/pages/chat/useCanPost'
 
 const isNotFound = (error: Error | null) => error instanceof ApiError && error.status === 404
 
-/** A message and its replies, read-only for now. */
+/** A message, its replies and, for people who may write in the channel, a reply box. */
 export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: string } & InspectorBodyProps) {
   const { persona } = useRole()
   const { workspace } = useCurrentWorkspace()
@@ -20,6 +22,8 @@ export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: st
   const channel = useChannel(message.data?.channelId)
   const users = useUsers(channel.data?.workspaceId)
   const replies = useThread(message.data ? messageId : undefined)
+  const canPost = useCanPost(channel.data)
+  const reply = useReply()
 
   // A message from another workspace's channel is not found in this one.
   const foreign = Boolean(channel.data && workspace && !inWorkspace(channel.data, workspace.id))
@@ -60,6 +64,13 @@ export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: st
             ))}
           </ul>
         )}
+        <div className="mt-4">
+          {canPost === false ? (
+            <p className="text-sm text-fg-muted">{readOnlyLine}</p>
+          ) : canPost ? (
+            <Composer quiet placeholder="Reply in the thread" submitLabel="Reply" pendingLabel="Replying…" error={reply.error as Error | null} onSubmit={(content) => reply.mutateAsync({ messageId, content })} />
+          ) : null}
+        </div>
       </>
     )
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseMentions, parseTicketKeys } from './mentions'
+import { parseMentions, parseTicketKeys, segments } from './mentions'
 
 describe('parseTicketKeys', () => {
   it('returns unique keys in the order they first appear', () => {
@@ -27,5 +27,24 @@ describe('parseMentions', () => {
 
   it('ignores e-mail addresses, lowercase keys and bare words', () => {
     expect(parseMentions('mail ops@spark-sys.com about @mob-1 and @everyone')).toEqual([])
+  })
+})
+
+describe('segments', () => {
+  const known = { userIds: new Set(['u-2']), taskKeys: new Set(['NEX-101']), projectKeys: new Set(['NEX']), nameOf: (id: string) => (id === 'u-2' ? 'Nour El-Sayed' : id) }
+  it('segments leaves unknown and e-mail text as text', () => {
+    expect(segments('Hey @[Nour](u-2), see @NEX-101 in @NEX; @NEX-999 @ZZZ @[Ghost](u-x) a@b.com @all', known)).toEqual([
+      { kind: 'text', text: 'Hey ' },
+      { kind: 'user', userId: 'u-2', name: 'Nour El-Sayed' },
+      { kind: 'text', text: ', see ' },
+      { kind: 'task', key: 'NEX-101' },
+      { kind: 'text', text: ' in ' },
+      { kind: 'project', key: 'NEX' },
+      { kind: 'text', text: '; @NEX-999 @ZZZ @Ghost a@b.com ' },
+      { kind: 'all' },
+    ])
+  })
+  it('plain text stays one segment', () => {
+    expect(segments('<b>hi</b>', known)).toEqual([{ kind: 'text', text: '<b>hi</b>' }])
   })
 })

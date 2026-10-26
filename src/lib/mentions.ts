@@ -31,3 +31,43 @@ export function parseMentions(content: string): Mention[] {
   }
   return found
 }
+
+export type Segment =
+  | { kind: 'text'; text: string }
+  | { kind: 'user'; userId: string; name: string }
+  | { kind: 'task'; key: string }
+  | { kind: 'project'; key: string }
+  | { kind: 'all' }
+
+export type KnownIds = { userIds: Set<string>; taskKeys: Set<string>; projectKeys: Set<string>; nameOf: (id: string) => string }
+
+/**
+ * Text split into plain parts and mentions, for rendering as chips. Only mentions of people, tasks and projects that
+ * exist become chips (spec §7: chips come from parsed ids); the rest stays text, with `@[Name](id)` shown as `@Name`.
+ */
+export function segments(content: string, known: KnownIds): Segment[] {
+  const out: Segment[] = []
+  const text = (t: string) => {
+    if (!t) return
+    const last = out.at(-1)
+    if (last?.kind === 'text') last.text += t
+    else out.push({ kind: 'text', text: t })
+  }
+  let from = 0
+  for (const match of content.matchAll(MENTION)) {
+    const [whole, all, userId, taskKey, projectKey] = match
+    text(content.slice(from, match.index))
+    from = match.index + whole.length
+    if (all) out.push({ kind: 'all' })
+    else if (userId) {
+      if (known.userIds.has(userId)) out.push({ kind: 'user', userId, name: known.nameOf(userId) })
+      else text(`@${whole.slice(2, whole.indexOf(']'))}`)
+    } else if (taskKey) {
+      if (known.taskKeys.has(taskKey)) out.push({ kind: 'task', key: taskKey })
+      else text(whole)
+    } else if (known.projectKeys.has(projectKey)) out.push({ kind: 'project', key: projectKey })
+    else text(whole)
+  }
+  text(content.slice(from))
+  return out
+}

@@ -1,5 +1,5 @@
 import { useParams } from 'react-router'
-import { useChannel } from '@/api/chat'
+import { useChannel, useSendMessage } from '@/api/chat'
 import { useUsers } from '@/api/users'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
@@ -10,6 +10,8 @@ import { paths } from '@/lib/paths'
 import { useRole } from '@/lib/useRole'
 import { NotFound } from '@/pages/NotFound'
 import { ChannelFeed } from '@/pages/chat/ChannelFeed'
+import { Composer } from '@/pages/chat/Composer'
+import { readOnlyLine, useCanPost } from '@/pages/chat/useCanPost'
 import { MessageSkeleton } from '@/pages/chat/MessageRow'
 
 /** A channel or DM: its name and topic, then its messages with the newest at the bottom. Read-only in Phase 1. */
@@ -19,6 +21,8 @@ export function ChannelPage() {
   const { persona } = useRole()
   const channel = useChannel(channelId)
   const users = useUsers(workspace?.id)
+  const canPost = useCanPost(channel.data)
+  const send = useSendMessage()
   // A channel id from another workspace is not a channel of this one: it reads as not found, and is never marked read.
   const foreign = Boolean(channel.data && workspace && !inWorkspace(channel.data, workspace.id))
 
@@ -51,7 +55,27 @@ export function ChannelPage() {
   return (
     <>
       <PageHeader title={title} subtitle={current.topic.trim() || '—'} />
-      <ChannelFeed key={current.id} channelId={current.id} title={title} users={people} usersLoading={users.isLoading} />
+      <ChannelFeed
+        key={current.id}
+        channelId={current.id}
+        title={title}
+        users={people}
+        usersLoading={users.isLoading}
+        meId={persona.id}
+        composer={
+          canPost === false ? (
+            <p className="text-sm text-fg-muted">{readOnlyLine}</p>
+          ) : canPost ? (
+            <Composer
+              placeholder={`Message ${title}`}
+              submitLabel="Send"
+              pendingLabel="Sending…"
+              error={send.error as Error | null}
+              onSubmit={(content) => send.mutateAsync({ channelId: current.id, content })}
+            />
+          ) : null
+        }
+      />
     </>
   )
 }

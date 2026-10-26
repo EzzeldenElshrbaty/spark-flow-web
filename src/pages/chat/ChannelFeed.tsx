@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useMarkRead, useMessages } from '@/api/chat'
 import type { User } from '@/api/types'
 import { Button } from '@/components/ui/Button'
@@ -10,7 +10,7 @@ import { MessageRow, MessageSkeleton } from '@/pages/chat/MessageRow'
  * A channel's messages, newest at the bottom, with "Load older messages". Opening it marks the channel read and keeps
  * a live connection to it. Used by the Chat page and by a project's Chat tab; the caller shows the header.
  */
-export function ChannelFeed({ channelId, title, users, usersLoading }: { channelId: string; title: string; users: User[]; usersLoading: boolean }) {
+export function ChannelFeed({ channelId, title, users, usersLoading, composer, meId }: { channelId: string; title: string; users: User[]; usersLoading: boolean; composer?: ReactNode; meId?: string }) {
   const messages = useMessages(channelId)
   const { mutate: markRead } = useMarkRead()
   // One live connection per feed on screen; it follows the channel shown.
@@ -34,6 +34,12 @@ export function ChannelFeed({ channelId, title, users, usersLoading }: { channel
   }, [listShown, channelId])
 
   const items = messages.data?.pages.flatMap((page) => page.items).reverse() ?? []
+  // After I post, follow my message down; someone else's message never pulls the view.
+  const newest = items.at(-1)
+  const newestMine = newest && newest.senderId === meId ? newest.id : null
+  useEffect(() => {
+    if (newestMine) endRef.current?.scrollIntoView({ block: 'end' })
+  }, [newestMine])
 
   let body
   if (messages.isError && !messages.data) body = <QueryError what="Messages" onRetry={() => void messages.refetch()} />
@@ -69,6 +75,7 @@ export function ChannelFeed({ channelId, title, users, usersLoading }: { channel
     <>
       {body}
       <div ref={endRef} />
+      {composer && <div className="sticky bottom-[calc(3.5rem+var(--timer-bar,0px)+env(safe-area-inset-bottom))] z-10 -mx-1 mt-4 bg-canvas px-1 pb-2 pt-2 lg:bottom-0">{composer}</div>}
     </>
   )
 }
