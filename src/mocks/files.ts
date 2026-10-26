@@ -5,11 +5,12 @@ import { notFound } from './shared'
 
 export function filesApi(db: MockDb): Api['files'] {
   return {
+    /** A blob: address for a stored file. The page that shows it frees it with URL.revokeObjectURL when done. */
     async url(id) {
       await delay()
-      // File bytes arrive with the IndexedDB store (M0 Task 3); until then no file can be opened.
-      void db
-      throw notFound('File', id)
+      const [blob, data] = await Promise.all([db.getFile(id), db.read()])
+      if (!blob || !data.attachments.some((a) => a.id === id)) throw notFound('File', id)
+      return URL.createObjectURL(blob)
     },
   }
 }

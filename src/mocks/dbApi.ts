@@ -7,15 +7,15 @@ export function dbApi(db: MockDb): Api['db'] {
   return {
     async export() {
       await delay()
-      return { app: 'spark-flow', version: DB_VERSION, exportedAt: new Date().toISOString(), data: db.read() }
+      return { app: 'spark-flow', version: DB_VERSION, exportedAt: new Date().toISOString(), data: await db.read() }
     },
     async reloadSeed() {
       await delay()
-      db.reset()
+      await db.reset()
     },
     async reset() {
       await delay()
-      db.reset()
+      await db.reset()
     },
   }
 }

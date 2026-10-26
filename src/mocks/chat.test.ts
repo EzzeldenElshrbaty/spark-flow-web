@@ -7,7 +7,7 @@ import { createMockApi } from './index'
 import { latency } from './latency'
 import { createMockHub, type MockHub } from './realtime'
 import { seed } from './seed'
-import { memoryStorage } from './testing'
+import { createMemoryStore } from './store'
 
 let db: MockDb
 let hub: MockHub
@@ -17,7 +17,7 @@ let n = 0
 
 beforeEach(() => {
   latency.min = latency.max = 0
-  db = createDb(memoryStorage(), seed)
+  db = createDb(createMemoryStore(), (now) => ({ data: seed(now), files: {} }))
   hub = createMockHub(`test-chat-${++n}`, null)
   api = createMockApi(db, hub)
   events = []
@@ -26,8 +26,8 @@ beforeEach(() => {
 afterEach(() => hub.close())
 
 /** Adds `count` messages from another user to a channel, one second apart, oldest first. */
-function addMessages(channelId: string, count: number) {
-  db.update((d) => {
+async function addMessages(channelId: string, count: number) {
+  await db.update((d) => {
     for (let i = 0; i < count; i++) {
       d.messages.push({
         id: `m-extra-${i}`, channelId, senderId: 'u-2', content: `extra ${i}`,
@@ -40,7 +40,7 @@ function addMessages(channelId: string, count: number) {
 
 describe('chat.messages', () => {
   it('pages messages newest first by cursor', async () => {
-    addMessages('c-general', 40)
+    await addMessages('c-general', 40)
     const first = await api.chat.messages('c-general')
     expect(first.items).toHaveLength(30) // page size 30
     expect(first.items[0].createdAt >= first.items[1].createdAt).toBe(true)
@@ -52,7 +52,7 @@ describe('chat.messages', () => {
   })
 
   it('walks every message exactly once, then ends with a null cursor', async () => {
-    addMessages('c-general', 40)
+    await addMessages('c-general', 40)
     const all: ChatMessage[] = []
     let cursor: string | undefined
     do {
@@ -60,15 +60,15 @@ describe('chat.messages', () => {
       all.push(...page.items)
       cursor = page.nextCursor ?? undefined
     } while (cursor)
-    const expected = db.read().messages.filter((m) => m.channelId === 'c-general')
+    const expected = (await db.read()).messages.filter((m) => m.channelId === 'c-general')
     expect(all.map((m) => m.id).sort()).toEqual(expected.map((m) => m.id).sort())
     const times = all.map((m) => m.createdAt)
     expect(times).toEqual(times.slice().sort().reverse())
   })
 
   it('has a null cursor when the last page is exactly full', async () => {
-    db.update((d) => { d.messages = d.messages.filter((m) => m.channelId !== 'c-general') })
-    addMessages('c-general', 30)
+    await db.update((d) => { d.messages = d.messages.filter((m) => m.channelId !== 'c-general') })
+    await addMessages('c-general', 30)
     const page = await api.chat.messages('c-general')
     expect(page.items).toHaveLength(30)
     expect(page.nextCursor).toBeNull()
@@ -82,7 +82,7 @@ describe('chat.messages', () => {
 
   it('never drops or repeats messages that share one timestamp across a page boundary', async () => {
     const at = new Date(Date.UTC(2030, 0, 1)).toISOString()
-    db.update((d) => {
+    await db.update((d) => {
       for (let i = 0; i < 75; i++) {
         d.messages.push({
           id: `m-tie-${String(i).padStart(3, '0')}`, channelId: 'c-general', senderId: 'u-2', content: `tie ${i}`,
@@ -97,7 +97,7 @@ describe('chat.messages', () => {
       seen.push(...page.items.map((m) => m.id))
       cursor = page.nextCursor ?? undefined
     } while (cursor)
-    const expected = db.read().messages.filter((m) => m.channelId === 'c-general').length
+    const expected = (await db.read()).messages.filter((m) => m.channelId === 'c-general').length
     expect(seen).toHaveLength(expected)
     expect(new Set(seen).size).toBe(expected)
     expect(seen.slice(0, 3)).toEqual(['m-tie-074', 'm-tie-073', 'm-tie-072'])
@@ -121,22 +121,11 @@ describe('chat.channels and unreadCount', () => {
     expect(dms.filter((n) => n > 0)).toEqual([1])
   })
 
-  it('markRead does not rewrite the main document', async () => {
-    const storage = memoryStorage()
-    const own = createDb(storage, seed)
-    const ownApi = createMockApi(own, hub)
-    own.read()
-    const before = storage.getItem('spark-flow.mockdb.v1')
-    await ownApi.chat.markRead('c-frontend')
-    expect(storage.getItem('spark-flow.mockdb.v1')).toBe(before)
-    expect((await ownApi.chat.channel('c-frontend')).unreadCount).toBe(0)
-  })
-
   it('markRead saves the read time for that channel only', async () => {
-    const before = db.read().reads
+    const before = (await db.read()).reads
     const t0 = new Date().toISOString()
     await api.chat.markRead('c-frontend')
-    const reads = db.read().reads
+    const reads = (await db.read()).reads
     expect(reads['c-frontend'] >= t0).toBe(true) // set to the current time
     expect(reads['c-frontend']).not.toBe(before['c-frontend'])
     expect(reads['c-dm-2']).toBe(before['c-dm-2'])
@@ -147,12 +136,12 @@ describe('chat.channels and unreadCount', () => {
   })
 
   it('own messages do not count as unread', async () => {
-    db.markRead('c-backend', new Date(Date.now() - 3_600_000).toISOString()) // read an hour ago
+    await db.update((d) => { d.reads['c-backend'] = new Date(Date.now() - 3_600_000).toISOString() }) // read an hour ago
     expect((await api.chat.channel('c-backend')).unreadCount).toBe(0)
     await sendMessage(db, hub, { channelId: 'c-backend', content: 'mine' })
     expect((await api.chat.channel('c-backend')).unreadCount).toBe(0)
     // someone else's message after the read time does count
-    db.update((d) => {
+    await db.update((d) => {
       d.messages.push({
         id: 'm-other', channelId: 'c-backend', senderId: 'u-2', content: 'theirs',
         attachments: [], reactions: [], threadCount: 0, lastReplyAt: null, linkedTicketKeys: [], mentions: [], editedAt: null,
@@ -179,7 +168,7 @@ describe('chat.channels and unreadCount', () => {
 
 describe('chat.message and replies', () => {
   it('gets a message and its replies', async () => {
-    const parent = db.read().replies[0]
+    const parent = (await db.read()).replies[0]
     const message = await api.chat.message(parent.messageId)
     expect(message.id).toBe(parent.messageId)
     const replies = await api.chat.replies(parent.messageId)
@@ -227,7 +216,7 @@ describe('sendMessage', () => {
 
 describe('addReply', () => {
   it('updates threadCount, lastReplyAt and the channel, and publishes', async () => {
-    const parent = db.read().messages.find((m) => m.channelId === 'c-backend' && m.threadCount === 0)!
+    const parent = (await db.read()).messages.find((m) => m.channelId === 'c-backend' && m.threadCount === 0)!
     const reply = await addReply(db, hub, { messageId: parent.id, content: 'On it. NEX-104' })
     expect(reply).toMatchObject({ messageId: parent.id, channelId: 'c-backend', senderId: 'u-1', content: 'On it. NEX-104' })
     const after = await api.chat.message(parent.id)
@@ -239,7 +228,7 @@ describe('addReply', () => {
   })
 
   it('increments an existing thread', async () => {
-    const parent = db.read().messages.find((m) => m.threadCount > 0)!
+    const parent = (await db.read()).messages.find((m) => m.threadCount > 0)!
     await addReply(db, hub, { messageId: parent.id, content: 'one more' })
     expect((await api.chat.message(parent.id)).threadCount).toBe(parent.threadCount + 1)
   })
@@ -250,7 +239,7 @@ describe('addReply', () => {
   })
 
   it('hands back a copy, not stored state', async () => {
-    const parent = db.read().messages[0]
+    const parent = (await db.read()).messages[0]
     const reply = await addReply(db, hub, { messageId: parent.id, content: 'hi' })
     reply.content = 'tampered'
     expect((await api.chat.replies(parent.id)).find((r) => r.id === reply.id)!.content).toBe('hi')

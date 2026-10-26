@@ -46,18 +46,18 @@ export function chatApi(db: MockDb): Api['chat'] {
   return {
     async channels(workspaceId) {
       await delay()
-      const data = db.read()
+      const data = await db.read()
       if (!data.workspaces.some((w) => w.id === workspaceId)) throw notFound('Workspace', workspaceId)
       return data.channels.filter((c) => c.workspaceId === workspaceId).map((c) => withUnread(data, c))
     },
     async channel(id) {
       await delay()
-      const data = db.read()
+      const data = await db.read()
       return withUnread(data, findChannel(data, id))
     },
     async messages(channelId, cursor) {
       await delay()
-      const data = db.read()
+      const data = await db.read()
       findChannel(data, channelId)
       // Newest first, by (createdAt, id) descending. The cursor is opaque: the sort key of the last message of the
       // previous page, so messages that share a timestamp across a page boundary are neither dropped nor repeated.
@@ -70,18 +70,20 @@ export function chatApi(db: MockDb): Api['chat'] {
     },
     async message(id) {
       await delay()
-      return findMessage(db.read(), id)
+      return findMessage(await db.read(), id)
     },
     async replies(messageId) {
       await delay()
-      const data = db.read()
+      const data = await db.read()
       findMessage(data, messageId)
       return data.replies.filter((r) => r.messageId === messageId).sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1))
     },
     async markRead(channelId) {
       await delay()
-      findChannel(db.read(), channelId)
-      db.markRead(channelId, new Date().toISOString()) // its own key: never rewrites the shared document
+      await db.update((data) => {
+        findChannel(data, channelId)
+        data.reads[channelId] = new Date().toISOString()
+      })
     },
   }
 }
@@ -93,7 +95,7 @@ export type AddReplyInput = { messageId: string; content: string }
 
 /** Posts a message as the current user, then tells every tab. */
 export async function sendMessage(db: MockDb, hub: MockHub, input: SendMessageInput): Promise<ChatMessage> {
-  const message = db.update((data) => {
+  const message = await db.update((data) => {
     const channel = findChannel(data, input.channelId)
     const lastInChannel = data.messages.reduce((t, m) => (m.channelId === channel.id && m.createdAt > t ? m.createdAt : t), '')
     const createdAt = stamp(lastInChannel)
@@ -121,7 +123,7 @@ export async function sendMessage(db: MockDb, hub: MockHub, input: SendMessageIn
 
 /** Replies in a thread as the current user, then tells every tab. */
 export async function addReply(db: MockDb, hub: MockHub, input: AddReplyInput): Promise<ThreadReply> {
-  const reply = db.update((data) => {
+  const reply = await db.update((data) => {
     const parent = findMessage(data, input.messageId)
     const channel = findChannel(data, parent.channelId)
     const createdAt = stamp(parent.lastReplyAt)

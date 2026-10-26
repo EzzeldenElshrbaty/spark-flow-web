@@ -27,25 +27,25 @@ export function ticketsApi(db: MockDb): Api['tickets'] {
   return {
     async projects(workspaceId) {
       await delay()
-      const data = db.read()
+      const data = await db.read()
       if (!data.workspaces.some((w) => w.id === workspaceId)) throw notFound('Workspace', workspaceId)
       return data.projects.filter((p) => p.workspaceId === workspaceId)
     },
     async sprints(projectId) {
       await delay()
-      const data = db.read()
+      const data = await db.read()
       findProject(data, projectId)
       return data.sprints.filter((s) => s.projectId === projectId)
     },
     async list(projectId) {
       await delay()
-      const data = db.read()
+      const data = await db.read()
       findProject(data, projectId)
       return data.tickets.filter((t) => t.projectId === projectId).sort(byStatusThenRank)
     },
     async get(key) {
       await delay()
-      return findTicket(db.read(), key)
+      return findTicket(await db.read(), key)
     },
   }
 }
@@ -54,7 +54,7 @@ export function ticketsApi(db: MockDb): Api['tickets'] {
 
 /** Opens a ticket as the current user: next key for the project, last in its column. */
 export async function createTicket(db: MockDb, hub: MockHub, input: NewTicket): Promise<Ticket> {
-  const ticket = db.update((data) => {
+  const ticket = await db.update((data) => {
     const project = findProject(data, input.projectId)
     const own = data.tickets.filter((t) => t.projectId === project.id)
     const number = data.counters[project.id] ?? Math.max(0, ...own.map(ticketNumber)) + 1
@@ -93,7 +93,7 @@ export async function createTicket(db: MockDb, hub: MockHub, input: NewTicket): 
 
 /** Changes the given fields of a ticket and bumps updatedAt. */
 export async function updateTicket(db: MockDb, hub: MockHub, key: string, patch: TicketPatch): Promise<Ticket> {
-  const ticket = db.update((data) => {
+  const ticket = await db.update((data) => {
     const ticket = findTicket(data, key)
     for (const [field, value] of Object.entries(patch)) {
       if (value !== undefined) (ticket as Record<string, unknown>)[field] = value

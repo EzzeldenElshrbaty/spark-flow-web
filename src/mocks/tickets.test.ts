@@ -6,7 +6,7 @@ import { createMockApi } from './index'
 import { latency } from './latency'
 import { createMockHub, type MockHub } from './realtime'
 import { seed } from './seed'
-import { memoryStorage } from './testing'
+import { createMemoryStore } from './store'
 import { createTicket, updateTicket } from './tickets'
 
 let db: MockDb
@@ -17,7 +17,7 @@ let n = 0
 
 beforeEach(() => {
   latency.min = latency.max = 0
-  db = createDb(memoryStorage(), seed)
+  db = createDb(createMemoryStore(), (now) => ({ data: seed(now), files: {} }))
   hub = createMockHub(`test-tickets-${++n}`, null)
   api = createMockApi(db, hub)
   events = []
@@ -34,7 +34,7 @@ const ORDER: TicketStatus[] = ['backlog', 'todo', 'inProgress', 'inReview', 'don
 
 describe('tickets reads', () => {
   it("lists a project's tickets ordered by status then rank", async () => {
-    db.update((d) => { d.tickets.reverse() }) // stored in the wrong order, so the sort has work to do
+    await db.update((d) => { d.tickets.reverse() }) // stored in the wrong order, so the sort has work to do
     const list = await api.tickets.list('p-nex')
     expect(list.length).toBeGreaterThan(0)
     expect(list.every((t) => t.projectId === 'p-nex')).toBe(true)
@@ -96,7 +96,7 @@ describe('createTicket', () => {
   })
 
   it('goes first when its column is empty, and records who and when', async () => {
-    db.update((d) => { d.tickets = d.tickets.filter((t) => !(t.projectId === 'p-nex' && t.status === 'inReview')) })
+    await db.update((d) => { d.tickets = d.tickets.filter((t) => !(t.projectId === 'p-nex' && t.status === 'inReview')) })
     const t = await createTicket(db, hub, newTicket({ status: 'inReview', linkedChannelId: 'c-backend', linkedMessageId: 'm-b01' }))
     expect(t).toMatchObject({
       projectId: 'p-nex', status: 'inReview', rank: 1000, reporterId: 'u-1',

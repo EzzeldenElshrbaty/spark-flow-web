@@ -1,11 +1,11 @@
 import type { Api, ChatMessage, NewTicket, ThreadReply, Ticket, TicketPatch } from '@/api/types'
 import { addReply, chatApi, sendMessage, type AddReplyInput, type SendMessageInput } from './chat'
-import { createDb, type KeyValueStorage, type MockDb } from './db'
+import { createDb, removeLegacyStorage, type MockDb, type SeedResult } from './db'
 import { dbApi } from './dbApi'
 import { filesApi } from './files'
-import { createMemoryStorage } from './memoryStore'
 import { mockHub, type MockHub } from './realtime'
 import { seed } from './seed'
+import { openStore } from './store'
 import { createTicket, ticketsApi, updateTicket } from './tickets'
 import { usersApi } from './users'
 import { workspacesApi } from './workspaces'
@@ -39,16 +39,38 @@ export function createMockApi(db: MockDb, _hub: MockHub): Api {
   }
 }
 
-/** window.localStorage, or memory when the browser blocks it (reading the property can throw). */
-function pickStorage(): KeyValueStorage {
+// Until the seed ships file bytes (M0 Task 4), it hands over the document alone.
+const seedResult = (now: Date): SeedResult => ({ data: seed(now), files: {} })
+
+/** Reading these browser properties can throw when storage is blocked; then they count as missing. */
+function safely<T>(read: () => T): T | undefined {
   try {
-    const storage = window.localStorage
-    if (storage) return storage
+    return read()
   } catch {
-    // blocked: fall through
+    return undefined
   }
-  console.warn('localStorage is not available; the mock database will only last for this session.')
-  return createMemoryStorage()
+}
+
+/**
+ * A MockDb whose store opens on first use: IndexedDB in the browser, memory when it's blocked. Opening also removes
+ * the Phase 1+2 localStorage database.
+ */
+function lazyDb(): MockDb {
+  let opening: Promise<MockDb> | null = null
+  const ready = () =>
+    (opening ??= (async () => {
+      removeLegacyStorage(safely(() => window.localStorage))
+      return createDb(await openStore(safely(() => globalThis.indexedDB)), seedResult)
+    })())
+  return {
+    read: () => ready().then((db) => db.read()),
+    update: (fn) => ready().then((db) => db.update(fn)),
+    getFile: (id) => ready().then((db) => db.getFile(id)),
+    putFile: (id, blob) => ready().then((db) => db.putFile(id, blob)),
+    reset: () => ready().then((db) => db.reset()),
+    exportAll: () => ready().then((db) => db.exportAll()),
+    importAll: (bundle) => ready().then((db) => db.importAll(bundle)),
+  }
 }
 
 let cached: { db: MockDb; api: Api } | null = null
@@ -56,7 +78,7 @@ let cached: { db: MockDb; api: Api } | null = null
 /** The app's mock Api, created on first use. */
 export function getMockApi(): Api {
   if (!cached) {
-    const db = createDb(pickStorage(), seed)
+    const db = lazyDb()
     cached = { db, api: createMockApi(db, mockHub) }
     if (import.meta.env.DEV) {
       window.__sparkFlowDev = {
