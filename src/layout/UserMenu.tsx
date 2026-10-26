@@ -1,8 +1,14 @@
 import clsx from 'clsx'
-import { ChevronDown, KeyRound, LogOut, Moon, Sun } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
+import { Check, ChevronDown, KeyRound, LogOut, Moon, Sun } from 'lucide-react'
 import { useRef, useState } from 'react'
+import { useNavigate } from 'react-router'
+import { useUsers, useViewAs } from '@/api/users'
 import { MenuPanel } from '@/components/ui/Menu'
 import { roundButtonClass } from '@/components/ui/styles'
+import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
+import { backendOn } from '@/lib/api'
+import { roleLabels } from '@/lib/roles'
 import { useRole } from '@/lib/useRole'
 import { useTheme } from '@/lib/useTheme'
 
@@ -16,6 +22,20 @@ export function UserMenu() {
   const { theme, setTheme } = useTheme()
   const [open, setOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
+  const { workspace } = useCurrentWorkspace()
+  const people = useUsers(backendOn ? undefined : workspace?.id)
+  const viewAs = useViewAs()
+  const queryClient = useQueryClient()
+  const navigate = useNavigate()
+
+  // Demo only: become someone else, then start fresh on that workspace's home, since what they may see differs.
+  const switchTo = async (userId: string) => {
+    if (userId === persona.id) return
+    await viewAs.mutateAsync(userId)
+    setOpen(false)
+    queryClient.clear()
+    navigate(workspace ? `/w/${workspace.slug}` : '/')
+  }
 
   // The account loads after the shell: until the name is known, the avatar is a pulse placeholder.
   const loaded = Boolean(persona.name)
@@ -64,7 +84,7 @@ export function UserMenu() {
               <span className="flex size-10 items-center justify-center rounded-full bg-ink-800 text-sm font-semibold text-white dark:bg-surface-strong">{initials}</span>
               <div className="min-w-0">
                 <p className="truncate font-medium text-fg">{persona.name}</p>
-                <p className="truncate text-xs text-fg-muted">{persona.role}</p>
+                <p className="truncate text-xs text-fg-muted">{roleLabels[persona.role]} · {persona.title}</p>
               </div>
             </div>
 
@@ -96,6 +116,31 @@ export function UserMenu() {
                 </div>
               </div>
             </div>
+
+            {!backendOn && people.data && (
+              <div className="border-t border-line-subtle p-1.5">
+                <p className={sectionLabel}>View as</p>
+                <div className="max-h-64 overflow-y-auto">
+                  {people.data.map((person) => (
+                    <button
+                      key={person.id}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={person.id === persona.id}
+                      disabled={viewAs.isPending}
+                      onClick={() => void switchTo(person.id)}
+                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start text-sm text-fg-secondary hover:bg-surface-muted disabled:opacity-60"
+                    >
+                      <span className="min-w-0 flex-1 truncate">
+                        {person.name} <span className="text-fg-muted">· {roleLabels[person.role]}</span>
+                      </span>
+                      {person.id === persona.id && <Check className="size-4 shrink-0 text-accent" />}
+                    </button>
+                  ))}
+                </div>
+                {viewAs.isError && <p className="px-3 py-1 text-xs text-red-600 dark:text-red-400">Switching didn't work. Try again.</p>}
+              </div>
+            )}
 
             <div className="border-t border-line-subtle p-1.5">
               {(

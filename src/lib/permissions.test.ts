@@ -1,0 +1,62 @@
+import { describe, expect, it } from 'vitest'
+import type { Role } from '@/api/types'
+import { can, type Action, type PermissionContext } from './permissions'
+
+const project = { managerId: 'u-pm', memberIds: ['u-pm', 'u-m'], teamIds: ['t-qa'] }
+const other = { managerId: 'u-x', memberIds: ['u-x'], teamIds: [] }
+const as = (role: Role, userId = `u-${role}`, extra: Partial<PermissionContext> = {}): PermissionContext => ({ role, userId, ...extra })
+
+describe('can (spec §4.3)', () => {
+  it('admin can do everything', () => {
+    const all: Action[] = ['rates.view', 'cost.view', 'project.create', 'project.edit', 'phase.manage', 'task.manage', 'task.updateOwnStatus', 'time.logOwn', 'collab.post', 'dashboard.view', 'timeCost.view', 'database.manage']
+    for (const action of all) expect(can(action, as('admin', 'u-a', { project: other })), action).toBe(true)
+  })
+
+  it('only admin sees rates, cost, the Time & cost page and the database', () => {
+    for (const role of ['sales', 'pm', 'member'] as const)
+      for (const action of ['rates.view', 'cost.view', 'timeCost.view', 'database.manage'] as const)
+        expect(can(action, as(role, 'u-pm', { project })), `${role} ${action}`).toBe(false)
+  })
+
+  it('sales creates and edits projects but does not manage phases or tasks', () => {
+    expect(can('project.create', as('sales'))).toBe(true)
+    expect(can('project.edit', as('sales', 'u-s', { project: other }))).toBe(true)
+    expect(can('phase.manage', as('sales', 'u-s', { project: other }))).toBe(false)
+    expect(can('task.manage', as('sales', 'u-s', { project: other }))).toBe(false)
+    expect(can('dashboard.view', as('sales'))).toBe(true)
+  })
+
+  it('a PM manages phases, tasks and edits only projects they manage', () => {
+    expect(can('project.create', as('pm', 'u-pm'))).toBe(false)
+    for (const action of ['project.edit', 'phase.manage', 'task.manage', 'dashboard.view'] as const) {
+      expect(can(action, as('pm', 'u-pm', { project })), `${action} own`).toBe(true)
+      expect(can(action, as('pm', 'u-pm', { project: other })), `${action} other`).toBe(false)
+    }
+  })
+
+  it('whoever a project names as manager gets PM rights on it, even with the member role', () => {
+    expect(can('task.manage', as('member', 'u-pm', { project }))).toBe(true)
+  })
+
+  it('a member updates the status of their own task only', () => {
+    expect(can('task.updateOwnStatus', as('member', 'u-m', { project, taskAssigneeId: 'u-m' }))).toBe(true)
+    expect(can('task.updateOwnStatus', as('member', 'u-m', { project, taskAssigneeId: 'u-x' }))).toBe(false)
+    expect(can('task.manage', as('member', 'u-m', { project }))).toBe(false)
+  })
+
+  it('a member posts on projects they are on (directly or through a team), and in general chat', () => {
+    expect(can('collab.post', as('member', 'u-m', { project }))).toBe(true)
+    expect(can('collab.post', as('member', 'u-q', { project, userTeamIds: ['t-qa'] }))).toBe(true)
+    expect(can('collab.post', as('member', 'u-m', { project: other }))).toBe(false)
+    expect(can('collab.post', as('member', 'u-m'))).toBe(true)
+  })
+
+  it('everyone logs their own time', () => {
+    for (const role of ['admin', 'sales', 'pm', 'member'] as const) expect(can('time.logOwn', as(role))).toBe(true)
+  })
+
+  it('member cannot open database or the dashboard', () => {
+    expect(can('database.manage', as('member'))).toBe(false)
+    expect(can('dashboard.view', as('member'))).toBe(false)
+  })
+})

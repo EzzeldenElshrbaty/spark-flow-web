@@ -1,20 +1,29 @@
 import type { Api } from '@/api/types'
-import { DB_VERSION, type MockDb } from './db'
+import { can } from '@/lib/permissions'
+import type { MockDb } from './db'
 import { delay } from './latency'
+import { currentUser, forbidden } from './shared'
 
-/** The Database page's actions. They publish nothing: the UI clears its own cache. */
+/** The Database page's actions: admins only. They publish nothing: the UI clears its own cache. */
 export function dbApi(db: MockDb): Api['db'] {
+  const allowed = async () => {
+    const me = currentUser(await db.read())
+    if (!can('database.manage', { userId: me.id, role: me.role })) throw forbidden('the database')
+  }
   return {
     async export() {
       await delay()
-      return { app: 'spark-flow', version: DB_VERSION, exportedAt: new Date().toISOString(), data: await db.read() }
+      await allowed()
+      return db.exportAll()
     },
     async reloadSeed() {
       await delay()
+      await allowed()
       await db.reset()
     },
     async reset() {
       await delay()
+      await allowed()
       await db.reset()
     },
   }

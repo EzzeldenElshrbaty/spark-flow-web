@@ -29,4 +29,11 @@ describe('users', () => {
     await expect(api.users.viewAs('u-nope')).rejects.toMatchObject({ name: 'ApiError', status: 404 })
     expect((await api.users.me()).id).toBe('u-1')
   })
+
+  it('only an admin may export, reload or reset the database', async () => {
+    expect((await api.db.export()).app).toBe('spark-flow') // u-1 is the admin
+    await api.users.viewAs('u-5') // a member
+    for (const call of [() => api.db.export(), () => api.db.reloadSeed(), () => api.db.reset()])
+      await expect(call()).rejects.toMatchObject({ name: 'ApiError', status: 403, detail: "You don't have access to the database." })
+  })
 })
