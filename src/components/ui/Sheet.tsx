@@ -69,7 +69,7 @@ export function Sheet({
         className={clsx(
           'relative flex w-full flex-col bg-surface shadow-xl outline-none max-sm:h-full',
           variant === 'drawer'
-            ? 'ml-auto h-full motion-safe:animate-slide-in-right sm:max-w-lg sm:border-l sm:border-line'
+            ? 'ms-auto h-full motion-safe:animate-slide-in-end sm:max-w-lg sm:border-s sm:border-line'
             : clsx('m-auto motion-safe:animate-pop-in sm:max-h-[90vh] sm:rounded-2xl sm:border sm:border-line', wide === 'full' ? 'sm:max-w-6xl' : wide ? 'sm:max-w-3xl' : 'sm:max-w-md'),
         )}
       >
@@ -80,7 +80,7 @@ export function Sheet({
             </h2>
             {description && <p className="mt-0.5 text-sm text-fg-muted">{description}</p>}
           </div>
-          <button type="button" onClick={onClose} className="-mr-1 rounded-md p-1 text-fg-muted hover:bg-surface-muted hover:text-fg" aria-label="Close" data-close>
+          <button type="button" onClick={onClose} className="-me-1 rounded-md p-1 text-fg-muted hover:bg-surface-muted hover:text-fg" aria-label="Close" data-close>
             <X className="size-5" />
           </button>
         </div>

@@ -6,8 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:prototype": "tsc -b && vite build --mode prototype",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "test": "vitest run",
+    "preview": "vite preview",
+    "preview:prototype": "vite preview --mode prototype"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.104.1",
@@ -15,7 +18,8 @@
     "lucide-react": "^1.51.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-router": "^8.4.0"
+    "react-router": "^8.4.0",
+    "zustand": "^5.0.16"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
@@ -26,6 +30,7 @@
     "oxlint": "^1.81.0",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
-    "vite": "^8.3.0"
+    "vite": "^8.3.0",
+    "vitest": "^5.0.5"
   }
 }

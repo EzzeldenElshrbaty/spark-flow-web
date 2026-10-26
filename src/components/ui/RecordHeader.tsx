@@ -1,8 +1,8 @@
 import clsx from 'clsx'
 import { MoreHorizontal, type LucideIcon } from 'lucide-react'
 import { useRef, useState, type ReactNode } from 'react'
-import { Button } from './Button'
-import { MenuPanel } from './Menu'
+import { Button } from '@/components/ui/Button'
+import { MenuPanel } from '@/components/ui/Menu'
 
 /** `disabledHint` disables the action and explains why (tooltip). */
 export type RecordAction = { label: string; icon: LucideIcon; onSelect: () => void; danger?: boolean; disabledHint?: string }
@@ -137,7 +137,7 @@ export function MoreMenu({ actions }: { actions: RecordAction[] }) {
               action.onSelect()
             }}
             className={clsx(
-              'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50',
+              'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start text-sm hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50',
               action.danger ? 'text-red-600 dark:text-red-400' : 'text-fg-secondary',
             )}
           >

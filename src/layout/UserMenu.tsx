@@ -1,10 +1,10 @@
 import clsx from 'clsx'
 import { ChevronDown, KeyRound, LogOut, Moon, Sun } from 'lucide-react'
 import { useRef, useState } from 'react'
-import { MenuPanel } from '../components/ui/Menu'
-import { roundButtonClass } from '../components/ui/styles'
-import { useRole } from '../lib/useRole'
-import { useTheme } from '../lib/useTheme'
+import { MenuPanel } from '@/components/ui/Menu'
+import { roundButtonClass } from '@/components/ui/styles'
+import { useRole } from '@/lib/useRole'
+import { useTheme } from '@/lib/useTheme'
 
 /**
  * The account menu behind the avatar: who you are, Preferences, and Change password / Log out (once sign-in exists).
@@ -17,6 +17,8 @@ export function UserMenu() {
   const [open, setOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
 
+  // The account loads after the shell: until the name is known, the avatar is a pulse placeholder.
+  const loaded = Boolean(persona.name)
   const initials = persona.name
     .split(' ')
     .map((part) => part[0])
@@ -33,17 +35,27 @@ export function UserMenu() {
         onClick={() => setOpen((value) => !value)}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`Account menu for ${persona.name}`}
+        aria-label={loaded ? `Account menu for ${persona.name}` : 'Account menu'}
         className="group flex items-center gap-2.5 rounded-full focus-visible:outline-none"
       >
         {/* Same circle as the notifications button, filled with the initials. */}
-        <span className={clsx(roundButtonClass, 'bg-ink-800 text-xs font-semibold text-white hover:bg-ink-700 group-focus-visible:ring-2 group-focus-visible:ring-brand-500 dark:bg-surface-strong')}>
+        <span
+          className={clsx(
+            roundButtonClass,
+            'text-xs font-semibold group-focus-visible:ring-2 group-focus-visible:ring-brand-500',
+            loaded ? 'bg-ink-800 text-white hover:bg-ink-700 dark:bg-surface-strong' : 'animate-pulse bg-surface-strong',
+          )}
+        >
           {initials}
         </span>
-        <span className="hidden text-left leading-tight xl:block">
-          <span className="block text-sm font-medium text-fg">{persona.name}</span>
-          <span className="block text-xs text-fg-muted">{persona.title}</span>
-        </span>
+        {loaded ? (
+          <span className="hidden text-start leading-tight xl:block">
+            <span className="block text-sm font-medium text-fg">{persona.name}</span>
+            <span className="block text-xs text-fg-muted">{persona.title}</span>
+          </span>
+        ) : (
+          <span className="hidden h-8 w-28 animate-pulse rounded-md bg-surface-strong xl:block" aria-hidden />
+        )}
         <ChevronDown className={clsx('hidden size-4 text-fg-muted transition-transform sm:block', open && 'rotate-180')} />
       </button>
 
@@ -92,7 +104,7 @@ export function UserMenu() {
                   ['Log out', LogOut],
                 ] as const
               ).map(([label, Icon]) => (
-                <button key={label} type="button" role="menuitem" disabled className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-fg-muted">
+                <button key={label} type="button" role="menuitem" disabled className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start text-sm text-fg-muted">
                   <Icon className="size-4" />
                   <span className="flex-1">{label}</span>
                   <span className="rounded bg-surface-muted px-1.5 py-0.5 text-[10px] font-medium">Soon</span>

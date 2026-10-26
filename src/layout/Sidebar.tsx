@@ -1,36 +1,54 @@
 import clsx from 'clsx'
-import { Link, NavLink } from 'react-router'
-import { canSee, navGroups, settingsItem, type NavItem } from '../navigation'
-import { useRole } from '../lib/useRole'
+import { FolderKanban, Hash, Lock } from 'lucide-react'
+import type { ReactNode } from 'react'
+import { Link, NavLink, useLocation } from 'react-router'
+import type { Presence } from '@/api/types'
+import { useSidebarGroups } from '@/layout/useSidebarGroups'
+import { paths } from '@/lib/paths'
+import { useRole } from '@/lib/useRole'
+import { useUiStore } from '@/lib/uiStore'
+import { canSee, settingsItem } from '@/navigation'
 
-/** Counts beside menu items, by path (e.g. items waiting for the viewer). None yet. */
-function useBadges(): Record<string, number> {
-  return {}
+type SidebarLinkProps = {
+  to: string
+  label: string
+  icon?: ReactNode
+  /** An unread count; shown as the brand pill (a dot on the icon when the sidebar is collapsed). */
+  badge?: number
+  /** The row is active anywhere under this path (a project's link goes to one view but stays lit on the other). */
+  within?: string
+  collapsed: boolean
+  onNavigate?: () => void
 }
 
-function SidebarLink({ item, collapsed, onNavigate }: { item: NavItem; collapsed: boolean; onNavigate?: () => void }) {
-  const Icon = item.icon
-  const badge = useBadges()[item.path]
+/** One row of the sidebar. The icon is whatever marks the row: a lucide icon, a presence dot. */
+function SidebarLink({ to, label, icon, badge, within, collapsed, onNavigate }: SidebarLinkProps) {
+  const { pathname } = useLocation()
+  const inside = within ? pathname === within || pathname.startsWith(`${within}/`) : undefined
   return (
     <NavLink
-      to={item.path}
-      end={item.path === '/'}
+      to={to}
       onClick={onNavigate}
-      title={collapsed ? item.label : undefined}
+      title={collapsed ? label : undefined}
       className={({ isActive }) =>
         clsx(
           'group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-          isActive ? 'bg-white/10 text-white' : 'text-neutral-400 hover:bg-white/5 hover:text-white',
+          (inside ?? isActive) ? 'bg-white/10 text-white' : 'text-neutral-400 hover:bg-white/5 hover:text-white',
           collapsed && 'justify-center px-2',
         )
       }
     >
       {({ isActive }) => (
         <>
-          {Icon && <Icon className={clsx('size-[18px] shrink-0', isActive && 'text-brand-400')} />}
-          {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
+          {icon && (
+            <span className={clsx('relative flex size-[18px] shrink-0 items-center justify-center', (inside ?? isActive) && 'text-brand-400')}>
+              {icon}
+              {collapsed && badge ? <span className="absolute -end-1 -top-1 size-2 rounded-full bg-brand-500" aria-label={`${badge} unread`} /> : null}
+            </span>
+          )}
+          {!collapsed && <span className="flex-1 truncate">{label}</span>}
           {!collapsed && badge ? (
-            <span className="rounded-full bg-brand-500 px-1.5 py-0.5 text-[11px] font-semibold leading-none text-white">{badge}</span>
+            <span className="rounded-full bg-brand-500 px-1.5 py-0.5 text-[11px] font-semibold leading-none text-white">{badge > 99 ? '99+' : badge}</span>
           ) : null}
         </>
       )}
@@ -38,50 +56,135 @@ function SidebarLink({ item, collapsed, onNavigate }: { item: NavItem; collapsed
   )
 }
 
+const presenceDot: Record<Presence, string> = {
+  active: 'bg-emerald-400',
+  away: 'bg-amber-400',
+  offline: 'bg-neutral-500',
+}
+
+function PresenceDot({ presence }: { presence: Presence }) {
+  return <span className={clsx('size-2.5 rounded-full', presenceDot[presence])} role="img" aria-label={presence === 'active' ? 'Online' : presence === 'away' ? 'Away' : 'Offline'} />
+}
+
+function GroupLabel({ children, collapsed }: { children: string; collapsed: boolean }) {
+  if (collapsed) return null
+  return <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-neutral-500">{children}</p>
+}
+
+/** Three pulse rows while a group loads. */
+function GroupSkeleton() {
+  return (
+    <div className="space-y-0.5" aria-hidden>
+      {[0, 1, 2].map((row) => (
+        <div key={row} className="h-9 animate-pulse rounded-lg bg-white/5" />
+      ))}
+    </div>
+  )
+}
+
 export function SidebarContent({ collapsed = false, onNavigate }: { collapsed?: boolean; onNavigate?: () => void }) {
   const { role } = useRole()
+  const lastProjectView = useUiStore((state) => state.lastProjectView)
+  const { workspace, channels, dms, projects, chatLoading, projectsLoading, failed } = useSidebarGroups()
+  const slug = workspace?.slug
+
   return (
     <div className="flex h-full flex-col">
-      <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4">
-        {navGroups.map((group) => {
-          const items = group.items.filter((item) => canSee(item, role))
-          if (items.length === 0) return null
-          return (
-            <div key={group.label}>
-              {!collapsed && (
-                <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-neutral-500">{group.label}</p>
-              )}
+      <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4" aria-label="Workspace">
+        {slug && (chatLoading || channels.length > 0) && (
+          <div>
+            <GroupLabel collapsed={collapsed}>Channels</GroupLabel>
+            {chatLoading ? (
+              <GroupSkeleton />
+            ) : (
               <ul className="space-y-0.5">
-                {items.map((item) => (
-                  <li key={item.path}>
-                    <SidebarLink item={item} collapsed={collapsed} onNavigate={onNavigate} />
+                {channels.map(({ channel, label }) => (
+                  <li key={channel.id}>
+                    <SidebarLink
+                      to={paths.channel(slug, channel.id)}
+                      label={label}
+                      icon={channel.isPrivate ? <Lock className="size-[18px]" /> : <Hash className="size-[18px]" />}
+                      badge={channel.unreadCount}
+                      collapsed={collapsed}
+                      onNavigate={onNavigate}
+                    />
                   </li>
                 ))}
               </ul>
-            </div>
-          )
-        })}
+            )}
+          </div>
+        )}
+
+        {slug && (chatLoading || dms.length > 0) && (
+          <div>
+            <GroupLabel collapsed={collapsed}>Direct messages</GroupLabel>
+            {chatLoading ? (
+              <GroupSkeleton />
+            ) : (
+              <ul className="space-y-0.5">
+                {dms.map(({ channel, label, presence }) => (
+                  <li key={channel.id}>
+                    <SidebarLink
+                      to={paths.channel(slug, channel.id)}
+                      label={label}
+                      icon={<PresenceDot presence={presence} />}
+                      badge={channel.unreadCount}
+                      collapsed={collapsed}
+                      onNavigate={onNavigate}
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        {slug && (projectsLoading || projects.length > 0) && (
+          <div>
+            <GroupLabel collapsed={collapsed}>Projects</GroupLabel>
+            {projectsLoading ? (
+              <GroupSkeleton />
+            ) : (
+              <ul className="space-y-0.5">
+                {projects.map((project) => (
+                  <li key={project.id}>
+                    <SidebarLink
+                      to={paths.project(slug, project.key, lastProjectView[project.key])}
+                      label={project.name}
+                      within={paths.project(slug, project.key).replace(/\/[^/]+$/, '')}
+                      icon={<FolderKanban className="size-[18px]" />}
+                      collapsed={collapsed}
+                      onNavigate={onNavigate}
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        {failed && !collapsed && <p className="px-3 text-xs text-neutral-500">Some of this list didn’t load. Refresh to try again.</p>}
       </nav>
-      {canSee(settingsItem, role) && (
+      {slug && canSee(settingsItem, role) && settingsItem.icon && (
         <div className="border-t border-white/10 px-3 py-3">
-          <SidebarLink item={settingsItem} collapsed={collapsed} onNavigate={onNavigate} />
+          <SidebarLink to={paths.settings(slug)} label={settingsItem.label} icon={<settingsItem.icon className="size-[18px]" />} collapsed={collapsed} onNavigate={onNavigate} />
         </div>
       )}
     </div>
   )
 }
 
-/** The logo goes to Home. */
+/** The logo goes to Home, which opens the last place visited. */
 export function Logo({ collapsed = false, onClick }: { collapsed?: boolean; onClick?: () => void }) {
   return (
     <Link to="/" onClick={onClick} className="flex items-center gap-3" aria-label="Home">
       {collapsed ? (
         <img src="/spark-mark-white.png" alt="Spark Flow" className="h-4 w-auto" />
       ) : (
-        <>
+        <span dir="ltr" className="flex items-center gap-3">
           <img src="/spark-logo-white.png" alt="Spark Systems" className="h-7 w-auto" />
-          <span className="border-l border-white/15 pl-3 text-[13px] font-semibold tracking-[0.2em] text-neutral-400">FLOW</span>
-        </>
+          <span className="border-s border-white/15 ps-3 text-[13px] font-semibold tracking-[0.2em] text-neutral-400">FLOW</span>
+        </span>
       )}
     </Link>
   )

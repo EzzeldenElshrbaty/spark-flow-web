@@ -1,7 +1,7 @@
 import clsx from 'clsx'
 import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react'
 import { useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
-import { nextColumnSort, type ColumnSort, type SortKind } from '../../lib/sorting'
+import { nextColumnSort, type ColumnSort, type SortKind } from '@/lib/sorting'
 
 export type Column<T> = {
   id: string
@@ -126,7 +126,7 @@ export function DataTable<T>({
                   key={column.id}
                   scope="col"
                   aria-sort={sorted === 'asc' ? 'ascending' : sorted === 'desc' ? 'descending' : undefined}
-                  className={clsx('relative select-none px-4 py-2.5 text-xs font-medium text-fg-muted', column.align === 'right' ? 'text-right' : 'text-left')}
+                  className={clsx('relative select-none px-4 py-2.5 text-xs font-medium text-fg-muted', column.align === 'right' ? 'text-end' : 'text-start')}
                 >
                   {column.sort && onSort ? (
                     <button
@@ -152,7 +152,7 @@ export function DataTable<T>({
                     onKeyDown={(event) => onHandleKey(column, event)}
                     onDoubleClick={() => reset(column)}
                     title="Drag to resize · double-click to reset"
-                    className="group/handle absolute -right-1.5 top-0 z-10 flex h-full w-3 cursor-col-resize touch-none justify-center focus-visible:outline-none"
+                    className="group/handle absolute -end-1.5 top-0 z-10 flex h-full w-3 cursor-col-resize touch-none justify-center focus-visible:outline-none"
                   >
                     <span className="h-full w-px bg-line transition-colors group-hover/handle:w-0.5 group-hover/handle:bg-brand-500 group-focus-visible/handle:w-0.5 group-focus-visible/handle:bg-brand-500" />
                   </span>
@@ -170,7 +170,7 @@ export function DataTable<T>({
               style={{ animationDelay: `${Math.min(index, 15) * 18}ms` }}
             >
               {columns.map((column) => (
-                <td key={column.id} className={clsx('overflow-hidden px-4 py-3 align-middle', column.align === 'right' && 'text-right')}>
+                <td key={column.id} className={clsx('overflow-hidden px-4 py-3 align-middle', column.align === 'right' && 'text-end')}>
                   {column.cell(row)}
                 </td>
               ))}
@@ -192,7 +192,7 @@ export function TableSkeleton({ rows = 8 }: { rows?: number }) {
           <span className="size-8 rounded-full bg-surface-strong" />
           <span className="h-3 w-40 rounded bg-surface-strong" />
           <span className="h-3 w-20 rounded-full bg-surface-muted" />
-          <span className="ml-auto h-3 w-24 rounded bg-surface-muted" />
+          <span className="ms-auto h-3 w-24 rounded bg-surface-muted" />
         </div>
       ))}
     </div>

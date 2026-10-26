@@ -3,31 +3,43 @@ import { LayoutGrid, Search, X, Zap, type LucideIcon } from 'lucide-react'
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router'
-import { roundButtonClass, roundButtonFill } from '../components/ui/styles'
-import { useRole } from '../lib/useRole'
-import { findShortcuts, shortcutsFor } from './searchShortcuts'
+import { roundButtonClass, roundButtonFill } from '@/components/ui/styles'
+import { useChannels } from '@/api/chat'
+import { useProjects } from '@/api/tickets'
+import { useUsers } from '@/api/users'
+import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
+import { useRole } from '@/lib/useRole'
+import { findShortcuts, shortcutsFor, workspaceShortcuts } from '@/layout/searchShortcuts'
 
-// TODO(api): when Spark Flow has records, add them below the pages and actions from the server, as Spark CRM's
-// GlobalSearch does (design/reference-code/src/layout/GlobalSearch.tsx).
+// TODO(api): search messages and tickets on the server too, as Spark CRM's GlobalSearch does for its records
+// (design/reference-code/src/layout/GlobalSearch.tsx). For now it finds pages and the open workspace's channels, DMs and projects.
 
 /** Fewer letters than this match too much to be useful. */
 const minSearchLength = 2
 
-const searchLabel = 'Search pages and actions'
+const searchLabel = 'Search pages, channels and projects'
 
 type Hit = { id: string; title: string; subtitle: string; link: string; icon?: LucideIcon }
 /** A block of results: pages or actions. */
 type Group = { kind: string; label: string; icon: LucideIcon; total: number; hits: Hit[] }
 
-/** Pages and actions this role can use, as soon as something is typed. */
+/** Pages and actions this role can use, plus the open workspace's channels, DMs and projects, as soon as something is typed. */
 function useSearch(term: string) {
-  const { role } = useRole()
-  const all = useMemo(() => shortcutsFor(role), [role])
+  const { role, persona } = useRole()
+  const { workspace } = useCurrentWorkspace()
+  const channels = useChannels(workspace?.id).data
+  const projects = useProjects(workspace?.id).data
+  const users = useUsers(workspace?.id).data
+  const all = useMemo(() => {
+    const base = shortcutsFor(role, workspace?.slug ?? null)
+    if (!workspace) return base
+    return { ...base, pages: [...base.pages, ...workspaceShortcuts(workspace, channels ?? [], projects ?? [], users ?? [], persona.id)] }
+  }, [role, workspace, channels, projects, users, persona.id])
   const typed = term.trim()
   const groups = useMemo(() => {
     const found = typed.length >= minSearchLength ? findShortcuts(all, typed) : { pages: [], actions: [] }
     return [
-      ...(found.pages.length ? [{ kind: 'pages', label: 'Pages', icon: LayoutGrid, total: found.pages.length, hits: found.pages }] : []),
+      ...(found.pages.length ? [{ kind: 'pages', label: 'Go to', icon: LayoutGrid, total: found.pages.length, hits: found.pages }] : []),
       ...(found.actions.length ? [{ kind: 'actions', label: 'Actions', icon: Zap, total: found.actions.length, hits: found.actions }] : []),
     ]
   }, [all, typed])
@@ -100,7 +112,7 @@ function Option({ id, active, onPick, children }: { id: string; active: boolean;
       // Keep focus in the input on desktop so typing carries on.
       onMouseDown={(event) => event.preventDefault()}
       onClick={onPick}
-      className={clsx('flex w-full items-center gap-2 px-4 py-2 text-left hover:bg-surface-muted', active && 'bg-surface-muted')}
+      className={clsx('flex w-full items-center gap-2 px-4 py-2 text-start hover:bg-surface-muted', active && 'bg-surface-muted')}
     >
       {children}
     </button>
@@ -108,7 +120,7 @@ function Option({ id, active, onPick, children }: { id: string; active: boolean;
 }
 
 function Status({ term, empty }: { term: string; empty: boolean }) {
-  if (term.trim().length < minSearchLength) return <p className="px-4 py-6 text-center text-sm text-fg-muted">Search pages and actions.</p>
+  if (term.trim().length < minSearchLength) return <p className="px-4 py-6 text-center text-sm text-fg-muted">Search pages, channels and projects.</p>
   if (empty) return <p className="px-4 py-6 text-center text-sm text-fg-muted">Nothing matches “{term.trim()}”.</p>
   return null
 }
@@ -176,7 +188,7 @@ export function DesktopSearch() {
 
   return (
     <div ref={boxRef} className="relative hidden max-w-md flex-1 md:block">
-      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-fg-subtle" />
+      <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-fg-subtle" />
       <input
         ref={inputRef}
         type="text"
@@ -194,8 +206,8 @@ export function DesktopSearch() {
         }}
         onFocus={() => setOpen(true)}
         onKeyDown={keys.onKeyDown}
-        placeholder="Search pages and actions…"
-        className="w-full rounded-lg border border-line bg-surface-sunken py-2 pl-9 pr-3 text-sm placeholder:text-fg-subtle focus:border-brand-500 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent-soft"
+        placeholder="Search pages, channels, projects…"
+        className="w-full rounded-lg border border-line bg-surface-sunken py-2 ps-9 pe-3 text-sm placeholder:text-fg-subtle focus:border-brand-500 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent-soft"
       />
       {open && term.trim() && (
         <div className="absolute inset-x-0 top-full z-50 mt-2 max-h-[70vh] overflow-y-auto rounded-xl border border-line bg-surface shadow-xl motion-safe:animate-pop-in">
@@ -208,14 +220,13 @@ export function DesktopSearch() {
 }
 
 /** Phones: a round search button that opens search full screen. */
-export function PhoneSearch() {
-  const [open, setOpen] = useState(false)
+export function PhoneSearch({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className={clsx(roundButtonClass, roundButtonFill, 'text-fg-tertiary md:hidden')} aria-label="Search" title="Search">
+      <button type="button" onClick={() => onOpenChange(true)} className={clsx(roundButtonClass, roundButtonFill, 'text-fg-tertiary md:hidden')} aria-label="Search" title="Search">
         <Search className="size-[18px]" />
       </button>
-      {open && createPortal(<SearchScreen onClose={() => setOpen(false)} />, document.body)}
+      {open && createPortal(<SearchScreen onClose={() => onOpenChange(false)} />, document.body)}
     </>
   )
 }
@@ -240,7 +251,7 @@ function SearchScreen({ onClose }: { onClose: () => void }) {
     <div className="fixed inset-0 z-50 flex flex-col bg-surface motion-safe:animate-fade-in md:hidden" role="dialog" aria-modal="true" aria-label="Search">
       <div className="flex shrink-0 items-center gap-2 border-b border-line-subtle px-3 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))]">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-fg-subtle" />
+          <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-fg-subtle" />
           <input
             ref={inputRef}
             type="text"
@@ -257,10 +268,10 @@ function SearchScreen({ onClose }: { onClose: () => void }) {
             }}
             onKeyDown={keys.onKeyDown}
             placeholder="Search"
-            className="w-full rounded-lg border border-line bg-surface-sunken py-2.5 pl-9 pr-9 text-base placeholder:text-fg-subtle focus:border-brand-500 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent-soft"
+            className="w-full rounded-lg border border-line bg-surface-sunken py-2.5 ps-9 pe-9 text-base placeholder:text-fg-subtle focus:border-brand-500 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent-soft"
           />
           {term && (
-            <button type="button" onClick={() => setTerm('')} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-fg-muted hover:text-fg" aria-label="Clear search">
+            <button type="button" onClick={() => setTerm('')} className="absolute end-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-fg-muted hover:text-fg" aria-label="Clear search">
               <X className="size-4" />
             </button>
           )}

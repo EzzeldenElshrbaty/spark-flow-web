@@ -1,6 +1,6 @@
 import { useIsFetching, useIsMutating } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
-import { useTrackedLoading } from '../../lib/loading'
+import { useTrackedLoading } from '@/lib/loading'
 
 /** Loads quicker than this never show the bar, so instant pages don't flicker. */
 const showAfterMs = 200
@@ -45,8 +45,8 @@ export function LoadingBar() {
       <div
         className={
           phase === 'loading'
-            ? 'h-full origin-left animate-loading-bar bg-brand-500 dark:bg-brand-400'
-            : 'h-full origin-left scale-x-100 bg-brand-500 opacity-0 transition-[transform,opacity] duration-300 [transition-delay:0ms,150ms] dark:bg-brand-400'
+            ? 'h-full origin-left rtl:origin-right animate-loading-bar bg-brand-500 dark:bg-brand-400'
+            : 'h-full origin-left rtl:origin-right scale-x-100 bg-brand-500 opacity-0 transition-[transform,opacity] duration-300 [transition-delay:0ms,150ms] dark:bg-brand-400'
         }
       />
     </div>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { prefersReducedMotion } from './chartUtils'
+import { prefersReducedMotion } from '@/components/charts/chartUtils'
 
 /** A number that counts up to its value (and on to the next one when it changes). Instant with reduced motion. */
 export function CountUp({ value, format = (amount) => Math.round(amount).toLocaleString('en-US') }: { value: number; format?: (amount: number) => string }) {

@@ -2,10 +2,10 @@ import { MutationCache, QueryClient, QueryClientProvider } from '@tanstack/react
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router'
-import { LoadingBar } from './components/ui/LoadingBar'
-import './index.css'
-import { ThemeProvider } from './lib/ThemeProvider'
-import { router } from './router'
+import { LoadingBar } from '@/components/ui/LoadingBar'
+import '@/index.css'
+import { ThemeProvider } from '@/lib/ThemeProvider'
+import { router } from '@/router'
 
 // After any change, everything on screen reloads (counts, tabs, the bell), so nothing needs a page refresh. A change
 // waits for that reload before it counts as done, unless it's marked `closeFirst` (uploads: the files are saved, so

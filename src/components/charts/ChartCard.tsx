@@ -1,8 +1,8 @@
 import clsx from 'clsx'
 import { ChartColumnBig, Table2 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
-import { Card } from '../ui/Card'
-import type { ChartTableData } from './chartUtils'
+import { Card } from '@/components/ui/Card'
+import type { ChartTableData } from '@/components/charts/chartUtils'
 
 export type LegendItem = { label: string; color: string; kind?: 'bar' | 'line' | 'dashed' | 'tick' }
 
@@ -41,7 +41,7 @@ export function ChartCard({
               aria-pressed={asTable}
               title={asTable ? 'View as chart' : 'View as table'}
               aria-label={asTable ? 'View as chart' : 'View as table'}
-              className="-mr-1.5 rounded-md p-1.5 text-fg-subtle transition hover:bg-surface-muted hover:text-fg focus-visible:outline-2 focus-visible:outline-brand-500"
+              className="-me-1.5 rounded-md p-1.5 text-fg-subtle transition hover:bg-surface-muted hover:text-fg focus-visible:outline-2 focus-visible:outline-brand-500"
             >
               {asTable ? <ChartColumnBig className="size-4" /> : <Table2 className="size-4" />}
             </button>
@@ -77,11 +77,11 @@ function LegendSwatch({ color, kind = 'bar' }: { color: string; kind?: LegendIte
 function ChartTable({ table }: { table: ChartTableData }) {
   return (
     <div className="max-h-72 overflow-auto">
-      <table className="w-full text-left text-xs">
+      <table className="w-full text-start text-xs">
         <thead className="sticky top-0 bg-surface text-fg-muted">
           <tr>
             {table.columns.map((column, index) => (
-              <th key={column} scope="col" className={clsx('border-b border-line py-2 font-medium', index > 0 && 'text-right')}>
+              <th key={column} scope="col" className={clsx('border-b border-line py-2 font-medium', index > 0 && 'text-end')}>
                 {column}
               </th>
             ))}
@@ -91,7 +91,7 @@ function ChartTable({ table }: { table: ChartTableData }) {
           {table.rows.map((row) => (
             <tr key={String(row[0])}>
               {row.map((cell, index) => (
-                <td key={index} className={clsx('py-1.5', index === 0 ? 'text-fg-secondary' : 'text-right tabular-nums text-fg')}>
+                <td key={index} className={clsx('py-1.5', index === 0 ? 'text-fg-secondary' : 'text-end tabular-nums text-fg')}>
                   {cell}
                 </td>
               ))}

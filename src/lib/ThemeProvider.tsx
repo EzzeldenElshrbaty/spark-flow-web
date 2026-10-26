@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { ThemeContext, type Theme } from './useTheme'
+import { ThemeContext, type Theme } from '@/lib/useTheme'
 
 // Keep in sync with the inline script in index.html, which applies the theme before first paint.
 // TODO(auth): once users log in, save the theme on the user's profile via the API and load it on login,

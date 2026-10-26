@@ -88,7 +88,7 @@ export function MenuPanel({
         className={clsx(
           'z-50 overflow-y-auto border border-line bg-surface shadow-xl',
           'max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:max-h-[85vh] max-sm:rounded-t-2xl max-sm:pb-[env(safe-area-inset-bottom)] max-sm:motion-safe:animate-fade-up',
-          'sm:absolute sm:right-0 sm:top-full sm:mt-2 sm:max-h-[80vh] sm:rounded-xl sm:motion-safe:animate-pop-in',
+          'sm:absolute sm:end-0 sm:top-full sm:mt-2 sm:max-h-[80vh] sm:rounded-xl sm:motion-safe:animate-pop-in',
           className,
         )}
       >

@@ -40,7 +40,7 @@ export function TooltipRow({ color, label, value, dashed }: { color?: string; la
     <div className="flex items-center gap-2 whitespace-nowrap">
       {color && (dashed ? <span className="h-0 w-3 border-t-2 border-dashed" style={{ borderColor: color }} /> : <span className="size-2 rounded-sm" style={{ background: color }} />)}
       <span className="text-fg-muted">{label}</span>
-      <span className="ml-auto pl-3 font-medium tabular-nums text-fg">{value}</span>
+      <span className="ms-auto ps-3 font-medium tabular-nums text-fg">{value}</span>
     </div>
   )
 }

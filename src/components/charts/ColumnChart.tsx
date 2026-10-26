@@ -1,8 +1,8 @@
 import clsx from 'clsx'
 import { useState } from 'react'
-import { ChartTooltip, TooltipRow } from './ChartTooltip'
-import { niceTicks } from './chartUtils'
-import { useElementWidth } from './useElementWidth'
+import { ChartTooltip, TooltipRow } from '@/components/charts/ChartTooltip'
+import { niceTicks } from '@/components/charts/chartUtils'
+import { useElementWidth } from '@/components/charts/useElementWidth'
 
 export type ColumnSeries = { key: string; label: string; color: string }
 export type Column = { label: string; title: string; values: Record<string, number>; highlight?: boolean }
@@ -39,9 +39,9 @@ export function ColumnChart({
 
   return (
     <div className="flex gap-2 pt-3" role="group" aria-label={label}>
-      <div className="relative min-w-6 shrink-0 text-right text-[11px] tabular-nums text-fg-muted" style={{ height: PLOT_HEIGHT }} aria-hidden>
+      <div className="relative min-w-6 shrink-0 text-end text-[11px] tabular-nums text-fg-muted" style={{ height: PLOT_HEIGHT }} aria-hidden>
         {ticks.map((tick) => (
-          <span key={tick} className="absolute right-0 -translate-y-1/2" style={{ bottom: height(tick) }}>
+          <span key={tick} className="absolute end-0 -translate-y-1/2" style={{ bottom: height(tick) }}>
             {tickFormat(tick)}
           </span>
         ))}

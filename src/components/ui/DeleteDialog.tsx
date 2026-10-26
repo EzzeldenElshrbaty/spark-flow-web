@@ -1,9 +1,9 @@
 import { useMutation } from '@tanstack/react-query'
 import { TriangleAlert } from 'lucide-react'
 import { useState } from 'react'
-import { Button } from './Button'
-import { Field, inputClass } from './Field'
-import { Sheet } from './Sheet'
+import { Button } from '@/components/ui/Button'
+import { Field, inputClass } from '@/components/ui/Field'
+import { Sheet } from '@/components/ui/Sheet'
 
 /**
  * Management deletes a lead, opportunity or client for good. The person types the record's number (or the client's
@@ -60,7 +60,7 @@ export function DeleteDialog({
           <TriangleAlert className="mt-0.5 size-4 shrink-0" />
           <div>
             <p className="font-medium">This can't be undone.</p>
-            <ul className="mt-1 list-disc space-y-0.5 pl-4">
+            <ul className="mt-1 list-disc space-y-0.5 ps-4">
               {removes.map((line) => (
                 <li key={line}>{line}</li>
               ))}

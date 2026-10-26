@@ -1,7 +1,7 @@
 import clsx from 'clsx'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { selectClass } from './Field'
-import { pageSizes } from './styles'
+import { selectClass } from '@/components/ui/Field'
+import { pageSizes } from '@/components/ui/styles'
 
 /** Page numbers with ellipses: 1 … 4 5 6 … 50. */
 function pageList(page: number, pageCount: number): (number | '…')[] {
@@ -44,7 +44,7 @@ export function Pagination({
       </p>
       <div className="flex items-center gap-1.5">
         <button type="button" className={arrow} onClick={() => onPage(page - 1)} disabled={page <= 1} aria-label="Previous page">
-          <ChevronLeft className="size-4" />
+          <ChevronLeft className="size-4 rtl:-scale-x-100" />
         </button>
         {/* Phones get a compact "Page 3 of 50"; wider screens get page numbers. */}
         <span className="px-2 text-fg-secondary sm:hidden">
@@ -70,9 +70,9 @@ export function Pagination({
           )}
         </span>
         <button type="button" className={arrow} onClick={() => onPage(page + 1)} disabled={page >= pageCount} aria-label="Next page">
-          <ChevronRight className="size-4" />
+          <ChevronRight className="size-4 rtl:-scale-x-100" />
         </button>
-        <div className="ml-1 w-28 shrink-0">
+        <div className="ms-1 w-28 shrink-0">
           <select className={clsx(selectClass, 'py-1.5')} value={pageSize} onChange={(event) => onPageSize(Number(event.target.value))} aria-label="Rows per page">
             {pageSizes.map((size) => (
               <option key={size} value={size}>

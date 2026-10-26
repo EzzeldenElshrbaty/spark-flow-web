@@ -2,8 +2,8 @@ import clsx from 'clsx'
 import { CalendarDays, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
-import { Button } from './Button'
-import { inputClass, selectClass } from './Field'
+import { Button } from '@/components/ui/Button'
+import { inputClass, selectClass } from '@/components/ui/Field'
 
 // Values use the same text format as <input type="datetime-local">: "2027-06-17T14:00".
 const pad = (value: number) => String(value).padStart(2, '0')
@@ -83,13 +83,13 @@ export function DateTimePicker({
         aria-expanded={open}
         aria-label={label ? `${label}: ${value ? formatDateTime(value, dateOnly) : 'not set'}` : undefined}
         aria-invalid={invalid}
-        className={clsx(inputClass, 'flex items-center gap-2 pr-9 text-left', !value && 'text-fg-subtle')}
+        className={clsx(inputClass, 'flex items-center gap-2 pe-9 text-start', !value && 'text-fg-subtle')}
       >
         <CalendarDays className="size-4 shrink-0 text-fg-muted" />
         <span className="truncate">{value ? formatDateTime(value, dateOnly) : placeholder}</span>
       </button>
       {value && (
-        <button type="button" onClick={() => onChange('')} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-fg-muted hover:bg-surface-muted hover:text-fg" aria-label="Clear date">
+        <button type="button" onClick={() => onChange('')} className="absolute end-2 top-1/2 -translate-y-1/2 rounded p-1 text-fg-muted hover:bg-surface-muted hover:text-fg" aria-label="Clear date">
           <X className="size-3.5" />
         </button>
       )}
@@ -271,11 +271,11 @@ function PickerPanel({
           <div className="p-3 sm:w-72">
             <div className="mb-2 flex items-center gap-1">
               <button type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))} className="rounded-md p-1.5 text-fg-tertiary hover:bg-surface-muted" aria-label="Previous month">
-                <ChevronLeft className="size-4" />
+                <ChevronLeft className="size-4 rtl:-scale-x-100" />
               </button>
               <div className="flex flex-1 justify-center gap-1.5">
                 <div className="w-[5.5rem]">
-                  <select className={clsx(selectClass, 'py-1 pl-2.5 text-sm font-medium')} value={month.getMonth()} onChange={(event) => setMonth(new Date(month.getFullYear(), Number(event.target.value), 1))} aria-label="Month">
+                  <select className={clsx(selectClass, 'py-1 ps-2.5 text-sm font-medium')} value={month.getMonth()} onChange={(event) => setMonth(new Date(month.getFullYear(), Number(event.target.value), 1))} aria-label="Month">
                     {SHORT_MONTHS.map((name, index) => (
                       <option key={name} value={index}>
                         {name}
@@ -284,7 +284,7 @@ function PickerPanel({
                   </select>
                 </div>
                 <div className="w-[5.5rem]">
-                  <select className={clsx(selectClass, 'py-1 pl-2.5 text-sm font-medium')} value={month.getFullYear()} onChange={(event) => setMonth(new Date(Number(event.target.value), month.getMonth(), 1))} aria-label="Year">
+                  <select className={clsx(selectClass, 'py-1 ps-2.5 text-sm font-medium')} value={month.getFullYear()} onChange={(event) => setMonth(new Date(Number(event.target.value), month.getMonth(), 1))} aria-label="Year">
                     {years.map((year) => (
                       <option key={year}>{year}</option>
                     ))}
@@ -292,7 +292,7 @@ function PickerPanel({
                 </div>
               </div>
               <button type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))} className="rounded-md p-1.5 text-fg-tertiary hover:bg-surface-muted" aria-label="Next month">
-                <ChevronRight className="size-4" />
+                <ChevronRight className="size-4 rtl:-scale-x-100" />
               </button>
             </div>
             <div className="grid grid-cols-7 text-center text-[11px] font-medium text-fg-muted">
@@ -334,7 +334,7 @@ function PickerPanel({
           </div>
 
           {!dateOnly && (
-          <div className={clsx('flex flex-col border-line-subtle', phone ? 'border-t px-3 pb-3 pt-2' : 'w-40 border-l p-2')}>
+          <div className={clsx('flex flex-col border-line-subtle', phone ? 'border-t px-3 pb-3 pt-2' : 'w-40 border-s p-2')}>
             <input
               className={clsx(inputClass, 'mb-2 py-1.5 text-sm')}
               value={typed}
@@ -362,7 +362,7 @@ function PickerPanel({
                     data-minutes={slot}
                     onClick={() => setMinutes(slot)}
                     className={clsx(
-                      'shrink-0 rounded-md px-2.5 py-1.5 text-left text-sm tabular-nums transition-colors',
+                      'shrink-0 rounded-md px-2.5 py-1.5 text-start text-sm tabular-nums transition-colors',
                       phone ? 'whitespace-nowrap' : 'block w-full',
                       selected ? 'bg-brand-500 font-semibold text-white' : working ? 'text-fg hover:bg-surface-muted' : 'text-fg-subtle hover:bg-surface-muted',
                     )}
