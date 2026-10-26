@@ -45,7 +45,7 @@ export function ProjectBacklog({ tickets, sprints, users }: { tickets: Ticket[];
       {groupBySprint(tickets, sprints).map(({ id, sprint, tickets: items }) => {
         const points = items.reduce((sum, t) => sum + (t.storyPoints ?? 0), 0)
         return (
-          <Card key={id} className="overflow-hidden">
+          <Card key={id} className="relative overflow-hidden">
             <div className="border-b border-line-subtle px-4 py-3.5 sm:px-5">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <h2 className="text-sm font-semibold text-fg">{sprint?.name ?? 'No sprint'}</h2>

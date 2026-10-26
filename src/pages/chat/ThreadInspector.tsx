@@ -3,7 +3,8 @@ import { useUsers } from '@/api/users'
 import { QueryError } from '@/components/ui/QueryError'
 import { InspectorFrame, InspectorSkeleton, TitleSkeleton, type InspectorBodyProps } from '@/layout/InspectorFrame'
 import { ApiError } from '@/lib/api'
-import { channelLabel } from '@/lib/channels'
+import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
+import { channelLabel, inWorkspace } from '@/lib/channels'
 import { firstLine } from '@/lib/inspector'
 import { useRole } from '@/lib/useRole'
 import { NotFound } from '@/pages/NotFound'
@@ -14,18 +15,23 @@ const isNotFound = (error: Error | null) => error instanceof ApiError && error.s
 /** A message and its replies, read-only for now. */
 export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: string } & InspectorBodyProps) {
   const { persona } = useRole()
+  const { workspace } = useCurrentWorkspace()
   const message = useMessage(messageId)
   const channel = useChannel(message.data?.channelId)
   const users = useUsers(channel.data?.workspaceId)
   const replies = useThread(message.data ? messageId : undefined)
 
-  const where = channel.data ? (channel.data.kind === 'channel' ? `#${channel.data.name}` : channelLabel(channel.data, users.data ?? [], persona.id)) : null
+  // A message from another workspace's channel is not found in this one.
+  const foreign = Boolean(channel.data && workspace && !inWorkspace(channel.data, workspace.id))
+  const where = channel.data && !foreign ? (channel.data.kind === 'channel' ? `#${channel.data.name}` : channelLabel(channel.data, users.data ?? [], persona.id)) : null
   const eyebrow = where ? `Thread · ${where}` : 'Thread'
-  const title = message.data ? firstLine(message.data.content) || 'Thread' : message.isPending ? <TitleSkeleton /> : 'Thread'
+  // The title waits for the channel too, so a message from another workspace never shows even briefly.
+  const title = foreign ? 'Thread' : message.data && channel.data ? firstLine(message.data.content) || 'Thread' : message.isPending || channel.isLoading ? <TitleSkeleton /> : 'Thread'
 
   let body
-  if (isNotFound(message.error)) body = <NotFound what="message" backTo={closeTo} backLabel="Close the thread" />
+  if (foreign || isNotFound(message.error)) body = <NotFound what="message" backTo={closeTo} backLabel="Close the thread" />
   else if (message.isError) body = <QueryError what="Message" onRetry={() => void message.refetch()} />
+  else if (channel.isError) body = <QueryError what="Channel" onRetry={() => void channel.refetch()} />
   // Names come with the channel's workspace; a channel that fails to load only leaves them unknown.
   else if (message.isPending || channel.isLoading || users.isLoading) body = <InspectorSkeleton />
   else {

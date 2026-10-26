@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useSprints, useTicket } from '@/api/tickets'
+import { useProjects, useSprints, useTicket } from '@/api/tickets'
 import { useUsers } from '@/api/users'
 import { Avatar } from '@/components/ui/Avatar'
 import { QueryError } from '@/components/ui/QueryError'
@@ -34,19 +34,23 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
   const { workspace } = useCurrentWorkspace()
   const ticket = useTicket(ticketKey)
   const users = useUsers(workspace?.id)
+  const projects = useProjects(workspace?.id)
   const sprints = useSprints(ticket.data?.projectId)
+  // A ticket of another workspace's project is not found in this one.
+  const foreign = Boolean(ticket.data && projects.data && !projects.data.some((p) => p.id === ticket.data.projectId))
 
   const eyebrow = (
     <>
       Ticket · <bdi dir="ltr">{ticketKey}</bdi>
     </>
   )
-  const title = ticket.data?.title ?? (ticket.isPending ? <TitleSkeleton /> : 'Ticket')
+  const title = foreign ? 'Ticket' : ticket.data && projects.data ? ticket.data.title : ticket.isPending || projects.isLoading ? <TitleSkeleton /> : 'Ticket'
 
   let body
-  if (ticket.error instanceof ApiError && ticket.error.status === 404) body = <NotFound what="ticket" backTo={closeTo} backLabel="Close the ticket" />
+  if (foreign || (ticket.error instanceof ApiError && ticket.error.status === 404)) body = <NotFound what="ticket" backTo={closeTo} backLabel="Close the ticket" />
   else if (ticket.isError) body = <QueryError what="Ticket" onRetry={() => void ticket.refetch()} />
-  else if (ticket.isPending || users.isLoading) body = <InspectorSkeleton />
+  else if (projects.isError) body = <QueryError what="Projects" onRetry={() => void projects.refetch()} />
+  else if (ticket.isPending || projects.isLoading || users.isLoading) body = <InspectorSkeleton />
   else {
     const t = ticket.data
     const nameOf = (id: string | null) => (id ? (users.data?.find((u) => u.id === id)?.name ?? 'Unknown person') : null)

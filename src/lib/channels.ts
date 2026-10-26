@@ -20,3 +20,8 @@ export function sortChannels(channels: Channel[]): { channels: Channel[]; dms: C
       .sort((a, b) => (b.lastMessageAt ?? '').localeCompare(a.lastMessageAt ?? '')),
   }
 }
+
+/** Whether a channel belongs to the workspace in the URL. One from another workspace is treated as not found there. */
+export function inWorkspace(channel: Pick<Channel, 'workspaceId'>, workspaceId: string | undefined): boolean {
+  return Boolean(workspaceId) && channel.workspaceId === workspaceId
+}

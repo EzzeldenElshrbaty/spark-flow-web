@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Channel } from '@/api/types'
-import { channelLabel, sortChannels } from '@/lib/channels'
+import { channelLabel, inWorkspace, sortChannels } from '@/lib/channels'
 import { seed } from '@/mocks/seed'
 
 const data = seed(new Date('2026-10-26T09:00:00Z'))
@@ -47,5 +47,16 @@ describe('sortChannels', () => {
     const { channels, dms } = sortChannels(list)
     expect(channels.map((c) => c.name)).toEqual(['backend', 'release'])
     expect(dms.map((c) => c.id)).toEqual(['c-new', 'c-old', 'c-none'])
+  })
+})
+
+describe('inWorkspace', () => {
+  it('accepts a channel of the workspace on screen', () => {
+    expect(inWorkspace(channel('general'), 'ws-eng')).toBe(true)
+  })
+
+  it('rejects a channel of another workspace, or when the workspace is unknown', () => {
+    expect(inWorkspace(channel('general'), 'ws-design')).toBe(false)
+    expect(inWorkspace(channel('general'), undefined)).toBe(false)
   })
 })

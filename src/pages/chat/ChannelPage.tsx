@@ -7,7 +7,7 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { ApiError } from '@/lib/api'
-import { channelLabel } from '@/lib/channels'
+import { channelLabel, inWorkspace } from '@/lib/channels'
 import { paths } from '@/lib/paths'
 import { createRealtimeClient } from '@/lib/realtime'
 import { useRole } from '@/lib/useRole'
@@ -28,7 +28,9 @@ export function ChannelPage() {
   const endRef = useRef<HTMLDivElement>(null)
   const scrolledFor = useRef<string | null>(null)
 
-  const loadedId = channel.data?.id
+  // A channel id from another workspace is not a channel of this one: it reads as not found, and is never marked read.
+  const foreign = Boolean(channel.data && workspace && !inWorkspace(channel.data, workspace.id))
+  const loadedId = foreign ? undefined : channel.data?.id
   useEffect(() => {
     if (loadedId) markRead(loadedId)
   }, [loadedId, markRead])
@@ -39,7 +41,7 @@ export function ChannelPage() {
     return () => realtime.leaveChannel(channelId)
   }, [realtime, channelId])
 
-  const listShown = Boolean(channel.data && messages.data && !users.isLoading)
+  const listShown = Boolean(channel.data && !foreign && messages.data && !users.isLoading)
   useEffect(() => {
     // Open each channel at its newest message, once; loading older ones must not jump back down.
     if (!listShown || !channelId || scrolledFor.current === channelId) return
@@ -47,7 +49,7 @@ export function ChannelPage() {
     endRef.current?.scrollIntoView({ block: 'end' })
   }, [listShown, channelId])
 
-  if (channel.error instanceof ApiError && channel.error.status === 404) {
+  if (foreign || (channel.error instanceof ApiError && channel.error.status === 404)) {
     return <NotFound what="channel" backTo={paths.workspace(ws)} backLabel={`Back to ${workspace?.name ?? 'the workspace'}`} />
   }
   if (channel.isError) {
