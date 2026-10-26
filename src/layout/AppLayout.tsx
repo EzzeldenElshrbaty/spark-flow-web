@@ -5,7 +5,7 @@ import { PageSkeleton } from '@/layout/PageSkeleton'
 import { MobileBottomBar, MobileDrawer } from '@/layout/MobileNav'
 import { RealtimeBridge } from '@/layout/RealtimeBridge'
 import { Sidebar } from '@/layout/Sidebar'
-import { PhoneTimerBar } from '@/layout/TimerBar'
+import { PhoneTimerBar, TimerAnnouncer } from '@/layout/TimerBar'
 import { TopBar } from '@/layout/TopBar'
 import { useUiStore } from '@/lib/uiStore'
 
@@ -40,6 +40,7 @@ export function AppLayout() {
       {/* Thread or ticket beside the content (xl), over it (sm–lg) or as a bottom sheet (phones); driven by the URL. */}
       <Inspector />
       <PhoneTimerBar />
+      <TimerAnnouncer />
       <MobileBottomBar onOpenMore={() => setDrawerOpen(true)} />
       <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
     </div>

@@ -1,5 +1,5 @@
 import { Clock } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useProjectTime } from '@/api/projects'
 import { useTickets } from '@/api/tickets'
 import type { ProjectSummary, TimeEntry, User } from '@/api/types'
@@ -10,6 +10,7 @@ import { DataTable, TableSkeleton, type Column } from '@/components/ui/DataTable
 import { QueryError } from '@/components/ui/QueryError'
 import { formatDate, formatMoney, formatTime } from '@/lib/format'
 import { entryHours } from '@/lib/hours'
+import { useNow } from '@/lib/useNow'
 import { AddTimeSheet } from '@/pages/time/AddTimeSheet'
 import { totalsByPerson } from './timeTotals'
 
@@ -19,7 +20,7 @@ const tenth = (n: number) => Math.round(n * 10) / 10
 export function TimeTab({ project, people }: { project: ProjectSummary; people: User[] }) {
   const time = useProjectTime(project.id)
   const tasks = useTickets(project.id).data ?? []
-  const now = useMemo(() => new Date(), [])
+  const now = useNow(60_000)
   const [adding, setAdding] = useState(false)
   const addBar = (
     <div className="mb-4 flex justify-end">

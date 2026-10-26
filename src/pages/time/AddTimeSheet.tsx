@@ -7,18 +7,7 @@ import { Field, inputClass, selectClass } from '@/components/ui/Field'
 import { Sheet } from '@/components/ui/Sheet'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { localDay } from '@/lib/dates'
-import { manualEntryErrors, toManualEntry, type ManualEntryErrors, type ManualEntryValues } from './manualEntry'
-
-const pad = (n: number) => String(n).padStart(2, '0')
-const hhmm = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`
-
-/** The hour before now, rounded down to 15 minutes (from midnight if that hour began yesterday). */
-function defaultTimes(now: Date) {
-  const end = new Date(now)
-  end.setMinutes(Math.floor(end.getMinutes() / 15) * 15, 0, 0)
-  const start = new Date(end.getTime() - 3_600_000)
-  return { day: localDay(now), start: localDay(start) === localDay(now) ? hhmm(start) : '00:00', end: hhmm(end) }
-}
+import { defaultTimes, manualEntryErrors, toManualEntry, type ManualEntryErrors, type ManualEntryValues } from './manualEntry'
 
 /**
  * Add time after the fact: a task (or the project as a whole), the day, start and end, and a note. The form checks
