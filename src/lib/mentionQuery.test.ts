@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { User } from '@/api/types'
-import { activeMention, insertMention, mentionOptions } from './mentionQuery'
+import { activeMention, insertMention, keepDismissed, mentionOptions } from './mentionQuery'
 
 const user = (id: string, name: string, title = '') => ({ id, name, title }) as User
 const from = {
@@ -42,5 +42,14 @@ describe('insertMention', () => {
     expect(insertMention('see @NE then', { start: 4, caret: 7 }, { kind: 'task', key: 'NEX-101', title: '' })).toEqual({ text: 'see @NEX-101 then', caret: 13 }) // the space already there is kept, not doubled
     expect(insertMention('@a', { start: 0, caret: 2 }, { kind: 'all' })).toEqual({ text: '@all ', caret: 5 })
     expect(insertMention('@n', { start: 0, caret: 2 }, { kind: 'project', key: 'NEX', name: 'Nexus Core' })).toEqual({ text: '@NEX ', caret: 5 })
+  })
+})
+
+describe('keepDismissed', () => {
+  it('a closed list stays closed for that @word only', () => {
+    expect(keepDismissed(3, 3)).toBe(3) // still typing the same @word
+    expect(keepDismissed(3, null)).toBeNull() // the @word is gone (deleted, sent, or a space ended it)
+    expect(keepDismissed(3, 10)).toBeNull() // a new @ elsewhere opens the list again
+    expect(keepDismissed(null, 4)).toBeNull()
   })
 })

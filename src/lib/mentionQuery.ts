@@ -46,3 +46,6 @@ export function insertMention(text: string, at: { start: number; caret: number }
   const spaced = /^\s/.test(rest) ? token : `${token} `
   return { text: text.slice(0, at.start) + spaced + rest, caret: at.start + token.length + 1 }
 }
+
+/** A list closed (Escape, blur) at one @word stays closed while that @word is typed; any other @ opens it again. */
+export const keepDismissed = (dismissed: number | null, start: number | null) => (start !== null && start === dismissed ? dismissed : null)

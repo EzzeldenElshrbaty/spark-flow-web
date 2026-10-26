@@ -157,12 +157,13 @@ describe('check-in, timer and manual time', () => {
 
   it('a timer left running overnight is closed at 12 hours, and counts at most 12 hours meanwhile', async () => {
     now = at(17)
-    const { running } = await api.time.checkIn({ plan: 'Late', target: { taskId: 't-nex-101' } })
-    const before = (await api.tickets.get('NEX-101')).loggedHours
+    // NEX-102 has no seeded running timer, so its hours depend only on this test's clock (not the real time of day).
+    const { running } = await api.time.checkIn({ plan: 'Late', target: { taskId: 't-nex-102' } })
+    const before = (await api.tickets.get('NEX-102')).loggedHours
     now = at(9, 0, 1) // 16 hours later
-    expect((await api.tickets.get('NEX-101')).loggedHours).toBeCloseTo(before + 12, 5)
+    expect((await api.tickets.get('NEX-102')).loggedHours).toBeCloseTo(before + 12, 5)
     // Time after the 12 hours is free again for a manual entry.
-    await api.time.addManual({ taskId: 't-nex-102', startedAt: at(7, 0, 1).toISOString(), endedAt: at(8, 0, 1).toISOString(), note: '' })
+    await api.time.addManual({ taskId: 't-nex-110', startedAt: at(7, 0, 1).toISOString(), endedAt: at(8, 0, 1).toISOString(), note: '' })
     await api.time.checkOut()
     const closed = (await mine()).find((e) => e.id === running!.id)!
     expect(closed.endedAt).toBe(new Date(new Date(closed.startedAt).getTime() + 12 * 3_600_000).toISOString())

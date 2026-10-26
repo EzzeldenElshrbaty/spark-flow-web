@@ -4,7 +4,7 @@ import { useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type Reac
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { inputClass } from '@/components/ui/Field'
-import { activeMention, insertMention, mentionOptions, type MentionOption } from '@/lib/mentionQuery'
+import { activeMention, insertMention, keepDismissed, mentionOptions, type MentionOption } from '@/lib/mentionQuery'
 import { popupPlacement } from '@/lib/popupPlacement'
 import { useMentionDirectory } from '@/lib/useMentionDirectory'
 
@@ -73,7 +73,9 @@ export function Composer({
 
   const sync = () => {
     const el = ref.current
-    if (el) setCaret(el.selectionStart)
+    if (!el) return
+    setCaret(el.selectionStart)
+    setDismissedAt((d) => keepDismissed(d, activeMention(el.value, el.selectionStart)?.start ?? null))
   }
   const choose = (option: MentionOption) => {
     if (!mention) return
@@ -93,6 +95,7 @@ export function Composer({
       await onSubmit(text)
       setText('')
       setCaret(0)
+      setDismissedAt(null)
     } catch {
       // The caller shows the error; the text stays so nothing typed is lost.
     } finally {
@@ -173,7 +176,9 @@ export function Composer({
           onChange={(e) => {
             setText(e.target.value)
             setCaret(e.target.selectionStart)
-            // A dismissed list stays shut for the same @word; a new @ elsewhere opens it again.
+            // A dismissed list stays shut for the same @word; once that @word is gone, or an @ starts elsewhere, it opens again.
+            const next = activeMention(e.target.value, e.target.selectionStart)?.start ?? null
+            setDismissedAt((d) => keepDismissed(d, next))
           }}
           onKeyDown={onKeyDown}
           onKeyUp={sync}
