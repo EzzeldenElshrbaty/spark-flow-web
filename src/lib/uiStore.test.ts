@@ -22,6 +22,14 @@ describe('uiStore', () => {
     expect(useUiStore.getState()).toMatchObject({ lastWorkspace: 'engineering', lastVisited: { engineering: '/w/engineering/c/c-backend' } })
   })
 
+  it('forgetPlaces clears the last places but keeps other preferences', () => {
+    useUiStore.getState().visit('engineering', '/w/engineering/c/c-backend')
+    useUiStore.getState().setProjectView('NEX', 'backlog')
+    useUiStore.getState().toggleSidebar()
+    useUiStore.getState().forgetPlaces()
+    expect(useUiStore.getState()).toMatchObject({ lastWorkspace: null, lastVisited: {}, lastProjectView: { NEX: 'backlog' }, sidebarCollapsed: true })
+  })
+
   it('toggleSidebar flips the collapsed flag', () => {
     useUiStore.getState().toggleSidebar()
     expect(useUiStore.getState().sidebarCollapsed).toBe(true)

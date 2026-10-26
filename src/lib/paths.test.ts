@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { Channel } from '@/api/types'
-import { landingPath, paths } from '@/lib/paths'
+import type { Channel, Project } from '@/api/types'
+import { landingPath, paths, validSavedPlace } from '@/lib/paths'
 import { seed } from '@/mocks/seed'
 
 const data = seed(new Date('2026-10-26T09:00:00Z'))
@@ -8,6 +8,7 @@ const toChannel = (c: (typeof data.channels)[number]): Channel => ({ ...c, unrea
 const engineering = data.channels.filter((c) => c.workspaceId === 'ws-eng').map(toChannel)
 const design = data.channels.filter((c) => c.workspaceId === 'ws-design').map(toChannel)
 const noGeneral = engineering.filter((c) => c.name !== 'general')
+const engineeringProjects: Project[] = data.projects.filter((p) => p.workspaceId === 'ws-eng')
 
 describe('paths', () => {
   it('builds every route', () => {
@@ -41,5 +42,34 @@ describe('landingPath', () => {
   it('never lands on a DM before a channel', () => {
     const dmFirst = [...engineering.filter((c) => c.kind === 'dm'), ...noGeneral.filter((c) => c.kind === 'channel')]
     expect(landingPath('engineering', {}, dmFirst)).toBe(paths.channel('engineering', dmFirst.find((c) => c.kind === 'channel')!.id))
+  })
+})
+
+describe('validSavedPlace', () => {
+  const key = engineeringProjects[0].key
+
+  it('accepts a channel that is loaded', () => {
+    expect(validSavedPlace('/w/engineering/c/c-general', engineering, engineeringProjects)).toBe(true)
+  })
+
+  it('rejects a channel that is gone', () => {
+    expect(validSavedPlace('/w/engineering/c/c-removed', engineering, engineeringProjects)).toBe(false)
+  })
+
+  it('accepts a known project on the board or backlog', () => {
+    expect(validSavedPlace(`/w/engineering/p/${key}/board`, engineering, engineeringProjects)).toBe(true)
+    expect(validSavedPlace(`/w/engineering/p/${key}/backlog`, engineering, engineeringProjects)).toBe(true)
+  })
+
+  it('rejects an unknown project or view', () => {
+    expect(validSavedPlace('/w/engineering/p/NOPE/board', engineering, engineeringProjects)).toBe(false)
+    expect(validSavedPlace(`/w/engineering/p/${key}/timeline`, engineering, engineeringProjects)).toBe(false)
+    expect(validSavedPlace(`/w/engineering/p/${key}`, engineering, engineeringProjects)).toBe(false)
+  })
+
+  it('accepts settings and rejects anything else', () => {
+    expect(validSavedPlace('/w/engineering/settings', engineering, engineeringProjects)).toBe(true)
+    expect(validSavedPlace('/w/engineering/nowhere', engineering, engineeringProjects)).toBe(false)
+    expect(validSavedPlace('/w/engineering/c/c-general/extra', engineering, engineeringProjects)).toBe(false)
   })
 })

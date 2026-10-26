@@ -18,6 +18,8 @@ type UiState = {
 type UiActions = {
   toggleSidebar: () => void
   visit: (workspaceSlug: string, path: string) => void
+  /** Forgets where the person was (after the demo data is reset, those places may be gone). */
+  forgetPlaces: () => void
   setProjectView: (key: string, view: ProjectView) => void
   addTyper: (channelId: string, userId: string, now?: number) => void
 }
@@ -81,6 +83,7 @@ export const useUiStore = create<UiState & UiActions>()(
       toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
       visit: (workspaceSlug, path) =>
         set((state) => ({ lastWorkspace: workspaceSlug, lastVisited: { ...state.lastVisited, [workspaceSlug]: path } })),
+      forgetPlaces: () => set({ lastWorkspace: null, lastVisited: {} }),
       setProjectView: (key, view) => set((state) => ({ lastProjectView: { ...state.lastProjectView, [key]: view } })),
       addTyper: (channelId, userId, now = Date.now()) =>
         set((state) => ({
