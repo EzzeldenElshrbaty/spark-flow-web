@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { TaskView } from '@/api/types'
-import { boardMove, prunePending, withPending } from './boardMove'
+import { boardDrop, boardMove, prunePending, withPending } from './boardMove'
 
 const t = (key: string, status: TaskView['status'], rank: number): TaskView => ({ id: key, key, status, rank }) as TaskView
 
@@ -46,3 +46,23 @@ describe('pending moves', () => {
     expect(prunePending({ A: { patch: { rank: 1 }, updatedAt: 'u1' } }, [b])).toEqual({})
   })
 })
+
+describe('boardDrop', () => {
+  it('a drop into a vanishing gap renumbers the column in the order shown', () => {
+    const col = [t('A', 'todo', 1000), t('B', 'todo', 1000 + 1e-7)]
+    const moved = t('X', 'done', 500)
+    const drop = boardDrop(moved, 'todo', col, col, 1)!
+    expect(drop.patch).toEqual({ status: 'todo', rank: 2000 })
+    expect(drop.renumber).toEqual([{ key: 'B', rank: 3000 }]) // A keeps 1000
+  })
+  it('a drop on a filtered board ranks against hidden cards too', () => {
+    const full = [t('A', 'todo', 1000), t('H', 'todo', 1500), t('B', 'todo', 2000)] // H is filtered out
+    const shown = [full[0]!, full[2]!]
+    const drop = boardDrop(t('X', 'done', 1), 'todo', shown, full, 1)!
+    // Dropped right before B: after H, never tied with it.
+    expect(drop.patch.rank).toBeGreaterThan(1500)
+    expect(drop.patch.rank).toBeLessThan(2000)
+    expect(drop.renumber).toEqual([])
+  })
+})
+

@@ -1,7 +1,7 @@
 import type { BoardColumn, Project, StatusCategory } from '@/api/types'
 import { CATEGORIES, DEFAULT_COLUMNS } from '@/lib/statuses'
 
-const MAX_LABEL = 30
+export const MAX_LABEL = 30
 export const MAX_COLUMNS = 10
 
 /** A project's columns, in board order: its own, or the standard five. */

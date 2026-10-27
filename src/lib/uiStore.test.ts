@@ -75,3 +75,11 @@ describe('typers expire from the store', () => {
   })
 })
 
+describe('task filters', () => {
+  it('the last phase and sprint filters are remembered per project', () => {
+    useUiStore.getState().setProjectFilters('NEX', { phase: 'ph1', sprint: undefined })
+    expect(useUiStore.getState().lastFilters.NEX).toEqual({ phase: 'ph1', sprint: undefined })
+    expect(useUiStore.getState().lastFilters.MOB).toBeUndefined()
+  })
+})
+

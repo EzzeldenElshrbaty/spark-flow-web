@@ -12,6 +12,7 @@ type UiState = {
   lastWorkspace: string | null
   lastVisited: Record<string, string>            // workspace slug → last path opened in it
   lastProjectView: Record<string, ProjectView>   // project key → board or list on its Tasks tab
+  lastFilters: Record<string, { phase?: string; sprint?: string }> // project key → its Tasks tab's last phase and sprint
   typing: Record<string, Typer[]>                // channel id → who is typing; never persisted
 }
 
@@ -21,6 +22,7 @@ type UiActions = {
   /** Forgets where the person was (after the demo data is reset, those places may be gone). */
   forgetPlaces: () => void
   setProjectView: (key: string, view: ProjectView) => void
+  setProjectFilters: (key: string, filters: { phase?: string; sprint?: string }) => void
   addTyper: (channelId: string, userId: string, now?: number) => void
 }
 
@@ -29,6 +31,7 @@ export const initialUiState: UiState = {
   lastWorkspace: null,
   lastVisited: {},
   lastProjectView: {},
+  lastFilters: {},
   typing: {},
 }
 
@@ -85,6 +88,7 @@ export const useUiStore = create<UiState & UiActions>()(
         set((state) => ({ lastWorkspace: workspaceSlug, lastVisited: { ...state.lastVisited, [workspaceSlug]: path } })),
       forgetPlaces: () => set({ lastWorkspace: null, lastVisited: {} }),
       setProjectView: (key, view) => set((state) => ({ lastProjectView: { ...state.lastProjectView, [key]: view } })),
+      setProjectFilters: (key, filters) => set((state) => ({ lastFilters: { ...state.lastFilters, [key]: filters } })),
       addTyper: (channelId, userId, now = Date.now()) =>
         set((state) => ({
           typing: {

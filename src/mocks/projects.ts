@@ -51,6 +51,12 @@ function findPhase(data: DbData, id: string): Phase {
   return phase
 }
 
+/** A phase lies within its project's dates. */
+function checkPhaseInProject(project: Project, startDate: string, dueDate: string) {
+  if (new Date(startDate).getTime() < new Date(project.startDate).getTime()) throw badRequest("A phase can't start before the project.")
+  if (new Date(dueDate).getTime() > new Date(project.dueDate).getTime()) throw badRequest("A phase can't end after the project's due date.")
+}
+
 function checkDates(startDate: string, dueDate: string) {
   if (Number.isNaN(Date.parse(startDate)) || Number.isNaN(Date.parse(dueDate))) throw badRequest('Pick a start and a due date.')
   if (new Date(dueDate).getTime() < new Date(startDate).getTime()) throw badRequest('The due date is before the start date.')
@@ -344,6 +350,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
             requireCan(data, 'phase.manage', project)
             if (!text(input.name, 'Name')) throw badRequest('Give the phase a name.')
             checkDates(input.startDate, input.dueDate)
+            checkPhaseInProject(project, input.startDate, input.dueDate)
             const order = Math.max(0, ...data.phases.filter((p) => p.projectId === project.id).map((p) => p.order)) + 1
             const phase: Phase = { ...input, name: input.name.trim(), id: newId('ph'), order, status: 'notStarted' }
             data.phases.push(phase)
@@ -360,6 +367,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
             if (!text(next.name, 'Name')) throw badRequest('Give the phase a name.')
             if (!PHASE_STATUSES.includes(next.status)) throw badRequest("That isn't a phase status.")
             checkDates(next.startDate, next.dueDate)
+            checkPhaseInProject(findProject(data, phase.projectId), next.startDate, next.dueDate)
             Object.assign(phase, next)
             logActivity(data, { projectId: phase.projectId, taskKey: null, kind: 'phase.changed', subject: phase.name, changes: [] }, now().toISOString())
             return phase
@@ -409,6 +417,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
             const project = openProject(data, input.projectId)
             requireCan(data, 'project.edit', project)
             if (!text(input.title, 'Title')) throw badRequest('Give the deliverable a title.')
+            if (!isDate(input.dueDate)) throw badRequest('Pick a due date.')
             if (input.phaseId) phaseOf(data, input.phaseId, project.id)
             const deliverable: Deliverable = { ...input, title: input.title.trim(), id: newId('d'), doneAt: null }
             data.deliverables.push(deliverable)

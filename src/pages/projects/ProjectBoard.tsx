@@ -20,11 +20,11 @@ import { ArrowLeft, ArrowRight, Inbox, MoreHorizontal, Pencil, Plus, Shapes, Tra
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { BoardColumn as Column, StatusCategory, TaskView, TicketPatch, TicketStatus, User } from '@/api/types'
 import { MenuPanel } from '@/components/ui/Menu'
-import { canDeleteColumn, columnErrors, columnsOf, MAX_COLUMNS, moveColumn } from '@/lib/boardColumns'
+import { canDeleteColumn, columnErrors, columnsOf, MAX_COLUMNS, MAX_LABEL, moveColumn } from '@/lib/boardColumns'
 import { ColumnSheet } from '@/pages/projects/ColumnSheet'
 import { DeleteColumnSheet } from '@/pages/projects/DeleteColumnSheet'
 import { DEFAULT_COLUMNS } from '@/lib/statuses'
-import { boardMove, prunePending, withPending, type PendingMoves } from '@/pages/projects/boardMove'
+import { boardDrop, prunePending, withPending, type PendingMoves } from '@/pages/projects/boardMove'
 import { TicketRow } from '@/pages/projects/TicketRow'
 import { tintOf } from '@/pages/projects/ticketPills'
 
@@ -73,7 +73,7 @@ function BoardCard({ ticket, assignee, movable }: { ticket: TaskView; assignee: 
         e.stopPropagation()
       }}
     >
-      <TicketRow ticket={ticket} assignee={assignee} variant="card" />
+      <TicketRow ticket={ticket} assignee={assignee} variant="card" tabIndex={movable ? -1 : undefined} />
     </li>
   )
 }
@@ -207,7 +207,10 @@ function BoardColumn({
     setRenaming(true)
   }
   const finish = async () => {
-    if (draft.trim() === label) return setRenaming(false)
+    if (draft.trim() === label) {
+      setError(null)
+      return setRenaming(false)
+    }
     const problem = await onRename(draft)
     if (problem) setError(problem)
     else setRenaming(false)
@@ -237,12 +240,15 @@ function BoardColumn({
               autoFocus
               aria-label="Column name"
               value={draft}
-              maxLength={40}
+              maxLength={MAX_LABEL}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => {
                 e.stopPropagation()
                 if (e.key === 'Enter') void finish()
-                if (e.key === 'Escape') setRenaming(false)
+                if (e.key === 'Escape') {
+                  setError(null)
+                  setRenaming(false)
+                }
               }}
               onPointerDown={(e) => e.stopPropagation()}
               onBlur={() => void finish()}
@@ -301,8 +307,11 @@ export function ProjectBoard({
   onBoard,
   projectId,
   countOf,
+  allTickets,
 }: {
   tickets: TaskView[]
+  /** Every task of the project, when `tickets` is filtered: drops are ranked against these. */
+  allTickets?: TaskView[]
   users: User[]
   canMove?: (ticket: TaskView) => boolean
   onMove?: (ticket: TaskView, patch: TicketPatch) => Promise<unknown>
@@ -416,8 +425,16 @@ export function ProjectBoard({
         index = at + (below ? 1 : 0)
       }
     }
-    const patch = boardMove(ticket, to, column, index)
-    if (!patch || !onMove) return
+    // Ranked against the whole column (allTickets), so a card hidden by a filter never ties with the drop.
+    const full = (allTickets ?? tickets).filter((t) => t.status === to).sort((a, b) => a.rank - b.rank)
+    const drop = boardDrop(ticket, to, column, full, index)
+    if (!drop || !onMove) return
+    const { patch } = drop
+    // Ranks too close to split: the column was renumbered; each changed card goes with its new rank.
+    for (const r of drop.renumber) {
+      const other = full.find((t) => t.key === r.key)
+      if (other) void onMove(other, { rank: r.rank }).catch(() => {})
+    }
     const base = tickets.find((t) => t.key === ticket.key)!
     setPending((p) => ({ ...p, [ticket.key]: { patch, updatedAt: base.updatedAt } }))
     onMove(ticket, patch).catch(() =>

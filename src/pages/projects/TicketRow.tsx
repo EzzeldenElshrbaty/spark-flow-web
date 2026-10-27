@@ -21,7 +21,8 @@ function Assignee({ name }: { name: string | null }) {
  * A task as a board card or a list row: Bug and Overdue chips, hours against the estimate, and (rows) the due date.
  * Either opens the ticket inspector (`?ticket=KEY`) and keeps the rest of the URL; the open ticket stays outlined.
  */
-export function TicketRow({ ticket, assignee, variant, project, statusName, statusCategory }: { ticket: TaskView; assignee: string | null; variant: 'card' | 'row'; project?: string; statusName?: string; statusCategory?: StatusCategory }) {
+/** `tabIndex={-1}` when the card itself takes focus (a movable board card), so it's one Tab stop, not two. */
+export function TicketRow({ ticket, assignee, variant, project, statusName, statusCategory, tabIndex }: { ticket: TaskView; assignee: string | null; variant: 'card' | 'row'; project?: string; statusName?: string; statusCategory?: StatusCategory; tabIndex?: number }) {
   const [params] = useSearchParams()
   const open = parseInspector(params)
   const selected = open?.kind === 'ticket' && open.key === ticket.key
@@ -31,6 +32,7 @@ export function TicketRow({ ticket, assignee, variant, project, statusName, stat
     return (
       <Link
         to={to}
+        tabIndex={tabIndex}
         aria-current={selected || undefined}
         className={clsx(
           'block rounded-xl border bg-surface p-3.5 shadow-sm outline-none transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-brand-500/40 active:bg-surface-sunken',

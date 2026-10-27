@@ -89,7 +89,9 @@ describe('projects', () => {
 describe('phases and deliverables', () => {
   it('a PM adds, renames, reorders and removes phases; removing moves its tasks to no phase', async () => {
     await api.users.viewAs('u-4')
-    const qa = await api.phases.create({ projectId: 'p-mob', name: 'Store review', startDate: '2026-10-27T00:00:00.000Z', dueDate: '2026-10-29T00:00:00.000Z' })
+    // Inside Mobile App's dates (a phase can't leave them).
+    const mob = (await db.read()).projects.find((p) => p.id === 'p-mob')!
+    const qa = await api.phases.create({ projectId: 'p-mob', name: 'Store review', startDate: mob.startDate, dueDate: mob.dueDate })
     expect(qa).toMatchObject({ order: 6, status: 'notStarted' })
     expect((await api.phases.update(qa.id, { name: 'App store review' })).name).toBe('App store review')
     const ids = (await api.phases.list('p-mob')).map((p) => p.id)
@@ -333,6 +335,19 @@ describe('project write refusals', () => {
     const created = await api.projects.create(newProject({ name: 'مشروع البوابة', key: 'ARB' }))
     const data = await db.read()
     expect(data.channels.find((c) => c.id === created.channelId)!.name).toBe('arb')
+  })
+})
+
+describe('phase and deliverable dates', () => {
+  it("phases stay inside the project's dates", async () => {
+    const p = (await db.read()).projects.find((x) => x.id === 'p-nex')!
+    const before = new Date(new Date(p.startDate).getTime() - 86_400_000).toISOString()
+    const after = new Date(new Date(p.dueDate).getTime() + 86_400_000).toISOString()
+    await expect(api.phases.create({ projectId: 'p-nex', name: 'Early', startDate: before, dueDate: p.dueDate })).rejects.toMatchObject({ status: 400, detail: "A phase can't start before the project." })
+    await expect(api.phases.create({ projectId: 'p-nex', name: 'Late', startDate: p.startDate, dueDate: after })).rejects.toMatchObject({ status: 400, detail: "A phase can't end after the project's due date." })
+  })
+  it('deliverables.create checks its due date', async () => {
+    await expect(api.deliverables.create({ projectId: 'p-nex', phaseId: null, title: 'X', dueDate: 'soon' })).rejects.toMatchObject({ status: 400, detail: 'Pick a due date.' })
   })
 })
 
