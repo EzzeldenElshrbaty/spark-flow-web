@@ -23,7 +23,9 @@ export async function request<T>(path: string, init?: RequestInit, fetchFn: type
   let res: Response
   try {
     // The session is a cookie on the backend's own origin (assumed with the .NET team), so cross-origin calls carry it.
-    res = await fetchFn(apiUrl(path), { credentials: 'include', ...init, headers: { Accept: 'application/json', ...init?.headers } })
+    // The person's zone: "today", check-ins and report weeks are worked out in it (spec §4.4).
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+    res = await fetchFn(apiUrl(path), { credentials: 'include', ...init, headers: { Accept: 'application/json', 'X-Time-Zone': zone, ...init?.headers } })
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') throw error // cancelled on purpose, not a failure
     throw new ApiError({ title: "Couldn't reach the server", status: 0 })

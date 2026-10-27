@@ -250,3 +250,14 @@ describe('request credentials', () => {
     expect(calls[0]!.init?.credentials).toBe('include')
   })
 })
+
+describe('time zone', () => {
+  it('every request sends X-Time-Zone', async () => {
+    const { calls, fetchFn } = recordingFetch()
+    await request('/api/time/today', undefined, fetchFn)
+    await request('/api/time/check-in', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }, fetchFn)
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+    for (const c of calls) expect(new Headers(c.init?.headers).get('X-Time-Zone')).toBe(zone)
+  })
+})
+
