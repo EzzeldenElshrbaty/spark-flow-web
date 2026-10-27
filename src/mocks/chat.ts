@@ -146,14 +146,18 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
   /** Archives or restores a channel: its members and admins; a project's channel follows its project, a DM never is. */
   const setArchived = async (id: string, archive: boolean) => {
     await delay()
-    const channel = await db.update((data) => {
+    const result = await db.update((data) => {
       const channel = readableChannel(data, id)
       if (channel.kind === 'dm') throw badRequest("Conversations can't be archived.")
       if (data.projects.some((p) => p.channelId === id)) throw badRequest('This channel follows its project.')
       requireManage(data, channel)
+      // Already so: nothing changes and nothing is sent.
+      if (Boolean(channel.archivedAt) === archive) return { channel: withUnread(data, channel), same: true }
       channel.archivedAt = archive ? new Date().toISOString() : null
-      return withUnread(data, channel)
+      return { channel: withUnread(data, channel), same: false }
     })
+    if (result.same) return clone(result.channel)
+    const channel = result.channel
     hub.publish({ type: 'channelChanged', channelId: id })
     return clone(channel)
   }

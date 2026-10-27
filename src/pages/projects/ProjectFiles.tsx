@@ -123,7 +123,8 @@ export function ProjectFiles({ projectId, people, canUpload, canManage }: { proj
                     </span>
                   </span>
                 </button>
-                {(canManage || f.uploadedBy === meId) && (
+                {/* Not on a frozen (archived) project, where nobody can post: canUpload says so. */}
+                {canUpload && (canManage || f.uploadedBy === meId) && (
                   <RowMenu label={`Actions for ${f.attachment.name}`} items={[{ label: 'Remove file', icon: Trash2, danger: true, onSelect: () => setRemoving(f) }]} />
                 )}
               </li>

@@ -597,3 +597,14 @@ describe('admins and private channels', () => {
   })
 })
 
+describe('archiving a channel twice', () => {
+  it('keeps its first archivedAt and sends no second event', async () => {
+    const first = await api.chat.archiveChannel('c-frontend')
+    events.length = 0
+    await new Promise((r) => setTimeout(r, 5))
+    const again = await api.chat.archiveChannel('c-frontend')
+    expect(again.archivedAt).toBe(first.archivedAt)
+    expect(events).toEqual([])
+  })
+})
+

@@ -105,3 +105,14 @@ describe('archiving projects', () => {
     expect((await api.projects.update('p-nex', { clientName: 'Again' })).clientName).toBe('Again')
   })
 })
+
+describe('archiving twice', () => {
+  it('archiving an archived project twice keeps one line and its first archivedAt', async () => {
+    const first = await api.projects.archive('p-nex')
+    clock = new Date(clock.getTime() + 60_000)
+    const again = await api.projects.archive('p-nex')
+    expect(again.archivedAt).toBe(first.archivedAt)
+    expect((await db.read()).activity.filter((a) => a.kind === 'project.archived' && a.projectId === 'p-nex')).toHaveLength(1)
+  })
+})
+

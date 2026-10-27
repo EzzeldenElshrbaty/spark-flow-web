@@ -175,9 +175,11 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
   /** Archives or restores a project with its channel, in one write; archiving stops the timers on its tasks. */
   const setArchived = async (id: string, archive: boolean) => {
     await delay()
-    const { project, stopped } = await db.update((data) => {
+    const { project, stopped, same } = await db.update((data) => {
       requireCan(data, 'project.archive')
       const project = findProject(data, id)
+      // Already so (a double click, two tabs): nothing changes, nothing is logged or sent.
+      if (Boolean(project.archivedAt) === archive) return { project: clone(project), stopped: [] as string[], same: true }
       const at = now()
       const stopped: string[] = []
       if (archive) {
@@ -190,8 +192,9 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
       const channel = data.channels.find((c) => c.id === project.channelId)
       if (channel) channel.archivedAt = project.archivedAt
       logActivity(data, { projectId: id, taskKey: null, kind: archive ? 'project.archived' : 'project.restored', changes: [] }, at.toISOString())
-      return { project: clone(project), stopped }
+      return { project: clone(project), stopped, same: false }
     })
+    if (same) return project
     hub.publish({ type: 'projectChanged', projectId: id })
     hub.publish({ type: 'channelChanged', channelId: project.channelId })
     for (const userId of stopped) hub.publish({ type: 'timeLogged', userId, projectId: id })
