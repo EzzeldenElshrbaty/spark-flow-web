@@ -95,3 +95,18 @@ Until the rich composer lands (feature 5), the server works `body` out from `con
 | Resolve keys | `GET /api/tasks/resolve?keys=NEX-103,NEX-104` | `TaskRef[]` for the keys that are tasks the person may see: `key, title, status, statusLabel, category, projectKey, projectName, assigneeId`. |
 
 The client refreshes resolved tasks on `ticketUpdated`, so chip status is live.
+
+### Thread summary
+
+Messages read from the API carry `replyUserIds`: who replied last, newest first, each once, at most 5 (spec §7 `reply_user_ids`). It is worked out on read (or kept with `threadCount` and `lastReplyAt` in the same transaction as each reply) and should come with `thread.updated`.
+
+### Link previews
+
+| Call | Route | Returns |
+|---|---|---|
+| Preview a link | `GET /api/link-preview?url=<url>` | `LinkPreview` (`url, siteName, title, description, image`) or `null`. |
+
+- Only for domains on the allow-list (`PREVIEW_DOMAINS` in `src/lib/linkPreview.ts`: spark-sys.com, github.com, figma.com, docs.google.com, and their subdomains); anything else returns `null` without a request.
+- **The server fetches the page, never the browser.** Guard the fetch: http and https only, resolve the host and refuse private, loopback and link-local addresses (SSRF), follow at most 3 redirects and re-check each one against the allow-list, 3s timeout, read at most 1 MB, and send no cookies or credentials.
+- Take `og:title` / `<title>`, `og:description`, `og:site_name` and `og:image`. Return `image` only as an https address (better: proxied through the API). Cache results for an hour.
+- The client shows one preview per message: the first allowed link.

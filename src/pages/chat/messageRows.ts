@@ -1,4 +1,4 @@
-import type { ChatMessage } from '@/api/types'
+import type { ChatMessage, ThreadReply } from '@/api/types'
 import { localDay } from '@/lib/dates'
 
 /** One row of a channel's message list: a day's divider, the New line, or a message. */
@@ -13,13 +13,14 @@ const GROUP_MS = 5 * 60_000
  * Cards, system messages and deleted placeholders stand alone: they never take an author line from, or give one to,
  * a neighbour (a placeholder keeps its author, so it's clear whose message is gone).
  */
-const standsAlone = (m: ChatMessage) => Boolean(m.taskEvent || m.commentId || m.system || m.deletedAt)
+const standsAlone = (m: ChatMessage | ThreadReply) =>
+  Boolean(m.deletedAt || ('taskEvent' in m && m.taskEvent) || ('commentId' in m && m.commentId) || ('system' in m && m.system))
 
 /**
  * Whether `next` renders as a continuation of `prev` (spec 6.2): same author, same day, at most 5 minutes later,
  * neither is a card, and `prev` has no thread replies.
  */
-export function canContinue(prev: ChatMessage, next: ChatMessage): boolean {
+export function canContinue(prev: ChatMessage | ThreadReply, next: ChatMessage | ThreadReply): boolean {
   const gap = new Date(next.createdAt).getTime() - new Date(prev.createdAt).getTime()
   return (
     prev.senderId === next.senderId &&
@@ -28,7 +29,8 @@ export function canContinue(prev: ChatMessage, next: ChatMessage): boolean {
     gap <= GROUP_MS &&
     !standsAlone(prev) &&
     !standsAlone(next) &&
-    prev.threadCount === 0
+    // A reply has no thread of its own.
+    (!('threadCount' in prev) || prev.threadCount === 0)
   )
 }
 

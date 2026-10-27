@@ -195,7 +195,7 @@ describe('sendMessage', () => {
     const m = await sendMessage(db, hub, { channelId: 'c-backend', content: 'hi', attachments: [attachment] })
     expect(m).toMatchObject({ senderId: 'u-1', channelId: 'c-backend', threadCount: 0, lastReplyAt: null, editedAt: null, reactions: [] })
     expect(m.attachments).toEqual([attachment])
-    expect(await api.chat.message(m.id)).toEqual(m)
+    expect(await api.chat.message(m.id)).toEqual({ ...m, replyUserIds: [] }) // who replied is worked out on read
     expect((await api.chat.messages('c-backend')).items[0].id).toBe(m.id)
   })
 
@@ -767,5 +767,24 @@ describe('message bodies and system messages (spec 6.3, §7)', () => {
     const left = (await db.read()).messages.filter((m) => m.channelId === 'c-general' && m.system).at(-1)!
     await expect(api.chat.edit({ kind: 'message', id: left.id }, 'x')).rejects.toMatchObject({ status: 400 })
     await expect(api.chat.remove({ kind: 'message', id: left.id })).rejects.toMatchObject({ status: 400 })
+  })
+})
+
+describe('thread summary (spec §7: reply_user_ids, latest 5)', () => {
+  it('a message with replies says who replied, newest first, each once, at most 5', async () => {
+    const root = await api.chat.send('c-general', 'Thread root')
+    for (const [who, n] of [['u-2', 1], ['u-3', 1], ['u-2', 1], ['u-4', 1], ['u-5', 1], ['u-6', 1], ['u-7', 1]] as const) {
+      await api.users.viewAs(who)
+      for (let i = 0; i < n; i++) await api.chat.reply(root.id, `from ${who}`)
+    }
+    await api.users.viewAs('u-1')
+    expect((await api.chat.message(root.id)).replyUserIds).toEqual(['u-7', 'u-6', 'u-5', 'u-4', 'u-2'])
+    const page = await api.chat.messages('c-general')
+    expect(page.items.find((m) => m.id === root.id)?.replyUserIds).toEqual(['u-7', 'u-6', 'u-5', 'u-4', 'u-2'])
+  })
+
+  it('a message without replies has none', async () => {
+    const root = await api.chat.send('c-general', 'Alone')
+    expect((await api.chat.message(root.id)).replyUserIds).toEqual([])
   })
 })

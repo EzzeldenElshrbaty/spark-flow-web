@@ -1,15 +1,21 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { useMarkRead, useMessages } from '@/api/chat'
 import type { ChatMessage, User } from '@/api/types'
 import { Button } from '@/components/ui/Button'
 import { QueryError } from '@/components/ui/QueryError'
 import { useRealtime } from '@/lib/realtime'
 import { shouldMarkRead } from '@/pages/chat/markRead'
-import { MessageRow, MessageSkeleton } from '@/pages/chat/MessageRow'
+import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
+import { ChannelMessage } from '@/pages/chat/ChannelMessage'
+import { DayDivider } from '@/pages/chat/MessageList'
+import { buildRows } from '@/pages/chat/messageRows'
+import { MessageSkeleton } from '@/pages/chat/MessageSkeleton'
+import { useBodyContext, useProjectKeys } from '@/pages/chat/useBodyContext'
 
 /**
- * A channel's messages, newest at the bottom, with "Load older messages". Opening it marks the channel read and keeps
- * a live connection to it. Used by the Chat page and by a project's Chat tab; the caller shows the header.
+ * A channel's messages, newest at the bottom, with "Load older messages": the project Chat tab's list, which scrolls
+ * with its page (the channel page has its own, MessageList). The same message rows, day dividers and grouping.
+ * Opening it marks the channel read and keeps a live connection to it; the caller shows the header.
  */
 export function ChannelFeed({
   channelId,
@@ -52,7 +58,12 @@ export function ChannelFeed({
     endRef.current?.scrollIntoView({ block: 'end' })
   }, [listShown, channelId])
 
-  const items = messages.data?.pages.flatMap((page) => page.items).reverse() ?? []
+  const items = useMemo(() => messages.data?.pages.flatMap((page) => page.items).reverse() ?? [], [messages.data])
+  const rows = useMemo(() => buildRows(items, { newAfterSeq: null, meId, now: new Date() }), [items, meId])
+  const { workspace } = useCurrentWorkspace()
+  const projectKeys = useProjectKeys(workspace?.id)
+  const scope = useMemo(() => ({ users, projectKeys, ws: workspace?.slug ?? '', workspaceId: workspace?.id ?? '' }), [users, projectKeys, workspace])
+  const ctx = useBodyContext(useMemo(() => items.map((m) => m.body), [items]), scope)
   // After I post, follow my message down; someone else's message never pulls the view.
   const newest = items.at(-1)
   const newestMine = newest && newest.senderId === meId ? newest.id : null
@@ -101,10 +112,22 @@ export function ChannelFeed({
             <QueryError what="Older messages" onRetry={() => void messages.fetchNextPage()} />
           </div>
         )}
-        <ol className="-mx-2 space-y-1" aria-label={`Messages in ${title}`}>
-          {items.map((message) => (
-            <li key={message.id}>
-              <MessageRow message={message} users={users} meId={meId} canPost={canPost} actions={messageActions && ((close) => messageActions(message, close))} />
+        <ol className="-mx-4 md:-mx-6" aria-label={`Messages in ${title}`}>
+          {rows.map((row) => (
+            <li key={row.key}>
+              {row.kind === 'day' ? (
+                <DayDivider label={row.label} />
+              ) : row.kind === 'message' ? (
+                <ChannelMessage
+                  message={row.message}
+                  users={users}
+                  ctx={ctx}
+                  meId={meId}
+                  canPost={canPost}
+                  continuation={row.continuation}
+                  actions={messageActions && ((close) => messageActions(row.message, close))}
+                />
+              ) : null}
             </li>
           ))}
         </ol>

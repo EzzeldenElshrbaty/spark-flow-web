@@ -114,3 +114,10 @@ export function useSetStarred() {
 export function useSetMuted() {
   return useMutation({ mutationFn: ({ id, muted }: { id: string; muted: boolean }) => api.chat.setMuted(id, muted) })
 }
+
+const PREVIEW_STALE_MS = 60 * 60_000
+
+/** The preview card for one link (spec 6.3); pages don't change often, so it's kept for an hour. */
+export function useLinkPreview(url: string | null) {
+  return useQuery({ queryKey: qk.linkPreview(url ?? ''), queryFn: () => api.chat.linkPreview(url!), enabled: Boolean(url), staleTime: PREVIEW_STALE_MS, retry: false })
+}

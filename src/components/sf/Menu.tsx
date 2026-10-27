@@ -12,7 +12,7 @@ import {
   type RefObject,
 } from 'react'
 import { Icon } from './Icon'
-import { SfPortal, useEscapeLayer } from './layers'
+import { isRtl, placeBelow, SfPortal, useEscapeLayer } from './layers'
 import { usePhone } from './usePhone'
 
 type MenuContext = { rootId: string; closeAll: () => void; phone: boolean }
@@ -26,9 +26,6 @@ function useMenu() {
 
 const ITEM_ROLES = '[role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"]'
 
-function isRtl(el: Element) {
-  return getComputedStyle(el).direction === 'rtl'
-}
 
 export type MenuTriggerProps = {
   ref: RefObject<HTMLButtonElement | null>
@@ -132,25 +129,15 @@ function MenuPanel({
     const panel = panelRef.current
     if (!anchor || !panel || phone) return
     const { width, height } = panel.getBoundingClientRect()
+    const rtl = isRtl(panel.parentElement ?? panel)
+    if (!side) return setPos(placeBelow(anchor, { width, height }, rtl))
     const vw = window.innerWidth
     const vh = window.innerHeight
-    const rtl = isRtl(panel.parentElement ?? panel)
-    let left: number
-    let top: number
-    if (side) {
-      const toEnd = rtl ? anchor.left - width : anchor.right
-      const toStart = rtl ? anchor.right : anchor.left - width
-      const endFits = rtl ? toEnd >= 8 : toEnd + width <= vw - 8
-      left = endFits ? toEnd : toStart
-      top = anchor.top - 8
-    } else {
-      left = rtl ? anchor.right - width : anchor.left
-      if (left + width > vw - 8) left = anchor.right - width
-      if (left < 8) left = 8
-      top = anchor.bottom + 4
-      if (top + height > vh - 8 && anchor.top - height - 4 >= 8) top = anchor.top - height - 4
-    }
-    setPos({ top: Math.max(8, Math.min(top, vh - height - 8)), left: Math.max(8, left) })
+    const toEnd = rtl ? anchor.left - width : anchor.right
+    const toStart = rtl ? anchor.right : anchor.left - width
+    const endFits = rtl ? toEnd >= 8 : toEnd + width <= vw - 8
+    const top = anchor.top - 8
+    setPos({ top: Math.max(8, Math.min(top, vh - height - 8)), left: Math.max(8, endFits ? toEnd : toStart) })
   }, [anchorRef, side, phone])
 
   // Focus the first (or last) item once the panel is placed: a hidden panel can't take focus.

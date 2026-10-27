@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Button, IconButton } from './Button'
 import { Menu, MenuItem, MenuSeparator, Submenu } from './Menu'
 import { Modal } from './Modal'
+import { Popover } from './Popover'
 import { TOAST_MS, ToastProvider, ToastRegion, useToast } from './Toast'
 import { TokenInput, type Suggestion, type Token } from './TokenInput'
 
@@ -245,5 +246,65 @@ describe('TokenInput', () => {
     expect(onCommit).toHaveBeenCalledWith('x@y.com')
     fireEvent.keyDown(field, { key: 'Backspace' })
     expect(screen.queryByRole('button', { name: 'Remove Sara Adel' })).toBeNull()
+  })
+})
+
+describe('Popover (a small card that is not a menu: the profile card)', () => {
+  function Card() {
+    return (
+      <>
+        <button type="button">Before</button>
+        <Popover label="Nour El-Sayed" trigger={(props) => <button type="button" {...props}>Nour El-Sayed</button>}>
+          {(close) => (
+            <>
+              <p>Backend lead</p>
+              <Button onClick={close}>Message</Button>
+              <a href="mailto:nour@spark-sys.com">nour@spark-sys.com</a>
+            </>
+          )}
+        </Popover>
+      </>
+    )
+  }
+
+  it('opens as a labelled dialog on its trigger and focuses the first control', () => {
+    render(<Card />)
+    const trigger = screen.getByRole('button', { name: 'Nour El-Sayed' })
+    expect(trigger.getAttribute('aria-haspopup')).toBe('dialog')
+    fireEvent.click(trigger)
+    expect(trigger.getAttribute('aria-expanded')).toBe('true')
+    const dialog = screen.getByRole('dialog', { name: 'Nour El-Sayed' })
+    expect(trigger.getAttribute('aria-controls')).toBe(dialog.id)
+    expect(document.activeElement?.textContent).toBe('Message')
+  })
+
+  it('keeps Tab inside, and Escape closes it and gives focus back to the trigger', () => {
+    render(<Card />)
+    const trigger = screen.getByRole('button', { name: 'Nour El-Sayed' })
+    trigger.focus()
+    fireEvent.click(trigger)
+    const link = screen.getByRole('link', { name: 'nour@spark-sys.com' })
+    link.focus()
+    fireEvent.keyDown(link, { key: 'Tab' })
+    expect(document.activeElement?.textContent).toBe('Message')
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(document.activeElement).toBe(trigger)
+  })
+
+  it('a press outside closes it; one inside does not', () => {
+    render(<Card />)
+    fireEvent.click(screen.getByRole('button', { name: 'Nour El-Sayed' }))
+    fireEvent.pointerDown(screen.getByText('Backend lead'))
+    expect(screen.getByRole('dialog')).toBeTruthy()
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Before' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('its content can close it', () => {
+    render(<Card />)
+    fireEvent.click(screen.getByRole('button', { name: 'Nour El-Sayed' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Message' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 })

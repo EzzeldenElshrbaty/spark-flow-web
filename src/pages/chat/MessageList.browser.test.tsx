@@ -42,6 +42,8 @@ function channel(count: number) {
   return { messages, add, page }
 }
 
+const scope = { projectKeys: new Set<string>(), ws: 'engineering', workspaceId: 'ws-eng' }
+
 function Harness({ data, newAfterSeq = null, totalUnread = 0 }: { data: ReturnType<typeof channel>; newAfterSeq?: number | null; totalUnread?: number }) {
   const query = useInfiniteQuery({
     queryKey: ['messages'],
@@ -63,8 +65,7 @@ function Harness({ data, newAfterSeq = null, totalUnread = 0 }: { data: ReturnTy
         onMarkRead={vi.fn()}
         onJump={vi.fn()}
         onLatest={vi.fn()}
-        workspaceSlug="engineering"
-        projectKeys={new Set()}
+        scope={scope}
       />
     </div>
   )

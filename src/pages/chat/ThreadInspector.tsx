@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useChannel, useMessage, useReply, useThread } from '@/api/chat'
 import { useUsers } from '@/api/users'
 import { QueryError } from '@/components/ui/QueryError'
@@ -9,7 +10,9 @@ import { firstLine } from '@/lib/inspector'
 import { useRole } from '@/lib/useRole'
 import { NotFound } from '@/pages/NotFound'
 import { Composer } from '@/pages/chat/Composer'
-import { MessageRow } from '@/pages/chat/MessageRow'
+import { ChannelMessage } from '@/pages/chat/ChannelMessage'
+import { canContinue } from '@/pages/chat/messageRows'
+import { useBodyContext, useProjectKeys } from '@/pages/chat/useBodyContext'
 import { useCanPost, useReadOnlyLine } from '@/pages/chat/useCanPost'
 import { CanPostError } from '@/pages/chat/CanPostError'
 
@@ -27,6 +30,11 @@ export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: st
   const canPost = useCanPost(channel.data)
   const readOnly = useReadOnlyLine(channel.data)
   const reply = useReply()
+  const projectKeys = useProjectKeys(channel.data?.workspaceId)
+  const people = useMemo(() => users.data ?? [], [users.data])
+  const scope = useMemo(() => ({ users: people, projectKeys, ws: workspace?.slug ?? '', workspaceId: channel.data?.workspaceId ?? '' }), [people, projectKeys, workspace, channel.data])
+  const bodies = useMemo(() => [message.data?.body ?? [], ...(replies.data ?? []).map((r) => r.body)], [message.data, replies.data])
+  const ctx = useBodyContext(bodies, scope)
 
   // A message from another workspace's channel is not found in this one.
   const foreign = Boolean(channel.data && workspace && !inWorkspace(channel.data, workspace.id))
@@ -43,10 +51,11 @@ export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: st
   // Names come with the channel's workspace; a channel that fails to load only leaves them unknown.
   else if (message.isPending || channel.isLoading || users.isLoading) body = <InspectorSkeleton />
   else {
-    const people = users.data ?? []
     body = (
       <>
-        <MessageRow message={message.data} users={people} showThread={false} meId={persona.id} canPost={canPost === true} />
+        <div className="-mx-3">
+          <ChannelMessage message={message.data} users={people} ctx={ctx} meId={persona.id} canPost={canPost === true} continuation={false} showThread={false} compact />
+        </div>
         <div className="my-3 flex items-center gap-3 text-xs text-fg-muted">
           <span className="tabular-nums">
             {message.data.threadCount} {message.data.threadCount === 1 ? 'reply' : 'replies'}
@@ -60,10 +69,18 @@ export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: st
         ) : replies.data.length === 0 ? (
           <p className="text-sm text-fg-muted">No replies yet.</p>
         ) : (
-          <ul className="space-y-1">
-            {replies.data.map((reply) => (
+          <ul className="-mx-3">
+            {replies.data.map((reply, i) => (
               <li key={reply.id}>
-                <MessageRow message={reply} users={people} meId={persona.id} canPost={canPost === true} />
+                <ChannelMessage
+                  message={reply}
+                  users={people}
+                  ctx={ctx}
+                  meId={persona.id}
+                  canPost={canPost === true}
+                  continuation={i > 0 && canContinue(replies.data[i - 1], reply)}
+                  compact
+                />
               </li>
             ))}
           </ul>

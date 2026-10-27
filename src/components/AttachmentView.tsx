@@ -7,7 +7,7 @@ import { previewOf } from '@/lib/fileTypes'
 import { safeFileUrl } from '@/lib/safeFileUrl'
 
 /** A blob: address for a stored file while the component is on screen; freed when it goes. */
-function useFileUrl(id: string) {
+export function useFileUrl(id: string) {
   const [url, setUrl] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)
   useEffect(() => {
@@ -29,7 +29,7 @@ function useFileUrl(id: string) {
   return { url: url ? safeFileUrl(url) : null, failed }
 }
 
-const sizeText = (bytes: number) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`)
+export const sizeText = (bytes: number) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`)
 
 function One({ attachment }: { attachment: Attachment }) {
   const { url, failed } = useFileUrl(attachment.id)

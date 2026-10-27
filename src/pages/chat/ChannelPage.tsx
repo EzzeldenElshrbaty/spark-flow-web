@@ -12,6 +12,7 @@ import { useRole } from '@/lib/useRole'
 import { useRealtime } from '@/lib/realtime'
 import { NotFound } from '@/pages/NotFound'
 import { MessageList } from '@/pages/chat/MessageList'
+import { useProjectKeys } from '@/pages/chat/useBodyContext'
 import { jumpSince, type JumpChoice } from '@/pages/chat/messageRows'
 import { CanPostError } from '@/pages/chat/CanPostError'
 import { TypingLine } from '@/pages/chat/ChannelTyping'
@@ -24,7 +25,7 @@ import { ChannelSheet } from '@/pages/chat/ChannelSheet'
 import { ChannelTabs, TabStub, tabFromParam, type ChannelTab } from '@/pages/chat/ChannelTabs'
 import type { Channel, ChatMessage, User } from '@/api/types'
 import { useProjectSummaries } from '@/api/projects'
-import { MessageSkeleton } from '@/pages/chat/MessageRow'
+import { MessageSkeleton } from '@/pages/chat/MessageSkeleton'
 
 /** A channel or DM: its header and tabs over its messages, newest at the bottom, filling the main card (spec 5.3, 6.1). */
 export function ChannelPage() {
@@ -203,8 +204,8 @@ function PaneFeed({
 }) {
   const live = useMessages(channel.id)
   const { ws: workspaceSlug = '' } = useParams()
-  const projects = useProjectSummaries(channel.workspaceId)
-  const projectKeys = useMemo(() => new Set((projects.data ?? []).map((p) => p.key)), [projects.data])
+  const projectKeys = useProjectKeys(channel.workspaceId)
+  const scope = useMemo(() => ({ projectKeys, ws: workspaceSlug, workspaceId: channel.workspaceId }), [projectKeys, workspaceSlug, channel.workspaceId])
   const [view, setView] = useState<{ from: number | null; focus: number | null; nonce: number; atEnd: boolean }>({ from: null, focus: null, nonce: 0, atEnd: false })
   const jumped = useMessagesFrom(channel.id, view.from)
   const messages = view.from === null ? live : jumped
@@ -257,8 +258,7 @@ function PaneFeed({
           openAtEnd={view.atEnd}
           onJump={onJump}
           onLatest={() => setView((v) => ({ from: null, focus: null, nonce: v.nonce + 1, atEnd: true }))}
-          workspaceSlug={workspaceSlug}
-          projectKeys={projectKeys}
+          scope={scope}
         />
       )}
       {jumpError && <p className="sf sf-small flex-none px-4 pt-2 text-sf-error md:px-6">Couldn't jump there. Try again.</p>}

@@ -9,11 +9,10 @@ import { QueryError } from '@/components/ui/QueryError'
 import { formatTime } from '@/lib/format'
 import { readUpTo } from '@/pages/chat/markRead'
 import { buildRows, unreadSummary, type JumpChoice, type MessageListRow } from '@/pages/chat/messageRows'
-import { useTaskRefs } from '@/api/tickets'
 import { parseInspector } from '@/lib/inspector'
 import { ChannelMessage, type Selection } from '@/pages/chat/ChannelMessage'
-import { taskKeysOf, type BodyContext } from '@/pages/chat/MessageBody'
-import { MessageSkeleton } from '@/pages/chat/MessageRow'
+import { useBodyContext, type BodyScope } from '@/pages/chat/useBodyContext'
+import { MessageSkeleton } from '@/pages/chat/MessageSkeleton'
 import { useSearchParams } from 'react-router'
 
 /** How close to the end still counts as "at the newest message". */
@@ -52,8 +51,7 @@ export function MessageList({
   openAtEnd = false,
   onJump,
   onLatest,
-  workspaceSlug,
-  projectKeys,
+  scope,
 }: {
   query: MessagesQuery
   title: string
@@ -76,9 +74,8 @@ export function MessageList({
   onJump: (choice: JumpChoice) => void
   /** Leave a jump for the live end of the channel. */
   onLatest: () => void
-  workspaceSlug: string
-  /** Projects I can see: a task key from any other project stays text. */
-  projectKeys: Set<string>
+  /** Projects I can see and the workspace: what bodies need besides `users`. */
+  scope: Omit<BodyScope, 'users'>
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const messages = useMemo(() => query.data?.pages.flatMap((page) => page.items).reverse() ?? [], [query.data])
@@ -93,11 +90,8 @@ export function MessageList({
     if (catchingUp && !query.isFetchingNextPage && !query.isFetchNextPageError) void query.fetchNextPage()
   }, [catchingUp, query])
   // Every task the loaded messages name, looked up in one go (live: a status change refreshes it).
-  const taskRefs = useTaskRefs(useMemo(() => messages.flatMap((m) => taskKeysOf(m.body)), [messages]))
-  const ctx = useMemo<BodyContext>(() => {
-    const tasks = new Map((taskRefs.data ?? []).filter((t) => projectKeys.has(t.projectKey)).map((t) => [t.key, t]))
-    return { users, tasks, projectKeys, ws: workspaceSlug }
-  }, [taskRefs.data, projectKeys, users, workspaceSlug])
+  const bodyScope = useMemo(() => ({ ...scope, users }), [scope, users])
+  const ctx = useBodyContext(useMemo(() => messages.map((m) => m.body), [messages]), bodyScope)
 
   // Selected (spec 6.3): the message whose thread is open, or the one a jump landed on, which fades after 2s.
   const [params] = useSearchParams()
@@ -390,7 +384,7 @@ function DayMenu({ label, onJump, focusable = true }: { label: string; onJump: (
           type="button"
           {...props}
           tabIndex={focusable ? undefined : -1}
-          className="sf-focus inline-flex h-7 items-center gap-1 rounded-sf-full bg-sf-surface-raised ps-3 pe-2 font-sf text-[13px]/[18px] font-medium text-sf-text shadow-sf-toolbar"
+          className={`sf-focus ${pillClass} pe-2`}
         >
           {label}
           <Icon icon={IconChevronDown} size={16} className="text-sf-text-secondary" />
@@ -406,13 +400,21 @@ function DayMenu({ label, onJump, focusable = true }: { label: string; onJump: (
   )
 }
 
-/** A day's start: a rule across the list with the date on it. */
-function DayDivider({ label, onJump }: { label: string; onJump: (choice: JumpChoice) => void }) {
+const pillClass = 'inline-flex h-7 items-center gap-1 rounded-sf-full bg-sf-surface-raised ps-3 font-sf text-[13px]/[18px] font-medium text-sf-text shadow-sf-toolbar'
+
+/** A day's start: a rule across the list with the date on it, which jumps through the channel when `onJump` is given. */
+export function DayDivider({ label, onJump }: { label: string; onJump?: (choice: JumpChoice) => void }) {
   return (
     <div className="sf relative flex h-10 items-center justify-center">
       <span aria-hidden className="absolute inset-x-0 top-5 h-px bg-sf-line" />
       <span className="relative">
-        <DayMenu label={label} onJump={onJump} />
+        {onJump ? (
+          <DayMenu label={label} onJump={onJump} />
+        ) : (
+          <span role="separator" aria-label={label} className={`${pillClass} pe-3`}>
+            {label}
+          </span>
+        )}
       </span>
     </div>
   )

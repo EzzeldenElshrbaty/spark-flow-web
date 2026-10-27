@@ -18,6 +18,8 @@ export type BodyContext = {
   /** Project keys I can see. */
   projectKeys: Set<string>
   ws: string
+  /** For actions that open a DM (the profile card). */
+  workspaceId: string
 }
 
 const pill = 'rounded-sf-sm bg-sf-surface-mention px-0.5 font-medium text-sf-accent'

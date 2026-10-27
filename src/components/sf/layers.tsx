@@ -81,3 +81,22 @@ export function SfPortal({ children }: { children: ReactNode }) {
   const content = <div className="sf">{children}</div>
   return createPortal(dark ? <div className="dark">{content}</div> : content, document.body)
 }
+
+export function isRtl(el: Element) {
+  return getComputedStyle(el).direction === 'rtl'
+}
+
+/**
+ * Where a panel opens under its trigger: lined up with the trigger's start edge, moved in to stay 8px inside the
+ * window, and above the trigger when there is no room below.
+ */
+export function placeBelow(anchor: DOMRect, panel: { width: number; height: number }, rtl: boolean): { top: number; left: number } {
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  let left = rtl ? anchor.right - panel.width : anchor.left
+  if (left + panel.width > vw - 8) left = anchor.right - panel.width
+  if (left < 8) left = 8
+  let top = anchor.bottom + 4
+  if (top + panel.height > vh - 8 && anchor.top - panel.height - 4 >= 8) top = anchor.top - panel.height - 4
+  return { top: Math.max(8, Math.min(top, vh - panel.height - 8)), left: Math.max(8, left) }
+}

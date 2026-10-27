@@ -126,6 +126,8 @@ export type ChatMessage = {
   clientId?: string
   /** The text as structured rich text (spec §7); `content` is the text as written, for search and editing. */
   body: Body
+  /** Who replied last, newest first, at most 5 (worked out on read, not stored). */
+  replyUserIds?: string[]
   /** Set on what the channel itself says (joined, left, renamed, topic changed); sent by whoever did it. */
   system?: SystemEvent
   attachments: Attachment[]; reactions: Reaction[]
@@ -138,6 +140,9 @@ export type ChatMessage = {
   /** Set once the author deletes it: the row stays (its thread too) with its text, files, mentions and reactions gone. */
   deletedAt?: string | null
 }
+
+/** What a link's preview card shows. `image` is an https address or null. */
+export type LinkPreview = { url: string; siteName: string; title: string; description: string | null; image: string | null }
 
 /** A channel event shown in its timeline (spec 6.3 system messages). */
 export type SystemEvent = { kind: 'joined' | 'left' } | { kind: 'renamed'; from: string; to: string } | { kind: 'topic'; to: string }
@@ -280,6 +285,8 @@ export interface Api {
     messages(channelId: string, cursor?: string): Promise<Page<ChatMessage>>
     /** Messages newer than the cursor (a seq), 30 at a time, newest first; nextCursor continues toward the newest. */
     messagesAfter(channelId: string, cursor: string): Promise<Page<ChatMessage>>
+    /** A preview card for a link on an allowed domain (spec 6.3); null for any other link or a page with nothing to show. */
+    linkPreview(url: string): Promise<LinkPreview | null>
     /** The seq of the first message at or after `since` (the first message when null); null when there is none. */
     jumpTarget(channelId: string, since: string | null): Promise<number | null>
     message(id: string): Promise<ChatMessage>

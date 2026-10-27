@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { ChatMessage } from '@/api/types'
+import type { ChatMessage, ThreadReply } from '@/api/types'
 import { buildRows, canContinue, dayLabel, jumpSince, unreadSummary } from './messageRows'
 
 // Local times (the viewer's time zone), so the day rules hold in any TZ the tests run in.
@@ -34,6 +34,14 @@ describe('canContinue (spec 6.2 grouping rule)', () => {
     expect(canContinue(card, msg())).toBe(false)
     expect(canContinue(msg(), card)).toBe(false)
     expect(canContinue(msg(), msg({ commentId: 'k1' }))).toBe(false)
+  })
+  it('thread replies group by the same rule', () => {
+    const reply = (over: Partial<ThreadReply>): ThreadReply => ({
+      id: 'r', messageId: 'm', channelId: 'c1', senderId: 'u-2', content: 'x', body: [], attachments: [], reactions: [], mentions: [], createdAt: at(28, 9, 0), ...over,
+    })
+    expect(canContinue(reply({}), reply({ createdAt: at(28, 9, 4) }))).toBe(true)
+    expect(canContinue(reply({}), reply({ createdAt: at(28, 9, 6) }))).toBe(false)
+    expect(canContinue(reply({}), reply({ createdAt: at(28, 9, 1), deletedAt: at(28, 9, 2) }))).toBe(false)
   })
   it('system messages never group', () => {
     expect(canContinue(msg(), msg({ system: { kind: 'joined' } }))).toBe(false)

@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it } from 'vitest'
-import type { ChatMessage, TaskRef, User } from '@/api/types'
+import type { ChatMessage, TaskRef, ThreadReply, User } from '@/api/types'
 import { parseBody } from '@/lib/messageBody'
 import { ChannelMessage, systemText, type Selection } from '@/pages/chat/ChannelMessage'
 import type { BodyContext } from '@/pages/chat/MessageBody'
@@ -13,18 +13,19 @@ afterEach(cleanup)
 window.matchMedia ??= ((media: string) => ({ matches: false, media, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia
 
 const users = [
-  { id: 'u-1', name: 'Youssef Abdelrahman' },
-  { id: 'u-2', name: 'Nour El-Sayed' },
+  { id: 'u-1', name: 'Youssef Abdelrahman', title: 'Managing Director', email: 'youssef@spark-sys.com', presence: 'active' },
+  { id: 'u-2', name: 'Nour El-Sayed', title: 'Backend lead', email: 'nour@spark-sys.com', presence: 'away' },
+  { id: 'u-3', name: 'Mariam Fathy', title: 'Frontend', email: 'mariam@spark-sys.com', presence: 'offline' },
 ] as User[]
 const task: TaskRef = { key: 'NEX-103', title: 'Rate limit the search API', status: 'inReview', statusLabel: 'In review', category: 'inProgress', projectKey: 'NEX', projectName: 'Nexus Core', assigneeId: 'u-2' }
-const ctx: BodyContext = { users, tasks: new Map([[task.key, task]]), projectKeys: new Set(['NEX']), ws: 'engineering' }
+const ctx: BodyContext = { users, tasks: new Map([[task.key, task]]), projectKeys: new Set(['NEX']), ws: 'engineering', workspaceId: 'ws-eng' }
 
 const message = (content: string, over: Partial<ChatMessage> = {}): ChatMessage => ({
   id: 'm1', channelId: 'c1', seq: 1, senderId: 'u-2', content, body: parseBody(content), attachments: [], reactions: [], threadCount: 0, lastReplyAt: null,
   linkedTicketKeys: [], mentions: [], editedAt: null, createdAt: '2026-10-28T09:00:00.000Z', ...over,
 })
 
-function show(m: ChatMessage, opts: { continuation?: boolean; selected?: Selection } = {}) {
+function show(m: ChatMessage | ThreadReply, opts: { continuation?: boolean; selected?: Selection } = {}) {
   render(
     <QueryClientProvider client={new QueryClient()}>
       <MemoryRouter>
@@ -125,5 +126,61 @@ describe('ChannelMessage states (spec 6.3)', () => {
     expect(systemText({ kind: 'joined' })).toBe('joined the channel.')
     expect(systemText({ kind: 'topic', to: '' })).toBe('cleared the topic.')
     expect(systemText({ kind: 'topic', to: 'Pager' })).toBe('changed the topic to “Pager”.')
+  })
+})
+
+describe('ChannelMessage parts (feature 4 follow-up)', () => {
+  it('the author opens a profile card: face, name, title, presence, e-mail and Message', () => {
+    show(message('hi'))
+    fireEvent.click(screen.getByRole('button', { name: 'Nour El-Sayed' }))
+    const card = screen.getByRole('dialog', { name: 'Nour El-Sayed' })
+    expect(card.textContent).toContain('Backend lead')
+    expect(card.textContent).toContain('Away')
+    expect(screen.getByRole('link', { name: 'nour@spark-sys.com' }).getAttribute('href')).toBe('mailto:nour@spark-sys.com')
+    expect(screen.getByRole('button', { name: 'Message' })).toBeTruthy()
+  })
+
+  it('someone no longer in the workspace is just a name, with no card', () => {
+    show(message('hi', { senderId: 'u-99' }))
+    expect(screen.queryByRole('button', { name: 'Unknown person' })).toBeNull()
+    expect(screen.getByText('Unknown person')).toBeTruthy()
+  })
+
+  it('reactions: mine is pressed and outlined in accent, with who reacted in its name', () => {
+    show(message('hi', { reactions: [{ emoji: '👍', userIds: ['u-1', 'u-2'] }, { emoji: '🎉', userIds: ['u-2'] }] }))
+    const mine = screen.getByRole('button', { name: '👍 2: Youssef Abdelrahman, Nour El-Sayed' })
+    expect(mine.getAttribute('aria-pressed')).toBe('true')
+    expect(mine.className).toContain('border-sf-accent')
+    expect(screen.getByRole('button', { name: '🎉 1: Nour El-Sayed' }).getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('the thread summary shows who replied and how many, and opens the thread', () => {
+    const row = show(message('root', { threadCount: 3, lastReplyAt: new Date().toISOString(), replyUserIds: ['u-3', 'u-1', 'u-2'] }))
+    const link = screen.getByRole('link', { name: /^3 replies, Last reply/ })
+    expect(link.getAttribute('href')).toContain('thread')
+    expect(link.querySelectorAll('[aria-hidden="true"]').length).toBeGreaterThanOrEqual(3)
+    expect(row.textContent).toContain('View thread')
+  })
+
+  it('a reply has no thread summary and acts as a reply', () => {
+    const reply: ThreadReply = { id: 'r1', messageId: 'm1', channelId: 'c1', senderId: 'u-2', content: 'ok', body: parseBody('ok'), attachments: [], reactions: [], mentions: [], createdAt: '2026-10-28T09:00:00.000Z' }
+    const row = show(reply)
+    expect(row.textContent).toContain('ok')
+    expect(screen.queryByRole('link', { name: /repl/ })).toBeNull()
+  })
+
+  it('a comment card shows its task as a live chip, the kind and the text as rich text', () => {
+    const row = show(message('Bug on NEX-103: *fails* on retry', { commentId: 'k1', linkedTicketKeys: ['NEX-103'] }))
+    expect(row.textContent).toContain('Bug')
+    expect(row.textContent).toContain('Rate limit the search API')
+    expect(row.querySelector('strong')?.textContent).toBe('fails')
+  })
+
+  it('a link on an allowed domain gets a preview card; others do not', async () => {
+    show(message('see https://github.com/spark-sys/flow/pull/42 and https://example.com'))
+    const card = await screen.findByRole('link', { name: /GitHub/ })
+    expect(card.textContent).toContain('spark-sys/flow/pull/42')
+    expect(card.getAttribute('rel')).toBe('noopener noreferrer')
+    expect(screen.queryByRole('link', { name: /example\.com.*example/ })).toBeNull()
   })
 })

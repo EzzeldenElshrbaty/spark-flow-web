@@ -9,6 +9,7 @@ import { ApiError } from '@/lib/apiError'
 import { badRequest, clone, currentUser, newId, notFound, requireCan, stamp } from './shared'
 import { parseMentions, parseTicketKeys } from './text'
 import { parseBody } from '@/lib/messageBody'
+import { linkPreviewFor } from './linkPreviews'
 
 const PAGE_SIZE = 30
 
@@ -42,6 +43,14 @@ function withUnread(data: DbData, channel: StoredChannel): Channel {
     (m) => m.channelId === channel.id && m.seq > state.lastReadSeq && m.senderId !== data.currentUserId && !m.deletedAt && !m.system,
   ).length
   return { ...channel, ...state, lastSeq: lastSeqOf(data, channel.id), unreadCount }
+}
+
+const REPLY_FACES = 5
+
+/** A message with who last replied to it (spec §7 reply_user_ids): the latest 5 people, newest first, each once. */
+function withThread(data: DbData, message: ChatMessage): ChatMessage {
+  const replies = data.replies.filter((r) => r.messageId === message.id).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+  return { ...message, replyUserIds: [...new Set(replies.map((r) => r.senderId))].slice(0, REPLY_FACES) }
 }
 
 function findChannel(data: DbData, id: string): StoredChannel {
@@ -353,7 +362,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         .filter((m) => m.channelId === channelId && (before === null || m.seq < before))
         .sort((a, b) => b.seq - a.seq)
       const items = older.slice(0, PAGE_SIZE)
-      return { items, nextCursor: older.length > PAGE_SIZE ? encodeCursor(items[items.length - 1]) : null }
+      return { items: items.map((m) => withThread(data, m)), nextCursor: older.length > PAGE_SIZE ? encodeCursor(items[items.length - 1]) : null }
     },
     async messagesAfter(channelId, cursor) {
       await delay()
@@ -363,7 +372,11 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       const newer = data.messages.filter((m) => m.channelId === channelId && m.seq > after).sort((a, b) => a.seq - b.seq)
       const page = newer.slice(0, PAGE_SIZE)
       // Newest first, like every page; the cursor is the newest message here, to go on from.
-      return { items: [...page].reverse(), nextCursor: newer.length > PAGE_SIZE ? encodeCursor(page[page.length - 1]) : null }
+      return { items: [...page].reverse().map((m) => withThread(data, m)), nextCursor: newer.length > PAGE_SIZE ? encodeCursor(page[page.length - 1]) : null }
+    },
+    async linkPreview(url) {
+      await delay()
+      return linkPreviewFor(url)
     },
     async jumpTarget(channelId, since) {
       await delay()
@@ -379,7 +392,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       const data = await db.read()
       const message = findMessage(data, id)
       readableChannel(data, message.channelId)
-      return message
+      return withThread(data, message)
     },
     async replies(messageId) {
       await delay()

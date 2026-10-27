@@ -70,6 +70,7 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
       messages: (channelId, cursor) =>
         get(`/api/channels/${enc(channelId)}/messages${cursor ? `?cursor=${enc(cursor)}` : ''}`),
       messagesAfter: (channelId, cursor) => get(`/api/channels/${enc(channelId)}/messages?after=${enc(cursor)}`),
+      linkPreview: (url) => get(`/api/link-preview?url=${enc(url)}`),
       jumpTarget: (channelId, since) => get(`/api/channels/${enc(channelId)}/messages/first${since ? `?since=${enc(since)}` : ''}`),
       message: (id) => get(`/api/messages/${enc(id)}`),
       replies: (messageId) => get(`/api/messages/${enc(messageId)}/replies`),

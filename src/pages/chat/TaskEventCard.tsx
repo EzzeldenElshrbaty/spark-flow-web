@@ -1,16 +1,11 @@
 import { Link, useSearchParams } from 'react-router'
 import type { ChatMessage, TaskEvent, User } from '@/api/types'
-import { Badge, type BadgeTone } from '@/components/ui/Badge'
+import { Tag } from '@/components/sf/Badge'
 import { withInspector } from '@/lib/inspector'
 import { statusLabel } from '@/lib/statuses'
-import { TicketKey } from '@/pages/projects/ticketPills'
+import { TaskChip, type BodyContext } from '@/pages/chat/MessageBody'
 
-const badge = (event: TaskEvent): { tone: BadgeTone; label: string } => {
-  if (event.kind === 'created') return { tone: 'neutral', label: 'Created' }
-  if (event.kind === 'assigned') return { tone: 'info', label: 'Assigned' }
-  if (event.kind === 'done') return { tone: 'success', label: 'Done' }
-  return { tone: 'warning', label: 'Moved' }
-}
+const LABELS: Record<TaskEvent['kind'], string> = { created: 'Created', assigned: 'Assigned', status: 'Moved', done: 'Done' }
 
 /** What the card says under its badge, from the event (not the stored text, which is for search). */
 function line(message: ChatMessage, event: TaskEvent, users: User[]) {
@@ -26,20 +21,27 @@ function line(message: ChatMessage, event: TaskEvent, users: User[]) {
   return at >= 0 ? message.content.slice(at + event.key.length).replace(/^:?\s*/, '') : ''
 }
 
-/** The card a task change posts in its project's chat: the task, what happened, and to whom or where. */
-export function TaskEventCard({ message, users }: { message: ChatMessage; users: User[] }) {
+/**
+ * The card a task change posts in its project's chat: the task (a live chip when I can see it), what happened, and to
+ * whom or where.
+ */
+export function TaskEventCard({ message, users, ctx }: { message: ChatMessage; users: User[]; ctx: BodyContext }) {
   const [params] = useSearchParams()
   const event = message.taskEvent!
-  const { tone, label } = badge(event)
+  const task = ctx.tasks.get(event.key)
   return (
-    <div className="mt-1 rounded-xl border border-line bg-surface p-3">
+    <div className="mt-1 max-w-[520px] rounded-sf-lg border border-sf-line bg-sf-surface p-3">
       <div className="flex items-center gap-2">
-        <Link to={{ search: withInspector(params, { kind: 'ticket', key: event.key }).toString() }} className="hover:underline">
-          <TicketKey value={event.key} className="text-fg-secondary" />
-        </Link>
-        <Badge tone={tone}>{label}</Badge>
+        {task ? (
+          <TaskChip task={task} />
+        ) : (
+          <Link to={{ search: withInspector(params, { kind: 'ticket', key: event.key }).toString() }} className="sf-focus rounded-sf-sm font-mono text-[12px]/[18px] font-medium text-sf-text-secondary hover:underline">
+            <bdi dir="ltr">{event.key}</bdi>
+          </Link>
+        )}
+        <Tag tone={event.kind === 'done' ? 'accent' : 'default'}>{LABELS[event.kind]}</Tag>
       </div>
-      <p className="mt-1.5 text-sm text-fg">{line(message, event, users) || '—'}</p>
+      <p className="sf-body mt-2 text-sf-text">{line(message, event, users) || '—'}</p>
     </div>
   )
 }
