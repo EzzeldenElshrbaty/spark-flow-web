@@ -37,7 +37,7 @@ declare global {
  * table (403) and publish their event on `hub`. `now` drives every derived value, so tests can fix the clock.
  */
 export function createMockApi(db: MockDb, hub: MockHub, now: () => Date = () => new Date()): Api {
-  const { summaries, ...projectParts } = projectsApi(db, now)
+  const { summaries, ...projectParts } = projectsApi(db, hub, now)
   return {
     workspaces: workspacesApi(db),
     users: usersApi(db),

@@ -277,8 +277,12 @@ export interface Api {
     get(workspaceId: string, key: string): Promise<ProjectSummary>
     create(input: NewProject): Promise<Project>
     update(id: string, patch: ProjectPatch): Promise<Project>
-    /** The board's column names and order; the project's manager (and Admins). */
+    /** The board's column names, order and types (not adding or dropping columns); the project's manager (and Admins). */
     setBoard(id: string, columns: BoardColumn[]): Promise<Project>
+    /** A new column of a type, after `after` (else at the end); at most 10 columns. */
+    addColumn(projectId: string, input: { label: string; category: StatusCategory; after?: string }): Promise<Project>
+    /** Removes a column; its tasks move to `moveTo` in the same write. Each type keeps at least one column. */
+    deleteColumn(projectId: string, columnId: string, moveTo: string): Promise<Project>
   }
   phases: {
     list(projectId: string): Promise<Phase[]>

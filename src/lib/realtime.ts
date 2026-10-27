@@ -18,6 +18,8 @@ export interface RealtimeClient {
   onMessageChanged(cb: (event: { channelId: string; messageId: string }) => void): () => void
   /** A channel was opened or its name, topic or members changed. */
   onChannelChanged(cb: (event: { channelId: string }) => void): () => void
+  /** A project's details, phases, deliverables or board changed. */
+  onProjectChanged(cb: (event: { projectId: string }) => void): () => void
 }
 
 /** One live update, as the mock hub carries it between tabs. */
@@ -30,6 +32,7 @@ export type RealtimeEvent =
   | { type: 'commentAdded'; taskKey: string; projectId: string }
   | { type: 'messageChanged'; channelId: string; messageId: string }
   | { type: 'channelChanged'; channelId: string }
+  | { type: 'projectChanged'; projectId: string }
 
 const noop = () => {}
 
@@ -53,6 +56,7 @@ function createUnconnectedClient(): RealtimeClient {
     onCommentAdded: () => noop,
     onMessageChanged: () => noop,
     onChannelChanged: () => noop,
+    onProjectChanged: () => noop,
   }
 }
 

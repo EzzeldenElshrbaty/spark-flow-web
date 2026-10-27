@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { Api, NewProject } from '@/api/types'
+import type { RealtimeEvent } from '@/lib/realtime'
 import { createDb, type MockDb } from './db'
 import { createMockApi } from './index'
 import { latency } from './latency'
@@ -158,5 +159,72 @@ describe('board columns', () => {
     await expect(api.projects.setBoard('p-nex', columns.slice(0, 4))).rejects.toMatchObject({ status: 400, detail: 'That column no longer exists.' })
     await expect(api.projects.setBoard('p-nex', columns.map((c) => ({ ...c, label: 'Same' })))).rejects.toMatchObject({ status: 400, detail: "Two columns can't share a name." })
     await expect(api.projects.setBoard('p-nex', columns.map((c) => ({ ...c, category: 'todo' as const })))).rejects.toMatchObject({ status: 400, detail: 'Each type needs at least one column.' })
+  })
+})
+
+describe('adding and deleting columns', () => {
+  const events: RealtimeEvent[] = []
+  beforeEach(() => {
+    events.length = 0
+    hub.subscribe((e) => events.push(e))
+  })
+  const ids = async () => (await api.projects.get('ws-eng', 'NEX')).board!.map((c) => c.id)
+
+  it('the manager adds a column after another, typed', async () => {
+    await api.users.viewAs('u-2')
+    const project = await api.projects.addColumn('p-nex', { label: ' QA ', category: 'inProgress', after: 'inProgress' })
+    const added = project.board!.find((c) => c.label === 'QA')!
+    expect(added).toMatchObject({ category: 'inProgress' })
+    expect(added.id).toMatch(/^col-/)
+    expect(await ids()).toEqual(['backlog', 'todo', 'inProgress', added.id, 'inReview', 'done'])
+    expect(events).toContainEqual({ type: 'projectChanged', projectId: 'p-nex' })
+  })
+
+  it('delete moves its tasks to the chosen column in one write', async () => {
+    await api.users.viewAs('u-2')
+    const before = (await db.read()).tickets.filter((t) => t.projectId === 'p-nex' && t.status === 'inReview').map((t) => t.key)
+    expect(before.length).toBeGreaterThan(0)
+    const lastDone = Math.max(...(await db.read()).tickets.filter((t) => t.projectId === 'p-nex' && t.status === 'done').map((t) => t.rank))
+    await api.projects.deleteColumn('p-nex', 'inReview', 'done')
+    const data = await db.read()
+    expect(await ids()).not.toContain('inReview')
+    for (const key of before) {
+      const t = data.tickets.find((x) => x.key === key)!
+      expect(t.status).toBe('done')
+      expect(t.rank).toBeGreaterThan(lastDone)
+    }
+    expect(events.filter((e) => e.type === 'ticketUpdated')).toHaveLength(before.length)
+    expect(events).toContainEqual({ type: 'projectChanged', projectId: 'p-nex' })
+  })
+
+  it("the last column of a type can't be deleted", async () => {
+    await expect(api.projects.deleteColumn('p-nex', 'done', 'todo')).rejects.toMatchObject({ status: 400, detail: 'Each type needs at least one column.' })
+  })
+
+  it('more than 10 columns is refused', async () => {
+    for (let i = 0; i < 5; i++) await api.projects.addColumn('p-nex', { label: `Extra ${i}`, category: 'inProgress' })
+    await expect(api.projects.addColumn('p-nex', { label: 'One too many', category: 'todo' })).rejects.toMatchObject({ status: 400, detail: 'A board can have up to 10 columns.' })
+  })
+
+  it('moveTo must be another column of the board', async () => {
+    await expect(api.projects.deleteColumn('p-nex', 'inReview', 'inReview')).rejects.toMatchObject({ status: 400, detail: 'That column no longer exists.' })
+    await expect(api.projects.deleteColumn('p-nex', 'inReview', 'nope')).rejects.toMatchObject({ status: 400, detail: 'That column no longer exists.' })
+    await expect(api.projects.deleteColumn('p-nex', 'nope', 'done')).rejects.toMatchObject({ status: 400, detail: 'That column no longer exists.' })
+  })
+
+  it('sales and members are refused', async () => {
+    await api.users.viewAs('u-9')
+    await expect(api.projects.addColumn('p-nex', { label: 'QA', category: 'inProgress' })).rejects.toMatchObject({ status: 403 })
+    await api.users.viewAs('u-3')
+    await expect(api.projects.deleteColumn('p-nex', 'inReview', 'done')).rejects.toMatchObject({ status: 403 })
+  })
+
+  it('phase, deliverable and project writes publish projectChanged', async () => {
+    await api.users.viewAs('u-2')
+    const phase = (await api.phases.list('p-nex'))[0]!
+    await api.phases.update(phase.id, { name: 'Build it' })
+    const project = await api.projects.get('ws-eng', 'NEX')
+    await api.projects.update(project.id, { description: 'New about' })
+    expect(events.filter((e) => e.type === 'projectChanged').length).toBeGreaterThanOrEqual(2)
   })
 })

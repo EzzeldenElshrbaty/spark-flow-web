@@ -3,6 +3,7 @@ import type { DbData, MockDb } from './db'
 import { columnErrors, columnsOf } from '@/lib/boardColumns'
 import { summarize } from './derive'
 import { delay } from './latency'
+import type { MockHub } from './realtime'
 import { badRequest, clone, currentUser, newId, notFound, requireCan } from './shared'
 
 const KEY = /^[A-Z]{2,5}$/
@@ -46,7 +47,13 @@ function splitPhases(projectId: string, names: string[], startDate: string, dueD
 const slug = (name: string) =>
   name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'project'
 
-export function projectsApi(db: MockDb, now: () => Date): Pick<Api, 'projects' | 'phases' | 'deliverables'> & { summaries: Api['tickets']['projects'] } {
+export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api, 'projects' | 'phases' | 'deliverables'> & { summaries: Api['tickets']['projects'] } {
+  /** One write about a project, then tells every tab that project changed (board, phases, deliverables, details). */
+  const write = async <T>(projectIdOf: (result: T) => string, fn: (data: DbData) => T): Promise<T> => {
+    const result = await db.update(fn)
+    hub.publish({ type: 'projectChanged', projectId: projectIdOf(result) })
+    return clone(result)
+  }
   const summaries = async (workspaceId: string) => {
     await delay()
     const data = await db.read()
@@ -66,8 +73,7 @@ export function projectsApi(db: MockDb, now: () => Date): Pick<Api, 'projects' |
       },
       async create(input) {
         await delay()
-        return clone(
-          await db.update((data) => {
+        return write((p) => p.id, (data) => {
             const me = requireCan(data, 'project.create')
             if (!data.workspaces.some((w) => w.id === input.workspaceId)) throw notFound('Workspace', input.workspaceId)
             const name = input.name.trim()
@@ -96,13 +102,11 @@ export function projectsApi(db: MockDb, now: () => Date): Pick<Api, 'projects' |
             data.phases.push(...splitPhases(id, input.methodology === 'waterfall' ? WATERFALL : ['Build'], input.startDate, input.dueDate))
             data.counters[id] = 101
             return project
-          }),
-        )
+          })
       },
       async update(id, patch) {
         await delay()
-        return clone(
-          await db.update((data) => {
+        return write((p) => p.id, (data) => {
             const project = findProject(data, id)
             requireCan(data, 'project.edit', project)
             const next = { ...project, ...Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)) }
@@ -115,16 +119,56 @@ export function projectsApi(db: MockDb, now: () => Date): Pick<Api, 'projects' |
             checkDates(next.startDate, next.dueDate)
             Object.assign(project, next)
             return project
-          }),
-        )
+          })
+      },
+      async addColumn(projectId, input) {
+        await delay()
+        return write((p) => p.id, (data) => {
+          const project = findProject(data, projectId)
+          requireCan(data, 'phase.manage', project)
+          const columns = columnsOf(project)
+          if (input.after && !columns.some((c) => c.id === input.after)) throw badRequest('That column no longer exists.')
+          const added = { id: newId('col'), label: input.label.trim(), category: input.category }
+          const at = input.after ? columns.findIndex((c) => c.id === input.after) + 1 : columns.length
+          const board = [...columns.slice(0, at), added, ...columns.slice(at)]
+          const problem = columnErrors(board)
+          if (problem) throw badRequest(problem)
+          project.board = board
+          return project
+        })
+      },
+      async deleteColumn(projectId, columnId, moveTo) {
+        await delay()
+        const { project, moved } = await db.update((data) => {
+          const project = findProject(data, projectId)
+          requireCan(data, 'phase.manage', project)
+          const columns = columnsOf(project)
+          if (!columns.some((c) => c.id === columnId) || columnId === moveTo || !columns.some((c) => c.id === moveTo)) throw badRequest('That column no longer exists.')
+          const board = columns.filter((c) => c.id !== columnId)
+          const problem = columnErrors(board)
+          if (problem) throw badRequest(problem)
+          // Its tasks (archived ones too) go to the end of the other column, in their order, in this same write.
+          const own = data.tickets.filter((t) => t.projectId === project.id)
+          let rank = Math.max(0, ...own.filter((t) => t.status === moveTo).map((t) => t.rank))
+          const moved = own.filter((t) => t.status === columnId).sort((a, b) => a.rank - b.rank)
+          const at = now().toISOString()
+          for (const t of moved) {
+            rank += 1000
+            Object.assign(t, { status: moveTo, rank, updatedAt: at })
+          }
+          project.board = board
+          return { project: clone(project), moved: clone(moved) }
+        })
+        for (const ticket of moved) hub.publish({ type: 'ticketUpdated', ticket })
+        hub.publish({ type: 'projectChanged', projectId })
+        return project
       },
       async setBoard(id, columns) {
         await delay()
         const board = columns.map((c) => ({ id: c.id, label: c.label.trim(), category: c.category }))
         const problem = columnErrors(board)
         if (problem) throw badRequest(problem)
-        return clone(
-          await db.update((data) => {
+        return write((p) => p.id, (data) => {
             const project = findProject(data, id)
             requireCan(data, 'phase.manage', project)
             // Names, order and types change here; adding and deleting columns have their own calls.
@@ -132,8 +176,7 @@ export function projectsApi(db: MockDb, now: () => Date): Pick<Api, 'projects' |
             if (board.map((c) => c.id).sort().join() !== current.join()) throw badRequest('That column no longer exists.')
             project.board = board
             return project
-          }),
-        )
+          })
       },
     },
 
@@ -146,8 +189,7 @@ export function projectsApi(db: MockDb, now: () => Date): Pick<Api, 'projects' |
       },
       async create(input) {
         await delay()
-        return clone(
-          await db.update((data) => {
+        return write((p) => p.projectId, (data) => {
             const project = findProject(data, input.projectId)
             requireCan(data, 'phase.manage', project)
             if (!input.name.trim()) throw badRequest('Give the phase a name.')
@@ -156,13 +198,11 @@ export function projectsApi(db: MockDb, now: () => Date): Pick<Api, 'projects' |
             const phase: Phase = { ...input, name: input.name.trim(), id: newId('ph'), order, status: 'notStarted' }
             data.phases.push(phase)
             return phase
-          }),
-        )
+          })
       },
       async update(id, patch) {
         await delay()
-        return clone(
-          await db.update((data) => {
+        return write((p) => p.projectId, (data) => {
             const phase = findPhase(data, id)
             requireCan(data, 'phase.manage', findProject(data, phase.projectId))
             const next = { ...phase, ...Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)) }
@@ -170,23 +210,22 @@ export function projectsApi(db: MockDb, now: () => Date): Pick<Api, 'projects' |
             checkDates(next.startDate, next.dueDate)
             Object.assign(phase, next)
             return phase
-          }),
-        )
+          })
       },
       async remove(id) {
         await delay()
-        await db.update((data) => {
+        await write((projectId: string) => projectId, (data) => {
           const phase = findPhase(data, id)
           requireCan(data, 'phase.manage', findProject(data, phase.projectId))
           data.phases = data.phases.filter((p) => p.id !== id)
           for (const t of data.tickets) if (t.phaseId === id) t.phaseId = null
           for (const d of data.deliverables) if (d.phaseId === id) d.phaseId = null
+          return phase.projectId
         })
       },
       async reorder(projectId, ids) {
         await delay()
-        return clone(
-          await db.update((data) => {
+        return write((list) => list[0]?.projectId ?? projectId, (data) => {
             const project = findProject(data, projectId)
             requireCan(data, 'phase.manage', project)
             const own = data.phases.filter((p) => p.projectId === projectId)
@@ -194,8 +233,7 @@ export function projectsApi(db: MockDb, now: () => Date): Pick<Api, 'projects' |
               throw badRequest('The phase order must list every phase of the project once.')
             ids.forEach((id, i) => (own.find((p) => p.id === id)!.order = i + 1))
             return own.sort((a, b) => a.order - b.order)
-          }),
-        )
+          })
       },
     },
 
@@ -208,8 +246,7 @@ export function projectsApi(db: MockDb, now: () => Date): Pick<Api, 'projects' |
       },
       async create(input) {
         await delay()
-        return clone(
-          await db.update((data) => {
+        return write((d) => d.projectId, (data) => {
             const project = findProject(data, input.projectId)
             requireCan(data, 'project.edit', project)
             if (!input.title.trim()) throw badRequest('Give the deliverable a title.')
@@ -217,21 +254,18 @@ export function projectsApi(db: MockDb, now: () => Date): Pick<Api, 'projects' |
             const deliverable: Deliverable = { ...input, title: input.title.trim(), id: newId('d'), doneAt: null }
             data.deliverables.push(deliverable)
             return deliverable
-          }),
-        )
+          })
       },
       async update(id, patch) {
         await delay()
-        return clone(
-          await db.update((data) => {
+        return write((d) => d.projectId, (data) => {
             const deliverable = data.deliverables.find((d) => d.id === id)
             if (!deliverable) throw notFound('Deliverable', id)
             requireCan(data, 'project.edit', findProject(data, deliverable.projectId))
             Object.assign(deliverable, Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)))
             if (!deliverable.title.trim()) throw badRequest('Give the deliverable a title.')
             return deliverable
-          }),
-        )
+          })
       },
     },
   }

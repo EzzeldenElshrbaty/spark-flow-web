@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import type { BoardColumn, DeliverablePatch, NewDeliverable, NewPhase, NewProject, PhasePatch, ProjectPatch, UploadFile } from '@/api/types'
+import type { BoardColumn, DeliverablePatch, NewDeliverable, NewPhase, NewProject, PhasePatch, ProjectPatch, StatusCategory, UploadFile } from '@/api/types'
 import { qk } from '@/api/queryKeys'
 import { retryUnlessNotFound as retry } from '@/api/retry'
 import { api } from '@/lib/api'
@@ -23,6 +23,12 @@ export function useProjectSummary(workspaceId: string | undefined, key: string |
 
 export function useCreateProject() {
   return useMutation({ mutationFn: (input: NewProject) => api.projects.create(input) })
+}
+export function useAddColumn() {
+  return useMutation({ mutationFn: ({ projectId, input }: { projectId: string; input: { label: string; category: StatusCategory; after?: string } }) => api.projects.addColumn(projectId, input) })
+}
+export function useDeleteColumn() {
+  return useMutation({ mutationFn: ({ projectId, columnId, moveTo }: { projectId: string; columnId: string; moveTo: string }) => api.projects.deleteColumn(projectId, columnId, moveTo) })
 }
 export function useSetBoard() {
   return useMutation({ mutationFn: ({ id, columns }: { id: string; columns: BoardColumn[] }) => api.projects.setBoard(id, columns) })

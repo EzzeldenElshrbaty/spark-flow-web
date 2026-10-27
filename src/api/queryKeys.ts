@@ -50,6 +50,9 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
       return [qk.myDay(), ['tickets'], qk.timeAll(), ['dashboard'], ['time', 'report']]
     case 'messageChanged':
       return [qk.messages(event.channelId), qk.message(event.messageId), qk.replies(event.messageId), qk.mentions()]
+    case 'projectChanged':
+      // Summaries and task lists live under 'tickets'; phases, deliverables and project time under 'projects'.
+      return [['tickets'], ['projects'], ['dashboard']]
     case 'channelChanged':
       return [qk.channelsAll(), qk.channel(event.channelId)]
     case 'commentAdded':

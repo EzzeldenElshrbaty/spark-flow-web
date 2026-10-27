@@ -73,6 +73,7 @@ export function createMockRealtimeClient(hub: MockHub): RealtimeClient {
     onCommentAdded: (cb) => on(hub, 'commentAdded', (e) => cb({ taskKey: e.taskKey, projectId: e.projectId })),
     onMessageChanged: (cb) => on(hub, 'messageChanged', (e) => cb({ channelId: e.channelId, messageId: e.messageId })),
     onChannelChanged: (cb) => on(hub, 'channelChanged', (e) => cb({ channelId: e.channelId })),
+    onProjectChanged: (cb) => on(hub, 'projectChanged', (e) => cb({ projectId: e.projectId })),
   }
 }
 
