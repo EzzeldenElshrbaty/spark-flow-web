@@ -1,4 +1,5 @@
 import type { Rate, TimeEntry } from '@/api/types'
+import { formatMoney } from '@/lib/format'
 import { entryHours } from '@/lib/hours'
 
 export type PersonTotal = { userId: string; hours: number; cost: number | null }
@@ -18,4 +19,16 @@ export function totalsByPerson(entries: TimeEntry[], rates: Rate[] | null, now: 
     hours: tenth([...hours.values()].reduce((a, b) => a + b, 0)),
     cost: rates ? people.reduce((sum, p) => sum + (p.cost ?? 0), 0) : null,
   }
+}
+
+/** The Time tab's card title: the project's total for who sees everyone's entries; for anyone else, their share of it. */
+export function timeHeading(everyone: boolean, shown: { hours: number; cost: number | null }, projectHours: number): string {
+  if (!everyone) return `Your time · ${shown.hours}h of ${tenth(projectHours)}h logged`
+  return `${shown.hours}h logged${shown.cost !== null ? ` · ${formatMoney(shown.cost)}` : ''}`
+}
+
+/** What an empty Time tab says: when only your own entries show, the project may still have time from others. */
+export function emptyTimeText(everyone: boolean, projectHours: number): string {
+  if (everyone || projectHours <= 0) return 'No time logged yet.'
+  return `You haven't logged time here. The project has ${tenth(projectHours)}h logged.`
 }

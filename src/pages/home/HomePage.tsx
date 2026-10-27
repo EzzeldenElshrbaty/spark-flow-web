@@ -17,7 +17,8 @@ import { mentionLink } from '@/lib/mentionLink'
 import { useNow } from '@/lib/useNow'
 import { useRole } from '@/lib/useRole'
 import { useUsers } from '@/api/users'
-import { myOpenTasks } from '@/pages/projects/taskFilters'
+import { loggableTasks, myOpenTasks } from '@/pages/projects/taskFilters'
+import { useCanLog } from '@/lib/useCanLog'
 import { OverduePill, TicketKey } from '@/pages/projects/ticketPills'
 import { CheckInCard } from './CheckInCard'
 import { dueTodayOrOverdue, greeting } from './myDay'
@@ -40,6 +41,9 @@ export function HomePage() {
 
   const all = tasks.data
   const mine = myOpenTasks(all, persona.id)
+  // Pickers and Start offer only tasks the server lets me log on: assigned isn't enough once I'm off the project.
+  const canLog = useCanLog()
+  const loggable = loggableTasks(mine, (id) => canLog(projects.data?.find((p) => p.id === id)))
   const due = dueTodayOrOverdue(all, persona.id, now)
   const overdue = mine.filter((t) => t.overdue).length
   const projectName = (id: string) => projects.data?.find((p) => p.id === id)?.name ?? '—'
@@ -61,7 +65,7 @@ export function HomePage() {
           ) : loading ? (
             <div className="h-72 animate-pulse rounded-xl bg-surface-muted" aria-hidden />
           ) : (
-            <CheckInCard day={day.data} tasks={mine} label={label} />
+            <CheckInCard day={day.data} tasks={loggable} label={label} />
           )}
         </div>
         <div className="min-w-0 space-y-5">
@@ -89,7 +93,7 @@ export function HomePage() {
                         {projectName(t.projectId)} · {t.dueAt ? formatDate(t.dueAt) : '—'}
                       </span>
                     </Link>
-                    {day.data?.running?.taskId !== t.id && (
+                    {day.data?.running?.taskId !== t.id && loggable.includes(t) && (
                       <Button variant="ghost" onClick={() => start.mutate({ taskId: t.id })} disabled={start.isPending} aria-label={`Start timer on ${t.key}`}>
                         <Play className="size-4" /> Start
                       </Button>

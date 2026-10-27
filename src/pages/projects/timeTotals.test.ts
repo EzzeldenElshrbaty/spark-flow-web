@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Rate, TimeEntry } from '@/api/types'
-import { totalsByPerson } from './timeTotals'
+import { totalsByPerson, emptyTimeText, timeHeading } from './timeTotals'
+import { formatMoney } from '@/lib/format'
 
 const now = new Date('2026-10-26T12:00:00Z')
 const e = (userId: string, startedAt: string, endedAt: string | null): TimeEntry => ({ id: Math.random().toString(), userId, projectId: 'p', taskId: null, startedAt, endedAt, source: 'manual', note: '' })
@@ -26,5 +27,19 @@ describe('totalsByPerson', () => {
     const totals = totalsByPerson(entries, null, now)
     expect(totals.cost).toBeNull()
     expect(totals.people.every((p) => p.cost === null)).toBe(true)
+  })
+})
+
+describe('timeHeading and emptyTimeText', () => {
+  it('who sees everyone gets the project total; anyone else their share of it', () => {
+    expect(timeHeading(true, { hours: 120, cost: 9000 }, 120)).toBe(`120h logged · ${formatMoney(9000)}`)
+    expect(timeHeading(true, { hours: 120, cost: null }, 120)).toBe('120h logged')
+    expect(timeHeading(false, { hours: 6, cost: null }, 120.04)).toBe('Your time · 6h of 120h logged')
+  })
+
+  it('an empty list says whose time is missing', () => {
+    expect(emptyTimeText(true, 0)).toBe('No time logged yet.')
+    expect(emptyTimeText(false, 0)).toBe('No time logged yet.')
+    expect(emptyTimeText(false, 120)).toBe("You haven't logged time here. The project has 120h logged.")
   })
 })

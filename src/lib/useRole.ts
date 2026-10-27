@@ -1,6 +1,6 @@
-import { useState } from 'react'
 import { useMe } from '@/api/users'
 import type { Role } from '@/lib/roles'
+import { useShownError } from '@/lib/useShownError'
 
 export type Persona = { id: string; name: string; title: string; role: Role }
 
@@ -9,14 +9,12 @@ const placeholder: Persona = { id: '', name: '', title: '', role: 'member' }
 
 /** Who is using the app and the role that decides what they see. The persona comes from the API. */
 export function useRole() {
-  const { data, isPending, isFetching, error, refetch } = useMe()
-  // A refetch with no data clears the query's error; keep the last one so Try again doesn't flash the pages meanwhile.
-  const [lastError, setLastError] = useState<Error | null>(null)
-  if (error && error !== lastError) setLastError(error as Error)
-  if (data && lastError) setLastError(null)
+  const me = useMe()
+  const { data, isPending, isFetching, refetch } = me
+  // Lasts through Try again, so the shell doesn't flash the pages while the account is asked for again.
+  const error = useShownError(me)
   const persona: Persona = data ? { id: data.id, name: data.name, title: data.title, role: data.role } : placeholder
-  const shownError = data ? null : ((error as Error | null) ?? (isFetching ? lastError : null))
   // loading: the persona is still the placeholder, so its role must not decide what is refused yet.
   // retrying: a failed account is being asked for again.
-  return { persona, role: persona.role, loading: !data && isPending, error: shownError, retry: () => void refetch(), retrying: !data && isFetching }
+  return { persona, role: persona.role, loading: !data && isPending, error, retry: () => void refetch(), retrying: !data && isFetching }
 }

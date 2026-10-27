@@ -36,3 +36,6 @@ export const viewOf = (asked: string | null, saved: string | undefined): 'board'
 
 /** A sprint filter only counts when that sprint exists, as an unknown phase doesn't. */
 export const validSprint = (id: string | null, sprints: { id: string }[]) => (id && sprints.some((s) => s.id === id) ? id : null)
+
+/** The tasks I may start a timer on: the server refuses time on a project I'm not on (`time.logOn`). */
+export const loggableTasks = (tasks: TaskView[], canLogOn: (projectId: string) => boolean) => tasks.filter((t) => canLogOn(t.projectId))

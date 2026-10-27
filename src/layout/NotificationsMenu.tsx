@@ -3,6 +3,7 @@ import { AtSign, Bell } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useMarkMentionsRead, useMyMentions } from '@/api/mentions'
+import { useShownError } from '@/lib/useShownError'
 import { useProjectSummaries } from '@/api/projects'
 import type { MentionItem } from '@/api/types'
 import { useUsers } from '@/api/users'
@@ -23,6 +24,8 @@ export function NotificationsMenu() {
   const [unreadOnly, setUnreadOnly] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const mentions = useMyMentions(Boolean(persona.id))
+  // Lasts through Try again and the polling refetches, so the error doesn't flip back to the skeleton.
+  const mentionsError = useShownError(mentions)
   const markRead = useMarkMentionsRead()
   const people = useUsers(workspace?.id).data ?? []
   const projects = useProjectSummaries(workspace?.id).data ?? []
@@ -96,7 +99,7 @@ export function NotificationsMenu() {
           </div>
         </div>
 
-        {!data && mentions.isError ? (
+        {!data && mentionsError ? (
           <div className="space-y-3 p-4 text-center" role="alert">
             <p className="text-sm text-fg-secondary">Mentions didn't load.</p>
             <Button variant="secondary" onClick={() => void mentions.refetch()} disabled={mentions.isFetching}>

@@ -16,7 +16,7 @@ import { useCanLog } from '@/lib/useCanLog'
 import { useRole } from '@/lib/useRole'
 import { AddTimeSheet } from '@/pages/time/AddTimeSheet'
 import { EntryRowExtras } from '@/pages/time/EntryRowExtras'
-import { totalsByPerson } from './timeTotals'
+import { emptyTimeText, timeHeading, totalsByPerson } from './timeTotals'
 
 const tenth = (n: number) => Math.round(n * 10) / 10
 
@@ -51,7 +51,7 @@ export function TimeTab({ project, people }: { project: ProjectSummary; people: 
     return (
       <>
         {addBar}
-        <p className="rounded-xl border border-dashed border-line-strong p-10 text-center text-sm text-fg-secondary">No time logged yet.</p>
+        <p className="rounded-xl border border-dashed border-line-strong p-10 text-center text-sm text-fg-secondary">{emptyTimeText(everyone, project.loggedHours)}</p>
       </>
     )
 
@@ -99,7 +99,7 @@ export function TimeTab({ project, people }: { project: ProjectSummary; people: 
     <div className="space-y-5">
       {addBar}
       <Card>
-        <CardHeader title={`${totals.hours}h logged${totals.cost !== null ? ` · ${formatMoney(totals.cost)}` : ''}`} />
+        <CardHeader title={timeHeading(everyone, totals, project.loggedHours)} />
         <ul className="divide-y divide-line-subtle px-5">
           {totals.people.map((p) => (
             <li key={p.userId} className="flex items-center gap-3 py-2.5">

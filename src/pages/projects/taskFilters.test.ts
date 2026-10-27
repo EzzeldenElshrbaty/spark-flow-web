@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Phase, TaskView } from '@/api/types'
-import { filterTasks, groupByPhase, myOpenTasks, validSprint, viewOf } from './taskFilters'
+import { filterTasks, groupByPhase, loggableTasks, myOpenTasks, validSprint, viewOf } from './taskFilters'
 
 const t = (over: Partial<TaskView>): TaskView =>
   ({ id: over.key ?? 'x', key: 'P-1', status: 'todo', category: over.status === 'done' ? 'done' : 'todo', phaseId: null, sprintId: null, assigneeId: null, dueAt: null, overdue: false, rank: 0, ...over }) as TaskView
@@ -63,5 +63,12 @@ describe('myOpenTasks and column types', () => {
   it('leaves out tasks of every Done-type column, whatever the column is called', () => {
     const tasks = [t({ key: 'A', assigneeId: 'me', status: 'col-ship', category: 'done' }), t({ key: 'B', assigneeId: 'me', status: 'done', category: 'inProgress' })]
     expect(myOpenTasks(tasks, 'me').map((x) => x.key)).toEqual(['B'])
+  })
+})
+
+describe('loggableTasks', () => {
+  it('leaves out tasks on projects I may not log time on, such as one I was taken off', () => {
+    const tasks = [t({ key: 'A', projectId: 'p-on' }), t({ key: 'B', projectId: 'p-off' })]
+    expect(loggableTasks(tasks, (projectId) => projectId === 'p-on').map((x) => x.key)).toEqual(['A'])
   })
 })
