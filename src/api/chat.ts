@@ -1,7 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
 import { qk } from '@/api/queryKeys'
 import { retryUnlessNotFound as retry } from '@/api/retry'
-import type { ChatTarget } from '@/api/types'
+import type { ChannelPatch, ChatTarget, NewChannel } from '@/api/types'
 import { api } from '@/lib/api'
 
 // Every hook below takes an id that may still be unknown (a route param, a lookup in progress): without one it
@@ -51,6 +51,12 @@ export function useEditMessage() {
 }
 export function useDeleteMessage() {
   return useMutation({ mutationFn: (target: ChatTarget) => api.chat.remove(target) })
+}
+export function useCreateChannel() {
+  return useMutation({ mutationFn: (input: NewChannel) => api.chat.createChannel(input) })
+}
+export function useUpdateChannel() {
+  return useMutation({ mutationFn: ({ id, patch }: { id: string; patch: ChannelPatch }) => api.chat.updateChannel(id, patch) })
 }
 export function useReply() {
   return useMutation({ mutationFn: ({ messageId, content }: { messageId: string; content: string }) => api.chat.reply(messageId, content) })

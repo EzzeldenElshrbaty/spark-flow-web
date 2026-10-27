@@ -49,6 +49,8 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
       return [qk.myDay(), ['tickets'], qk.timeAll(), ['dashboard'], ['time', 'report']]
     case 'messageChanged':
       return [qk.messages(event.channelId), qk.message(event.messageId), qk.replies(event.messageId), qk.mentions()]
+    case 'channelChanged':
+      return [qk.channelsAll(), qk.channel(event.channelId)]
     case 'commentAdded':
       return [qk.comments(event.taskKey), qk.mentions()]
     case 'userTyping':

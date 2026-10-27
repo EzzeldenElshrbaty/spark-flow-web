@@ -1,6 +1,6 @@
 import clsx from 'clsx'
-import { Clock, Folder, FolderKanban, Hash, House, LayoutDashboard, ListChecks, Lock, Users } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { Clock, Folder, FolderKanban, Hash, House, LayoutDashboard, ListChecks, Lock, Plus, Users } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router'
 import type { Presence } from '@/api/types'
 import { useSidebarGroups } from '@/layout/useSidebarGroups'
@@ -8,6 +8,7 @@ import { paths } from '@/lib/paths'
 import { usePermission } from '@/lib/usePermission'
 import { useRole } from '@/lib/useRole'
 import { canSee, settingsItem } from '@/navigation'
+import { ChannelSheet } from '@/pages/chat/ChannelSheet'
 
 type SidebarLinkProps = {
   to: string
@@ -90,6 +91,7 @@ export function SidebarContent({ collapsed = false, onNavigate }: { collapsed?: 
   const check = usePermission()
   const { workspace, channels, dms, projects, chatLoading, projectsLoading, failed } = useSidebarGroups()
   const slug = workspace?.slug
+  const [newChannel, setNewChannel] = useState(false)
 
   return (
     <div className="flex h-full flex-col">
@@ -132,9 +134,22 @@ export function SidebarContent({ collapsed = false, onNavigate }: { collapsed?: 
           </div>
         )}
 
-        {slug && (chatLoading || channels.length > 0) && (
+        {slug && workspace && (
           <div>
-            <GroupLabel collapsed={collapsed}>Channels</GroupLabel>
+            <div className="flex items-center">
+              <GroupLabel collapsed={collapsed}>Channels</GroupLabel>
+              {!collapsed && (
+                <button
+                  type="button"
+                  aria-label="New channel"
+                  title="New channel"
+                  onClick={() => setNewChannel(true)}
+                  className="-mt-2 me-2 ms-auto flex size-6 items-center justify-center rounded-md text-neutral-500 transition hover:bg-white/10 hover:text-white"
+                >
+                  <Plus className="size-4" />
+                </button>
+              )}
+            </div>
             {chatLoading ? (
               <GroupSkeleton />
             ) : (
@@ -211,6 +226,7 @@ export function SidebarContent({ collapsed = false, onNavigate }: { collapsed?: 
           <SidebarLink to={paths.settings(slug)} label={settingsItem.label} icon={<settingsItem.icon className="size-[18px]" />} collapsed={collapsed} onNavigate={onNavigate} />
         </div>
       )}
+      {newChannel && workspace && <ChannelSheet workspaceId={workspace.id} workspaceSlug={workspace.slug} onClose={() => setNewChannel(false)} />}
     </div>
   )
 }

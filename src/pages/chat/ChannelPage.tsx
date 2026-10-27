@@ -14,6 +14,7 @@ import { ChannelFeed } from '@/pages/chat/ChannelFeed'
 import { Composer } from '@/pages/chat/Composer'
 import { useCanPost, useReadOnlyLine } from '@/pages/chat/useCanPost'
 import { useTaskFromMessage } from '@/pages/chat/useTaskFromMessage'
+import { ChannelMenu } from '@/pages/chat/ChannelMenu'
 import { MessageSkeleton } from '@/pages/chat/MessageRow'
 
 /** A channel or DM: its name and topic, then its messages with the newest at the bottom. Read-only in Phase 1. */
@@ -35,6 +36,14 @@ export function ChannelPage() {
 
   if (foreign || (channel.error instanceof ApiError && channel.error.status === 404)) {
     return <NotFound what="channel" backTo={paths.workspace(ws)} backLabel={`Back to ${workspace?.name ?? 'the workspace'}`} />
+  }
+  if (channel.error instanceof ApiError && channel.error.status === 403) {
+    return (
+      <>
+        <PageHeader title="Private channel" />
+        <p className="text-sm text-fg-muted">You're not in this channel. Ask someone in it to add you.</p>
+      </>
+    )
   }
   if (channel.isError) {
     return (
@@ -61,7 +70,7 @@ export function ChannelPage() {
   const title = current.kind === 'channel' ? `#${current.name}` : channelLabel(current, people, persona.id)
   return (
     <>
-      <PageHeader title={title} subtitle={current.topic.trim() || '—'} />
+      <PageHeader title={title} subtitle={current.topic.trim() || '—'} actions={<ChannelMenu channel={current} workspaceSlug={ws} />} />
       <ChannelFeed
         key={current.id}
         channelId={current.id}

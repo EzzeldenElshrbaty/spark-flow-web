@@ -20,6 +20,7 @@ export function RealtimeBridge(): null {
       client.onTimeLogged(({ userId, projectId }) => invalidate({ type: 'timeLogged', userId, projectId })),
       client.onCommentAdded(({ taskKey, projectId }) => invalidate({ type: 'commentAdded', taskKey, projectId })),
       client.onMessageChanged(({ channelId, messageId }) => invalidate({ type: 'messageChanged', channelId, messageId })),
+      client.onChannelChanged(({ channelId }) => invalidate({ type: 'channelChanged', channelId })),
       client.onUserTyping(({ channelId, userId }) => useUiStore.getState().addTyper(channelId, userId)),
     ]
     void client.start()

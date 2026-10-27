@@ -123,6 +123,10 @@ export type ProblemDetails = { title: string; status: number; detail?: string }
 /** A channel as stored: unreadCount is worked out per user, never saved. */
 export type StoredChannel = Omit<Channel, 'unreadCount'>
 
+/** A new channel; you are always one of its members. */
+export type NewChannel = { workspaceId: string; name: string; topic: string; isPrivate: boolean; memberIds: string[] }
+export type ChannelPatch = Partial<Pick<Channel, 'name' | 'topic' | 'memberIds'>>
+
 export type NewTicket = Pick<
   Ticket,
   'projectId' | 'title' | 'description' | 'status' | 'priority' | 'storyPoints' | 'assigneeId' | 'sprintId'
@@ -216,6 +220,10 @@ export interface Api {
     edit(target: ChatTarget, content: string): Promise<ChatMessage | ThreadReply>
     /** The author's own plain message or reply; the row stays and reads as deleted. */
     remove(target: ChatTarget): Promise<void>
+    /** Anyone can open a channel; a private one lists only its members. */
+    createChannel(input: NewChannel): Promise<Channel>
+    /** Its members and admins; not a project's channel or a DM. */
+    updateChannel(id: string, patch: ChannelPatch): Promise<Channel>
   }
   tickets: {
     /** The same list as projects.list; kept for the Phase 1+2 pages. */

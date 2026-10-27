@@ -1,10 +1,11 @@
 import type { Api, Attachment, Channel, ChatMessage, ChatTarget, StoredChannel, ThreadReply } from '@/api/types'
+import { channelFormErrors } from '@/lib/channelForm'
 import { REACTIONS } from '@/lib/reactions'
 import type { DbData, MockDb } from './db'
 import { delay } from './latency'
 import type { MockHub } from './realtime'
 import { ApiError } from '@/lib/apiError'
-import { badRequest, clone, newId, notFound, requireCan, stamp } from './shared'
+import { badRequest, clone, currentUser, newId, notFound, requireCan, stamp } from './shared'
 import { parseMentions, parseTicketKeys } from './text'
 
 const PAGE_SIZE = 30
@@ -44,6 +45,28 @@ function findMessage(data: DbData, id: string): ChatMessage {
   return message
 }
 
+const notInChannel = () => new ApiError({ title: 'Forbidden', status: 403, detail: "You're not in this channel." })
+
+/** Private channels and DMs exist only for their members; everyone in the workspace sees the rest. */
+const visible = (data: DbData, channel: StoredChannel) => !channel.isPrivate || channel.memberIds.includes(data.currentUserId)
+
+/** A channel I may read: unknown is 404, someone else's private channel is 403. */
+function readableChannel(data: DbData, id: string): StoredChannel {
+  const channel = findChannel(data, id)
+  if (!visible(data, channel)) throw notInChannel()
+  return channel
+}
+
+/** The first rule a channel's values break, as the 400 the form would show; names are unique in the workspace. */
+function checkChannel(data: DbData, values: { workspaceId: string; id?: string; name: string; topic: string; isPrivate: boolean; others: string[] }) {
+  const taken = data.channels.filter((c) => c.workspaceId === values.workspaceId && c.id !== values.id && c.name).map((c) => c.name!)
+  const errors = channelFormErrors({ name: values.name, topic: values.topic, isPrivate: values.isPrivate, memberIds: values.others }, taken)
+  const first = errors.name ?? errors.topic ?? errors.members
+  if (first) throw badRequest(first)
+  const unknown = values.others.find((id) => !data.users.some((u) => u.id === id))
+  if (unknown) throw notFound('User', unknown)
+}
+
 const MAX_TEXT = 4000
 
 /** The text as stored: trimmed, not empty, not too long. */
@@ -62,7 +85,7 @@ function checkCanPost(data: DbData, channel: StoredChannel) {
   const project = data.projects.find((p) => p.channelId === channel.id)
   if (project) return requireCan(data, 'collab.post', project)
   const me = requireCan(data, 'collab.post')
-  if (channel.isPrivate && !channel.memberIds.includes(me.id)) throw new ApiError({ title: 'Forbidden', status: 403, detail: "You're not in this channel." })
+  if (channel.isPrivate && !channel.memberIds.includes(me.id)) throw notInChannel()
   return me
 }
 
@@ -92,6 +115,42 @@ const keysMadeFrom = (data: DbData, messageId: string) => data.tickets.filter((t
 export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
   const changed = (channelId: string, messageId: string) => hub.publish({ type: 'messageChanged', channelId, messageId })
   return {
+    async createChannel(input) {
+      await delay()
+      const channel = await db.update((data) => {
+        if (!data.workspaces.some((w) => w.id === input.workspaceId)) throw notFound('Workspace', input.workspaceId)
+        const me = currentUser(data)
+        const name = input.name.trim()
+        const topic = input.topic.trim()
+        const others = [...new Set(input.memberIds)].filter((id) => id !== me.id)
+        checkChannel(data, { workspaceId: input.workspaceId, name, topic, isPrivate: input.isPrivate, others })
+        const created: StoredChannel = { id: newId('c'), workspaceId: input.workspaceId, kind: 'channel', name, topic, memberIds: [me.id, ...others], isPrivate: input.isPrivate, lastMessageAt: null }
+        data.channels.push(created)
+        return withUnread(data, created)
+      })
+      hub.publish({ type: 'channelChanged', channelId: channel.id })
+      return clone(channel)
+    },
+    async updateChannel(id, patch) {
+      await delay()
+      const channel = await db.update((data) => {
+        const channel = findChannel(data, id)
+        if (channel.kind === 'dm') throw badRequest("Direct messages can't be edited.")
+        if (data.projects.some((p) => p.channelId === id)) throw badRequest('This channel follows its project.')
+        const me = currentUser(data)
+        const member = channel.memberIds.includes(me.id)
+        if (!member && me.role !== 'admin') throw new ApiError({ title: 'Forbidden', status: 403, detail: 'Only its members can change this channel.' })
+        const memberIds = patch.memberIds ? [...new Set(patch.memberIds)] : channel.memberIds
+        if (member && !memberIds.includes(me.id)) throw badRequest("You can't remove yourself.")
+        const name = (patch.name ?? channel.name ?? '').trim()
+        const topic = (patch.topic ?? channel.topic).trim()
+        checkChannel(data, { workspaceId: channel.workspaceId, id, name, topic, isPrivate: channel.isPrivate, others: memberIds.filter((m) => m !== me.id) })
+        Object.assign(channel, { name, topic, memberIds })
+        return withUnread(data, channel)
+      })
+      hub.publish({ type: 'channelChanged', channelId: id })
+      return clone(channel)
+    },
     async react(target, emoji) {
       await delay()
       if (!(REACTIONS as readonly string[]).includes(emoji)) throw badRequest('Pick one of the reactions shown.')
@@ -169,17 +228,17 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       await delay()
       const data = await db.read()
       if (!data.workspaces.some((w) => w.id === workspaceId)) throw notFound('Workspace', workspaceId)
-      return data.channels.filter((c) => c.workspaceId === workspaceId).map((c) => withUnread(data, c))
+      return data.channels.filter((c) => c.workspaceId === workspaceId && visible(data, c)).map((c) => withUnread(data, c))
     },
     async channel(id) {
       await delay()
       const data = await db.read()
-      return withUnread(data, findChannel(data, id))
+      return withUnread(data, readableChannel(data, id))
     },
     async messages(channelId, cursor) {
       await delay()
       const data = await db.read()
-      findChannel(data, channelId)
+      readableChannel(data, channelId)
       // Newest first, by (createdAt, id) descending. The cursor is opaque: the sort key of the last message of the
       // previous page, so messages that share a timestamp across a page boundary are neither dropped nor repeated.
       const before = cursor === undefined ? null : decodeCursor(cursor)
