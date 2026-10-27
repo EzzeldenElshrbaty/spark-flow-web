@@ -243,3 +243,23 @@ describe('editing time', () => {
     expect(fixed.endedAt).toBe(at(17, 0, -1).toISOString())
   })
 })
+
+describe('editing time, edge cases from review', () => {
+  it('a note-only edit of a timer entry that starts the second the last one stopped is allowed', async () => {
+    now = new Date(at(7).getTime() + 27_400) // 07:00:27.4
+    await api.time.start({ taskId: 't-nex-101' })
+    now = new Date(at(8).getTime() + 13_900)
+    const second = (await api.time.start({ taskId: 't-nex-102' })).running!
+    now = at(8, 30)
+    await api.time.stop()
+    expect((await api.time.update(second.id, { note: 'pairing' })).note).toBe('pairing')
+  })
+
+  it('an entry on an archived task can still be fixed, but not moved to another archived task', async () => {
+    const made = await api.time.addManual({ taskId: 't-nex-101', startedAt: at(6).toISOString(), endedAt: at(7).toISOString(), note: '' })
+    await api.tasks.archive('NEX-101')
+    await api.tasks.archive('NEX-103')
+    expect((await api.time.update(made.id, { endedAt: at(6, 30).toISOString() })).endedAt).toBe(at(6, 30).toISOString())
+    await expect(api.time.update(made.id, { target: { taskId: 't-nex-103' } })).rejects.toMatchObject({ detail: 'That task is archived. Restore it to log time.' })
+  })
+})

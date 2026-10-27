@@ -58,3 +58,12 @@ describe('editing an entry', () => {
     expect(capped(entry(start, start, { source: 'timer', endedAt: null }))).toBe(false)
   })
 })
+
+describe('editing keeps what was not changed', () => {
+  it('toPatch leaves out times whose day and HH:mm did not change, so their seconds stay', () => {
+    const original = { day: '2026-10-27', start: '10:30', end: '11:00', note: '', taskId: 't-nex-101', projectId: 'p-nex' }
+    const patch = toPatch({ ...original, note: 'just a note' }, original)
+    expect(patch).toEqual({ note: 'just a note', target: { taskId: 't-nex-101' } })
+    expect(toPatch({ ...original, end: '11:15' }, original)).toEqual({ endedAt: new Date(2026, 9, 27, 11, 15).toISOString(), note: '', target: { taskId: 't-nex-101' } })
+  })
+})

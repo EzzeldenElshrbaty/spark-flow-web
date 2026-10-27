@@ -15,11 +15,12 @@ const MAX_PLAN = 500
 const MAX_NOTE = 200
 
 /** What a target logs against: the task (and its project) or the project alone. */
-function resolveTarget(data: DbData, target: TimeTarget): { projectId: string; taskId: string | null; done: boolean } {
+function resolveTarget(data: DbData, target: TimeTarget, keepTaskId?: string | null): { projectId: string; taskId: string | null; done: boolean } {
   if ('taskId' in target) {
     const task = data.tickets.find((t) => t.id === target.taskId)
     if (!task) throw badRequest("That task doesn't exist.")
-    if (task.archivedAt) throw badRequest('That task is archived. Restore it to log time.')
+    // New time can't go on an archived task; an entry already on it can still be fixed (keepTaskId).
+    if (task.archivedAt && task.id !== keepTaskId) throw badRequest('That task is archived. Restore it to log time.')
     return { projectId: task.projectId, taskId: task.id, done: task.status === 'done' }
   }
   return { projectId: findProject(data, target.projectId).id, taskId: null, done: false }
@@ -57,14 +58,15 @@ function startTimer(data: DbData, userId: string, target: TimeTarget, at: string
 
 /**
  * The rules a manual entry (new or edited) keeps: it ends after it starts, not in the future, lasts at most 12 hours,
- * has a short note and doesn't overlap the person's other time (`ignoreId` is the entry being edited).
+ * has a short note and doesn't overlap the person's other time (`editing` is the entry being changed, which may keep
+ * its task even if that task is now archived).
  */
 function checkEntry(
   data: DbData,
   userId: string,
   input: { start: number; end: number; note: string; target: TimeTarget },
   at: number,
-  ignoreId?: string,
+  editing?: TimeEntry,
 ): { projectId: string; taskId: string | null; note: string } {
   const { start, end } = input
   if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) throw badRequest('The end is before the start.')
@@ -72,10 +74,10 @@ function checkEntry(
   if (end - start > MAX_ENTRY_HOURS * HOUR) throw badRequest(`One entry can be up to ${MAX_ENTRY_HOURS} hours.`)
   const note = input.note.trim()
   if (note.length > MAX_NOTE) throw badRequest(`Keep the note under ${MAX_NOTE} characters.`)
-  const { projectId, taskId } = resolveTarget(data, input.target)
+  const { projectId, taskId } = resolveTarget(data, input.target, editing?.taskId)
   // The person's other entries, the running one counted up to now (at most 12 hours).
   const overlaps = data.timeEntries.some(
-    (e) => e.userId === userId && e.id !== ignoreId && new Date(e.startedAt).getTime() < end && entryEnd(e, new Date(at)) > start,
+    (e) => e.userId === userId && e.id !== editing?.id && new Date(e.startedAt).getTime() < end && entryEnd(e, new Date(at)) > start,
   )
   if (overlaps) throw badRequest('That overlaps time you already logged.')
   return { projectId, taskId, note }
@@ -198,7 +200,7 @@ export function timeApi(db: MockDb, hub: MockHub, now: () => Date): Api['time'] 
         const end = new Date(patch.endedAt ?? entry.endedAt!).getTime()
         const target: TimeTarget = patch.target ?? (entry.taskId ? { taskId: entry.taskId } : { projectId: entry.projectId })
         // The owner's rules: their other entries are what it mustn't overlap, whoever edits it.
-        const checked = checkEntry(data, entry.userId, { start, end, note: patch.note ?? entry.note, target }, now().getTime(), entry.id)
+        const checked = checkEntry(data, entry.userId, { start, end, note: patch.note ?? entry.note, target }, now().getTime(), entry)
         Object.assign(entry, { ...checked, startedAt: new Date(start).toISOString(), endedAt: new Date(end).toISOString() })
         return { entry: clone(entry), was }
       })

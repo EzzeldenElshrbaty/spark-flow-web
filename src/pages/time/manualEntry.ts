@@ -37,10 +37,20 @@ export function valuesOf(entry: TimeEntry): ManualEntryValues {
   return { day: localDay(start), start: hhmm(start), end: hhmm(new Date(entry.endedAt ?? entry.startedAt)), note: entry.note, taskId: entry.taskId, projectId: entry.projectId }
 }
 
-/** The form's values as a change to an entry: the times, the note and where it's logged. */
-export function toPatch(v: ManualEntryValues): TimeEntryPatch {
+/**
+ * The form's values as a change to an entry: the note, where it's logged, and each time only if its day or HH:mm
+ * changed from `original`. The form shows minutes, so an untouched time is left out and keeps its seconds (a timer
+ * that started the second another stopped would otherwise overlap it).
+ */
+export function toPatch(v: ManualEntryValues, original?: ManualEntryValues): TimeEntryPatch {
   const { startedAt, endedAt, note, ...target } = toManualEntry(v)
-  return { startedAt, endedAt, note, target }
+  const sameDay = original?.day === v.day
+  return {
+    ...(sameDay && original?.start === v.start ? {} : { startedAt }),
+    ...(sameDay && original?.end === v.end ? {} : { endedAt }),
+    note,
+    target,
+  }
 }
 
 /** The form's starting values: the hour before now, rounded down to 15 minutes; just after midnight, late yesterday. */

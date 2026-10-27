@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useProjectSummaries } from '@/api/projects'
-import { useTickets } from '@/api/tickets'
+import { useArchivedTasks, useTickets } from '@/api/tickets'
 import { useAddTime, useUpdateTime } from '@/api/time'
 import type { TimeEntry } from '@/api/types'
 import { Button } from '@/components/ui/Button'
@@ -25,7 +25,10 @@ export function AddTimeSheet({ projectId: forProject, taskId, entry, onClose }: 
   const failure = (add.error ?? update.error) as Error | null
   const [values, setValues] = useState<ManualEntryValues>(() => (entry ? valuesOf(entry) : { ...defaultTimes(new Date()), note: '', taskId: taskId ?? null, projectId: projectId ?? '' }))
   const [errors, setErrors] = useState<ManualEntryErrors>({})
-  const tasks = useTickets(values.projectId || undefined).data ?? []
+  const listed = useTickets(values.projectId || undefined).data ?? []
+  // An entry's own task stays pickable even once archived (the list leaves archived tasks out).
+  const own = useArchivedTasks(values.projectId || undefined, Boolean(entry?.taskId)).data?.find((t) => t.id === entry?.taskId)
+  const tasks = own ? [...listed, own] : listed
   const set = <K extends keyof ManualEntryValues>(k: K, v: ManualEntryValues[K]) => setValues((s) => ({ ...s, [k]: v }))
   const fixedTask = taskId ? tasks.find((t) => t.id === taskId) : undefined
   const project = projects.find((p) => p.id === values.projectId)
@@ -34,7 +37,7 @@ export function AddTimeSheet({ projectId: forProject, taskId, entry, onClose }: 
     const found = manualEntryErrors(values, new Date())
     setErrors(found)
     if (Object.keys(found).length) return
-    if (entry) update.mutate({ id: entry.id, patch: toPatch(values) }, { onSuccess: onClose })
+    if (entry) update.mutate({ id: entry.id, patch: toPatch(values, valuesOf(entry)) }, { onSuccess: onClose })
     else add.mutate(toManualEntry(values), { onSuccess: onClose })
   }
 

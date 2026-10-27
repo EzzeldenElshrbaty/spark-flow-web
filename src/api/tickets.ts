@@ -51,6 +51,14 @@ export function useUpdateTask() {
 }
 
 /** Every task of several projects (one query each, shared with each project's Tasks tab). */
+/** The keys of the archived tasks of several projects (for chips: an old @NEX-101 still links). */
+export function useArchivedKeysOf(projectIds: string[]) {
+  return useQueries({
+    queries: projectIds.map((id) => ({ queryKey: qk.archivedTickets(id), queryFn: () => api.tickets.list(id, { archived: true }), retry })),
+    combine: (results) => results.flatMap((r) => (r.data ?? []).map((t) => t.key)),
+  })
+}
+
 export function useTasksOf(projectIds: string[]) {
   return useQueries({
     queries: projectIds.map((id) => ({ queryKey: qk.tickets(id), queryFn: () => api.tickets.list(id), retry })),
