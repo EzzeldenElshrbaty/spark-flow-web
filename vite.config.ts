@@ -28,7 +28,8 @@ export default defineConfig(({ mode }) => {
     },
     test: {
       environment: 'node',
-      include: ['src/**/*.test.ts'],
+      include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+      // *.test.tsx render components: they opt into jsdom with a `// @vitest-environment jsdom` first line.
     },
   }
 })

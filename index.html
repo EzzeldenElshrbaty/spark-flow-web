@@ -13,6 +13,7 @@
     <meta name="apple-mobile-web-app-title" content="Spark Flow" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="format-detection" content="telephone=no" />
+    <!-- Inter for every module but the shell and chat, which self-host Readex Pro (src/styles/flow-tokens.css). -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -23,6 +24,7 @@
       try {
         var dark = localStorage.getItem('spark-flow.theme') === 'dark'
         document.documentElement.classList.toggle('dark', dark)
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light'
         document.querySelector('meta[name=theme-color]').setAttribute('content', dark ? '#1c1c1d' : '#ffffff')
       } catch (e) {}
       // iPhone Safari ignores user-scalable=no, so block its pinch gesture directly.

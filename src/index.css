@@ -1,4 +1,6 @@
 @import 'tailwindcss';
+@import '@fontsource-variable/readex-pro';
+@import './styles/flow-tokens.css';
 /* Spark Flow: the design kit's reference code is documentation, not app code; keep its classes out of the build. */
 @source not '../design';
 
@@ -240,6 +242,148 @@
   --chart-step-3: #dd4449;
   --chart-step-4: #ec7f82;
   --chart-step-5: #f5b0b2;
+}
+
+/*
+ * Flow chat redesign utilities (tokens in styles/flow-tokens.css, valid inside .sf only):
+ * bg-sf-surface, text-sf-text-muted, rounded-sf-md, shadow-sf-menu, h-sf-control, ease-sf…
+ */
+@theme inline {
+  --color-sf-app-frame: var(--app-frame);
+  --color-sf-sidebar-hover: var(--sidebar-hover);
+  --color-sf-sidebar-active: var(--sidebar-active);
+  --color-sf-sidebar-text: var(--sidebar-text);
+  --color-sf-sidebar-text-strong: var(--sidebar-text-strong);
+  --color-sf-sidebar-text-muted: var(--sidebar-text-muted);
+  --color-sf-sidebar-accent: var(--sidebar-accent);
+  --color-sf-surface: var(--surface);
+  --color-sf-surface-hover: var(--surface-hover);
+  --color-sf-surface-raised: var(--surface-raised);
+  --color-sf-surface-sunken: var(--surface-sunken);
+  --color-sf-surface-selected: var(--surface-selected);
+  --color-sf-surface-mention: var(--surface-mention);
+  --color-sf-line: var(--line);
+  --color-sf-line-strong: var(--line-strong);
+  --color-sf-text: var(--text);
+  --color-sf-text-secondary: var(--text-secondary);
+  --color-sf-text-muted: var(--text-muted);
+  --color-sf-accent: var(--accent);
+  --color-sf-accent-fill: var(--accent-fill);
+  --color-sf-accent-fill-hover: var(--accent-fill-hover);
+  --color-sf-on-accent: var(--on-accent);
+  --color-sf-presence-active: var(--presence-active);
+  --color-sf-focus: var(--focus);
+  --color-sf-overlay: var(--overlay);
+  --color-sf-success: var(--success);
+  --color-sf-warning: var(--warning);
+  --color-sf-on-warning: var(--on-warning);
+  --color-sf-error: var(--error);
+  --color-sf-white: var(--white);
+  --color-sf-red-400: var(--red-400);
+  --color-sf-ink-50: var(--ink-50);
+  --color-sf-ink-100: var(--ink-100);
+  --color-sf-ink-300: var(--ink-300);
+  --color-sf-ink-400: var(--ink-400);
+  --color-sf-ink-600: var(--ink-600);
+  --color-sf-ink-700: var(--ink-700);
+  --color-sf-ink-800: var(--ink-800);
+  --color-sf-ink-950: var(--ink-950);
+  --radius-sf-sm: var(--radius-sm);
+  --radius-sf-md: var(--radius-md);
+  --radius-sf-lg: var(--radius-lg);
+  --radius-sf-full: var(--radius-full);
+  --shadow-sf-toolbar: var(--shadow-toolbar);
+  --shadow-sf-menu: var(--shadow-menu);
+  --shadow-sf-modal: var(--shadow-modal);
+  --spacing-sf-avatar: var(--size-avatar);
+  --spacing-sf-avatar-sm: var(--size-avatar-sm);
+  --spacing-sf-control: var(--size-control);
+  --spacing-sf-input: var(--size-input);
+  --spacing-sf-topbar: var(--size-topbar);
+  --spacing-sf-header: var(--size-header);
+  --spacing-sf-tabs: var(--size-tabs);
+  --spacing-sf-sidebar: var(--size-sidebar);
+  --spacing-sf-panel: var(--size-panel);
+  --font-sf: var(--font-sans);
+  --font-sf-mono: var(--font-mono);
+  --ease-sf: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@utility sf-display {
+  font: 600 28px/36px var(--font-sans);
+  letter-spacing: -0.01em;
+}
+
+@utility sf-title {
+  font: 600 20px/28px var(--font-sans);
+}
+
+@utility sf-heading {
+  font: 600 16px/24px var(--font-sans);
+}
+
+@utility sf-body {
+  font: 400 14px/22px var(--font-sans);
+}
+
+@utility sf-body-strong {
+  font: 600 14px/22px var(--font-sans);
+}
+
+@utility sf-ui {
+  font: 400 14px/20px var(--font-sans);
+}
+
+@utility sf-ui-medium {
+  font: 500 14px/20px var(--font-sans);
+}
+
+@utility sf-small {
+  font: 400 13px/18px var(--font-sans);
+}
+
+@utility sf-meta {
+  font: 400 12px/16px var(--font-sans);
+}
+
+@utility sf-label {
+  font: 500 12px/16px var(--font-sans);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+@utility sf-body-ar {
+  font: 400 14px/26px var(--font-sans);
+}
+
+@utility sf-heading-ar {
+  font: 600 16px/22px var(--font-sans);
+}
+
+@utility sf-code {
+  font: 400 13px/20px var(--font-mono);
+}
+
+/* Keyboard focus on every interactive sf control: the two-tone ring from the tokens. */
+@utility sf-focus {
+  &:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+  }
+}
+
+/* Native emoji glyphs (reactions, picker): never Readex Pro. */
+@utility sf-emoji {
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+  font-weight: 400;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sf,
+  .sf * {
+    transition: none !important;
+    animation: none !important;
+  }
 }
 
 body {

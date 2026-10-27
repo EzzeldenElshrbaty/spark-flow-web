@@ -21,6 +21,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark')
+    // The Flow chat tokens (styles/flow-tokens.css) also read data-theme.
+    document.documentElement.dataset.theme = theme
     // Phone status bar color follows the top bar (the --surface token).
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#1c1c1d' : '#ffffff')
   }, [theme])
