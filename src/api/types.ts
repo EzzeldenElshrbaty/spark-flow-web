@@ -231,6 +231,8 @@ export interface Api {
     edit(target: ChatTarget, content: string): Promise<ChatMessage | ThreadReply>
     /** The author's own plain message or reply; the row stays and reads as deleted. */
     remove(target: ChatTarget): Promise<void>
+    /** A conversation with these people (you plus 1–8 others); the same people get the existing one back. */
+    openDm(workspaceId: string, userIds: string[]): Promise<Channel>
     /** Anyone can open a channel; a private one lists only its members. */
     createChannel(input: NewChannel): Promise<Channel>
     /** Its members and admins; not a project's channel or a DM. */

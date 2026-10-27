@@ -9,6 +9,7 @@ import { usePermission } from '@/lib/usePermission'
 import { useRole } from '@/lib/useRole'
 import { canSee, settingsItem } from '@/navigation'
 import { ChannelSheet } from '@/pages/chat/ChannelSheet'
+import { NewMessageSheet } from '@/pages/chat/NewMessageSheet'
 
 type SidebarLinkProps = {
   to: string
@@ -92,6 +93,7 @@ export function SidebarContent({ collapsed = false, onNavigate }: { collapsed?: 
   const { workspace, channels, dms, projects, chatLoading, projectsLoading, failed } = useSidebarGroups()
   const slug = workspace?.slug
   const [newChannel, setNewChannel] = useState(false)
+  const [newMessage, setNewMessage] = useState(false)
 
   return (
     <div className="flex h-full flex-col">
@@ -171,9 +173,22 @@ export function SidebarContent({ collapsed = false, onNavigate }: { collapsed?: 
           </div>
         )}
 
-        {slug && (chatLoading || dms.length > 0) && (
+        {slug && workspace && (
           <div>
-            <GroupLabel collapsed={collapsed}>Direct messages</GroupLabel>
+            <div className="flex items-center">
+              <GroupLabel collapsed={collapsed}>Direct messages</GroupLabel>
+              {!collapsed && (
+                <button
+                  type="button"
+                  aria-label="New message"
+                  title="New message"
+                  onClick={() => setNewMessage(true)}
+                  className="-mt-2 me-2 ms-auto flex size-6 items-center justify-center rounded-md text-neutral-500 transition hover:bg-white/10 hover:text-white"
+                >
+                  <Plus className="size-4" />
+                </button>
+              )}
+            </div>
             {chatLoading ? (
               <GroupSkeleton />
             ) : (
@@ -227,6 +242,7 @@ export function SidebarContent({ collapsed = false, onNavigate }: { collapsed?: 
         </div>
       )}
       {newChannel && workspace && <ChannelSheet workspaceId={workspace.id} workspaceSlug={workspace.slug} onClose={() => setNewChannel(false)} />}
+      {newMessage && workspace && <NewMessageSheet workspaceId={workspace.id} workspaceSlug={workspace.slug} onClose={() => setNewMessage(false)} />}
     </div>
   )
 }

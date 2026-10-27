@@ -498,3 +498,34 @@ describe('read state per person', () => {
     expect((await api.chat.channel('c-general')).unreadCount).toBe(before - 1)
   })
 })
+
+describe('direct messages', () => {
+  it('openDm creates a DM with me and them, and lists it to us only', async () => {
+    const dm = await api.chat.openDm('ws-eng', ['u-6', 'u-5'])
+    expect(dm).toMatchObject({ kind: 'dm', name: null, topic: '', isPrivate: true, workspaceId: 'ws-eng' })
+    expect([...dm.memberIds].sort()).toEqual(['u-1', 'u-5', 'u-6'])
+    expect(events).toContainEqual({ type: 'channelChanged', channelId: dm.id })
+    expect((await api.chat.channels('ws-eng')).some((c) => c.id === dm.id)).toBe(true)
+    await api.users.viewAs('u-8')
+    expect((await api.chat.channels('ws-eng')).some((c) => c.id === dm.id)).toBe(false)
+  })
+
+  it('the same people in any order get the same DM, and nothing is published', async () => {
+    const first = await api.chat.openDm('ws-eng', ['u-6', 'u-5'])
+    await api.users.viewAs('u-5')
+    events.length = 0
+    const again = await api.chat.openDm('ws-eng', ['u-1', 'u-6', 'u-5'])
+    expect(again.id).toBe(first.id)
+    expect(events).toEqual([])
+    // The seeded DM between u-1 and u-2 is found too.
+    await api.users.viewAs('u-2')
+    expect((await api.chat.openDm('ws-eng', ['u-1'])).id).toBe('c-dm-1')
+  })
+
+  it('no one else, or more than 8 others, is refused; unknown people are not found', async () => {
+    await expect(api.chat.openDm('ws-eng', [])).rejects.toMatchObject({ status: 400, detail: 'Pick at least one person.' })
+    await expect(api.chat.openDm('ws-eng', ['u-1'])).rejects.toMatchObject({ status: 400, detail: 'Pick at least one person.' })
+    await expect(api.chat.openDm('ws-eng', ['u-2', 'u-3', 'u-4', 'u-5', 'u-6', 'u-7', 'u-8', 'u-9', 'u-10'])).rejects.toMatchObject({ status: 400, detail: 'A conversation can have up to 9 people.' })
+    await expect(api.chat.openDm('ws-eng', ['u-nobody'])).rejects.toMatchObject({ status: 404 })
+  })
+})

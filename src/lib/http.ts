@@ -74,6 +74,7 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
       react: (target, emoji) => send<void>('POST', `${targetPath(target)}/reactions`, { emoji }),
       edit: (target, content) => send('PATCH', targetPath(target), { content }),
       remove: (target) => send<void>('DELETE', targetPath(target)),
+      openDm: (workspaceId, userIds) => send('POST', `/api/workspaces/${enc(workspaceId)}/dms`, { userIds }),
       createChannel: (input) => send('POST', `/api/workspaces/${enc(input.workspaceId)}/channels`, input),
       updateChannel: (id, patch) => send('PATCH', `/api/channels/${enc(id)}`, patch),
     },

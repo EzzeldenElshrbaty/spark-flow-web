@@ -52,6 +52,9 @@ export function useEditMessage() {
 export function useDeleteMessage() {
   return useMutation({ mutationFn: (target: ChatTarget) => api.chat.remove(target) })
 }
+export function useOpenDm() {
+  return useMutation({ mutationFn: ({ workspaceId, userIds }: { workspaceId: string; userIds: string[] }) => api.chat.openDm(workspaceId, userIds) })
+}
 export function useCreateChannel() {
   return useMutation({ mutationFn: (input: NewChannel) => api.chat.createChannel(input) })
 }

@@ -68,6 +68,7 @@ function checkChannel(data: DbData, values: { workspaceId: string; id?: string; 
 }
 
 const MAX_TEXT = 4000
+const MAX_DM_OTHERS = 8
 
 /** The text as stored: trimmed, not empty, not too long. */
 function checkText(content: string): string {
@@ -115,6 +116,29 @@ const keysMadeFrom = (data: DbData, messageId: string) => data.tickets.filter((t
 export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
   const changed = (channelId: string, messageId: string) => hub.publish({ type: 'messageChanged', channelId, messageId })
   return {
+    async openDm(workspaceId, userIds) {
+      await delay()
+      const { channel, created } = await db.update((data) => {
+        if (!data.workspaces.some((w) => w.id === workspaceId)) throw notFound('Workspace', workspaceId)
+        const me = currentUser(data)
+        const others = [...new Set(userIds)].filter((id) => id !== me.id)
+        if (others.length === 0) throw badRequest('Pick at least one person.')
+        if (others.length > MAX_DM_OTHERS) throw badRequest(`A conversation can have up to ${MAX_DM_OTHERS + 1} people.`)
+        const unknown = others.find((id) => !data.users.some((u) => u.id === id))
+        if (unknown) throw notFound('User', unknown)
+        // The same people (in any order) always get the same conversation.
+        const members = [me.id, ...others].sort()
+        const same = data.channels.find(
+          (c) => c.workspaceId === workspaceId && c.kind === 'dm' && c.memberIds.length === members.length && [...c.memberIds].sort().every((id, i) => id === members[i]),
+        )
+        if (same) return { channel: withUnread(data, same), created: false }
+        const dm: StoredChannel = { id: newId('c'), workspaceId, kind: 'dm', name: null, topic: '', memberIds: [me.id, ...others], isPrivate: true, lastMessageAt: null }
+        data.channels.push(dm)
+        return { channel: withUnread(data, dm), created: true }
+      })
+      if (created) hub.publish({ type: 'channelChanged', channelId: channel.id })
+      return clone(channel)
+    },
     async createChannel(input) {
       await delay()
       const channel = await db.update((data) => {
