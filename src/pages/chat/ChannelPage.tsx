@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { ApiError } from '@/lib/api'
-import { channelLabel, inWorkspace } from '@/lib/channels'
+import { channelLabel, inWorkspace, isArchived } from '@/lib/channels'
 import { paths } from '@/lib/paths'
 import { useRole } from '@/lib/useRole'
 import { NotFound } from '@/pages/NotFound'
@@ -14,7 +14,7 @@ import { ChannelFeed } from '@/pages/chat/ChannelFeed'
 import { Composer } from '@/pages/chat/Composer'
 import { useCanPost, useReadOnlyLine } from '@/pages/chat/useCanPost'
 import { useTaskFromMessage } from '@/pages/chat/useTaskFromMessage'
-import { ChannelMenu } from '@/pages/chat/ChannelMenu'
+import { ArchivedChannelLine, ChannelMenu } from '@/pages/chat/ChannelMenu'
 import { MessageSkeleton } from '@/pages/chat/MessageRow'
 
 /** A channel or DM: its name and topic, then its messages with the newest at the bottom. Read-only in Phase 1. */
@@ -81,7 +81,9 @@ export function ChannelPage() {
         canPost={canPost === true}
         messageActions={fromMessage.messageActions}
         composer={
-          canPost === false ? (
+          isArchived(current) ? (
+            <ArchivedChannelLine channel={current} />
+          ) : canPost === false ? (
             <p className="text-sm text-fg-muted">{readOnly}</p>
           ) : canPost ? (
             <Composer

@@ -78,6 +78,8 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
       openDm: (workspaceId, userIds) => send('POST', `/api/workspaces/${enc(workspaceId)}/dms`, { userIds }),
       createChannel: (input) => send('POST', `/api/workspaces/${enc(input.workspaceId)}/channels`, input),
       updateChannel: (id, patch) => send('PATCH', `/api/channels/${enc(id)}`, patch),
+      archiveChannel: (id) => send('POST', `/api/channels/${enc(id)}/archive`),
+      restoreChannel: (id) => send('POST', `/api/channels/${enc(id)}/restore`),
     },
     tickets: {
       projects: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/projects`),

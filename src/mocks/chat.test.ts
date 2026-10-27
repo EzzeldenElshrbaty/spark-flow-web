@@ -529,3 +529,37 @@ describe('direct messages', () => {
     await expect(api.chat.openDm('ws-eng', ['u-nobody'])).rejects.toMatchObject({ status: 404 })
   })
 })
+
+describe('archiving channels', () => {
+  const archived = { status: 400, detail: 'This channel is archived.' }
+  it('a member archives a channel; sending, replying, reacting, editing and deleting are then refused', async () => {
+    await api.users.viewAs('u-3') // Mariam, in #frontend-dev
+    const mine = await api.chat.send('c-frontend', 'Before')
+    const channel = await api.chat.archiveChannel('c-frontend')
+    expect(channel.archivedAt).toEqual(expect.any(String))
+    const target = { kind: 'message' as const, id: mine.id }
+    await expect(api.chat.send('c-frontend', 'After')).rejects.toMatchObject(archived)
+    await expect(api.chat.reply(mine.id, 'After')).rejects.toMatchObject(archived)
+    await expect(api.chat.react(target, '👍')).rejects.toMatchObject(archived)
+    await expect(api.chat.edit(target, 'Changed')).rejects.toMatchObject(archived)
+    await expect(api.chat.remove(target)).rejects.toMatchObject(archived)
+  })
+  it('restore makes it writable again', async () => {
+    await api.chat.archiveChannel('c-frontend')
+    expect((await api.chat.restoreChannel('c-frontend')).archivedAt ?? null).toBeNull()
+    expect((await api.chat.send('c-frontend', 'Back')).content).toBe('Back')
+  })
+  it("a project channel and a DM can't be archived here", async () => {
+    await expect(api.chat.archiveChannel('c-p-nex')).rejects.toMatchObject({ status: 400, detail: 'This channel follows its project.' })
+    await expect(api.chat.archiveChannel('c-dm-1')).rejects.toMatchObject({ status: 400, detail: "Conversations can't be archived." })
+  })
+  it("a non-member of a private channel can't archive it", async () => {
+    await api.users.viewAs('u-3') // not in #release-v2
+    await expect(api.chat.archiveChannel('c-release')).rejects.toMatchObject({ status: 403 })
+  })
+  it('archive publishes channelChanged', async () => {
+    await api.chat.archiveChannel('c-frontend')
+    expect(events).toContainEqual({ type: 'channelChanged', channelId: 'c-frontend' })
+  })
+})
+

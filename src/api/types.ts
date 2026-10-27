@@ -98,6 +98,8 @@ export type Channel = {
   name: string | null                                    // null for DMs; the UI names a DM after the other member
   topic: string; memberIds: string[]; isPrivate: boolean
   lastMessageAt: string | null; unreadCount: number      // unreadCount is per the current user
+  /** Set while archived: read-only until restored. A project's channel is archived with its project. */
+  archivedAt?: string | null
 }
 
 export type ChatMessage = {
@@ -263,6 +265,9 @@ export interface Api {
     createChannel(input: NewChannel): Promise<Channel>
     /** Its members and admins; not a project's channel or a DM. */
     updateChannel(id: string, patch: ChannelPatch): Promise<Channel>
+    /** Its members and admins; not a project's channel (it follows its project) or a DM. Read-only until restored. */
+    archiveChannel(id: string): Promise<Channel>
+    restoreChannel(id: string): Promise<Channel>
   }
   tickets: {
     /** The same list as projects.list; kept for the Phase 1+2 pages. */

@@ -83,6 +83,7 @@ function checkText(content: string): string {
  * membership; any other channel is open to the workspace.
  */
 function checkCanPost(data: DbData, channel: StoredChannel) {
+  if (channel.archivedAt) throw badRequest('This channel is archived.')
   const project = data.projects.find((p) => p.channelId === channel.id)
   if (project) return requireCan(data, 'collab.post', project)
   const me = requireCan(data, 'collab.post')
@@ -114,6 +115,21 @@ function checkPlain(row: Row) {
 const keysMadeFrom = (data: DbData, messageId: string) => data.tickets.filter((t) => t.linkedMessageId === messageId).map((t) => t.key)
 
 export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
+  /** Archives or restores a channel: its members and admins; a project's channel follows its project, a DM never is. */
+  const setArchived = async (id: string, archive: boolean) => {
+    await delay()
+    const channel = await db.update((data) => {
+      const channel = findChannel(data, id)
+      if (channel.kind === 'dm') throw badRequest("Conversations can't be archived.")
+      if (data.projects.some((p) => p.channelId === id)) throw badRequest('This channel follows its project.')
+      const me = currentUser(data)
+      if (!channel.memberIds.includes(me.id) && me.role !== 'admin') throw new ApiError({ title: 'Forbidden', status: 403, detail: 'Only its members can change this channel.' })
+      channel.archivedAt = archive ? new Date().toISOString() : null
+      return withUnread(data, channel)
+    })
+    hub.publish({ type: 'channelChanged', channelId: id })
+    return clone(channel)
+  }
   const changed = (channelId: string, messageId: string) => hub.publish({ type: 'messageChanged', channelId, messageId })
   return {
     async openDm(workspaceId, userIds) {
@@ -175,6 +191,8 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       hub.publish({ type: 'channelChanged', channelId: id })
       return clone(channel)
     },
+    archiveChannel: (id) => setArchived(id, true),
+    restoreChannel: (id) => setArchived(id, false),
     async react(target, emoji) {
       await delay()
       if (!(REACTIONS as readonly string[]).includes(emoji)) throw badRequest('Pick one of the reactions shown.')

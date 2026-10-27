@@ -1,5 +1,8 @@
 import type { Channel, User } from '@/api/types'
 
+/** Whether a channel is archived (read-only until restored). */
+export const isArchived = (channel: { archivedAt?: string | null }): boolean => Boolean(channel.archivedAt)
+
 /** What the UI calls a channel: its name, or for a DM the other members' names. */
 export function channelLabel(channel: Channel, users: User[], meId: string): string {
   if (channel.kind === 'channel') return channel.name ?? ''
