@@ -260,6 +260,8 @@ export function createDb(store: MockStore, seed: (now: Date) => SeedResult, now:
       // An export from an older version goes through the same migrations as an older saved document.
       const data = bundle.version < DB_VERSION ? upgraded(bundle.data) : bundle.data
       if (!hasShape(data) || data.version !== DB_VERSION || !hasUsableRecords(data)) throw badImport()
+      // The file is good: everything goes, uploaded file bytes too (an export carries none), then its records come in.
+      await store.clearAll()
       if (memory) {
         memory = structuredClone(data)
         return

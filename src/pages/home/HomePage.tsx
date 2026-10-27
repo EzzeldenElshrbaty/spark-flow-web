@@ -17,7 +17,6 @@ import { withInspector } from '@/lib/inspector'
 import { mentionLink } from '@/lib/mentionLink'
 import { useNow } from '@/lib/useNow'
 import { useRole } from '@/lib/useRole'
-import { useUsers } from '@/api/users'
 import { loggableTasks, myOpenTasks } from '@/pages/projects/taskFilters'
 import { useCanLog } from '@/lib/useCanLog'
 import { OverduePill, TicketKey } from '@/pages/projects/ticketPills'
@@ -38,7 +37,6 @@ export function HomePage() {
   const now = useNow(60_000)
   const mentions = useMyMentions(Boolean(persona.id))
   const markRead = useMarkMentionsRead()
-  const people = useUsers(workspace?.id).data ?? []
   const navigate = useNavigate()
 
   const all = tasks.data
@@ -119,7 +117,7 @@ export function HomePage() {
             ) : (
               <ul className="divide-y divide-line-subtle">
                 {mentions.data.slice(0, 5).map((m) => {
-                  const author = people.find((u) => u.id === m.authorId)?.name ?? 'Someone'
+                  const author = m.authorName
                   return (
                     <li key={m.id}>
                       <button

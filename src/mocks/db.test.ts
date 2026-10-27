@@ -320,3 +320,13 @@ describe('importAll contents', () => {
     expect(await db.read()).toEqual(before)
   })
 })
+
+describe('import clears old files', () => {
+  it('import clears old file bytes', async () => {
+    const db = createDb(createMemoryStore(), fakeSeed)
+    const bundle = await db.exportAll()
+    await db.putFile('old-file', new Blob(['x']))
+    await db.importAll(JSON.parse(JSON.stringify(bundle)))
+    expect(await db.getFile('old-file')).toBeNull()
+  })
+})

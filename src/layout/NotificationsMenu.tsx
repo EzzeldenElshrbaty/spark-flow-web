@@ -6,7 +6,6 @@ import { useMarkMentionsRead, useMyMentions } from '@/api/mentions'
 import { useShownError } from '@/lib/useShownError'
 import { useWorkspaces } from '@/api/workspaces'
 import type { MentionItem } from '@/api/types'
-import { useUsers } from '@/api/users'
 import { Button } from '@/components/ui/Button'
 import { MenuPanel } from '@/components/ui/Menu'
 import { roundButtonClass, roundButtonFill } from '@/components/ui/styles'
@@ -27,10 +26,8 @@ export function NotificationsMenu() {
   // Lasts through Try again and the polling refetches, so the error doesn't flip back to the skeleton.
   const mentionsError = useShownError(mentions)
   const markRead = useMarkMentionsRead()
-  const people = useUsers(workspace?.id).data ?? []
   const workspaces = useWorkspaces().data ?? []
   const data = mentions.data
-  const nameOf = (id: string) => people.find((u) => u.id === id)?.name ?? 'Someone'
 
   const unread = (data ?? []).filter((item) => !item.read).length
   const items = (data ?? []).filter((item) => !unreadOnly || !item.read)
@@ -125,7 +122,7 @@ export function NotificationsMenu() {
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-baseline justify-between gap-2">
-                        <span className={clsx('truncate text-sm', item.read ? 'text-fg-secondary' : 'font-semibold text-fg')}>{nameOf(item.authorId)} mentioned you</span>
+                        <span className={clsx('truncate text-sm', item.read ? 'text-fg-secondary' : 'font-semibold text-fg')}>{item.authorName} mentioned you</span>
                         <span className="shrink-0 text-[11px] text-fg-muted">{timeAgo(item.createdAt)}</span>
                       </span>
                       <span className="mt-0.5 line-clamp-2 block text-xs text-fg-muted">{item.excerpt}</span>

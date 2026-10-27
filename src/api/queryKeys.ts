@@ -67,7 +67,7 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
       return [qk.comments(event.taskKey), qk.mentions(), qk.taskHistory(event.taskKey), qk.projectHistory(event.projectId)]
     case 'ratesChanged':
       // Cost is worked out from rates on every read: the report, the dashboard and the Time tabs.
-      return [qk.rates(), ['time', 'report'], ['dashboard'], qk.timeAll()]
+      return [qk.rates(), ['time', 'report'], ['dashboard'], qk.timeAll(), ['tickets']]
     case 'filesChanged':
       return [qk.files(event.projectId)]
     case 'readChanged':

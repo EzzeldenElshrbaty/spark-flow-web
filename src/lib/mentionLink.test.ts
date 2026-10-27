@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { MentionItem } from '@/api/types'
 import { mentionLink } from './mentionLink'
 
-const item = (over: Partial<MentionItem>): MentionItem => ({ id: 'x', source: 'message', authorId: 'u', excerpt: '', createdAt: '', read: false, workspaceId: 'ws-eng', channelId: null, messageId: null, taskKey: null, projectId: null, ...over })
+const item = (over: Partial<MentionItem>): MentionItem => ({ id: 'x', source: 'message', authorId: 'u', excerpt: '', createdAt: '', read: false, workspaceId: 'ws-eng', authorName: 'A', channelId: null, messageId: null, taskKey: null, projectId: null, ...over })
 const workspaces = [{ id: 'ws-eng', slug: 'engineering' }, { id: 'ws-design', slug: 'design' }]
 
 describe('mentionLink', () => {

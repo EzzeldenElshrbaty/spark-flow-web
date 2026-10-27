@@ -116,7 +116,7 @@ export function DatabasePage() {
           {exportData.isError && <p role="alert" className={errorText}>The export didn't work. Try again.</p>}
         </Section>
 
-        <Section title="Import data" about="Replaces every record with an export file (from Export data). Uploaded files are deleted.">
+        <Section title="Import data" about="Replaces every record with an export file (from Export data). Uploaded files are deleted. Files aren't in the export, so attached files won't open after an import.">
           <label className="mt-4 inline-flex cursor-pointer items-center rounded-lg bg-surface px-3 py-2 text-sm font-medium text-fg ring-1 ring-line hover:bg-surface-sunken">
             Import data
             <input

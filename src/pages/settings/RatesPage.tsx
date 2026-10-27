@@ -32,7 +32,8 @@ function RateRow({ person, saved, since }: { person: User; saved: number | undef
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm text-fg">{person.name}</span>
           <span className="block truncate text-xs text-fg-muted">
-            {person.title} · {since && since !== START_OF_TIME ? `Since ${formatDate(since)}` : '—'}
+            {person.title}
+            {since && since !== START_OF_TIME && ` · Since ${formatDate(since)}`}
           </span>
         </span>
         <label className="flex items-center gap-2 text-sm text-fg-muted">

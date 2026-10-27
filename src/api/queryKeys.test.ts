@@ -44,7 +44,8 @@ describe('keysForEvent (M10)', () => {
     expect(keys).toEqual(expect.arrayContaining([['tickets', 'projects'], ['tickets', 'project'], ['dashboard']]))
   })
   it('rates, files, read state and a reset name what they make stale', () => {
-    expect(keysForEvent({ type: 'ratesChanged' })).toEqual([qk.rates(), ['time', 'report'], ['dashboard'], qk.timeAll()])
+    // Project summaries' cost (under 'tickets') too.
+    expect(keysForEvent({ type: 'ratesChanged' })).toEqual([qk.rates(), ['time', 'report'], ['dashboard'], qk.timeAll(), ['tickets']])
     expect(keysForEvent({ type: 'filesChanged', projectId: 'p1' })).toEqual([qk.files('p1')])
     expect(keysForEvent({ type: 'readChanged', userId: 'u1' })).toEqual([qk.channelsAll(), qk.mentions()])
     // The empty key matches every query.

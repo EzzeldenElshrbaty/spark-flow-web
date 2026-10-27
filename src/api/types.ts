@@ -222,6 +222,7 @@ export type CheckedInNow = { userId: string; since: string; running: { taskId: s
 export type MentionItem = {
   id: string; source: 'message' | 'reply' | 'comment'; authorId: string; excerpt: string; createdAt: string; read: boolean
   workspaceId: string                                    // where it opens; the bell lists every workspace's
+  authorName: string                                     // so a mention from another workspace still names its author
   channelId: string | null; messageId: string | null; taskKey: string | null; projectId: string | null
 }
 /** A project's time: every entry, and the hourly costs only for people who may see cost (else null). */

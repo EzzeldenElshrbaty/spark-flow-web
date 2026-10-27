@@ -182,3 +182,10 @@ describe('mention workspaces', () => {
   })
 })
 
+describe('mention author names', () => {
+  it("each mention carries its author's name", async () => {
+    await api.chat.send('c-general', 'Ping @[Nour](u-2)')
+    await as('u-2')
+    expect((await api.mentions.mine())[0]).toMatchObject({ authorName: 'Youssef Abdelrahman' })
+  })
+})
