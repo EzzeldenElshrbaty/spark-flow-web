@@ -7,6 +7,7 @@ import { delay } from './latency'
 import { findProject } from './projects'
 import type { MockHub } from './realtime'
 import { buildReport } from './report'
+import { ApiError } from '@/lib/apiError'
 import { badRequest, clone, currentUser, newId, notFound, requireCan } from './shared'
 
 const HOUR = 3_600_000
@@ -51,6 +52,42 @@ function startTimer(data: DbData, userId: string, target: TimeTarget, at: string
   stopRunning(data, userId, at)
   data.timeEntries.push({ id: newId('te'), userId, projectId, taskId, startedAt: at, endedAt: null, source: 'timer', note: '' })
   return projectId
+}
+
+/**
+ * The rules a manual entry (new or edited) keeps: it ends after it starts, not in the future, lasts at most 12 hours,
+ * has a short note and doesn't overlap the person's other time (`ignoreId` is the entry being edited).
+ */
+function checkEntry(
+  data: DbData,
+  userId: string,
+  input: { start: number; end: number; note: string; target: TimeTarget },
+  at: number,
+  ignoreId?: string,
+): { projectId: string; taskId: string | null; note: string } {
+  const { start, end } = input
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) throw badRequest('The end is before the start.')
+  if (end > at) throw badRequest("Time can't be logged in the future.")
+  if (end - start > MAX_ENTRY_HOURS * HOUR) throw badRequest(`One entry can be up to ${MAX_ENTRY_HOURS} hours.`)
+  const note = input.note.trim()
+  if (note.length > MAX_NOTE) throw badRequest(`Keep the note under ${MAX_NOTE} characters.`)
+  const { projectId, taskId } = resolveTarget(data, input.target)
+  // The person's other entries, the running one counted up to now (at most 12 hours).
+  const overlaps = data.timeEntries.some(
+    (e) => e.userId === userId && e.id !== ignoreId && new Date(e.startedAt).getTime() < end && entryEnd(e, new Date(at)) > start,
+  )
+  if (overlaps) throw badRequest('That overlaps time you already logged.')
+  return { projectId, taskId, note }
+}
+
+/** An entry I may change: mine (or anyone's, for an Admin), and not still running. */
+function changeableEntry(data: DbData, id: string): TimeEntry {
+  const me = currentUser(data)
+  const entry = data.timeEntries.find((e) => e.id === id)
+  if (!entry) throw notFound('Time entry', id)
+  if (entry.userId !== me.id && me.role !== 'admin') throw new ApiError({ title: 'Forbidden', status: 403, detail: 'You can only change your own time.' })
+  if (entry.endedAt === null) throw badRequest('Stop the timer first.')
+  return entry
 }
 
 /**
@@ -139,26 +176,45 @@ export function timeApi(db: MockDb, hub: MockHub, now: () => Date): Api['time'] 
       await delay()
       const stored = await db.update((data) => {
         const me = requireCan(data, 'time.logOwn')
-        const at = now().getTime()
         const start = new Date(input.startedAt).getTime()
         const end = new Date(input.endedAt).getTime()
-        if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) throw badRequest('The end is before the start.')
-        if (end > at) throw badRequest("Time can't be logged in the future.")
-        if (end - start > MAX_ENTRY_HOURS * HOUR) throw badRequest(`One entry can be up to ${MAX_ENTRY_HOURS} hours.`)
-        const note = input.note.trim()
-        if (note.length > MAX_NOTE) throw badRequest(`Keep the note under ${MAX_NOTE} characters.`)
-        const { projectId, taskId } = resolveTarget(data, input)
-        // My other entries, the running one counted up to now (at most 12 hours).
-        const overlaps = data.timeEntries.some(
-          (e) => e.userId === me.id && new Date(e.startedAt).getTime() < end && entryEnd(e, new Date(at)) > start,
-        )
-        if (overlaps) throw badRequest('That overlaps time you already logged.')
+        const { projectId, taskId, note } = checkEntry(data, me.id, { start, end, note: input.note, target: input }, now().getTime())
         const entry: TimeEntry = { id: newId('te'), userId: me.id, projectId, taskId, startedAt: new Date(start).toISOString(), endedAt: new Date(end).toISOString(), source: 'manual', note }
         data.timeEntries.push(entry)
         return clone(entry)
       })
       hub.publish({ type: 'timeLogged', userId: stored.userId, projectId: stored.projectId })
       return stored
+    },
+
+    async update(id, patch) {
+      await delay()
+      const { entry, was } = await db.update((data) => {
+        requireCan(data, 'time.logOwn')
+        const entry = changeableEntry(data, id)
+        const was = entry.projectId
+        const start = new Date(patch.startedAt ?? entry.startedAt).getTime()
+        const end = new Date(patch.endedAt ?? entry.endedAt!).getTime()
+        const target: TimeTarget = patch.target ?? (entry.taskId ? { taskId: entry.taskId } : { projectId: entry.projectId })
+        // The owner's rules: their other entries are what it mustn't overlap, whoever edits it.
+        const checked = checkEntry(data, entry.userId, { start, end, note: patch.note ?? entry.note, target }, now().getTime(), entry.id)
+        Object.assign(entry, { ...checked, startedAt: new Date(start).toISOString(), endedAt: new Date(end).toISOString() })
+        return { entry: clone(entry), was }
+      })
+      hub.publish({ type: 'timeLogged', userId: entry.userId, projectId: entry.projectId })
+      if (was !== entry.projectId) hub.publish({ type: 'timeLogged', userId: entry.userId, projectId: was })
+      return entry
+    },
+
+    async remove(id) {
+      await delay()
+      const gone = await db.update((data) => {
+        requireCan(data, 'time.logOwn')
+        const entry = changeableEntry(data, id)
+        data.timeEntries = data.timeEntries.filter((e) => e.id !== id)
+        return entry
+      })
+      hub.publish({ type: 'timeLogged', userId: gone.userId, projectId: gone.projectId })
     },
   }
 }

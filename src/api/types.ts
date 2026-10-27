@@ -196,6 +196,8 @@ export type TimeTarget = { taskId: string } | { projectId: string }
  */
 export type MyDay = { day: string; checkIn: CheckIn | null; openCheckIn: CheckIn | null; running: TimeEntry | null; entries: TimeEntry[] }
 export type NewManualEntry = TimeTarget & { startedAt: string; endedAt: string; note: string }
+/** A change to a closed entry; `target` moves it to another task or project. */
+export type TimeEntryPatch = Partial<Pick<NewManualEntry, 'startedAt' | 'endedAt' | 'note'>> & { target?: TimeTarget }
 
 /** Everything in the mock database, as Database → Export data downloads it. File bytes are not included (spec §10). */
 export type ExportBundle = { app: 'spark-flow'; version: number; exportedAt: string; data: unknown }
@@ -272,6 +274,9 @@ export interface Api {
     start(target: TimeTarget): Promise<MyDay>
     stop(): Promise<MyDay>
     addManual(entry: NewManualEntry): Promise<TimeEntry>
+    /** Mine (or anyone's, for an Admin), once stopped; checked like a new entry. */
+    update(id: string, patch: TimeEntryPatch): Promise<TimeEntry>
+    remove(id: string): Promise<void>
     /** The Time & cost page (Admin only): the last `days` days, ending now. */
     report(workspaceId: string, days: ReportPeriod): Promise<TimeReport>
   }

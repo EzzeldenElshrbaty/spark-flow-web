@@ -115,6 +115,8 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
       start: (target) => send('POST', '/api/time/start', target),
       stop: () => send('POST', '/api/time/stop'),
       addManual: (entry) => send('POST', '/api/time/entries', entry),
+      update: (id, patch) => send('PATCH', `/api/time/entries/${enc(id)}`, patch),
+      remove: (id) => send<void>('DELETE', `/api/time/entries/${enc(id)}`),
       report: (workspaceId, days) => get(`/api/workspaces/${enc(workspaceId)}/time-report?days=${days}`),
     },
     comments: {

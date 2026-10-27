@@ -2,7 +2,7 @@ import type { User } from '@/api/types'
 import { can, type Action, type ProjectRef, type ProjectScoped } from '@/lib/permissions'
 import { ApiError } from '@/lib/apiError'
 
-export type Thing = 'Workspace' | 'User' | 'Channel' | 'Message' | 'Reply' | 'Project' | 'Ticket' | 'File' | 'Phase' | 'Deliverable'
+export type Thing = 'Workspace' | 'User' | 'Channel' | 'Message' | 'Reply' | 'Time entry' | 'Project' | 'Ticket' | 'File' | 'Phase' | 'Deliverable'
 
 /** The 404 the mock throws for an unknown id or key. */
 export function notFound(thing: Thing, id: string): ApiError {

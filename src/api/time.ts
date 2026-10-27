@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import type { NewManualEntry, ReportPeriod, TimeTarget } from '@/api/types'
+import type { NewManualEntry, ReportPeriod, TimeEntryPatch, TimeTarget } from '@/api/types'
 import { qk } from '@/api/queryKeys'
 import { retryUnlessNotFound as retry } from '@/api/retry'
 import { api } from '@/lib/api'
@@ -23,6 +23,12 @@ export function useStopTimer() {
 }
 export function useAddTime() {
   return useMutation({ mutationFn: (entry: NewManualEntry) => api.time.addManual(entry) })
+}
+export function useUpdateTime() {
+  return useMutation({ mutationFn: ({ id, patch }: { id: string; patch: TimeEntryPatch }) => api.time.update(id, patch) })
+}
+export function useRemoveTime() {
+  return useMutation({ mutationFn: (id: string) => api.time.remove(id) })
 }
 
 /** The Time & cost report; only asked for by people who may see it. */

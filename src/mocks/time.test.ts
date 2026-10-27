@@ -180,3 +180,66 @@ describe('check-in, timer and manual time', () => {
     expect(yesterday.checkedOutAt).toBe(at(10, 0, -1).toISOString()) // its own start: the manual entry ended earlier
   })
 })
+
+describe('editing time', () => {
+  const entry = (start: Date, end: Date, taskId = 't-nex-101') => ({ taskId, startedAt: start.toISOString(), endedAt: end.toISOString(), note: '' })
+
+  it('the owner moves an entry to another task and time', async () => {
+    const made = await api.time.addManual(entry(at(6), at(7)))
+    const moved = await api.time.update(made.id, { target: { taskId: 't-nex-102' }, startedAt: at(6, 30).toISOString(), endedAt: at(7, 30).toISOString(), note: 'pairing' })
+    expect(moved).toMatchObject({ id: made.id, taskId: 't-nex-102', startedAt: at(6, 30).toISOString(), endedAt: at(7, 30).toISOString(), note: 'pairing', source: 'manual' })
+  })
+
+  it('an edit is checked like a new entry: end before start, future, over 12 h, overlap with another entry', async () => {
+    const a = await api.time.addManual(entry(at(6), at(7)))
+    await api.time.addManual(entry(at(7), at(8)))
+    await expect(api.time.update(a.id, { endedAt: at(5).toISOString() })).rejects.toMatchObject({ detail: 'The end is before the start.' })
+    await expect(api.time.update(a.id, { endedAt: at(10).toISOString() })).rejects.toMatchObject({ detail: "Time can't be logged in the future." })
+    await expect(api.time.update(a.id, { startedAt: at(5, 0, -1).toISOString() })).rejects.toMatchObject({ detail: 'One entry can be up to 12 hours.' })
+    await expect(api.time.update(a.id, { endedAt: at(7, 30).toISOString() })).rejects.toMatchObject({ detail: 'That overlaps time you already logged.' })
+  })
+
+  it('an edit onto its own range is allowed', async () => {
+    const a = await api.time.addManual(entry(at(6), at(7)))
+    expect((await api.time.update(a.id, { startedAt: at(6, 15).toISOString() })).startedAt).toBe(at(6, 15).toISOString())
+  })
+
+  it("a running entry can't be edited or deleted", async () => {
+    const day = await api.time.start({ taskId: 't-nex-102' })
+    const id = day.running!.id
+    await expect(api.time.update(id, { note: 'x' })).rejects.toMatchObject({ status: 400, detail: 'Stop the timer first.' })
+    await expect(api.time.remove(id)).rejects.toMatchObject({ status: 400, detail: 'Stop the timer first.' })
+  })
+
+  it("someone else's entry is refused; an admin may change it", async () => {
+    await api.users.viewAs('u-8') // Tarek
+    const his = await api.time.addManual(entry(at(6), at(7), 't-mob-104'))
+    await api.users.viewAs('u-3') // Mariam, a member
+    await expect(api.time.update(his.id, { note: 'mine' })).rejects.toMatchObject({ status: 403, detail: 'You can only change your own time.' })
+    await expect(api.time.remove(his.id)).rejects.toMatchObject({ status: 403 })
+    await api.users.viewAs('u-1') // Admin
+    expect((await api.time.update(his.id, { note: 'fixed by admin' })).note).toBe('fixed by admin')
+    expect((await api.time.update(his.id, { note: 'fixed by admin' })).userId).toBe('u-8')
+  })
+
+  it('remove takes the hours off the project and publishes timeLogged', async () => {
+    const made = await api.time.addManual(entry(at(6), at(7)))
+    const events: RealtimeEvent[] = []
+    hub.subscribe((e) => events.push(e))
+    const before = (await api.time.list('p-nex')).entries.length
+    await api.time.remove(made.id)
+    expect((await api.time.list('p-nex')).entries.length).toBe(before - 1)
+    expect(events).toContainEqual({ type: 'timeLogged', userId: 'u-1', projectId: 'p-nex' })
+  })
+
+  it('a forgotten 12 h timer entry can be cut to its real end', async () => {
+    now = at(7, 0, -1)
+    await api.time.start({ taskId: 't-nex-102' })
+    now = at(8) // next morning: the timer ran on
+    await api.time.stop()
+    const stopped = (await db.read()).timeEntries.find((e) => e.userId === 'u-1' && e.startedAt === at(7, 0, -1).toISOString())!
+    expect(new Date(stopped.endedAt!).getTime() - new Date(stopped.startedAt).getTime()).toBe(12 * 3_600_000)
+    const fixed = await api.time.update(stopped.id, { endedAt: at(17, 0, -1).toISOString() })
+    expect(fixed.endedAt).toBe(at(17, 0, -1).toISOString())
+  })
+})
