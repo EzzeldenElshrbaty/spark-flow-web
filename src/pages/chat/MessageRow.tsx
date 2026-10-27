@@ -12,6 +12,7 @@ import { formatWhen, timeAgo } from '@/lib/format'
 import { withInspector } from '@/lib/inspector'
 import { Composer } from '@/pages/chat/Composer'
 import { MessageActions } from '@/pages/chat/MessageActions'
+import { TaskEventCard } from '@/pages/chat/TaskEventCard'
 import { actionsFor } from '@/pages/chat/messageRights'
 import { TicketKey } from '@/pages/projects/ticketPills'
 
@@ -142,6 +143,7 @@ export function MessageRow({
       </div>
     )
   else if ('commentId' in message && message.commentId) body = <CommentCard message={message} />
+  else if ('taskEvent' in message && message.taskEvent) body = <TaskEventCard message={message} users={users} />
   else
     body = (
       <>

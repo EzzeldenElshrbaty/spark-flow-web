@@ -109,7 +109,7 @@ describe('createTicket', () => {
     const t = await createTicket(db, hub, newTicket())
     expect(t.linkedChannelId).toBeNull()
     expect(t.linkedMessageId).toBeNull()
-    expect(events).toEqual([{ type: 'ticketUpdated', ticket: t }])
+    expect(events.filter((e) => e.type === 'ticketUpdated')).toEqual([{ type: 'ticketUpdated', ticket: t }])
   })
 
   it('hands back a copy, not stored state', async () => {
@@ -128,7 +128,7 @@ describe('updateTicket', () => {
     expect(t.updatedAt > before.updatedAt).toBe(true)
     expect(t.createdAt).toBe(before.createdAt)
     expect(await api.tickets.get('NEX-101')).toMatchObject(t) // plus loggedHours and overdue
-    expect(events).toEqual([{ type: 'ticketUpdated', ticket: t }])
+    expect(events.filter((e) => e.type === 'ticketUpdated')).toEqual([{ type: 'ticketUpdated', ticket: t }])
   })
 
   it('can clear the assignee and story points with null', async () => {
@@ -154,5 +154,45 @@ describe('dev.resetDemoData', () => {
     expect((await api.tickets.get('NEX-101')).title).toBe(original.title)
     await expect(api.tickets.get('NEX-111')).rejects.toMatchObject({ status: 404 })
     expect(events).toEqual([]) // the UI clears its own cache
+  })
+})
+
+describe('task event cards', () => {
+  const cards = async () => (await db.read()).messages.filter((m) => m.taskEvent)
+
+  it('update posts one card per event in the project channel, in the same write, with no mentions', async () => {
+    await updateTicket(db, hub, 'NEX-101', { assigneeId: 'u-3', status: 'inProgress' })
+    const posted = await cards()
+    expect(posted.map((m) => m.taskEvent!.kind)).toEqual(['assigned', 'status'])
+    expect(posted.every((m) => m.channelId === 'c-p-nex' && m.mentions.length === 0 && m.linkedTicketKeys[0] === 'NEX-101')).toBe(true)
+    expect(posted[0]!.content).toBe('Assigned NEX-101 to Mariam Fathy')
+    expect(posted[1]!.content).toBe('Moved NEX-101 to In progress')
+  })
+
+  it('create posts a created card; done says Done', async () => {
+    const t = await createTicket(db, hub, newTicket({ title: 'Add rate limit' }))
+    await updateTicket(db, hub, t.key, { status: 'done' })
+    expect((await cards()).map((m) => m.content)).toEqual([`Created ${t.key}: Add rate limit`, `Done: ${t.key} Add rate limit`])
+  })
+
+  it('an assignee moving their own task posts the card', async () => {
+    const nex = (await db.read()).tickets.find((t) => t.key === 'NEX-106')!
+    await api.users.viewAs(nex.assigneeId!)
+    const next = nex.status === 'done' ? 'inReview' : 'done'
+    await api.tasks.update('NEX-106', { status: next })
+    expect((await cards()).map((m) => m.senderId)).toEqual([nex.assigneeId])
+  })
+
+  it('rank only, or a status patch to the same status, posts nothing', async () => {
+    const nex = (await db.read()).tickets.find((t) => t.key === 'NEX-101')!
+    await updateTicket(db, hub, 'NEX-101', { rank: 1 })
+    await updateTicket(db, hub, 'NEX-101', { status: nex.status })
+    expect(await cards()).toEqual([])
+  })
+
+  it('messageReceived is published for each card', async () => {
+    events.length = 0
+    await updateTicket(db, hub, 'NEX-101', { assigneeId: 'u-3', status: 'inProgress' })
+    expect(events.filter((e) => e.type === 'messageReceived').map((e) => e.type === 'messageReceived' && e.message.taskEvent?.kind)).toEqual(['assigned', 'status'])
   })
 })

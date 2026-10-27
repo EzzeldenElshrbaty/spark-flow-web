@@ -218,7 +218,7 @@ export type AddReplyInput = { messageId: string; content: string }
  * Adds a message from the current user inside a transaction; mentions and ticket keys come from the text. `extra`
  * carries what only some messages have (the comment a card stands for).
  */
-export function postMessage(data: DbData, input: SendMessageInput, extra: Partial<Pick<ChatMessage, 'commentId'>> = {}): ChatMessage {
+export function postMessage(data: DbData, input: SendMessageInput, extra: Partial<Pick<ChatMessage, 'commentId' | 'taskEvent'>> = {}): ChatMessage {
   const channel = findChannel(data, input.channelId)
   const lastInChannel = data.messages.reduce((t, m) => (m.channelId === channel.id && m.createdAt > t ? m.createdAt : t), '')
   const createdAt = stamp(lastInChannel)

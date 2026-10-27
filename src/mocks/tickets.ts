@@ -13,6 +13,7 @@ const byStatusThenRank = (a: Ticket, b: Ticket) =>
 const ticketNumber = (t: Ticket) => Number(t.key.split('-')[1])
 
 import { findProject } from './projects'
+import { postTaskEvents } from './taskEvents'
 
 function findTicket(data: DbData, key: string): Ticket {
   const ticket = data.tickets.find((t) => t.key === key)
@@ -83,9 +84,9 @@ export function tasksApi(db: MockDb, hub: MockHub, now: () => Date): Api['tasks'
 
 // ── Mutations (not on Api until Phase 4) ──────────────────────────────────
 
-/** Opens a ticket as the current user: next key for the project, last in its column. */
+/** Opens a ticket as the current user: next key for the project, last in its column; posts a Created card. */
 export async function createTicket(db: MockDb, hub: MockHub, input: NewTicket): Promise<Ticket> {
-  const ticket = await db.update((data) => {
+  const { ticket, cards } = await db.update((data) => {
     const project = findProject(data, input.projectId)
     const own = data.tickets.filter((t) => t.projectId === project.id)
     const number = data.counters[project.id] ?? Math.max(0, ...own.map(ticketNumber)) + 1
@@ -116,22 +117,26 @@ export async function createTicket(db: MockDb, hub: MockHub, input: NewTicket): 
     }
     data.tickets.push(created)
     data.counters[project.id] = number + 1
-    return created
+    return { ticket: created, cards: clone(postTaskEvents(data, null, created)) }
   })
   hub.publish({ type: 'ticketUpdated', ticket: clone(ticket) })
+  for (const message of cards) hub.publish({ type: 'messageReceived', message })
   return ticket
 }
 
-/** Changes the given fields of a ticket and bumps updatedAt. */
+/** Changes the given fields of a ticket and bumps updatedAt; an assignee or status change posts its card (taskEvents). */
 export async function updateTicket(db: MockDb, hub: MockHub, key: string, patch: TicketPatch): Promise<Ticket> {
-  const ticket = await db.update((data) => {
+  const { ticket, cards } = await db.update((data) => {
     const ticket = findTicket(data, key)
+    const before = clone(ticket)
     for (const [field, value] of Object.entries(patch)) {
       if (value !== undefined) (ticket as Record<string, unknown>)[field] = value
     }
     ticket.updatedAt = stamp(ticket.updatedAt)
-    return ticket
+    // The change and its cards in the project's chat are one write.
+    return { ticket, cards: clone(postTaskEvents(data, before, ticket)) }
   })
   hub.publish({ type: 'ticketUpdated', ticket: clone(ticket) })
+  for (const message of cards) hub.publish({ type: 'messageReceived', message })
   return ticket
 }

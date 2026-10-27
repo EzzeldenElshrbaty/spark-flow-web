@@ -1,16 +1,10 @@
 import clsx from 'clsx'
 import type { Priority, TicketStatus } from '@/api/types'
 
-/** Board order, label and hue of each status (backlog neutral → done emerald). */
-export const statuses: { status: TicketStatus; label: string }[] = [
-  { status: 'backlog', label: 'Backlog' },
-  { status: 'todo', label: 'To do' },
-  { status: 'inProgress', label: 'In progress' },
-  { status: 'inReview', label: 'In review' },
-  { status: 'done', label: 'Done' },
-]
+// Board order and names live in lib (the mock's event cards use them too); the hues are the pages'.
+import { statusLabel } from '@/lib/statuses'
 
-export const statusLabel = (status: TicketStatus) => statuses.find((s) => s.status === status)?.label ?? status
+export { statuses, statusLabel } from '@/lib/statuses'
 
 const statusStyle: Record<TicketStatus, { pill: string; dot: string }> = {
   backlog: { pill: 'bg-surface-muted text-fg-secondary', dot: 'bg-fg-subtle' },

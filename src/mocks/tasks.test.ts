@@ -34,7 +34,7 @@ describe('tasks', () => {
     hub.subscribe((e) => events.push(e))
     const task = await api.tasks.create(newTask())
     expect(task).toMatchObject({ key: 'MOB-109', phaseId: 'ph-mob-build', estimateHours: 3, loggedHours: 0, overdue: false, reporterId: 'u-4' })
-    expect(events.map((e) => e.type)).toEqual(['ticketUpdated'])
+    expect(events.map((e) => e.type)).toEqual(['ticketUpdated', 'messageReceived']) // the task, then its Created card
   })
 
   it('a member changes only the status of their own task', async () => {
