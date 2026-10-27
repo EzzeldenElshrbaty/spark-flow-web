@@ -37,7 +37,7 @@ export function AppLayout() {
         <main className="w-full flex-1 px-4 pb-[calc(6rem+var(--timer-bar,0px))] pt-6 md:px-6 lg:pb-10 xl:px-8">
           {/* Each page's code loads when it's first opened; this shows meanwhile (usually a blink). */}
           {account.error ? (
-            <AccountState error={account.error} onRetry={account.retry} />
+            <AccountState error={account.error} onRetry={account.retry} retrying={account.retrying} />
           ) : (
             <Suspense fallback={<PageSkeleton />}>
               <Outlet />
@@ -45,8 +45,9 @@ export function AppLayout() {
           )}
         </main>
       </div>
-      {/* Thread or ticket beside the content (xl), over it (sm–lg) or as a bottom sheet (phones); driven by the URL. */}
-      <Inspector />
+      {/* Thread or ticket beside the content (xl), over it (sm–lg) or as a bottom sheet (phones); driven by the URL.
+          Not without an account: nothing in it could load either. */}
+      {!account.error && <Inspector />}
       <PhoneTimerBar />
       <TimerAnnouncer />
       <MobileBottomBar onOpenMore={() => setDrawerOpen(true)} />

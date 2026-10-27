@@ -6,7 +6,7 @@ import { ApiError } from '@/lib/apiError'
  * What the shell shows when your account didn't load: signed out (401) with a way to sign in again, or a sentence
  * and Try again. Signing in itself is the backend's page (`/signin?returnTo=`), agreed with the .NET team.
  */
-export function AccountState({ error, onRetry }: { error: Error; onRetry: () => void }) {
+export function AccountState({ error, onRetry, retrying }: { error: Error; onRetry: () => void; retrying: boolean }) {
   const signedOut = error instanceof ApiError && error.status === 401
   return (
     <div role="alert" className="mx-auto mt-16 max-w-md rounded-xl border border-line bg-surface p-6 text-center">
@@ -18,7 +18,9 @@ export function AccountState({ error, onRetry }: { error: Error; onRetry: () => 
             Sign in
           </a>
         ) : (
-          <Button onClick={onRetry}>Try again</Button>
+          <Button onClick={onRetry} disabled={retrying}>
+            {retrying ? 'Trying…' : 'Try again'}
+          </Button>
         )}
       </div>
     </div>

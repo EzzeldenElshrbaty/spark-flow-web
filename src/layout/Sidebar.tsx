@@ -193,12 +193,12 @@ export function SidebarContent({ collapsed = false, onNavigate }: { collapsed?: 
               <GroupSkeleton />
             ) : (
               <ul className="space-y-0.5">
-                {dms.map(({ channel, label, presence }) => (
+                {dms.map(({ channel, label, presence, group }) => (
                   <li key={channel.id}>
                     <SidebarLink
                       to={paths.channel(slug, channel.id)}
                       label={label}
-                      icon={<PresenceDot presence={presence} />}
+                      icon={group ? <Users className="size-[18px]" aria-hidden /> : <PresenceDot presence={presence} />}
                       badge={channel.unreadCount}
                       collapsed={collapsed}
                       onNavigate={onNavigate}

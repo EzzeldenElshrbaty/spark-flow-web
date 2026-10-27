@@ -187,6 +187,28 @@ describe('createDb', () => {
     expect(await db.read()).toEqual(bundle.data)
   })
 
+  it('export while viewing as someone keeps the default person', async () => {
+    const db = createDb(createMemoryStore(), fakeSeed)
+    await db.update((d) => {
+      d.users.push({ ...d.users[0]!, id: 'u2', name: 'Bea' })
+    })
+    db.actAs('u2')
+    expect((await db.read()).currentUserId).toBe('u2')
+    expect((await db.exportAll()).data.currentUserId).toBe('u1')
+  })
+
+  it('a v4 export imports and is upgraded', async () => {
+    const db = createDb(createMemoryStore(), fakeSeed)
+    const v4 = { ...emptyData(), version: 4, counters: { p1: 3 }, projects: [{ id: 'p1', board: [{ status: 'done', label: 'Shipped' }] }] } as unknown as DbData
+    delete (v4 as Partial<DbData>).activity
+    await db.importAll({ app: 'spark-flow', version: 4, exportedAt: 'T', data: v4 })
+    const data = await db.read()
+    expect(data.version).toBe(DB_VERSION)
+    expect(data.counters).toEqual({ p1: 3 })
+    expect(data.activity).toEqual([])
+    expect(data.projects[0]!.board![0]).toEqual({ id: 'done', label: 'Shipped', category: 'done' })
+  })
+
   it('importAll rejects bad bundles without writing', async () => {
     const db = createDb(createMemoryStore(), fakeSeed)
     const before = await db.read()

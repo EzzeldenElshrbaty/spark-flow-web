@@ -160,12 +160,16 @@ export function createDb(store: MockStore, seed: (now: Date) => SeedResult, now:
     }
   }
 
-  /** Runs fn on good data in one transaction, seeding first when needed. `save` false leaves the document as it was. */
-  const run = async <T>(fn: (data: DbData) => T, save: boolean): Promise<T> => {
+  /**
+   * Runs fn on good data in one transaction, seeding first when needed. `save` false leaves the document as it was;
+   * `asPerson` false hands fn the document's own default person instead of this tab's.
+   */
+  const run = async <T>(fn: (data: DbData) => T, save: boolean, asPerson = true): Promise<T> => {
+    const view = (data: DbData) => (asPerson ? asActor(data) : data)
     if (memory) {
       const copy = structuredClone(memory)
       const stored = copy.currentUserId
-      const result = fn(asActor(copy))
+      const result = fn(view(copy))
       copy.currentUserId = stored
       if (save) memory = copy
       return result
@@ -192,7 +196,7 @@ export function createDb(store: MockStore, seed: (now: Date) => SeedResult, now:
       }
       const before = save ? null : structuredClone(data)
       const stored = data.currentUserId
-      const value = fn(asActor(data))
+      const value = fn(view(data))
       // The saved document keeps its own default person; who acted is this tab's business.
       data.currentUserId = stored
       ran = true
@@ -201,7 +205,7 @@ export function createDb(store: MockStore, seed: (now: Date) => SeedResult, now:
     if (seededFiles) await writeFiles(seededFiles)
     if (!ran && newer) {
       useMemory(newer)
-      return run(fn, save)
+      return run(fn, save, asPerson)
     }
     return result
   }
@@ -232,12 +236,14 @@ export function createDb(store: MockStore, seed: (now: Date) => SeedResult, now:
       await writeFiles(seeded.files)
     },
     async exportAll() {
-      const data = await this.read()
+      // The file carries the document's default person, not whoever this tab is viewing as.
+      const data = await run((d) => structuredClone(d), false, false)
       return { app: 'spark-flow', version: DB_VERSION, exportedAt: now().toISOString(), data }
     },
     async importAll(bundle) {
-      if (!isRecord(bundle) || bundle.app !== 'spark-flow' || bundle.version !== DB_VERSION) throw badImport()
-      const data = bundle.data
+      if (!isRecord(bundle) || bundle.app !== 'spark-flow' || typeof bundle.version !== 'number' || bundle.version > DB_VERSION) throw badImport()
+      // An export from an older version goes through the same migrations as an older saved document.
+      const data = bundle.version < DB_VERSION ? upgraded(bundle.data) : bundle.data
       if (!hasShape(data) || data.version !== DB_VERSION || !hasUsableRecords(data)) throw badImport()
       if (memory) {
         memory = structuredClone(data)

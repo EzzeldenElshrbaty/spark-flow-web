@@ -10,12 +10,12 @@ export function entryEnd(entry: Pick<TimeEntry, 'startedAt' | 'endedAt'>, now: D
   return Math.min(now.getTime(), new Date(entry.startedAt).getTime() + MAX_ENTRY_HOURS * HOUR)
 }
 
-/** An entry's hours; a running entry counts up to now (at most 12 hours). Shared by the mock server and the pages. */
 /** A timer entry that was stopped by the 12-hour limit, not by the person: likely forgotten, worth fixing. */
 export function capped(entry: Pick<TimeEntry, 'startedAt' | 'endedAt' | 'source'>): boolean {
   return entry.source === 'timer' && entry.endedAt !== null && new Date(entry.endedAt).getTime() - new Date(entry.startedAt).getTime() === MAX_ENTRY_HOURS * 3_600_000
 }
 
+/** An entry's hours; a running entry counts up to now (at most 12 hours). Shared by the mock server and the pages. */
 export function entryHours(entry: Pick<TimeEntry, 'startedAt' | 'endedAt'>, now: Date): number {
   return Math.max(0, entryEnd(entry, now) - new Date(entry.startedAt).getTime()) / HOUR
 }

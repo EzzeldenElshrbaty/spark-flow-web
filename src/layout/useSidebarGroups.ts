@@ -6,7 +6,8 @@ import { channelLabel, sortChannels } from '@/lib/channels'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { useRole } from '@/lib/useRole'
 
-export type ChannelRow = { channel: Channel; label: string; presence: Presence }
+/** group: a direct message with more than one other person, so no one presence stands for it. */
+export type ChannelRow = { channel: Channel; label: string; presence: Presence; group: boolean }
 
 /** What the sidebar lists for the workspace on screen: channels, direct messages and projects. */
 export function useSidebarGroups() {
@@ -20,7 +21,7 @@ export function useSidebarGroups() {
   const sorted = sortChannels(channelsQuery.data ?? [])
   const row = (channel: Channel): ChannelRow => {
     const other = channel.memberIds.find((id) => id !== persona.id) ?? persona.id
-    return { channel, label: channelLabel(channel, users, persona.id), presence: users.find((u) => u.id === other)?.presence ?? 'offline' }
+    return { channel, label: channelLabel(channel, users, persona.id), presence: users.find((u) => u.id === other)?.presence ?? 'offline', group: channel.memberIds.length > 2 }
   }
   const projects: Project[] = projectsQuery.data ?? []
 

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router'
 import { useOpenDm } from '@/api/chat'
 import { useProjectSummaries, useTeams } from '@/api/projects'
 import { useMe, useUsers } from '@/api/users'
+import type { User } from '@/api/types'
 import { Avatar } from '@/components/ui/Avatar'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -10,21 +11,39 @@ import { QueryError } from '@/components/ui/QueryError'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { paths } from '@/lib/paths'
 
-/** "Message": opens (or starts) the conversation with this person. */
-function MessageButton({ workspaceId, workspaceSlug, userId, name }: { workspaceId: string; workspaceSlug: string; userId: string; name: string }) {
+/**
+ * One person in a team, with "Message", which opens (or starts) the conversation with them. The button waits until
+ * your own account has loaded (`canMessage`), and is left out on your own row.
+ */
+function MemberRow({ user, workspaceId, workspaceSlug, canMessage }: { user: User; workspaceId?: string; workspaceSlug: string; canMessage: boolean }) {
   const navigate = useNavigate()
   const open = useOpenDm()
   return (
-    <button
-      type="button"
-      disabled={open.isPending}
-      aria-label={`Message ${name}`}
-      title={open.error ? (open.error as Error).message : `Message ${name}`}
-      onClick={() => open.mutate({ workspaceId, userIds: [userId] }, { onSuccess: (dm) => navigate(paths.channel(workspaceSlug, dm.id)) })}
-      className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-fg-secondary ring-1 ring-line hover:bg-surface-muted disabled:opacity-60"
-    >
-      <MessageSquare className="size-3.5" /> {open.isPending ? 'Opening…' : 'Message'}
-    </button>
+    <li className="py-2.5">
+      <div className="flex items-center gap-3">
+        <Avatar name={user.name} size="sm" />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm text-fg">{user.name}</span>
+          <span className="block truncate text-xs text-fg-muted">{user.title}</span>
+        </span>
+        {workspaceId && canMessage && (
+          <button
+            type="button"
+            disabled={open.isPending}
+            aria-label={`Message ${user.name}`}
+            onClick={() => open.mutate({ workspaceId, userIds: [user.id] }, { onSuccess: (dm) => navigate(paths.channel(workspaceSlug, dm.id)) })}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-fg-secondary ring-1 ring-line hover:bg-surface-muted disabled:opacity-60"
+          >
+            <MessageSquare className="size-3.5" /> {open.isPending ? 'Opening…' : 'Message'}
+          </button>
+        )}
+      </div>
+      {open.isError && (
+        <p role="alert" className="mt-1 ps-11 text-xs text-red-600 dark:text-red-400">
+          {(open.error as Error).message || "Couldn't open the conversation."}
+        </p>
+      )}
+    </li>
   )
 }
 
@@ -60,14 +79,7 @@ export function TeamsPage() {
                 <CardHeader title={`${team.name} · ${members.length} ${members.length === 1 ? 'person' : 'people'}`} />
                 <ul className="divide-y divide-line-subtle px-5">
                   {members.map((u) => (
-                    <li key={u.id} className="flex items-center gap-3 py-2.5">
-                      <Avatar name={u.name} size="sm" />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm text-fg">{u.name}</span>
-                        <span className="block truncate text-xs text-fg-muted">{u.title}</span>
-                      </span>
-                      {workspace && u.id !== meId && <MessageButton workspaceId={workspace.id} workspaceSlug={ws} userId={u.id} name={u.name} />}
-                    </li>
+                    <MemberRow key={u.id} user={u} workspaceId={workspace?.id} workspaceSlug={ws} canMessage={meId !== undefined && u.id !== meId} />
                   ))}
                   {members.length === 0 && <li className="py-3 text-sm text-fg-muted">No one yet.</li>}
                 </ul>

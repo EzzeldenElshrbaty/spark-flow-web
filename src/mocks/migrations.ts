@@ -5,9 +5,11 @@ import { DEFAULT_COLUMNS } from '@/lib/statuses'
  * document in place; it only runs on a copy, inside the transaction that then saves it.
  */
 export const migrations: Record<number, (doc: Record<string, unknown>) => void> = {
-  // 4: channel read state per person. What was read so far belongs to the document's default person.
+  // 4: channel read state per person. What was read so far is everyone's starting point, so nobody's chat turns unread.
   3: (doc) => {
-    doc.reads = { [String(doc.currentUserId)]: doc.reads ?? {} }
+    const reads = (doc.reads ?? {}) as Record<string, string>
+    const ids = new Set([String(doc.currentUserId), ...((doc.users as { id?: unknown }[]) ?? []).map((u) => String(u.id))])
+    doc.reads = Object.fromEntries([...ids].map((id) => [id, { ...reads }]))
   },
   // 5: board columns have an id and a type; history starts empty. Old names and order stay; types come from the ids.
   4: (doc) => {
