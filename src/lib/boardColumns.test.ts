@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { BoardColumn } from '@/api/types'
-import { categoryOf, columnErrors, columnLabel, columnsOf, firstOf, moveColumn } from './boardColumns'
+import { categoryOf, columnErrors, columnLabel, columnsOf, defaultMoveTo, firstOf, moveColumn } from './boardColumns'
 import { DEFAULT_COLUMNS } from './statuses'
 
 const custom: BoardColumn[] = [
@@ -55,5 +55,19 @@ describe('columnErrors', () => {
     expect(columnErrors(with_(2, { category: 'inProgress' }))).toBe('Each type needs at least one column.')
     const many = Array.from({ length: 11 }, (_, i): BoardColumn => ({ id: `c${i}`, label: `C${i}`, category: i === 0 ? 'todo' : i === 1 ? 'done' : 'inProgress' }))
     expect(columnErrors(many)).toBe('A board can have up to 10 columns.')
+  })
+})
+
+describe('defaultMoveTo', () => {
+  it('the first other column of the same type, else the first other', () => {
+    const cols: BoardColumn[] = [
+      { id: 'a', label: 'A', category: 'todo' },
+      { id: 'b', label: 'B', category: 'inProgress' },
+      { id: 'c', label: 'C', category: 'inProgress' },
+      { id: 'd', label: 'D', category: 'done' },
+    ]
+    expect(defaultMoveTo(cols, 'c')).toBe('b')
+    expect(defaultMoveTo(cols, 'b')).toBe('c')
+    expect(defaultMoveTo(cols, 'a')).toBe('b')
   })
 })

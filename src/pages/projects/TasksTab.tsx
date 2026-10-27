@@ -88,7 +88,7 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
   if (tickets.isError) body = <QueryError what="Tasks" onRetry={() => void tickets.refetch()} />
   else if (tickets.isPending) body = view === 'board' ? <BoardSkeleton /> : <BacklogSkeleton />
   else if (view === 'board') body = (
-      <ProjectBoard tickets={shown} users={people} canMove={canMove} onMove={move} error={update.error ? update.error.message : null} board={project.board} onBoard={onBoard} />
+      <ProjectBoard tickets={shown} users={people} canMove={canMove} onMove={move} error={update.error ? update.error.message : null} board={project.board} onBoard={onBoard} projectId={project.id} />
     )
   else body = <ProjectBacklog tasks={shown} phases={phases} users={people} board={project.board} />
 

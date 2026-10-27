@@ -16,11 +16,13 @@ import {
 import { horizontalListSortingStrategy, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import clsx from 'clsx'
-import { ArrowLeft, ArrowRight, Inbox, MoreHorizontal, Pencil } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Inbox, MoreHorizontal, Pencil, Plus, Shapes, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { BoardColumn as Column, StatusCategory, TaskView, TicketPatch, TicketStatus, User } from '@/api/types'
 import { MenuPanel } from '@/components/ui/Menu'
-import { columnErrors, columnsOf, moveColumn } from '@/lib/boardColumns'
+import { canDeleteColumn, columnErrors, columnsOf, MAX_COLUMNS, moveColumn } from '@/lib/boardColumns'
+import { ColumnSheet } from '@/pages/projects/ColumnSheet'
+import { DeleteColumnSheet } from '@/pages/projects/DeleteColumnSheet'
 import { DEFAULT_COLUMNS } from '@/lib/statuses'
 import { boardMove, prunePending, withPending, type PendingMoves } from '@/pages/projects/boardMove'
 import { TicketRow } from '@/pages/projects/TicketRow'
@@ -76,8 +78,26 @@ function BoardCard({ ticket, assignee, movable }: { ticket: TaskView; assignee: 
   )
 }
 
-/** The ⋯ on a column header, for the project's manager: rename, and move a place towards either side. */
-function ColumnMenu({ label, first, last, onRename, onMove }: { label: string; first: boolean; last: boolean; onRename: () => void; onMove: (side: 'left' | 'right') => void }) {
+/** The ⋯ on a column header, for the project's manager: rename, change type, move a place either way, delete. */
+function ColumnMenu({
+  label,
+  first,
+  last,
+  canDelete,
+  onRename,
+  onMove,
+  onChangeType,
+  onDelete,
+}: {
+  label: string
+  first: boolean
+  last: boolean
+  canDelete: boolean
+  onRename: () => void
+  onMove: (side: 'left' | 'right') => void
+  onChangeType: () => void
+  onDelete: () => void
+}) {
   const [open, setOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
   // In right-to-left the board reads the other way: "left" is a later place.
@@ -118,6 +138,23 @@ function ColumnMenu({ label, first, last, onRename, onMove }: { label: string; f
             <ArrowRight className="size-4 shrink-0" /> Move right
           </button>
         )}
+        <button type="button" role="menuitem" className={menuItem} onClick={pick(onChangeType)}>
+          <Shapes className="size-4 shrink-0" /> Change type
+        </button>
+        <button
+          type="button"
+          role="menuitem"
+          disabled={!canDelete}
+          title={canDelete ? undefined : 'Each type needs at least one column.'}
+          className={clsx(menuItem, 'text-red-600 disabled:cursor-not-allowed disabled:opacity-50 dark:text-red-400')}
+          onClick={pick(onDelete)}
+        >
+          <Trash2 className="size-4 shrink-0" />
+          <span className="min-w-0">
+            Delete column
+            {!canDelete && <span className="block text-xs text-fg-muted">Each type needs at least one column.</span>}
+          </span>
+        </button>
       </MenuPanel>
     </div>
   )
@@ -137,6 +174,9 @@ function BoardColumn({
   last,
   onRename,
   onMoveSide,
+  canDelete,
+  onChangeType,
+  onDelete,
 }: {
   status: TicketStatus
   label: string
@@ -150,6 +190,9 @@ function BoardColumn({
   last: boolean
   onRename: (label: string) => Promise<string | null>
   onMoveSide: (side: 'left' | 'right') => void
+  canDelete: boolean
+  onChangeType: () => void
+  onDelete: () => void
 }) {
   const { setNodeRef } = useDroppable({ id: COLUMN + status })
   const sortable = useSortable({ id: HEADER + status, disabled: !editable })
@@ -211,7 +254,9 @@ function BoardColumn({
             </span>
           )}
           <span className="ms-auto rounded-full bg-surface/80 px-2 py-px text-xs font-medium tabular-nums text-fg-tertiary">{items.length}</span>
-          {editable && !renaming && <ColumnMenu label={label} first={first} last={last} onRename={startRename} onMove={onMoveSide} />}
+          {editable && !renaming && (
+            <ColumnMenu label={label} first={first} last={last} canDelete={canDelete} onRename={startRename} onMove={onMoveSide} onChangeType={onChangeType} onDelete={onDelete} />
+          )}
         </h2>
         <p className="mt-1 ps-4 text-xs tabular-nums text-fg-muted">
           <span className="font-medium text-fg-secondary">{hours}h</span> logged
@@ -254,6 +299,7 @@ export function ProjectBoard({
   error,
   board,
   onBoard,
+  projectId,
 }: {
   tickets: TaskView[]
   users: User[]
@@ -264,6 +310,8 @@ export function ProjectBoard({
   board?: Column[]
   /** Saves the columns; given only to whoever may change them. */
   onBoard?: (columns: Column[]) => Promise<unknown>
+  /** For adding and deleting columns (with onBoard). */
+  projectId?: string
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -290,6 +338,9 @@ export function ProjectBoard({
   }, [boardSaved])
   const order = boardDraft ?? savedBoard
   const editable = Boolean(onBoard)
+  const [adding, setAdding] = useState(false)
+  const [typing, setTyping] = useState<Column | null>(null)
+  const [deleting, setDeleting] = useState<Column | null>(null)
   const columns = order.map(({ id, label, category }) => ({ status: id, label, category, items: shown.filter((t) => t.status === id).sort(byRank) }))
   const find = (key: string) => shown.find((t) => t.key === key)
   const columnOf = (id: string) =>
@@ -402,9 +453,21 @@ export function ProjectBoard({
                 last={i === columns.length - 1}
                 onRename={rename(c.status)}
                 onMoveSide={moveSide(c.status)}
+                canDelete={canDeleteColumn(order, c.status)}
+                onChangeType={() => setTyping(order.find((o) => o.id === c.status) ?? null)}
+                onDelete={() => setDeleting(order.find((o) => o.id === c.status) ?? null)}
               />
             ))}
           </SortableContext>
+          {editable && projectId && order.length < MAX_COLUMNS && (
+            <button
+              type="button"
+              onClick={() => setAdding(true)}
+              className="flex h-24 w-[85%] shrink-0 snap-start items-center justify-center gap-2 rounded-xl border border-dashed border-line-strong text-sm font-medium text-fg-secondary hover:bg-surface-muted hover:text-fg md:w-[296px]"
+            >
+              <Plus className="size-4" /> Add column
+            </button>
+          )}
         </div>
         <DragOverlay>
           {active && (
@@ -419,6 +482,17 @@ export function ProjectBoard({
           )}
         </DragOverlay>
       </DndContext>
+      {adding && projectId && <ColumnSheet projectId={projectId} columns={order} onClose={() => setAdding(false)} />}
+      {typing && projectId && <ColumnSheet projectId={projectId} columns={order} column={typing} onClose={() => setTyping(null)} />}
+      {deleting && projectId && (
+        <DeleteColumnSheet
+          projectId={projectId}
+          columns={order}
+          column={deleting}
+          count={tickets.filter((t) => t.status === deleting.id).length}
+          onClose={() => setDeleting(null)}
+        />
+      )}
     </>
   )
 }

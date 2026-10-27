@@ -38,3 +38,16 @@ export function columnErrors(columns: BoardColumn[]): string | null {
   if (columns.length > MAX_COLUMNS) return `A board can have up to ${MAX_COLUMNS} columns.`
   return null
 }
+
+/** Where a deleted column's tasks go unless the person picks: the first other column of its type, else the first other. */
+export function defaultMoveTo(columns: BoardColumn[], id: string): string {
+  const gone = columns.find((c) => c.id === id)
+  const others = columns.filter((c) => c.id !== id)
+  return (others.find((c) => c.category === gone?.category) ?? others[0])?.id ?? ''
+}
+
+/** Whether a column may be deleted: it isn't the last of its type. */
+export const canDeleteColumn = (columns: BoardColumn[], id: string) => {
+  const column = columns.find((c) => c.id === id)
+  return Boolean(column) && columns.filter((c) => c.category === column!.category).length > 1
+}
