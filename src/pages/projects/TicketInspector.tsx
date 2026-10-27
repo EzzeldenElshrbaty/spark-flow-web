@@ -20,6 +20,8 @@ import { usePermission } from '@/lib/usePermission'
 import { TaskSheet } from '@/pages/projects/TaskSheet'
 import { AddTimeSheet } from '@/pages/time/AddTimeSheet'
 import { TaskActivity } from '@/pages/projects/TaskActivity'
+import { HistoryList } from '@/pages/projects/HistoryList'
+import { useTaskHistory } from '@/api/activity'
 import { BugPill, OverduePill, PriorityPill, StatusPill, hoursLabel } from '@/pages/projects/ticketPills'
 import { NotFound } from '@/pages/NotFound'
 import { isPastDue } from '@/lib/dates'
@@ -63,7 +65,8 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
   const [archiving, setArchiving] = useState(false)
   const archive = useArchiveTask()
   const restore = useRestoreTask()
-  const [tab, setTab] = useState<'details' | 'activity'>('details')
+  const [tab, setTab] = useState<'details' | 'activity' | 'history'>('details')
+  const history = useTaskHistory(ticketKey, tab === 'history')
   const comments = useComments(ticketKey)
   const myDay = useMyDay()
   const start = useStartTimer()
@@ -211,7 +214,8 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
           {(
             [
               ['details', 'Details'],
-              ['activity', 'Activity'],
+              ['activity', 'Comments'],
+              ['history', 'History'],
             ] as const
           ).map(([value, label]) => (
             <button
@@ -231,7 +235,17 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
             </button>
           ))}
         </div>
-        {tab === 'details' ? details : <TaskActivity task={t} project={project} users={users.data ?? []} />}
+        {tab === 'details' ? (
+          details
+        ) : tab === 'activity' ? (
+          <TaskActivity task={t} project={project} users={users.data ?? []} />
+        ) : history.isError ? (
+          <QueryError what="History" onRetry={() => void history.refetch()} />
+        ) : !history.data ? (
+          <div className="h-24 animate-pulse rounded-lg bg-surface-muted" aria-hidden />
+        ) : (
+          <HistoryList entries={history.data} users={users.data ?? []} project={project} phases={phases.data ?? []} withKey={false} />
+        )}
       </>
     )
   }
