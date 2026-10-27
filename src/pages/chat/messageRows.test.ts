@@ -9,7 +9,7 @@ const msg = (over: Partial<ChatMessage> = {}): ChatMessage => {
   n++
   return {
     id: `m${n}`, channelId: 'c1', seq: n, senderId: 'u-2', content: `hi ${n}`, attachments: [], reactions: [], threadCount: 0, lastReplyAt: null,
-    linkedTicketKeys: [], mentions: [], editedAt: null, createdAt: at(27, 10, 0), ...over,
+    linkedTicketKeys: [], mentions: [], body: [], editedAt: null, createdAt: at(27, 10, 0), ...over,
   }
 }
 const now = new Date(2026, 9, 28, 12, 0)
@@ -34,6 +34,10 @@ describe('canContinue (spec 6.2 grouping rule)', () => {
     expect(canContinue(card, msg())).toBe(false)
     expect(canContinue(msg(), card)).toBe(false)
     expect(canContinue(msg(), msg({ commentId: 'k1' }))).toBe(false)
+  })
+  it('system messages never group', () => {
+    expect(canContinue(msg(), msg({ system: { kind: 'joined' } }))).toBe(false)
+    expect(canContinue(msg({ system: { kind: 'left' } }), msg())).toBe(false)
   })
 })
 
@@ -81,6 +85,20 @@ describe('buildRows', () => {
     expect(kinds(buildRows([a, b], { newAfterSeq: a.seq - 5, hasOlder: false, now }))).toContain('new')
     // The marker message itself is loaded: the line goes after it.
     expect(kinds(buildRows([a, b], { newAfterSeq: a.seq, hasOlder: true, now }))).toContain('new')
+  })
+
+  it('drops a deleted message without replies; one with replies stays to hold its thread (spec 6.3)', () => {
+    const a = msg({ id: 'a', createdAt: at(28, 9, 0) })
+    const gone = msg({ id: 'gone', createdAt: at(28, 9, 1), deletedAt: at(28, 9, 2) })
+    const kept = msg({ id: 'kept', createdAt: at(28, 9, 2), deletedAt: at(28, 9, 3), threadCount: 2 })
+    expect(kinds(buildRows([a, gone, kept], { newAfterSeq: null, now }))).toEqual(['day:Today', 'a', 'kept'])
+  })
+
+  it('system messages are never unread: no New line before them', () => {
+    const a = msg({ createdAt: at(28, 9, 0) })
+    const joined = msg({ id: 'joined', createdAt: at(28, 9, 1), system: { kind: 'joined' } })
+    expect(kinds(buildRows([a, joined], { newAfterSeq: a.seq, now }))).not.toContain('new')
+    expect(unreadSummary([a, joined], a.seq, 'u-1').count).toBe(0)
   })
 
   it('keys are stable: a message keeps its key when older ones are added', () => {

@@ -9,8 +9,11 @@ export type MessageListRow =
 
 const GROUP_MS = 5 * 60_000
 
-/** Cards stand alone: they never take an author line from, or give one to, a neighbour. */
-const isCard = (m: ChatMessage) => Boolean(m.taskEvent || m.commentId)
+/**
+ * Cards, system messages and deleted placeholders stand alone: they never take an author line from, or give one to,
+ * a neighbour (a placeholder keeps its author, so it's clear whose message is gone).
+ */
+const standsAlone = (m: ChatMessage) => Boolean(m.taskEvent || m.commentId || m.system || m.deletedAt)
 
 /**
  * Whether `next` renders as a continuation of `prev` (spec 6.2): same author, same day, at most 5 minutes later,
@@ -23,8 +26,8 @@ export function canContinue(prev: ChatMessage, next: ChatMessage): boolean {
     localDay(new Date(prev.createdAt)) === localDay(new Date(next.createdAt)) &&
     gap >= 0 &&
     gap <= GROUP_MS &&
-    !isCard(prev) &&
-    !isCard(next) &&
+    !standsAlone(prev) &&
+    !standsAlone(next) &&
     prev.threadCount === 0
   )
 }
@@ -43,8 +46,8 @@ export function dayLabel(day: Date, now: Date): string {
   })
 }
 
-/** Whether a message is one I haven't read: someone else's, after my marker. */
-const unread = (m: ChatMessage, newAfterSeq: number | null, meId?: string) => newAfterSeq !== null && m.seq > newAfterSeq && m.senderId !== meId
+/** Whether a message is one I haven't read: someone else's, after my marker, not what the channel itself says. */
+const unread = (m: ChatMessage, newAfterSeq: number | null, meId?: string) => newAfterSeq !== null && m.seq > newAfterSeq && m.senderId !== meId && !m.system
 
 /**
  * The list's rows from its messages, oldest first: a divider at each day, the New line before the first message
@@ -61,6 +64,8 @@ export function buildRows(
   const markerLoaded = !hasOlder || (newAfterSeq !== null && messages.length > 0 && messages[0].seq <= newAfterSeq)
   let newShown = !markerLoaded
   for (const message of messages) {
+    // A deleted message is gone from the list, unless its thread needs it to hang from (spec 6.3).
+    if (message.deletedAt && message.threadCount === 0) continue
     const day = localDay(new Date(message.createdAt))
     const newDay = !prev || localDay(new Date(prev.createdAt)) !== day
     if (newDay) rows.push({ kind: 'day', key: `day-${day}`, label: dayLabel(new Date(message.createdAt), now) })

@@ -72,3 +72,26 @@ On open the client may page back up to 10 pages to reach the person's first unre
 | Newer messages | `GET /api/channels/:id/messages?after=<seq>` | Up to 30 messages with a larger `seq`, newest first. `nextCursor` is the newest `seq` on the page while more newer ones exist, else `null`. |
 
 The date menu offers Today, Yesterday, Last week, Last month (each from local midnight) and The very beginning. "Jump to a specific date…" comes in Phase 3.
+
+## Phase 1 · Feature 4: message rendering
+
+### Message body
+
+Every message and thread reply carries `body`: the text as structured rich text (spec §7). `content` stays the text as written (search, editing). The shapes are in `src/lib/messageBody.ts`:
+
+- Blocks: `p` (inlines), `quote` (blocks), `ul` / `ol` (items of inlines), `code` (text).
+- Inlines: `text` with optional `marks` (`b`, `i`, `u`, `s`, `code`), `link` (`href`, `text`; http and https only), `user` (`id`, `name` when written), `all`, `channel` (`id`, `name`), `task` (`key`), `project` (`key`).
+
+Until the rich composer lands (feature 5), the server works `body` out from `content` on send, reply and edit, with the same rules as `parseBody` in that file (the composer's markdown: `*bold*`, `_italic_`, `~strike~`, `` `code` ``, ```` ``` ```` blocks, `> ` quotes, `- ` and `1. ` lists; mentions `@[Name](id)`, `@all`, `@KEY`, `@KEY-1`; channels `#[name](id)`; bare task keys matching `[A-Z][A-Z0-9]+-\d+`). A deleted message has `body: []`.
+
+### System messages
+
+`system` is set on what the channel itself says, sent by whoever made the change: `{ kind: 'joined' }`, `{ kind: 'left' }`, `{ kind: 'renamed', from, to }`, `{ kind: 'topic', to }`. They arrive as `message.created`, never count as unread, and can't be edited or deleted.
+
+### Task references
+
+| Call | Route | Returns |
+|---|---|---|
+| Resolve keys | `GET /api/tasks/resolve?keys=NEX-103,NEX-104` | `TaskRef[]` for the keys that are tasks the person may see: `key, title, status, statusLabel, category, projectKey, projectName, assigneeId`. |
+
+The client refreshes resolved tasks on `ticketUpdated`, so chip status is live.

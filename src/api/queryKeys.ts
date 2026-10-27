@@ -24,6 +24,8 @@ export const qk = {
   taskHistory: (key: string) => ['history', 'task', key],
   projectHistory: (projectId: string) => ['history', 'project', projectId],
   ticket: (key: string) => ['tickets', 'one', key],
+  taskRefsAll: () => ['tickets', 'refs'],                // prefix of every chip lookup
+  taskRefs: (keys: string[]) => ['tickets', 'refs', ...keys],
   phases: (projectId: string) => ['projects', 'phases', projectId],
   deliverables: (projectId: string) => ['projects', 'deliverables', projectId],
   files: (projectId: string) => ['projects', 'files', projectId],
@@ -54,7 +56,7 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
       // Project summaries (progress, overdue) and the dashboard are worked out from tasks too.
       return [
         qk.tickets(event.ticket.projectId), qk.archivedTickets(event.ticket.projectId), qk.ticket(event.ticket.key), qk.taskHistory(event.ticket.key), qk.projectHistory(event.ticket.projectId),
-        ['tickets', 'projects'], ['tickets', 'project'], ['dashboard'],
+        ['tickets', 'projects'], ['tickets', 'project'], ['dashboard'], qk.taskRefsAll(),
       ]
     case 'timeLogged':
       // Hours change everywhere: my day, every task and project summary (under 'tickets'), and the Time tabs.

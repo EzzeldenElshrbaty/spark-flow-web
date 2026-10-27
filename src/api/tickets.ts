@@ -72,3 +72,9 @@ export function useTasksOf(projectIds: string[]) {
     }),
   })
 }
+
+/** The tasks behind these keys, for chips and unfurls (spec 6.3); a status change anywhere refreshes them. */
+export function useTaskRefs(keys: string[]) {
+  const sorted = [...new Set(keys)].sort()
+  return useQuery({ queryKey: qk.taskRefs(sorted), queryFn: () => api.tickets.resolve(sorted), enabled: sorted.length > 0, placeholderData: (previous) => previous })
+}

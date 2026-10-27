@@ -254,3 +254,17 @@ describe('where a new task starts', () => {
     expect(t.status).toBe('todo')
   })
 })
+
+describe('resolve (spec 6.3 task chips, §8 /tasks/resolve)', () => {
+  it('returns each known key with its live status, project and assignee; unknown keys are left out', async () => {
+    const refs = await api.tickets.resolve(['NEX-101', 'NOPE-1', 'NEX-101'])
+    expect(refs).toHaveLength(1)
+    expect(refs[0]).toMatchObject({ key: 'NEX-101', projectKey: 'NEX', projectName: expect.any(String), category: expect.any(String), statusLabel: expect.any(String) })
+    await updateTicket(db, hub, 'NEX-101', { status: 'done' })
+    expect((await api.tickets.resolve(['NEX-101']))[0]).toMatchObject({ status: 'done', category: 'done', statusLabel: 'Done' })
+  })
+
+  it('no keys, no work', async () => {
+    expect(await api.tickets.resolve([])).toEqual([])
+  })
+})

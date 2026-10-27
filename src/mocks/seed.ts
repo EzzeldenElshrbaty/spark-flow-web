@@ -27,6 +27,7 @@ import { checklistTxt, screenshotPng, scopePdf } from './seedFiles'
 import { localDay } from '@/lib/dates'
 import { mentionsFor } from './mentions'
 import { parseMentions, parseTicketKeys } from './text'
+import { parseBody } from '@/lib/messageBody'
 import { projectPeopleIds } from '@/lib/projectPeople'
 
 // ── Builders and derived-field helpers ────────────────────────────────────
@@ -63,6 +64,7 @@ function buildMessages(raw: RawMessage[], replies: ThreadReply[]): ChatMessage[]
         lastReplyAt: latestOf(own.map((r) => r.createdAt)),
         linkedTicketKeys: parseTicketKeys(m.content),
         mentions: parseMentions(m.content),
+        body: parseBody(m.content),
         editedAt: null,
         seq: 0,
       }
@@ -74,7 +76,7 @@ function buildMessages(raw: RawMessage[], replies: ThreadReply[]): ChatMessage[]
 function buildReplies(raw: RawReply[], messages: RawMessage[]): ThreadReply[] {
   const channelOf = new Map(messages.map((m) => [m.id, m.channelId]))
   return raw
-    .map((r) => ({ ...r, channelId: channelOf.get(r.messageId) ?? '', attachments: [], mentions: parseMentions(r.content) }))
+    .map((r) => ({ ...r, channelId: channelOf.get(r.messageId) ?? '', attachments: [], mentions: parseMentions(r.content), body: parseBody(r.content) }))
     .sort(byTimeThenId)
 }
 

@@ -14,10 +14,10 @@ const sampleTicket: Ticket = {
 const sampleMessage: ChatMessage = {
   id: 'm1', channelId: 'c1', seq: 1, senderId: 'u1', content: 'hi',
   attachments: [], reactions: [], threadCount: 0, lastReplyAt: null,
-  linkedTicketKeys: [], mentions: [], editedAt: null, createdAt: '2026-01-01T00:00:00.000Z',
+  linkedTicketKeys: [], mentions: [], body: [], editedAt: null, createdAt: '2026-01-01T00:00:00.000Z',
 }
 const sampleReply: ThreadReply = {
-  id: 'r1', messageId: 'm1', channelId: 'c1', senderId: 'u2', content: 'yo',
+  id: 'r1', messageId: 'm1', channelId: 'c1', senderId: 'u2', content: 'yo', body: [],
   attachments: [], reactions: [], createdAt: '2026-01-01T00:00:00.000Z',
   mentions: [],
 }

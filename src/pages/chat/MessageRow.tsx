@@ -9,7 +9,7 @@ import { AttachmentView } from '@/components/AttachmentView'
 import { MentionText } from '@/components/MentionText'
 import { Badge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
-import { formatTime, formatWhen, timeAgo } from '@/lib/format'
+import { formatWhen, timeAgo } from '@/lib/format'
 import { withInspector } from '@/lib/inspector'
 import { Composer } from '@/pages/chat/Composer'
 import { MessageActions } from '@/pages/chat/MessageActions'
@@ -18,7 +18,7 @@ import { actionsFor } from '@/pages/chat/messageRights'
 import { TicketKey } from '@/pages/projects/ticketPills'
 
 /** Reaction pills: the emoji is the people's own content, the count is ours. Where I can react, a pill toggles mine. */
-function Reactions({ reactions, users, target, meId, canReact }: { reactions: Reaction[]; users: User[]; target: ChatTarget; meId?: string; canReact: boolean }) {
+export function Reactions({ reactions, users, target, meId, canReact }: { reactions: Reaction[]; users: User[]; target: ChatTarget; meId?: string; canReact: boolean }) {
   const react = useReact()
   const shown = reactions.filter((reaction) => reaction.userIds.length > 0)
   if (shown.length === 0) return null
@@ -67,7 +67,7 @@ function Reactions({ reactions, users, target, meId, canReact }: { reactions: Re
 const CARD = /^(Bug|Comment) on ([A-Z]{2,5}-\d+)(?:: |$)/
 
 /** The card a task comment or bug posts in its project's chat: the task, the kind, the text and its files. */
-function CommentCard({ message }: { message: ChatMessage }) {
+export function CommentCard({ message }: { message: ChatMessage }) {
   const [params] = useSearchParams()
   const match = CARD.exec(message.content)
   const bug = match?.[1] === 'Bug'
@@ -90,7 +90,7 @@ function CommentCard({ message }: { message: ChatMessage }) {
 }
 
 /** Tasks made from this message that its text doesn't name: one chip each, opening the task beside the channel. */
-function LinkedTasks({ message }: { message: ChatMessage }) {
+export function LinkedTasks({ message }: { message: ChatMessage }) {
   const [params] = useSearchParams()
   const keys = unnamedKeys(message.content, message.linkedTicketKeys)
   if (keys.length === 0) return null
@@ -112,7 +112,7 @@ function LinkedTasks({ message }: { message: ChatMessage }) {
 }
 
 /** "3 replies · 2h ago", opening the thread beside the channel. */
-function ThreadLink({ message }: { message: ChatMessage }) {
+export function ThreadLink({ message }: { message: ChatMessage }) {
   const [params] = useSearchParams()
   return (
     <Link
@@ -139,8 +139,6 @@ export function MessageRow({
   meId,
   canPost = false,
   actions,
-  continuation = false,
-  timeOnly = false,
 }: {
   message: ChatMessage | ThreadReply
   users: User[]
@@ -148,10 +146,6 @@ export function MessageRow({
   meId?: string
   canPost?: boolean
   actions?: (close: () => void) => ReactNode
-  /** Part of the author's group (spec 6.2): no avatar or name; the time shows in the gutter on hover. */
-  continuation?: boolean
-  /** The list shows the day above, so the row shows only the time. */
-  timeOnly?: boolean
 }) {
   const [editing, setEditing] = useState(false)
   const editMessage = useEditMessage()
@@ -189,23 +183,15 @@ export function MessageRow({
         {'linkedTicketKeys' in message && <LinkedTasks message={message} />}
       </>
     )
-  const when = timeOnly ? formatTime(message.createdAt) : formatWhen(message.createdAt)
   return (
-    <article className={clsx('group relative flex gap-3 rounded-lg px-2 hover:bg-surface-muted/50', continuation ? 'py-0.5' : 'py-2')}>
-      {continuation ? (
-        <time dateTime={message.createdAt} title={formatWhen(message.createdAt)} className="invisible w-9 shrink-0 text-end text-[12px]/5 whitespace-nowrap tabular-nums text-fg-muted group-hover:visible">
-          {formatTime(message.createdAt)}
-        </time>
-      ) : (
-        <Avatar name={name} />
-      )}
+    <article className="group flex gap-3 rounded-lg px-2 py-2 hover:bg-surface-muted/50">
+      <Avatar name={name} />
       <div className="min-w-0 flex-1">
-        {/* A continuation keeps its author line for screen readers and its actions, floating at the end. */}
-        <div className={clsx('flex items-start gap-2', continuation && 'absolute end-2 top-0')}>
-          <p className={clsx('flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 text-sm', continuation && 'sr-only')}>
+        <div className="flex items-start gap-2">
+          <p className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 text-sm">
             <span className="font-semibold text-fg">{name}</span>
-            <time dateTime={message.createdAt} title={formatWhen(message.createdAt)} className="text-xs tabular-nums text-fg-muted">
-              {when}
+            <time dateTime={message.createdAt} className="text-xs tabular-nums text-fg-muted">
+              {formatWhen(message.createdAt)}
               {edited && ' · edited'}
             </time>
           </p>

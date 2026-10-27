@@ -50,6 +50,22 @@ export function ticketsApi(db: MockDb, now: () => Date): Api['tickets'] {
       const data = await db.read()
       return taskView(findTicket(data, key), data, now())
     },
+    async resolve(keys) {
+      await delay()
+      if (keys.length === 0) return []
+      const data = await db.read()
+      const wanted = new Set(keys)
+      return data.tickets
+        .filter((t) => wanted.has(t.key))
+        .map((t) => {
+          const project = data.projects.find((p) => p.id === t.projectId)!
+          const column = columnsOf(project).find((c) => c.id === t.status)
+          return {
+            key: t.key, title: t.title, status: t.status, statusLabel: column?.label ?? t.status, category: column?.category ?? 'todo',
+            projectKey: project.key, projectName: project.name, assigneeId: t.assigneeId,
+          }
+        })
+    },
   }
 }
 

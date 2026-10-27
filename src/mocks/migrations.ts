@@ -1,3 +1,4 @@
+import { parseBody } from '@/lib/messageBody'
 import { DEFAULT_COLUMNS } from '@/lib/statuses'
 
 /**
@@ -59,6 +60,14 @@ export const migrations: Record<number, (doc: Record<string, unknown>) => void> 
       ]),
     )
     delete doc.reads
+  },
+  // 8: messages and replies keep their text as structured rich text too (spec §7), worked out from the text.
+  7: (doc) => {
+    for (const name of ['messages', 'replies']) {
+      const rows = Array.isArray(doc[name]) ? (doc[name] as { content?: unknown; deletedAt?: unknown; body?: unknown }[]) : []
+      for (const row of rows) row.body = row.deletedAt ? [] : parseBody(typeof row.content === 'string' ? row.content : '')
+      doc[name] = rows
+    }
   },
 }
 

@@ -1,5 +1,5 @@
 import { can } from '@/lib/permissions'
-import type { Api, Attachment, Channel, ChannelMemberState, ChatMessage, ChatTarget, StoredChannel, ThreadReply } from '@/api/types'
+import type { Api, Attachment, Channel, ChannelMemberState, ChatMessage, SystemEvent, ChatTarget, StoredChannel, ThreadReply } from '@/api/types'
 import { channelFormErrors } from '@/lib/channelForm'
 import { REACTIONS } from '@/lib/reactions'
 import type { DbData, MockDb } from './db'
@@ -8,6 +8,7 @@ import type { MockHub } from './realtime'
 import { ApiError } from '@/lib/apiError'
 import { badRequest, clone, currentUser, newId, notFound, requireCan, stamp } from './shared'
 import { parseMentions, parseTicketKeys } from './text'
+import { parseBody } from '@/lib/messageBody'
 
 const PAGE_SIZE = 30
 
@@ -38,7 +39,7 @@ const lastSeqOf = (data: DbData, channelId: string) => data.messages.reduce((n, 
 function withUnread(data: DbData, channel: StoredChannel): Channel {
   const state = data.channelState[data.currentUserId]?.[channel.id] ?? freshState()
   const unreadCount = data.messages.filter(
-    (m) => m.channelId === channel.id && m.seq > state.lastReadSeq && m.senderId !== data.currentUserId && !m.deletedAt,
+    (m) => m.channelId === channel.id && m.seq > state.lastReadSeq && m.senderId !== data.currentUserId && !m.deletedAt && !m.system,
   ).length
   return { ...channel, ...state, lastSeq: lastSeqOf(data, channel.id), unreadCount }
 }
@@ -123,9 +124,9 @@ function findTarget(data: DbData, target: ChatTarget): { row: Row; channel: Stor
 
 const forbiddenOwn = () => new ApiError({ title: 'Forbidden', status: 403, detail: 'You can only change your own messages.' })
 
-/** Cards (a comment's, a task event's) and deleted rows stay as they are. */
+/** Cards (a comment's, a task event's), system messages and deleted rows stay as they are. */
 function checkPlain(row: Row) {
-  if (row.deletedAt || ('commentId' in row && row.commentId) || ('taskEvent' in row && row.taskEvent)) throw badRequest("This message can't be changed.")
+  if (row.deletedAt || ('commentId' in row && row.commentId) || ('taskEvent' in row && row.taskEvent) || ('system' in row && row.system)) throw badRequest("This message can't be changed.")
 }
 
 /** Keys of tasks someone made from this message: an edit keeps them linked even when the text no longer says them. */
@@ -135,9 +136,10 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
   /** Joins or leaves a channel as the current user. A project's channel follows its people; a DM keeps its own. */
   const setMember = async (id: string, join: boolean) => {
     await delay()
-    const channel = await db.update((data) => {
+    const { channel, posted } = await db.update((data) => {
       const channel = findChannel(data, id)
       const me = currentUser(data)
+      const wasMember = channel.memberIds.includes(me.id)
       if (channel.kind === 'dm') throw badRequest(join ? 'You can only join public channels.' : "You can't leave a conversation.")
       if (data.projects.some((p) => p.channelId === id)) throw badRequest('This channel follows its project.')
       if (join) {
@@ -147,8 +149,11 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       } else {
         channel.memberIds = channel.memberIds.filter((m) => m !== me.id)
       }
-      return withUnread(data, channel)
+      // Only a real change says so in the channel.
+      const posted = wasMember === join ? [] : [postSystem(data, channel.id, { kind: join ? 'joined' : 'left' })]
+      return { channel: withUnread(data, channel), posted }
     })
+    for (const message of posted) hub.publish({ type: 'messageReceived', message: clone(message) })
     hub.publish({ type: 'channelChanged', channelId: id })
     return clone(channel)
   }
@@ -224,7 +229,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
     },
     async updateChannel(id, patch) {
       await delay()
-      const channel = await db.update((data) => {
+      const { channel, posted } = await db.update((data) => {
         const channel = readableChannel(data, id)
         if (channel.kind === 'dm') throw badRequest("Direct messages can't be edited.")
         if (data.projects.some((p) => p.channelId === id)) throw badRequest('This channel follows its project.')
@@ -235,9 +240,13 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         const name = (patch.name ?? channel.name ?? '').trim()
         const topic = (patch.topic ?? channel.topic).trim()
         checkChannel(data, { workspaceId: channel.workspaceId, id, name, topic, isPrivate: channel.isPrivate, others: memberIds.filter((m) => m !== me.id) })
+        const posted: ChatMessage[] = []
+        if (channel.name && name !== channel.name) posted.push(postSystem(data, id, { kind: 'renamed', from: channel.name, to: name }))
+        if (topic !== channel.topic) posted.push(postSystem(data, id, { kind: 'topic', to: topic }))
         Object.assign(channel, { name, topic, memberIds })
-        return withUnread(data, channel)
+        return { channel: withUnread(data, channel), posted }
       })
+      for (const message of posted) hub.publish({ type: 'messageReceived', message: clone(message) })
       hub.publish({ type: 'channelChanged', channelId: id })
       return clone(channel)
     },
@@ -271,6 +280,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         checkPlain(row)
         if (row.content === text) return { row: clone(row), channelId: channel.id, messageId, same: true }
         row.content = text
+        row.body = parseBody(text)
         row.mentions = parseMentions(text)
         row.editedAt = new Date().toISOString()
         if (target.kind === 'message') {
@@ -290,6 +300,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         if (row.senderId !== me.id) throw forbiddenOwn()
         checkPlain(row)
         row.content = ''
+        row.body = []
         row.attachments = []
         row.mentions = []
         row.reactions = []
@@ -401,7 +412,7 @@ export type AddReplyInput = { messageId: string; content: string }
  * Adds a message from the current user inside a transaction; mentions and ticket keys come from the text. `extra`
  * carries what only some messages have (the comment a card stands for).
  */
-export function postMessage(data: DbData, input: SendMessageInput, extra: Partial<Pick<ChatMessage, 'commentId' | 'taskEvent'>> = {}): ChatMessage {
+export function postMessage(data: DbData, input: SendMessageInput, extra: Partial<Pick<ChatMessage, 'commentId' | 'taskEvent' | 'system'>> = {}): ChatMessage {
   const channel = findChannel(data, input.channelId)
   const lastInChannel = data.messages.reduce((t, m) => (m.channelId === channel.id && m.createdAt > t ? m.createdAt : t), '')
   const createdAt = stamp(lastInChannel)
@@ -418,6 +429,7 @@ export function postMessage(data: DbData, input: SendMessageInput, extra: Partia
     lastReplyAt: null,
     linkedTicketKeys: parseTicketKeys(input.content),
     mentions: parseMentions(input.content),
+    body: parseBody(input.content),
     editedAt: null,
     createdAt,
     ...extra,
@@ -425,6 +437,11 @@ export function postMessage(data: DbData, input: SendMessageInput, extra: Partia
   data.messages.push(created)
   channel.lastMessageAt = createdAt
   return created
+}
+
+/** What the channel says about a change the current user made (joined, left, renamed, topic changed). */
+function postSystem(data: DbData, channelId: string, event: SystemEvent): ChatMessage {
+  return postMessage(data, { channelId, content: '' }, { system: event })
 }
 
 /** Adds a thread reply from the current user inside a transaction. */
@@ -441,6 +458,7 @@ export function postReply(data: DbData, input: AddReplyInput): ThreadReply {
     attachments: [],
     reactions: [],
     mentions: parseMentions(input.content),
+    body: parseBody(input.content),
     createdAt,
   }
   data.replies.push(created)

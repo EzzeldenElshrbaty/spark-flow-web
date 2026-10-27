@@ -49,3 +49,11 @@ describe('migrations', () => {
     expect(migrate({ version: 6 }, 7)).toMatchObject({ messages: [], channelState: {} })
   })
 })
+
+describe('7 → 8', () => {
+  it('gives every message and reply the body of its text; deleted ones get an empty body', () => {
+    const next = migrate({ version: 7, messages: [{ id: 'm1', content: '*hi*' }, { id: 'm2', content: '', deletedAt: 'T' }], replies: [{ id: 'r1', content: 'NEX-1' }] }, 8)!
+    expect((next.messages as { body: unknown }[]).map((m) => m.body)).toEqual([[{ type: 'p', children: [{ type: 'text', text: 'hi', marks: ['b'] }] }], []])
+    expect((next.replies as { body: unknown }[])[0].body).toEqual([{ type: 'p', children: [{ type: 'task', key: 'NEX-1' }] }])
+  })
+})

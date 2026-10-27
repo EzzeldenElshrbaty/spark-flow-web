@@ -1,4 +1,5 @@
 import type { Role } from '@/lib/roles'
+import type { Body } from '@/lib/messageBody'
 
 export type { Role }
 
@@ -71,6 +72,12 @@ export type Task = Ticket
 
 /** A task as the API returns it: with the hours logged so far and whether it is overdue (spec §3). */
 /** A task as read: `category` is its column's type (done-ness follows it). */
+/** A task as a chip or unfurl shows it: live status, its project, who has it. */
+export type TaskRef = {
+  key: string; title: string; status: TicketStatus; statusLabel: string; category: StatusCategory
+  projectKey: string; projectName: string; assigneeId: string | null
+}
+
 export type TaskView = Task & { loggedHours: number; overdue: boolean; category: StatusCategory }
 
 // ── Time and cost ─────────────────────────────────────────────────────────
@@ -117,6 +124,10 @@ export type ChatMessage = {
   seq: number
   /** The id the sender's client made up for it, so a retried send stores it once. */
   clientId?: string
+  /** The text as structured rich text (spec §7); `content` is the text as written, for search and editing. */
+  body: Body
+  /** Set on what the channel itself says (joined, left, renamed, topic changed); sent by whoever did it. */
+  system?: SystemEvent
   attachments: Attachment[]; reactions: Reaction[]
   threadCount: number; lastReplyAt: string | null
   linkedTicketKeys: string[]; mentions: Mention[]; editedAt: string | null; createdAt: string
@@ -127,6 +138,9 @@ export type ChatMessage = {
   /** Set once the author deletes it: the row stays (its thread too) with its text, files, mentions and reactions gone. */
   deletedAt?: string | null
 }
+
+/** A channel event shown in its timeline (spec 6.3 system messages). */
+export type SystemEvent = { kind: 'joined' | 'left' } | { kind: 'renamed'; from: string; to: string } | { kind: 'topic'; to: string }
 
 /** What a task event card says: the task, and what happened to it. */
 /** `statusLabel` is the column's name when the card was posted (renaming or deleting it later doesn't change the card). */
@@ -159,6 +173,7 @@ export type ThreadReply = {
   id: string; messageId: string; channelId: string; senderId: string; content: string
   attachments: Attachment[]; reactions: Reaction[]; mentions: Mention[]; createdAt: string
   editedAt?: string | null; deletedAt?: string | null
+  body: Body
 }
 
 // ── Transport ─────────────────────────────────────────────────────────────
@@ -303,6 +318,8 @@ export interface Api {
     list(projectId: string, opts?: { archived?: boolean }): Promise<TaskView[]>
     /** Also finds an archived task, so old links still open it. */
     get(key: string): Promise<TaskView>
+    /** The tasks behind these keys, as chips show them (spec 6.3); keys that aren't tasks are left out. */
+    resolve(keys: string[]): Promise<TaskRef[]>
   }
   projects: {
     /** Archived projects are left out; `archived: true` lists only them. */

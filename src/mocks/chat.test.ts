@@ -31,7 +31,7 @@ async function addMessages(channelId: string, count: number) {
     for (let i = 0; i < count; i++) {
       d.messages.push({
         id: `m-extra-${i}`, channelId, seq: 1000 + i, senderId: 'u-2', content: `extra ${i}`,
-        attachments: [], reactions: [], threadCount: 0, lastReplyAt: null, linkedTicketKeys: [], mentions: [], editedAt: null,
+        attachments: [], reactions: [], threadCount: 0, lastReplyAt: null, linkedTicketKeys: [], mentions: [], body: [], editedAt: null,
         createdAt: new Date(Date.UTC(2030, 0, 1, 0, 0, i)).toISOString(),
       })
     }
@@ -86,7 +86,7 @@ describe('chat.messages', () => {
       for (let i = 0; i < 75; i++) {
         d.messages.push({
           id: `m-tie-${String(i).padStart(3, '0')}`, channelId: 'c-general', seq: 1000 + i, senderId: 'u-2', content: `tie ${i}`,
-          attachments: [], reactions: [], threadCount: 0, lastReplyAt: null, linkedTicketKeys: [], mentions: [], editedAt: null, createdAt: at,
+          attachments: [], reactions: [], threadCount: 0, lastReplyAt: null, linkedTicketKeys: [], mentions: [], body: [], editedAt: null, createdAt: at,
         })
       }
     })
@@ -142,7 +142,7 @@ describe('chat.channels and unreadCount', () => {
     await db.update((d) => {
       d.messages.push({
         id: 'm-other', channelId: 'c-backend', seq: 999, senderId: 'u-2', content: 'theirs',
-        attachments: [], reactions: [], threadCount: 0, lastReplyAt: null, linkedTicketKeys: [], mentions: [], editedAt: null,
+        attachments: [], reactions: [], threadCount: 0, lastReplyAt: null, linkedTicketKeys: [], mentions: [], body: [], editedAt: null,
         createdAt: new Date(Date.now() + 60_000).toISOString(),
       })
     })
@@ -713,5 +713,59 @@ describe('jumping through a channel (spec 6.2 date menu, §8 around)', () => {
     const rest = await api.chat.messagesAfter('c-general', first.nextCursor!)
     expect(rest.items.map((m) => m.seq)).toEqual(all.slice(31).map((m) => m.seq).reverse())
     expect(rest.nextCursor).toBeNull()
+  })
+})
+
+describe('message bodies and system messages (spec 6.3, §7)', () => {
+  it('stores the body worked out from the text on send, reply and edit', async () => {
+    const sent = await api.chat.send('c-backend', 'Ship *NEX-103*')
+    expect(sent.body).toEqual([{ type: 'p', children: [{ type: 'text', text: 'Ship ' }, { type: 'task', key: 'NEX-103' }] }])
+    const edited = await api.chat.edit({ kind: 'message', id: sent.id }, 'Ship _today_')
+    expect(edited.body).toEqual([{ type: 'p', children: [{ type: 'text', text: 'Ship ' }, { type: 'text', text: 'today', marks: ['i'] }] }])
+    const reply = await api.chat.reply(sent.id, '`ok`')
+    expect(reply.body).toEqual([{ type: 'p', children: [{ type: 'text', text: 'ok', marks: ['code'] }] }])
+  })
+
+  it('a deleted message has an empty body', async () => {
+    const sent = await api.chat.send('c-backend', 'gone')
+    await api.chat.remove({ kind: 'message', id: sent.id })
+    expect((await api.chat.message(sent.id)).body).toEqual([])
+  })
+
+  it('joining and leaving post a system message from that person, which is never unread', async () => {
+    await api.users.viewAs('u-3')
+    await api.chat.join('c-general').catch(() => {}) // may already be a member
+    await api.chat.leave('c-general')
+    await api.chat.join('c-general')
+    const own = (await db.read()).messages.filter((m) => m.channelId === 'c-general' && m.system)
+    expect(own.slice(-2).map((m) => [m.senderId, m.system!.kind])).toEqual([
+      ['u-3', 'left'],
+      ['u-3', 'joined'],
+    ])
+    await api.users.viewAs('u-1')
+    const before = (await api.chat.channel('c-general')).unreadCount
+    await api.users.viewAs('u-3')
+    await api.chat.leave('c-general')
+    await api.users.viewAs('u-1')
+    expect((await api.chat.channel('c-general')).unreadCount).toBe(before)
+  })
+
+  it('renaming a channel or changing its topic posts what changed', async () => {
+    const channel = await api.chat.createChannel({ workspaceId: 'ws-eng', name: 'ops', topic: '', isPrivate: false, memberIds: [] })
+    await api.chat.updateChannel(channel.id, { name: 'ops-2', topic: 'Pager rota' })
+    const system = (await db.read()).messages.filter((m) => m.channelId === channel.id && m.system).map((m) => m.system)
+    expect(system).toEqual([
+      { kind: 'renamed', from: 'ops', to: 'ops-2' },
+      { kind: 'topic', to: 'Pager rota' },
+    ])
+  })
+
+  it('a system message cannot be edited or deleted', async () => {
+    await api.users.viewAs('u-3')
+    await api.chat.join('c-general').catch(() => {})
+    await api.chat.leave('c-general')
+    const left = (await db.read()).messages.filter((m) => m.channelId === 'c-general' && m.system).at(-1)!
+    await expect(api.chat.edit({ kind: 'message', id: left.id }, 'x')).rejects.toMatchObject({ status: 400 })
+    await expect(api.chat.remove({ kind: 'message', id: left.id })).rejects.toMatchObject({ status: 400 })
   })
 })

@@ -1,0 +1,129 @@
+// @vitest-environment jsdom
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { cleanup, render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router'
+import { afterEach, describe, expect, it } from 'vitest'
+import type { ChatMessage, TaskRef, User } from '@/api/types'
+import { parseBody } from '@/lib/messageBody'
+import { ChannelMessage, systemText, type Selection } from '@/pages/chat/ChannelMessage'
+import type { BodyContext } from '@/pages/chat/MessageBody'
+
+afterEach(cleanup)
+// jsdom has no matchMedia; the ⋯ menu (components/ui/Menu) asks it whether this is a phone.
+window.matchMedia ??= ((media: string) => ({ matches: false, media, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia
+
+const users = [
+  { id: 'u-1', name: 'Youssef Abdelrahman' },
+  { id: 'u-2', name: 'Nour El-Sayed' },
+] as User[]
+const task: TaskRef = { key: 'NEX-103', title: 'Rate limit the search API', status: 'inReview', statusLabel: 'In review', category: 'inProgress', projectKey: 'NEX', projectName: 'Nexus Core', assigneeId: 'u-2' }
+const ctx: BodyContext = { users, tasks: new Map([[task.key, task]]), projectKeys: new Set(['NEX']), ws: 'engineering' }
+
+const message = (content: string, over: Partial<ChatMessage> = {}): ChatMessage => ({
+  id: 'm1', channelId: 'c1', seq: 1, senderId: 'u-2', content, body: parseBody(content), attachments: [], reactions: [], threadCount: 0, lastReplyAt: null,
+  linkedTicketKeys: [], mentions: [], editedAt: null, createdAt: '2026-10-28T09:00:00.000Z', ...over,
+})
+
+function show(m: ChatMessage, opts: { continuation?: boolean; selected?: Selection } = {}) {
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <MemoryRouter>
+        <ChannelMessage message={m} users={users} ctx={ctx} meId="u-1" canPost continuation={opts.continuation ?? false} selected={opts.selected} />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  )
+  return screen.getByRole('article')
+}
+
+describe('ChannelMessage body (spec 6.3)', () => {
+  it('renders marks, code, quotes and lists as elements, never as HTML', () => {
+    const row = show(message('*bold* _it_ ~gone~ `x<b>` <i>raw</i>\n\n> quoted\n- one\n1. first\n```\ncode()\n```'))
+    expect(row.querySelector('strong')?.textContent).toBe('bold')
+    expect(row.querySelector('em')?.textContent).toBe('it')
+    expect(row.querySelector('s')?.textContent).toBe('gone')
+    expect(row.querySelector('p code')?.textContent).toBe('x<b>')
+    expect(row.querySelector('i')).toBeNull() // typed HTML stays text
+    expect(row.textContent).toContain('<i>raw</i>')
+    expect(row.querySelector('blockquote')?.textContent).toBe('quoted')
+    expect(row.querySelector('ul li')?.textContent).toBe('one')
+    expect(row.querySelector('ol li')?.textContent).toBe('first')
+    expect(row.querySelector('pre')?.textContent).toBe('code()')
+  })
+
+  it('links open in a new tab without handing over the page', () => {
+    show(message('see https://spark-sys.com/docs'))
+    const link = screen.getByRole('link', { name: 'https://spark-sys.com/docs' })
+    expect(link.getAttribute('target')).toBe('_blank')
+    expect(link.getAttribute('rel')).toBe('noopener noreferrer')
+  })
+
+  it('people I know are pills; a person who is gone stays as text', () => {
+    const row = show(message('@[Nour](u-2) and @[Old](u-99)'))
+    expect(screen.getByText('@Nour El-Sayed').className).toContain('bg-sf-surface-mention')
+    expect(row.textContent).toContain('@Old')
+  })
+
+  it('a task I can see is a chip with its live status and an unfurl; others stay as text', () => {
+    const row = show(message('NEX-103 and NEX-999 and ZZZ-1'))
+    const links = screen.getAllByRole('link').filter((a) => a.textContent?.includes('NEX-103'))
+    expect(links).toHaveLength(2) // the chip and the unfurl card
+    expect(links[1].textContent).toContain('Rate limit the search API')
+    expect(links[1].textContent).toContain('In review · Nexus Core')
+    expect(row.textContent).toContain('NEX-999')
+    expect(screen.queryByRole('link', { name: /NEX-999/ })).toBeNull()
+  })
+
+  it('emoji alone show large', () => {
+    const row = show(message('🎉🚀'))
+    expect(row.querySelector('.sf-emoji')).not.toBeNull()
+  })
+})
+
+describe('ChannelMessage states (spec 6.3)', () => {
+  it('a mention of me or of everyone tints the row', () => {
+    expect(show(message('@all', { mentions: [{ kind: 'all', id: 'all' }] })).className).toContain('bg-sf-surface-mention')
+    cleanup()
+    expect(show(message('@[Youssef](u-1)', { mentions: [{ kind: 'user', id: 'u-1' }] })).className).toContain('bg-sf-surface-mention')
+    cleanup()
+    expect(show(message('hi')).className).not.toContain('bg-sf-surface-mention')
+  })
+
+  it('selected wins over a mention, and fades back', () => {
+    const m = message('@all', { mentions: [{ kind: 'all', id: 'all' }] })
+    expect(show(m, { selected: 'on' }).className).toContain('bg-sf-surface-selected')
+    cleanup()
+    expect(show(m, { selected: 'fading' }).className).not.toContain('bg-sf-surface-selected')
+  })
+
+  it('an edited message says so after its body', () => {
+    show(message('fixed', { editedAt: '2026-10-28T09:05:00.000Z' }))
+    expect(screen.getByText('(edited)')).toBeTruthy()
+  })
+
+  it('a deleted message with replies says it was deleted, with its thread', () => {
+    const row = show(message('', { deletedAt: 'T', body: [], threadCount: 2 }))
+    expect(row.textContent).toContain('This message was deleted.')
+    expect(screen.getByRole('link', { name: /2 replies/ })).toBeTruthy()
+  })
+
+  it('a system message reads after its author, without reactions or a menu', () => {
+    const row = show(message('', { system: { kind: 'renamed', from: 'api', to: 'backend' } }))
+    expect(row.textContent).toContain('Nour El-Sayed')
+    expect(row.textContent).toContain('renamed the channel to #backend (was #api).')
+    expect(screen.queryByRole('button', { name: /actions/i })).toBeNull()
+  })
+
+  it('a continuation hides author and time visually but keeps them first for screen readers', () => {
+    const row = show(message('more'), { continuation: true })
+    const head = row.querySelector('p')!
+    expect(head.className).toContain('sr-only')
+    expect(head.textContent).toContain('Nour El-Sayed')
+    expect(row.querySelector('[aria-hidden] time')).not.toBeNull()
+  })
+
+  it('system texts', () => {
+    expect(systemText({ kind: 'joined' })).toBe('joined the channel.')
+    expect(systemText({ kind: 'topic', to: '' })).toBe('cleared the topic.')
+    expect(systemText({ kind: 'topic', to: 'Pager' })).toBe('changed the topic to “Pager”.')
+  })
+})

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { useChannel, useJumpTarget, useLeaveChannel, useMarkRead, useMessages, useMessagesFrom, useSendMessage, useSetMuted, useSetStarred } from '@/api/chat'
 import { useUsers } from '@/api/users'
@@ -202,6 +202,9 @@ function PaneFeed({
   composer: ReactNode
 }) {
   const live = useMessages(channel.id)
+  const { ws: workspaceSlug = '' } = useParams()
+  const projects = useProjectSummaries(channel.workspaceId)
+  const projectKeys = useMemo(() => new Set((projects.data ?? []).map((p) => p.key)), [projects.data])
   const [view, setView] = useState<{ from: number | null; focus: number | null; nonce: number; atEnd: boolean }>({ from: null, focus: null, nonce: 0, atEnd: false })
   const jumped = useMessagesFrom(channel.id, view.from)
   const messages = view.from === null ? live : jumped
@@ -254,6 +257,8 @@ function PaneFeed({
           openAtEnd={view.atEnd}
           onJump={onJump}
           onLatest={() => setView((v) => ({ from: null, focus: null, nonce: v.nonce + 1, atEnd: true }))}
+          workspaceSlug={workspaceSlug}
+          projectKeys={projectKeys}
         />
       )}
       {jumpError && <p className="sf sf-small flex-none px-4 pt-2 text-sf-error md:px-6">Couldn't jump there. Try again.</p>}

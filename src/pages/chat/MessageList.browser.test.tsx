@@ -4,6 +4,7 @@ import { cleanup, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ChatMessage, Page, User } from '@/api/types'
+import { parseBody } from '@/lib/messageBody'
 import { MessageList } from '@/pages/chat/MessageList'
 
 // Scrolling needs real layout, so these run in Chromium (the `browser` test project), with the app's CSS.
@@ -23,9 +24,10 @@ function channel(count: number) {
   const messages: ChatMessage[] = []
   const add = (senderId = 'u-2') => {
     const seq = messages.length + 1
+    const content = `Message ${seq}${seq % 4 === 0 ? ' — a longer one that wraps onto a second line when the list is narrow enough to need it' : ''}`
     messages.push({
-      id: `m${seq}`, channelId: 'c1', seq, senderId, content: `Message ${seq}${seq % 4 === 0 ? ' — a longer one that wraps onto a second line when the list is narrow enough to need it' : ''}`,
-      attachments: [], reactions: [], threadCount: 0, lastReplyAt: null, linkedTicketKeys: [], mentions: [], editedAt: null,
+      id: `m${seq}`, channelId: 'c1', seq, senderId, content,
+      attachments: [], reactions: [], threadCount: 0, lastReplyAt: null, linkedTicketKeys: [], mentions: [], body: parseBody(content), editedAt: null,
       createdAt: new Date(start + seq * 60_000).toISOString(),
     })
   }
@@ -61,6 +63,8 @@ function Harness({ data, newAfterSeq = null, totalUnread = 0 }: { data: ReturnTy
         onMarkRead={vi.fn()}
         onJump={vi.fn()}
         onLatest={vi.fn()}
+        workspaceSlug="engineering"
+        projectKeys={new Set()}
       />
     </div>
   )

@@ -9,7 +9,12 @@ import { QueryError } from '@/components/ui/QueryError'
 import { formatTime } from '@/lib/format'
 import { readUpTo } from '@/pages/chat/markRead'
 import { buildRows, unreadSummary, type JumpChoice, type MessageListRow } from '@/pages/chat/messageRows'
-import { MessageRow, MessageSkeleton } from '@/pages/chat/MessageRow'
+import { useTaskRefs } from '@/api/tickets'
+import { parseInspector } from '@/lib/inspector'
+import { ChannelMessage, type Selection } from '@/pages/chat/ChannelMessage'
+import { taskKeysOf, type BodyContext } from '@/pages/chat/MessageBody'
+import { MessageSkeleton } from '@/pages/chat/MessageRow'
+import { useSearchParams } from 'react-router'
 
 /** How close to the end still counts as "at the newest message". */
 const BOTTOM_SLACK = 32
@@ -17,6 +22,8 @@ const BOTTOM_SLACK = 32
 const CATCH_UP_PAGES = 10
 /** Room above the New line for the unread bar when the list opens there. */
 const BAR_ROOM = 48
+/** How long a message a jump landed on stays selected before it fades (spec 6.3). */
+const SELECTED_MS = 2000
 
 const estimate = (row: MessageListRow) => (row.kind === 'day' ? 40 : row.kind === 'new' ? 24 : row.continuation ? 24 : 72)
 
@@ -45,6 +52,8 @@ export function MessageList({
   openAtEnd = false,
   onJump,
   onLatest,
+  workspaceSlug,
+  projectKeys,
 }: {
   query: MessagesQuery
   title: string
@@ -67,6 +76,9 @@ export function MessageList({
   onJump: (choice: JumpChoice) => void
   /** Leave a jump for the live end of the channel. */
   onLatest: () => void
+  workspaceSlug: string
+  /** Projects I can see: a task key from any other project stays text. */
+  projectKeys: Set<string>
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const messages = useMemo(() => query.data?.pages.flatMap((page) => page.items).reverse() ?? [], [query.data])
@@ -80,6 +92,25 @@ export function MessageList({
   useEffect(() => {
     if (catchingUp && !query.isFetchingNextPage && !query.isFetchNextPageError) void query.fetchNextPage()
   }, [catchingUp, query])
+  // Every task the loaded messages name, looked up in one go (live: a status change refreshes it).
+  const taskRefs = useTaskRefs(useMemo(() => messages.flatMap((m) => taskKeysOf(m.body)), [messages]))
+  const ctx = useMemo<BodyContext>(() => {
+    const tasks = new Map((taskRefs.data ?? []).filter((t) => projectKeys.has(t.projectKey)).map((t) => [t.key, t]))
+    return { users, tasks, projectKeys, ws: workspaceSlug }
+  }, [taskRefs.data, projectKeys, users, workspaceSlug])
+
+  // Selected (spec 6.3): the message whose thread is open, or the one a jump landed on, which fades after 2s.
+  const [params] = useSearchParams()
+  const inspector = parseInspector(params)
+  const threadOpen = inspector?.kind === 'thread' ? inspector.messageId : null
+  const [jumped, setJumped] = useState<{ seq: number; phase: 'on' | 'fading' } | null>(null)
+  useEffect(() => {
+    if (jumped?.phase !== 'on') return
+    const timer = setTimeout(() => setJumped((j) => j && { ...j, phase: 'fading' }), SELECTED_MS)
+    return () => clearTimeout(timer)
+  }, [jumped])
+  const selectionOf = (m: ChatMessage): Selection => (m.id === threadOpen ? 'on' : jumped && m.seq === jumped.seq ? jumped.phase : null)
+
   // The day each row belongs to, for the sticky date.
   const dayOf = useMemo(() => {
     let label = ''
@@ -142,6 +173,8 @@ export function MessageList({
   const scrollToFocus = () => {
     if (focusIndex < 0) return false
     virtualizer.scrollToIndex(focusIndex, { align: 'start' })
+    const row = rows[focusIndex]
+    if (row.kind === 'message') setJumped({ seq: row.message.seq, phase: 'on' })
     atBottomRef.current = false
     setAtBottom(false)
     setBar(false)
@@ -251,19 +284,20 @@ export function MessageList({
           {items.map((v) => {
             const row = rows[v.index]
             return (
-              <li key={v.key} data-index={v.index} ref={virtualizer.measureElement} className="absolute inset-x-0 top-0 px-2 md:px-4" style={{ transform: `translateY(${v.start}px)` }}>
+              <li key={v.key} data-index={v.index} ref={virtualizer.measureElement} className="absolute inset-x-0 top-0" style={{ transform: `translateY(${v.start}px)` }}>
                 {row.kind === 'day' ? (
                   <DayDivider label={row.label} onJump={onJump} />
                 ) : row.kind === 'new' ? (
                   <NewLine />
                 ) : (
-                  <MessageRow
+                  <ChannelMessage
                     message={row.message}
                     users={users}
+                    ctx={ctx}
                     meId={meId}
                     canPost={canPost}
                     continuation={row.continuation}
-                    timeOnly
+                    selected={selectionOf(row.message)}
                     actions={messageActions && ((close) => messageActions(row.message, close))}
                   />
                 )}

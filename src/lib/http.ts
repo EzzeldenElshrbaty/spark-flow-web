@@ -94,6 +94,7 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
       sprints: (projectId) => get(`/api/projects/${enc(projectId)}/sprints`),
       list: (projectId, opts) => get(`/api/projects/${enc(projectId)}/tasks${opts?.archived ? '?archived=true' : ''}`),
       get: (key) => get(`/api/tasks/${enc(key)}`),
+      resolve: (keys) => (keys.length ? get(`/api/tasks/resolve?keys=${keys.map(enc).join(',')}`) : Promise.resolve([])),
     },
     projects: {
       list: (workspaceId, opts) => get(`/api/workspaces/${enc(workspaceId)}/projects${opts?.archived ? '?archived=true' : ''}`),
