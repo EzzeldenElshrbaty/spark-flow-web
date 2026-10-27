@@ -205,7 +205,8 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
         {addingTime && <AddTimeSheet projectId={t.projectId} taskId={t.id} onClose={() => setAddingTime(false)} />}
         <h3 className="mt-5 text-xs font-medium uppercase tracking-wide text-fg-muted">Description</h3>
         <p className="mt-1.5 whitespace-pre-line break-words text-sm text-fg-secondary">{t.description.trim() || '—'}</p>
-        {editing && project && (
+        {/* Archived meanwhile (another tab): the sheet goes, since none of its edits could be saved. */}
+        {editing && project && !archived && (
           <TaskSheet project={project} phases={phases.data ?? []} sprints={sprints.data ?? []} users={users.data ?? []} task={t} onClose={() => setEditing(false)} />
         )}
       </>

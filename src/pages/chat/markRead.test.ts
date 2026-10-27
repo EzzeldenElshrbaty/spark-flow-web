@@ -15,4 +15,9 @@ describe('shouldMarkRead', () => {
     expect(shouldMarkRead(null, 'm1', false)).toBe(false)
     expect(shouldMarkRead(null, null, true)).toBe(false)
   })
+  it('a channel opened on cached messages waits for the refetch before marking read', () => {
+    expect(shouldMarkRead(null, 'm1', true, false)).toBe(false)
+    expect(shouldMarkRead(null, 'm1', true, true)).toBe(true)
+  })
 })
+

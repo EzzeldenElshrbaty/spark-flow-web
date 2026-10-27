@@ -65,11 +65,11 @@ export function ChannelFeed({
   const newestId = newest?.id ?? null
   const seen = useRef<string | null>(null)
   useEffect(() => {
-    if (shouldMarkRead(seen.current, newestId, document.visibilityState === 'visible')) {
+    if (shouldMarkRead(seen.current, newestId, document.visibilityState === 'visible', !messages.isFetching)) {
       seen.current = newestId
       markRead(channelId)
     }
-  }, [newestId, channelId, markRead])
+  }, [newestId, channelId, markRead, messages.isFetching])
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return
