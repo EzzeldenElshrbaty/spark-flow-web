@@ -50,7 +50,7 @@ describe('tickets reads', () => {
   })
 
   it('lists projects and sprints', async () => {
-    expect((await api.tickets.projects('ws-eng')).map((p) => p.key)).toEqual(['NEX', 'MOB', 'ELM', 'SEL'])
+    expect((await api.projects.list('ws-eng')).map((p) => p.key)).toEqual(['NEX', 'MOB', 'ELM', 'SEL'])
     const sprints = await api.tickets.sprints('p-nex')
     expect(sprints.length).toBeGreaterThan(0)
     expect(sprints.every((s) => s.projectId === 'p-nex')).toBe(true)
@@ -64,7 +64,7 @@ describe('tickets reads', () => {
     await expect(api.tickets.get('NEX-999')).rejects.toMatchObject({ status: 404, title: 'Not found', detail: "Ticket NEX-999 doesn't exist." })
     await expect(api.tickets.list('nope')).rejects.toMatchObject({ status: 404, detail: "Project nope doesn't exist." })
     await expect(api.tickets.sprints('nope')).rejects.toMatchObject({ status: 404 })
-    await expect(api.tickets.projects('nope')).rejects.toMatchObject({ status: 404, detail: "Workspace nope doesn't exist." })
+    await expect(api.projects.list('nope')).rejects.toMatchObject({ status: 404, detail: "Workspace nope doesn't exist." })
     await expect(createTicket(db, hub, newTicket({ projectId: 'nope' }))).rejects.toMatchObject({ status: 404 })
     await expect(updateTicket(db, hub, 'NEX-999', { title: 'x' })).rejects.toMatchObject({ status: 404 })
     expect(events).toEqual([])

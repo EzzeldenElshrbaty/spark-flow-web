@@ -8,11 +8,3 @@ export function useWorkspaces() {
 }
 
 /** One workspace by its slug, from the same list; null when there is no such workspace. */
-export function useWorkspace(slug: string) {
-  return useQuery({
-    queryKey: qk.workspaces(),
-    queryFn: () => api.workspaces.list(),
-    retry,
-    select: (workspaces) => workspaces.find((w) => w.slug === slug) ?? null,
-  })
-}

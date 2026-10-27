@@ -148,7 +148,7 @@ function logBoardChanges(data: DbData, projectId: string, before: BoardColumn[],
   })
 }
 
-export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api, 'projects' | 'phases' | 'deliverables'> & { summaries: Api['tickets']['projects'] } {
+export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api, 'projects' | 'phases' | 'deliverables'> {
   /** One write about a project, then tells every tab that project changed (board, phases, deliverables, details). */
   const write = async <T>(projectIdOf: (result: T) => string, fn: (data: DbData) => T): Promise<T> => {
     const result = await db.update(fn)
@@ -192,7 +192,6 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
   }
 
   return {
-    summaries,
     projects: {
       list: (workspaceId, opts) => summaries(workspaceId, opts),
       archive: (id) => setArchived(id, true),

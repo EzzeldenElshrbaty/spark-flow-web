@@ -7,19 +7,10 @@ import { api } from '@/lib/api'
 // Every hook below takes an id that may still be unknown (a route param, a lookup in progress): without one it
 // asks for nothing instead of firing a request for ''.
 export function useProjects(workspaceId: string | undefined) {
-  return useQuery({ queryKey: qk.projects(workspaceId ?? ''), queryFn: () => api.tickets.projects(workspaceId!), retry, enabled: Boolean(workspaceId) })
+  return useQuery({ queryKey: qk.projects(workspaceId ?? ''), queryFn: () => api.projects.list(workspaceId!), retry, enabled: Boolean(workspaceId) })
 }
 
 /** One project by its key (such as NEX), from its workspace's list; null when there is no such project. */
-export function useProject(workspaceId: string | undefined, key: string | undefined) {
-  return useQuery({
-    queryKey: qk.projects(workspaceId ?? ''),
-    queryFn: () => api.tickets.projects(workspaceId!),
-    retry,
-    enabled: Boolean(workspaceId && key),
-    select: (projects) => projects.find((p) => p.key === key) ?? null,
-  })
-}
 
 export function useSprints(projectId: string | undefined) {
   return useQuery({ queryKey: qk.sprints(projectId ?? ''), queryFn: () => api.tickets.sprints(projectId!), retry, enabled: Boolean(projectId) })

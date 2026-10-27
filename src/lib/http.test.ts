@@ -156,7 +156,7 @@ describe('createHttpApi', () => {
     await api.chat.message('m1')
     await api.chat.replies('m1')
     await api.chat.markRead('c1')
-    await api.tickets.projects('w1')
+    await api.projects.list('w1')
     await api.tickets.sprints('p1')
     await api.tickets.list('p1')
     await api.tickets.get('NEX-101')
@@ -173,8 +173,8 @@ describe('createHttpApi', () => {
       'POST /api/channels/c1/read',
       'GET /api/workspaces/w1/projects',
       'GET /api/projects/p1/sprints',
-      'GET /api/projects/p1/tickets',
-      'GET /api/tickets/NEX-101',
+      'GET /api/projects/p1/tasks',
+      'GET /api/tasks/NEX-101',
     ])
   })
 
@@ -183,7 +183,7 @@ describe('createHttpApi', () => {
     const api = createHttpApi(fetchFn)
     await api.tickets.get('A/B?c')
     await api.chat.channel('a b')
-    expect(calls.map((c) => c.url)).toEqual(['/api/tickets/A%2FB%3Fc', '/api/channels/a%20b'])
+    expect(calls.map((c) => c.url)).toEqual(['/api/tasks/A%2FB%3Fc', '/api/channels/a%20b'])
   })
 
   it('returns the parsed body, and nothing for an empty one', async () => {

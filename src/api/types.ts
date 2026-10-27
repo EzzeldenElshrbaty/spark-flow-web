@@ -279,8 +279,6 @@ export interface Api {
     leave(id: string): Promise<Channel>
   }
   tickets: {
-    /** The same list as projects.list; kept for the Phase 1+2 pages. */
-    projects(workspaceId: string): Promise<ProjectSummary[]>
     sprints(projectId: string): Promise<Sprint[]>
     /** The project's tasks; archived ones only with `archived: true` (and then only those). */
     list(projectId: string, opts?: { archived?: boolean }): Promise<TaskView[]>

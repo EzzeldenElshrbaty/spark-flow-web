@@ -26,9 +26,8 @@ function findTicket(data: DbData, key: string): Ticket {
   return ticket
 }
 
-export function ticketsApi(db: MockDb, now: () => Date, projects: Api['tickets']['projects']): Api['tickets'] {
+export function ticketsApi(db: MockDb, now: () => Date): Api['tickets'] {
   return {
-    projects,
     async sprints(projectId) {
       await delay()
       const data = await db.read()

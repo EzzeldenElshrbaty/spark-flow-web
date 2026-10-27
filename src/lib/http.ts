@@ -86,10 +86,10 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
       leave: (id) => send('POST', `/api/channels/${enc(id)}/leave`),
     },
     tickets: {
-      projects: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/projects`),
+      // One name for tasks on the wire: /tasks, for reads as for writes.
       sprints: (projectId) => get(`/api/projects/${enc(projectId)}/sprints`),
-      list: (projectId, opts) => get(`/api/projects/${enc(projectId)}/tickets${opts?.archived ? '?archived=true' : ''}`),
-      get: (key) => get(`/api/tickets/${enc(key)}`),
+      list: (projectId, opts) => get(`/api/projects/${enc(projectId)}/tasks${opts?.archived ? '?archived=true' : ''}`),
+      get: (key) => get(`/api/tasks/${enc(key)}`),
     },
     projects: {
       list: (workspaceId, opts) => get(`/api/workspaces/${enc(workspaceId)}/projects${opts?.archived ? '?archived=true' : ''}`),
