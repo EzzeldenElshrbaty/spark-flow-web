@@ -126,3 +126,32 @@ describe('teams', () => {
     await expect(api.projects.update('p-mob', { memberIds: ['u-4', 'u-8'] })).resolves.toMatchObject({ memberIds: ['u-4', 'u-8'] })
   })
 })
+
+describe('board columns', () => {
+  const columns = [
+    { status: 'backlog' as const, label: 'Backlog' },
+    { status: 'todo' as const, label: 'To do' },
+    { status: 'inProgress' as const, label: 'In progress' },
+    { status: 'done' as const, label: 'Done' },
+    { status: 'inReview' as const, label: ' Testing ' },
+  ]
+
+  it('setBoard saves names and order for the manager', async () => {
+    await api.users.viewAs('u-2') // Nour manages Nexus Core
+    const project = await api.projects.setBoard('p-nex', columns)
+    expect(project.board).toEqual([...columns.slice(0, 4), { status: 'inReview', label: 'Testing' }])
+    expect((await api.projects.get('ws-eng', 'NEX')).board?.[4]?.label).toBe('Testing')
+  })
+
+  it('sales and a member are refused', async () => {
+    await api.users.viewAs('u-9') // Karim, sales
+    await expect(api.projects.setBoard('p-nex', columns)).rejects.toMatchObject({ status: 403 })
+    await api.users.viewAs('u-3')
+    await expect(api.projects.setBoard('p-nex', columns)).rejects.toMatchObject({ status: 403 })
+  })
+
+  it('bad columns are refused', async () => {
+    await expect(api.projects.setBoard('p-nex', columns.slice(0, 4))).rejects.toMatchObject({ status: 400, detail: 'Every status needs one column.' })
+    await expect(api.projects.setBoard('p-nex', columns.map((c) => ({ ...c, label: 'Same' })))).rejects.toMatchObject({ status: 400, detail: "Two columns can't share a name." })
+  })
+})

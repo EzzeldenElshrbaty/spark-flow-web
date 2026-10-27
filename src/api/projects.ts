@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import type { DeliverablePatch, NewDeliverable, NewPhase, NewProject, PhasePatch, ProjectPatch, UploadFile } from '@/api/types'
+import type { BoardColumn, DeliverablePatch, NewDeliverable, NewPhase, NewProject, PhasePatch, ProjectPatch, UploadFile } from '@/api/types'
 import { qk } from '@/api/queryKeys'
 import { retryUnlessNotFound as retry } from '@/api/retry'
 import { api } from '@/lib/api'
@@ -23,6 +23,9 @@ export function useProjectSummary(workspaceId: string | undefined, key: string |
 
 export function useCreateProject() {
   return useMutation({ mutationFn: (input: NewProject) => api.projects.create(input) })
+}
+export function useSetBoard() {
+  return useMutation({ mutationFn: ({ id, columns }: { id: string; columns: BoardColumn[] }) => api.projects.setBoard(id, columns) })
 }
 export function useUpdateProject() {
   return useMutation({ mutationFn: ({ id, patch }: { id: string; patch: ProjectPatch }) => api.projects.update(id, patch) })

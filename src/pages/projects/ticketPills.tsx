@@ -23,13 +23,13 @@ export const statusTint: Record<TicketStatus, { head: string; body: string; bord
   done: { head: 'bg-emerald-50 dark:bg-emerald-500/10', body: 'bg-emerald-50/40 dark:bg-emerald-500/[0.04]', border: 'border-emerald-100 dark:border-emerald-500/20', dot: 'bg-emerald-400' },
 }
 
-/** Status pill with a dot (the record-status pill of the kit). */
-export function StatusPill({ status }: { status: TicketStatus }) {
+/** Status pill with a dot (the record-status pill of the kit); `label` is the project's name for it, if it has one. */
+export function StatusPill({ status, label }: { status: TicketStatus; label?: string }) {
   const style = statusStyle[status]
   return (
     <span className={clsx('inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium', style.pill)}>
       <span className={clsx('size-1.5 rounded-full', style.dot)} aria-hidden />
-      {statusLabel(status)}
+      {label ?? statusLabel(status)}
     </span>
   )
 }

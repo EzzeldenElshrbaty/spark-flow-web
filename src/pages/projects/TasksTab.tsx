@@ -2,8 +2,9 @@ import clsx from 'clsx'
 import { Columns3, List } from 'lucide-react'
 import { useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router'
+import { useSetBoard } from '@/api/projects'
 import { useSprints, useTickets, useUpdateTask } from '@/api/tickets'
-import type { Phase, ProjectSummary, TaskView, TicketPatch, User } from '@/api/types'
+import type { BoardColumn, Phase, ProjectSummary, TaskView, TicketPatch, User } from '@/api/types'
 import { selectClass } from '@/components/ui/Field'
 import { QueryError } from '@/components/ui/QueryError'
 import { useUiStore, type ProjectView } from '@/lib/uiStore'
@@ -75,15 +76,18 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
   const update = useUpdateTask()
   const canMove = (t: TaskView) => check('task.updateOwnStatus', { project, taskAssigneeId: t.assigneeId })
   const move = (t: TaskView, patch: TicketPatch) => update.mutateAsync({ key: t.key, patch })
+  const setBoard = useSetBoard()
+  // Column names and order are the project manager's (and Admins').
+  const onBoard = check('phase.manage', { project }) ? (columns: BoardColumn[]) => setBoard.mutateAsync({ id: project.id, columns }) : undefined
 
   const shown = filterTasks(tickets.data ?? [], { phase, sprint })
   let body
   if (tickets.isError) body = <QueryError what="Tasks" onRetry={() => void tickets.refetch()} />
   else if (tickets.isPending) body = view === 'board' ? <BoardSkeleton /> : <BacklogSkeleton />
   else if (view === 'board') body = (
-      <ProjectBoard tickets={shown} users={people} canMove={canMove} onMove={move} error={update.error ? update.error.message : null} />
+      <ProjectBoard tickets={shown} users={people} canMove={canMove} onMove={move} error={update.error ? update.error.message : null} board={project.board} onBoard={onBoard} />
     )
-  else body = <ProjectBacklog tasks={shown} phases={phases} users={people} />
+  else body = <ProjectBacklog tasks={shown} phases={phases} users={people} board={project.board} />
 
   const chip = (active: boolean) =>
     clsx('shrink-0 rounded-full border px-3 py-1.5 text-sm', active ? 'border-brand-500 bg-accent-soft font-medium text-fg' : 'border-line text-fg-secondary hover:bg-surface-muted')

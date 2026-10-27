@@ -1,10 +1,11 @@
-import type { Phase, TaskView, User } from '@/api/types'
+import type { BoardColumn, Phase, TaskView, User } from '@/api/types'
 import { Badge } from '@/components/ui/Badge'
 import { Card } from '@/components/ui/Card'
 import { formatDate } from '@/lib/format'
 import { TicketRow } from '@/pages/projects/TicketRow'
 import { statuses } from '@/pages/projects/ticketPills'
 import { groupByPhase } from './taskFilters'
+import { columnLabel } from '@/lib/boardColumns'
 
 const statusOrder = (task: TaskView) => statuses.findIndex((s) => s.status === task.status)
 const phaseBadge = { notStarted: { tone: 'neutral', label: 'Not started' }, inProgress: { tone: 'info', label: 'In progress' }, done: { tone: 'success', label: 'Done' } } as const
@@ -21,7 +22,7 @@ export function BacklogSkeleton() {
 }
 
 /** The List view: tasks grouped by phase in phase order, then those without a phase. Empty phases are left out. */
-export function ProjectBacklog({ tasks, phases, users }: { tasks: TaskView[]; phases: Phase[]; users: User[] }) {
+export function ProjectBacklog({ tasks, phases, users, board }: { tasks: TaskView[]; phases: Phase[]; users: User[]; board?: BoardColumn[] }) {
   const nameOf = (id: string | null) => (id ? (users.find((u) => u.id === id)?.name ?? 'Unknown person') : null)
   const sorted = [...tasks].sort((a, b) => statusOrder(a) - statusOrder(b) || a.rank - b.rank)
   const groups = groupByPhase(sorted, phases).filter((g) => g.tasks.length > 0)
@@ -52,7 +53,7 @@ export function ProjectBacklog({ tasks, phases, users }: { tasks: TaskView[]; ph
             <ul className="divide-y divide-line-subtle">
               {items.map((task) => (
                 <li key={task.id}>
-                  <TicketRow ticket={task} assignee={nameOf(task.assigneeId)} variant="row" />
+                  <TicketRow ticket={task} assignee={nameOf(task.assigneeId)} variant="row" statusName={board && columnLabel({ board }, task.status)} />
                 </li>
               ))}
             </ul>

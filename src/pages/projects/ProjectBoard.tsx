@@ -13,18 +13,22 @@ import {
   type DragOverEvent,
   type DragStartEvent,
 } from '@dnd-kit/core'
-import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { horizontalListSortingStrategy, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import clsx from 'clsx'
-import { Inbox } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Inbox, MoreHorizontal, Pencil } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { TaskView, TicketPatch, TicketStatus, User } from '@/api/types'
+import type { BoardColumn as Column, TaskView, TicketPatch, TicketStatus, User } from '@/api/types'
+import { MenuPanel } from '@/components/ui/Menu'
+import { boardColumns, columnErrors, moveColumn } from '@/lib/boardColumns'
 import { boardMove } from '@/pages/projects/boardMove'
 import { TicketRow } from '@/pages/projects/TicketRow'
-import { statuses, statusLabel, statusTint } from '@/pages/projects/ticketPills'
+import { statuses, statusTint } from '@/pages/projects/ticketPills'
 
 const nameOf = (users: User[], id: string | null) => (id ? (users.find((u) => u.id === id)?.name ?? 'Unknown person') : null)
 const COLUMN = 'column:'
+const HEADER = 'header:'
+const menuItem = 'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start text-sm text-fg-secondary hover:bg-surface-muted'
 const byRank = (a: TaskView, b: TaskView) => a.rank - b.rank
 
 /** Pulse columns while the tickets load. */
@@ -64,30 +68,149 @@ function BoardCard({ ticket, assignee, movable }: { ticket: TaskView; assignee: 
   )
 }
 
-/** A status column: its header, and the cards as one sortable list that also takes drops when empty. */
-function BoardColumn({ status, label, items, users, canMove, hovered }: { status: TicketStatus; label: string; items: TaskView[]; users: User[]; canMove: (t: TaskView) => boolean; hovered: boolean }) {
+/** The ⋯ on a column header, for the project's manager: rename, and move a place towards either side. */
+function ColumnMenu({ label, first, last, onRename, onMove }: { label: string; first: boolean; last: boolean; onRename: () => void; onMove: (side: 'left' | 'right') => void }) {
+  const [open, setOpen] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  // In right-to-left the board reads the other way: "left" is a later place.
+  const rtl = typeof document !== 'undefined' && document.documentElement.dir === 'rtl'
+  const canLeft = rtl ? !last : !first
+  const canRight = rtl ? !first : !last
+  const pick = (run: () => void) => () => {
+    setOpen(false)
+    run()
+  }
+  return (
+    <div className="relative">
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        onPointerDown={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`Column actions: ${label}`}
+        title="Column actions"
+        className="flex size-7 items-center justify-center rounded-md text-fg-tertiary hover:bg-surface/80 hover:text-fg"
+      >
+        <MoreHorizontal className="size-4" />
+      </button>
+      <MenuPanel open={open} onClose={() => setOpen(false)} triggerRef={triggerRef} label="Column actions" className="p-1.5 sm:w-52">
+        <button type="button" role="menuitem" className={menuItem} onClick={pick(onRename)}>
+          <Pencil className="size-4 shrink-0" /> Rename column
+        </button>
+        {canLeft && (
+          <button type="button" role="menuitem" className={menuItem} onClick={pick(() => onMove('left'))}>
+            <ArrowLeft className="size-4 shrink-0" /> Move left
+          </button>
+        )}
+        {canRight && (
+          <button type="button" role="menuitem" className={menuItem} onClick={pick(() => onMove('right'))}>
+            <ArrowRight className="size-4 shrink-0" /> Move right
+          </button>
+        )}
+      </MenuPanel>
+    </div>
+  )
+}
+
+/** A column: its header (for the manager: sortable sideways, renamable), and its cards as one sortable list that also takes drops when empty. */
+function BoardColumn({
+  status,
+  label,
+  items,
+  users,
+  canMove,
+  hovered,
+  editable,
+  first,
+  last,
+  onRename,
+  onMoveSide,
+}: {
+  status: TicketStatus
+  label: string
+  items: TaskView[]
+  users: User[]
+  canMove: (t: TaskView) => boolean
+  hovered: boolean
+  editable: boolean
+  first: boolean
+  last: boolean
+  onRename: (label: string) => Promise<string | null>
+  onMoveSide: (side: 'left' | 'right') => void
+}) {
   const { setNodeRef } = useDroppable({ id: COLUMN + status })
+  const sortable = useSortable({ id: HEADER + status, disabled: !editable })
+  const [renaming, setRenaming] = useState(false)
+  const [draft, setDraft] = useState(label)
+  const [error, setError] = useState<string | null>(null)
   const hours = Math.round(items.reduce((sum, t) => sum + t.loggedHours, 0) * 10) / 10
   const tint = statusTint[status]
+  const startRename = () => {
+    setDraft(label)
+    setError(null)
+    setRenaming(true)
+  }
+  const finish = async () => {
+    if (draft.trim() === label) return setRenaming(false)
+    const problem = await onRename(draft)
+    if (problem) setError(problem)
+    else setRenaming(false)
+  }
   return (
     <section
+      ref={sortable.setNodeRef}
+      style={{ transform: CSS.Translate.toString(sortable.transform), transition: sortable.transition }}
       aria-label={`${label}: ${items.length} tasks`}
       className={clsx(
         'relative flex w-[85%] shrink-0 snap-start flex-col overflow-hidden rounded-xl border md:max-h-[calc(100dvh-14rem)] md:w-[296px]',
         tint.border,
         tint.body,
         hovered && 'ring-2 ring-accent/40',
+        sortable.isDragging && 'opacity-40',
       )}
     >
-      <header className={clsx('border-b px-3.5 py-3', tint.head, tint.border)}>
+      <header
+        ref={sortable.setActivatorNodeRef}
+        className={clsx('border-b px-3.5 py-3', tint.head, tint.border, editable && !renaming && 'cursor-grab')}
+        {...(editable && !renaming ? { ...sortable.attributes, ...sortable.listeners, 'aria-roledescription': 'movable column', 'aria-label': `Column ${label}` } : {})}
+      >
         <h2 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-fg">
           <span className={clsx('size-2 shrink-0 rounded-full', tint.dot)} aria-hidden />
-          <span className="truncate">{label}</span>
+          {renaming ? (
+            <input
+              autoFocus
+              aria-label="Column name"
+              value={draft}
+              maxLength={40}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                e.stopPropagation()
+                if (e.key === 'Enter') void finish()
+                if (e.key === 'Escape') setRenaming(false)
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              onBlur={() => void finish()}
+              className="min-w-0 flex-1 rounded-md border border-line bg-surface px-2 py-0.5 text-sm font-semibold text-fg focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-accent-soft"
+            />
+          ) : (
+            <span className="truncate" onDoubleClick={editable ? startRename : undefined}>
+              {label}
+            </span>
+          )}
           <span className="ms-auto rounded-full bg-surface/80 px-2 py-px text-xs font-medium tabular-nums text-fg-tertiary">{items.length}</span>
+          {editable && !renaming && <ColumnMenu label={label} first={first} last={last} onRename={startRename} onMove={onMoveSide} />}
         </h2>
         <p className="mt-1 ps-4 text-xs tabular-nums text-fg-muted">
           <span className="font-medium text-fg-secondary">{hours}h</span> logged
         </p>
+        {error && (
+          <p role="alert" className="mt-1 ps-4 text-xs text-red-600 dark:text-red-400">
+            {error}
+          </p>
+        )}
       </header>
       <SortableContext id={COLUMN + status} items={items.map((t) => t.key)} strategy={verticalListSortingStrategy}>
         <ul ref={setNodeRef} className="min-h-24 flex-1 space-y-2 p-2 md:overflow-y-auto">
@@ -110,7 +233,8 @@ function BoardColumn({ status, label, items, users, canMove, hovered }: { status
  * The board: a tinted column per status with its count and hours logged. The columns scroll sideways inside
  * the board; on phones each column takes most of the width and snaps, with the next one peeking in.
  * A card the person may move drags to another column or another place in its column, with mouse, touch or keyboard;
- * the drop shows at once and goes back if saving fails.
+ * the drop shows at once and goes back if saving fails. The project's manager also renames columns and puts them in
+ * another order (drag a header, or its ⋯ menu); they stay the same 5 statuses.
  */
 export function ProjectBoard({
   tickets,
@@ -118,12 +242,18 @@ export function ProjectBoard({
   canMove = () => false,
   onMove,
   error,
+  board,
+  onBoard,
 }: {
   tickets: TaskView[]
   users: User[]
   canMove?: (ticket: TaskView) => boolean
   onMove?: (ticket: TaskView, patch: TicketPatch) => Promise<unknown>
   error?: string | null
+  /** The project's columns (names and order); missing is the standard board. */
+  board?: Column[]
+  /** Saves the columns; given only to whoever may change them. */
+  onBoard?: (columns: Column[]) => Promise<unknown>
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -140,23 +270,64 @@ export function ProjectBoard({
     if (saved) setMoved(null)
   }, [saved])
   const shown = useMemo(() => (moved ? tickets.map((t) => (t.key === moved.key ? { ...t, ...moved.patch } : t)) : tickets), [moved, tickets])
-  const columns = statuses.map(({ status, label }) => ({ status, label, items: shown.filter((t) => t.status === status).sort(byRank) }))
+  // A column change shows at once too, until the saved board matches it or the save fails.
+  const savedBoard = useMemo(() => boardColumns({ board }), [board])
+  const [boardDraft, setBoardDraft] = useState<Column[] | null>(null)
+  const boardSaved = boardDraft != null && JSON.stringify(boardDraft) === JSON.stringify(savedBoard)
+  useEffect(() => {
+    if (boardSaved) setBoardDraft(null)
+  }, [boardSaved])
+  const order = boardDraft ?? savedBoard
+  const editable = Boolean(onBoard)
+  const columns = order.map(({ status, label }) => ({ status, label, items: shown.filter((t) => t.status === status).sort(byRank) }))
   const find = (key: string) => shown.find((t) => t.key === key)
-  const columnOf = (id: string) => (id.startsWith(COLUMN) ? (id.slice(COLUMN.length) as TicketStatus) : find(id)?.status)
-  const active = activeKey ? find(activeKey) : undefined
+  const columnOf = (id: string) =>
+    id.startsWith(COLUMN) ? (id.slice(COLUMN.length) as TicketStatus) : id.startsWith(HEADER) ? (id.slice(HEADER.length) as TicketStatus) : find(id)?.status
+  const labelOf = (status: TicketStatus | undefined) => order.find((c) => c.status === status)?.label ?? ''
+  const active = activeKey && !activeKey.startsWith(HEADER) ? find(activeKey) : undefined
+  const activeColumn = activeKey?.startsWith(HEADER) ? columns.find((c) => HEADER + c.status === activeKey) : undefined
 
+  /** Saves a new board; the sentence that says why it can't be, or null once it is sent. */
+  const saveBoard = async (next: Column[]): Promise<string | null> => {
+    const problem = columnErrors(next)
+    if (problem || !onBoard) return problem
+    setBoardDraft(next)
+    try {
+      await onBoard(next)
+      return null
+    } catch (e) {
+      setBoardDraft(null)
+      return (e as Error).message
+    }
+  }
+  const rename = (status: TicketStatus) => (label: string) => saveBoard(order.map((c) => (c.status === status ? { ...c, label: label.trim() } : c)))
+  const moveSide = (status: TicketStatus) => (side: 'left' | 'right') => {
+    const rtl = document.documentElement.dir === 'rtl'
+    const at = order.findIndex((c) => c.status === status)
+    void saveBoard(moveColumn(order, status, at + ((side === 'right') !== rtl ? 1 : -1)))
+  }
+
+  const named = (id: string | number) => (String(id).startsWith(HEADER) ? `column ${labelOf(columnOf(String(id)))}` : String(id))
   const announcements: Announcements = {
-    onDragStart: ({ active }) => `Picked up ${active.id}.`,
-    onDragOver: ({ active, over }) => (over ? `${active.id} is over ${statusLabel(columnOf(String(over.id)) ?? 'todo')}.` : undefined),
-    onDragEnd: ({ active, over }) => (over ? `Dropped ${active.id} in ${statusLabel(columnOf(String(over.id)) ?? 'todo')}.` : `Cancelled moving ${active.id}.`),
-    onDragCancel: ({ active }) => `Cancelled moving ${active.id}.`,
+    onDragStart: ({ active }) => `Picked up ${named(active.id)}.`,
+    onDragOver: ({ active, over }) => (over ? `${named(active.id)} is over ${labelOf(columnOf(String(over.id)))}.` : undefined),
+    onDragEnd: ({ active, over }) => (over ? `Dropped ${named(active.id)} at ${labelOf(columnOf(String(over.id)))}.` : `Cancelled moving ${named(active.id)}.`),
+    onDragCancel: ({ active }) => `Cancelled moving ${named(active.id)}.`,
   }
 
   const onDragStart = ({ active }: DragStartEvent) => setActiveKey(String(active.id))
-  const onDragOver = ({ over }: DragOverEvent) => setOverStatus(over ? (columnOf(String(over.id)) ?? null) : null)
+  const onDragOver = ({ active, over }: DragOverEvent) =>
+    setOverStatus(over && !String(active.id).startsWith(HEADER) ? (columnOf(String(over.id)) ?? null) : null)
   const onDragEnd = ({ active, over }: DragEndEvent) => {
     setActiveKey(null)
     setOverStatus(null)
+    if (String(active.id).startsWith(HEADER)) {
+      // A header dropped over another column takes that column's place.
+      const from = columnOf(String(active.id))
+      const to = over ? columnOf(String(over.id)) : undefined
+      if (from && to && from !== to) void saveBoard(moveColumn(order, from, order.findIndex((c) => c.status === to)))
+      return
+    }
     const ticket = find(String(active.id))
     const to = over ? columnOf(String(over.id)) : undefined
     if (!ticket || !over || !to) return
@@ -201,14 +372,32 @@ export function ProjectBoard({
         }}
       >
         <div aria-describedby="board-hint" className="relative -mx-4 flex snap-x snap-mandatory scroll-px-4 items-start gap-3 overflow-x-auto px-4 pb-4 [scrollbar-width:thin] md:mx-0 md:snap-none md:px-0">
-          {columns.map((c) => (
-            <BoardColumn key={c.status} {...c} users={users} canMove={canMove} hovered={activeKey != null && overStatus === c.status} />
-          ))}
+          <SortableContext id="columns" items={columns.map((c) => HEADER + c.status)} strategy={horizontalListSortingStrategy}>
+            {columns.map((c, i) => (
+              <BoardColumn
+                key={c.status}
+                {...c}
+                users={users}
+                canMove={canMove}
+                hovered={activeKey != null && overStatus === c.status}
+                editable={editable}
+                first={i === 0}
+                last={i === columns.length - 1}
+                onRename={rename(c.status)}
+                onMoveSide={moveSide(c.status)}
+              />
+            ))}
+          </SortableContext>
         </div>
         <DragOverlay>
           {active && (
             <div className="rotate-1 cursor-grabbing rounded-lg shadow-xl">
               <TicketRow ticket={active} assignee={nameOf(users, active.assigneeId)} variant="card" />
+            </div>
+          )}
+          {activeColumn && (
+            <div className={clsx('w-[296px] cursor-grabbing rounded-xl border px-3.5 py-3 text-sm font-semibold text-fg shadow-xl', statusTint[activeColumn.status].head, statusTint[activeColumn.status].border)}>
+              {activeColumn.label} · <span className="tabular-nums">{activeColumn.items.length}</span>
             </div>
           )}
         </DragOverlay>

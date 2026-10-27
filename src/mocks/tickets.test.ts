@@ -190,6 +190,14 @@ describe('task event cards', () => {
     expect(await cards()).toEqual([])
   })
 
+  it("a status card uses the project's column name", async () => {
+    await db.update((d) => {
+      d.projects.find((p) => p.id === 'p-nex')!.board = [{ status: 'inProgress', label: 'Building' }]
+    })
+    await updateTicket(db, hub, 'NEX-101', { status: 'inProgress' })
+    expect((await cards()).map((m) => m.content)).toEqual(['Moved NEX-101 to Building'])
+  })
+
   it('messageReceived is published for each card', async () => {
     events.length = 0
     await updateTicket(db, hub, 'NEX-101', { assigneeId: 'u-3', status: 'inProgress' })

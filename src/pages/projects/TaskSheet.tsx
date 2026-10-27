@@ -7,7 +7,7 @@ import { Field, inputClass, selectClass } from '@/components/ui/Field'
 import { Sheet } from '@/components/ui/Sheet'
 import { usePermission } from '@/lib/usePermission'
 import { byOrder } from './phases'
-import { statuses } from './ticketPills'
+import { boardColumns } from '@/lib/boardColumns'
 
 const priorities: [Priority, string][] = [
   ['urgent', 'Urgent'],
@@ -173,7 +173,7 @@ export function TaskSheet({
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Status">
             <select className={selectClass} value={values.status} disabled={!canStatus} onChange={(e) => set('status', e.target.value as TicketStatus)}>
-              {statuses.map((s) => (
+              {boardColumns(project).map((s) => (
                 <option key={s.status} value={s.status}>
                   {s.label}
                 </option>

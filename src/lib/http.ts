@@ -88,6 +88,7 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
       get: (workspaceId, key) => get(`/api/workspaces/${enc(workspaceId)}/projects/${enc(key)}`),
       create: (input) => send('POST', `/api/workspaces/${enc(input.workspaceId)}/projects`, input),
       update: (id, patch) => send('PATCH', `/api/projects/${enc(id)}`, patch),
+      setBoard: (id, columns) => send('PUT', `/api/projects/${enc(id)}/board`, { columns }),
     },
     phases: {
       list: (projectId) => get(`/api/projects/${enc(projectId)}/phases`),

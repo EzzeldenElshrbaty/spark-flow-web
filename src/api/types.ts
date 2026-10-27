@@ -18,7 +18,11 @@ export type Project = {
   managerId: string; memberIds: string[]; teamIds: string[]
   methodology: Methodology; status: ProjectStatus; startDate: string; dueDate: string
   channelId: string                                      // the project's chat
+  /** The board's column names and order (still the 5 statuses); missing means the standard board. */
+  board?: BoardColumn[]
 }
+
+export type BoardColumn = { status: TicketStatus; label: string }
 
 export type PhaseStatus = 'notStarted' | 'inProgress' | 'done'
 export type Phase = { id: string; projectId: string; name: string; order: number; startDate: string; dueDate: string; status: PhaseStatus }
@@ -237,6 +241,8 @@ export interface Api {
     get(workspaceId: string, key: string): Promise<ProjectSummary>
     create(input: NewProject): Promise<Project>
     update(id: string, patch: ProjectPatch): Promise<Project>
+    /** The board's column names and order; the project's manager (and Admins). */
+    setBoard(id: string, columns: BoardColumn[]): Promise<Project>
   }
   phases: {
     list(projectId: string): Promise<Phase[]>

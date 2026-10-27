@@ -1,5 +1,6 @@
 import type { Api, Deliverable, Phase, Project } from '@/api/types'
 import type { DbData, MockDb } from './db'
+import { columnErrors } from '@/lib/boardColumns'
 import { summarize } from './derive'
 import { delay } from './latency'
 import { badRequest, clone, currentUser, newId, notFound, requireCan } from './shared'
@@ -112,6 +113,20 @@ export function projectsApi(db: MockDb, now: () => Date): Pick<Api, 'projects' |
             if (!next.name.trim()) throw badRequest('Give the project a name.')
             checkDates(next.startDate, next.dueDate)
             Object.assign(project, next)
+            return project
+          }),
+        )
+      },
+      async setBoard(id, columns) {
+        await delay()
+        const board = columns.map((c) => ({ status: c.status, label: c.label.trim() }))
+        const problem = columnErrors(board)
+        if (problem) throw badRequest(problem)
+        return clone(
+          await db.update((data) => {
+            const project = findProject(data, id)
+            requireCan(data, 'phase.manage', project)
+            project.board = board
             return project
           }),
         )

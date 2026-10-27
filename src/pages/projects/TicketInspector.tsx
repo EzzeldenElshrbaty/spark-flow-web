@@ -22,6 +22,7 @@ import { TaskActivity } from '@/pages/projects/TaskActivity'
 import { BugPill, OverduePill, PriorityPill, StatusPill, hoursLabel, statuses } from '@/pages/projects/ticketPills'
 import { NotFound } from '@/pages/NotFound'
 import { isPastDue } from '@/lib/dates'
+import { boardColumns, columnLabel } from '@/lib/boardColumns'
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -108,14 +109,14 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
                 disabled={update.isPending}
                 onChange={(e) => update.mutate({ key: t.key, patch: { status: e.target.value as TicketStatus } })}
               >
-                {statuses.map((s) => (
+                {(project ? boardColumns(project) : statuses).map((s) => (
                   <option key={s.status} value={s.status}>
                     {s.label}
                   </option>
                 ))}
               </select>
             ) : (
-              <StatusPill status={t.status} />
+              <StatusPill status={t.status} label={project ? columnLabel(project, t.status) : undefined} />
             )}
             {update.error && <span className="mt-1 block text-xs text-red-600 dark:text-red-400">{(update.error as Error).message}</span>}
           </Field>
