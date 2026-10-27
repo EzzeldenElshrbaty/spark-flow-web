@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { BoardColumn } from '@/api/types'
-import { categoryOf, columnErrors, columnLabel, columnsOf, defaultMoveTo, firstOf, moveColumn } from './boardColumns'
+import { categoryOf, columnErrors, columnLabel, columnsOf, defaultMoveTo, firstOf, moveColumn, startColumn } from './boardColumns'
 import { DEFAULT_COLUMNS, statusLabel } from './statuses'
 
 const custom: BoardColumn[] = [
@@ -76,5 +76,13 @@ describe('statusLabel without a project', () => {
   it('names the five defaults and never shows a raw column id', () => {
     expect(statusLabel('inReview')).toBe('In review')
     expect(statusLabel('col-3f2a')).toBe('—')
+  })
+})
+
+describe('startColumn', () => {
+  it('a new task starts in To do when the board has it, else in the first To do-type column', () => {
+    expect(startColumn({})).toBe('todo')
+    expect(startColumn({ board: custom })).toBe('todo')
+    expect(startColumn({ board: [{ id: 'col-next', label: 'Next', category: 'todo' }, ...custom.slice(1)] })).toBe('col-next')
   })
 })

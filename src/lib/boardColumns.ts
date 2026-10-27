@@ -19,6 +19,9 @@ export const columnLabel = (project: Pick<Project, 'board'>, status: string) => 
 export const firstOf = (project: Pick<Project, 'board'>, category: StatusCategory): BoardColumn =>
   columnsOf(project).find((c) => c.category === category) ?? DEFAULT_COLUMNS.find((c) => c.category === category)!
 
+/** Where a new task starts: the To do column when the board has it, else the first To do-type column. */
+export const startColumn = (project: Pick<Project, 'board'>): string => columnOf(project, 'todo')?.id ?? firstOf(project, 'todo').id
+
 /** The columns with one moved to a place. */
 export function moveColumn(columns: BoardColumn[], id: string, to: number): BoardColumn[] {
   const moving = columns.find((c) => c.id === id)

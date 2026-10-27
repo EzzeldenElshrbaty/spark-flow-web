@@ -247,3 +247,10 @@ describe('the status is checked inside the write', () => {
     expect((await db.read()).tickets.find((t) => t.key === 'NEX-101')!.status).not.toBe('col-gone')
   })
 })
+
+describe('where a new task starts', () => {
+  it('on the standard board, in To do (not Backlog)', async () => {
+    const t = await createTicket(db, hub, newTicket({ status: '' }))
+    expect(t.status).toBe('todo')
+  })
+})

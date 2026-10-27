@@ -3,7 +3,7 @@ import { taskView } from './derive'
 import type { DbData, MockDb } from './db'
 import { delay } from './latency'
 import type { MockHub } from './realtime'
-import { columnOf, columnsOf, firstOf } from '@/lib/boardColumns'
+import { columnOf, columnsOf, startColumn } from '@/lib/boardColumns'
 import { entryEnd } from '@/lib/hours'
 import { badRequest, clone, notFound, requireCan, stamp } from './shared'
 
@@ -56,7 +56,7 @@ const EDITABLE_BY_ASSIGNEE = new Set(['status', 'rank'])
 
 function checkTaskInput(data: DbData, projectId: string, input: Pick<NewTicket, 'phaseId' | 'estimateHours' | 'title'> & { status?: string }) {
   if (input.title !== undefined && !input.title.trim()) throw badRequest('Give the task a title.')
-  // A status is a column of the project's board ('' on create means its first To do column).
+  // A status is a column of the project's board ('' on create means where new tasks start: To do).
   if (input.status && !columnOf(findProject(data, projectId), input.status)) throw badRequest('That column no longer exists.')
   if (input.phaseId && data.phases.find((p) => p.id === input.phaseId)?.projectId !== projectId) throw badRequest('That phase belongs to another project.')
   if (input.estimateHours != null && (input.estimateHours < 0 || !Number.isFinite(input.estimateHours))) throw badRequest('The estimate is a number of hours, 0 or more.')
@@ -131,7 +131,7 @@ export async function createTicket(db: MockDb, hub: MockHub, input: NewTicket): 
     const project = findProject(data, input.projectId)
     const own = data.tickets.filter((t) => t.projectId === project.id)
     const number = data.counters[project.id] ?? Math.max(0, ...own.map(ticketNumber)) + 1
-    const status = input.status || firstOf(project, 'todo').id
+    const status = input.status || startColumn(project)
     if (!columnOf(project, status)) throw badRequest('That column no longer exists.')
     const lastRank = Math.max(0, ...own.filter((t) => t.status === status).map((t) => t.rank))
     const now = stamp()

@@ -7,7 +7,7 @@ import { Field, inputClass, selectClass } from '@/components/ui/Field'
 import { Sheet } from '@/components/ui/Sheet'
 import { usePermission } from '@/lib/usePermission'
 import { byOrder } from './phases'
-import { columnsOf, firstOf } from '@/lib/boardColumns'
+import { columnsOf, startColumn } from '@/lib/boardColumns'
 
 const priorities: [Priority, string][] = [
   ['urgent', 'Urgent'],
@@ -76,7 +76,7 @@ export function TaskSheet({
   const canStatus = canManage || check('task.updateOwnStatus', { project, taskAssigneeId: task?.assigneeId ?? null })
   const create = useCreateTask()
   const update = useUpdateTask()
-  const [values, setValues] = useState(() => valuesOf(task, project.currentPhaseId ?? null, firstOf(project, 'todo').id, draft))
+  const [values, setValues] = useState(() => valuesOf(task, project.currentPhaseId ?? null, startColumn(project), draft))
   const [errors, setErrors] = useState<Partial<Record<keyof Values, string>>>({})
   const set = <K extends keyof Values>(k: K, v: Values[K]) => setValues((s) => ({ ...s, [k]: v }))
   const people = projectPeople(project, users)
