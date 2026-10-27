@@ -63,3 +63,12 @@ No new routes. The header uses the ones above: the star toggle and Mute in the m
 `GET /api/channels/:id/messages?cursor=` pages newest first, 30 per page, ordered by `seq` (no longer by time). The client treats `nextCursor` as opaque; the mock uses the `seq` of the last message on the page and returns the messages with a smaller `seq`. `around=` (for jump to date and to a search hit) comes with those features in Phase 3.
 
 On open the client may page back up to 10 pages to reach the person's first unread message, so `lastReadSeq` far back costs up to 10 requests.
+
+### Jumping (date menu)
+
+| Call | Route | Returns |
+|---|---|---|
+| Where a jump lands | `GET /api/channels/:id/messages/first?since=<ISO>` (no `since`: the very beginning) | The `seq` of the first message at or after `since`, or `null` when there is none. |
+| Newer messages | `GET /api/channels/:id/messages?after=<seq>` | Up to 30 messages with a larger `seq`, newest first. `nextCursor` is the newest `seq` on the page while more newer ones exist, else `null`. |
+
+The date menu offers Today, Yesterday, Last week, Last month (each from local midnight) and The very beginning. "Jump to a specific date…" comes in Phase 3.

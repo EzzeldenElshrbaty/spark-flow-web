@@ -150,11 +150,17 @@ describe('createHttpApi', () => {
     await api.chat.send('c1', 'hi', 'k1')
     await api.chat.setStarred('c1', true)
     await api.chat.setMuted('c1', false)
-    expect(calls.map((c) => `${c.init?.method} ${c.url} ${String(c.init?.body)}`)).toEqual([
+    await api.chat.messagesAfter('c1', '12')
+    await api.chat.jumpTarget('c1', '2026-10-28T00:00:00.000Z')
+    await api.chat.jumpTarget('c1', null)
+    expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url} ${String(c.init?.body)}`)).toEqual([
       'POST /api/channels/c1/read {"seq":7}',
       'POST /api/channels/c1/messages {"content":"hi","clientId":"k1"}',
       'PATCH /api/channels/c1/me {"starred":true}',
       'PATCH /api/channels/c1/me {"muted":false}',
+      'GET /api/channels/c1/messages?after=12 undefined',
+      'GET /api/channels/c1/messages/first?since=2026-10-28T00%3A00%3A00.000Z undefined',
+      'GET /api/channels/c1/messages/first undefined',
     ])
   })
 

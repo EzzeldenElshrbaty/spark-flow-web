@@ -344,6 +344,25 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       const items = older.slice(0, PAGE_SIZE)
       return { items, nextCursor: older.length > PAGE_SIZE ? encodeCursor(items[items.length - 1]) : null }
     },
+    async messagesAfter(channelId, cursor) {
+      await delay()
+      const data = await db.read()
+      readableChannel(data, channelId)
+      const after = decodeCursor(cursor) ?? 0
+      const newer = data.messages.filter((m) => m.channelId === channelId && m.seq > after).sort((a, b) => a.seq - b.seq)
+      const page = newer.slice(0, PAGE_SIZE)
+      // Newest first, like every page; the cursor is the newest message here, to go on from.
+      return { items: [...page].reverse(), nextCursor: newer.length > PAGE_SIZE ? encodeCursor(page[page.length - 1]) : null }
+    },
+    async jumpTarget(channelId, since) {
+      await delay()
+      const data = await db.read()
+      readableChannel(data, channelId)
+      const first = data.messages
+        .filter((m) => m.channelId === channelId && (since === null || m.createdAt >= since))
+        .reduce<ChatMessage | null>((best, m) => (!best || m.seq < best.seq ? m : best), null)
+      return first?.seq ?? null
+    },
     async message(id) {
       await delay()
       const data = await db.read()

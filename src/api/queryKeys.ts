@@ -10,6 +10,9 @@ export const qk = {
   channels: (workspaceId: string) => ['chat', 'channels', workspaceId],
   channel: (id: string) => ['chat', 'channel', id],
   messages: (channelId: string) => ['chat', 'messages', channelId],
+  // Under messages(), so every live update about the channel reaches it too.
+  messagesFrom: (channelId: string, seq: number) => ['chat', 'messages', channelId, 'from', seq],
+  jumpTarget: (channelId: string, since: string | null) => ['chat', 'jump', channelId, since ?? 'beginning'],
   message: (id: string) => ['chat', 'message', id],
   replies: (messageId: string) => ['chat', 'replies', messageId],
   projects: (workspaceId: string) => ['tickets', 'projects', workspaceId],

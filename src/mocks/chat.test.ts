@@ -687,3 +687,31 @@ describe('read state by seq (spec §7 ChannelMember, §8 read marker)', () => {
     await expect(api.chat.setMuted('c-release', true)).rejects.toMatchObject({ status: 403 })
   })
 })
+
+describe('jumping through a channel (spec 6.2 date menu, §8 around)', () => {
+  const general = async () => (await db.read()).messages.filter((m) => m.channelId === 'c-general').sort((a, b) => a.seq - b.seq)
+
+  it('jumpTarget is the first message at or after a time; the very beginning is the first message', async () => {
+    const all = await general()
+    expect(await api.chat.jumpTarget('c-general', null)).toBe(all[0].seq)
+    expect(await api.chat.jumpTarget('c-general', all[2].createdAt)).toBe(all[2].seq)
+    expect(await api.chat.jumpTarget('c-general', new Date(Date.parse(all[2].createdAt) - 1).toISOString())).toBe(all[2].seq)
+  })
+
+  it('jumpTarget is null when nothing is that recent, and refuses a channel I cannot read', async () => {
+    expect(await api.chat.jumpTarget('c-general', '2999-01-01T00:00:00.000Z')).toBeNull()
+    await api.users.viewAs('u-3')
+    await expect(api.chat.jumpTarget('c-release', null)).rejects.toMatchObject({ status: 403 })
+  })
+
+  it('messagesAfter pages toward the newest, newest first, ending with a null cursor', async () => {
+    await addMessages('c-general', 40)
+    const all = await general()
+    const first = await api.chat.messagesAfter('c-general', String(all[0].seq))
+    expect(first.items.map((m) => m.seq)).toEqual(all.slice(1, 31).map((m) => m.seq).reverse())
+    expect(first.nextCursor).not.toBeNull()
+    const rest = await api.chat.messagesAfter('c-general', first.nextCursor!)
+    expect(rest.items.map((m) => m.seq)).toEqual(all.slice(31).map((m) => m.seq).reverse())
+    expect(rest.nextCursor).toBeNull()
+  })
+})

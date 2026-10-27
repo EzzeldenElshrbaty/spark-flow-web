@@ -1,13 +1,14 @@
-import { IconArrowDown } from '@tabler/icons-react'
+import { IconArrowDown, IconChevronDown } from '@tabler/icons-react'
 import type { InfiniteData, UseInfiniteQueryResult } from '@tanstack/react-query'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { ChatMessage, Page, User } from '@/api/types'
 import { Icon } from '@/components/sf/Icon'
+import { Menu, MenuItem } from '@/components/sf/Menu'
 import { QueryError } from '@/components/ui/QueryError'
 import { formatTime } from '@/lib/format'
 import { readUpTo } from '@/pages/chat/markRead'
-import { buildRows, unreadSummary, type MessageListRow } from '@/pages/chat/messageRows'
+import { buildRows, unreadSummary, type JumpChoice, type MessageListRow } from '@/pages/chat/messageRows'
 import { MessageRow, MessageSkeleton } from '@/pages/chat/MessageRow'
 
 /** How close to the end still counts as "at the newest message". */
@@ -17,15 +18,16 @@ const CATCH_UP_PAGES = 10
 /** Room above the New line for the unread bar when the list opens there. */
 const BAR_ROOM = 48
 
-const estimate = (row: MessageListRow) => (row.kind === 'day' ? 40 : row.kind === 'new' ? 24 : row.continuation ? 28 : 72)
+const estimate = (row: MessageListRow) => (row.kind === 'day' ? 40 : row.kind === 'new' ? 24 : row.continuation ? 24 : 72)
 
 type MessagesQuery = UseInfiniteQueryResult<InfiniteData<Page<ChatMessage>, unknown>>
 
 /**
  * A channel's messages (spec 6.2): virtualized, opened at the newest message (or at the New line when more than a
  * screen is unread), older pages load as the top comes near and the view stays put. Day sections with a sticky
- * date, the New line, the unread bar and Jump to latest. Marks read once the newest message is on screen in a
- * focused window.
+ * date whose menu jumps through the channel, the New line, the unread bar and Jump to latest. After a jump the list
+ * starts at that message and loads newer pages as the end comes near. Marks read once the newest message is on
+ * screen in a focused window.
  */
 export function MessageList({
   query,
@@ -38,6 +40,11 @@ export function MessageList({
   totalUnread,
   markedSeq,
   onMarkRead,
+  focusSeq = null,
+  focusNonce = 0,
+  openAtEnd = false,
+  onJump,
+  onLatest,
 }: {
   query: MessagesQuery
   title: string
@@ -52,10 +59,20 @@ export function MessageList({
   /** My read marker now. */
   markedSeq: number
   onMarkRead: (seq?: number) => void
+  /** A message to bring to the top (a jump); a new nonce brings it there again. */
+  focusSeq?: number | null
+  focusNonce?: number
+  /** Open at the newest message even when the New line is further up (coming back from a jump). */
+  openAtEnd?: boolean
+  onJump: (choice: JumpChoice) => void
+  /** Leave a jump for the live end of the channel. */
+  onLatest: () => void
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const messages = useMemo(() => query.data?.pages.flatMap((page) => page.items).reverse() ?? [], [query.data])
   const hasOlder = Boolean(query.hasNextPage)
+  // After a jump, newer messages may still be unloaded below: the end of the list isn't the newest yet.
+  const hasNewer = Boolean(query.hasPreviousPage)
   const rows = useMemo(() => buildRows(messages, { newAfterSeq, meId, hasOlder, now: new Date() }), [messages, newAfterSeq, meId, hasOlder])
   // On open, older pages load until my first unread message is among them (a few at most), so the list can open there.
   const catchingUp =
@@ -80,7 +97,7 @@ export function MessageList({
     // Chat behaviour (virtual-core 3.19): older rows added above keep the view where it is, and new rows at the
     // end are followed while I'm at the end.
     anchorTo: 'end',
-    followOnAppend: true,
+    followOnAppend: !hasNewer,
     scrollEndThreshold: BOTTOM_SLACK,
     // Scrolling to the New line leaves room above it for the unread bar.
     scrollPaddingStart: BAR_ROOM,
@@ -118,6 +135,17 @@ export function MessageList({
     setFar(distance > el.clientHeight)
     if (atBottomRef.current) setBar(false)
     if (el.scrollTop < el.clientHeight && query.hasNextPage && !query.isFetchingNextPage && !query.isFetchNextPageError) void query.fetchNextPage()
+    if (distance < el.clientHeight && hasNewer && !query.isFetchingPreviousPage && !query.isFetchPreviousPageError) void query.fetchPreviousPage()
+  }
+
+  const focusIndex = focusSeq === null ? -1 : rows.findIndex((r) => r.kind === 'message' && r.message.seq >= focusSeq)
+  const scrollToFocus = () => {
+    if (focusIndex < 0) return false
+    virtualizer.scrollToIndex(focusIndex, { align: 'start' })
+    atBottomRef.current = false
+    setAtBottom(false)
+    setBar(false)
+    return true
   }
 
   // Open once, when the first page is there: at the newest message, or at the New line with the unread bar when
@@ -127,6 +155,8 @@ export function MessageList({
     const el = scrollRef.current
     if (positioned.current || !el || rows.length === 0 || catchingUp) return
     positioned.current = true
+    if (scrollToFocus()) return
+    if (openAtEnd) return scrollToBottom()
     const start = startOf(newIndex)
     // From the New line down is more than a screen: open there, with the bar. Otherwise open at the newest.
     if (start !== undefined && virtualizer.getTotalSize() - start > el.clientHeight) {
@@ -140,11 +170,19 @@ export function MessageList({
   })
 
 
+  // A jump to a message that is already loaded scrolls to it.
+  const focusedFor = useRef(focusNonce)
+  useEffect(() => {
+    if (!positioned.current || focusedFor.current === focusNonce) return
+    focusedFor.current = focusNonce
+    scrollToFocus()
+  })
+
   // A new message at the end keeps me at the end when I was there (with followOnAppend as the first line of it).
   const lastKey = rows.at(-1)?.key
   useLayoutEffect(() => {
     // Only a new last row moves the view, so lastKey is the one dependency.
-    if (positioned.current && atBottomRef.current) scrollToBottom()
+    if (positioned.current && atBottomRef.current && !hasNewer) scrollToBottom()
   }, [lastKey])
 
   // My own new message always brings me down to it.
@@ -169,7 +207,7 @@ export function MessageList({
   }, [])
   const sent = useRef(markedSeq)
   const upTo = readUpTo({
-    atBottom,
+    atBottom: atBottom && !hasNewer,
     visible: document.visibilityState === 'visible',
     focused: document.hasFocus(),
     settled: !query.isFetching,
@@ -203,7 +241,8 @@ export function MessageList({
   const stickyDay = top && !dividerAtTop ? dayOf[top.index] : null
   const summary = unreadSummary(messages, newAfterSeq, meId)
   const unread = { count: Math.max(summary.count, totalUnread), since: summary.since }
-  const newer = messages.filter((m) => m.seq > seenSeq.current && m.senderId !== meId).length
+  // After a jump the newest messages aren't loaded, so there is no count to give.
+  const newer = hasNewer ? 0 : messages.filter((m) => m.seq > seenSeq.current && m.senderId !== meId).length
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
@@ -214,7 +253,7 @@ export function MessageList({
             return (
               <li key={v.key} data-index={v.index} ref={virtualizer.measureElement} className="absolute inset-x-0 top-0 px-2 md:px-4" style={{ transform: `translateY(${v.start}px)` }}>
                 {row.kind === 'day' ? (
-                  <DayDivider label={row.label} />
+                  <DayDivider label={row.label} onJump={onJump} />
                 ) : row.kind === 'new' ? (
                   <NewLine />
                 ) : (
@@ -253,23 +292,35 @@ export function MessageList({
         </div>
       )}
       {stickyDay && (
+        // A copy of the day's divider for the pointer; keyboard and screen reader users have the divider itself.
         <div aria-hidden className={`sf pointer-events-none absolute inset-x-0 z-[var(--z-sticky)] flex justify-center ${bar ? 'top-12' : 'top-2'}`}>
-          <DayPill label={stickyDay} />
+          <span className="pointer-events-auto">
+            <DayMenu label={stickyDay} onJump={onJump} focusable={false} />
+          </span>
         </div>
       )}
       {query.isFetchingNextPage && (
         <p className="sf sf-meta absolute inset-x-0 top-2 text-center text-sf-text-muted">Loading older messages…</p>
+      )}
+      {query.isFetchingPreviousPage && (
+        <p className="sf sf-meta absolute inset-x-0 bottom-14 text-center text-sf-text-muted">Loading newer messages…</p>
+      )}
+      {query.isFetchPreviousPageError && (
+        <div className="absolute inset-x-4 bottom-14">
+          <QueryError what="Newer messages" onRetry={() => void query.fetchPreviousPage()} />
+        </div>
       )}
       {query.isFetchNextPageError && (
         <div className="absolute inset-x-4 top-2">
           <QueryError what="Older messages" onRetry={() => void query.fetchNextPage()} />
         </div>
       )}
-      {far && (
+      {(far || hasNewer) && (
         <div className="sf absolute inset-x-0 bottom-3 z-[var(--z-sticky)] flex justify-center">
           <button
             type="button"
             onClick={() => {
+              if (hasNewer) return onLatest()
               atBottomRef.current = true
               scrollToBottom()
             }}
@@ -287,21 +338,47 @@ export function MessageList({
   )
 }
 
-function DayPill({ label }: { label: string }) {
+const JUMPS: { choice: JumpChoice; label: string }[] = [
+  { choice: 'today', label: 'Today' },
+  { choice: 'yesterday', label: 'Yesterday' },
+  { choice: 'week', label: 'Last week' },
+  { choice: 'month', label: 'Last month' },
+  { choice: 'beginning', label: 'The very beginning' },
+]
+
+/** The date pill (spec 6.2): it opens a menu that jumps through the channel. Jump to a specific date comes later. */
+function DayMenu({ label, onJump, focusable = true }: { label: string; onJump: (choice: JumpChoice) => void; focusable?: boolean }) {
   return (
-    <span className="inline-flex h-7 items-center rounded-sf-full bg-sf-surface-raised px-3 font-sf text-[13px]/[18px] font-medium text-sf-text shadow-sf-toolbar">
-      {label}
-    </span>
+    <Menu
+      label="Jump to"
+      trigger={(props) => (
+        <button
+          type="button"
+          {...props}
+          tabIndex={focusable ? undefined : -1}
+          className="sf-focus inline-flex h-7 items-center gap-1 rounded-sf-full bg-sf-surface-raised ps-3 pe-2 font-sf text-[13px]/[18px] font-medium text-sf-text shadow-sf-toolbar"
+        >
+          {label}
+          <Icon icon={IconChevronDown} size={16} className="text-sf-text-secondary" />
+        </button>
+      )}
+    >
+      {JUMPS.map((j) => (
+        <MenuItem key={j.choice} onSelect={() => onJump(j.choice)}>
+          {j.label}
+        </MenuItem>
+      ))}
+    </Menu>
   )
 }
 
 /** A day's start: a rule across the list with the date on it. */
-function DayDivider({ label }: { label: string }) {
+function DayDivider({ label, onJump }: { label: string; onJump: (choice: JumpChoice) => void }) {
   return (
-    <div className="sf relative flex h-10 items-center justify-center" role="separator" aria-label={label}>
+    <div className="sf relative flex h-10 items-center justify-center">
       <span aria-hidden className="absolute inset-x-0 top-5 h-px bg-sf-line" />
-      <span aria-hidden className="relative">
-        <DayPill label={label} />
+      <span className="relative">
+        <DayMenu label={label} onJump={onJump} />
       </span>
     </div>
   )

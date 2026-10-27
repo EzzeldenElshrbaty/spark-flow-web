@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useState, type ReactNode } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
-import { useChannel, useLeaveChannel, useMarkRead, useMessages, useSendMessage, useSetMuted, useSetStarred } from '@/api/chat'
+import { useChannel, useJumpTarget, useLeaveChannel, useMarkRead, useMessages, useMessagesFrom, useSendMessage, useSetMuted, useSetStarred } from '@/api/chat'
 import { useUsers } from '@/api/users'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
@@ -12,6 +12,7 @@ import { useRole } from '@/lib/useRole'
 import { useRealtime } from '@/lib/realtime'
 import { NotFound } from '@/pages/NotFound'
 import { MessageList } from '@/pages/chat/MessageList'
+import { jumpSince, type JumpChoice } from '@/pages/chat/messageRows'
 import { CanPostError } from '@/pages/chat/CanPostError'
 import { TypingLine } from '@/pages/chat/ChannelTyping'
 import { Composer } from '@/pages/chat/Composer'
@@ -178,7 +179,8 @@ function ChannelTop({ channel, people, workspaceSlug, tab, onTab, panelId }: { c
 
 /**
  * The Messages tab: the channel's list over its composer, with a live connection to the channel while it's open.
- * The New line stays where my read marker was when I opened the channel.
+ * The New line stays where my read marker was when I opened the channel. A jump from the date menu scrolls to a
+ * message already loaded, or opens the list from it (`from`) until Jump to latest goes back to the live end.
  */
 function PaneFeed({
   channel,
@@ -199,7 +201,25 @@ function PaneFeed({
   messageActions?: (message: ChatMessage, close: () => void) => ReactNode
   composer: ReactNode
 }) {
-  const messages = useMessages(channel.id)
+  const live = useMessages(channel.id)
+  const [view, setView] = useState<{ from: number | null; focus: number | null; nonce: number; atEnd: boolean }>({ from: null, focus: null, nonce: 0, atEnd: false })
+  const jumped = useMessagesFrom(channel.id, view.from)
+  const messages = view.from === null ? live : jumped
+  const jumpTarget = useJumpTarget()
+  const [jumpError, setJumpError] = useState(false)
+  const onJump = (choice: JumpChoice) => {
+    setJumpError(false)
+    jumpTarget(channel.id, jumpSince(choice, new Date())).then(
+      (seq) =>
+        setView((v) => {
+          // Nothing that recent: the newest message is the closest there is.
+          if (seq === null) return { from: null, focus: null, nonce: v.nonce + 1, atEnd: true }
+          const loaded = (v.from === null ? live : jumped).data?.pages.some((p) => p.items.some((m) => m.seq === seq))
+          return loaded ? { ...v, focus: seq, nonce: v.nonce + 1 } : { from: seq, focus: seq, nonce: v.nonce + 1, atEnd: false }
+        }),
+      () => setJumpError(true),
+    )
+  }
   const realtime = useRealtime()
   const { mutate: markRead } = useMarkRead()
   useEffect(() => {
@@ -216,6 +236,8 @@ function PaneFeed({
         </div>
       ) : (
         <MessageList
+          // A new start (a jump, or back to the live end) is a new list, opened afresh.
+          key={view.from ?? 'live'}
           query={messages}
           title={title}
           users={users}
@@ -223,11 +245,18 @@ function PaneFeed({
           canPost={canPost}
           messageActions={messageActions}
           newAfterSeq={newAfterSeq}
-          totalUnread={totalUnread}
+          // After a jump the list starts where I asked, not at my first unread message.
+          totalUnread={view.from === null ? totalUnread : 0}
           markedSeq={channel.lastReadSeq}
           onMarkRead={onMarkRead}
+          focusSeq={view.focus}
+          focusNonce={view.nonce}
+          openAtEnd={view.atEnd}
+          onJump={onJump}
+          onLatest={() => setView((v) => ({ from: null, focus: null, nonce: v.nonce + 1, atEnd: true }))}
         />
       )}
+      {jumpError && <p className="sf sf-small flex-none px-4 pt-2 text-sf-error md:px-6">Couldn't jump there. Try again.</p>}
       {composer && <div className="flex-none px-4 pt-2 pb-3 md:px-6">{composer}</div>}
     </>
   )

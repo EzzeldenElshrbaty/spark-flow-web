@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { qk } from '@/api/queryKeys'
 import { retryUnlessNotFound as retry } from '@/api/retry'
 import type { ChannelPatch, ChatTarget, NewChannel } from '@/api/types'
@@ -24,6 +24,37 @@ export function useMessages(channelId: string | undefined) {
     retry,
     enabled: Boolean(channelId),
   })
+}
+
+type PageParam = { dir: 'before' | 'after'; cursor: string }
+
+/**
+ * A channel's messages from `seq` on, for a jump (spec 6.2): pages load both ways, older at the end of `pages`
+ * (fetchNextPage) and newer at the start (fetchPreviousPage); hasPreviousPage is false once the newest is in.
+ */
+export function useMessagesFrom(channelId: string | undefined, seq: number | null) {
+  return useInfiniteQuery({
+    queryKey: qk.messagesFrom(channelId ?? '', seq ?? 0),
+    queryFn: ({ pageParam }) => (pageParam.dir === 'before' ? api.chat.messages(channelId!, pageParam.cursor) : api.chat.messagesAfter(channelId!, pageParam.cursor)),
+    initialPageParam: { dir: 'after', cursor: String((seq ?? 1) - 1) } as PageParam,
+    getNextPageParam: (page, _pages, param): PageParam | undefined => {
+      if (param.dir === 'before') return page.nextCursor ? { dir: 'before', cursor: page.nextCursor } : undefined
+      // The first page starts at the target: anything older starts below its oldest message.
+      const oldest = page.items.at(-1)
+      return oldest && oldest.seq > 1 ? { dir: 'before', cursor: String(oldest.seq) } : undefined
+    },
+    getPreviousPageParam: (page, _pages, param): PageParam | undefined =>
+      param.dir === 'after' && page.nextCursor ? { dir: 'after', cursor: page.nextCursor } : undefined,
+    retry,
+    enabled: Boolean(channelId) && seq !== null,
+  })
+}
+
+/** Looks up where a jump lands (the seq of the first message at or after `since`), without a mutation's refresh. */
+export function useJumpTarget() {
+  const queryClient = useQueryClient()
+  return (channelId: string, since: string | null) =>
+    queryClient.fetchQuery({ queryKey: qk.jumpTarget(channelId, since), queryFn: () => api.chat.jumpTarget(channelId, since), staleTime: 0 })
 }
 
 export function useMessage(id: string | undefined) {

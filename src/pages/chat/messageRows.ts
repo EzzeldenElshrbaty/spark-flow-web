@@ -80,3 +80,14 @@ export function unreadSummary(messages: ChatMessage[], newAfterSeq: number | nul
   const mine = messages.filter((m) => unread(m, newAfterSeq, meId))
   return { count: mine.length, since: mine[0]?.createdAt ?? null }
 }
+
+export type JumpChoice = 'today' | 'yesterday' | 'week' | 'month' | 'beginning'
+
+/** Where a choice in the date menu starts (local midnight), or null for the very beginning. */
+export function jumpSince(choice: JumpChoice, now: Date): string | null {
+  const y = now.getFullYear()
+  const m = now.getMonth()
+  const d = now.getDate()
+  const start = { today: new Date(y, m, d), yesterday: new Date(y, m, d - 1), week: new Date(y, m, d - 7), month: new Date(y, m - 1, d), beginning: null }[choice]
+  return start ? start.toISOString() : null
+}

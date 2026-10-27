@@ -263,6 +263,10 @@ export interface Api {
     channels(workspaceId: string): Promise<Channel[]>
     channel(id: string): Promise<Channel>
     messages(channelId: string, cursor?: string): Promise<Page<ChatMessage>>
+    /** Messages newer than the cursor (a seq), 30 at a time, newest first; nextCursor continues toward the newest. */
+    messagesAfter(channelId: string, cursor: string): Promise<Page<ChatMessage>>
+    /** The seq of the first message at or after `since` (the first message when null); null when there is none. */
+    jumpTarget(channelId: string, since: string | null): Promise<number | null>
     message(id: string): Promise<ChatMessage>
     replies(messageId: string): Promise<ThreadReply[]>
     /** Moves my read marker forward to `seq` (default: the newest message); it never moves back. */

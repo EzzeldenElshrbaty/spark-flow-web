@@ -43,7 +43,7 @@ Spark Flow is a sister product of **Spark CRM** (Spark Systems). The two apps mu
 - `npm run build:prototype`: the demo build gate, `tsc -b && vite build --mode prototype`
 - `npm run build`: production build; fails unless `VITE_BACKEND=on` and `VITE_API_URL` are set. With the backend on, requests send cookies (`credentials: 'include'`); a 401 shows "You're signed out." with a link to `${VITE_API_URL}/signin?returnTo=<url>` (an assumption to agree with the .NET team)
 - `npm run lint`
-- `npm test`
+- `npm test`: unit tests (Node / jsdom) and browser tests (`*.browser.test.tsx`, headless Chromium through Playwright, for what needs real layout such as scrolling). Once per machine: `npx playwright install chromium-headless-shell`. One side only: `npx vitest run --project unit` or `--project browser`
 - `npx vitest run <file>`
 - `npm run preview:prototype`
 
@@ -62,6 +62,6 @@ The approved chat redesign (`docs/flow-chat/FLOW_CHAT_REDESIGN.md` + `design/`) 
 - **Icons**: Tabler through `src/components/sf/Icon.tsx` (stroke fixed at 1.5; 20 default, 18 dense rows, 16 chips). lucide stays in other modules.
 - **Primitives**: `src/components/sf/*` (Button, IconButton, Avatar, Badge, Tag, Kbd, Tooltip, Menu, Modal, Toast, Toggle, Checkbox, TokenInput). Chat uses these, not `components/ui/*`. Toast is only for Undo after a delete; all other feedback rules still hold.
 - **Names**: Call, Page, Task list, Automation, Saved, Create task.
-- **Gallery**: `/dev/ui` (prototype build only) shows every primitive state in both themes; component tests are `*.test.tsx` in jsdom.
+- **Gallery**: `/dev/ui` (prototype build only) shows every primitive state in both themes; component tests are `*.test.tsx` in jsdom, and scrolling and layout tests are `*.browser.test.tsx` in Chromium.
 - **Feature flag**: sidebar sections whose data lands in a later phase hide behind `chatRedesign` in `src/lib/features.ts`.
 - Don't build anything marked OPEN in the spec's section 13.

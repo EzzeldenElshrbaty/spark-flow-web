@@ -193,7 +193,7 @@ export function MessageRow({
   return (
     <article className={clsx('group relative flex gap-3 rounded-lg px-2 hover:bg-surface-muted/50', continuation ? 'py-0.5' : 'py-2')}>
       {continuation ? (
-        <time dateTime={message.createdAt} title={formatWhen(message.createdAt)} className="invisible w-9 shrink-0 pt-0.5 text-end text-[11px] tabular-nums text-fg-muted group-hover:visible">
+        <time dateTime={message.createdAt} title={formatWhen(message.createdAt)} className="invisible w-9 shrink-0 text-end text-[12px]/5 whitespace-nowrap tabular-nums text-fg-muted group-hover:visible">
           {formatTime(message.createdAt)}
         </time>
       ) : (

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ChatMessage } from '@/api/types'
-import { buildRows, canContinue, dayLabel, unreadSummary } from './messageRows'
+import { buildRows, canContinue, dayLabel, jumpSince, unreadSummary } from './messageRows'
 
 // Local times (the viewer's time zone), so the day rules hold in any TZ the tests run in.
 const at = (day: number, h: number, m: number, s = 0) => new Date(2026, 9, day, h, m, s).toISOString()
@@ -100,5 +100,18 @@ describe('unreadSummary', () => {
     const c = msg({ createdAt: at(28, 21, 4) })
     expect(unreadSummary([a, mine, b, c], a.seq, 'u-1')).toEqual({ count: 2, since: b.createdAt })
     expect(unreadSummary([a], a.seq, 'u-1')).toEqual({ count: 0, since: null })
+  })
+})
+
+describe('jumpSince (spec 6.2 date menu)', () => {
+  const at = new Date(2026, 9, 28, 15, 30)
+  it('starts each choice at local midnight', () => {
+    expect(jumpSince('today', at)).toBe(new Date(2026, 9, 28).toISOString())
+    expect(jumpSince('yesterday', at)).toBe(new Date(2026, 9, 27).toISOString())
+    expect(jumpSince('week', at)).toBe(new Date(2026, 9, 21).toISOString())
+    expect(jumpSince('month', at)).toBe(new Date(2026, 8, 28).toISOString())
+  })
+  it('the very beginning has no start time', () => {
+    expect(jumpSince('beginning', at)).toBeNull()
   })
 })
