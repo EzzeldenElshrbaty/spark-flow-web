@@ -14,8 +14,8 @@ export function usePermission() {
   return check
 }
 
-/** loading / allowed / denied for one action: gated pages wait for the account instead of refusing. */
-export function useAccess(action: Exclude<Action, ProjectScoped>, extra: Extra = {}) {
+/** loading / allowed / denied for one action: gated pages wait for the account (and any extra data) instead of refusing. */
+export function useAccess(action: Exclude<Action, ProjectScoped>, extra: Extra = {}, extraLoading = false) {
   const { persona, loading } = useRole()
-  return accessOf(loading, can(action, { userId: persona.id, role: persona.role, ...extra }))
+  return accessOf(loading || extraLoading, can(action, { userId: persona.id, role: persona.role, ...extra }))
 }

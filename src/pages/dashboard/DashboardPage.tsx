@@ -123,18 +123,20 @@ function CheckedInList({ list, people, taskLabel }: { list: CheckedInNow[]; peop
 export function DashboardPage() {
   const { workspace } = useCurrentWorkspace()
   const { persona } = useRole()
-  const access = useAccess('dashboard.view')
+  const broad = persona.role === 'admin' || persona.role === 'sales'
+  // Someone checked in may be working on a project outside this dashboard's scope: name their task from any project.
+  const summaries = useProjectSummaries(workspace?.id)
+  const everyProject = summaries.data ?? []
+  const managesAny = summaries.data?.some((p) => p.managerId === persona.id)
+  const access = useAccess('dashboard.view', { managesAny }, !broad && summaries.isPending)
   const allowed = access === 'allowed'
   const projects = useDashboard(workspace?.id, allowed)
   const checkedIn = useCheckedIn(workspace?.id, allowed)
   const people = useUsers(workspace?.id).data ?? []
-  // Someone checked in may be working on a project outside this dashboard's scope: name their task from any project.
-  const everyProject = useProjectSummaries(workspace?.id).data ?? []
   const runningProjects = [...new Set((checkedIn.data ?? []).flatMap((c) => (c.running ? [c.running.projectId] : [])))]
   const tasks = useTasksOf(runningProjects).data
   const now = useNow(60_000)
   const ws = workspace?.slug ?? ''
-  const broad = persona.role === 'admin' || persona.role === 'sales'
 
   if (access === 'denied') {
     return (

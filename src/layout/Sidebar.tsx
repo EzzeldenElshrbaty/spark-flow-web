@@ -88,12 +88,14 @@ function GroupSkeleton() {
 }
 
 export function SidebarContent({ collapsed = false, onNavigate }: { collapsed?: boolean; onNavigate?: () => void }) {
-  const { role } = useRole()
+  const { role, persona } = useRole()
   const check = usePermission()
   const { workspace, channels, dms, projects, chatLoading, projectsLoading, failed } = useSidebarGroups()
   const slug = workspace?.slug
   const [newChannel, setNewChannel] = useState(false)
   const [newMessage, setNewMessage] = useState(false)
+  const managesAny = projectsLoading ? undefined : projects.some((p) => p.managerId === persona.id)
+  const canDashboard = check('dashboard.view', { managesAny })
 
   return (
     <div className="flex h-full flex-col">
@@ -118,11 +120,11 @@ export function SidebarContent({ collapsed = false, onNavigate }: { collapsed?: 
           </div>
         )}
 
-        {slug && (check('dashboard.view') || check('timeCost.view')) && (
+        {slug && (canDashboard || check('timeCost.view')) && (
           <div>
             <GroupLabel collapsed={collapsed}>Manage</GroupLabel>
             <ul className="space-y-0.5">
-              {check('dashboard.view') && (
+              {canDashboard && (
                 <li>
                   <SidebarLink to={paths.dashboard(slug)} label="Dashboard" icon={<LayoutDashboard className="size-[18px]" />} collapsed={collapsed} onNavigate={onNavigate} />
                 </li>
