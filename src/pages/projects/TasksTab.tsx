@@ -13,7 +13,7 @@ import { usePermission } from '@/lib/usePermission'
 import { BacklogSkeleton, ProjectBacklog } from '@/pages/projects/ProjectBacklog'
 import { BoardSkeleton, ProjectBoard } from '@/pages/projects/ProjectBoard'
 import { byOrder } from './phases'
-import { filterTasks, validSprint, viewOf } from './taskFilters'
+import { filterTasks, staleArchivedParam, validSprint, viewOf } from './taskFilters'
 
 const views = [
   ['board', 'Board', Columns3],
@@ -85,7 +85,13 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
   // The list can also show the archived tasks, below the others, kept in ?archived=1.
   // Showing archived tasks only makes sense while there are some (the toggle goes when the last one is restored).
   const showArchivedAsked = view === 'list' && params.get('archived') === '1'
-  const archivedAll = useArchivedTasks(project.id, true).data ?? []
+  const archivedQuery = useArchivedTasks(project.id, true)
+  const archivedAll = archivedQuery.data ?? []
+  const staleArchived = staleArchivedParam(params.get('archived') === '1', archivedQuery.data?.length)
+  // Only the flag matters here: setParam is a new function each render.
+  useEffect(() => {
+    if (staleArchived) setParam('archived', null)
+  }, [staleArchived])
   const archived = filterTasks(archivedAll, { phase, sprint })
   const showArchived = showArchivedAsked && archived.length > 0
   let body

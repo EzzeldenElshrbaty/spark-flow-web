@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Phase, TaskView } from '@/api/types'
-import { filterTasks, groupByPhase, loggableTasks, myOpenTasks, validSprint, viewOf } from './taskFilters'
+import { filterTasks, groupByPhase, loggableTasks, myOpenTasks, staleArchivedParam, validSprint, viewOf } from './taskFilters'
 
 const t = (over: Partial<TaskView>): TaskView =>
   ({ id: over.key ?? 'x', key: 'P-1', status: 'todo', category: over.status === 'done' ? 'done' : 'todo', phaseId: null, sprintId: null, assigneeId: null, dueAt: null, overdue: false, rank: 0, ...over }) as TaskView
@@ -70,5 +70,12 @@ describe('loggableTasks', () => {
   it('leaves out tasks on projects I may not log time on, such as one I was taken off', () => {
     const tasks = [t({ key: 'A', projectId: 'p-on' }), t({ key: 'B', projectId: 'p-off' })]
     expect(loggableTasks(tasks, (projectId) => projectId === 'p-on').map((x) => x.key)).toEqual(['A'])
+  })
+
+  it('?archived=1 is cleared only once the project has no archived tasks at all', () => {
+    expect(staleArchivedParam(true, 0)).toBe(true)
+    expect(staleArchivedParam(true, undefined)).toBe(false) // still loading
+    expect(staleArchivedParam(true, 2)).toBe(false) // the unfiltered count: a phase filter that hides them keeps it
+    expect(staleArchivedParam(false, 0)).toBe(false)
   })
 })

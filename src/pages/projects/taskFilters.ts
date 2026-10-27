@@ -39,3 +39,11 @@ export const validSprint = (id: string | null, sprints: { id: string }[]) => (id
 
 /** The tasks I may start a timer on: the server refuses time on a project I'm not on (`time.logOn`). */
 export const loggableTasks = (tasks: TaskView[], canLogOn: (projectId: string) => boolean) => tasks.filter((t) => canLogOn(t.projectId))
+
+/**
+ * Whether ?archived=1 should go: the project has no archived tasks at all (the toggle is gone), so the next task
+ * archived doesn't appear with it already on. `archivedCount` is unfiltered; undefined while it loads.
+ */
+export function staleArchivedParam(asked: boolean, archivedCount: number | undefined): boolean {
+  return asked && archivedCount === 0
+}

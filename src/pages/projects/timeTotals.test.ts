@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Rate, TimeEntry } from '@/api/types'
-import { totalsByPerson, emptyTimeText, timeHeading } from './timeTotals'
+import { totalsByPerson, emptyTimeText, showPrivacyNote, timeHeading } from './timeTotals'
 import { formatMoney } from '@/lib/format'
 
 const now = new Date('2026-10-26T12:00:00Z')
@@ -41,5 +41,11 @@ describe('timeHeading and emptyTimeText', () => {
     expect(emptyTimeText(true, 0)).toBe('No time logged yet.')
     expect(emptyTimeText(false, 0)).toBe('No time logged yet.')
     expect(emptyTimeText(false, 120)).toBe("You haven't logged time here. The project has 120h logged.")
+  })
+
+  it('the privacy line waits for the account, and is only for people who see their own time', () => {
+    expect(showPrivacyNote(false, true)).toBe(false)
+    expect(showPrivacyNote(true, false)).toBe(false)
+    expect(showPrivacyNote(false, false)).toBe(true)
   })
 })

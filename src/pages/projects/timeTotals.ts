@@ -32,3 +32,8 @@ export function emptyTimeText(everyone: boolean, projectHours: number): string {
   if (everyone || projectHours <= 0) return 'No time logged yet.'
   return `You haven't logged time here. The project has ${tenth(projectHours)}h logged.`
 }
+
+/** The "only you and the manager" line: for people who see only their own entries, once the account is known. */
+export function showPrivacyNote(everyone: boolean, loading: boolean): boolean {
+  return !loading && !everyone
+}
