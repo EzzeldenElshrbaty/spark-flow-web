@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Channel, Project } from '@/api/types'
-import { landingPath, legacyProjectPath, paths, validSavedPlace } from '@/lib/paths'
+import { landingPath, legacyProjectPath, paths, projectTabs, validSavedPlace } from '@/lib/paths'
 import { seed } from '@/mocks/seed'
 
 const data = seed(new Date('2026-10-26T09:00:00Z')).data
@@ -93,5 +93,11 @@ describe('legacyProjectPath', () => {
     expect(legacyProjectPath('/w/engineering/p/NEX')).toBe('/w/engineering/p/NEX/overview')
     expect(legacyProjectPath('/w/engineering/p/NEX/tasks')).toBeNull()
     expect(legacyProjectPath('/w/engineering/c/c-general')).toBeNull()
+  })
+})
+
+describe('project tabs', () => {
+  it('history is a project tab', () => {
+    expect(projectTabs).toContain('history')
   })
 })
