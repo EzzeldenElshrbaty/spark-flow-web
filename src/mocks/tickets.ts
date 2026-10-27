@@ -3,7 +3,7 @@ import { taskView } from './derive'
 import type { DbData, MockDb } from './db'
 import { delay } from './latency'
 import type { MockHub } from './realtime'
-import { columnOf, columnsOf, startColumn } from '@/lib/boardColumns'
+import { categoryOf, columnOf, columnsOf, startColumn } from '@/lib/boardColumns'
 import { entryEnd } from '@/lib/hours'
 import { badRequest, clone, isDate, notFound, pickPatch, requireCan, stamp } from './shared'
 import { projectPeopleIds } from '@/lib/projectPeople'
@@ -206,7 +206,7 @@ export async function updateTicket(
   now: () => Date = () => new Date(),
   check?: (data: DbData, ticket: Ticket) => void,
 ): Promise<Ticket> {
-  const { ticket, cards } = await db.update((data) => {
+  const { ticket, cards, stopped } = await db.update((data) => {
     const ticket = findTicket(data, key)
     check?.(data, ticket)
     // Archived tasks are read-only until restored (restore doesn't come through here).
@@ -219,10 +219,20 @@ export async function updateTicket(
     }
     ticket.updatedAt = stamp(ticket.updatedAt)
     logTaskUpdate(data, before, ticket, now().toISOString())
+    // Done (any Done-type column, whatever it's called): the timers running on it stop, as no more time goes on it.
+    const stopped: string[] = []
+    const project = findProject(data, ticket.projectId)
+    if (patch.status !== undefined && categoryOf(project, ticket.status) === 'done' && categoryOf(project, before.status) !== 'done') {
+      for (const e of data.timeEntries.filter((e) => e.taskId === ticket.id && e.endedAt === null)) {
+        e.endedAt = new Date(entryEnd(e, now())).toISOString()
+        stopped.push(e.userId)
+      }
+    }
     // The change, its history and its cards in the project's chat are one write.
-    return { ticket, cards: clone(postTaskEvents(data, before, ticket)) }
+    return { ticket, cards: clone(postTaskEvents(data, before, ticket)), stopped }
   })
   hub.publish({ type: 'ticketUpdated', ticket: clone(ticket) })
+  for (const userId of stopped) hub.publish({ type: 'timeLogged', userId, projectId: ticket.projectId })
   for (const message of cards) hub.publish({ type: 'messageReceived', message })
   return ticket
 }

@@ -5,8 +5,8 @@ import type { MyDay, TaskView } from '@/api/types'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { Field, inputClass, selectClass } from '@/components/ui/Field'
-import { elapsedMs, formatClock, formatDate, formatHours, formatTime } from '@/lib/format'
-import { entryHours } from '@/lib/hours'
+import { formatClock, formatDate, formatHours, formatTime } from '@/lib/format'
+import { entryHours, runningClock } from '@/lib/hours'
 import { useNow } from '@/lib/useNow'
 import { AddTimeSheet } from '@/pages/time/AddTimeSheet'
 import { EntryRowExtras } from '@/pages/time/EntryRowExtras'
@@ -63,11 +63,15 @@ function TimerRow({ day, tasks, label }: { day: MyDay; tasks: TaskView[]; label:
   const now = useNow(day.running ? 1000 : 0)
   const [taskId, setTaskId] = useState('')
   if (day.running) {
+    const clock = runningClock(day.running.startedAt, now)
     return (
       <div className="flex items-center gap-3 rounded-lg bg-accent-soft px-4 py-3">
         <span className="size-2 shrink-0 rounded-full bg-brand-500 motion-safe:animate-pulse" aria-hidden />
-        <span className="min-w-0 flex-1 truncate text-sm text-fg">{label(day.running.taskId, day.running.projectId)}</span>
-        <span className="text-lg font-semibold tabular-nums text-accent">{formatClock(elapsedMs(day.running.startedAt, now))}</span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm text-fg">{label(day.running.taskId, day.running.projectId)}</span>
+          {clock.capped && <span className="block text-xs text-fg-muted">12 h limit reached · Stop it to log the 12 hours.</span>}
+        </span>
+        <span className="text-lg font-semibold tabular-nums text-accent">{formatClock(clock.ms)}</span>
         <Button variant="secondary" onClick={() => stop.mutate()} disabled={stop.isPending}>
           <Square className="size-3.5 fill-current" /> {stop.isPending ? 'Stopping…' : 'Stop'}
         </Button>

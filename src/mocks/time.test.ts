@@ -343,3 +343,15 @@ describe('undo check-out', () => {
   })
 })
 
+describe('a forgotten timer', () => {
+  it("checking in on a new day stops yesterday's timer", async () => {
+    now = at(16, 0, -1)
+    await api.time.start({ taskId: 't-nex-101' })
+    now = at(9)
+    const day = await api.time.checkIn({ plan: 'New day' })
+    expect(day.running).toBeNull()
+    const entry = (await db.read()).timeEntries.find((e) => e.userId === 'u-1' && e.taskId === 't-nex-101' && e.startedAt === at(16, 0, -1).toISOString())!
+    expect(entry.endedAt).toBe(at(4).toISOString()) // stopped at the 12-hour limit, not at this morning's check-in
+  })
+})
+

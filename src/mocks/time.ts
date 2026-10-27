@@ -166,6 +166,9 @@ export function timeApi(db: MockDb, hub: MockHub, now: () => Date): Api['time'] 
           const ends = data.timeEntries.filter((e) => e.userId === me.id && e.endedAt && localDay(new Date(e.startedAt)) === old.day).map((e) => e.endedAt!)
           old.checkedOutAt = [old.checkedInAt, ...ends].sort().at(-1)!
         }
+        // A timer left running from an earlier day stops where it stopped counting (12 hours in).
+        const running = data.timeEntries.find((e) => e.userId === me.id && e.endedAt === null)
+        if (running && localDay(new Date(running.startedAt)) < day) stopRunning(data, me.id, iso)
         data.checkIns.push({ id: newId('ci'), userId: me.id, day, checkedInAt: iso, checkedOutAt: null, plan: text })
         return target ? startTimer(data, me.id, target, iso) : null
       }),

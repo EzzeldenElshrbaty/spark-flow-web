@@ -236,3 +236,19 @@ describe('task rights are checked in the write', () => {
   })
 })
 
+describe('done stops timers', () => {
+  it('moving a task to a Done-type column stops its timers, whatever the column is called', async () => {
+    const api = apiAt()
+    await api.users.viewAs('u-2') // Nour manages NEX
+    const board = await api.projects.addColumn('p-nex', { label: 'Shipped', category: 'done' })
+    const shipped = board.board!.find((c) => c.label === 'Shipped')!.id
+    await api.users.viewAs('u-1') // Youssef (Admin) times NEX-102
+    await api.time.start({ taskId: 't-nex-102' })
+    clock = new Date(clock.getTime() + 30 * 60_000)
+    await api.users.viewAs('u-2')
+    await api.tasks.update('NEX-102', { status: shipped })
+    const running = (await db.read()).timeEntries.filter((e) => e.taskId === 't-nex-102' && e.endedAt === null)
+    expect(running).toHaveLength(0)
+  })
+})
+

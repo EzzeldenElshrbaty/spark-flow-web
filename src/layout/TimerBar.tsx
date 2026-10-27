@@ -6,7 +6,8 @@ import { useProjectSummaries } from '@/api/projects'
 import { useTickets } from '@/api/tickets'
 import { useMyDay, useStopTimer } from '@/api/time'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
-import { elapsedMs, formatClock } from '@/lib/format'
+import { formatClock } from '@/lib/format'
+import { runningClock } from '@/lib/hours'
 import { withInspector } from '@/lib/inspector'
 import { useNow } from '@/lib/useNow'
 
@@ -67,7 +68,9 @@ export function TimerPill() {
   const [params] = useSearchParams()
   if (!current) return null
   const { running, task, label } = current
-  const clock = formatClock(elapsedMs(running.startedAt, now))
+  // A forgotten timer stops counting at 12 hours; the clock stops there too and says so.
+  const { ms, capped } = runningClock(running.startedAt, now)
+  const clock = capped ? `${formatClock(ms)} · 12 h limit reached` : formatClock(ms)
   const content = (
     <>
       <Dot />
@@ -121,7 +124,7 @@ export function PhoneTimerBar() {
       {task && <bdi dir="ltr" className="font-mono text-xs text-fg-muted">{task.key}</bdi>}
       {stop.error ? <span className="min-w-0 flex-1"><StopError stop={stop} /></span> : <span className="min-w-0 flex-1 truncate text-fg">{label}</span>}
       <span role="timer" className="tabular-nums text-accent">
-        {formatClock(elapsedMs(running.startedAt, now))}
+        {runningClock(running.startedAt, now).capped ? '12 h limit reached' : formatClock(runningClock(running.startedAt, now).ms)}
       </span>
       <StopButton stop={stop} className="text-fg-secondary" />
     </div>
