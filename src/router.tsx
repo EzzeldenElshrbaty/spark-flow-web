@@ -1,5 +1,5 @@
 import { NotFound } from '@/pages/NotFound'
-import { lazy, type ComponentType } from 'react'
+import { lazy, Suspense, type ComponentType } from 'react'
 import { createBrowserRouter, Navigate, useLocation, useParams } from 'react-router'
 import { AppLayout } from '@/layout/AppLayout'
 import { LastVisitRedirect } from '@/layout/LastVisitRedirect'
@@ -25,6 +25,7 @@ const MyTasksPage = page(() => import('@/pages/tasks/MyTasksPage'), 'MyTasksPage
 const SettingsPage = page(() => import('@/pages/settings/SettingsPage'), 'SettingsPage')
 const DatabasePage = page(() => import('@/pages/settings/DatabasePage'), 'DatabasePage')
 const RatesPage = page(() => import('@/pages/settings/RatesPage'), 'RatesPage')
+const UiGallery = page(() => import('@/pages/dev/UiGallery'), 'UiGallery')
 
 /** `/w/:ws/p/:projectKey` has no page of its own: it opens the Overview tab. */
 function ProjectOverviewRedirect() {
@@ -41,6 +42,8 @@ function ProjectTabRoute() {
 }
 
 export const router = createBrowserRouter([
+  // The Flow chat primitives gallery: dev server and prototype builds only.
+  ...(import.meta.env.MODE === 'production' ? [] : [{ path: '/dev/ui', element: (<Suspense><UiGallery /></Suspense>) }]),
   {
     element: <AppLayout />,
     children: [

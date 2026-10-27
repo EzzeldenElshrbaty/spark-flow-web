@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 // Menus, submenus, modals and tooltips stack. Escape closes only the top-most open layer.
@@ -64,7 +64,20 @@ export function trapTab(event: KeyboardEvent | React.KeyboardEvent, container: H
   }
 }
 
+const DarkScope = createContext(false)
+
+/** Forces the dark theme on what it wraps, portals included (the /dev/ui gallery's dark column). */
+export function SfDarkScope({ className, children }: { className?: string; children: ReactNode }) {
+  return (
+    <DarkScope.Provider value>
+      <div className={className ? `dark ${className}` : 'dark'}>{children}</div>
+    </DarkScope.Provider>
+  )
+}
+
 /** Renders at the end of the page inside `.sf`, so the redesign's tokens and font apply. */
 export function SfPortal({ children }: { children: ReactNode }) {
-  return createPortal(<div className="sf">{children}</div>, document.body)
+  const dark = useContext(DarkScope)
+  const content = <div className="sf">{children}</div>
+  return createPortal(dark ? <div className="dark">{content}</div> : content, document.body)
 }

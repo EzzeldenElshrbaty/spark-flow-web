@@ -49,6 +49,14 @@ describe('Menu', () => {
     expect(focused()).toBe('Delete message')
   })
 
+  it('focuses the first item only once the panel is placed (a hidden panel cannot take focus)', () => {
+    render(<MessageMenu />)
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }))
+    const menu = screen.getByRole('menu', { name: 'Message actions' })
+    expect(menu.style.visibility).not.toBe('hidden')
+    expect(menu.contains(document.activeElement)).toBe(true)
+  })
+
   it('jumps to the item that starts with a typed letter', () => {
     render(<MessageMenu />)
     fireEvent.click(screen.getByRole('button', { name: 'More actions' }))

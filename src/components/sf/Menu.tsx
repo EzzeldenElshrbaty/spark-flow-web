@@ -153,10 +153,15 @@ function MenuPanel({
     setPos({ top: Math.max(8, Math.min(top, vh - height - 8)), left: Math.max(8, left) })
   }, [anchorRef, side, phone])
 
+  // Focus the first (or last) item once the panel is placed: a hidden panel can't take focus.
+  const placed = phone || pos !== null
+  const focusedOnce = useRef(false)
   useEffect(() => {
+    if (!placed || focusedOnce.current) return
+    focusedOnce.current = true
     const items = panelRef.current ? [...panelRef.current.querySelectorAll<HTMLElement>(ITEM_ROLES)] : []
     ;(initialFocus === 'first' ? items[0] : items[items.length - 1])?.focus({ preventScroll: true })
-  }, [initialFocus])
+  }, [placed, initialFocus])
 
   useEffect(() => {
     if (!onOutside) return
@@ -328,7 +333,8 @@ export function Submenu({ icon, label, children }: { icon?: TablerIcon; label: s
             setOpen('first')
           }
         }}
-        className={itemClass(phone, false)}
+        // The open submenu's row stays highlighted while focus is inside it.
+        className={clsx(itemClass(phone, false), 'aria-expanded:bg-sf-surface-hover')}
       >
         {icon && <Icon icon={icon} size={18} className="text-sf-text-secondary" />}
         <span className="min-w-0 flex-1 truncate">{label}</span>
