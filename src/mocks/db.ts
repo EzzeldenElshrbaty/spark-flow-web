@@ -19,6 +19,7 @@ import type {
   Workspace,
 } from '@/api/types'
 import { ApiError } from '@/lib/apiError'
+import { memoryActor, type Actor } from './actor'
 import { migrate } from './migrations'
 import type { MockStore } from './store'
 
@@ -68,6 +69,8 @@ export interface MockDb {
   exportAll(): Promise<ExportBundle & { data: DbData }>
   /** Replaces everything with an export from this version. Throws ApiError 400 and writes nothing if it isn't one. */
   importAll(bundle: unknown): Promise<void>
+  /** Acts as this person from now on, in this db (this tab) only; the document's default person stays as it is. */
+  actAs(userId: string): void
 }
 
 const COLLECTIONS = [
@@ -130,7 +133,14 @@ const badImport = () =>
  * tabs writing at the same moment both keep their change. A missing, older or broken document is replaced by the
  * seed inside that same transaction, so two tabs starting together don't seed twice.
  */
-export function createDb(store: MockStore, seed: (now: Date) => SeedResult, now: () => Date = () => new Date()): MockDb {
+export function createDb(store: MockStore, seed: (now: Date) => SeedResult, now: () => Date = () => new Date(), actor: Actor = memoryActor()): MockDb {
+  /** The data as this tab's person sees it: currentUserId is the actor when they exist. Mutates `data`. */
+  const asActor = (data: DbData) => {
+    const who = actor.get()
+    if (who && data.users.some((u) => u.id === who)) data.currentUserId = who
+    return data
+  }
+
   // Set only when the saved document came from a newer build: then we work from memory and never write it.
   let memory: DbData | null = null
   let warned = false
@@ -151,7 +161,9 @@ export function createDb(store: MockStore, seed: (now: Date) => SeedResult, now:
   const run = async <T>(fn: (data: DbData) => T, save: boolean): Promise<T> => {
     if (memory) {
       const copy = structuredClone(memory)
-      const result = fn(copy)
+      const stored = copy.currentUserId
+      const result = fn(asActor(copy))
+      copy.currentUserId = stored
       if (save) memory = copy
       return result
     }
@@ -176,7 +188,10 @@ export function createDb(store: MockStore, seed: (now: Date) => SeedResult, now:
         seededFiles = seeded.files
       }
       const before = save ? null : structuredClone(data)
-      const value = fn(data)
+      const stored = data.currentUserId
+      const value = fn(asActor(data))
+      // The saved document keeps its own default person; who acted is this tab's business.
+      data.currentUserId = stored
       ran = true
       return { doc: save ? data : (before ?? data), result: value }
     })
@@ -191,7 +206,7 @@ export function createDb(store: MockStore, seed: (now: Date) => SeedResult, now:
   return {
     async read() {
       const doc = memory ? null : await store.readDoc()
-      if (!memory && conditionOf(doc) === 'ok') return doc as DbData // readDoc already hands back a copy
+      if (!memory && conditionOf(doc) === 'ok') return asActor(doc as DbData) // readDoc already hands back a copy
       return run((data) => structuredClone(data), false)
     },
     update(fn) {
@@ -199,6 +214,9 @@ export function createDb(store: MockStore, seed: (now: Date) => SeedResult, now:
     },
     getFile(id) {
       return store.getFile(id)
+    },
+    actAs(userId) {
+      actor.set(userId)
     },
     putFile(id, blob) {
       return store.putFile(id, blob)

@@ -37,3 +37,32 @@ describe('users', () => {
       await expect(call()).rejects.toMatchObject({ name: 'ApiError', status: 403, detail: "You don't have access to the database." })
   })
 })
+
+describe('the acting person belongs to each db (tab)', () => {
+  it('two dbs on one store with their own actors act as their own person', async () => {
+    const store = createMemoryStore()
+    const a = createMockApi(createDb(store, seed), hub)
+    const b = createMockApi(createDb(store, seed), hub)
+    await a.users.viewAs('u-3')
+    expect((await a.users.me()).id).toBe('u-3')
+    expect((await b.users.me()).id).toBe('u-1')
+    const fromA = await a.chat.send('c-general', 'from tab A')
+    const fromB = await b.chat.send('c-general', 'from tab B')
+    expect(fromA.senderId).toBe('u-3')
+    expect(fromB.senderId).toBe('u-1')
+  })
+
+  it('the stored default person never changes', async () => {
+    const store = createMemoryStore()
+    const db = createDb(store, seed)
+    await createMockApi(db, hub).users.viewAs('u-5')
+    await createMockApi(db, hub).chat.send('c-general', 'hello')
+    expect(await store.readDoc()).toMatchObject({ currentUserId: 'u-1' })
+  })
+
+  it('an actor naming a user who no longer exists falls back to the default', async () => {
+    const store = createMemoryStore()
+    const db = createDb(store, seed, undefined, { get: () => 'u-gone', set: () => {} })
+    expect((await createMockApi(db, hub).users.me()).id).toBe('u-1')
+  })
+})

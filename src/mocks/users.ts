@@ -21,12 +21,11 @@ export function usersApi(db: MockDb): Api['users'] {
     },
     async viewAs(userId) {
       await delay()
-      return await db.update((data) => {
-        const user = data.users.find((u) => u.id === userId)
-        if (!user) throw notFound('User', userId)
-        data.currentUserId = user.id
-        return user
-      })
+      const user = (await db.read()).users.find((u) => u.id === userId)
+      if (!user) throw notFound('User', userId)
+      // This tab only: other tabs keep acting as their own person.
+      db.actAs(user.id)
+      return user
     },
   }
 }

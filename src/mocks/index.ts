@@ -1,5 +1,6 @@
 import type { Api, ChatMessage, NewTicket, ThreadReply, Ticket, TicketPatch } from '@/api/types'
 import { addReply, chatApi, sendMessage, type AddReplyInput, type SendMessageInput } from './chat'
+import { sessionActor } from './actor'
 import { createDb, removeLegacyStorage, type MockDb } from './db'
 import { dbApi } from './dbApi'
 import { filesApi } from './files'
@@ -70,10 +71,11 @@ function safely<T>(read: () => T): T | undefined {
  */
 function lazyDb(): MockDb {
   let opening: Promise<MockDb> | null = null
+  const actor = sessionActor()
   const ready = () =>
     (opening ??= (async () => {
       removeLegacyStorage(safely(() => window.localStorage))
-      return createDb(await openStore(safely(() => globalThis.indexedDB)), seed)
+      return createDb(await openStore(safely(() => globalThis.indexedDB)), seed, undefined, actor)
     })())
   return {
     read: () => ready().then((db) => db.read()),
@@ -83,6 +85,7 @@ function lazyDb(): MockDb {
     reset: () => ready().then((db) => db.reset()),
     exportAll: () => ready().then((db) => db.exportAll()),
     importAll: (bundle) => ready().then((db) => db.importAll(bundle)),
+    actAs: (userId) => actor.set(userId),
   }
 }
 
