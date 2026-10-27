@@ -1,42 +1,50 @@
 import { useState } from 'react'
-import { useCreateDeliverable } from '@/api/projects'
-import type { Phase, ProjectSummary } from '@/api/types'
+import { useCreateDeliverable, useUpdateDeliverable } from '@/api/projects'
+import type { Deliverable, DeliverablePatch, Phase, ProjectSummary } from '@/api/types'
 import { Button } from '@/components/ui/Button'
 import { Field, inputClass, selectClass } from '@/components/ui/Field'
 import { Sheet } from '@/components/ui/Sheet'
 import { byOrder } from './phases'
 
-/** Add a deliverable: what the client gets, when, and in which phase. */
-export function DeliverableSheet({ project, phases, onClose }: { project: ProjectSummary; phases: Phase[]; onClose: () => void }) {
+/** Add a deliverable, or edit one (`deliverable`): what the client gets, when, and in which phase. */
+export function DeliverableSheet({ project, phases, deliverable, onClose }: { project: ProjectSummary; phases: Phase[]; deliverable?: Deliverable; onClose: () => void }) {
   const create = useCreateDeliverable()
-  const [title, setTitle] = useState('')
-  const [phaseId, setPhaseId] = useState(project.currentPhaseId ?? '')
-  const [due, setDue] = useState(project.dueDate.slice(0, 10))
+  const update = useUpdateDeliverable()
+  const [title, setTitle] = useState(deliverable?.title ?? '')
+  const [phaseId, setPhaseId] = useState(deliverable ? (deliverable.phaseId ?? '') : (project.currentPhaseId ?? ''))
+  const [due, setDue] = useState((deliverable?.dueDate ?? project.dueDate).slice(0, 10))
   const [error, setError] = useState<string | null>(null)
+  const pending = create.isPending || update.isPending
+  const failure = (create.error ?? update.error) as Error | null
 
   const save = () => {
     if (!title.trim()) return setError('Give the deliverable a title.')
     if (!due) return setError('Pick a due date.')
     setError(null)
-    create.mutate(
-      { projectId: project.id, title: title.trim(), phaseId: phaseId || null, dueDate: new Date(`${due}T00:00:00.000Z`).toISOString() },
-      { onSuccess: onClose },
-    )
+    const fields = { title: title.trim(), phaseId: phaseId || null, dueDate: new Date(`${due}T00:00:00.000Z`).toISOString() }
+    if (!deliverable) return create.mutate({ projectId: project.id, ...fields }, { onSuccess: onClose })
+    // Only what changed (a due date by its day: a stored one may carry a time).
+    const patch: DeliverablePatch = {}
+    if (fields.title !== deliverable.title) patch.title = fields.title
+    if (fields.phaseId !== deliverable.phaseId) patch.phaseId = fields.phaseId
+    if (due !== deliverable.dueDate.slice(0, 10)) patch.dueDate = fields.dueDate
+    if (Object.keys(patch).length === 0) return onClose()
+    update.mutate({ id: deliverable.id, patch }, { onSuccess: onClose })
   }
 
   return (
     <Sheet
       open
       onClose={onClose}
-      title="Add deliverable"
+      title={deliverable ? 'Edit deliverable' : 'Add deliverable'}
       description={project.name}
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={save} disabled={create.isPending}>
-            {create.isPending ? 'Adding…' : 'Add deliverable'}
+          <Button onClick={save} disabled={pending}>
+            {deliverable ? (pending ? 'Saving…' : 'Save deliverable') : pending ? 'Adding…' : 'Add deliverable'}
           </Button>
         </>
       }
@@ -64,9 +72,9 @@ export function DeliverableSheet({ project, phases, onClose }: { project: Projec
         <Field label="Due" required error={error && title.trim() ? error : undefined}>
           <input type="date" className={inputClass} value={due} onChange={(e) => setDue(e.target.value)} />
         </Field>
-        {create.error && (
+        {failure && (
           <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-            {(create.error as Error).message}
+            {failure.message}
           </p>
         )}
       </form>

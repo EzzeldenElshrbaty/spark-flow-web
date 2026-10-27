@@ -1,8 +1,10 @@
 import clsx from 'clsx'
-import { Check, Plus } from 'lucide-react'
+import { Check, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
-import { useDeliverables, useUpdateDeliverable } from '@/api/projects'
-import type { Phase, ProjectSummary, Team, User } from '@/api/types'
+import { useDeliverables, useRemoveDeliverable, useUpdateDeliverable } from '@/api/projects'
+import type { Deliverable, Phase, ProjectSummary, Team, User } from '@/api/types'
+import { ConfirmDeleteSheet } from '@/components/ConfirmDeleteSheet'
+import { RowMenu } from '@/components/RowMenu'
 import { Avatar } from '@/components/ui/Avatar'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { ProgressBar } from '@/components/ui/ProgressBar'
@@ -25,7 +27,10 @@ function Stat({ label, value, sub, tone }: { label: string; value: string; sub?:
 function Deliverables({ project, phases, canEdit }: { project: ProjectSummary; phases: Phase[]; canEdit: boolean }) {
   const deliverables = useDeliverables(project.id)
   const update = useUpdateDeliverable()
+  const remove = useRemoveDeliverable()
   const [adding, setAdding] = useState(false)
+  const [editing, setEditing] = useState<Deliverable | null>(null)
+  const [deleting, setDeleting] = useState<Deliverable | null>(null)
   const phaseName = (id: string | null) => phases.find((p) => p.id === id)?.name ?? '—'
   const now = new Date()
   const rows = [...(deliverables.data ?? [])].sort((a, b) => (a.dueDate < b.dueDate ? -1 : 1))
@@ -78,6 +83,15 @@ function Deliverables({ project, phases, canEdit }: { project: ProjectSummary; p
                   <span className={clsx('shrink-0 text-xs tabular-nums', late ? 'font-medium text-red-600 dark:text-red-400' : 'text-fg-muted')}>
                     {done ? `Done ${formatDate(d.doneAt!)}` : formatDate(d.dueDate)}
                   </span>
+                  {canEdit && (
+                    <RowMenu
+                      label={`Actions for ${d.title}`}
+                      items={[
+                        { label: 'Edit deliverable', icon: Pencil, onSelect: () => setEditing(d) },
+                        { label: 'Delete deliverable', icon: Trash2, danger: true, onSelect: () => setDeleting(d) },
+                      ]}
+                    />
+                  )}
                 </li>
               )
             })}
@@ -86,6 +100,15 @@ function Deliverables({ project, phases, canEdit }: { project: ProjectSummary; p
         {update.error && <p className="pb-2 text-sm text-red-600 dark:text-red-400">{(update.error as Error).message}</p>}
       </div>
       {adding && <DeliverableSheet project={project} phases={phases} onClose={() => setAdding(false)} />}
+      {editing && <DeliverableSheet project={project} phases={phases} deliverable={editing} onClose={() => setEditing(null)} />}
+      <ConfirmDeleteSheet
+        open={deleting !== null}
+        title={`Delete ${deleting?.title ?? 'deliverable'}?`}
+        description="This can't be undone."
+        actionLabel="Delete deliverable"
+        onConfirm={() => remove.mutateAsync(deleting!.id)}
+        onClose={() => setDeleting(null)}
+      />
     </Card>
   )
 }

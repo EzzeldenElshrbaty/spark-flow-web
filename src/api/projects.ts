@@ -62,6 +62,9 @@ export function useCreateDeliverable() {
 export function useUpdateDeliverable() {
   return useMutation({ mutationFn: ({ id, patch }: { id: string; patch: DeliverablePatch }) => api.deliverables.update(id, patch) })
 }
+export function useRemoveDeliverable() {
+  return useMutation({ mutationFn: (id: string) => api.deliverables.remove(id) })
+}
 
 export function useTeams(workspaceId: string | undefined) {
   return useQuery({ queryKey: qk.teams(workspaceId ?? ''), queryFn: () => api.teams.list(workspaceId!), retry, enabled: Boolean(workspaceId) })

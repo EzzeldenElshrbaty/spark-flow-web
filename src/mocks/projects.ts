@@ -375,6 +375,17 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
             return deliverable
           })
       },
+      async remove(id) {
+        await delay()
+        await write((projectId: string) => projectId, (data) => {
+          const deliverable = data.deliverables.find((d) => d.id === id)
+          if (!deliverable) throw notFound('Deliverable', id)
+          requireCan(data, 'project.edit', findProject(data, deliverable.projectId))
+          data.deliverables = data.deliverables.filter((d) => d.id !== id)
+          logActivity(data, { projectId: deliverable.projectId, taskKey: null, kind: 'deliverable.removed', subject: deliverable.title, changes: [] }, now().toISOString())
+          return deliverable.projectId
+        })
+      },
     },
   }
 }

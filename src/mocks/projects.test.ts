@@ -311,3 +311,15 @@ describe('the project channel follows the project', () => {
   })
 })
 
+describe('removing deliverables', () => {
+  it('removing a deliverable takes it off the list and writes history', async () => {
+    await api.deliverables.remove('d-nex-1')
+    expect((await api.deliverables.list('p-nex')).some((d) => d.id === 'd-nex-1')).toBe(false)
+    expect((await db.read()).activity.at(-1)).toMatchObject({ kind: 'deliverable.removed', projectId: 'p-nex' })
+  })
+  it("a member can't remove one", async () => {
+    await api.users.viewAs('u-3')
+    await expect(api.deliverables.remove('d-nex-1')).rejects.toMatchObject({ status: 403 })
+  })
+})
+

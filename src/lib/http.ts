@@ -105,6 +105,7 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
       list: (projectId) => get(`/api/projects/${enc(projectId)}/deliverables`),
       create: (input) => send('POST', `/api/projects/${enc(input.projectId)}/deliverables`, input),
       update: (id, patch) => send('PATCH', `/api/deliverables/${enc(id)}`, patch),
+      remove: (id) => send('DELETE', `/api/deliverables/${enc(id)}`),
     },
     tasks: {
       create: (input) => send('POST', `/api/projects/${enc(input.projectId)}/tasks`, input),

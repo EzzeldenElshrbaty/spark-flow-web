@@ -61,5 +61,6 @@ describe('describeActivity', () => {
     expect(describeActivity(e({ ...col, kind: 'deliverable.added', subject: 'API docs' }), ctx())).toBe('Nour added the deliverable API docs')
     expect(describeActivity(e({ ...col, kind: 'deliverable.changed', subject: 'API docs' }), ctx())).toBe('Nour changed the deliverable API docs')
     expect(describeActivity(e({ ...col, kind: 'file.removed', subject: 'scope.pdf' }), ctx())).toBe('Nour removed the file scope.pdf')
+    expect(describeActivity(e({ ...col, kind: 'deliverable.removed', subject: 'API docs' }), ctx())).toBe('Nour removed the deliverable API docs')
   })
 })
