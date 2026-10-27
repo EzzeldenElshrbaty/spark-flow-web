@@ -349,3 +349,56 @@ flowchart TB
 - [ ] **Step 2: Browser pass as Admin, Ahmed (PM), Salma (member) and Hossam (sales).** Run the six flows in two tabs (realtime), each in light, dark, 390px and RTL. Use a fresh tab for the console check: no errors.
 - [ ] **Step 3: Commit** `docs: M5 demo script and checklist`.
 - [ ] **Step 4: Whole-branch review.** Run one review on the most capable model over `28c12f9..HEAD`, with this plan's Review Focus. Then one fix pass, where each fix goes RED → GREEN, and minors are deferred.
+
+### Task 8: Rename and reorder board columns (per project, PM only)
+
+Added on 28 Oct 2026 at the user's request ("option A"). It runs **before** Task 7, so Task 7's verify and review cover it.
+
+**Rulings:**
+- **Columns stay statuses.** A project keeps the 5 fixed statuses; it only chooses a name and an order for each. Derived values, the dashboard, reports and filters don't change.
+- **Optional field, no DB bump.** `Project.board?: BoardColumn[]`; a project without it shows the standard columns in the standard order.
+- **Permission is `phase.manage`.** That is the project's manager or an admin; Sales can't change it, matching "PM only".
+- **Where the names show:** the board, the Status selects in the task panel and the task sheet, the list view's status pill, and task event cards ("Moved NEX-1 to Testing"). Everything outside one project (My tasks, the dashboard) keeps the standard names.
+- **No new live event.** Another tab picks up the change on its next refetch (window focus).
+
+**Files:**
+- Modify: `src/api/types.ts` (`BoardColumn`, `Project.board?`, `Api['projects'].setBoard`), `src/mocks/projects.ts`, `src/lib/http.ts` (`PUT /api/projects/{id}/board {columns}`), `src/api/projects.ts` (`useSetBoard`)
+- Create: `src/lib/boardColumns.ts` (`boardColumns`, `columnErrors`), `src/lib/boardColumns.test.ts`
+- Modify: `src/pages/projects/ProjectBoard.tsx` (the header menu, inline rename, header drag), `TasksTab.tsx`, `TicketInspector.tsx`, `TaskSheet.tsx`, `ProjectBacklog.tsx`, `ticketPills.tsx`, `src/mocks/taskEvents.ts` (labels)
+- Test: `src/mocks/projects.test.ts`
+
+**Interfaces:**
+- `type BoardColumn = { status: TicketStatus; label: string }`.
+- `boardColumns(project: Pick<Project, 'board'>): BoardColumn[]` always returns the 5 statuses once each, in the project's order. Unknown or missing statuses are filled from the defaults at the end, and blank labels fall back to the standard name.
+- `columnLabel(project, status): string`.
+- `moveColumn(columns: BoardColumn[], status: TicketStatus, to: number): BoardColumn[]` (pure).
+- `columnErrors(columns): string | null` checks, in order:
+  - "Name each column." for a blank label;
+  - "Keep column names under 30 characters.";
+  - "Two columns can't share a name." (case-insensitive);
+  - "Every status needs one column." when it isn't exactly the 5 statuses.
+- `Api['projects'].setBoard(id: string, columns: BoardColumn[]): Promise<Project>` trims labels, runs `columnErrors` (400 on an error) and requires `phase.manage`.
+
+- [ ] **Step 1: Write the failing tests.** In `boardColumns.test.ts`:
+  - `'no board gives the standard five'`;
+  - `'keeps the project order and labels'`;
+  - `'a missing status is added at the end with its standard name; a blank label falls back'`;
+  - `'moveColumn moves to an index'`;
+  - each `columnErrors` message.
+
+  In `projects.test.ts`:
+  - `'setBoard saves names and order for the manager'`;
+  - `'sales and a member are refused'` → 403;
+  - `'bad columns are refused'` → 400.
+- [ ] **Step 2: Run** `npx vitest run src/lib/boardColumns.test.ts src/mocks/projects.test.ts`. Expected: FAIL (module missing; `setBoard is not a function`).
+- [ ] **Step 3: Implement.**
+  - **Column header menu.** For someone with `phase.manage`, each column header gets a ⋯ `MenuPanel` (`aria-label="Column actions"`) with "Rename column", "Move left" and "Move right". The first column has no "Move left"; the last has no "Move right"; in RTL the words stay the same and the order follows the reading direction.
+  - **Inline rename.** "Rename column", or a double-click on the name, swaps the name for an input. Enter or blur saves, Escape cancels. An error shows as a sentence under the header.
+  - **Header drag.** A header (manager only) drags with type `application/x-spark-column`; dropping it on another column puts it at that column's place. A card drag and a column drag never mix: each checks its own type.
+  - **Names everywhere.** Board columns and labels come from `boardColumns(project)`. `statusLabel` gets an optional project, and the selects, the list pill and the event cards use it.
+- [ ] **Step 4: Run** `npx vitest run src/lib/boardColumns.test.ts src/mocks/projects.test.ts && npm test && npm run lint`. Expected: PASS.
+- [ ] **Step 5: Browser check.**
+  - As Nour (NEX's manager), rename "In review" to "Testing" and move it after Done. The board, the task panel's Status select and the next "Moved…" card all say Testing.
+  - As Hossam (sales) and as Mariam (member), there's no column menu and headers don't drag.
+  - Check light, dark, 390px (the menu becomes a bottom sheet) and RTL.
+- [ ] **Step 6: Commit** `feat: rename and reorder board columns per project`.
