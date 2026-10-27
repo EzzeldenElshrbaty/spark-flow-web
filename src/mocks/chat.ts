@@ -11,18 +11,13 @@ import { parseMentions, parseTicketKeys } from './text'
 
 const PAGE_SIZE = 30
 
-type SortKey = Pick<ChatMessage, 'createdAt' | 'id'>
-
-/** Newest first; ties on createdAt fall back to id, so the order is total. */
-const compareDesc = (a: SortKey, b: SortKey) =>
-  a.createdAt === b.createdAt ? (a.id < b.id ? 1 : a.id > b.id ? -1 : 0) : a.createdAt < b.createdAt ? 1 : -1
-
-const encodeCursor = (m: SortKey) => `${m.createdAt}|${m.id}`
+/** The cursor is the seq of the last message on the previous page: unique per channel, so pages never overlap. */
+const encodeCursor = (m: Pick<ChatMessage, 'seq'>) => String(m.seq)
 
 /** A cursor that doesn't parse reads as the start of the list, like any unknown cursor would. */
-function decodeCursor(cursor: string): SortKey | null {
-  const at = cursor.indexOf('|')
-  return at < 0 ? null : { createdAt: cursor.slice(0, at), id: cursor.slice(at + 1) }
+function decodeCursor(cursor: string): number | null {
+  const seq = Number(cursor)
+  return Number.isInteger(seq) && seq > 0 ? seq : null
 }
 
 const freshState = (): ChannelMemberState => ({ lastReadSeq: 0, starred: false, muted: false, notifyLevel: 'all' })
@@ -341,12 +336,11 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       await delay()
       const data = await db.read()
       readableChannel(data, channelId)
-      // Newest first, by (createdAt, id) descending. The cursor is opaque: the sort key of the last message of the
-      // previous page, so messages that share a timestamp across a page boundary are neither dropped nor repeated.
+      // Newest first, by seq (spec §8: ordering is per channel, by seq). The cursor is opaque to clients.
       const before = cursor === undefined ? null : decodeCursor(cursor)
       const older = data.messages
-        .filter((m) => m.channelId === channelId && (before === null || compareDesc(before, m) < 0))
-        .sort(compareDesc)
+        .filter((m) => m.channelId === channelId && (before === null || m.seq < before))
+        .sort((a, b) => b.seq - a.seq)
       const items = older.slice(0, PAGE_SIZE)
       return { items, nextCursor: older.length > PAGE_SIZE ? encodeCursor(items[items.length - 1]) : null }
     },

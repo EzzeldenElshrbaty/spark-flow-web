@@ -9,7 +9,7 @@ import { AttachmentView } from '@/components/AttachmentView'
 import { MentionText } from '@/components/MentionText'
 import { Badge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
-import { formatWhen, timeAgo } from '@/lib/format'
+import { formatTime, formatWhen, timeAgo } from '@/lib/format'
 import { withInspector } from '@/lib/inspector'
 import { Composer } from '@/pages/chat/Composer'
 import { MessageActions } from '@/pages/chat/MessageActions'
@@ -139,6 +139,8 @@ export function MessageRow({
   meId,
   canPost = false,
   actions,
+  continuation = false,
+  timeOnly = false,
 }: {
   message: ChatMessage | ThreadReply
   users: User[]
@@ -146,6 +148,10 @@ export function MessageRow({
   meId?: string
   canPost?: boolean
   actions?: (close: () => void) => ReactNode
+  /** Part of the author's group (spec 6.2): no avatar or name; the time shows in the gutter on hover. */
+  continuation?: boolean
+  /** The list shows the day above, so the row shows only the time. */
+  timeOnly?: boolean
 }) {
   const [editing, setEditing] = useState(false)
   const editMessage = useEditMessage()
@@ -183,15 +189,23 @@ export function MessageRow({
         {'linkedTicketKeys' in message && <LinkedTasks message={message} />}
       </>
     )
+  const when = timeOnly ? formatTime(message.createdAt) : formatWhen(message.createdAt)
   return (
-    <article className="group flex gap-3 rounded-lg px-2 py-2 hover:bg-surface-muted/50">
-      <Avatar name={name} />
+    <article className={clsx('group relative flex gap-3 rounded-lg px-2 hover:bg-surface-muted/50', continuation ? 'py-0.5' : 'py-2')}>
+      {continuation ? (
+        <time dateTime={message.createdAt} title={formatWhen(message.createdAt)} className="invisible w-9 shrink-0 pt-0.5 text-end text-[11px] tabular-nums text-fg-muted group-hover:visible">
+          {formatTime(message.createdAt)}
+        </time>
+      ) : (
+        <Avatar name={name} />
+      )}
       <div className="min-w-0 flex-1">
-        <div className="flex items-start gap-2">
-          <p className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 text-sm">
+        {/* A continuation keeps its author line for screen readers and its actions, floating at the end. */}
+        <div className={clsx('flex items-start gap-2', continuation && 'absolute end-2 top-0')}>
+          <p className={clsx('flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 text-sm', continuation && 'sr-only')}>
             <span className="font-semibold text-fg">{name}</span>
-            <time dateTime={message.createdAt} className="text-xs tabular-nums text-fg-muted">
-              {formatWhen(message.createdAt)}
+            <time dateTime={message.createdAt} title={formatWhen(message.createdAt)} className="text-xs tabular-nums text-fg-muted">
+              {when}
               {edited && ' · edited'}
             </time>
           </p>

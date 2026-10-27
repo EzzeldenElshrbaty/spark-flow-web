@@ -1,6 +1,6 @@
-import { useEffect, useId, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useState, type ReactNode } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
-import { useChannel, useLeaveChannel, useMarkRead, useSendMessage, useSetMuted, useSetStarred } from '@/api/chat'
+import { useChannel, useLeaveChannel, useMarkRead, useMessages, useSendMessage, useSetMuted, useSetStarred } from '@/api/chat'
 import { useUsers } from '@/api/users'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
@@ -11,7 +11,7 @@ import { paths } from '@/lib/paths'
 import { useRole } from '@/lib/useRole'
 import { useRealtime } from '@/lib/realtime'
 import { NotFound } from '@/pages/NotFound'
-import { ChannelFeed } from '@/pages/chat/ChannelFeed'
+import { MessageList } from '@/pages/chat/MessageList'
 import { CanPostError } from '@/pages/chat/CanPostError'
 import { TypingLine } from '@/pages/chat/ChannelTyping'
 import { Composer } from '@/pages/chat/Composer'
@@ -21,7 +21,7 @@ import { ArchiveChannelModal, ArchivedChannelLine, JoinChannelLine, useChannelRi
 import { ChannelHeader } from '@/pages/chat/ChannelHeader'
 import { ChannelSheet } from '@/pages/chat/ChannelSheet'
 import { ChannelTabs, TabStub, tabFromParam, type ChannelTab } from '@/pages/chat/ChannelTabs'
-import type { Channel, User } from '@/api/types'
+import type { Channel, ChatMessage, User } from '@/api/types'
 import { useProjectSummaries } from '@/api/projects'
 import { MessageSkeleton } from '@/pages/chat/MessageRow'
 
@@ -95,10 +95,9 @@ export function ChannelPage() {
           <TabStub tab={tab} />
         </div>
       ) : (
-      <ChannelFeed
-        pane
+      <PaneFeed
         key={current.id}
-        channelId={current.id}
+        channel={current}
         title={title}
         users={people}
         usersLoading={users.isLoading}
@@ -174,5 +173,62 @@ function ChannelTop({ channel, people, workspaceSlug, tab, onTab, panelId }: { c
       {editing && <ChannelSheet workspaceId={channel.workspaceId} workspaceSlug={workspaceSlug} channel={channel} onClose={() => setEditing(false)} />}
       {channel.kind === 'channel' && <ArchiveChannelModal channel={channel} open={archiving} onClose={() => setArchiving(false)} />}
     </div>
+  )
+}
+
+/**
+ * The Messages tab: the channel's list over its composer, with a live connection to the channel while it's open.
+ * The New line stays where my read marker was when I opened the channel.
+ */
+function PaneFeed({
+  channel,
+  title,
+  users,
+  usersLoading,
+  meId,
+  canPost,
+  messageActions,
+  composer,
+}: {
+  channel: Channel
+  title: string
+  users: User[]
+  usersLoading: boolean
+  meId: string
+  canPost: boolean
+  messageActions?: (message: ChatMessage, close: () => void) => ReactNode
+  composer: ReactNode
+}) {
+  const messages = useMessages(channel.id)
+  const realtime = useRealtime()
+  const { mutate: markRead } = useMarkRead()
+  useEffect(() => {
+    realtime.joinChannel(channel.id)
+    return () => realtime.leaveChannel(channel.id)
+  }, [realtime, channel.id])
+  const [{ newAfterSeq, totalUnread }] = useState({ newAfterSeq: channel.lastReadSeq, totalUnread: channel.unreadCount })
+  const onMarkRead = useCallback((seq?: number) => markRead({ channelId: channel.id, seq }), [markRead, channel.id])
+  return (
+    <>
+      {usersLoading ? (
+        <div className="min-h-0 flex-1 px-4 pt-4 md:px-6">
+          <MessageSkeleton />
+        </div>
+      ) : (
+        <MessageList
+          query={messages}
+          title={title}
+          users={users}
+          meId={meId}
+          canPost={canPost}
+          messageActions={messageActions}
+          newAfterSeq={newAfterSeq}
+          totalUnread={totalUnread}
+          markedSeq={channel.lastReadSeq}
+          onMarkRead={onMarkRead}
+        />
+      )}
+      {composer && <div className="flex-none px-4 pt-2 pb-3 md:px-6">{composer}</div>}
+    </>
   )
 }

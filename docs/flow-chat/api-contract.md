@@ -57,3 +57,9 @@ On reconnect the client expects missed `message.created` events replayed in `seq
 ## Phase 1 · Feature 2: channel header and tabs
 
 No new routes. The header uses the ones above: the star toggle and Mute in the more menu call `PATCH /api/channels/:id/me`, and Mark all read calls `POST /api/channels/:id/read` with no `seq`. Edit details, Leave and Archive use the existing channel routes. The tabs are client-side (`?tab=files|pins|page`); Files, Pins and Page get their own endpoints when they are built (Phases 3 and 4).
+
+## Phase 1 · Feature 3: message list
+
+`GET /api/channels/:id/messages?cursor=` pages newest first, 30 per page, ordered by `seq` (no longer by time). The client treats `nextCursor` as opaque; the mock uses the `seq` of the last message on the page and returns the messages with a smaller `seq`. `around=` (for jump to date and to a search hit) comes with those features in Phase 3.
+
+On open the client may page back up to 10 pages to reach the person's first unread message, so `lastReadSeq` far back costs up to 10 requests.

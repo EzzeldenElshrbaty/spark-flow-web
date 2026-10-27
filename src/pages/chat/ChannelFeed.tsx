@@ -20,7 +20,6 @@ export function ChannelFeed({
   meId,
   canPost = false,
   messageActions,
-  pane = false,
 }: {
   channelId: string
   title: string
@@ -28,8 +27,6 @@ export function ChannelFeed({
   usersLoading: boolean
   composer?: ReactNode
   meId?: string
-  /** Fill the parent (a flex column) and scroll the list inside it, instead of scrolling with the page. */
-  pane?: boolean
   /** Whether I can write here: reactions, edits and deletes need it too. */
   canPost?: boolean
   /** More items for a message's ⋯ menu (a project's channel adds Create task). */
@@ -115,19 +112,6 @@ export function ChannelFeed({
     )
   }
 
-  // In a pane (the channel page) the list scrolls on its own between the header and the composer; on a page (a
-  // project's Chat tab) it scrolls with the page and the composer sticks to the bottom.
-  if (pane) {
-    return (
-      <>
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-4 md:px-6">
-          {body}
-          <div ref={endRef} />
-        </div>
-        {composer && <div className="flex-none px-4 pt-2 pb-3 md:px-6">{composer}</div>}
-      </>
-    )
-  }
   return (
     <>
       {body}
