@@ -18,19 +18,20 @@ export function totalsByPerson(entries: TimeEntry[], rates: Rate[] | null, now: 
     if (rates) costs.set(e.userId, (costs.get(e.userId) ?? 0) + h * rateAt(rates, e.userId, e.startedAt))
   }
   const people: PersonTotal[] = [...hours]
-    .map(([userId, h]) => ({ userId, hours: tenth(h), cost: rates ? Math.round(costs.get(userId) ?? 0) : null }))
+    // Unrounded, so the parts add up to the total; the screen rounds (formatMoney, a tenth of an hour).
+    .map(([userId, h]) => ({ userId, hours: h, cost: rates ? (costs.get(userId) ?? 0) : null }))
     .sort((a, b) => b.hours - a.hours)
   return {
     people,
-    hours: tenth([...hours.values()].reduce((a, b) => a + b, 0)),
+    hours: [...hours.values()].reduce((a, b) => a + b, 0),
     cost: rates ? people.reduce((sum, p) => sum + (p.cost ?? 0), 0) : null,
   }
 }
 
 /** The Time tab's card title: the project's total for who sees everyone's entries; for anyone else, their share of it. */
 export function timeHeading(everyone: boolean, shown: { hours: number; cost: number | null }, projectHours: number): string {
-  if (!everyone) return `Your time · ${shown.hours}h of ${tenth(projectHours)}h logged`
-  return `${shown.hours}h logged${shown.cost !== null ? ` · ${formatMoney(shown.cost)}` : ''}`
+  if (!everyone) return `Your time · ${tenth(shown.hours)}h of ${tenth(projectHours)}h logged`
+  return `${tenth(shown.hours)}h logged${shown.cost !== null ? ` · ${formatMoney(shown.cost)}` : ''}`
 }
 
 /** What an empty Time tab says: when only your own entries show, the project may still have time from others. */

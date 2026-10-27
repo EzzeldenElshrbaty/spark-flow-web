@@ -48,4 +48,12 @@ describe('timeHeading and emptyTimeText', () => {
     expect(showPrivacyNote(true, false)).toBe(false)
     expect(showPrivacyNote(false, false)).toBe(true)
   })
+  it('totals add up exactly; rounding is for the screen', () => {
+    const third = (userId: string) => ({ id: userId, userId, projectId: 'p', taskId: null, startedAt: '2026-10-20T08:00:00.000Z', endedAt: '2026-10-20T08:20:00.000Z', source: 'manual' as const, note: '' })
+    const r = (userId: string) => ({ id: `r-${userId}`, userId, hourlyCost: 100, currency: 'EGP' as const, effectiveFrom: '1970-01-01T00:00:00.000Z' })
+    const t = totalsByPerson([third('a'), third('b')], [r('a'), r('b')], new Date('2026-10-21T00:00:00Z'))
+    expect(t.cost).toBeCloseTo(66.667, 2)
+    expect(t.hours).toBeCloseTo(0.6667, 3)
+  })
 })
+

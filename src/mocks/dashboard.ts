@@ -28,7 +28,8 @@ function lastWeek(data: DbData, projectId: string, now: Date) {
     if (part > 0) hours.set(e.userId, (hours.get(e.userId) ?? 0) + part / HOUR)
   }
   return [...hours]
-    .map(([userId, h]) => ({ userId, hours: Math.round(h * 10) / 10 }))
+    // Unrounded, so the 7-day tile adds up; the page rounds when it shows them.
+    .map(([userId, h]) => ({ userId, hours: h }))
     .filter((w) => w.hours > 0)
     .sort((a, b) => b.hours - a.hours)
 }

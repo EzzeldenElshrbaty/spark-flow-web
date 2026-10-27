@@ -102,3 +102,12 @@ describe('over estimate', () => {
   })
 })
 
+describe('last week, unrounded', () => {
+  it("last week's hours aren't rounded", async () => {
+    const at = Date.now() - 3_600_000
+    await db.update((d) => void d.timeEntries.push({ id: 'te-20', userId: 'u-8', projectId: 'p-nex', taskId: null, startedAt: new Date(at).toISOString(), endedAt: new Date(at + 20 * 60_000).toISOString(), source: 'manual', note: '' }))
+    const week = (await api.dashboard.projects('ws-eng')).find((p) => p.id === 'p-nex')!.week
+    expect(week.find((w) => w.userId === 'u-8')!.hours).toBeCloseTo(1 / 3, 4)
+  })
+})
+

@@ -19,6 +19,7 @@ import { downloadCsv, toCsv } from '@/lib/csv'
 import { selectClass } from '@/components/ui/Field'
 import { Button } from '@/components/ui/Button'
 import { reportRows } from './reportCsv'
+import { missingRateLine } from './missingRates'
 
 const periods: [ReportPeriod, string][] = [
   [7, '7 days'],
@@ -214,6 +215,18 @@ export function TimeCostPage() {
           <Download className="size-4" /> Export CSV
         </Button>
       </div>
+      {(() => {
+        // People with no hourly cost count 0 EGP: say so, with the way to set them.
+        const missing = report.data ? missingRateLine(report.data.byPerson) : null
+        return missing ? (
+          <p className="mb-4 text-sm text-amber-700 dark:text-amber-300">
+            {missing.text} ·{' '}
+            <Link to={paths.rates(ws)} className="font-medium underline">
+              {missing.action}
+            </Link>
+          </p>
+        ) : null
+      })()}
       {report.isError ? (
         <QueryError what="Time and cost" onRetry={() => void report.refetch()} />
       ) : !r ? (

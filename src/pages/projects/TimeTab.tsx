@@ -82,6 +82,7 @@ export function TimeTab({ project, people }: { project: ProjectSummary; people: 
         return <span className="block truncate text-fg-secondary">{taskLabel(t)}</span>
       },
     },
+    { id: 'note', header: 'Note', width: 200, cell: (e) => <span className="block truncate text-fg-muted">{e.note.trim() || '—'}</span> },
     { id: 'day', header: 'Day', width: 120, cell: (e) => <span className="tabular-nums text-fg-secondary">{formatDate(e.startedAt)}</span> },
     {
       id: 'span',
@@ -106,7 +107,7 @@ export function TimeTab({ project, people }: { project: ProjectSummary; people: 
             <li key={p.userId} className="flex items-center gap-3 py-2.5">
               <Avatar name={nameOf(p.userId)} size="sm" />
               <span className="min-w-0 flex-1 truncate text-sm text-fg">{nameOf(p.userId)}</span>
-              <span className="text-sm tabular-nums text-fg-secondary">{p.hours}h</span>
+              <span className="text-sm tabular-nums text-fg-secondary">{tenth(p.hours)}h</span>
               {p.cost !== null && <span className="w-28 text-end text-sm tabular-nums text-fg-muted">{formatMoney(p.cost)}</span>}
             </li>
           ))}
@@ -126,6 +127,7 @@ export function TimeTab({ project, people }: { project: ProjectSummary; people: 
                 <span className="block truncate text-sm text-fg">{t ? taskLabel(t) : nameOf(e.userId)}</span>
                 <span className="block truncate text-xs text-fg-muted">
                   {nameOf(e.userId)} · {formatDate(e.startedAt)} · {formatTime(e.startedAt)} – {e.endedAt ? formatTime(e.endedAt) : 'running'}
+                  {e.note.trim() && ` · ${e.note}`}
                 </span>
               </span>
               <span className="text-sm tabular-nums text-fg">{tenth(entryHours(e, now))}h</span>

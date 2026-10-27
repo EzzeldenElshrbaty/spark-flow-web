@@ -1,7 +1,7 @@
 import { Clock, LogOut, Play, Square } from 'lucide-react'
 import { useState } from 'react'
 import { useCheckIn, useCheckOut, useStartTimer, useStopTimer, useUndoCheckOut } from '@/api/time'
-import type { MyDay, TaskView } from '@/api/types'
+import type { MyDay, TaskView, TimeTarget } from '@/api/types'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { Field, inputClass, selectClass } from '@/components/ui/Field'
@@ -14,7 +14,14 @@ import { daySummary } from './myDay'
 
 const errorText = (e: unknown) => (e ? <p className="text-sm text-red-600 dark:text-red-400">{(e as Error).message}</p> : null)
 
-function TaskSelect({ tasks, value, onChange, label, empty }: { tasks: TaskView[]; value: string; onChange: (id: string) => void; label: string; empty: string }) {
+/** Projects you can log on, for a timer on a whole project (no task). */
+export type LoggableProject = { id: string; name: string }
+
+/** The picked target: a task's id, or `project:<id>` for a whole project. */
+const targetOf = (value: string): TimeTarget | undefined =>
+  !value ? undefined : value.startsWith('project:') ? { projectId: value.slice('project:'.length) } : { taskId: value }
+
+function TaskSelect({ tasks, projects, value, onChange, label, empty }: { tasks: TaskView[]; projects: LoggableProject[]; value: string; onChange: (id: string) => void; label: string; empty: string }) {
   return (
     <Field label={label}>
       <select className={selectClass} value={value} onChange={(e) => onChange(e.target.value)}>
@@ -24,13 +31,18 @@ function TaskSelect({ tasks, value, onChange, label, empty }: { tasks: TaskView[
             {t.key} · {t.title}
           </option>
         ))}
+        {projects.map((p) => (
+          <option key={p.id} value={`project:${p.id}`}>
+            Whole project · {p.name}
+          </option>
+        ))}
       </select>
     </Field>
   )
 }
 
 /** Not checked in yet: today's plan and, if you like, the task to start on. */
-function CheckInForm({ tasks }: { tasks: TaskView[] }) {
+function CheckInForm({ tasks, projects }: { tasks: TaskView[]; projects: LoggableProject[] }) {
   const checkIn = useCheckIn()
   const [plan, setPlan] = useState('')
   const [taskId, setTaskId] = useState('')
@@ -39,13 +51,13 @@ function CheckInForm({ tasks }: { tasks: TaskView[] }) {
       className="space-y-4 p-5"
       onSubmit={(e) => {
         e.preventDefault()
-        checkIn.mutate({ plan, target: taskId ? { taskId } : undefined })
+        checkIn.mutate({ plan, target: targetOf(taskId) })
       }}
     >
       <Field label="Plan" required>
         <textarea className={inputClass} rows={3} placeholder="What will you work on today?" value={plan} onChange={(e) => setPlan(e.target.value)} />
       </Field>
-      <TaskSelect tasks={tasks} value={taskId} onChange={setTaskId} label="Start the timer on" empty="Pick later" />
+      <TaskSelect tasks={tasks} projects={projects} value={taskId} onChange={setTaskId} label="Start the timer on" empty="Pick later" />
       {errorText(checkIn.error)}
       <div className="flex justify-end">
         <Button type="submit" disabled={checkIn.isPending}>
@@ -57,7 +69,7 @@ function CheckInForm({ tasks }: { tasks: TaskView[] }) {
 }
 
 /** The running timer with its live clock, or a way to start one. */
-function TimerRow({ day, tasks, label }: { day: MyDay; tasks: TaskView[]; label: (taskId: string | null, projectId: string) => string }) {
+function TimerRow({ day, tasks, projects, label }: { day: MyDay; tasks: TaskView[]; projects: LoggableProject[]; label: (taskId: string | null, projectId: string) => string }) {
   const start = useStartTimer()
   const stop = useStopTimer()
   const now = useNow(day.running ? 1000 : 0)
@@ -84,9 +96,9 @@ function TimerRow({ day, tasks, label }: { day: MyDay; tasks: TaskView[]; label:
       <p className="text-sm text-fg-muted">No timer running · Start one on a task.</p>
       <div className="flex items-end gap-2">
         <div className="min-w-0 flex-1">
-          <TaskSelect tasks={tasks} value={taskId} onChange={setTaskId} label="Task" empty="Choose…" />
+          <TaskSelect tasks={tasks} projects={projects} value={taskId} onChange={setTaskId} label="Task" empty="Choose…" />
         </div>
-        <Button variant="secondary" disabled={!taskId || start.isPending} onClick={() => start.mutate({ taskId })}>
+        <Button variant="secondary" disabled={!taskId || start.isPending} onClick={() => start.mutate(targetOf(taskId)!)}>
           <Play className="size-4" /> {start.isPending ? 'Starting…' : 'Start timer'}
         </Button>
       </div>
@@ -102,7 +114,10 @@ function Entries({ day, label }: { day: MyDay; label: (taskId: string | null, pr
     <ul className="divide-y divide-line-subtle">
       {day.entries.map((e) => (
         <li key={e.id} className="flex items-center gap-3 py-2 text-sm">
-          <span className="min-w-0 flex-1 truncate text-fg">{label(e.taskId, e.projectId)}</span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-fg">{label(e.taskId, e.projectId)}</span>
+            {e.note.trim() && <span className="block truncate text-xs text-fg-muted">{e.note}</span>}
+          </span>
           <span className="shrink-0 tabular-nums text-fg-muted">
             {formatTime(e.startedAt)} – {e.endedAt ? formatTime(e.endedAt) : 'now'}
           </span>
@@ -118,7 +133,7 @@ function Entries({ day, label }: { day: MyDay; label: (taskId: string | null, pr
  * Home's check-in card: check in with a plan; then the running timer, today's entries, Add time and Check out; after
  * check-out, the day's summary. A check-in still open from an earlier day (forgot to check out) can be closed here.
  */
-export function CheckInCard({ day, tasks, label }: { day: MyDay; tasks: TaskView[]; label: (taskId: string | null, projectId: string) => string }) {
+export function CheckInCard({ day, tasks, projects = [], label }: { day: MyDay; tasks: TaskView[]; projects?: LoggableProject[]; label: (taskId: string | null, projectId: string) => string }) {
   const checkOut = useCheckOut()
   const undo = useUndoCheckOut()
   const [adding, setAdding] = useState(false)
@@ -140,10 +155,10 @@ export function CheckInCard({ day, tasks, label }: { day: MyDay; tasks: TaskView
         )}
         {day.running && (
           <div className="border-b border-line-subtle px-5 py-4">
-            <TimerRow day={day} tasks={tasks} label={label} />
+            <TimerRow day={day} tasks={tasks} projects={projects} label={label} />
           </div>
         )}
-        <CheckInForm tasks={tasks} />
+        <CheckInForm tasks={tasks} projects={projects} />
       </Card>
     )
   }
@@ -162,7 +177,7 @@ export function CheckInCard({ day, tasks, label }: { day: MyDay; tasks: TaskView
       <div className="space-y-4 p-5">
         <p className="whitespace-pre-line text-sm text-fg-secondary">{checkIn.plan}</p>
         {/* After check-out a timer can still be started from a task; it shows here so it can be stopped. */}
-        {(!out || day.running) && <TimerRow day={day} tasks={tasks} label={label} />}
+        {(!out || day.running) && <TimerRow day={day} tasks={tasks} projects={projects} label={label} />}
         <Entries day={day} label={label} />
         {!out && (
           <div className="flex items-center justify-end gap-2 border-t border-line-subtle pt-4">

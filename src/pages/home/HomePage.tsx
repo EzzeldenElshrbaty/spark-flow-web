@@ -67,7 +67,7 @@ export function HomePage() {
           ) : loading ? (
             <div className="h-72 animate-pulse rounded-xl bg-surface-muted" aria-hidden />
           ) : (
-            <CheckInCard day={day.data} tasks={loggable} label={label} />
+            <CheckInCard day={day.data} tasks={loggable} projects={(projects.data ?? []).filter((p) => canLog(p)).map((p) => ({ id: p.id, name: p.name }))} label={label} />
           )}
         </div>
         <div className="min-w-0 space-y-5">
