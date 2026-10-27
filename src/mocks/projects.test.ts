@@ -197,6 +197,14 @@ describe('adding and deleting columns', () => {
     expect(events).toContainEqual({ type: 'projectChanged', projectId: 'p-nex' })
   })
 
+  it('deleting a column that holds an archived task still works, and moves it too', async () => {
+    await api.users.viewAs('u-2')
+    const key = (await db.read()).tickets.find((t) => t.projectId === 'p-nex' && t.status === 'inReview')!.key
+    await api.tasks.archive(key)
+    await api.projects.deleteColumn('p-nex', 'inReview', 'done')
+    expect((await db.read()).tickets.find((t) => t.key === key)!.status).toBe('done')
+  })
+
   it("the last column of a type can't be deleted", async () => {
     await expect(api.projects.deleteColumn('p-nex', 'done', 'todo')).rejects.toMatchObject({ status: 400, detail: 'Each type needs at least one column.' })
   })

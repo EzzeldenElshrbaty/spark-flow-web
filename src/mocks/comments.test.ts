@@ -86,6 +86,16 @@ describe('comments', () => {
 })
 
 describe('editing comments', () => {
+  it('comments on an archived task can be neither edited nor deleted', async () => {
+    await api.users.viewAs('u-4') // Ahmed manages Mobile App
+    const made = await api.comments.create({ taskKey: 'MOB-104', kind: 'comment', body: 'Keep me', files: [] })
+    await api.tasks.archive('MOB-104')
+    const refused = { status: 400, detail: 'This task is archived. Restore it first.' }
+    await expect(api.comments.update(made.id, 'x')).rejects.toMatchObject(refused)
+    await expect(api.comments.remove(made.id)).rejects.toMatchObject(refused)
+    expect((await db.read()).comments.find((c) => c.id === made.id)).toMatchObject({ body: 'Keep me' })
+  })
+
   const card = async (commentId: string) => (await db.read()).messages.find((m) => m.commentId === commentId)!
 
   it('the author edits a comment: the text, editedAt and the card change, and mentions are parsed again', async () => {

@@ -170,4 +170,11 @@ describe('an archived task is read-only', () => {
     await api.tasks.restore('NEX-101')
     expect((await api.tasks.update('NEX-101', { status: 'done' })).status).toBe('done')
   })
+
+  it('an archived task refuses every other change too', async () => {
+    const api = apiAt()
+    await api.tasks.archive('NEX-101')
+    for (const patch of [{ title: 'New' }, { assigneeId: null }, { rank: 5 }, { estimateHours: 3 }])
+      await expect(api.tasks.update('NEX-101', patch)).rejects.toMatchObject({ status: 400, detail: 'This task is archived. Restore it first.' })
+  })
 })

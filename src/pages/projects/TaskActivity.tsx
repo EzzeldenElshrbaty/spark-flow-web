@@ -33,7 +33,7 @@ export function TaskActivity({ task, project, users }: { task: TaskView; project
       ) : (
         <ol className="space-y-4">
           {comments.data.map((c) => (
-            <CommentRow key={c.id} comment={c} author={nameOf(c.authorId)} mine={canPost && c.authorId === me?.id} />
+            <CommentRow key={c.id} comment={c} author={nameOf(c.authorId)} mine={canPost && !task.archivedAt && c.authorId === me?.id} />
           ))}
         </ol>
       )}
