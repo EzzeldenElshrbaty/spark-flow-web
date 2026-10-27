@@ -9,6 +9,7 @@ import { elapsedMs, formatClock, formatDate, formatHours, formatTime } from '@/l
 import { entryHours } from '@/lib/hours'
 import { useNow } from '@/lib/useNow'
 import { AddTimeSheet } from '@/pages/time/AddTimeSheet'
+import { EntryRowExtras } from '@/pages/time/EntryRowExtras'
 import { daySummary } from './myDay'
 
 const errorText = (e: unknown) => (e ? <p className="text-sm text-red-600 dark:text-red-400">{(e as Error).message}</p> : null)
@@ -102,6 +103,7 @@ function Entries({ day, label }: { day: MyDay; label: (taskId: string | null, pr
             {formatTime(e.startedAt)} – {e.endedAt ? formatTime(e.endedAt) : 'now'}
           </span>
           <span className="w-12 shrink-0 text-end tabular-nums text-fg">{formatHours(entryHours(e, now))}</span>
+          <EntryRowExtras entry={e} />
         </li>
       ))}
     </ul>

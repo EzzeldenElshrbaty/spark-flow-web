@@ -1,4 +1,4 @@
-import type { NewManualEntry } from '@/api/types'
+import type { NewManualEntry, TimeEntry, TimeEntryPatch } from '@/api/types'
 import { localDay } from '@/lib/dates'
 
 export type ManualEntryValues = { day: string /* YYYY-MM-DD */; start: string /* HH:mm */; end: string; note: string; taskId: string | null; projectId: string }
@@ -30,6 +30,18 @@ export function toManualEntry(v: ManualEntryValues): NewManualEntry {
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const hhmm = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`
+
+/** A closed entry as the form shows it, in local time. */
+export function valuesOf(entry: TimeEntry): ManualEntryValues {
+  const start = new Date(entry.startedAt)
+  return { day: localDay(start), start: hhmm(start), end: hhmm(new Date(entry.endedAt ?? entry.startedAt)), note: entry.note, taskId: entry.taskId, projectId: entry.projectId }
+}
+
+/** The form's values as a change to an entry: the times, the note and where it's logged. */
+export function toPatch(v: ManualEntryValues): TimeEntryPatch {
+  const { startedAt, endedAt, note, ...target } = toManualEntry(v)
+  return { startedAt, endedAt, note, target }
+}
 
 /** The form's starting values: the hour before now, rounded down to 15 minutes; just after midnight, late yesterday. */
 export function defaultTimes(now: Date): { day: string; start: string; end: string } {

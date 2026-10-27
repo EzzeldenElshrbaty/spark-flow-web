@@ -1,23 +1,29 @@
 import { useState } from 'react'
 import { useProjectSummaries } from '@/api/projects'
 import { useTickets } from '@/api/tickets'
-import { useAddTime } from '@/api/time'
+import { useAddTime, useUpdateTime } from '@/api/time'
+import type { TimeEntry } from '@/api/types'
 import { Button } from '@/components/ui/Button'
 import { Field, inputClass, selectClass } from '@/components/ui/Field'
 import { Sheet } from '@/components/ui/Sheet'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { localDay } from '@/lib/dates'
-import { defaultTimes, manualEntryErrors, toManualEntry, type ManualEntryErrors, type ManualEntryValues } from './manualEntry'
+import { defaultTimes, manualEntryErrors, toManualEntry, toPatch, valuesOf, type ManualEntryErrors, type ManualEntryValues } from './manualEntry'
 
 /**
- * Add time after the fact: a task (or the project as a whole), the day, start and end, and a note. The form checks
- * what it can; the server also refuses time that overlaps what you already logged.
+ * Add time after the fact: a task (or the project as a whole), the day, start and end, and a note. With an `entry`,
+ * the same form fixes that entry. The form checks what it can; the server also refuses time that overlaps.
  */
-export function AddTimeSheet({ projectId, taskId, onClose }: { projectId?: string; taskId?: string; onClose: () => void }) {
+export function AddTimeSheet({ projectId: forProject, taskId, entry, onClose }: { projectId?: string; taskId?: string; entry?: TimeEntry; onClose: () => void }) {
+  // Editing keeps the entry's project; its task, day, times and note can change.
+  const projectId = entry?.projectId ?? forProject
   const { workspace } = useCurrentWorkspace()
   const projects = useProjectSummaries(workspace?.id).data ?? []
   const add = useAddTime()
-  const [values, setValues] = useState<ManualEntryValues>(() => ({ ...defaultTimes(new Date()), note: '', taskId: taskId ?? null, projectId: projectId ?? '' }))
+  const update = useUpdateTime()
+  const saving = add.isPending || update.isPending
+  const failure = (add.error ?? update.error) as Error | null
+  const [values, setValues] = useState<ManualEntryValues>(() => (entry ? valuesOf(entry) : { ...defaultTimes(new Date()), note: '', taskId: taskId ?? null, projectId: projectId ?? '' }))
   const [errors, setErrors] = useState<ManualEntryErrors>({})
   const tasks = useTickets(values.projectId || undefined).data ?? []
   const set = <K extends keyof ManualEntryValues>(k: K, v: ManualEntryValues[K]) => setValues((s) => ({ ...s, [k]: v }))
@@ -28,22 +34,23 @@ export function AddTimeSheet({ projectId, taskId, onClose }: { projectId?: strin
     const found = manualEntryErrors(values, new Date())
     setErrors(found)
     if (Object.keys(found).length) return
-    add.mutate(toManualEntry(values), { onSuccess: onClose })
+    if (entry) update.mutate({ id: entry.id, patch: toPatch(values) }, { onSuccess: onClose })
+    else add.mutate(toManualEntry(values), { onSuccess: onClose })
   }
 
   return (
     <Sheet
       open
       onClose={onClose}
-      title="Add time"
+      title={entry ? 'Edit entry' : 'Add time'}
       description={fixedTask ? `${fixedTask.key} · ${fixedTask.title}` : (project?.name ?? 'Time you worked without the timer.')}
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={save} disabled={add.isPending}>
-            {add.isPending ? 'Adding…' : 'Add time'}
+          <Button onClick={save} disabled={saving}>
+            {entry ? (saving ? 'Saving…' : 'Save') : saving ? 'Adding…' : 'Add time'}
           </Button>
         </>
       }
@@ -100,9 +107,9 @@ export function AddTimeSheet({ projectId, taskId, onClose }: { projectId?: strin
         <Field label="Note" hint="Optional" error={errors.note}>
           <input className={inputClass} value={values.note} aria-invalid={Boolean(errors.note)} onChange={(e) => set('note', e.target.value)} />
         </Field>
-        {add.error && (
+        {failure && (
           <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-            {(add.error as Error).message}
+            {failure.message}
           </p>
         )}
       </form>

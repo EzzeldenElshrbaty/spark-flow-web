@@ -3,9 +3,8 @@ import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import { useRef, useState, type ReactNode } from 'react'
 import { useDeleteMessage, useReact } from '@/api/chat'
 import type { ChatTarget } from '@/api/types'
-import { Button } from '@/components/ui/Button'
+import { ConfirmDeleteSheet } from '@/components/ConfirmDeleteSheet'
 import { MenuPanel } from '@/components/ui/Menu'
-import { Sheet } from '@/components/ui/Sheet'
 import { REACTIONS } from '@/lib/reactions'
 
 export const menuItemClass = 'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start text-sm text-fg-secondary hover:bg-surface-muted'
@@ -104,28 +103,14 @@ export function MessageActions({
           {react.error.message}
         </p>
       )}
-      <Sheet
+      <ConfirmDeleteSheet
         open={confirming}
-        onClose={() => setConfirming(false)}
         title="Delete message?"
         description="This can't be undone. Replies in its thread stay."
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setConfirming(false)}>
-              Cancel
-            </Button>
-            <Button variant="danger" disabled={remove.isPending} onClick={() => remove.mutate(target, { onSuccess: () => setConfirming(false) })}>
-              {remove.isPending ? 'Deleting…' : 'Delete message'}
-            </Button>
-          </>
-        }
-      >
-        {remove.error && (
-          <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-            {remove.error.message}
-          </p>
-        )}
-      </Sheet>
+        actionLabel="Delete message"
+        onConfirm={() => remove.mutateAsync(target)}
+        onClose={() => setConfirming(false)}
+      />
     </div>
   )
 }

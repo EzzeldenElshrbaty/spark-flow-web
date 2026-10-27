@@ -12,6 +12,7 @@ import { formatDate, formatMoney, formatTime } from '@/lib/format'
 import { entryHours } from '@/lib/hours'
 import { useNow } from '@/lib/useNow'
 import { AddTimeSheet } from '@/pages/time/AddTimeSheet'
+import { EntryRowExtras } from '@/pages/time/EntryRowExtras'
 import { totalsByPerson } from './timeTotals'
 
 const tenth = (n: number) => Math.round(n * 10) / 10
@@ -80,6 +81,7 @@ export function TimeTab({ project, people }: { project: ProjectSummary; people: 
     ...(rates
       ? [{ id: 'cost', header: 'Cost', width: 120, align: 'right' as const, cell: (e: TimeEntry) => <span className="tabular-nums text-fg-secondary">{formatMoney(Math.round(entryHours(e, now) * rateOf(e.userId)))}</span> }]
       : []),
+    { id: 'actions', header: '', width: 120, align: 'right', cell: (e) => <EntryRowExtras entry={e} compact /> },
   ]
 
   return (
