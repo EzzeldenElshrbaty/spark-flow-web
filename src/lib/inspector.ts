@@ -1,3 +1,4 @@
+import { plainText } from '@/lib/mentions'
 /** What the right-side inspector shows. It opens and closes only through the URL (`?thread=` / `?ticket=`). */
 export type InspectorTarget = { kind: 'thread'; messageId: string } | { kind: 'ticket'; key: string }
 
@@ -22,6 +23,6 @@ export function withInspector(search: URLSearchParams, target: InspectorTarget |
 
 /** A message's first non-empty line, cut to `max` characters (the inspector's title). */
 export function firstLine(content: string, max = 60): string {
-  const line = content.split('\n').map((part) => part.trim()).find(Boolean) ?? ''
+  const line = plainText(content).split('\n').map((part) => part.trim()).find(Boolean) ?? ''
   return line.length > max ? `${line.slice(0, max - 1).trimEnd()}…` : line
 }

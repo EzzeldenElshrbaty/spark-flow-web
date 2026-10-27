@@ -1,3 +1,4 @@
+import { unnamedKeys } from '@/lib/mentions'
 import clsx from 'clsx'
 import { ListChecks, MessageSquare } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
@@ -86,7 +87,7 @@ function CommentCard({ message }: { message: ChatMessage }) {
 /** Tasks made from this message that its text doesn't name: one chip each, opening the task beside the channel. */
 function LinkedTasks({ message }: { message: ChatMessage }) {
   const [params] = useSearchParams()
-  const keys = message.linkedTicketKeys.filter((key) => !message.content.includes(key))
+  const keys = unnamedKeys(message.content, message.linkedTicketKeys)
   if (keys.length === 0) return null
   return (
     <ul className="mt-1.5 flex flex-wrap gap-1.5" aria-label="Tasks made from this message">

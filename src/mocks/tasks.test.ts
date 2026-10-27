@@ -276,3 +276,14 @@ describe('write-path refusals', () => {
   })
 })
 
+describe('moved cards keep column names', () => {
+  it('a Moved card keeps a column called "Ready to ship"', async () => {
+    const api = apiAt()
+    await api.users.viewAs('u-2')
+    const board = await api.projects.addColumn('p-nex', { label: 'Ready to ship', category: 'inProgress' })
+    const col = board.board!.find((c) => c.label === 'Ready to ship')!.id
+    await api.tasks.update('NEX-102', { status: col })
+    const card = (await db.read()).messages.filter((m) => m.taskEvent?.key === 'NEX-102').at(-1)!
+    expect(card.taskEvent).toMatchObject({ statusLabel: 'Ready to ship' })
+  })
+})

@@ -47,3 +47,9 @@ describe('firstLine', () => {
     expect(firstLine('  \n ')).toBe('')
   })
 })
+
+describe('firstLine (M12)', () => {
+  it('firstLine shows mentions as names', () => {
+    expect(firstLine('Ping @[Nour](u-2) now')).toBe('Ping @Nour now')
+  })
+})

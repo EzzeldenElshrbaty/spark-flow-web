@@ -71,3 +71,12 @@ export function segments(content: string, known: KnownIds): Segment[] {
   text(content.slice(from))
   return out
 }
+
+/** The text as people read it: `@[Name](id)` shown as `@Name`. */
+export const plainText = (text: string): string => text.replace(/@\[([^\]]+)\]\([\w-]+\)/g, '@$1')
+
+/** Keys linked to a message that its text doesn't name (by the parser, so NEX-101 doesn't stand for NEX-10). */
+export function unnamedKeys(content: string, linked: string[]): string[] {
+  const named = new Set(parseTicketKeys(content))
+  return linked.filter((key) => !named.has(key))
+}

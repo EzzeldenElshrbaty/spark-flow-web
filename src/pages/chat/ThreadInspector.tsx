@@ -13,6 +13,7 @@ import { MessageRow } from '@/pages/chat/MessageRow'
 import { useCanPost, useReadOnlyLine } from '@/pages/chat/useCanPost'
 
 const isNotFound = (error: Error | null) => error instanceof ApiError && error.status === 404
+const isForbidden = (error: Error | null) => error instanceof ApiError && error.status === 403
 
 /** A message, its replies and, for people who may write in the channel, a reply box. */
 export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: string } & InspectorBodyProps) {
@@ -35,6 +36,7 @@ export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: st
 
   let body
   if (foreign || isNotFound(message.error)) body = <NotFound what="message" backTo={closeTo} backLabel="Close the thread" />
+  else if (isForbidden(message.error)) body = <p className="text-sm text-fg-muted">You're not in this channel.</p>
   else if (message.isError) body = <QueryError what="Message" onRetry={() => void message.refetch()} />
   else if (channel.isError) body = <QueryError what="Channel" onRetry={() => void channel.refetch()} />
   // Names come with the channel's workspace; a channel that fails to load only leaves them unknown.

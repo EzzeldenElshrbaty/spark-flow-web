@@ -4,13 +4,14 @@ import type { MockHub } from './realtime'
 import { delay } from './latency'
 import { clone, currentUser } from './shared'
 import { projectPeopleIds } from '@/lib/projectPeople'
+import { plainText } from '@/lib/mentions'
 
 const MAX_ITEMS = 50
 const EXCERPT = 120
 
 /** The text people read: `@[Name](id)` shown as `@Name`, cut to 120 characters. */
 function excerptOf(text: string) {
-  const plain = text.replace(/@\[([^\]]+)\]\([\w-]+\)/g, '@$1').replace(/\s+/g, ' ').trim()
+  const plain = plainText(text).replace(/\s+/g, ' ').trim()
   return plain.length > EXCERPT ? `${plain.slice(0, EXCERPT - 1)}…` : plain
 }
 

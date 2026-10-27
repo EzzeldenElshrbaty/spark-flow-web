@@ -48,3 +48,11 @@ describe('segments', () => {
     expect(segments('<b>hi</b>', known)).toEqual([{ kind: 'text', text: '<b>hi</b>' }])
   })
 })
+
+import { unnamedKeys } from './mentions'
+
+describe('unnamedKeys', () => {
+  it('a chip for NEX-10 even when the text names NEX-101', () => {
+    expect(unnamedKeys('See NEX-101', ['NEX-10', 'NEX-101'])).toEqual(['NEX-10'])
+  })
+})

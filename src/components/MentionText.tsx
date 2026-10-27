@@ -17,7 +17,7 @@ export function MentionText({ text, className = 'text-sm text-fg' }: { text: str
   const { ws, known } = useMentionDirectory()
   const [params] = useSearchParams()
   return (
-    <p className={`whitespace-pre-wrap break-words ${className}`}>
+    <p dir="auto" className={`whitespace-pre-wrap break-words ${className}`}>
       {segments(text, known).map((s, i) => {
         if (s.kind === 'user') return <span key={i} className={chip}>@{s.name}</span>
         if (s.kind === 'all') return <span key={i} className={chip}>@all</span>
