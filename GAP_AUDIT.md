@@ -35,6 +35,8 @@
 
 **M11 (28 Oct 2026)** fixed GAP-009, 018–023, 025–029 and 033; the rules are in the spec, §4.3–4.4.
 
+**M12 (28 Oct 2026)** fixed every Low gap, GAP-034 to 050 (GAP-034 and GAP-050's first bullet were already fixed). `trackLoading` stays: it feeds the loading bar.
+
 ## 1. Executive summary
 
 Spark Flow is **well built for its scope**. The mock backend wraps every write in one transaction with its permission check, and every `Api` method (54 of them) has an HTTP route. The `can()` table agrees with the UI gates, and every realtime event that is emitted is handled. The demo flows work end to end.

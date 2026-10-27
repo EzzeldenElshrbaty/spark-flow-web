@@ -126,6 +126,7 @@ HTTP paths follow the Phases 1+2 style (`POST /api/projects`, `POST /api/time/st
 | Dashboard | ✓ | ✓ | own projects | — |
 | Time & cost page, rates, Database page | ✓ | — | — | — |
 | Archive or restore a project | ✓ | — | — | — |
+| Edit or archive a channel | public ones; private only as a member | its members | its members | its members |
 
 "View as" (user menu, demo only, hidden when `backendOn`) switches the current user among seeded people of each role.
 
@@ -166,6 +167,8 @@ HTTP paths follow the Phases 1+2 style (`POST /api/projects`, `POST /api/time/st
 - **Typing**: the client sends `userTyping { channelId, userId }` at most every 2 s while typing; readers show it for 3 s.
 - **Text fields** must be text (`Title must be text.`, `Name must be text.`…); links are `{ label, url }` (`Each link needs a label and an address.`); an unknown phase is `That phase no longer exists.` A task's create is checked in its own write, like an update.
 - **Events added**: `filesChanged` also on remove; `channelChanged` on archive, restore, join and leave; `projectChanged` + `channelChanged` + `timeLogged` on a project's archive.
+
+- **M12:** a channel name clash reads `That name is taken.` (hidden channels included, so it reveals nothing). `files.url` serves a file only to people who can post in its project (read isn't frozen for archived projects). **Import data** (`db.import`, Admin) replaces everything with an export; a bad file is `Import failed` and writes nothing. Phases lie inside their project's dates (`A phase can't start before the project.`, `A phase can't end after the project's due date.`); a new deliverable needs a due date. Tasks are read at `GET /api/projects/:id/tasks` and `GET /api/tasks/:key`. The dashboard's "checked in now" shows what someone runs only on projects it covers, and "manages a project" is per workspace.
 
 ## 5. Screens (copy the named Spark CRM screen in `design/screenshots/`)
 
