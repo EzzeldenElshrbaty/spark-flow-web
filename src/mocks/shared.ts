@@ -43,6 +43,19 @@ export function badRequest(detail: string): ApiError {
   return new ApiError({ title: 'Bad request', status: 400, detail })
 }
 
+/**
+ * The fields of a patch that a write takes, with `undefined` ones dropped. A field outside `allowed` is refused, not
+ * dropped: it is a client mistake, and the backend copies this rule.
+ */
+export function pickPatch<K extends string>(patch: object, allowed: readonly K[]): Partial<Record<K, unknown>> {
+  const entries = Object.entries(patch)
+  if (entries.some(([key]) => !(allowed as readonly string[]).includes(key))) throw badRequest("Some of these fields can't be changed.")
+  return Object.fromEntries(entries.filter(([, value]) => value !== undefined)) as Partial<Record<K, unknown>>
+}
+
+/** Whether a value is an ISO date the mock can read. */
+export const isDate = (value: unknown): boolean => typeof value === 'string' && !Number.isNaN(Date.parse(value))
+
 /** Throws 403 unless the current user may do `action` (on `project` when it is about one). */
 export function requireCan(
   data: { currentUserId: string; users: User[]; projects: (ProjectRef & { managerId: string })[] },

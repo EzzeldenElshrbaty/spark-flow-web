@@ -1,13 +1,30 @@
-import type { Api, BoardColumn, Deliverable, Phase, Project } from '@/api/types'
+import type { Api, BoardColumn, Deliverable, DeliverablePatch, Phase, PhasePatch, PhaseStatus, Project, ProjectPatch, ProjectStatus } from '@/api/types'
 import type { DbData, MockDb } from './db'
 import { columnErrors, columnsOf } from '@/lib/boardColumns'
 import { summarize } from './derive'
 import { delay } from './latency'
 import type { MockHub } from './realtime'
 import { logActivity, statusChange } from './activity'
-import { badRequest, clone, currentUser, newId, notFound, requireCan } from './shared'
+import { badRequest, clone, currentUser, isDate, newId, notFound, pickPatch, requireCan } from './shared'
 
 const KEY = /^[A-Z]{2,5}$/
+
+/** The fields each patch may carry (ProjectPatch, PhasePatch, DeliverablePatch); anything else is refused. */
+const PROJECT_FIELDS = [
+  'name', 'clientName', 'description', 'links', 'managerId', 'memberIds', 'teamIds', 'status', 'startDate', 'dueDate', 'logoFileId',
+] as const satisfies readonly (keyof ProjectPatch)[]
+const PHASE_FIELDS = ['name', 'startDate', 'dueDate', 'status'] as const satisfies readonly (keyof PhasePatch)[]
+const DELIVERABLE_FIELDS = ['phaseId', 'title', 'dueDate', 'doneAt'] as const satisfies readonly (keyof DeliverablePatch)[]
+const PROJECT_STATUSES: readonly ProjectStatus[] = ['planned', 'active', 'onHold', 'delivered']
+const PHASE_STATUSES: readonly PhaseStatus[] = ['notStarted', 'inProgress', 'done']
+
+/** A project's people and status point at things that exist. */
+function checkProjectRefs(data: DbData, project: Pick<Project, 'status' | 'managerId' | 'memberIds' | 'teamIds'>) {
+  if (!PROJECT_STATUSES.includes(project.status)) throw badRequest("That isn't a project status.")
+  if (!data.users.some((u) => u.id === project.managerId)) throw badRequest('Pick a project manager.')
+  if (!project.memberIds.every((id) => data.users.some((u) => u.id === id))) throw badRequest("Someone on this list doesn't exist.")
+  if (!project.teamIds.every((id) => data.teams.some((t) => t.id === id))) throw badRequest("That team doesn't exist.")
+}
 const WATERFALL = ['Analysis', 'Design', 'Build', 'QA', 'Delivery']
 
 export function findProject(data: DbData, id: string): Project {
@@ -135,7 +152,8 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
         return write((p) => p.id, (data) => {
             const project = findProject(data, id)
             requireCan(data, 'project.edit', project)
-            const next = { ...project, ...Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)) }
+            const next = { ...project, ...pickPatch(patch, PROJECT_FIELDS) } as Project
+            checkProjectRefs(data, next)
             // Assigning people and teams is the manager's (and Admin's), not Sales' (spec §4.3).
             const same = (x: string[], y: string[]) => [...x].sort().join() === [...y].sort().join()
             if (next.managerId !== project.managerId || !same(next.memberIds, project.memberIds) || !same(next.teamIds, project.teamIds)) {
@@ -240,8 +258,9 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
         return write((p) => p.projectId, (data) => {
             const phase = findPhase(data, id)
             requireCan(data, 'phase.manage', findProject(data, phase.projectId))
-            const next = { ...phase, ...Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)) }
+            const next = { ...phase, ...pickPatch(patch, PHASE_FIELDS) } as Phase
             if (!next.name.trim()) throw badRequest('Give the phase a name.')
+            if (!PHASE_STATUSES.includes(next.status)) throw badRequest("That isn't a phase status.")
             checkDates(next.startDate, next.dueDate)
             Object.assign(phase, next)
             logActivity(data, { projectId: phase.projectId, taskKey: null, kind: 'phase.changed', subject: phase.name, changes: [] }, now().toISOString())
@@ -305,8 +324,12 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
             const deliverable = data.deliverables.find((d) => d.id === id)
             if (!deliverable) throw notFound('Deliverable', id)
             requireCan(data, 'project.edit', findProject(data, deliverable.projectId))
-            Object.assign(deliverable, Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)))
-            if (!deliverable.title.trim()) throw badRequest('Give the deliverable a title.')
+            const next = { ...deliverable, ...pickPatch(patch, DELIVERABLE_FIELDS) } as Deliverable
+            if (!next.title.trim()) throw badRequest('Give the deliverable a title.')
+            if (next.phaseId && findPhase(data, next.phaseId).projectId !== deliverable.projectId) throw badRequest('That phase belongs to another project.')
+            if (!isDate(next.dueDate)) throw badRequest('Pick a due date.')
+            if (next.doneAt !== null && !isDate(next.doneAt)) throw badRequest('Pick a done date.')
+            Object.assign(deliverable, next)
             logActivity(data, { projectId: deliverable.projectId, taskKey: null, kind: 'deliverable.changed', subject: deliverable.title, changes: [] }, now().toISOString())
             return deliverable
           })

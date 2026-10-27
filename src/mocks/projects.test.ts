@@ -236,3 +236,26 @@ describe('adding and deleting columns', () => {
     expect(events.filter((e) => e.type === 'projectChanged').length).toBeGreaterThanOrEqual(2)
   })
 })
+
+describe('project, phase and deliverable writes are checked', () => {
+  const unknown = { status: 400, detail: "Some of these fields can't be changed." }
+  it('projects.update takes only its fields and valid values', async () => {
+    for (const patch of [{ key: 'ZZ' }, { channelId: 'c-x' }]) await expect(api.projects.update('p-nex', patch as never)).rejects.toMatchObject(unknown)
+    const refused = async (patch: object, detail: string) => await expect(api.projects.update('p-nex', patch as never)).rejects.toMatchObject({ status: 400, detail })
+    await refused({ status: 'gone' }, "That isn't a project status.")
+    await refused({ managerId: 'nobody' }, 'Pick a project manager.')
+    await refused({ memberIds: ['nobody'] }, "Someone on this list doesn't exist.")
+    await refused({ teamIds: ['t-none'] }, "That team doesn't exist.")
+  })
+  it('phases.update takes only its fields and a valid status', async () => {
+    const phase = (await db.read()).phases.find((p) => p.projectId === 'p-nex')!
+    await expect(api.phases.update(phase.id, { projectId: 'p-x' } as never)).rejects.toMatchObject(unknown)
+    await expect(api.phases.update(phase.id, { status: 'x' } as never)).rejects.toMatchObject({ status: 400, detail: "That isn't a phase status." })
+  })
+  it('deliverables.update takes only its fields and stays in its project', async () => {
+    await expect(api.deliverables.update('d-nex-1', { projectId: 'p-mob' } as never)).rejects.toMatchObject(unknown)
+    await expect(api.deliverables.update('d-nex-1', { phaseId: 'ph-mob-analysis' })).rejects.toMatchObject({ status: 400, detail: 'That phase belongs to another project.' })
+    await expect(api.deliverables.update('d-nex-1', { doneAt: 'x' })).rejects.toMatchObject({ status: 400, detail: 'Pick a done date.' })
+  })
+})
+

@@ -1,11 +1,12 @@
-import type { Api, NewTicket, Ticket, TicketPatch } from '@/api/types'
+import type { Api, NewTicket, Priority, TaskType, Ticket, TicketPatch } from '@/api/types'
 import { taskView } from './derive'
 import type { DbData, MockDb } from './db'
 import { delay } from './latency'
 import type { MockHub } from './realtime'
 import { columnOf, columnsOf, startColumn } from '@/lib/boardColumns'
 import { entryEnd } from '@/lib/hours'
-import { badRequest, clone, notFound, requireCan, stamp } from './shared'
+import { badRequest, clone, isDate, notFound, pickPatch, requireCan, stamp } from './shared'
+import { projectPeopleIds } from '@/lib/projectPeople'
 
 /** In board order (the project's columns), then by rank within a column; a column that's gone sorts last. */
 const byColumnThenRank = (order: string[]) => (a: Ticket, b: Ticket) => {
@@ -54,10 +55,30 @@ export function ticketsApi(db: MockDb, now: () => Date, projects: Api['tickets']
 
 const EDITABLE_BY_ASSIGNEE = new Set(['status', 'rank'])
 
-function checkTaskInput(data: DbData, projectId: string, input: Pick<NewTicket, 'phaseId' | 'estimateHours' | 'title'> & { status?: string }) {
+/** The fields a task patch may carry (TicketPatch); anything else is refused. */
+const TASK_FIELDS = [
+  'title', 'description', 'status', 'priority', 'storyPoints', 'assigneeId', 'sprintId', 'rank', 'phaseId', 'type', 'dueAt', 'estimateHours',
+] as const satisfies readonly (keyof TicketPatch)[]
+const PRIORITIES: readonly Priority[] = ['urgent', 'high', 'medium', 'low']
+const TYPES: readonly TaskType[] = ['task', 'bug']
+
+/**
+ * The values of a new task or a patch. The assignee is one of the project's people, or the one the task already has
+ * (someone taken off the project keeps their tasks until they're reassigned).
+ */
+function checkTaskInput(data: DbData, projectId: string, input: Partial<TicketPatch>, ticket?: Ticket) {
+  const project = findProject(data, projectId)
   if (input.title !== undefined && !input.title.trim()) throw badRequest('Give the task a title.')
+  if (input.priority !== undefined && !PRIORITIES.includes(input.priority)) throw badRequest("That isn't a priority.")
+  if (input.type !== undefined && !TYPES.includes(input.type)) throw badRequest("That isn't a task type.")
+  if (input.assigneeId != null && input.assigneeId !== ticket?.assigneeId && !projectPeopleIds(project, data.users).has(input.assigneeId))
+    throw badRequest('Pick someone on the project.')
+  if (input.sprintId != null && data.sprints.find((s) => s.id === input.sprintId)?.projectId !== projectId) throw badRequest('That sprint belongs to another project.')
+  if (input.storyPoints != null && (!Number.isFinite(input.storyPoints) || input.storyPoints < 0)) throw badRequest('Story points are a number, 0 or more.')
+  if (input.dueAt != null && !isDate(input.dueAt)) throw badRequest('Pick a due date.')
+  if (input.rank !== undefined && !Number.isFinite(input.rank)) throw badRequest('That position on the board is not a number.')
   // A status is a column of the project's board ('' on create means where new tasks start: To do).
-  if (input.status && !columnOf(findProject(data, projectId), input.status)) throw badRequest('That column no longer exists.')
+  if (input.status && !columnOf(project, input.status)) throw badRequest('That column no longer exists.')
   if (input.phaseId && data.phases.find((p) => p.id === input.phaseId)?.projectId !== projectId) throw badRequest('That phase belongs to another project.')
   if (input.estimateHours != null && (input.estimateHours < 0 || !Number.isFinite(input.estimateHours))) throw badRequest('The estimate is a number of hours, 0 or more.')
 }
@@ -109,15 +130,16 @@ export function tasksApi(db: MockDb, hub: MockHub, now: () => Date): Api['tasks'
       const before = await db.read()
       const ticket = findTicket(before, key)
       const project = findProject(before, ticket.projectId)
-      const onlyStatus = Object.keys(patch).every((field) => EDITABLE_BY_ASSIGNEE.has(field))
+      const clean = pickPatch(patch, TASK_FIELDS) as TicketPatch
+      const onlyStatus = Object.keys(clean).every((field) => EDITABLE_BY_ASSIGNEE.has(field))
       try {
         requireCan(before, 'task.manage', project)
       } catch (error) {
         if (!onlyStatus) throw error
         requireCan(before, 'task.updateOwnStatus', project, { taskAssigneeId: ticket.assigneeId })
       }
-      checkTaskInput(before, ticket.projectId, { phaseId: patch.phaseId, estimateHours: patch.estimateHours, title: patch.title as string, status: patch.status })
-      const updated = await updateTicket(db, hub, key, patch, now)
+      checkTaskInput(before, ticket.projectId, clean, ticket)
+      const updated = await updateTicket(db, hub, key, clean, now)
       return taskView(updated, await db.read(), now())
     },
   }

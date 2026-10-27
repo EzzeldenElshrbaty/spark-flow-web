@@ -178,3 +178,46 @@ describe('an archived task is read-only', () => {
       await expect(api.tasks.update('NEX-101', patch)).rejects.toMatchObject({ status: 400, detail: 'This task is archived. Restore it first.' })
   })
 })
+
+describe('task writes are checked', () => {
+  // As Nour (u-2), who manages NEX. u-8 is on no NEX team; s-brd-1 is another project's sprint.
+  const asManager = async () => {
+    const api = apiAt()
+    await api.users.viewAs('u-2')
+    return api
+  }
+  it('refuses fields outside the patch', async () => {
+    const api = await asManager()
+    await expect(api.tasks.update('NEX-101', { key: 'X-1' } as never)).rejects.toMatchObject({ status: 400, detail: "Some of these fields can't be changed." })
+  })
+  it('refuses bad values', async () => {
+    const api = await asManager()
+    const refused = async (patch: object, detail: string) => await expect(api.tasks.update('NEX-101', patch as never)).rejects.toMatchObject({ status: 400, detail })
+    await refused({ priority: 'asap' }, "That isn't a priority.")
+    await refused({ type: 'epic' }, "That isn't a task type.")
+    await refused({ assigneeId: 'u-8' }, 'Pick someone on the project.')
+    await refused({ sprintId: 's-brd-1' }, 'That sprint belongs to another project.')
+    await refused({ storyPoints: -1 }, 'Story points are a number, 0 or more.')
+    await refused({ dueAt: 'soon' }, 'Pick a due date.')
+  })
+  it('create is checked the same way', async () => {
+    const api = await asManager()
+    const base = { projectId: 'p-nex', title: 'New', description: '', status: '', priority: 'medium' as const, storyPoints: null, assigneeId: null, sprintId: null }
+    await expect(api.tasks.create({ ...base, assigneeId: 'u-8' })).rejects.toMatchObject({ status: 400, detail: 'Pick someone on the project.' })
+    await expect(api.tasks.create({ ...base, priority: 'asap' as never })).rejects.toMatchObject({ status: 400, detail: "That isn't a priority." })
+    await expect(api.tasks.create({ ...base, sprintId: 's-brd-1' })).rejects.toMatchObject({ status: 400, detail: 'That sprint belongs to another project.' })
+  })
+  it("a board move and the assignee's own move still pass", async () => {
+    const api = await asManager()
+    expect((await api.tasks.update('NEX-101', { status: 'done', rank: 5 })).status).toBe('done')
+    const mine = (await db.read()).tickets.find((t) => t.projectId === 'p-nex' && t.assigneeId === 'u-3' && !t.archivedAt)!
+    await api.users.viewAs('u-3')
+    expect((await api.tasks.update(mine.key, { status: 'inProgress' })).status).toBe('inProgress')
+  })
+  it('an unchanged assignee who left the project can stay', async () => {
+    const api = await asManager()
+    await db.update((d) => void (d.tickets.find((t) => t.key === 'NEX-102')!.assigneeId = 'u-8'))
+    expect(await api.tasks.update('NEX-102', { assigneeId: 'u-8', title: 'Still theirs' })).toMatchObject({ assigneeId: 'u-8', title: 'Still theirs' })
+  })
+})
+

@@ -3,6 +3,7 @@ import type { DbData, MockDb } from './db'
 import type { MockHub } from './realtime'
 import { delay } from './latency'
 import { clone, currentUser } from './shared'
+import { projectPeopleIds } from '@/lib/projectPeople'
 
 const MAX_ITEMS = 50
 const EXCERPT = 120
@@ -13,12 +14,10 @@ function excerptOf(text: string) {
   return plain.length > EXCERPT ? `${plain.slice(0, EXCERPT - 1)}…` : plain
 }
 
-/** The people of a project: its manager, its members and the members of its teams. */
+/** The people of a project (see projectPeople), or nobody when it's gone. */
 function projectPeople(data: DbData, projectId: string): Set<string> {
   const project = data.projects.find((p) => p.id === projectId)
-  if (!project) return new Set()
-  const team = data.users.filter((u) => u.teamIds.some((t) => project.teamIds.includes(t))).map((u) => u.id)
-  return new Set([project.managerId, ...project.memberIds, ...team])
+  return project ? projectPeopleIds(project, data.users) : new Set()
 }
 
 /**

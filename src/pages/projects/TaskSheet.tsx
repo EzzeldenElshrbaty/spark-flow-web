@@ -5,6 +5,7 @@ import type { NewTicket, Phase, Priority, Project, Sprint, TaskType, TaskView, T
 import { Button } from '@/components/ui/Button'
 import { Field, inputClass, selectClass } from '@/components/ui/Field'
 import { Sheet } from '@/components/ui/Sheet'
+import { projectPeople } from '@/lib/projectPeople'
 import { usePermission } from '@/lib/usePermission'
 import { byOrder } from './phases'
 import { columnsOf, startColumn } from '@/lib/boardColumns'
@@ -15,10 +16,6 @@ const priorities: [Priority, string][] = [
   ['medium', 'Medium'],
   ['low', 'Low'],
 ]
-
-/** The people a task can go to: the manager, members, and the members of the project's teams. */
-export const projectPeople = (project: Pick<Project, 'managerId' | 'memberIds' | 'teamIds'>, users: User[]) =>
-  users.filter((u) => u.id === project.managerId || project.memberIds.includes(u.id) || u.teamIds.some((t) => project.teamIds.includes(t)))
 
 type Values = {
   title: string
