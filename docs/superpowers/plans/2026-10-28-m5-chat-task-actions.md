@@ -18,7 +18,7 @@
 - New stored fields are **optional** (`deletedAt?`, `taskEvent?`, `editedAt?` on replies), so older IndexedDB documents still load and `DB_VERSION` stays 3.
 - Task event cards are written inside the same transaction as the task change (`createTicket` / `updateTicket`), through the existing `postMessage` builder, the way comment cards are.
 
-**Tech Stack:** React 19, TS ~6 (erasableSyntaxOnly), Vite 8, Tailwind v4, TanStack Query, React Router, Vitest + fake-indexeddb. Native HTML5 drag and drop; no new dependency.
+**Tech Stack:** React 19, TS ~6 (erasableSyntaxOnly), Vite 8, Tailwind v4, TanStack Query, React Router, Vitest + fake-indexeddb. Drag and drop: `@dnd-kit/core` 6.3.1, `@dnd-kit/sortable` 10.0.0, `@dnd-kit/utilities` 3.2.2 (added 28 Oct at the user's request; replaces the native HTML5 drag of the first Task 1).
 
 **Spec:** `docs/superpowers/specs/2026-10-26-spark-flow-company-system-design.md`:
 - §2: chat ↔ tasks;
@@ -83,8 +83,8 @@ flowchart TB
   - Project channels and DMs refuse edits with 400: "This channel follows its project." / "Direct messages can't be edited."
   - An editor can't remove themselves; leaving a channel is P2.
 - **Private listing fix.** `channels()`, `channel()` and `messages()` show private channels and DMs only to their members, with 403 for anyone else. Today they list them to everyone, and private channels the user can create make that a leak.
-- **Board drag needs a mouse.** HTML5 drag doesn't fire on touch, so keyboard and phone users change status with the task panel's Status select. That stays the accessible path, and the board says so in its `aria-describedby` hint.
-- **No optimistic update** on drop. The 2px LoadingBar covers the mock delay.
+- **Board drag works with mouse, touch and keyboard** (dnd-kit; see Task 1b). On touch a card lifts after a 250 ms press, so a swipe still scrolls the columns. The task panel's Status select stays as a second way.
+- **The board shows a drop at once** (Task 1b). It keeps the moved card where it was dropped until the refetched tasks arrive, and puts it back if the save fails, with the error as a sentence.
 
 ## Global Constraints
 
@@ -394,7 +394,7 @@ Added on 28 Oct 2026 at the user's request ("option A"). It runs **before** Task
 - [ ] **Step 3: Implement.**
   - **Column header menu.** For someone with `phase.manage`, each column header gets a ⋯ `MenuPanel` (`aria-label="Column actions"`) with "Rename column", "Move left" and "Move right". The first column has no "Move left"; the last has no "Move right"; in RTL the words stay the same and the order follows the reading direction.
   - **Inline rename.** "Rename column", or a double-click on the name, swaps the name for an input. Enter or blur saves, Escape cancels. An error shows as a sentence under the header.
-  - **Header drag.** A header (manager only) drags with type `application/x-spark-column`; dropping it on another column puts it at that column's place. A card drag and a column drag never mix: each checks its own type.
+  - **Header drag.** A header (manager only) is sortable with dnd-kit (see the Task 1b note); a card drag and a header drag tell themselves apart by the id prefix.
   - **Names everywhere.** Board columns and labels come from `boardColumns(project)`. `statusLabel` gets an optional project, and the selects, the list pill and the event cards use it.
 - [ ] **Step 4: Run** `npx vitest run src/lib/boardColumns.test.ts src/mocks/projects.test.ts && npm test && npm run lint`. Expected: PASS.
 - [ ] **Step 5: Browser check.**
@@ -402,3 +402,40 @@ Added on 28 Oct 2026 at the user's request ("option A"). It runs **before** Task
   - As Hossam (sales) and as Mariam (member), there's no column menu and headers don't drag.
   - Check light, dark, 390px (the menu becomes a bottom sheet) and RTL.
 - [ ] **Step 6: Commit** `feat: rename and reorder board columns per project`.
+
+### Task 1b: Board drag on dnd-kit, with order inside a column
+
+Added on 28 Oct 2026 at the user's request. It replaces the native drag of Task 1 (commit `70306ba`) and runs before Task 3 is finished (Task 3’s edits touch other files).
+
+**Files:**
+- Modify: `package.json` (the three `@dnd-kit/*` packages, exact versions), `src/pages/projects/boardMove.ts` (+ test), `src/pages/projects/ProjectBoard.tsx`, `src/pages/projects/TasksTab.tsx`
+
+**Interfaces:**
+- `boardMove(ticket: TaskView, to: TicketStatus, column: TaskView[], index: number): TicketPatch | null`.
+  - `column` is the target column in rank order; it may include `ticket`. `index` is the place among the column's *other* cards.
+  - It returns `null` when the card would end where it is.
+  - The new rank is the midpoint of its neighbours; first place gives `first − 1000`, last place `last + 1000`, an empty column `1000`.
+  - `status` is in the patch only when it changes.
+- `ProjectBoard({ tickets, users, canMove, onMove: (t: TaskView, patch: TicketPatch) => Promise<unknown>, error })`.
+
+- [ ] **Step 1: Rewrite the failing tests.** In `boardMove.test.ts`:
+  - `'same place is no move'`;
+  - `'down one inside a column goes between its new neighbours'`;
+  - `'to the top of another column'` → `{ status, rank: first − 1000 }`;
+  - `'to the end of another column'`;
+  - `'empty column'` → 1000.
+- [ ] **Step 2: Run** `npx vitest run src/pages/projects/boardMove.test.ts`. Expected: FAIL (the 4-argument cases).
+- [ ] **Step 3: Implement.**
+  - **Sensors.** `DndContext` with `PointerSensor` (start after moving 5 px), `TouchSensor` (lift after a 250 ms press, 5 px tolerance) and `KeyboardSensor` (`sortableKeyboardCoordinates`).
+  - **Collisions.** `closestCorners`.
+  - **Columns.** Each column is a `SortableContext` (`verticalListSortingStrategy`) plus a `useDroppable` with id `column:<status>`, so empty columns take drops.
+  - **Cards.** Each card is `useSortable({ id: key, disabled: !canMove(t) })`.
+  - **Drop position.** Dropped on a card, it goes before or after that card by the pointer's half; dropped on a column, it goes last.
+  - **Drag preview.** `DragOverlay` shows the card while the original stays in place, faded.
+  - **Screen readers.** Announcements: "Picked up NEX-1.", "NEX-1 is over In review.", "Dropped NEX-1 in In review.", "Cancelled moving NEX-1."
+  - **Optimistic move.** The moved card is shown in its new place until `tickets` changes, and put back if `onMove` rejects.
+- [ ] **Step 4: Run** `npx vitest run src/pages/projects/boardMove.test.ts && npm test && npm run lint && npm run build:prototype`. Expected: PASS.
+- [ ] **Step 5: Browser check** with mouse (real pointer events), keyboard (Space, then arrows, then Space) and the phone width (a press lifts the card; a swipe scrolls). Check light and dark.
+- [ ] **Step 6: Commit** `feat: board drag on dnd-kit with order inside a column`.
+
+Task 8 change: column headers reorder with `@dnd-kit/sortable` (`horizontalListSortingStrategy`, ids `header:<status>`, in a second `SortableContext` inside the same `DndContext`). The ⋯ Move left / Move right items stay for menu users.
