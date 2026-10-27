@@ -180,6 +180,14 @@ export function timeApi(db: MockDb, hub: MockHub, now: () => Date): Api['time'] 
         return stopRunning(data, me.id, iso)?.projectId ?? null
       }),
 
+    undoCheckOut: () =>
+      write((data, me, at) => {
+        const today = data.checkIns.find((c) => c.userId === me.id && c.day === localDay(at) && c.checkedOutAt !== null)
+        if (!today) throw badRequest("You haven't checked out today.")
+        today.checkedOutAt = null
+        return null
+      }),
+
     start: (target) => write((data, me, at) => startTimer(data, me.id, target, at.toISOString())),
 
     stop: () =>

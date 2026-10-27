@@ -15,6 +15,9 @@ export function useCheckIn() {
 export function useCheckOut() {
   return useMutation({ mutationFn: () => api.time.checkOut() })
 }
+export function useUndoCheckOut() {
+  return useMutation({ mutationFn: () => api.time.undoCheckOut() })
+}
 export function useStartTimer() {
   return useMutation({ mutationFn: (target: TimeTarget) => api.time.start(target) })
 }

@@ -318,3 +318,28 @@ describe('time on projects you are on', () => {
     await expect(api.time.start({ taskId: 't-nex-102' })).rejects.toMatchObject({ status: 403 })
   })
 })
+
+describe('undo check-out', () => {
+  it("undo reopens today's check-in; the person is \"checked in now\" again on the dashboard", async () => {
+    await api.time.checkIn({ plan: 'Reviews' })
+    later(60)
+    await api.time.checkOut()
+    const day = await api.time.undoCheckOut()
+    expect(day.checkIn?.checkedOutAt ?? null).toBeNull()
+    expect((await api.dashboard.checkedIn('ws-eng')).some((c) => c.userId === 'u-1')).toBe(true)
+  })
+  it('undo with no check-out today is refused', async () => {
+    await expect(api.time.undoCheckOut()).rejects.toMatchObject({ status: 400, detail: "You haven't checked out today." })
+    await api.time.checkIn({ plan: 'Reviews' })
+    await expect(api.time.undoCheckOut()).rejects.toMatchObject({ status: 400, detail: "You haven't checked out today." })
+  })
+  it("undo doesn't reopen yesterday's", async () => {
+    now = at(9, 0, -1)
+    await api.time.checkIn({ plan: 'Yesterday' })
+    now = at(17, 0, -1)
+    await api.time.checkOut()
+    now = at(9)
+    await expect(api.time.undoCheckOut()).rejects.toMatchObject({ status: 400, detail: "You haven't checked out today." })
+  })
+})
+

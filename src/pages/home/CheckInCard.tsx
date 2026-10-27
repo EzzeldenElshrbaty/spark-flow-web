@@ -1,6 +1,6 @@
 import { Clock, LogOut, Play, Square } from 'lucide-react'
 import { useState } from 'react'
-import { useCheckIn, useCheckOut, useStartTimer, useStopTimer } from '@/api/time'
+import { useCheckIn, useCheckOut, useStartTimer, useStopTimer, useUndoCheckOut } from '@/api/time'
 import type { MyDay, TaskView } from '@/api/types'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader } from '@/components/ui/Card'
@@ -116,6 +116,7 @@ function Entries({ day, label }: { day: MyDay; label: (taskId: string | null, pr
  */
 export function CheckInCard({ day, tasks, label }: { day: MyDay; tasks: TaskView[]; label: (taskId: string | null, projectId: string) => string }) {
   const checkOut = useCheckOut()
+  const undo = useUndoCheckOut()
   const [adding, setAdding] = useState(false)
   const now = useNow(day.running ? 60_000 : 0)
   const summary = daySummary(day.entries, now)
@@ -164,6 +165,15 @@ export function CheckInCard({ day, tasks, label }: { day: MyDay; tasks: TaskView
             {errorText(checkOut.error)}
             <Button variant="secondary" onClick={() => checkOut.mutate()} disabled={checkOut.isPending}>
               <LogOut className="size-4 rtl:-scale-x-100" /> {checkOut.isPending ? 'Checking out…' : 'Check out'}
+            </Button>
+          </div>
+        )}
+        {/* Checked out by mistake: the same day, it can be taken back. */}
+        {out && (
+          <div className="flex items-center justify-end gap-2 border-t border-line-subtle pt-4">
+            {errorText(undo.error)}
+            <Button variant="secondary" onClick={() => undo.mutate()} disabled={undo.isPending}>
+              {undo.isPending ? 'Undoing…' : 'Undo check-out'}
             </Button>
           </div>
         )}

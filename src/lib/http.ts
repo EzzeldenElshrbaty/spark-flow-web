@@ -125,6 +125,7 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
       today: () => get('/api/time/today'),
       checkIn: (input) => send('POST', '/api/time/check-in', input),
       checkOut: () => send('POST', '/api/time/check-out'),
+      undoCheckOut: () => send('POST', '/api/time/check-out/undo'),
       start: (target) => send('POST', '/api/time/start', target),
       stop: () => send('POST', '/api/time/stop'),
       addManual: (entry) => send('POST', '/api/time/entries', entry),

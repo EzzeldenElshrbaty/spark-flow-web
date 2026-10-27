@@ -328,6 +328,8 @@ export interface Api {
     checkIn(input: { plan: string; target?: TimeTarget }): Promise<MyDay>
     /** Closes the latest open check-in and stops the running timer. */
     checkOut(): Promise<MyDay>
+    /** Reopens today's check-in after a check-out by mistake; the stopped timer stays stopped. */
+    undoCheckOut(): Promise<MyDay>
     /** One running timer per person: starting stops the last. */
     start(target: TimeTarget): Promise<MyDay>
     stop(): Promise<MyDay>
