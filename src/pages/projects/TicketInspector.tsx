@@ -16,6 +16,7 @@ import { InspectorFrame, InspectorSkeleton, TitleSkeleton, type InspectorBodyPro
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { ApiError } from '@/lib/api'
 import { formatDate } from '@/lib/format'
+import { useCanLog } from '@/lib/useCanLog'
 import { usePermission } from '@/lib/usePermission'
 import { TaskSheet } from '@/pages/projects/TaskSheet'
 import { AddTimeSheet } from '@/pages/time/AddTimeSheet'
@@ -60,6 +61,7 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
   const phases = usePhases(ticket.data?.projectId)
   const update = useUpdateTask()
   const check = usePermission()
+  const canLog = useCanLog()
   const [editing, setEditing] = useState(false)
   const [addingTime, setAddingTime] = useState(false)
   const [archiving, setArchiving] = useState(false)
@@ -181,7 +183,7 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
           onConfirm={() => archive.mutateAsync(t.key)}
           onClose={() => setArchiving(false)}
         />
-        {!archived && (
+        {!archived && canLog(project) && (
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {t.category !== 'done' &&
             (myDay.data?.running?.taskId === t.id ? (

@@ -5,7 +5,7 @@ import type { Project, Role } from '@/api/types'
 
 export type Action =
   | 'rates.view' | 'cost.view' | 'project.create' | 'project.edit' | 'phase.manage' | 'task.manage' | 'task.updateOwnStatus'
-  | 'time.logOwn' | 'collab.post' | 'dashboard.view' | 'timeCost.view' | 'database.manage'
+  | 'time.logOwn' | 'time.logOn' | 'collab.post' | 'dashboard.view' | 'timeCost.view' | 'database.manage'
 
 export type ProjectRef = Pick<Project, 'managerId' | 'memberIds' | 'teamIds'>
 
@@ -21,7 +21,7 @@ export type PermissionContext = {
 }
 
 /** Actions that are always about one project: PM rights are per project, so these need it. */
-export type ProjectScoped = 'project.edit' | 'phase.manage' | 'task.manage' | 'task.updateOwnStatus'
+export type ProjectScoped = 'project.edit' | 'phase.manage' | 'task.manage' | 'task.updateOwnStatus' | 'time.logOn'
 
 /** Whoever a project names as its manager has PM rights on it. */
 const manages = (ctx: PermissionContext) => (ctx.project ? ctx.project.managerId === ctx.userId : false)
@@ -53,6 +53,9 @@ export function can(action: Action, ctx: PermissionContext): boolean {
       return manages(ctx) || (ctx.taskAssigneeId != null && ctx.taskAssigneeId === ctx.userId)
     case 'time.logOwn':
       return true
+    // Logging time on a project: the people on it (manager, members, its teams); Admins anywhere.
+    case 'time.logOn':
+      return manages(ctx) || (Boolean(ctx.project) && isOn(ctx))
     case 'collab.post':
       return ctx.role === 'sales' || manages(ctx) || isOn(ctx)
     case 'dashboard.view':

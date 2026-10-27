@@ -8,6 +8,7 @@ import { Field, inputClass, selectClass } from '@/components/ui/Field'
 import { Sheet } from '@/components/ui/Sheet'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { localDay } from '@/lib/dates'
+import { useCanLog } from '@/lib/useCanLog'
 import { defaultTimes, manualEntryErrors, toManualEntry, toPatch, valuesOf, type ManualEntryErrors, type ManualEntryValues } from './manualEntry'
 
 /**
@@ -18,7 +19,9 @@ export function AddTimeSheet({ projectId: forProject, taskId, entry, onClose }: 
   // Editing keeps the entry's project; its task, day, times and note can change.
   const projectId = entry?.projectId ?? forProject
   const { workspace } = useCurrentWorkspace()
-  const projects = useProjectSummaries(workspace?.id).data ?? []
+  const canLog = useCanLog()
+  // Only projects I'm on (or every one, for an Admin): the server refuses the others.
+  const projects = (useProjectSummaries(workspace?.id).data ?? []).filter((p) => canLog(p) || p.id === entry?.projectId)
   const add = useAddTime()
   const update = useUpdateTime()
   const saving = add.isPending || update.isPending

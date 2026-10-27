@@ -11,6 +11,8 @@ import { QueryError } from '@/components/ui/QueryError'
 import { formatDate, formatMoney, formatTime } from '@/lib/format'
 import { entryHours } from '@/lib/hours'
 import { useNow } from '@/lib/useNow'
+import { useCanLog } from '@/lib/useCanLog'
+import { useRole } from '@/lib/useRole'
 import { AddTimeSheet } from '@/pages/time/AddTimeSheet'
 import { EntryRowExtras } from '@/pages/time/EntryRowExtras'
 import { totalsByPerson } from './timeTotals'
@@ -23,11 +25,17 @@ export function TimeTab({ project, people }: { project: ProjectSummary; people: 
   const tasks = useTickets(project.id).data ?? []
   const now = useNow(60_000)
   const [adding, setAdding] = useState(false)
+  const canLog = useCanLog()(project)
+  const { persona } = useRole()
+  const everyone = persona.role === 'admin' || project.managerId === persona.id
   const addBar = (
-    <div className="mb-4 flex justify-end">
-      <Button variant="secondary" onClick={() => setAdding(true)}>
-        <Clock className="size-4" /> Add time
-      </Button>
+    <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
+      {!everyone && <p className="me-auto text-sm text-fg-muted">Only you and the project's manager see your entries.</p>}
+      {canLog && (
+        <Button variant="secondary" onClick={() => setAdding(true)}>
+          <Clock className="size-4" /> Add time
+        </Button>
+      )}
       {adding && <AddTimeSheet projectId={project.id} onClose={() => setAdding(false)} />}
     </div>
   )

@@ -46,7 +46,7 @@ describe('time.list', () => {
 
     await api.users.viewAs('u-3')
     const asMember = await api.time.list('p-nex')
-    expect(asMember.entries).toHaveLength(asAdmin.entries.length)
+    expect(asMember.entries.every((e) => e.userId === 'u-3')).toBe(true) // members see their own (M8)
     expect(asMember.rates).toBeNull()
   })
 
@@ -275,5 +275,46 @@ describe('timers and column types', () => {
       d.tickets.find((t) => t.key === 'NEX-102')!.status = 'col-ship'
     })
     await expect(api.time.start({ taskId: 't-nex-102' })).rejects.toMatchObject({ detail: 'That task is done. Reopen it to log time.' })
+  })
+})
+
+describe('time on projects you are on', () => {
+  const entry = (start: Date, end: Date, taskId: string) => ({ taskId, startedAt: start.toISOString(), endedAt: end.toISOString(), note: '' })
+
+  it("starting a timer or adding time on a project you aren't on is refused", async () => {
+    await api.users.viewAs('u-8') // Tarek: Mobile App only
+    await expect(api.time.start({ taskId: 't-nex-102' })).rejects.toMatchObject({ status: 403, detail: "You're not on this project." })
+    await expect(api.time.addManual(entry(at(6), at(7), 't-nex-102'))).rejects.toMatchObject({ status: 403, detail: "You're not on this project." })
+    await expect(api.time.checkIn({ plan: 'Work', target: { taskId: 't-nex-102' } })).rejects.toMatchObject({ status: 403 })
+    await api.users.viewAs('u-9') // Karim, sales, not on Nexus Core
+    await expect(api.time.start({ taskId: 't-nex-102' })).rejects.toMatchObject({ status: 403 })
+  })
+
+  it('a member sees only their own entries; the manager and an admin see all', async () => {
+    const all = (await api.time.list('p-nex')).entries
+    expect(new Set(all.map((e) => e.userId)).size).toBeGreaterThan(1)
+    await api.users.viewAs('u-3') // Mariam, member
+    const mine = (await api.time.list('p-nex')).entries
+    expect(mine.length).toBeGreaterThan(0)
+    expect(mine.every((e) => e.userId === 'u-3')).toBe(true)
+    await api.users.viewAs('u-2') // Nour manages Nexus Core
+    expect((await api.time.list('p-nex')).entries).toHaveLength(all.length)
+  })
+
+  it('a PM of another project sees only their own entries there', async () => {
+    await api.users.viewAs('u-4') // Ahmed manages Mobile App, not Nexus Core
+    expect((await api.time.list('p-nex')).entries.every((e) => e.userId === 'u-4')).toBe(true)
+  })
+
+  it('someone taken off a project keeps seeing their own old entries but cannot log new time', async () => {
+    await api.users.viewAs('u-3')
+    const made = (await api.time.list('p-nex')).entries.find((e) => e.endedAt !== null)!
+    await db.update((d) => {
+      const p = d.projects.find((x) => x.id === 'p-nex')!
+      p.memberIds = p.memberIds.filter((id) => id !== 'u-3')
+      p.teamIds = []
+    })
+    expect((await api.time.list('p-nex')).entries.some((e) => e.id === made.id)).toBe(true)
+    await expect(api.time.start({ taskId: 't-nex-102' })).rejects.toMatchObject({ status: 403 })
   })
 })

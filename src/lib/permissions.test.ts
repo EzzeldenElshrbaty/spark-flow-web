@@ -83,3 +83,16 @@ describe('accessOf', () => {
     expect(accessOf(false, false)).toBe('denied')
   })
 })
+
+describe('time.logOn', () => {
+  const project = { managerId: 'pm', memberIds: ['m'], teamIds: ['t1'] }
+  it('time.logOn needs the project: admin, manager, member or team, not anyone else', () => {
+    expect(can('time.logOn', { userId: 'a', role: 'admin', project })).toBe(true)
+    expect(can('time.logOn', { userId: 'pm', role: 'pm', project })).toBe(true)
+    expect(can('time.logOn', { userId: 'm', role: 'member', project })).toBe(true)
+    expect(can('time.logOn', { userId: 'x', role: 'member', project, userTeamIds: ['t1'] })).toBe(true)
+    expect(can('time.logOn', { userId: 's', role: 'sales', project })).toBe(false)
+    expect(can('time.logOn', { userId: 'o', role: 'member', project })).toBe(false)
+    expect(can('time.logOn', { userId: 'p2', role: 'pm', project })).toBe(false)
+  })
+})

@@ -46,9 +46,18 @@ function stopRunning(data: DbData, userId: string, at: string) {
   return running
 }
 
+/** Time goes only on projects you're on (its manager, a member, one of its teams), or anywhere for an Admin. */
+function checkOn(data: DbData, projectId: string) {
+  const me = currentUser(data)
+  const project = findProject(data, projectId)
+  if (!can('time.logOn', { userId: me.id, role: me.role, project, userTeamIds: me.teamIds }))
+    throw new ApiError({ title: 'Forbidden', status: 403, detail: "You're not on this project." })
+}
+
 /** Starts a timer on `target`, stopping the one that runs; the same target keeps its entry. Mutates `data`. */
 function startTimer(data: DbData, userId: string, target: TimeTarget, at: string): string {
   const { projectId, taskId, done } = resolveTarget(data, target)
+  checkOn(data, projectId)
   if (done) throw badRequest('That task is done. Reopen it to log time.')
   const running = data.timeEntries.find((e) => e.userId === userId && e.endedAt === null)
   if (running && running.projectId === projectId && running.taskId === taskId) return projectId
@@ -116,9 +125,13 @@ export function timeApi(db: MockDb, hub: MockHub, now: () => Date): Api['time'] 
     async list(projectId) {
       await delay()
       const data = await db.read()
-      findProject(data, projectId)
+      const project = findProject(data, projectId)
       const me = currentUser(data)
-      const entries = data.timeEntries.filter((e) => e.projectId === projectId).sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1))
+      // Entry times are personal (spec §1): Admins and the project's manager see everyone's, others only their own.
+      const everyone = me.role === 'admin' || project.managerId === me.id
+      const entries = data.timeEntries
+        .filter((e) => e.projectId === projectId && (everyone || e.userId === me.id))
+        .sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1))
       const rates = can('timeCost.view', { userId: me.id, role: me.role }) ? data.rates : null
       return clone({ entries, rates })
     },
@@ -183,6 +196,7 @@ export function timeApi(db: MockDb, hub: MockHub, now: () => Date): Api['time'] 
         const start = new Date(input.startedAt).getTime()
         const end = new Date(input.endedAt).getTime()
         const { projectId, taskId, note } = checkEntry(data, me.id, { start, end, note: input.note, target: input }, now().getTime())
+        checkOn(data, projectId)
         const entry: TimeEntry = { id: newId('te'), userId: me.id, projectId, taskId, startedAt: new Date(start).toISOString(), endedAt: new Date(end).toISOString(), source: 'manual', note }
         data.timeEntries.push(entry)
         return clone(entry)
@@ -202,6 +216,8 @@ export function timeApi(db: MockDb, hub: MockHub, now: () => Date): Api['time'] 
         const target: TimeTarget = patch.target ?? (entry.taskId ? { taskId: entry.taskId } : { projectId: entry.projectId })
         // The owner's rules: their other entries are what it mustn't overlap, whoever edits it.
         const checked = checkEntry(data, entry.userId, { start, end, note: patch.note ?? entry.note, target }, now().getTime(), entry)
+        // Moving it to another project needs to be on that one; fixing it where it is doesn't.
+        if (checked.projectId !== was) checkOn(data, checked.projectId)
         Object.assign(entry, { ...checked, startedAt: new Date(start).toISOString(), endedAt: new Date(end).toISOString() })
         return { entry: clone(entry), was }
       })
