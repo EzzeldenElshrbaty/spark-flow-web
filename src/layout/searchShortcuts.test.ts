@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { Channel } from '@/api/types'
-import { workspaceShortcuts } from '@/layout/searchShortcuts'
+import type { Channel, TaskView } from '@/api/types'
+import { peopleShortcuts, shortcutsFor, taskShortcuts, workspaceShortcuts } from '@/layout/searchShortcuts'
 import { seed } from '@/mocks/seed'
 
 const data = seed(new Date('2026-10-26T09:00:00Z')).data
@@ -29,5 +29,33 @@ describe('workspaceShortcuts', () => {
   it('gives each shortcut a unique id', () => {
     const ids = shortcuts.map((s) => s.id)
     expect(new Set(ids).size).toBe(ids.length)
+  })
+})
+
+describe('pages, tasks and people', () => {
+  const titles = (role: Parameters<typeof shortcutsFor>[0]) => shortcutsFor(role, 'engineering').pages.map((p) => p.title)
+
+  it('a member finds Home, Projects, My tasks and Teams; an admin also Dashboard, Time & cost, Rates and Database', () => {
+    expect(titles('member')).toEqual(['Home', 'Projects', 'My tasks', 'Teams'])
+    expect(titles('admin')).toEqual(['Home', 'Projects', 'My tasks', 'Teams', 'Dashboard', 'Time & cost', 'Settings', 'Rates', 'Database'])
+    expect(shortcutsFor('member', 'engineering').pages[0]!.link).toBe('/w/engineering')
+  })
+
+  it('NEX-1 finds NEX-1 then NEX-10 in key order; a title word finds tasks; at most 5', () => {
+    const task = (key: string, title: string) => ({ key, title, projectId: 'p-nex' }) as TaskView
+    const tasks = [task('NEX-10', 'Rate limit'), task('NEX-2', 'Login page'), task('NEX-1', 'Refresh tokens'), task('NEX-11', 'Docs'), task('NEX-12', 'a'), task('NEX-13', 'b'), task('NEX-14', 'c')]
+    const hits = taskShortcuts('engineering', tasks, projects, 'NEX-1')
+    expect(hits.map((h) => h.title.split(' ·')[0])).toEqual(['NEX-1', 'NEX-10', 'NEX-11', 'NEX-12', 'NEX-13'])
+    expect(hits[0]!.link).toBe('/w/engineering/p/NEX/tasks?ticket=NEX-1')
+    expect(taskShortcuts('engineering', tasks, projects, 'login').map((h) => h.title)).toEqual(['NEX-2 · Login page'])
+  })
+
+  it('people match by name or title, never me, at most 5', () => {
+    const found = peopleShortcuts(data.users, 'u-1', 'engineer')
+    expect(found.length).toBeGreaterThan(0)
+    expect(found.length).toBeLessThanOrEqual(5)
+    expect(found.some((p) => p.userId === 'u-1')).toBe(false)
+    expect(peopleShortcuts(data.users, 'u-1', 'nour').map((p) => p.userId)).toEqual(['u-2'])
+    expect(peopleShortcuts(data.users, 'u-1', 'nour')[0]!.link).toBe('dm:u-2')
   })
 })

@@ -1,23 +1,24 @@
 import clsx from 'clsx'
-import { LayoutGrid, Search, X, Zap, type LucideIcon } from 'lucide-react'
+import { LayoutGrid, ListChecks, Search, UserRound, X, Zap, type LucideIcon } from 'lucide-react'
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router'
 import { roundButtonClass, roundButtonFill } from '@/components/ui/styles'
-import { useChannels } from '@/api/chat'
-import { useProjects } from '@/api/tickets'
+import { useChannels, useOpenDm } from '@/api/chat'
+import { useProjects, useTasksOf } from '@/api/tickets'
 import { useUsers } from '@/api/users'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { useRole } from '@/lib/useRole'
-import { findShortcuts, shortcutsFor, workspaceShortcuts } from '@/layout/searchShortcuts'
+import { findShortcuts, peopleShortcuts, shortcutsFor, taskShortcuts, workspaceShortcuts } from '@/layout/searchShortcuts'
+import { paths } from '@/lib/paths'
 
-// TODO(api): search messages and tickets on the server too, as Spark CRM's GlobalSearch does for its records
-// (design/reference-code/src/layout/GlobalSearch.tsx). For now it finds pages and the open workspace's channels, DMs and projects.
+// TODO(api): search messages on the server too, as Spark CRM's GlobalSearch does for its records
+// (design/reference-code/src/layout/GlobalSearch.tsx). For now it finds pages, channels, DMs, projects, tasks and people.
 
 /** Fewer letters than this match too much to be useful. */
 const minSearchLength = 2
 
-const searchLabel = 'Search pages, channels and projects'
+const searchLabel = 'Search pages, tasks, people and channels'
 
 type Hit = { id: string; title: string; subtitle: string; link: string; icon?: LucideIcon }
 /** A block of results: pages or actions. */
@@ -30,20 +31,57 @@ function useSearch(term: string) {
   const channels = useChannels(workspace?.id).data
   const projects = useProjects(workspace?.id).data
   const users = useUsers(workspace?.id).data
+  const tasks = useTasksOf((projects ?? []).map((p) => p.id)).data
   const all = useMemo(() => {
     const base = shortcutsFor(role, workspace?.slug ?? null)
     if (!workspace) return base
     return { ...base, pages: [...base.pages, ...workspaceShortcuts(workspace, channels ?? [], projects ?? [], users ?? [], persona.id)] }
   }, [role, workspace, channels, projects, users, persona.id])
   const typed = term.trim()
+  const long = typed.length >= minSearchLength
+  const taskHits = useMemo(() => (long && workspace ? taskShortcuts(workspace.slug, tasks, projects ?? [], typed) : []), [long, workspace, tasks, projects, typed])
+  const peopleHits = useMemo(() => (long ? peopleShortcuts(users ?? [], persona.id, typed) : []), [long, users, persona.id, typed])
   const groups = useMemo(() => {
     const found = typed.length >= minSearchLength ? findShortcuts(all, typed) : { pages: [], actions: [] }
     return [
       ...(found.pages.length ? [{ kind: 'pages', label: 'Go to', icon: LayoutGrid, total: found.pages.length, hits: found.pages }] : []),
       ...(found.actions.length ? [{ kind: 'actions', label: 'Actions', icon: Zap, total: found.actions.length, hits: found.actions }] : []),
+      ...(taskHits.length ? [{ kind: 'tasks', label: 'Tasks', icon: ListChecks, total: taskHits.length, hits: taskHits }] : []),
+      ...(peopleHits.length ? [{ kind: 'people', label: 'People', icon: UserRound, total: peopleHits.length, hits: peopleHits }] : []),
     ]
-  }, [all, typed])
+  }, [all, typed, taskHits, peopleHits])
   return { groups, term: typed }
+}
+
+/**
+ * Going to a result: a page or channel link, or `dm:<userId>` for a person, which opens your conversation with them.
+ * `failed` is the sentence to show near the box when that didn't work.
+ */
+function useGo(after: () => void) {
+  const navigate = useNavigate()
+  const { workspace } = useCurrentWorkspace()
+  const openDm = useOpenDm()
+  const [failed, setFailed] = useState<string | null>(null)
+  const go = (link: string) => {
+    setFailed(null)
+    if (!link.startsWith('dm:')) {
+      navigate(link)
+      after()
+      return
+    }
+    if (!workspace) return
+    openDm.mutate(
+      { workspaceId: workspace.id, userIds: [link.slice(3)] },
+      {
+        onSuccess: (dm) => {
+          navigate(paths.channel(workspace.slug, dm.id))
+          after()
+        },
+        onError: () => setFailed("Couldn't open the conversation."),
+      },
+    )
+  }
+  return { go, failed }
 }
 
 /** The search term in bold wherever it appears. */
@@ -153,18 +191,16 @@ export function DesktopSearch() {
   const inputRef = useRef<HTMLInputElement>(null)
   const boxRef = useRef<HTMLDivElement>(null)
   const listId = useId()
-  const navigate = useNavigate()
   const { groups, term: shownTerm } = useSearch(term)
 
   const close = () => {
     setOpen(false)
     inputRef.current?.blur()
   }
-  const go = (link: string) => {
-    navigate(link)
+  const { go, failed } = useGo(() => {
     setTerm('')
     close()
-  }
+  })
   const keys = useKeyboard(groups, go, close)
 
   useEffect(() => {
@@ -213,6 +249,11 @@ export function DesktopSearch() {
         <div className="absolute inset-x-0 top-full z-50 mt-2 max-h-[70vh] overflow-y-auto rounded-xl border border-line bg-surface shadow-xl motion-safe:animate-pop-in">
           <Status term={term} empty={!groups.length} />
           {groups.length > 0 && <Results groups={groups} term={shownTerm} active={keys.active} onPick={go} listId={listId} />}
+          {failed && (
+            <p role="alert" className="px-4 py-2 text-sm text-red-600 dark:text-red-400">
+              {failed}
+            </p>
+          )}
         </div>
       )}
     </div>
@@ -235,12 +276,8 @@ function SearchScreen({ onClose }: { onClose: () => void }) {
   const [term, setTerm] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const listId = useId()
-  const navigate = useNavigate()
   const { groups, term: shownTerm } = useSearch(term)
-  const go = (link: string) => {
-    navigate(link)
-    onClose()
-  }
+  const { go, failed } = useGo(onClose)
   const keys = useKeyboard(groups, go, onClose)
 
   useEffect(() => {
@@ -283,6 +320,11 @@ function SearchScreen({ onClose }: { onClose: () => void }) {
       <div className="min-h-0 flex-1 overflow-y-auto pb-[env(safe-area-inset-bottom)]">
         <Status term={term} empty={!groups.length} />
         {groups.length > 0 && <Results groups={groups} term={shownTerm} active={keys.active} onPick={go} listId={listId} />}
+          {failed && (
+            <p role="alert" className="px-4 py-2 text-sm text-red-600 dark:text-red-400">
+              {failed}
+            </p>
+          )}
       </div>
     </div>
   )

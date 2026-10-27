@@ -1,8 +1,8 @@
 // Pages and actions for the top-bar search, so typing a page's name offers that page first and then the things people
 // do there. Each role only gets the pages its menu shows and the actions it may take. An action opens its form where
 // it can (?new=1) or the page, tab or filter where it's done.
-import { FolderKanban, Hash, Lock, MessageSquare, type LucideIcon } from 'lucide-react'
-import type { Channel, Project, User, Workspace } from '@/api/types'
+import { FolderKanban, Hash, ListChecks, Lock, MessageSquare, UserRound, type LucideIcon } from 'lucide-react'
+import type { Channel, Project, TaskView, User, Workspace } from '@/api/types'
 import { channelLabel } from '@/lib/channels'
 import { paths } from '@/lib/paths'
 import type { Role } from '@/lib/roles'
@@ -15,9 +15,8 @@ type ActionDef = { title: string; link: string; keywords?: string[]; roles?: Rol
 /** Actions by the page they're done on; each also needs that page in the role's menu. Add them as pages are built. */
 const actionsByPage: Record<string, ActionDef[]> = {}
 
-/** Settings lives inside a workspace, so it has a link only when one is open; the other items keep their own path. */
-const pathOf = (item: (typeof allNavItems)[number], workspaceSlug: string | null) =>
-  item === settingsItem ? (workspaceSlug ? paths.settings(workspaceSlug) : null) : item.path
+/** Pages live inside a workspace, so they have a link only when one is open. */
+const pathOf = (item: (typeof allNavItems)[number], workspaceSlug: string | null) => (item.link ? (workspaceSlug ? item.link(workspaceSlug) : null) : item.path)
 
 /** Every page and action this role can use, in menu order. */
 export function shortcutsFor(role: Role, workspaceSlug: string | null): { pages: Shortcut[]; actions: Shortcut[] } {
@@ -33,7 +32,8 @@ export function shortcutsFor(role: Role, workspaceSlug: string | null): { pages:
     }
     if (item === settingsItem) {
       for (const section of item.children ?? []) {
-        const sectionPath = `${path}/${section.path}`
+        const sectionPath = pathOf(section, workspaceSlug)
+        if (!canSee(section, role) || sectionPath === null) continue
         pages.push({ id: sectionPath, title: section.label, subtitle: 'Settings', link: sectionPath, icon: item.icon, keywords: ['settings'] })
       }
     }
@@ -65,6 +65,34 @@ export function workspaceShortcuts(ws: Workspace, channels: Channel[], projects:
       keywords: [project.key, 'project', 'board'],
     })),
   ]
+}
+
+const keys = new Intl.Collator('en', { numeric: true })
+
+/**
+ * Tasks for the search box: a key that starts with what was typed (NEX-1 → NEX-1, NEX-10…), in key order, then
+ * titles containing it. At most 5; a picked task opens beside its project's Tasks tab.
+ */
+export function taskShortcuts(workspaceSlug: string, tasks: TaskView[], projects: Pick<Project, 'id' | 'key'>[], raw: string): Shortcut[] {
+  const q = raw.trim().toLowerCase()
+  if (!q) return []
+  const byKey = tasks.filter((t) => t.key.toLowerCase().startsWith(q)).sort((a, b) => keys.compare(a.key, b.key))
+  const byTitle = tasks.filter((t) => !byKey.includes(t) && t.title.toLowerCase().includes(q)).sort((a, b) => keys.compare(a.key, b.key))
+  return [...byKey, ...byTitle].slice(0, 5).flatMap((t) => {
+    const project = projects.find((p) => p.id === t.projectId)
+    if (!project) return []
+    return [{ id: `task:${t.key}`, title: `${t.key} · ${t.title}`, subtitle: 'Task', link: `${paths.project(workspaceSlug, project.key, 'tasks')}?ticket=${encodeURIComponent(t.key)}`, icon: ListChecks, keywords: [] }]
+  })
+}
+
+/** People for the search box, by name or title, never me; picking one opens your conversation with them (`dm:<id>`). */
+export function peopleShortcuts(users: User[], meId: string, raw: string): (Shortcut & { userId: string })[] {
+  const q = raw.trim().toLowerCase()
+  if (!q) return []
+  return users
+    .filter((u) => u.id !== meId && (u.name.toLowerCase().includes(q) || u.title.toLowerCase().includes(q)))
+    .slice(0, 5)
+    .map((u) => ({ id: `person:${u.id}`, userId: u.id, title: u.name, subtitle: u.title, link: `dm:${u.id}`, icon: UserRound, keywords: [] }))
 }
 
 /** "opportunities" → "opportunity", "leads" → "lead", so singular and plural find each other. */

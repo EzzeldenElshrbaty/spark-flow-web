@@ -61,7 +61,7 @@ Prepared 28 Oct 2026, after M0–M4 (branch `feat/company-system`). It compares 
 | 🟡 | Timeline (Gantt) *(verified)*: one space only, a sprints row for scrum, Weeks/Months/Quarters. Plans across spaces need Premium. See [doc](https://support.atlassian.com/jira-software-cloud/docs/manage-epics-on-the-roadmap/). | The phases bar (StageProgress) shows phases in order with their dates. There's no Gantt; spec §10 puts Gantt charts out of scope. | P3 |
 | ✅ | List view. | The Tasks tab's List, grouped by phase. | — |
 | ⬜ | Saved views for List and Timeline *(verified, medium)*: an admin saves a shared snapshot, and members can make personal changes and reset. | — | P3 |
-| ⬜ | Basic / Advanced / JQL filters, saved filters, dashboards with gadgets. | My tasks, phase and sprint filters, and the global search for pages, channels, projects and people. | P3 |
+| ⬜ | Basic / Advanced / JQL filters, saved filters, dashboards with gadgets. | My tasks, phase and sprint filters, and the global search for pages, channels, projects, tasks (key or title) and people (M8). | P3 |
 
 ### A6. Work item (task) view
 | | Feature | Spark Flow today | Pri |
