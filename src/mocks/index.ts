@@ -1,6 +1,7 @@
 import type { Api, ChatMessage, NewTicket, ThreadReply, Ticket, TicketPatch } from '@/api/types'
 import { addReply, chatApi, sendMessage, type AddReplyInput, type SendMessageInput } from './chat'
 import { sessionActor } from './actor'
+import { activityApi } from './activity'
 import { createDb, removeLegacyStorage, type MockDb } from './db'
 import { dbApi } from './dbApi'
 import { filesApi } from './files'
@@ -49,6 +50,7 @@ export function createMockApi(db: MockDb, hub: MockHub, now: () => Date = () => 
     time: timeApi(db, hub, now),
     rates: ratesApi(db),
     comments: commentsApi(db, hub, now),
+    activity: activityApi(db),
     mentions: mentionsApi(db),
     dashboard: dashboardApi(db, now),
     files: filesApi(db, now),

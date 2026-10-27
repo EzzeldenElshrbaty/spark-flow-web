@@ -16,6 +16,7 @@ const byColumnThenRank = (order: string[]) => (a: Ticket, b: Ticket) => {
 const ticketNumber = (t: Ticket) => Number(t.key.split('-')[1])
 
 import { findProject } from './projects'
+import { logActivity, logTaskUpdate } from './activity'
 import { postTaskEvents } from './taskEvents'
 
 function findTicket(data: DbData, key: string): Ticket {
@@ -79,6 +80,7 @@ export function tasksApi(db: MockDb, hub: MockHub, now: () => Date): Api['tasks'
       }
       ticket.archivedAt = archive ? at.toISOString() : null
       ticket.updatedAt = stamp(ticket.updatedAt)
+      logActivity(data, { projectId: ticket.projectId, taskKey: ticket.key, kind: archive ? 'task.archived' : 'task.restored', changes: [] })
       return { ticket: clone(ticket), stopped }
     })
     hub.publish({ type: 'ticketUpdated', ticket })
@@ -157,6 +159,7 @@ export async function createTicket(db: MockDb, hub: MockHub, input: NewTicket): 
     }
     data.tickets.push(created)
     data.counters[project.id] = number + 1
+    logActivity(data, { projectId: project.id, taskKey: key, kind: 'task.created', changes: [] })
     // The message it was made from names it from now on (its task chip).
     const source = created.linkedMessageId ? data.messages.find((m) => m.id === created.linkedMessageId) : undefined
     if (source && !source.linkedTicketKeys.includes(key)) source.linkedTicketKeys.push(key)
@@ -177,7 +180,8 @@ export async function updateTicket(db: MockDb, hub: MockHub, key: string, patch:
       if (value !== undefined) (ticket as Record<string, unknown>)[field] = value
     }
     ticket.updatedAt = stamp(ticket.updatedAt)
-    // The change and its cards in the project's chat are one write.
+    logTaskUpdate(data, before, ticket)
+    // The change, its history and its cards in the project's chat are one write.
     return { ticket, cards: clone(postTaskEvents(data, before, ticket)) }
   })
   hub.publish({ type: 'ticketUpdated', ticket: clone(ticket) })

@@ -335,6 +335,11 @@ export interface Api {
     /** The author's own; it (and its card) stays as a "deleted" placeholder. */
     remove(id: string): Promise<void>
   }
+  /** A task's and a project's history (who changed what, when); everyone who can open the project. */
+  activity: {
+    forTask(key: string): Promise<ActivityEntry[]>
+    forProject(projectId: string, cursor?: string): Promise<Page<ActivityEntry>>
+  }
   /** Mentions of me (spec §5: the bell and Home), newest first, at most 50; read state is per person. */
   mentions: { mine(): Promise<MentionItem[]>; markRead(ids: string[]): Promise<void> }
   /** The manager dashboard (spec §5): Admin and Sales see every project, a PM the ones they manage. */

@@ -125,6 +125,10 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
       remove: (id) => send<void>('DELETE', `/api/time/entries/${enc(id)}`),
       report: (workspaceId, days) => get(`/api/workspaces/${enc(workspaceId)}/time-report?days=${days}`),
     },
+    activity: {
+      forTask: (key) => get(`/api/tasks/${enc(key)}/history`),
+      forProject: (projectId, cursor) => get(`/api/projects/${enc(projectId)}/history${cursor ? `?cursor=${enc(cursor)}` : ''}`),
+    },
     comments: {
       list: (taskKey) => get(`/api/tasks/${enc(taskKey)}/comments`),
       create: ({ taskKey, kind, body, files }) => {

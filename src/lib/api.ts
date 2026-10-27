@@ -33,6 +33,7 @@ export const api: Api = {
   get time() { return resolve().time },
   get rates() { return resolve().rates },
   get comments() { return resolve().comments },
+  get activity() { return resolve().activity },
   get mentions() { return resolve().mentions },
   get dashboard() { return resolve().dashboard },
   get files() { return resolve().files },

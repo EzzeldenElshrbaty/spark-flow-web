@@ -4,6 +4,7 @@ import { columnErrors, columnsOf } from '@/lib/boardColumns'
 import { summarize } from './derive'
 import { delay } from './latency'
 import type { MockHub } from './realtime'
+import { logActivity, statusChange } from './activity'
 import { badRequest, clone, currentUser, newId, notFound, requireCan } from './shared'
 
 const KEY = /^[A-Z]{2,5}$/
@@ -152,10 +153,14 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
           let rank = Math.max(0, ...own.filter((t) => t.status === moveTo).map((t) => t.rank))
           const moved = own.filter((t) => t.status === columnId).sort((a, b) => a.rank - b.rank)
           const at = now().toISOString()
+          const gone = columns.find((c) => c.id === columnId)!
+          const change = statusChange(project, columnId, moveTo)
           for (const t of moved) {
             rank += 1000
             Object.assign(t, { status: moveTo, rank, updatedAt: at })
+            logActivity(data, { projectId: project.id, taskKey: t.key, kind: 'task.moved', changes: [change], subject: gone.label })
           }
+          logActivity(data, { projectId: project.id, taskKey: null, kind: 'column.deleted', subject: gone.label, count: moved.length, changes: [{ ...change, field: 'moveTo' }] })
           project.board = board
           return { project: clone(project), moved: clone(moved) }
         })

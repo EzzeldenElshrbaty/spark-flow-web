@@ -16,6 +16,8 @@ export const qk = {
   sprints: (projectId: string) => ['tickets', 'sprints', projectId],
   tickets: (projectId: string) => ['tickets', 'list', projectId],
   archivedTickets: (projectId: string) => ['tickets', 'archived', projectId],
+  taskHistory: (key: string) => ['history', 'task', key],
+  projectHistory: (projectId: string) => ['history', 'project', projectId],
   ticket: (key: string) => ['tickets', 'one', key],
   phases: (projectId: string) => ['projects', 'phases', projectId],
   deliverables: (projectId: string) => ['projects', 'deliverables', projectId],
@@ -44,7 +46,7 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
       return [qk.replies(messageId), qk.message(messageId), qk.messages(channelId), qk.channelsAll(), qk.channel(channelId), qk.mentions()]
     }
     case 'ticketUpdated':
-      return [qk.tickets(event.ticket.projectId), qk.archivedTickets(event.ticket.projectId), qk.ticket(event.ticket.key)]
+      return [qk.tickets(event.ticket.projectId), qk.archivedTickets(event.ticket.projectId), qk.ticket(event.ticket.key), qk.taskHistory(event.ticket.key), qk.projectHistory(event.ticket.projectId)]
     case 'timeLogged':
       // Hours change everywhere: my day, every task and project summary (under 'tickets'), and the Time tabs.
       return [qk.myDay(), ['tickets'], qk.timeAll(), ['dashboard'], ['time', 'report']]
@@ -52,11 +54,11 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
       return [qk.messages(event.channelId), qk.message(event.messageId), qk.replies(event.messageId), qk.mentions()]
     case 'projectChanged':
       // Summaries and task lists live under 'tickets'; phases, deliverables and project time under 'projects'.
-      return [['tickets'], ['projects'], ['dashboard']]
+      return [['tickets'], ['projects'], ['dashboard'], qk.projectHistory(event.projectId)]
     case 'channelChanged':
       return [qk.channelsAll(), qk.channel(event.channelId)]
     case 'commentAdded':
-      return [qk.comments(event.taskKey), qk.mentions()]
+      return [qk.comments(event.taskKey), qk.mentions(), qk.taskHistory(event.taskKey), qk.projectHistory(event.projectId)]
     case 'userTyping':
       return []
   }
