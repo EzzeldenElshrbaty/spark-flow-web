@@ -21,7 +21,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { BoardColumn as Column, TaskView, TicketPatch, TicketStatus, User } from '@/api/types'
 import { MenuPanel } from '@/components/ui/Menu'
 import { boardColumns, columnErrors, moveColumn } from '@/lib/boardColumns'
-import { boardMove } from '@/pages/projects/boardMove'
+import { boardMove, prunePending, withPending, type PendingMoves } from '@/pages/projects/boardMove'
 import { TicketRow } from '@/pages/projects/TicketRow'
 import { statuses, statusTint } from '@/pages/projects/ticketPills'
 
@@ -48,7 +48,14 @@ function BoardCard({ ticket, assignee, movable }: { ticket: TaskView; assignee: 
   // The card is a link: a drag that ends over it must not also open it.
   const dragged = useRef(false)
   useEffect(() => {
-    if (isDragging) dragged.current = true
+    if (isDragging) {
+      dragged.current = true
+      return
+    }
+    // The click a drag ends with comes right after it (and often lands elsewhere): forget the drag once it has passed.
+    if (!dragged.current) return
+    const t = setTimeout(() => (dragged.current = false))
+    return () => clearTimeout(t)
   }, [isDragging])
   return (
     <li
@@ -263,13 +270,14 @@ export function ProjectBoard({
   )
   const [activeKey, setActiveKey] = useState<string | null>(null)
   const [overStatus, setOverStatus] = useState<TicketStatus | null>(null)
-  // A drop shows at once; it holds until the saved task comes back with it, or the save fails.
-  const [moved, setMoved] = useState<{ key: string; patch: TicketPatch } | null>(null)
-  const saved = moved && tickets.some((t) => t.key === moved.key && t.rank === moved.patch.rank && (!moved.patch.status || t.status === moved.patch.status))
+  // Drops show at once, each until the server's copy of its task changes (the save landed, or someone else moved it),
+  // or its save fails.
+  const [pending, setPending] = useState<PendingMoves>({})
+  const live = useMemo(() => prunePending(pending, tickets), [pending, tickets])
   useEffect(() => {
-    if (saved) setMoved(null)
-  }, [saved])
-  const shown = useMemo(() => (moved ? tickets.map((t) => (t.key === moved.key ? { ...t, ...moved.patch } : t)) : tickets), [moved, tickets])
+    if (Object.keys(live).length !== Object.keys(pending).length) setPending(live)
+  }, [live, pending])
+  const shown = useMemo(() => withPending(tickets, live), [live, tickets])
   // A column change shows at once too, until the saved board matches it or the save fails.
   const savedBoard = useMemo(() => boardColumns({ board }), [board])
   const [boardDraft, setBoardDraft] = useState<Column[] | null>(null)
@@ -345,8 +353,14 @@ export function ProjectBoard({
     }
     const patch = boardMove(ticket, to, column, index)
     if (!patch || !onMove) return
-    setMoved({ key: ticket.key, patch })
-    onMove(ticket, patch).catch(() => setMoved(null))
+    const base = tickets.find((t) => t.key === ticket.key)!
+    setPending((p) => ({ ...p, [ticket.key]: { patch, updatedAt: base.updatedAt } }))
+    onMove(ticket, patch).catch(() =>
+      setPending((p) => {
+        const { [ticket.key]: _failed, ...rest } = p
+        return rest
+      }),
+    )
   }
 
   return (

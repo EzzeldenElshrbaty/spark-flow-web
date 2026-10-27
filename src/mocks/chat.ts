@@ -250,18 +250,21 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
     },
     async message(id) {
       await delay()
-      return findMessage(await db.read(), id)
+      const data = await db.read()
+      const message = findMessage(data, id)
+      readableChannel(data, message.channelId)
+      return message
     },
     async replies(messageId) {
       await delay()
       const data = await db.read()
-      findMessage(data, messageId)
+      readableChannel(data, findMessage(data, messageId).channelId)
       return data.replies.filter((r) => r.messageId === messageId).sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1))
     },
     async markRead(channelId) {
       await delay()
       await db.update((data) => {
-        findChannel(data, channelId)
+        readableChannel(data, channelId)
         data.reads[channelId] = new Date().toISOString()
       })
     },

@@ -44,7 +44,7 @@ export function ticketsApi(db: MockDb, now: () => Date, projects: Api['tickets']
   }
 }
 
-const EDITABLE_BY_ASSIGNEE = new Set(['status'])
+const EDITABLE_BY_ASSIGNEE = new Set(['status', 'rank'])
 
 function checkTaskInput(data: DbData, projectId: string, input: Pick<NewTicket, 'phaseId' | 'estimateHours' | 'title'>) {
   if (input.title !== undefined && !input.title.trim()) throw badRequest('Give the task a title.')

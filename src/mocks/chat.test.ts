@@ -460,3 +460,14 @@ describe('channels', () => {
     await expect(api.chat.messages('c-release')).rejects.toMatchObject({ status: 403 })
   })
 })
+
+describe('a private thread', () => {
+  it('message(), replies() and markRead() of a private channel I am not in are refused', async () => {
+    const secret = await api.chat.send('c-release', 'the secret')
+    await api.chat.reply(secret.id, 'secret reply')
+    await api.users.viewAs('u-3') // Mariam: not in #release-v2
+    await expect(api.chat.message(secret.id)).rejects.toMatchObject({ status: 403, detail: "You're not in this channel." })
+    await expect(api.chat.replies(secret.id)).rejects.toMatchObject({ status: 403 })
+    await expect(api.chat.markRead('c-release')).rejects.toMatchObject({ status: 403 })
+  })
+})

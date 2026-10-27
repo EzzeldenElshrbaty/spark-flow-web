@@ -103,3 +103,13 @@ describe('a task from a chat message', () => {
     await expect(api.tasks.create(newTask({ linkedChannelId: 'c-p-mob', linkedMessageId: message.id }))).rejects.toMatchObject({ status: 403 })
   })
 })
+
+describe('the board, as the assignee', () => {
+  it('an assignee drags their own card: status and rank together, or rank alone', async () => {
+    const api = apiAt()
+    await api.users.viewAs('u-8') // Tarek, assignee of MOB-104
+    expect(await api.tasks.update('MOB-104', { status: 'inReview', rank: 5 })).toMatchObject({ status: 'inReview', rank: 5 })
+    expect((await api.tasks.update('MOB-104', { rank: 7 })).rank).toBe(7)
+    await expect(api.tasks.update('MOB-103', { rank: 9 })).rejects.toMatchObject({ status: 403 }) // not his
+  })
+})
