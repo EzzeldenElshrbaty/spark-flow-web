@@ -6,6 +6,7 @@ import { delay } from './latency'
 import type { MockHub } from './realtime'
 import { logActivity, statusChange } from './activity'
 import { entryEnd } from '@/lib/hours'
+import { stopTimersOn } from './timers'
 import { badRequest, clone, currentUser, isDate, newId, notFound, pickPatch, requireCan, text } from './shared'
 import { CHANNEL_NAME } from '@/lib/channelForm'
 import { projectPeopleIds } from '@/lib/projectPeople'
@@ -290,7 +291,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
       },
       async deleteColumn(projectId, columnId, moveTo) {
         await delay()
-        const { project, moved } = await db.update((data) => {
+        const { project, moved, stopped } = await db.update((data) => {
           const project = openProject(data, projectId)
           requireCan(data, 'phase.manage', project)
           const columns = columnsOf(project)
@@ -311,9 +312,13 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
             logActivity(data, { projectId: project.id, taskKey: t.key, kind: 'task.moved', changes: [change], subject: gone.label }, now().toISOString())
           }
           logActivity(data, { projectId: project.id, taskKey: null, kind: 'column.deleted', subject: gone.label, count: moved.length, changes: [{ ...change, field: 'moveTo' }] }, now().toISOString())
+          // Moved into a Done-type column: their timers stop, as on any move to Done.
+          const intoDone = columns.find((c) => c.id === moveTo)?.category === 'done' && gone.category !== 'done'
+          const stopped = intoDone ? stopTimersOn(data, moved.map((t) => t.id), now()) : []
           project.board = board
-          return { project: clone(project), moved: clone(moved) }
+          return { project: clone(project), moved: clone(moved), stopped }
         })
+        for (const userId of stopped) hub.publish({ type: 'timeLogged', userId, projectId })
         for (const ticket of moved) hub.publish({ type: 'ticketUpdated', ticket })
         hub.publish({ type: 'projectChanged', projectId })
         return project
@@ -323,16 +328,23 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
         const board = columns.map((c) => ({ id: c.id, label: c.label.trim(), category: c.category }))
         const problem = columnErrors(board)
         if (problem) throw badRequest(problem)
-        return write((p) => p.id, (data) => {
+        let stoppedOnBoard: string[] = []
+        const saved = await write<Project>((p) => p.id, (data) => {
             const project = openProject(data, id)
             requireCan(data, 'phase.manage', project)
             // Names, order and types change here; adding and deleting columns have their own calls.
             const current = columnsOf(project).map((c) => c.id).sort()
             if (board.map((c) => c.id).sort().join() !== current.join()) throw badRequest('That column no longer exists.')
             logBoardChanges(data, project.id, columnsOf(project), board, now().toISOString())
+            // A column turned Done-type: the timers on its tasks stop.
+            const turnedDone = board.filter((c) => c.category === 'done' && columnsOf(project).find((o) => o.id === c.id)?.category !== 'done').map((c) => c.id)
+            const ids = data.tickets.filter((t) => t.projectId === project.id && turnedDone.includes(t.status)).map((t) => t.id)
+            stoppedOnBoard = stopTimersOn(data, ids, now())
             project.board = board
             return project
           })
+        for (const userId of stoppedOnBoard) hub.publish({ type: 'timeLogged', userId, projectId: id })
+        return saved
       },
     },
 

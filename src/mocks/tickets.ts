@@ -19,6 +19,7 @@ const ticketNumber = (t: Ticket) => Number(t.key.split('-')[1])
 import { findProject, openProject } from './projects'
 import { logActivity, logTaskUpdate } from './activity'
 import { postTaskEvents } from './taskEvents'
+import { stopTimersOn } from './timers'
 
 function findTicket(data: DbData, key: string): Ticket {
   const ticket = data.tickets.find((t) => t.key === key)
@@ -251,14 +252,9 @@ export async function updateTicket(
     ticket.updatedAt = stamp(ticket.updatedAt)
     logTaskUpdate(data, before, ticket, now().toISOString())
     // Done (any Done-type column, whatever it's called): the timers running on it stop, as no more time goes on it.
-    const stopped: string[] = []
     const project = findProject(data, ticket.projectId)
-    if (patch.status !== undefined && categoryOf(project, ticket.status) === 'done' && categoryOf(project, before.status) !== 'done') {
-      for (const e of data.timeEntries.filter((e) => e.taskId === ticket.id && e.endedAt === null)) {
-        e.endedAt = new Date(entryEnd(e, now())).toISOString()
-        stopped.push(e.userId)
-      }
-    }
+    const intoDone = patch.status !== undefined && categoryOf(project, ticket.status) === 'done' && categoryOf(project, before.status) !== 'done'
+    const stopped = intoDone ? stopTimersOn(data, [ticket.id], now()) : []
     // The change, its history and its cards in the project's chat are one write.
     return { ticket, cards: clone(postTaskEvents(data, before, ticket)), stopped }
   })

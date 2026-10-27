@@ -8,6 +8,7 @@ import { createMockHub, type MockHub } from './realtime'
 import { seed } from './seed'
 import { createMemoryStore } from './store'
 import { CHANNEL_NAME } from '@/lib/channelForm'
+import { columnsOf } from '@/lib/boardColumns'
 import { projectPeopleIds } from '@/lib/projectPeople'
 
 let db: MockDb
@@ -348,6 +349,27 @@ describe('phase and deliverable dates', () => {
   })
   it('deliverables.create checks its due date', async () => {
     await expect(api.deliverables.create({ projectId: 'p-nex', phaseId: null, title: 'X', dueDate: 'soon' })).rejects.toMatchObject({ status: 400, detail: 'Pick a due date.' })
+  })
+})
+
+describe('board changes stop timers', () => {
+  const runningOn = async (key: string) => {
+    const d = await db.read()
+    const id = d.tickets.find((t) => t.key === key)!.id
+    return d.timeEntries.filter((e) => e.taskId === id && e.endedAt === null).length
+  }
+  it('retyping a column to Done stops timers on its tasks', async () => {
+    const key = (await db.read()).tickets.find((t) => t.projectId === 'p-nex' && t.status === 'inReview')!.key
+    await api.time.start({ taskId: (await db.read()).tickets.find((t) => t.key === key)!.id })
+    const board = columnsOf((await db.read()).projects.find((p) => p.id === 'p-nex')!).map((c) => (c.id === 'inReview' ? { ...c, category: 'done' as const } : c))
+    await api.projects.setBoard('p-nex', board)
+    expect(await runningOn(key)).toBe(0)
+  })
+  it('deleting a column into a Done one stops timers on its tasks', async () => {
+    const key = (await db.read()).tickets.find((t) => t.projectId === 'p-nex' && t.status === 'inReview')!.key
+    await api.time.start({ taskId: (await db.read()).tickets.find((t) => t.key === key)!.id })
+    await api.projects.deleteColumn('p-nex', 'inReview', 'done')
+    expect(await runningOn(key)).toBe(0)
   })
 })
 
