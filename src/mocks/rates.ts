@@ -1,10 +1,11 @@
 import type { Api, Rate } from '@/api/types'
 import type { MockDb } from './db'
+import type { MockHub } from './realtime'
 import { delay } from './latency'
 import { badRequest, clone, notFound, requireCan } from './shared'
 
 /** Hourly cost per person (EGP), read and changed by Admins only; project cost follows on the next read. */
-export function ratesApi(db: MockDb): Api['rates'] {
+export function ratesApi(db: MockDb, hub: MockHub): Api['rates'] {
   return {
     async list() {
       await delay()
@@ -14,7 +15,7 @@ export function ratesApi(db: MockDb): Api['rates'] {
     },
     async update(userId, hourlyCost) {
       await delay()
-      return clone(
+      const saved = clone(
         await db.update((data) => {
           requireCan(data, 'rates.view')
           if (!data.users.some((u) => u.id === userId)) throw notFound('User', userId)
@@ -26,6 +27,8 @@ export function ratesApi(db: MockDb): Api['rates'] {
           return rate
         }),
       )
+      hub.publish({ type: 'ratesChanged' })
+      return saved
     },
   }
 }

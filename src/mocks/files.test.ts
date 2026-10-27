@@ -50,3 +50,12 @@ describe('files', () => {
     await expect(api.files.upload('p-mob', file('x.pdf', ['%PDF-']))).rejects.toMatchObject({ status: 403 })
   })
 })
+
+describe('files reach other tabs', () => {
+  it('an upload publishes filesChanged for its project', async () => {
+    const events: unknown[] = []
+    hub.subscribe((e) => events.push(e))
+    await api.files.upload('p-mob', file('handover.pdf', ['%PDF-1.4 hello']))
+    expect(events).toContainEqual({ type: 'filesChanged', projectId: 'p-mob' })
+  })
+})

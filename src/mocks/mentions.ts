@@ -1,5 +1,6 @@
 import type { Api, MentionItem, Mention } from '@/api/types'
 import type { DbData, MockDb } from './db'
+import type { MockHub } from './realtime'
 import { delay } from './latency'
 import { clone, currentUser } from './shared'
 
@@ -56,7 +57,7 @@ export function mentionsFor(data: DbData, userId: string): Omit<MentionItem, 're
 }
 
 /** Mentions of me, for the bell and Home, with their read state (kept per person). */
-export function mentionsApi(db: MockDb): Api['mentions'] {
+export function mentionsApi(db: MockDb, hub: MockHub): Api['mentions'] {
   return {
     async mine() {
       await delay()
@@ -67,10 +68,12 @@ export function mentionsApi(db: MockDb): Api['mentions'] {
     },
     async markRead(ids) {
       await delay()
-      await db.update((data) => {
+      const userId = await db.update((data) => {
         const me = currentUser(data)
         data.mentionReads[me.id] = [...new Set([...(data.mentionReads[me.id] ?? []), ...ids])]
+        return me.id
       })
+      hub.publish({ type: 'readChanged', userId })
     },
   }
 }

@@ -153,7 +153,7 @@ describe('dev.resetDemoData', () => {
     await api.db.reset()
     expect((await api.tickets.get('NEX-101')).title).toBe(original.title)
     await expect(api.tickets.get('NEX-111')).rejects.toMatchObject({ status: 404 })
-    expect(events).toEqual([]) // the UI clears its own cache
+    expect(events).toEqual([{ type: 'dataReset' }]) // every other tab refetches
   })
 })
 

@@ -35,3 +35,15 @@ describe('rates', () => {
     expect(await cost()).toBeGreaterThan(before)
   })
 })
+
+describe('rates reach other tabs', () => {
+  it('a change publishes ratesChanged; a refused one publishes nothing', async () => {
+    const events: string[] = []
+    hub.subscribe((e) => events.push(e.type))
+    await api.rates.update('u-3', 500)
+    expect(events).toEqual(['ratesChanged'])
+    await api.users.viewAs('u-2')
+    await expect(api.rates.update('u-3', 1)).rejects.toMatchObject({ status: 403 })
+    expect(events).toEqual(['ratesChanged'])
+  })
+})

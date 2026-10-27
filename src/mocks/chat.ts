@@ -287,10 +287,12 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
     },
     async markRead(channelId) {
       await delay()
-      await db.update((data) => {
+      const userId = await db.update((data) => {
         readableChannel(data, channelId)
         data.reads[data.currentUserId] = { ...data.reads[data.currentUserId], [channelId]: new Date().toISOString() }
+        return data.currentUserId
       })
+      hub.publish({ type: 'readChanged', userId })
     },
   }
 }

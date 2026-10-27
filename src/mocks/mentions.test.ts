@@ -145,3 +145,16 @@ describe('mentions in deleted comments', () => {
     expect((await api.mentions.mine()).some((m) => m.id === made.id)).toBe(false)
   })
 })
+
+describe('read state reaches other tabs', () => {
+  it('marking mentions or a channel read publishes readChanged for me', async () => {
+    const events: unknown[] = []
+    hub.subscribe((e) => events.push(e))
+    await api.mentions.markRead(['x'])
+    await api.chat.markRead('c-general')
+    expect(events).toEqual([
+      { type: 'readChanged', userId: 'u-1' },
+      { type: 'readChanged', userId: 'u-1' },
+    ])
+  })
+})

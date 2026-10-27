@@ -46,7 +46,11 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
       return [qk.replies(messageId), qk.message(messageId), qk.messages(channelId), qk.channelsAll(), qk.channel(channelId), qk.mentions()]
     }
     case 'ticketUpdated':
-      return [qk.tickets(event.ticket.projectId), qk.archivedTickets(event.ticket.projectId), qk.ticket(event.ticket.key), qk.taskHistory(event.ticket.key), qk.projectHistory(event.ticket.projectId)]
+      // Project summaries (progress, overdue) and the dashboard are worked out from tasks too.
+      return [
+        qk.tickets(event.ticket.projectId), qk.archivedTickets(event.ticket.projectId), qk.ticket(event.ticket.key), qk.taskHistory(event.ticket.key), qk.projectHistory(event.ticket.projectId),
+        ['tickets', 'projects'], ['dashboard'],
+      ]
     case 'timeLogged':
       // Hours change everywhere: my day, every task and project summary (under 'tickets'), and the Time tabs.
       return [qk.myDay(), ['tickets'], qk.timeAll(), ['dashboard'], ['time', 'report']]
@@ -59,6 +63,16 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
       return [qk.channelsAll(), qk.channel(event.channelId)]
     case 'commentAdded':
       return [qk.comments(event.taskKey), qk.mentions(), qk.taskHistory(event.taskKey), qk.projectHistory(event.projectId)]
+    case 'ratesChanged':
+      // Cost is worked out from rates on every read: the report, the dashboard and the Time tabs.
+      return [qk.rates(), ['time', 'report'], ['dashboard'], qk.timeAll()]
+    case 'filesChanged':
+      return [qk.files(event.projectId)]
+    case 'readChanged':
+      return [qk.channelsAll(), qk.mentions()]
+    case 'dataReset':
+      // The empty key matches every query.
+      return [[]]
     case 'userTyping':
       return []
   }

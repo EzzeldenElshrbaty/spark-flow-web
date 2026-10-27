@@ -1,6 +1,7 @@
 import type { Api, Attachment, ProjectFile, StoredFile } from '@/api/types'
 import { isAcceptedFile, maxFileMb } from '@/lib/fileTypes'
 import type { MockDb } from './db'
+import type { MockHub } from './realtime'
 import { delay } from './latency'
 import { findProject } from './projects'
 import { badRequest, clone, newId, notFound, requireCan } from './shared'
@@ -12,7 +13,7 @@ export function checkUpload(file: { size: number; name: string }) {
   if (!isAcceptedFile(file.name)) throw badRequest("That type of file can't be added.")
 }
 
-export function filesApi(db: MockDb, now: () => Date): Api['files'] {
+export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'] {
   return {
     /** A blob: address for a stored file. The page that shows it frees it with URL.revokeObjectURL when done. */
     async url(id) {
@@ -47,6 +48,7 @@ export function filesApi(db: MockDb, now: () => Date): Api['files'] {
         data.projectFiles.push(record)
         return { ...record, attachment }
       })
+      hub.publish({ type: 'filesChanged', projectId })
       return clone(stored)
     },
   }

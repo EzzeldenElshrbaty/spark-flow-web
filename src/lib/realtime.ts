@@ -20,6 +20,14 @@ export interface RealtimeClient {
   onChannelChanged(cb: (event: { channelId: string }) => void): () => void
   /** A project's details, phases, deliverables or board changed. */
   onProjectChanged(cb: (event: { projectId: string }) => void): () => void
+  /** Someone's hourly cost changed: cost everywhere follows. */
+  onRatesChanged(cb: () => void): () => void
+  /** A file was added to a project. */
+  onFilesChanged(cb: (event: { projectId: string }) => void): () => void
+  /** Someone read a channel or mentions: their badges and bell follow, in each of their tabs. */
+  onReadChanged(cb: (event: { userId: string }) => void): () => void
+  /** The demo data was reset or reloaded: everything on screen is out of date. */
+  onDataReset(cb: () => void): () => void
 }
 
 /** One live update, as the mock hub carries it between tabs. */
@@ -33,6 +41,10 @@ export type RealtimeEvent =
   | { type: 'messageChanged'; channelId: string; messageId: string }
   | { type: 'channelChanged'; channelId: string }
   | { type: 'projectChanged'; projectId: string }
+  | { type: 'ratesChanged' }
+  | { type: 'filesChanged'; projectId: string }
+  | { type: 'readChanged'; userId: string }
+  | { type: 'dataReset' }
 
 const noop = () => {}
 
@@ -57,6 +69,10 @@ function createUnconnectedClient(): RealtimeClient {
     onMessageChanged: () => noop,
     onChannelChanged: () => noop,
     onProjectChanged: () => noop,
+    onRatesChanged: () => noop,
+    onFilesChanged: () => noop,
+    onReadChanged: () => noop,
+    onDataReset: () => noop,
   }
 }
 
