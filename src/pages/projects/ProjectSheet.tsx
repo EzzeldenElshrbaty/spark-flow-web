@@ -2,14 +2,17 @@ import clsx from 'clsx'
 import { Plus, X } from 'lucide-react'
 import { useState } from 'react'
 import { useCreateProject, useTeams, useUpdateProject } from '@/api/projects'
+import { useTickets } from '@/api/tickets'
 import type { Project, ProjectStatus, ProjectSummary } from '@/api/types'
 import { useUsers } from '@/api/users'
 import { Button } from '@/components/ui/Button'
 import { Field, inputClass, selectClass } from '@/components/ui/Field'
 import { Sheet } from '@/components/ui/Sheet'
 import { toLocalInput } from '@/lib/format'
+import { projectPeople } from '@/lib/projectPeople'
 import { usePermission } from '@/lib/usePermission'
 import { keyFromName, validateProject, type ProjectFormErrors, type ProjectFormValues } from './projectForm'
+import { tasksLeftWith } from './taskForm'
 
 const statuses: [ProjectStatus, string][] = [
   ['planned', 'Planned'],
@@ -73,6 +76,14 @@ export function ProjectSheet({
   const keyFailure = failure?.message.startsWith('Key ') ? failure.message : undefined
 
   const set = <K extends keyof ProjectFormValues>(field: K, value: ProjectFormValues[K]) => setValues((v) => ({ ...v, [field]: value }))
+  // Taking people off (as members, or with a team) leaves their tasks with them: say whose, before saving.
+  const tasks = useTickets(project?.id).data ?? []
+  const removed = project
+    ? projectPeople(project, people)
+        .map((u) => u.id)
+        .filter((id) => !projectPeople({ managerId: values.managerId, memberIds: values.memberIds, teamIds: values.teamIds }, people).some((u) => u.id === id))
+    : []
+  const leftWith = project ? tasksLeftWith(removed, tasks, project, people) : null
   const toggle = (field: 'memberIds' | 'teamIds', id: string) =>
     set(field, values[field].includes(id) ? values[field].filter((x) => x !== id) : [...values[field], id])
 
@@ -237,6 +248,7 @@ export function ProjectSheet({
             </div>
           </fieldset>
         )}
+        {leftWith && <p className="text-sm text-amber-700 dark:text-amber-300">{leftWith}</p>}
 
         <fieldset>
           <legend className="mb-1.5 text-sm font-medium text-fg-secondary">Links</legend>

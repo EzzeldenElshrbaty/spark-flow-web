@@ -8,7 +8,7 @@ import { Sheet } from '@/components/ui/Sheet'
 import { projectPeople } from '@/lib/projectPeople'
 import { usePermission } from '@/lib/usePermission'
 import { byOrder } from './phases'
-import { changedFields } from './taskForm'
+import { assigneeOptions, changedFields } from './taskForm'
 import { columnsOf, startColumn } from '@/lib/boardColumns'
 
 const priorities: [Priority, string][] = [
@@ -207,9 +207,9 @@ export function TaskSheet({
           <Field label="Assignee">
             <select className={selectClass} value={values.assigneeId} disabled={ro} onChange={(e) => set('assigneeId', e.target.value)}>
               <option value="">Unassigned</option>
-              {people.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
+              {assigneeOptions(people, users, task?.assigneeId ?? null).map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.label}
                 </option>
               ))}
             </select>
