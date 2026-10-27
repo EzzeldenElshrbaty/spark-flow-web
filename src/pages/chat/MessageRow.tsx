@@ -1,30 +1,58 @@
+import clsx from 'clsx'
 import { MessageSquare } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router'
-import type { ChatMessage, Reaction, ThreadReply, User } from '@/api/types'
+import { useEditMessage, useReact } from '@/api/chat'
+import type { ChatMessage, ChatTarget, Reaction, ThreadReply, User } from '@/api/types'
 import { AttachmentView } from '@/components/AttachmentView'
 import { MentionText } from '@/components/MentionText'
 import { Badge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
 import { formatWhen, timeAgo } from '@/lib/format'
 import { withInspector } from '@/lib/inspector'
+import { Composer } from '@/pages/chat/Composer'
+import { MessageActions } from '@/pages/chat/MessageActions'
+import { actionsFor } from '@/pages/chat/messageRights'
 import { TicketKey } from '@/pages/projects/ticketPills'
 
-/** Reaction pills: the emoji is the people's own content, the count is ours. */
-function Reactions({ reactions, users }: { reactions: Reaction[]; users: User[] }) {
+/** Reaction pills: the emoji is the people's own content, the count is ours. Where I can react, a pill toggles mine. */
+function Reactions({ reactions, users, target, meId, canReact }: { reactions: Reaction[]; users: User[]; target: ChatTarget; meId?: string; canReact: boolean }) {
+  const react = useReact()
   const shown = reactions.filter((reaction) => reaction.userIds.length > 0)
   if (shown.length === 0) return null
   return (
     <ul className="mt-1.5 flex flex-wrap gap-1.5">
-      {shown.map((reaction) => (
-        <li
-          key={reaction.emoji}
-          title={reaction.userIds.map((id) => users.find((u) => u.id === id)?.name ?? 'Unknown person').join(', ')}
-          className="inline-flex items-center gap-1 rounded-full border border-line bg-surface-muted px-2 py-0.5 text-xs text-fg-secondary"
-        >
-          <span>{reaction.emoji}</span>
-          <span className="tabular-nums">{reaction.userIds.length}</span>
-        </li>
-      ))}
+      {shown.map((reaction) => {
+        const mine = meId != null && reaction.userIds.includes(meId)
+        const who = reaction.userIds.map((id) => users.find((u) => u.id === id)?.name ?? 'Unknown person').join(', ')
+        const pill = clsx(
+          'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs',
+          mine ? 'border-brand-500/60 bg-accent-soft text-fg' : 'border-line bg-surface-muted text-fg-secondary',
+        )
+        return (
+          <li key={reaction.emoji}>
+            {canReact ? (
+              <button
+                type="button"
+                title={who}
+                aria-pressed={mine}
+                aria-label={`${reaction.emoji} ${reaction.userIds.length}: ${who}`}
+                disabled={react.isPending}
+                onClick={() => react.mutate({ target, emoji: reaction.emoji })}
+                className={clsx(pill, 'hover:border-line-strong')}
+              >
+                <span>{reaction.emoji}</span>
+                <span className="tabular-nums">{reaction.userIds.length}</span>
+              </button>
+            ) : (
+              <span title={who} className={pill}>
+                <span>{reaction.emoji}</span>
+                <span className="tabular-nums">{reaction.userIds.length}</span>
+              </span>
+            )}
+          </li>
+        )
+      })}
     </ul>
   )
 }
@@ -71,30 +99,72 @@ function ThreadLink({ message }: { message: ChatMessage }) {
   )
 }
 
-/** One message (or thread reply): avatar, name, time, text, reactions and, for a message with replies, its thread link. */
-export function MessageRow({ message, users, showThread = true }: { message: ChatMessage | ThreadReply; users: User[]; showThread?: boolean }) {
+/**
+ * One message (or thread reply): avatar, name, time, text, reactions and, for a message with replies, its thread link.
+ * Where I can post, its ⋯ menu reacts, edits and deletes my own (`actions` adds page items such as Create task).
+ */
+export function MessageRow({
+  message,
+  users,
+  showThread = true,
+  meId,
+  canPost = false,
+  actions,
+}: {
+  message: ChatMessage | ThreadReply
+  users: User[]
+  showThread?: boolean
+  meId?: string
+  canPost?: boolean
+  actions?: (close: () => void) => ReactNode
+}) {
+  const [editing, setEditing] = useState(false)
+  const editMessage = useEditMessage()
   const name = users.find((u) => u.id === message.senderId)?.name ?? 'Unknown person'
-  const edited = 'editedAt' in message && message.editedAt
+  const target: ChatTarget = { kind: 'messageId' in message ? 'reply' : 'message', id: message.id }
+  const can = actionsFor(message, meId, canPost)
+  const edited = message.editedAt && !message.deletedAt
+  let body: ReactNode
+  if (message.deletedAt) body = <p className="text-sm italic text-fg-muted">This message was deleted.</p>
+  else if (editing)
+    body = (
+      <div className="mt-1">
+        <Composer
+          placeholder="Edit message"
+          submitLabel="Save"
+          pendingLabel="Saving…"
+          quiet
+          initialText={message.content}
+          onCancel={() => setEditing(false)}
+          error={editMessage.error}
+          onSubmit={(text) => editMessage.mutateAsync({ target, content: text }, { onSuccess: () => setEditing(false) })}
+        />
+      </div>
+    )
+  else if ('commentId' in message && message.commentId) body = <CommentCard message={message} />
+  else
+    body = (
+      <>
+        <MentionText text={message.content} />
+        <AttachmentView attachments={message.attachments} />
+      </>
+    )
   return (
-    <article className="flex gap-3 rounded-lg px-2 py-2 hover:bg-surface-muted/50">
+    <article className="group flex gap-3 rounded-lg px-2 py-2 hover:bg-surface-muted/50">
       <Avatar name={name} />
       <div className="min-w-0 flex-1">
-        <p className="flex flex-wrap items-baseline gap-x-2 text-sm">
-          <span className="font-semibold text-fg">{name}</span>
-          <time dateTime={message.createdAt} className="text-xs tabular-nums text-fg-muted">
-            {formatWhen(message.createdAt)}
-            {edited && ' · edited'}
-          </time>
-        </p>
-        {'commentId' in message && message.commentId ? (
-          <CommentCard message={message} />
-        ) : (
-          <>
-            <MentionText text={message.content} />
-            <AttachmentView attachments={message.attachments} />
-          </>
-        )}
-        <Reactions reactions={message.reactions} users={users} />
+        <div className="flex items-start gap-2">
+          <p className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 text-sm">
+            <span className="font-semibold text-fg">{name}</span>
+            <time dateTime={message.createdAt} className="text-xs tabular-nums text-fg-muted">
+              {formatWhen(message.createdAt)}
+              {edited && ' · edited'}
+            </time>
+          </p>
+          {!editing && <MessageActions target={target} can={can} onEdit={() => setEditing(true)} extra={message.deletedAt ? undefined : actions} />}
+        </div>
+        {body}
+        {!message.deletedAt && <Reactions reactions={message.reactions} users={users} target={target} meId={meId} canReact={can.react} />}
         {showThread && 'threadCount' in message && message.threadCount > 0 && <ThreadLink message={message} />}
       </div>
     </article>

@@ -43,7 +43,7 @@ export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: st
     const people = users.data ?? []
     body = (
       <>
-        <MessageRow message={message.data} users={people} showThread={false} />
+        <MessageRow message={message.data} users={people} showThread={false} meId={persona.id} canPost={canPost === true} />
         <div className="my-3 flex items-center gap-3 text-xs text-fg-muted">
           <span className="tabular-nums">
             {message.data.threadCount} {message.data.threadCount === 1 ? 'reply' : 'replies'}
@@ -60,7 +60,7 @@ export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: st
           <ul className="space-y-1">
             {replies.data.map((reply) => (
               <li key={reply.id}>
-                <MessageRow message={reply} users={people} />
+                <MessageRow message={reply} users={people} meId={persona.id} canPost={canPost === true} />
               </li>
             ))}
           </ul>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useMarkRead, useMessages } from '@/api/chat'
-import type { User } from '@/api/types'
+import type { ChatMessage, User } from '@/api/types'
 import { Button } from '@/components/ui/Button'
 import { QueryError } from '@/components/ui/QueryError'
 import { createRealtimeClient } from '@/lib/realtime'
@@ -10,7 +10,27 @@ import { MessageRow, MessageSkeleton } from '@/pages/chat/MessageRow'
  * A channel's messages, newest at the bottom, with "Load older messages". Opening it marks the channel read and keeps
  * a live connection to it. Used by the Chat page and by a project's Chat tab; the caller shows the header.
  */
-export function ChannelFeed({ channelId, title, users, usersLoading, composer, meId }: { channelId: string; title: string; users: User[]; usersLoading: boolean; composer?: ReactNode; meId?: string }) {
+export function ChannelFeed({
+  channelId,
+  title,
+  users,
+  usersLoading,
+  composer,
+  meId,
+  canPost = false,
+  messageActions,
+}: {
+  channelId: string
+  title: string
+  users: User[]
+  usersLoading: boolean
+  composer?: ReactNode
+  meId?: string
+  /** Whether I can write here: reactions, edits and deletes need it too. */
+  canPost?: boolean
+  /** More items for a message's ⋯ menu (a project's channel adds Create task). */
+  messageActions?: (message: ChatMessage, close: () => void) => ReactNode
+}) {
   const messages = useMessages(channelId)
   const { mutate: markRead } = useMarkRead()
   // One live connection per feed on screen; it follows the channel shown.
@@ -63,7 +83,7 @@ export function ChannelFeed({ channelId, title, users, usersLoading, composer, m
         <ol className="-mx-2 space-y-1" aria-label={`Messages in ${title}`}>
           {items.map((message) => (
             <li key={message.id}>
-              <MessageRow message={message} users={users} />
+              <MessageRow message={message} users={users} meId={meId} canPost={canPost} actions={messageActions && ((close) => messageActions(message, close))} />
             </li>
           ))}
         </ol>

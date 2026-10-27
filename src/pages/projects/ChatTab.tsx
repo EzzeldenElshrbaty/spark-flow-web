@@ -32,6 +32,7 @@ export function ChatTab({ ws, project, people, usersLoading }: { ws: string; pro
         users={people}
         usersLoading={usersLoading}
         meId={persona.id}
+        canPost={canPost === true}
         composer={
           canPost === false ? (
             <p className="text-sm text-fg-muted">{readOnly}</p>

@@ -67,6 +67,7 @@ export function ChannelPage() {
         users={people}
         usersLoading={users.isLoading}
         meId={persona.id}
+        canPost={canPost === true}
         composer={
           canPost === false ? (
             <p className="text-sm text-fg-muted">{readOnly}</p>

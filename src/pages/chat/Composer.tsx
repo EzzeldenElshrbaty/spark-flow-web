@@ -32,6 +32,8 @@ export function Composer({
   extra,
   quiet = false,
   allowEmpty = false,
+  initialText = '',
+  onCancel,
 }: {
   placeholder: string
   submitLabel: string
@@ -44,10 +46,14 @@ export function Composer({
   quiet?: boolean
   /** Send with no text (a bug that is only a screenshot). */
   allowEmpty?: boolean
+  /** The text to start from (editing a message); the box takes focus with the caret at the end. */
+  initialText?: string
+  /** Shows Cancel and makes Escape cancel (editing a message). */
+  onCancel?: () => void
 }) {
   const { users, projects, tasks } = useMentionDirectory()
-  const [text, setText] = useState('')
-  const [caret, setCaret] = useState(0)
+  const [text, setText] = useState(initialText)
+  const [caret, setCaret] = useState(initialText.length)
   const [pending, setPending] = useState(false)
   const [highlight, setHighlight] = useState(0)
   const [dismissedAt, setDismissedAt] = useState<number | null>(null)
@@ -120,6 +126,11 @@ export function Composer({
         return
       }
     }
+    if (e.key === 'Escape' && onCancel) {
+      e.preventDefault()
+      onCancel()
+      return
+    }
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault()
       void submit()
@@ -165,6 +176,8 @@ export function Composer({
         <textarea
           ref={ref}
           rows={rows}
+          autoFocus={Boolean(onCancel)}
+          onFocus={(e) => onCancel && e.currentTarget.setSelectionRange(e.currentTarget.value.length, e.currentTarget.value.length)}
           value={text}
           placeholder={placeholder}
           aria-label={placeholder}
@@ -191,7 +204,12 @@ export function Composer({
             <AtSign className="size-3.5" /> to mention · Shift+Enter for a new line
           </span>
           {extra}
-          <Button variant={quiet ? 'secondary' : 'primary'} className="ms-auto" onClick={() => void submit()} disabled={pending || (!text.trim() && !allowEmpty)}>
+          {onCancel && (
+            <Button variant="ghost" className="ms-auto" onClick={onCancel} disabled={pending}>
+              Cancel
+            </Button>
+          )}
+          <Button variant={quiet ? 'secondary' : 'primary'} className={onCancel ? undefined : 'ms-auto'} onClick={() => void submit()} disabled={pending || (!text.trim() && !allowEmpty)}>
             <SendHorizontal className="size-4 rtl:-scale-x-100" /> {pending ? pendingLabel : submitLabel}
           </Button>
         </div>
