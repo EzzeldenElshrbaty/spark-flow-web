@@ -1,0 +1,91 @@
+import { IconX, type TablerIcon } from '@tabler/icons-react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { IconButton } from './Button'
+import { Icon } from './Icon'
+
+/** How long a toast stays (spec 6.15); hover or focus pauses it. */
+export const TOAST_MS = 5000
+
+export type ToastInput = {
+  message: string
+  icon?: TablerIcon
+  /** At most one action. In this app a toast is only for Undo after a delete. */
+  action?: { label: string; onAction: () => void }
+}
+
+type ToastState = (ToastInput & { id: number }) | null
+const Ctx = createContext<{ toast: ToastState; show: (t: ToastInput) => void; dismiss: () => void } | null>(null)
+
+export function ToastProvider({ children }: { children: ReactNode }) {
+  const [toast, setToast] = useState<ToastState>(null)
+  const next = useRef(0)
+  const show = useCallback((t: ToastInput) => setToast({ ...t, id: ++next.current }), [])
+  const dismiss = useCallback(() => setToast(null), [])
+  return <Ctx.Provider value={{ toast, show, dismiss }}>{children}</Ctx.Provider>
+}
+
+export function useToast() {
+  const ctx = useContext(Ctx)
+  if (!ctx) throw new Error('useToast needs a <ToastProvider>.')
+  return ctx.show
+}
+
+/**
+ * Where toasts appear: bottom-start of the main card. Always mounted, so screen readers hear each new one
+ * through the live region. A new toast replaces the current one.
+ */
+export function ToastRegion() {
+  const ctx = useContext(Ctx)
+  if (!ctx) throw new Error('ToastRegion needs a <ToastProvider>.')
+  const { toast, dismiss } = ctx
+  return (
+    <div role="status" aria-live="polite" className="pointer-events-none absolute start-4 bottom-4 z-[var(--z-toast)]">
+      {toast && <Toast key={toast.id} toast={toast} onDismiss={dismiss} />}
+    </div>
+  )
+}
+
+function Toast({ toast, onDismiss }: { toast: ToastInput; onDismiss: () => void }) {
+  const [paused, setPaused] = useState(0) // counts hover + focus
+  const left = useRef(TOAST_MS)
+  const startedAt = useRef(0)
+
+  useEffect(() => {
+    if (paused > 0) return
+    startedAt.current = Date.now()
+    const timer = window.setTimeout(onDismiss, left.current)
+    return () => {
+      window.clearTimeout(timer)
+      left.current -= Date.now() - startedAt.current
+    }
+  }, [paused, onDismiss])
+
+  const pause = () => setPaused((p) => p + 1)
+  const resume = () => setPaused((p) => Math.max(0, p - 1))
+
+  return (
+    <div
+      onPointerEnter={pause}
+      onPointerLeave={resume}
+      onFocus={pause}
+      onBlur={resume}
+      className="sf-ui pointer-events-auto inline-flex min-h-11 items-center gap-3 rounded-sf-lg bg-sf-ink-950 py-2 ps-4 pe-2 text-sf-white shadow-sf-menu dark:shadow-[var(--shadow-menu),0_0_0_1px_var(--ink-700)]"
+    >
+      {toast.icon && <Icon icon={toast.icon} className="text-sf-white" />}
+      <span>{toast.message}</span>
+      {toast.action && (
+        <button
+          type="button"
+          onClick={() => {
+            toast.action?.onAction()
+            onDismiss()
+          }}
+          className="sf-focus cursor-pointer rounded-sf-md border-0 bg-transparent px-2 py-1 font-sf text-[14px]/[20px] font-medium text-sf-red-400 hover:bg-sf-ink-800"
+        >
+          {toast.action.label}
+        </button>
+      )}
+      <IconButton label="Dismiss" icon={IconX} size="sm" tone="ink" tooltip={false} onClick={onDismiss} />
+    </div>
+  )
+}
