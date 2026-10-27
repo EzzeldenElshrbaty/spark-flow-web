@@ -121,7 +121,13 @@ function conditionOf(doc: unknown): Condition {
 /** An older document brought up to date, when every step exists and the result is usable; else null (reseed). */
 function upgraded(doc: unknown): DbData | null {
   if (!isRecord(doc) || typeof doc.version !== 'number' || doc.version >= DB_VERSION) return null
-  const next = migrate(doc, DB_VERSION)
+  let next: Record<string, unknown> | null
+  try {
+    next = migrate(doc, DB_VERSION)
+  } catch {
+    // A step choked on a broken document: same as one that doesn't pass the checks below.
+    return null
+  }
   return next && hasShape(next) && hasUsableRecords(next) ? next : null
 }
 

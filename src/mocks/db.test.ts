@@ -62,6 +62,21 @@ describe('createDb', () => {
     expect(data.users).toHaveLength(1)
   })
 
+  it('a stored v4 document a migration step chokes on reseeds on start, and is refused on import', async () => {
+    for (const projects of [{}, [null]]) {
+      const broken = { ...emptyData(), version: 4, projects }
+      const store = createMemoryStore()
+      await store.transact(() => ({ doc: broken, result: null }))
+      expect((await createDb(store, fakeSeed).read()).users).toHaveLength(1)
+      const db = createDb(createMemoryStore(), fakeSeed)
+      await expect(db.importAll({ app: 'spark-flow', version: 4, exportedAt: 'T', data: broken })).rejects.toMatchObject({
+        name: 'ApiError',
+        status: 400,
+        detail: "That file isn't a Spark Flow export.",
+      })
+    }
+  })
+
   it('a v3 document is migrated, not reseeded: its records stay and reads move to the default person', async () => {
     const store = createMemoryStore()
     const v3 = { ...emptyData(), version: 3, reads: { c1: '2026-02-02T00:00:00.000Z' } as unknown as DbData['reads'], counters: { p1: 7 } }
