@@ -131,7 +131,7 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
       addManual: (entry) => send('POST', '/api/time/entries', entry),
       update: (id, patch) => send('PATCH', `/api/time/entries/${enc(id)}`, patch),
       remove: (id) => send<void>('DELETE', `/api/time/entries/${enc(id)}`),
-      report: (workspaceId, days) => get(`/api/workspaces/${enc(workspaceId)}/time-report?days=${days}`),
+      report: (workspaceId, days, opts) => get(`/api/workspaces/${enc(workspaceId)}/time-report?days=${days}${opts?.projectId ? `&projectId=${enc(opts.projectId)}` : ''}`),
     },
     activity: {
       forTask: (key) => get(`/api/tasks/${enc(key)}/history`),

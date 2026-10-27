@@ -1,7 +1,7 @@
 import clsx from 'clsx'
-import { Wallet } from 'lucide-react'
+import { Download, Wallet } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router'
-import { useProjectSummaries } from '@/api/projects'
+import { useArchivedProjects, useProjectSummaries } from '@/api/projects'
 import { useTimeReport } from '@/api/time'
 import type { ReportPeriod, TimeReport, User } from '@/api/types'
 import { useUsers } from '@/api/users'
@@ -15,6 +15,10 @@ import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { formatCompact, formatDate, formatHours, formatMoney } from '@/lib/format'
 import { paths } from '@/lib/paths'
 import { useAccess } from '@/lib/usePermission'
+import { downloadCsv, toCsv } from '@/lib/csv'
+import { selectClass } from '@/components/ui/Field'
+import { Button } from '@/components/ui/Button'
+import { reportRows } from './reportCsv'
 
 const periods: [ReportPeriod, string][] = [
   [7, '7 days'],
@@ -54,7 +58,8 @@ function Share({ value, total }: { value: number; total: number }) {
 
 function Body({ report, by, ws, people }: { report: TimeReport; by: Grouping; ws: string; people: User[] }) {
   const { workspace } = useCurrentWorkspace()
-  const projects = useProjectSummaries(workspace?.id).data ?? []
+  // Archived projects keep their hours here, so their names are looked up too.
+  const projects = [...(useProjectSummaries(workspace?.id).data ?? []), ...(useArchivedProjects(workspace?.id, true).data ?? [])]
   const nameOf = (id: string) => people.find((u) => u.id === id)?.name ?? 'Unknown person'
   const projectOf = (id: string) => projects.find((p) => p.id === id)
 
@@ -130,17 +135,26 @@ export function TimeCostPage() {
   const [params, setParams] = useSearchParams()
   const days = ([7, 30, 90] as const).find((d) => String(d) === params.get('days')) ?? 30
   const by: Grouping = groupings.some(([g]) => g === params.get('by')) ? (params.get('by') as Grouping) : 'project'
-  const report = useTimeReport(workspace?.id, days, access === 'allowed')
+  const projectId = params.get('project') ?? ''
+  const report = useTimeReport(workspace?.id, days, access === 'allowed', projectId || undefined)
   const people = useUsers(workspace?.id).data ?? []
+  const allProjects = [...(useProjectSummaries(workspace?.id).data ?? []), ...(useArchivedProjects(workspace?.id, true).data ?? [])]
   const set = (key: string, value: string) =>
     setParams(
       (prev) => {
         const next = new URLSearchParams(prev)
-        next.set(key, value)
+        if (value) next.set(key, value)
+        else next.delete(key)
         return next
       },
       { replace: true },
     )
+  // The table on screen as a CSV file.
+  const exportCsv = () => {
+    if (!report.data) return
+    const names = { project: (id: string) => allProjects.find((p) => p.id === id)?.name ?? 'Unknown project', person: (id: string) => people.find((u) => u.id === id)?.name ?? 'Unknown person' }
+    downloadCsv(`time-${by}-${days}d.csv`, toCsv(reportRows(report.data, by, names)))
+  }
 
   const header = (
     <PageHeader
@@ -174,7 +188,8 @@ export function TimeCostPage() {
   return (
     <>
       {header}
-      <div className="mb-5 inline-flex rounded-lg bg-surface-muted p-0.5 ring-1 ring-line" role="group" aria-label="Period">
+      <div className="mb-5 flex flex-wrap items-center gap-3">
+      <div className="inline-flex rounded-lg bg-surface-muted p-0.5 ring-1 ring-line" role="group" aria-label="Period">
         {periods.map(([value, label]) => (
           <button
             key={value}
@@ -186,6 +201,18 @@ export function TimeCostPage() {
             {label}
           </button>
         ))}
+      </div>
+        <select className={`${selectClass} w-auto`} aria-label="Project" value={projectId} onChange={(e) => set('project', e.target.value)}>
+          <option value="">All projects</option>
+          {allProjects.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+        <Button variant="secondary" onClick={exportCsv} disabled={!report.data}>
+          <Download className="size-4" /> Export CSV
+        </Button>
       </div>
       {report.isError ? (
         <QueryError what="Time and cost" onRetry={() => void report.refetch()} />

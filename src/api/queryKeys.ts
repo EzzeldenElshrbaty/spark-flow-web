@@ -28,7 +28,7 @@ export const qk = {
   time: (projectId: string) => ['projects', 'time', projectId],
   timeAll: () => ['projects', 'time'],                    // prefix of every project's time
   myDay: () => ['time', 'me'],
-  timeReport: (workspaceId: string, days: number) => ['time', 'report', workspaceId, days],
+  timeReport: (workspaceId: string, days: number, projectId = '') => ['time', 'report', workspaceId, days, projectId],
   rates: () => ['rates'],
   comments: (taskKey: string) => ['comments', taskKey],
   mentions: () => ['mentions', 'me'],

@@ -136,14 +136,14 @@ export function timeApi(db: MockDb, hub: MockHub, now: () => Date): Api['time'] 
       return clone({ entries, rates })
     },
 
-    async report(workspaceId, days) {
+    async report(workspaceId, days, opts) {
       await delay()
       const data = await db.read()
       if (!data.workspaces.some((w) => w.id === workspaceId)) throw notFound('Workspace', workspaceId)
       requireCan(data, 'timeCost.view')
       const to = now()
       const from = new Date(to.getTime() - days * 24 * HOUR)
-      const projectIds = data.projects.filter((p) => p.workspaceId === workspaceId).map((p) => p.id)
+      const projectIds = data.projects.filter((p) => p.workspaceId === workspaceId && (!opts?.projectId || p.id === opts.projectId)).map((p) => p.id)
       return clone(buildReport(data.timeEntries, data.rates, projectIds, from, to))
     },
 

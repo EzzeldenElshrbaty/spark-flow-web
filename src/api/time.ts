@@ -35,6 +35,11 @@ export function useRemoveTime() {
 }
 
 /** The Time & cost report; only asked for by people who may see it. */
-export function useTimeReport(workspaceId: string | undefined, days: ReportPeriod, enabled: boolean) {
-  return useQuery({ queryKey: qk.timeReport(workspaceId ?? '', days), queryFn: () => api.time.report(workspaceId!, days), retry, enabled: enabled && Boolean(workspaceId) })
+export function useTimeReport(workspaceId: string | undefined, days: ReportPeriod, enabled: boolean, projectId?: string) {
+  return useQuery({
+    queryKey: qk.timeReport(workspaceId ?? '', days, projectId),
+    queryFn: () => api.time.report(workspaceId!, days, projectId ? { projectId } : undefined),
+    retry,
+    enabled: enabled && Boolean(workspaceId),
+  })
 }

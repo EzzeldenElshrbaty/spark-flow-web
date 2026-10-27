@@ -341,7 +341,8 @@ export interface Api {
     update(id: string, patch: TimeEntryPatch): Promise<TimeEntry>
     remove(id: string): Promise<void>
     /** The Time & cost page (Admin only): the last `days` days, ending now. */
-    report(workspaceId: string, days: ReportPeriod): Promise<TimeReport>
+    /** `projectId` narrows everything to that project (archived ones too). */
+    report(workspaceId: string, days: ReportPeriod, opts?: { projectId?: string }): Promise<TimeReport>
   }
   files: {
     url(id: string): Promise<string>

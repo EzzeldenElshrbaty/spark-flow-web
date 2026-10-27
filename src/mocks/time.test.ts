@@ -355,3 +355,12 @@ describe('a forgotten timer', () => {
   })
 })
 
+describe('report filters', () => {
+  it('report for one project only', async () => {
+    const all = await api.time.report('ws-eng', 90)
+    const nex = await api.time.report('ws-eng', 90, { projectId: 'p-nex' })
+    expect(nex.byProject.map((p) => p.projectId)).toEqual(['p-nex'])
+    expect(nex.totals.hours).toBeCloseTo(all.byProject.find((p) => p.projectId === 'p-nex')!.hours, 5)
+  })
+})
+
