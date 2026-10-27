@@ -435,11 +435,19 @@ export function ProjectBoard({
     if (!drop || !onMove) return
     const { patch } = drop
     // Ranks too close to split: one move on the server places it and renumbers the column (a member can't patch others' cards).
+    const base = tickets.find((t) => t.key === ticket.key)!
     if (drop.renumber.length > 0 && onMoveTo) {
-      void onMoveTo(ticket, to, index, column.filter((t) => t.key !== ticket.key).map((t) => t.key)).catch(() => {})
+      // Held where it was dropped until the server's renumber lands, so it doesn't snap back.
+      const shownPatch: TicketPatch = ticket.status === to ? { rank: drop.pendingRank } : { status: to, rank: drop.pendingRank }
+      setPending((p) => ({ ...p, [ticket.key]: { patch: shownPatch, updatedAt: base.updatedAt } }))
+      onMoveTo(ticket, to, index, column.filter((t) => t.key !== ticket.key).map((t) => t.key)).catch(() =>
+        setPending((p) => {
+          const { [ticket.key]: _failed, ...rest } = p
+          return rest
+        }),
+      )
       return
     }
-    const base = tickets.find((t) => t.key === ticket.key)!
     setPending((p) => ({ ...p, [ticket.key]: { patch, updatedAt: base.updatedAt } }))
     onMove(ticket, patch).catch(() =>
       setPending((p) => {

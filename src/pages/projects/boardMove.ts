@@ -17,7 +17,7 @@ export function boardMove(ticket: TaskView, to: TicketStatus, column: TaskView[]
 }
 
 /** A drop, ranked against the whole column (hidden cards too), and the column renumbered when its ranks ran out. */
-export type BoardDrop = { patch: TicketPatch; renumber: { key: string; rank: number }[] }
+export type BoardDrop = { patch: TicketPatch; renumber: { key: string; rank: number }[]; pendingRank: number }
 
 /**
  * A card dropped at `index` among the cards shown in column `to` (`shown`, maybe filtered). It goes right before the
@@ -39,10 +39,11 @@ export function boardDrop(ticket: TaskView, to: TicketStatus, shown: TaskView[],
   if (before && after && after.rank - before.rank < 1e-6) {
     const order = [...others.slice(0, place), ticket, ...others.slice(place)]
     const renumber = order.map((t, i) => ({ key: t.key, rank: (i + 1) * STEP })).filter((r, i) => r.key !== ticket.key && order[i]!.rank !== r.rank)
-    return { patch: withStatus((place + 1) * STEP), renumber }
+    // Shown at once between its neighbours as they are now (still a number there); the server's renumber replaces it.
+    return { patch: withStatus((place + 1) * STEP), renumber, pendingRank: (before.rank + after.rank) / 2 }
   }
   const rank = before && after ? (before.rank + after.rank) / 2 : before ? before.rank + STEP : after ? after.rank - STEP : STEP
-  return { patch: withStatus(rank), renumber: [] }
+  return { patch: withStatus(rank), renumber: [], pendingRank: rank }
 }
 
 /** Drops shown before the server has them, by task key, with the version of the task each was made on. */

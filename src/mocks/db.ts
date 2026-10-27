@@ -261,11 +261,9 @@ export function createDb(store: MockStore, seed: (now: Date) => SeedResult, now:
       const data = bundle.version < DB_VERSION ? upgraded(bundle.data) : bundle.data
       if (!hasShape(data) || data.version !== DB_VERSION || !hasUsableRecords(data)) throw badImport()
       // The file is good: everything goes, uploaded file bytes too (an export carries none), then its records come in.
+      // An import replaces a newer build's document too (as Reset does), so this tab leaves memory and saves it.
+      memory = null
       await store.clearAll()
-      if (memory) {
-        memory = structuredClone(data)
-        return
-      }
       await store.transact(() => ({ doc: data, result: null }))
     },
   }

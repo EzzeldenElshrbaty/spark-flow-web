@@ -330,3 +330,16 @@ describe('import clears old files', () => {
     expect(await db.getFile('old-file')).toBeNull()
   })
 })
+
+describe("import over a newer build's data", () => {
+  it("importing while the saved data is from a newer build writes the import (it isn't lost on reload)", async () => {
+    const store = createMemoryStore()
+    await store.transact(() => ({ doc: { ...emptyData(), version: DB_VERSION + 1 }, result: null }))
+    const db = createDb(store, fakeSeed)
+    await db.read() // the newer document: this tab works in memory and leaves it alone
+    const bundle = { app: 'spark-flow', version: DB_VERSION, exportedAt: 'T', data: { ...emptyData(), counters: { p1: 42 } } }
+    await db.importAll(bundle)
+    expect((await createDb(store, fakeSeed).read()).counters).toEqual({ p1: 42 })
+  })
+})
+

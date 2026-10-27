@@ -54,6 +54,9 @@ describe('boardDrop', () => {
     const drop = boardDrop(moved, 'todo', col, col, 1)!
     expect(drop.patch).toEqual({ status: 'todo', rank: 2000 })
     expect(drop.renumber).toEqual([{ key: 'B', rank: 3000 }]) // A keeps 1000
+    // What the board shows until the server's renumber lands: between its neighbours as they are now.
+    expect(drop.pendingRank).toBeGreaterThan(1000)
+    expect(drop.pendingRank).toBeLessThan(1000 + 1e-7)
   })
   it('a drop on a filtered board ranks against hidden cards too', () => {
     const full = [t('A', 'todo', 1000), t('H', 'todo', 1500), t('B', 'todo', 2000)] // H is filtered out
