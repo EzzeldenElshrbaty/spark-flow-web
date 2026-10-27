@@ -25,6 +25,10 @@
 
 ---
 
+## Status
+
+**M6 (28 Oct 2026)** fixed GAP-001 to GAP-008 and GAP-030; see each finding's Status line. Everything else stands as written.
+
 ## 1. Executive summary
 
 Spark Flow is **well built for its scope**. The mock backend wraps every write in one transaction with its permission check, and every `Api` method (54 of them) has an HTTP route. The `can()` table agrees with the UI gates, and every realtime event that is emitted is handled. The demo flows work end to end.
@@ -151,6 +155,7 @@ The layers are types → mock (with its permission check) → `http.ts` → hook
 ### High
 
 **GAP-001: A wrong or forgotten time entry can't be corrected or deleted by anyone**
+- **Status:** ✅ Fixed in M6, `ca20bd9`.
 - **Category:** Missing capability · **Severity:** High · **Certainty:** Confirmed
 - **Evidence:**
   - `Api.time` has only list, today, checkIn, checkOut, start, stop, addManual and report (`src/api/types.ts:264-277`).
@@ -172,6 +177,7 @@ The layers are types → mock (with its permission check) → `http.ts` → hook
 - **Effort:** M · **Depends on:** GAP-027
 
 **GAP-002: Tasks can't be deleted or archived**
+- **Status:** ✅ Fixed in M6, `cb7f0b0`.
 - **Category:** Missing capability · **Severity:** High · **Certainty:** Confirmed
 - **Evidence:** `Api.tasks` has only `create` and `update` (`src/api/types.ts:259-262`). There is no removal in `src/mocks/tickets.ts`, `http.ts` or the inspector.
 - **User impact:** A duplicate or mistaken task stays forever. It counts toward progress, task counts, overdue and the board. Marking it Done to hide it inflates progress.
@@ -184,6 +190,7 @@ The layers are types → mock (with its permission check) → `http.ts` → hook
 - **Effort:** M · **Depends on:** product question Q5 in section 6
 
 **GAP-003: No way to start a direct message**
+- **Status:** ✅ Fixed in M6, `e6982c4`.
 - **Category:** Missing capability · **Severity:** High · **Certainty:** Confirmed
 - **Evidence:**
   - `Api.chat` has no DM method (`src/api/types.ts:211-231`), and `createChannel` always writes `kind: 'channel'` (`src/mocks/chat.ts:127`).
@@ -199,6 +206,7 @@ The layers are types → mock (with its permission check) → `http.ts` → hook
 - **Effort:** M
 
 **GAP-004: Task comments and bugs can't be edited or deleted**
+- **Status:** ✅ Fixed in M6, `ac0a495`.
 - **Category:** Missing capability / Inconsistency · **Severity:** High · **Certainty:** Confirmed
 - **Evidence:**
   - `Api.comments` has only `list` and `create` (`src/api/types.ts:284-287`, `src/mocks/comments.ts:28-75`).
@@ -215,6 +223,7 @@ The layers are types → mock (with its permission check) → `http.ts` → hook
 - **Effort:** M
 
 **GAP-005: A channel's read state is shared by everyone**
+- **Status:** ✅ Fixed in M6, `b849864`.
 - **Category:** Data integrity · **Severity:** High (for the demo, which switches people) · **Certainty:** Confirmed
 - **Evidence:**
   - `reads: Record<string, string>` is keyed by channel only, and its comment says "the current user" (`src/mocks/db.ts:48-49`).
@@ -231,6 +240,7 @@ The layers are types → mock (with its permission check) → `http.ts` → hook
 - **Effort:** S–M · **Depends on:** GAP-030
 
 **GAP-006: "View as" in one tab changes who you are in every other tab**
+- **Status:** ✅ Fixed in M6, `a6df1bb`.
 - **Category:** Data integrity · **Severity:** High (demo) · **Certainty:** Confirmed
 - **Evidence:**
   - `viewAs` writes `data.currentUserId` into the shared document (`src/mocks/users.ts:22-29`).
@@ -247,6 +257,7 @@ The layers are types → mock (with its permission check) → `http.ts` → hook
 - **Effort:** M · **Depends on:** GAP-005
 
 **GAP-007: A project key reused in another workspace corrupts tasks**
+- **Status:** ✅ Fixed in M6, `462a686`.
 - **Category:** Data integrity · **Severity:** High · **Certainty:** Confirmed
 - **Evidence:**
   - Keys are checked for uniqueness per workspace only (`src/mocks/projects.ts:76`).
@@ -261,6 +272,7 @@ The layers are types → mock (with its permission check) → `http.ts` → hook
 - **Effort:** S (global key) / M (scoping)
 
 **GAP-008: A backend build has no sign-in, and a failed `me` looks like loading forever**
+- **Status:** ✅ Fixed in M6, `36ba4d8 (the small part; real sign-in stays out of scope)`.
 - **Category:** Missing capability / UX state · **Severity:** High for any backend deploy (sign-in itself is out of scope, §10) · **Certainty:** Confirmed
 - **Evidence:**
   - `vite.config.ts:11-16` allows the build.
@@ -520,6 +532,7 @@ The layers are types → mock (with its permission check) → `http.ts` → hook
 - **Effort:** S
 
 **GAP-030: Any change of `DB_VERSION` silently wipes all demo data**
+- **Status:** ✅ Fixed in M6, `b849864`.
 - **Category:** Data integrity · **Severity:** Medium · **Certainty:** Confirmed
 - **Evidence:** Older versions are marked `outdated` (`src/mocks/db.ts:107-112`) and replaced with the seed (`db.ts:162-165`). There is no migration step.
 - **User impact:** Anything entered before a redeploy disappears without a warning. Fixing GAP-005 would trigger this.

@@ -57,6 +57,18 @@ reload it, so do it shortly before the demo. Switch people with the user menu �
 5. Sidebar **+** by Channels → **New channel**: "design", **Private**, add Mariam. As **Tarek** (not in it) it isn't
    in the sidebar, and its link says "You're not in this channel."
 
+## Story 5: fixing mistakes (about 3 minutes)
+
+1. **Youssef** → Home → **Add time**, Nexus Core, one hour. Its ⋯ → **Edit entry**: move it to NEX-102 and save. Then ⋯
+   → **Delete entry**. In a project's **Time** tab, a timer that hit the limit says **"12 h · Fix"**.
+2. Open **NEX-110** → **Archive task**. It leaves the board and the counts. Its links still open it ("This task is
+   archived."). List view → **Show archived (1)** → **Restore task**.
+3. NEX-101 → **Activity** → report a bug, then ⋯ → **Edit comment**: the card in #nexus-core changes with it. ⋯ →
+   **Delete comment** leaves "This comment was deleted."
+4. Sidebar **+** by Direct messages → pick Salma and Hossam → **Open conversation**. Doing it again opens the same
+   one. **Teams** → **Message** on Mariam opens the DM you already have.
+5. Two tabs: **View as Mariam** in one. The other stays Youssef, and each sends as itself.
+
 ## If something looks off
 
 - Reload the seed (Settings → Database). It replaces everything in this browser, including uploads.
