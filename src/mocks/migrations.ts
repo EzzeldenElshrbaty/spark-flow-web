@@ -8,7 +8,9 @@ export const migrations: Record<number, (doc: Record<string, unknown>) => void> 
   // 4: channel read state per person. What was read so far is everyone's starting point, so nobody's chat turns unread.
   3: (doc) => {
     const reads = (doc.reads ?? {}) as Record<string, string>
-    const ids = new Set([String(doc.currentUserId), ...((doc.users as { id?: unknown }[]) ?? []).map((u) => String(u.id))])
+    // A broken file may have no list of people; it fails the shape check after the upgrade, it mustn't crash here.
+    const users = Array.isArray(doc.users) ? (doc.users as { id?: unknown }[]) : []
+    const ids = new Set([String(doc.currentUserId), ...users.filter((u) => u?.id != null).map((u) => String(u.id))])
     doc.reads = Object.fromEntries([...ids].map((id) => [id, { ...reads }]))
   },
   // 5: board columns have an id and a type; history starts empty. Old names and order stay; types come from the ids.

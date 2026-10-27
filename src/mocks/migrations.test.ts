@@ -11,4 +11,9 @@ describe('migrations', () => {
     reads.u2!.c1 = 'T9'
     expect(reads.u1!.c1).toBe('T1')
   })
+
+  it("3 → 4 with users that isn't a list still gives the default person their map", () => {
+    const next = migrate({ version: 3, currentUserId: 'u1', users: {}, reads: { c1: 'T1' } }, 4)!
+    expect(next.reads).toEqual({ u1: { c1: 'T1' } })
+  })
 })

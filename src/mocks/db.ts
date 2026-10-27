@@ -70,7 +70,7 @@ export interface MockDb {
   /** Throws every record and file away and seeds again. */
   reset(): Promise<void>
   exportAll(): Promise<ExportBundle & { data: DbData }>
-  /** Replaces everything with an export from this version. Throws ApiError 400 and writes nothing if it isn't one. */
+  /** Replaces everything with an export from this or an older version. Throws ApiError 400 and writes nothing if it isn't one. */
   importAll(bundle: unknown): Promise<void>
   /** Acts as this person from now on, in this db (this tab) only; the document's default person stays as it is. */
   actAs(userId: string): void
@@ -128,8 +128,12 @@ function upgraded(doc: unknown): DbData | null {
 const toBlob = ({ mimeType, base64 }: { mimeType: string; base64: string }) =>
   new Blob([Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))], { type: mimeType })
 
-const badImport = () =>
-  new ApiError({ title: 'Import failed', status: 400, detail: "That file isn't a Spark Flow export from this version." })
+const badImport = (newer = false) =>
+  new ApiError({
+    title: 'Import failed',
+    status: 400,
+    detail: newer ? 'That export is from a newer version of Spark Flow. Update the app, then import it again.' : "That file isn't a Spark Flow export.",
+  })
 
 /**
  * The mock backend's database: one document in the store, plus file bytes. Every write is one transaction, so two
@@ -241,7 +245,8 @@ export function createDb(store: MockStore, seed: (now: Date) => SeedResult, now:
       return { app: 'spark-flow', version: DB_VERSION, exportedAt: now().toISOString(), data }
     },
     async importAll(bundle) {
-      if (!isRecord(bundle) || bundle.app !== 'spark-flow' || typeof bundle.version !== 'number' || bundle.version > DB_VERSION) throw badImport()
+      if (!isRecord(bundle) || bundle.app !== 'spark-flow' || typeof bundle.version !== 'number') throw badImport()
+      if (bundle.version > DB_VERSION) throw badImport(true)
       // An export from an older version goes through the same migrations as an older saved document.
       const data = bundle.version < DB_VERSION ? upgraded(bundle.data) : bundle.data
       if (!hasShape(data) || data.version !== DB_VERSION || !hasUsableRecords(data)) throw badImport()

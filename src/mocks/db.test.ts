@@ -54,6 +54,14 @@ describe('createDb', () => {
     }
   })
 
+  it('a stored v3 document with broken users reseeds on start', async () => {
+    const store = createMemoryStore()
+    await store.transact(() => ({ doc: { ...emptyData(), version: 3, users: {} }, result: null }))
+    const data = await createDb(store, fakeSeed).read()
+    expect(data.version).toBe(DB_VERSION)
+    expect(data.users).toHaveLength(1)
+  })
+
   it('a v3 document is migrated, not reseeded: its records stay and reads move to the default person', async () => {
     const store = createMemoryStore()
     const v3 = { ...emptyData(), version: 3, reads: { c1: '2026-02-02T00:00:00.000Z' } as unknown as DbData['reads'], counters: { p1: 7 } }
@@ -207,6 +215,21 @@ describe('createDb', () => {
     expect(data.counters).toEqual({ p1: 3 })
     expect(data.activity).toEqual([])
     expect(data.projects[0]!.board![0]).toEqual({ id: 'done', label: 'Shipped', category: 'done' })
+  })
+
+  it("a newer export says so; a broken one says it isn't an export", async () => {
+    const db = createDb(createMemoryStore(), fakeSeed)
+    const before = await db.read()
+    await expect(db.importAll({ app: 'spark-flow', version: DB_VERSION + 1, exportedAt: 'T', data: {} })).rejects.toMatchObject({
+      status: 400,
+      detail: 'That export is from a newer version of Spark Flow. Update the app, then import it again.',
+    })
+    await expect(db.importAll({ app: 'spark-flow', version: 3, exportedAt: 'T', data: { ...emptyData(), version: 3, users: {} } })).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 400,
+      detail: "That file isn't a Spark Flow export.",
+    })
+    expect(await db.read()).toEqual(before)
   })
 
   it('importAll rejects bad bundles without writing', async () => {
