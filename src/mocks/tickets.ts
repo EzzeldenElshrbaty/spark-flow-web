@@ -127,19 +127,19 @@ export function tasksApi(db: MockDb, hub: MockHub, now: () => Date): Api['tasks'
     },
     async update(key, patch) {
       await delay()
-      const before = await db.read()
-      const ticket = findTicket(before, key)
-      const project = findProject(before, ticket.projectId)
       const clean = pickPatch(patch, TASK_FIELDS) as TicketPatch
       const onlyStatus = Object.keys(clean).every((field) => EDITABLE_BY_ASSIGNEE.has(field))
-      try {
-        requireCan(before, 'task.manage', project)
-      } catch (error) {
-        if (!onlyStatus) throw error
-        requireCan(before, 'task.updateOwnStatus', project, { taskAssigneeId: ticket.assigneeId })
-      }
-      checkTaskInput(before, ticket.projectId, clean, ticket)
-      const updated = await updateTicket(db, hub, key, clean, now)
+      // Rights and values are checked on the data this write sees, not an earlier read: someone may have reassigned it.
+      const updated = await updateTicket(db, hub, key, clean, now, (data, ticket) => {
+        const project = findProject(data, ticket.projectId)
+        try {
+          requireCan(data, 'task.manage', project)
+        } catch (error) {
+          if (!onlyStatus) throw error
+          requireCan(data, 'task.updateOwnStatus', project, { taskAssigneeId: ticket.assigneeId })
+        }
+        checkTaskInput(data, ticket.projectId, clean, ticket)
+      })
       return taskView(updated, await db.read(), now())
     },
   }
@@ -194,10 +194,21 @@ export async function createTicket(db: MockDb, hub: MockHub, input: NewTicket, c
   return ticket
 }
 
-/** Changes the given fields of a ticket and bumps updatedAt; an assignee or status change posts its card (taskEvents). */
-export async function updateTicket(db: MockDb, hub: MockHub, key: string, patch: TicketPatch, now: () => Date = () => new Date()): Promise<Ticket> {
+/**
+ * Changes the given fields of a ticket and bumps updatedAt; an assignee or status change posts its card (taskEvents).
+ * `check` runs first, in the same write, and may throw to refuse it.
+ */
+export async function updateTicket(
+  db: MockDb,
+  hub: MockHub,
+  key: string,
+  patch: TicketPatch,
+  now: () => Date = () => new Date(),
+  check?: (data: DbData, ticket: Ticket) => void,
+): Promise<Ticket> {
   const { ticket, cards } = await db.update((data) => {
     const ticket = findTicket(data, key)
+    check?.(data, ticket)
     // Archived tasks are read-only until restored (restore doesn't come through here).
     if (ticket.archivedAt) throw badRequest('This task is archived. Restore it first.')
     // The column is checked here, in this write: another tab may have deleted it since the caller looked.

@@ -8,6 +8,7 @@ import { Sheet } from '@/components/ui/Sheet'
 import { projectPeople } from '@/lib/projectPeople'
 import { usePermission } from '@/lib/usePermission'
 import { byOrder } from './phases'
+import { changedFields } from './taskForm'
 import { columnsOf, startColumn } from '@/lib/boardColumns'
 
 const priorities: [Priority, string][] = [
@@ -74,6 +75,8 @@ export function TaskSheet({
   const create = useCreateTask()
   const update = useUpdateTask()
   const [values, setValues] = useState(() => valuesOf(task, project.currentPhaseId ?? null, startColumn(project), draft))
+  // The task as it was when the sheet opened: the prop follows live updates, so it can't tell what I changed.
+  const [opened] = useState(task)
   const [errors, setErrors] = useState<Partial<Record<keyof Values, string>>>({})
   const set = <K extends keyof Values>(k: K, v: Values[K]) => setValues((s) => ({ ...s, [k]: v }))
   const people = projectPeople(project, users)
@@ -104,7 +107,12 @@ export function TaskSheet({
       estimateHours: estimate,
       sprintId: project.methodology === 'agile' ? values.sprintId || null : (task?.sprintId ?? null),
     }
-    if (task) update.mutate({ key: task.key, patch: fields }, { onSuccess: onClose })
+    if (task) {
+      // Only what changed: the rest may have moved on since the sheet was opened.
+      const patch = changedFields(opened ?? task, fields)
+      if (Object.keys(patch).length === 0) onClose()
+      else update.mutate({ key: task.key, patch }, { onSuccess: onClose })
+    }
     else
       create.mutate(
         { ...fields, projectId: project.id, storyPoints: null, linkedChannelId: draft?.linkedChannelId, linkedMessageId: draft?.linkedMessageId } satisfies NewTicket,

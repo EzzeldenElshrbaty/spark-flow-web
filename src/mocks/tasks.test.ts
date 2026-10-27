@@ -221,3 +221,18 @@ describe('task writes are checked', () => {
   })
 })
 
+describe('task rights are checked in the write', () => {
+  it('rights are checked against the data the write sees', async () => {
+    const api = apiAt()
+    const task = (await db.read()).tickets.find((t) => t.projectId === 'p-nex' && t.assigneeId === 'u-3' && !t.archivedAt)!
+    // db.read() applies the tab's person, so the stale copy is taken while acting as Mariam (u-3), its assignee.
+    await api.users.viewAs('u-3')
+    const stale = await db.read()
+    await api.users.viewAs('u-2') // Nour manages NEX
+    await api.tasks.update(task.key, { assigneeId: 'u-5' })
+    await api.users.viewAs('u-3')
+    const staleApi = createMockApi({ ...db, read: async () => structuredClone(stale) }, hub, () => clock)
+    await expect(staleApi.tasks.update(task.key, { status: 'done' })).rejects.toMatchObject({ status: 403 })
+  })
+})
+
