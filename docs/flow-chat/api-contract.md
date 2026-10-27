@@ -53,3 +53,7 @@ The client's handler names stay as they are; the wire names are the spec's (§8)
 | `onReadChanged` | `read.marker_updated` | `{ userId, channelId?, seq? }`, sent only to `userId`'s own connections. `seq` is set for a new read marker; star and mute changes send `channelId` without `seq`. Mention reads send `userId` alone. |
 
 On reconnect the client expects missed `message.created` events replayed in `seq` order per channel (spec §8, transport rules).
+
+## Phase 1 · Feature 2: channel header and tabs
+
+No new routes. The header uses the ones above: the star toggle and Mute in the more menu call `PATCH /api/channels/:id/me`, and Mark all read calls `POST /api/channels/:id/read` with no `seq`. Edit details, Leave and Archive use the existing channel routes. The tabs are client-side (`?tab=files|pins|page`); Files, Pins and Page get their own endpoints when they are built (Phases 3 and 4).

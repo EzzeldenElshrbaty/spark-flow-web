@@ -36,7 +36,8 @@ export function TopBar({
 
       <DesktopSearch />
 
-      <div className="ms-auto flex items-center gap-2">
+      {/* The search box gives way first; the buttons and the profile keep their size. */}
+      <div className="ms-auto flex flex-none items-center gap-2">
         <TimerPill />
         <PhoneSearch open={searchOpen} onOpenChange={onSearchOpenChange} />
         <NotificationsMenu />

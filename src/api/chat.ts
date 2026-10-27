@@ -77,3 +77,9 @@ export function useRestoreChannel() {
 export function useReply() {
   return useMutation({ mutationFn: ({ messageId, content }: { messageId: string; content: string }) => api.chat.reply(messageId, content) })
 }
+export function useSetStarred() {
+  return useMutation({ mutationFn: ({ id, starred }: { id: string; starred: boolean }) => api.chat.setStarred(id, starred) })
+}
+export function useSetMuted() {
+  return useMutation({ mutationFn: ({ id, muted }: { id: string; muted: boolean }) => api.chat.setMuted(id, muted) })
+}

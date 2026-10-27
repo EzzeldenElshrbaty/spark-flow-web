@@ -67,7 +67,8 @@ export const router = createBrowserRouter([
         element: <WorkspaceGate />,
         children: [
           { index: true, element: <HomePage /> },
-          { path: 'c/:channelId', element: <ChannelPage /> },
+          // A pane: the channel fills the main card and scrolls its own message list (spec 5.3).
+          { path: 'c/:channelId', element: <ChannelPage />, handle: { pane: true } },
           { path: 'projects', element: <ProjectsPage /> },
           { path: 'tasks', element: <MyTasksPage /> },
           { path: 'dashboard', element: <DashboardPage /> },
