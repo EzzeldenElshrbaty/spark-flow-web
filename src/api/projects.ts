@@ -2,7 +2,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import type { BoardColumn, DeliverablePatch, NewDeliverable, NewPhase, NewProject, PhasePatch, ProjectPatch, StatusCategory, UploadFile } from '@/api/types'
 import { qk } from '@/api/queryKeys'
 import { retryUnlessNotFound as retry } from '@/api/retry'
-import { api } from '@/lib/api'
+import { api, ApiError } from '@/lib/api'
 
 // Like every hook file: no id, no request. Writes are plain mutations; main.tsx reloads every query after each one.
 
@@ -11,14 +11,25 @@ export function useProjectSummaries(workspaceId: string | undefined) {
 }
 
 /** One project's summary, from its workspace's list; null when there is no such key. */
+/** One project by its key, archived or not (the list leaves archived ones out); null when there's none. */
 export function useProjectSummary(workspaceId: string | undefined, key: string | undefined) {
   return useQuery({
-    queryKey: qk.projects(workspaceId ?? ''),
-    queryFn: () => api.projects.list(workspaceId!),
+    queryKey: qk.projectByKey(workspaceId ?? '', key ?? ''),
+    queryFn: () => api.projects.get(workspaceId!, key!).catch((error: unknown) => (error instanceof ApiError && error.status === 404 ? null : Promise.reject(error))),
     retry,
     enabled: Boolean(workspaceId && key),
-    select: (projects) => projects.find((p) => p.key === key) ?? null,
   })
+}
+
+/** The workspace's archived projects (Projects → Show archived). */
+export function useArchivedProjects(workspaceId: string | undefined, enabled: boolean) {
+  return useQuery({ queryKey: qk.archivedProjects(workspaceId ?? ''), queryFn: () => api.projects.list(workspaceId!, { archived: true }), retry, enabled: Boolean(workspaceId) && enabled })
+}
+export function useArchiveProject() {
+  return useMutation({ mutationFn: (id: string) => api.projects.archive(id) })
+}
+export function useRestoreProject() {
+  return useMutation({ mutationFn: (id: string) => api.projects.restore(id) })
 }
 
 export function useCreateProject() {

@@ -5,6 +5,7 @@ import { summarize } from './derive'
 import { delay } from './latency'
 import type { MockHub } from './realtime'
 import { logActivity, statusChange } from './activity'
+import { entryEnd } from '@/lib/hours'
 import { badRequest, clone, currentUser, isDate, newId, notFound, pickPatch, requireCan } from './shared'
 import { CHANNEL_NAME } from '@/lib/channelForm'
 import { projectPeopleIds } from '@/lib/projectPeople'
@@ -34,6 +35,15 @@ export function findProject(data: DbData, id: string): Project {
   if (!project) throw notFound('Project', id)
   return project
 }
+
+/** A project a write may change: an archived one is read-only until an Admin restores it. */
+export function requireOpenProject(project: Project): Project {
+  if (project.archivedAt) throw badRequest('This project is archived. Restore it first.')
+  return project
+}
+
+/** findProject for a write: the project, unless it's archived (400). */
+export const openProject = (data: DbData, id: string): Project => requireOpenProject(findProject(data, id))
 
 function findPhase(data: DbData, id: string): Phase {
   const phase = data.phases.find((p) => p.id === id)
@@ -132,20 +142,51 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
     hub.publish({ type: 'projectChanged', projectId: projectIdOf(result) })
     return clone(result)
   }
-  const summaries = async (workspaceId: string) => {
+  /** The workspace's projects; archived ones only with `archived` (and then only they). `all` keeps both, for get. */
+  const summaries = async (workspaceId: string, opts?: { archived?: boolean; all?: boolean }) => {
     await delay()
     const data = await db.read()
     if (!data.workspaces.some((w) => w.id === workspaceId)) throw notFound('Workspace', workspaceId)
     const viewer = currentUser(data)
-    return data.projects.filter((p) => p.workspaceId === workspaceId).map((p) => summarize(p, data, now(), { userId: viewer.id, role: viewer.role }))
+    return data.projects
+      .filter((p) => p.workspaceId === workspaceId && (opts?.all || Boolean(p.archivedAt) === Boolean(opts?.archived)))
+      .map((p) => summarize(p, data, now(), { userId: viewer.id, role: viewer.role }))
+  }
+  /** Archives or restores a project with its channel, in one write; archiving stops the timers on its tasks. */
+  const setArchived = async (id: string, archive: boolean) => {
+    await delay()
+    const { project, stopped } = await db.update((data) => {
+      requireCan(data, 'project.archive')
+      const project = findProject(data, id)
+      const at = now()
+      const stopped: string[] = []
+      if (archive) {
+        for (const e of data.timeEntries.filter((e) => e.projectId === id && e.endedAt === null)) {
+          e.endedAt = new Date(entryEnd(e, at)).toISOString()
+          stopped.push(e.userId)
+        }
+      }
+      project.archivedAt = archive ? at.toISOString() : null
+      const channel = data.channels.find((c) => c.id === project.channelId)
+      if (channel) channel.archivedAt = project.archivedAt
+      logActivity(data, { projectId: id, taskKey: null, kind: archive ? 'project.archived' : 'project.restored', changes: [] }, at.toISOString())
+      return { project: clone(project), stopped }
+    })
+    hub.publish({ type: 'projectChanged', projectId: id })
+    hub.publish({ type: 'channelChanged', channelId: project.channelId })
+    for (const userId of stopped) hub.publish({ type: 'timeLogged', userId, projectId: id })
+    return project
   }
 
   return {
     summaries,
     projects: {
-      list: summaries,
+      list: (workspaceId, opts) => summaries(workspaceId, opts),
+      archive: (id) => setArchived(id, true),
+      restore: (id) => setArchived(id, false),
+      // An archived project still opens by its address.
       async get(workspaceId, key) {
-        const project = (await summaries(workspaceId)).find((p) => p.key === key)
+        const project = (await summaries(workspaceId, { all: true })).find((p) => p.key === key)
         if (!project) throw notFound('Project', key)
         return project
       },
@@ -187,7 +228,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
         await delay()
         let channelChanged = false
         const saved = await write<Project>((p) => p.id, (data) => {
-            const project = findProject(data, id)
+            const project = openProject(data, id)
             requireCan(data, 'project.edit', project)
             const next = { ...project, ...pickPatch(patch, PROJECT_FIELDS) } as Project
             checkProjectRefs(data, next)
@@ -211,7 +252,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
       async addColumn(projectId, input) {
         await delay()
         return write((p) => p.id, (data) => {
-          const project = findProject(data, projectId)
+          const project = openProject(data, projectId)
           requireCan(data, 'phase.manage', project)
           const columns = columnsOf(project)
           if (input.after && !columns.some((c) => c.id === input.after)) throw badRequest('That column no longer exists.')
@@ -228,7 +269,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
       async deleteColumn(projectId, columnId, moveTo) {
         await delay()
         const { project, moved } = await db.update((data) => {
-          const project = findProject(data, projectId)
+          const project = openProject(data, projectId)
           requireCan(data, 'phase.manage', project)
           const columns = columnsOf(project)
           if (!columns.some((c) => c.id === columnId) || columnId === moveTo || !columns.some((c) => c.id === moveTo)) throw badRequest('That column no longer exists.')
@@ -261,7 +302,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
         const problem = columnErrors(board)
         if (problem) throw badRequest(problem)
         return write((p) => p.id, (data) => {
-            const project = findProject(data, id)
+            const project = openProject(data, id)
             requireCan(data, 'phase.manage', project)
             // Names, order and types change here; adding and deleting columns have their own calls.
             const current = columnsOf(project).map((c) => c.id).sort()
@@ -283,7 +324,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
       async create(input) {
         await delay()
         return write((p) => p.projectId, (data) => {
-            const project = findProject(data, input.projectId)
+            const project = openProject(data, input.projectId)
             requireCan(data, 'phase.manage', project)
             if (!input.name.trim()) throw badRequest('Give the phase a name.')
             checkDates(input.startDate, input.dueDate)
@@ -298,7 +339,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
         await delay()
         return write((p) => p.projectId, (data) => {
             const phase = findPhase(data, id)
-            requireCan(data, 'phase.manage', findProject(data, phase.projectId))
+            requireCan(data, 'phase.manage', openProject(data, phase.projectId))
             const next = { ...phase, ...pickPatch(patch, PHASE_FIELDS) } as Phase
             if (!next.name.trim()) throw badRequest('Give the phase a name.')
             if (!PHASE_STATUSES.includes(next.status)) throw badRequest("That isn't a phase status.")
@@ -312,7 +353,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
         await delay()
         await write((projectId: string) => projectId, (data) => {
           const phase = findPhase(data, id)
-          requireCan(data, 'phase.manage', findProject(data, phase.projectId))
+          requireCan(data, 'phase.manage', openProject(data, phase.projectId))
           data.phases = data.phases.filter((p) => p.id !== id)
           logActivity(data, { projectId: phase.projectId, taskKey: null, kind: 'phase.removed', subject: phase.name, changes: [] }, now().toISOString())
           for (const t of data.tickets) {
@@ -328,7 +369,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
       async reorder(projectId, ids) {
         await delay()
         return write((list) => list[0]?.projectId ?? projectId, (data) => {
-            const project = findProject(data, projectId)
+            const project = openProject(data, projectId)
             requireCan(data, 'phase.manage', project)
             const own = data.phases.filter((p) => p.projectId === projectId)
             if (ids.length !== own.length || new Set(ids).size !== ids.length || !ids.every((id) => own.some((p) => p.id === id)))
@@ -349,7 +390,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
       async create(input) {
         await delay()
         return write((d) => d.projectId, (data) => {
-            const project = findProject(data, input.projectId)
+            const project = openProject(data, input.projectId)
             requireCan(data, 'project.edit', project)
             if (!input.title.trim()) throw badRequest('Give the deliverable a title.')
             if (input.phaseId && findPhase(data, input.phaseId).projectId !== project.id) throw badRequest('That phase belongs to another project.')
@@ -364,7 +405,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
         return write((d) => d.projectId, (data) => {
             const deliverable = data.deliverables.find((d) => d.id === id)
             if (!deliverable) throw notFound('Deliverable', id)
-            requireCan(data, 'project.edit', findProject(data, deliverable.projectId))
+            requireCan(data, 'project.edit', openProject(data, deliverable.projectId))
             const next = { ...deliverable, ...pickPatch(patch, DELIVERABLE_FIELDS) } as Deliverable
             if (!next.title.trim()) throw badRequest('Give the deliverable a title.')
             if (next.phaseId && findPhase(data, next.phaseId).projectId !== deliverable.projectId) throw badRequest('That phase belongs to another project.')
@@ -380,7 +421,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
         await write((projectId: string) => projectId, (data) => {
           const deliverable = data.deliverables.find((d) => d.id === id)
           if (!deliverable) throw notFound('Deliverable', id)
-          requireCan(data, 'project.edit', findProject(data, deliverable.projectId))
+          requireCan(data, 'project.edit', openProject(data, deliverable.projectId))
           data.deliverables = data.deliverables.filter((d) => d.id !== id)
           logActivity(data, { projectId: deliverable.projectId, taskKey: null, kind: 'deliverable.removed', subject: deliverable.title, changes: [] }, now().toISOString())
           return deliverable.projectId

@@ -3,7 +3,7 @@ import { isAcceptedFile, maxFileMb } from '@/lib/fileTypes'
 import type { MockDb } from './db'
 import type { MockHub } from './realtime'
 import { delay } from './latency'
-import { findProject } from './projects'
+import { findProject, openProject } from './projects'
 import { ApiError } from '@/lib/apiError'
 import { can } from '@/lib/permissions'
 import { logActivity } from './activity'
@@ -61,7 +61,7 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
     async upload(projectId, file, signal) {
       await delay()
       const before = await db.read()
-      requireCan(before, 'collab.post', findProject(before, projectId))
+      requireCan(before, 'collab.post', openProject(before, projectId))
       checkUpload(file)
       const at = now().toISOString()
       const attachment: Attachment = { id: newId('a'), name: file.name, mimeType: file.type || 'application/octet-stream', size: file.size, createdAt: at }
@@ -70,7 +70,7 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
         // Cancelled while the bytes were saved: withSavedBytes throws them away.
         throwIfCancelled(signal)
         return db.update((data) => {
-          const me = requireCan(data, 'collab.post', findProject(data, projectId))
+          const me = requireCan(data, 'collab.post', openProject(data, projectId))
           const record: ProjectFile = { id: newId('pf'), projectId, attachmentId: attachment.id, uploadedBy: me.id, createdAt: at }
           data.attachments.push(attachment)
           data.projectFiles.push(record)
@@ -85,7 +85,7 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
       const { projectId, orphan } = await db.update((data) => {
         const record = data.projectFiles.find((f) => f.id === id)
         if (!record) throw notFound('File', id)
-        const project = findProject(data, record.projectId)
+        const project = openProject(data, record.projectId)
         const me = currentUser(data)
         if (record.uploadedBy !== me.id && !can('phase.manage', { userId: me.id, role: me.role, project, userTeamIds: me.teamIds }))
           throw new ApiError({ title: 'Forbidden', status: 403, detail: 'You can only remove files you added.' })

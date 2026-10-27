@@ -116,6 +116,10 @@ export function describeActivity(entry: ActivityEntry, ctx: ActivityContext): st
       return `${who} added the deliverable ${entry.subject}`
     case 'deliverable.changed':
       return `${who} changed the deliverable ${entry.subject}`
+    case 'project.archived':
+      return `${who} archived the project`
+    case 'project.restored':
+      return `${who} restored the project`
     case 'deliverable.removed':
       return `${who} removed the deliverable ${entry.subject}`
     case 'file.removed':

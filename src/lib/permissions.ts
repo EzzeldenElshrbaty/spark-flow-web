@@ -5,9 +5,9 @@ import type { Project, Role } from '@/api/types'
 
 export type Action =
   | 'rates.view' | 'cost.view' | 'project.create' | 'project.edit' | 'phase.manage' | 'task.manage' | 'task.updateOwnStatus'
-  | 'time.logOwn' | 'time.logOn' | 'collab.post' | 'dashboard.view' | 'timeCost.view' | 'database.manage'
+  | 'time.logOwn' | 'time.logOn' | 'collab.post' | 'dashboard.view' | 'timeCost.view' | 'database.manage' | 'project.archive'
 
-export type ProjectRef = Pick<Project, 'managerId' | 'memberIds' | 'teamIds'>
+export type ProjectRef = Pick<Project, 'managerId' | 'memberIds' | 'teamIds'> & { archivedAt?: string | null }
 
 export type PermissionContext = {
   userId: string
@@ -32,15 +32,22 @@ const isOn = (ctx: PermissionContext) =>
   ctx.project.memberIds.includes(ctx.userId) ||
   ctx.project.teamIds.some((id) => ctx.userTeamIds?.includes(id))
 
+/** What changes a project or posts in it: none of it is allowed while the project is archived. */
+const FROZEN = new Set<Action>(['project.edit', 'phase.manage', 'task.manage', 'task.updateOwnStatus', 'time.logOn', 'collab.post'])
+
 export function can(action: Exclude<Action, ProjectScoped>, ctx: PermissionContext): boolean
 export function can(action: ProjectScoped, ctx: PermissionContext & { project: ProjectRef }): boolean
 export function can(action: Action, ctx: PermissionContext): boolean {
+  // An archived project is frozen for everyone, Admins too, until it's restored (that is 'project.archive').
+  if (ctx.project?.archivedAt && FROZEN.has(action)) return false
   if (ctx.role === 'admin') return true
   switch (action) {
     case 'rates.view':
     case 'cost.view':
     case 'timeCost.view':
     case 'database.manage':
+    // Archiving takes a project out of every list and freezes it: Admins only.
+    case 'project.archive':
       return false
     case 'project.create':
       return ctx.role === 'sales'

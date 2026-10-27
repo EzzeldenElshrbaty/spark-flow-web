@@ -1,12 +1,14 @@
 import clsx from 'clsx'
-import { Building2, CalendarDays, Layers, Link2, Pencil, Plus, UserRound } from 'lucide-react'
+import { Building2, CalendarDays, Layers, Link2, Pencil, Plus, UserRound, Archive } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router'
-import { usePhases, useProjectSummary, useTeams } from '@/api/projects'
+import { useArchiveProject, usePhases, useProjectSummary, useRestoreProject, useTeams } from '@/api/projects'
 import { useSprints, useTickets } from '@/api/tickets'
 import type { ProjectStatus } from '@/api/types'
 import { useMe, useUsers } from '@/api/users'
+import { ConfirmDeleteSheet } from '@/components/ConfirmDeleteSheet'
 import { Badge, type BadgeTone } from '@/components/ui/Badge'
+import { Button } from '@/components/ui/Button'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
 import { RecordActionBarSpacer, RecordHeader, type RecordAction, type RecordMeta } from '@/components/ui/RecordHeader'
@@ -108,7 +110,9 @@ export function ProjectPage() {
   const check = usePermission()
   const now = useMemo(() => new Date(), [])
   const sprints = useSprints(project?.methodology === 'agile' ? project.id : undefined)
-  const [sheet, setSheet] = useState<'edit' | 'phases' | 'task' | null>(null)
+  const [sheet, setSheet] = useState<'edit' | 'phases' | 'task' | 'archive' | null>(null)
+  const archive = useArchiveProject()
+  const restore = useRestoreProject()
 
   if (summary.isError) {
     return (
@@ -149,7 +153,11 @@ export function ProjectPage() {
   ]
   const primary: RecordAction | undefined = canTasks ? { label: 'New task', icon: Plus, onSelect: () => setSheet('task') } : undefined
   const secondary: RecordAction[] = canEdit ? [{ label: 'Edit project', icon: Pencil, onSelect: () => setSheet('edit') }] : []
-  const more: RecordAction[] = canPhases ? [{ label: 'Manage phases', icon: Layers, onSelect: () => setSheet('phases') }] : []
+  const more: RecordAction[] = [
+    ...(canPhases ? [{ label: 'Manage phases', icon: Layers, onSelect: () => setSheet('phases') }] : []),
+    // Archiving takes it out of every list; Admins only. An archived project is frozen, so its edits are gone above.
+    ...(check('project.archive') && !project.archivedAt ? [{ label: 'Archive project', icon: Archive, onSelect: () => setSheet('archive') }] : []),
+  ]
 
   const phaseList = phases.data ?? []
   const stages = stagesOf(phaseList, tasks.data ?? [], now)
@@ -173,6 +181,18 @@ export function ProjectPage() {
         secondary={secondary}
         more={more}
       />
+
+      {project.archivedAt && (
+        <div className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface-muted px-4 py-3">
+          <p className="text-sm text-fg-secondary">This project is archived.</p>
+          {check('project.archive') && (
+            <Button variant="secondary" onClick={() => restore.mutate(project.id)} disabled={restore.isPending}>
+              {restore.isPending ? 'Restoring…' : 'Restore project'}
+            </Button>
+          )}
+          {restore.error && <p className="w-full text-sm text-red-600 dark:text-red-400">{(restore.error as Error).message}</p>}
+        </div>
+      )}
 
       {phases.isError ? (
         <p className="mb-5 text-sm text-red-600 dark:text-red-400">Phases couldn't be loaded.</p>
@@ -218,6 +238,16 @@ export function ProjectPage() {
       {sheet === 'edit' && <ProjectSheet workspaceId={workspace.id} project={project} takenKeys={[]} onClose={() => setSheet(null)} onSaved={() => setSheet(null)} />}
       {sheet === 'task' && <TaskSheet project={project} phases={phaseList} sprints={sprints.data ?? []} users={people} onClose={() => setSheet(null)} />}
       {sheet === 'phases' && <PhasesSheet project={project} phases={phaseList} onClose={() => setSheet(null)} />}
+      <ConfirmDeleteSheet
+        open={sheet === 'archive'}
+        tone="primary"
+        title={`Archive ${project.name}?`}
+        description="It leaves the lists and the dashboard, and nothing in it can change until it's restored. Its time stays in reports."
+        actionLabel="Archive project"
+        pendingLabel="Archiving…"
+        onConfirm={() => archive.mutateAsync(project.id)}
+        onClose={() => setSheet(null)}
+      />
     </>
   )
 }

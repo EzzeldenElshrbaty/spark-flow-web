@@ -2,7 +2,7 @@ import clsx from 'clsx'
 import { Plus } from 'lucide-react'
 import { useMemo } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
-import { usePhases, useProjectSummaries } from '@/api/projects'
+import { useArchivedProjects, usePhases, useProjectSummaries } from '@/api/projects'
 import type { ProjectSummary } from '@/api/types'
 import { useUsers } from '@/api/users'
 import { Button } from '@/components/ui/Button'
@@ -57,6 +57,9 @@ export function ProjectsPage() {
   const [params, setParams] = useSearchParams()
   const filter = isFilter(params.get('show')) ? (params.get('show') as ProjectFilter) : null
   const creating = params.get('new') === '1' && check('project.create')
+  // Archived projects are out of the list and the tiles; Show archived lists only them.
+  const showArchived = params.get('archived') === '1'
+  const archived = useArchivedProjects(workspace?.id, showArchived)
 
   const setParam = (key: string, value: string | null) =>
     setParams(
@@ -84,7 +87,7 @@ export function ProjectsPage() {
     cost: (p) => p.cost,
     overdue: (p) => p.overdueCount,
   }
-  const rows = sortByColumn(stats.filter(filter), sort, sortKeys)
+  const rows = showArchived ? sortByColumn(archived.data ?? [], sort, sortKeys) : sortByColumn(stats.filter(filter), sort, sortKeys)
   const showCost = list.some((p) => p.cost !== null)
   const open = (p: ProjectSummary) => navigate(paths.project(ws, p.key))
 
@@ -99,7 +102,10 @@ export function ProjectsPage() {
           <Logo name={p.name} />
           <span className="min-w-0">
             <span className="block truncate font-medium text-fg">{p.name}</span>
-            <span className="block font-mono text-xs text-fg-muted">{p.key}</span>
+            <span className="block font-mono text-xs text-fg-muted">
+              {p.key}
+              {p.archivedAt && <span className="ms-2 rounded-full bg-surface-muted px-2 py-0.5 font-sans text-fg-secondary">Archived</span>}
+            </span>
           </span>
         </span>
       ),
@@ -189,9 +195,22 @@ export function ProjectsPage() {
             ))}
           </div>
 
-          {rows.length === 0 ? (
+          <div className="mb-4 flex">
+            <button
+              type="button"
+              aria-pressed={showArchived}
+              onClick={() => setParam('archived', showArchived ? null : '1')}
+              className={clsx('rounded-full border px-3 py-1.5 text-sm', showArchived ? 'border-brand-500 bg-accent-soft font-medium text-fg' : 'border-line text-fg-secondary hover:bg-surface-muted')}
+            >
+              Show archived
+            </button>
+          </div>
+
+          {showArchived && archived.isPending ? (
+            <TableSkeleton />
+          ) : rows.length === 0 ? (
             <div className="rounded-xl border border-dashed border-line-strong p-10 text-center">
-              <p className="text-sm text-fg-secondary">{filter ? 'No projects match this filter.' : 'No projects yet.'}</p>
+              <p className="text-sm text-fg-secondary">{showArchived ? 'No archived projects.' : filter ? 'No projects match this filter.' : 'No projects yet.'}</p>
               {filter ? (
                 <button type="button" onClick={() => setParam('show', null)} className="mt-2 text-sm font-medium text-accent hover:text-accent-strong">
                   Show all projects

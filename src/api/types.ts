@@ -20,6 +20,8 @@ export type Project = {
   channelId: string                                      // the project's chat
   /** The board's column names and order (still the 5 statuses); missing means the standard board. */
   board?: BoardColumn[]
+  /** Set while archived (Admins): out of the lists, read-only until restored; its time stays in reports. */
+  archivedAt?: string | null
 }
 
 /** What a board column means, whatever it is called: done-ness (progress, overdue, timers) follows this. */
@@ -126,7 +128,7 @@ export type ActivityKind =
   | 'column.added' | 'column.renamed' | 'column.moved' | 'column.typed' | 'column.deleted'
   | 'phase.added' | 'phase.changed' | 'phase.removed'
   | 'project.changed' | 'deliverable.added' | 'deliverable.changed'
-  | 'file.removed' | 'deliverable.removed'
+  | 'file.removed' | 'deliverable.removed' | 'project.archived' | 'project.restored'
 /** One field's change; labels are snapshots (a column, phase or sprint may be gone by the time it is read). */
 export type FieldChange = { field: string; from: string | null; to: string | null; fromLabel?: string; toLabel?: string }
 /** One line of history: who did what to which task (or the board, a phase, a deliverable), and when. Never edited. */
@@ -283,7 +285,8 @@ export interface Api {
     get(key: string): Promise<TaskView>
   }
   projects: {
-    list(workspaceId: string): Promise<ProjectSummary[]>
+    /** Archived projects are left out; `archived: true` lists only them. */
+    list(workspaceId: string, opts?: { archived?: boolean }): Promise<ProjectSummary[]>
     get(workspaceId: string, key: string): Promise<ProjectSummary>
     create(input: NewProject): Promise<Project>
     update(id: string, patch: ProjectPatch): Promise<Project>
@@ -293,6 +296,9 @@ export interface Api {
     addColumn(projectId: string, input: { label: string; category: StatusCategory; after?: string }): Promise<Project>
     /** Removes a column; its tasks move to `moveTo` in the same write. Each type keeps at least one column. */
     deleteColumn(projectId: string, columnId: string, moveTo: string): Promise<Project>
+    /** Admins: archives the project and its channel and stops timers on its tasks; restore undoes both. */
+    archive(id: string): Promise<Project>
+    restore(id: string): Promise<Project>
   }
   phases: {
     list(projectId: string): Promise<Phase[]>

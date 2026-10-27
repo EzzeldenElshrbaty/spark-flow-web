@@ -5,7 +5,7 @@ import { entryEnd, MAX_ENTRY_HOURS } from '@/lib/hours'
 import { can } from '@/lib/permissions'
 import type { DbData, MockDb } from './db'
 import { delay } from './latency'
-import { findProject } from './projects'
+import { findProject, openProject } from './projects'
 import type { MockHub } from './realtime'
 import { buildReport } from './report'
 import { ApiError } from '@/lib/apiError'
@@ -22,9 +22,9 @@ function resolveTarget(data: DbData, target: TimeTarget, keepTaskId?: string | n
     if (!task) throw badRequest("That task doesn't exist.")
     // New time can't go on an archived task; an entry already on it can still be fixed (keepTaskId).
     if (task.archivedAt && task.id !== keepTaskId) throw badRequest('That task is archived. Restore it to log time.')
-    return { projectId: task.projectId, taskId: task.id, done: categoryOf(findProject(data, task.projectId), task.status) === 'done' }
+    return { projectId: task.projectId, taskId: task.id, done: categoryOf(openProject(data, task.projectId), task.status) === 'done' }
   }
-  return { projectId: findProject(data, target.projectId).id, taskId: null, done: false }
+  return { projectId: openProject(data, target.projectId).id, taskId: null, done: false }
 }
 
 function myDay(data: DbData, userId: string, now: Date): MyDay {

@@ -2,7 +2,7 @@ import { Archive, LogOut, MoreHorizontal, Pencil } from 'lucide-react'
 import { useNavigate } from 'react-router'
 import { useRef, useState } from 'react'
 import { useArchiveChannel, useJoinChannel, useLeaveChannel, useRestoreChannel } from '@/api/chat'
-import { useProjectSummaries } from '@/api/projects'
+import { useArchivedProjects, useProjectSummaries } from '@/api/projects'
 import type { Channel } from '@/api/types'
 import { ConfirmDeleteSheet } from '@/components/ConfirmDeleteSheet'
 import { Button } from '@/components/ui/Button'
@@ -18,10 +18,13 @@ import { menuItemClass } from '@/pages/chat/MessageActions'
 export function useCanManageChannel(channel: Channel): boolean {
   const { persona } = useRole()
   const projects = useProjectSummaries(channel.workspaceId)
+  // An archived project's channel is archived with it, and the list leaves that project out: look there too.
+  const archivedProjects = useArchivedProjects(channel.workspaceId, isArchived(channel))
+  const known = projects.data != null && (!isArchived(channel) || archivedProjects.data != null)
   return (
     channel.kind === 'channel' &&
-    projects.data != null &&
-    !projects.data.some((p) => p.channelId === channel.id) &&
+    known &&
+    ![...(projects.data ?? []), ...(archivedProjects.data ?? [])].some((p) => p.channelId === channel.id) &&
     (persona.role === 'admin' || channel.memberIds.includes(persona.id))
   )
 }

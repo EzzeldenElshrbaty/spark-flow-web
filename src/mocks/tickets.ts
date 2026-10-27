@@ -16,7 +16,7 @@ const byColumnThenRank = (order: string[]) => (a: Ticket, b: Ticket) => {
 
 const ticketNumber = (t: Ticket) => Number(t.key.split('-')[1])
 
-import { findProject } from './projects'
+import { findProject, openProject } from './projects'
 import { logActivity, logTaskUpdate } from './activity'
 import { postTaskEvents } from './taskEvents'
 
@@ -90,7 +90,7 @@ export function tasksApi(db: MockDb, hub: MockHub, now: () => Date): Api['tasks'
     await delay()
     const { ticket, stopped } = await db.update((data) => {
       const ticket = findTicket(data, key)
-      requireCan(data, 'task.manage', findProject(data, ticket.projectId))
+      requireCan(data, 'task.manage', openProject(data, ticket.projectId))
       const at = now()
       const stopped: string[] = []
       if (archive) {
@@ -114,7 +114,7 @@ export function tasksApi(db: MockDb, hub: MockHub, now: () => Date): Api['tasks'
     async create(input) {
       await delay()
       const before = await db.read()
-      const project = findProject(before, input.projectId)
+      const project = openProject(before, input.projectId)
       requireCan(before, 'task.manage', project)
       checkTaskInput(before, input.projectId, input)
       // A task made from a chat message: that message is in this project's chat, and still there.
@@ -131,7 +131,7 @@ export function tasksApi(db: MockDb, hub: MockHub, now: () => Date): Api['tasks'
       const onlyStatus = Object.keys(clean).every((field) => EDITABLE_BY_ASSIGNEE.has(field))
       // Rights and values are checked on the data this write sees, not an earlier read: someone may have reassigned it.
       const updated = await updateTicket(db, hub, key, clean, now, (data, ticket) => {
-        const project = findProject(data, ticket.projectId)
+        const project = openProject(data, ticket.projectId)
         try {
           requireCan(data, 'task.manage', project)
         } catch (error) {
@@ -150,7 +150,7 @@ export function tasksApi(db: MockDb, hub: MockHub, now: () => Date): Api['tasks'
 /** Opens a ticket as the current user: next key for the project, last in its column; posts a Created card. */
 export async function createTicket(db: MockDb, hub: MockHub, input: NewTicket, clock: () => Date = () => new Date()): Promise<Ticket> {
   const { ticket, cards, source } = await db.update((data) => {
-    const project = findProject(data, input.projectId)
+    const project = openProject(data, input.projectId)
     const own = data.tickets.filter((t) => t.projectId === project.id)
     const number = data.counters[project.id] ?? Math.max(0, ...own.map(ticketNumber)) + 1
     const status = input.status || startColumn(project)

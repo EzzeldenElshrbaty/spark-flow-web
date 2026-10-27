@@ -3,7 +3,7 @@ import { postMessage } from './chat'
 import type { DbData, MockDb } from './db'
 import { checkUpload, withSavedBytes } from './files'
 import { delay } from './latency'
-import { findProject } from './projects'
+import { openProject } from './projects'
 import type { MockHub } from './realtime'
 import { ApiError } from '@/lib/apiError'
 import { badRequest, clone, currentUser, newId, notFound, requireCan } from './shared'
@@ -31,7 +31,7 @@ function ownComment(data: DbData, id: string): { comment: Comment; task: Ticket 
   if (!comment) throw notFound('Comment', id)
   const task = data.tickets.find((t) => t.id === comment.taskId)
   if (!task) throw notFound('Ticket', comment.taskId)
-  requireCan(data, 'collab.post', findProject(data, task.projectId))
+  requireCan(data, 'collab.post', openProject(data, task.projectId))
   if (comment.authorId !== currentUser(data).id) throw new ApiError({ title: 'Forbidden', status: 403, detail: 'You can only change your own comments.' })
   if (comment.deletedAt) throw badRequest("This comment can't be changed.")
   if (task.archivedAt) throw badRequest('This task is archived. Restore it first.')
@@ -66,7 +66,7 @@ export function commentsApi(db: MockDb, hub: MockHub, now: () => Date): Api['com
       const text = body.trim()
       const before = await db.read()
       const task = findTask(before, taskKey)
-      requireCan(before, 'collab.post', findProject(before, task.projectId))
+      requireCan(before, 'collab.post', openProject(before, task.projectId))
       if (task.archivedAt) throw badRequest('This task is archived. Restore it first.')
       // A bug can be just a screenshot; with no file, there must be words.
       if (!text && files.length === 0) throw badRequest('Write a comment first.')
@@ -78,7 +78,7 @@ export function commentsApi(db: MockDb, hub: MockHub, now: () => Date): Api['com
       const attachments: Attachment[] = files.map((f) => ({ id: newId('a'), name: f.name, mimeType: f.type || 'application/octet-stream', size: f.size, createdAt: at }))
       const { comment, card } = await withSavedBytes(db, files.map((f, i) => [attachments[i]!.id, f] as [string, Blob]), () =>
         db.update((data) => {
-          const project = findProject(data, findTask(data, taskKey).projectId)
+          const project = openProject(data, findTask(data, taskKey).projectId)
           const me = requireCan(data, 'collab.post', project)
           if (findTask(data, taskKey).archivedAt) throw badRequest('This task is archived. Restore it first.')
           const comment: Comment = { id: newId('cm'), taskId: task.id, projectId: project.id, authorId: me.id, kind, body: text, attachmentIds: attachments.map((a) => a.id), createdAt: at }

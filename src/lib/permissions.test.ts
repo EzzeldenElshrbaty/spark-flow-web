@@ -14,6 +14,18 @@ describe('can (spec §4.3)', () => {
     for (const action of all) expect(canWith(action, { ...as('admin', 'u-a'), project: other }), action).toBe(true)
   })
 
+  it('nothing on an archived project can be changed, even by Admins', () => {
+    const archived = { ...project, archivedAt: '2026-10-01T00:00:00.000Z' }
+    for (const action of ['project.edit', 'phase.manage', 'task.manage', 'task.updateOwnStatus', 'time.logOn', 'collab.post'] as const)
+      for (const who of [as('admin', 'u-a'), as('pm', 'u-pm')]) expect(canWith(action, { ...who, project: archived, taskAssigneeId: 'u-pm' }), `${who.role} ${action}`).toBe(false)
+    expect(can('project.archive', as('admin', 'u-a'))).toBe(true)
+  })
+
+  it('project.archive is Admin only', () => {
+    expect(can('project.archive', as('admin', 'u-a'))).toBe(true)
+    for (const role of ['sales', 'pm', 'member'] as const) expect(can('project.archive', as(role, 'u-pm')), role).toBe(false)
+  })
+
   it('only admin sees rates, cost, the Time & cost page and the database', () => {
     for (const role of ['sales', 'pm', 'member'] as const)
       for (const action of ['rates.view', 'cost.view', 'timeCost.view', 'database.manage'] as const)

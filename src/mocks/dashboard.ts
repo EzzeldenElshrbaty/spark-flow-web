@@ -13,7 +13,8 @@ const WEEK = 7 * 24 * HOUR
 function inScope(data: DbData, workspaceId: string) {
   if (!data.workspaces.some((w) => w.id === workspaceId)) throw notFound('Workspace', workspaceId)
   const me = requireCan(data, 'dashboard.view')
-  const all = data.projects.filter((p) => p.workspaceId === workspaceId)
+  // Archived projects are out of the dashboard (their time stays in the Time & cost report).
+  const all = data.projects.filter((p) => p.workspaceId === workspaceId && !p.archivedAt)
   return { me, projects: me.role === 'admin' || me.role === 'sales' ? all : all.filter((p) => p.managerId === me.id) }
 }
 
