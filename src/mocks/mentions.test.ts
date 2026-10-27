@@ -158,3 +158,16 @@ describe('read state reaches other tabs', () => {
     ])
   })
 })
+
+describe('@all in a project channel follows the project', () => {
+  it('@all in a project channel reaches people added later, not people removed', async () => {
+    await api.projects.update('p-nex', { memberIds: ['u-2', 'u-3', 'u-6', 'u-8'] }) // Tarek in, Salma out
+    await as('u-2')
+    const sent = await api.chat.send('c-p-nex', 'Standup in 5 @all')
+    await as('u-8')
+    expect((await api.mentions.mine()).some((m) => m.id === sent.id)).toBe(true)
+    await as('u-5')
+    expect((await api.mentions.mine()).some((m) => m.id === sent.id)).toBe(false)
+  })
+})
+

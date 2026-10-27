@@ -6,6 +6,8 @@ import { delay } from './latency'
 import type { MockHub } from './realtime'
 import { logActivity, statusChange } from './activity'
 import { badRequest, clone, currentUser, isDate, newId, notFound, pickPatch, requireCan } from './shared'
+import { CHANNEL_NAME } from '@/lib/channelForm'
+import { projectPeopleIds } from '@/lib/projectPeople'
 
 const KEY = /^[A-Z]{2,5}$/
 
@@ -65,6 +67,35 @@ function splitPhases(projectId: string, names: string[], startDate: string, dueD
 const slug = (name: string) =>
   name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'project'
 
+const NAME_MAX = 40 // CHANNEL_NAME allows 40 characters
+
+/** `text` cut to `max` characters, without a hyphen left at the end. */
+const cut = (text: string, max: number) => text.slice(0, max).replace(/-+$/, '')
+
+/**
+ * A project channel's name: the project name's slug, or `slug-2`, `slug-3`… when another channel in the workspace has
+ * it. Always a valid channel name (CHANNEL_NAME).
+ */
+export function channelNameFor(data: DbData, workspaceId: string, projectName: string, exceptChannelId?: string): string {
+  const base = cut(slug(projectName), NAME_MAX)
+  const taken = (name: string) => data.channels.some((c) => c.workspaceId === workspaceId && c.id !== exceptChannelId && c.name === name)
+  let name = base
+  for (let n = 2; taken(name); n++) name = `${cut(base, NAME_MAX - String(n).length - 1)}-${n}`
+  if (!CHANNEL_NAME.test(name)) throw new Error(`Bad channel name ${name}`)
+  return name
+}
+
+/** Keeps a project's channel in step with it: the name from the project's name, the members its people. */
+export function syncProjectChannel(data: DbData, project: Project): boolean {
+  const channel = data.channels.find((c) => c.id === project.channelId)
+  if (!channel) return false
+  const name = channelNameFor(data, project.workspaceId, project.name, channel.id)
+  const memberIds = [...projectPeopleIds(project, data.users)]
+  const changed = channel.name !== name || [...channel.memberIds].sort().join() !== [...memberIds].sort().join()
+  Object.assign(channel, { name, memberIds })
+  return changed
+}
+
 /**
  * History lines for a board change: each renamed or retyped column, and each column that moved. A column moved when
  * it isn't in the longest run that kept its old order, so dragging one column is one line, not one per neighbour.
@@ -117,7 +148,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
       async create(input) {
         await delay()
         return write((p) => p.id, (data) => {
-            const me = requireCan(data, 'project.create')
+            requireCan(data, 'project.create')
             if (!data.workspaces.some((w) => w.id === input.workspaceId)) throw notFound('Workspace', input.workspaceId)
             const name = input.name.trim()
             if (!name) throw badRequest('Give the project a name.')
@@ -129,19 +160,20 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
 
             const id = freeId(`p-${input.key.toLowerCase()}`, data.projects, 'p')
             const channelId = freeId(`c-p-${input.key.toLowerCase()}`, data.channels, 'c')
-            const teamMembers = data.teams.filter((t) => input.teamIds.includes(t.id)).flatMap((t) => t.memberIds)
             const project: Project = { ...input, id, name, status: 'planned', channelId, logoFileId: null }
             data.projects.push(project)
             data.channels.push({
               id: channelId,
               workspaceId: input.workspaceId,
               kind: 'channel',
-              name: slug(name),
+              name: '',
               topic: `${name} project chat.`,
-              memberIds: [...new Set([me.id, input.managerId, ...input.memberIds, ...teamMembers])],
+              memberIds: [],
               isPrivate: false,
               lastMessageAt: null,
             })
+            // Its name and people, worked out the same way every later edit keeps them.
+            syncProjectChannel(data, project)
             data.phases.push(...splitPhases(id, input.methodology === 'waterfall' ? WATERFALL : ['Build'], input.startDate, input.dueDate))
             data.counters[id] = 101
             return project
@@ -149,7 +181,8 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
       },
       async update(id, patch) {
         await delay()
-        return write((p) => p.id, (data) => {
+        let channelChanged = false
+        const saved = await write<Project>((p) => p.id, (data) => {
             const project = findProject(data, id)
             requireCan(data, 'project.edit', project)
             const next = { ...project, ...pickPatch(patch, PROJECT_FIELDS) } as Project
@@ -163,9 +196,12 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
             checkDates(next.startDate, next.dueDate)
             const changed = JSON.stringify({ ...project, ...next }) !== JSON.stringify(project)
             Object.assign(project, next)
+            channelChanged = syncProjectChannel(data, project)
             if (changed) logActivity(data, { projectId: project.id, taskKey: null, kind: 'project.changed', changes: [] }, now().toISOString())
             return project
           })
+        if (channelChanged) hub.publish({ type: 'channelChanged', channelId: saved.channelId })
+        return saved
       },
       async addColumn(projectId, input) {
         await delay()

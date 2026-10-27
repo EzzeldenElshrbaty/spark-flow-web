@@ -7,6 +7,8 @@ import { latency } from './latency'
 import { createMockHub, type MockHub } from './realtime'
 import { seed } from './seed'
 import { createMemoryStore } from './store'
+import { CHANNEL_NAME } from '@/lib/channelForm'
+import { projectPeopleIds } from '@/lib/projectPeople'
 
 let db: MockDb
 let api: Api
@@ -37,7 +39,7 @@ describe('projects', () => {
     expect(phases[0].startDate).toBe(created.startDate)
     expect(phases.at(-1)!.dueDate).toBe(created.dueDate)
     const channel = await api.chat.channel(created.channelId)
-    expect(channel.memberIds.sort()).toEqual(['u-4', 'u-5', 'u-8', 'u-9'].sort()) // manager, member, QA team, and Sales who created it
+    expect(channel.memberIds.sort()).toEqual(['u-4', 'u-5', 'u-8'].sort()) // manager, member and QA team; not Sales, who only created it
     const data = await db.read()
     expect(data.counters[created.id]).toBe(101)
   })
@@ -256,6 +258,52 @@ describe('project, phase and deliverable writes are checked', () => {
     await expect(api.deliverables.update('d-nex-1', { projectId: 'p-mob' } as never)).rejects.toMatchObject(unknown)
     await expect(api.deliverables.update('d-nex-1', { phaseId: 'ph-mob-analysis' })).rejects.toMatchObject({ status: 400, detail: 'That phase belongs to another project.' })
     await expect(api.deliverables.update('d-nex-1', { doneAt: 'x' })).rejects.toMatchObject({ status: 400, detail: 'Pick a done date.' })
+  })
+})
+
+describe('the project channel follows the project', () => {
+  const channelOf = async (projectId: string) => {
+    const data = await db.read()
+    return data.channels.find((c) => c.id === data.projects.find((p) => p.id === projectId)!.channelId)!
+  }
+  it('renaming the project renames its channel', async () => {
+    await api.projects.update('p-nex', { name: 'Nexus Two' })
+    expect((await channelOf('p-nex')).name).toBe('nexus-two')
+  })
+  it('a name taken by another channel gets a number', async () => {
+    await api.projects.update('p-nex', { name: 'General' })
+    expect((await channelOf('p-nex')).name).toBe('general-2')
+    await api.projects.update('p-nex', { name: 'A very long project name that goes on and on past forty letters' })
+    expect((await channelOf('p-nex')).name).toMatch(CHANNEL_NAME)
+    const a = await api.projects.create(newProject({ name: 'Sela', key: 'AAA' }))
+    const b = await api.projects.create(newProject({ name: 'Sela', key: 'BBB' }))
+    const [ca, cb] = [await channelOf(a.id), await channelOf(b.id)]
+    expect(ca.name).toMatch(/^sela/)
+    expect(cb.name).toMatch(/^sela/)
+    expect(ca.name).not.toBe(cb.name)
+  })
+  it('people added or removed are the channel members', async () => {
+    await api.projects.update('p-nex', { memberIds: ['u-2', 'u-3', 'u-6', 'u-8'] }) // Tarek in, Salma (a member, on no NEX team) out
+    const data = await db.read()
+    const people = projectPeopleIds(data.projects.find((p) => p.id === 'p-nex')!, data.users)
+    expect(new Set((await channelOf('p-nex')).memberIds)).toEqual(people)
+    expect(people.has('u-8')).toBe(true)
+    expect(people.has('u-5')).toBe(false)
+  })
+  it('Sales renames a project and its channel follows', async () => {
+    await api.users.viewAs('u-9')
+    await api.projects.update('p-nex', { name: 'Nexus Sales' })
+    expect((await channelOf('p-nex')).name).toBe('nexus-sales')
+  })
+  it("a new project's channel holds its people only", async () => {
+    const created = await api.projects.create(newProject({ key: 'XYZ' })) // as Youssef (admin), who isn't on it
+    expect((await channelOf(created.id)).memberIds).not.toContain('u-1')
+  })
+  it('a project change publishes channelChanged for its channel', async () => {
+    const events: RealtimeEvent[] = []
+    hub.subscribe((e) => events.push(e))
+    await api.projects.update('p-nex', { name: 'Nexus Three' })
+    expect(events).toContainEqual({ type: 'channelChanged', channelId: 'c-p-nex' })
   })
 })
 
