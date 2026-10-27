@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
-import { useExportData, useReloadSeed, useResetDemo } from '@/api/db'
+import { useExportData, useImportData, useResetDemo } from '@/api/db'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { DeleteDialog } from '@/components/ui/DeleteDialog'
@@ -44,10 +44,23 @@ export function DatabasePage() {
   const navigate = useNavigate()
   const forgetPlaces = useUiStore((state) => state.forgetPlaces)
   const exportData = useExportData()
-  const reloadSeed = useReloadSeed()
+  const importData = useImportData()
   const reset = useResetDemo()
-  // Both wipe this browser's data, so both ask the person to type a word first.
-  const [confirming, setConfirming] = useState<'reload' | 'reset' | null>(null)
+  // Both replace this browser's data, so both ask the person to type a word first.
+  const [confirming, setConfirming] = useState<'import' | 'reset' | null>(null)
+  // The export picked for Import, read and parsed; a file that isn't JSON is said here, before any confirm.
+  const [bundle, setBundle] = useState<unknown>(null)
+  const [pickError, setPickError] = useState<string | null>(null)
+  const pick = async (file: File | undefined) => {
+    if (!file) return
+    setPickError(null)
+    try {
+      setBundle(JSON.parse(await file.text()))
+      setConfirming('import')
+    } catch {
+      setPickError("That file isn't a Spark Flow export.")
+    }
+  }
 
   // Everything on screen was the old data, and the places last visited may be gone.
   const startOver = () => {
@@ -103,10 +116,20 @@ export function DatabasePage() {
           {exportData.isError && <p role="alert" className={errorText}>The export didn't work. Try again.</p>}
         </Section>
 
-        <Section title="Reload seed data" about="Replaces every record with the sample company. Uploaded files are deleted too.">
-          <Button variant="secondary" className="mt-4" onClick={() => setConfirming('reload')}>
-            Reload seed data
-          </Button>
+        <Section title="Import data" about="Replaces every record with an export file (from Export data). Uploaded files are deleted.">
+          <label className="mt-4 inline-flex cursor-pointer items-center rounded-lg bg-surface px-3 py-2 text-sm font-medium text-fg ring-1 ring-line hover:bg-surface-sunken">
+            Import data
+            <input
+              type="file"
+              accept=".json,application/json"
+              className="sr-only"
+              onChange={(e) => {
+                void pick(e.target.files?.[0])
+                e.target.value = ''
+              }}
+            />
+          </label>
+          {pickError && <p role="alert" className={errorText}>{pickError}</p>}
         </Section>
 
         <Section title="Reset" about="Deletes everything in this browser, then loads the sample company again.">
@@ -116,20 +139,20 @@ export function DatabasePage() {
         </Section>
       </div>
 
-      {confirming === 'reload' && (
+      {confirming === 'import' && (
         <DeleteDialog
-          title="Reload seed data"
-          description="Every project, task, message and time entry in this browser is replaced by the sample company."
-          confirmText="reload"
-          removes={['All records in this browser', 'Every uploaded file']}
+          title="Import data"
+          description="Every project, task, message and time entry in this browser is replaced by the file's."
+          confirmText="import"
+          removes={['All records in this browser', 'Every uploaded file', 'Your saved places']}
           onDelete={async () => {
-            await reloadSeed.mutateAsync()
+            await importData.mutateAsync(bundle)
             setConfirming(null)
             startOver()
           }}
           onClose={() => setConfirming(null)}
-          actionLabel="Reload seed data"
-          pendingLabel="Reloading…"
+          actionLabel="Import data"
+          pendingLabel="Importing…"
         />
       )}
 

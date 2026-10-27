@@ -17,10 +17,11 @@ export function dbApi(db: MockDb, hub: MockHub): Api['db'] {
       await allowed()
       return db.exportAll()
     },
-    async reloadSeed() {
+    /** Replaces everything with an export (this or an older version); a file that isn't one writes nothing. */
+    async import(bundle) {
       await delay()
       await allowed()
-      await db.reset()
+      await db.importAll(bundle)
       hub.publish({ type: 'dataReset' })
     },
     async reset() {

@@ -176,7 +176,7 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
     // The demo data lives in the browser's mock database; the real backend has none of these.
     db: {
       export: () => mockOnly('Exporting demo data'),
-      reloadSeed: () => mockOnly('Reloading demo data'),
+      import: () => mockOnly('Importing demo data'),
       reset: () => mockOnly('Resetting demo data'),
     },
   }

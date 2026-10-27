@@ -6,8 +6,8 @@ export function useExportData() {
   return useMutation({ mutationFn: () => api.db.export() })
 }
 
-export function useReloadSeed() {
-  return useMutation({ mutationFn: () => api.db.reloadSeed() })
+export function useImportData() {
+  return useMutation({ mutationFn: (bundle: unknown) => api.db.import(bundle) })
 }
 
 export function useResetDemo() {

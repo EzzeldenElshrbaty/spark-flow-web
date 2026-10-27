@@ -373,5 +373,5 @@ export interface Api {
   /** Hourly cost per person: Admin only (spec §4.3). */
   rates: { list(): Promise<Rate[]>; update(userId: string, hourlyCost: number): Promise<Rate> }
   /** The Database page: mock only, hidden when backendOn. */
-  db: { export(): Promise<ExportBundle>; reloadSeed(): Promise<void>; reset(): Promise<void> }
+  db: { export(): Promise<ExportBundle>; import(bundle: unknown): Promise<void>; reset(): Promise<void> }
 }
