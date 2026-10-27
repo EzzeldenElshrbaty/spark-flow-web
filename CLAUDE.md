@@ -52,3 +52,16 @@ Spark Flow is a sister product of **Spark CRM** (Spark Systems). The two apps mu
 - Same theme storage key style (`spark-flow.theme`) and same Light/Dark choice; if both apps share sign-in later, the theme is saved on the account.
 - Same roles vocabulary and the same tone of voice.
 - Cross-links between the apps should feel like moving between sections of one app.
+
+## Flow chat redesign (`docs/flow-chat/`)
+
+The approved chat redesign (`docs/flow-chat/FLOW_CHAT_REDESIGN.md` + `design/`) overrides the rules above **inside the shell and chat only**:
+
+- **Scope**: its tokens live in `src/styles/flow-tokens.css`, scoped to the `.sf` class (sidebar, top bar, chat pages, and the portals of `sf` primitives). Utilities are prefixed `sf-` (`bg-sf-surface`, `text-sf-text-muted`, `rounded-sf-md`…). Other modules keep the tokens above.
+- **Font**: Readex Pro (self-hosted, `@fontsource-variable/readex-pro`), weights 300–600, never 700, inside `.sf`.
+- **Icons**: Tabler through `src/components/sf/Icon.tsx` (stroke fixed at 1.5; 20 default, 18 dense rows, 16 chips). lucide stays in other modules.
+- **Primitives**: `src/components/sf/*` (Button, IconButton, Avatar, Badge, Tag, Kbd, Tooltip, Menu, Modal, Toast, Toggle, Checkbox, TokenInput). Chat uses these, not `components/ui/*`. Toast is only for Undo after a delete; all other feedback rules still hold.
+- **Names**: Call, Page, Task list, Automation, Saved, Create task.
+- **Gallery**: `/dev/ui` (prototype build only) shows every primitive state in both themes; component tests are `*.test.tsx` in jsdom.
+- **Feature flag**: sidebar sections whose data lands in a later phase hide behind `chatRedesign` in `src/lib/features.ts`.
+- Don't build anything marked OPEN in the spec's section 13.

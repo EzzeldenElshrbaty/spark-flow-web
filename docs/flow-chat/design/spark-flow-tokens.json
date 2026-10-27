@@ -1,0 +1,603 @@
+{
+ "name": "Spark Flow",
+ "version": 1,
+ "color": {
+  "themes": [
+   {
+    "id": "light",
+    "name": "Light"
+   },
+   {
+    "id": "dark",
+    "name": "Dark"
+   }
+  ],
+  "tokens": [
+   {
+    "name": "red-600",
+    "value": "#b72427",
+    "usage": "Spark Red 600. Primary fills (buttons, badges, the active tab rule) in both themes, and red text on light surfaces. Never text on dark surfaces (3.1:1)."
+   },
+   {
+    "name": "red-400",
+    "value": "#f2453d",
+    "usage": "Red 400. Red text, icons and focus rings on dark surfaces (5.1:1 on ink-900, 4.6:1 on ink-800)."
+   },
+   {
+    "name": "red-700",
+    "value": "#931c1f",
+    "usage": "Red 700. Hover and pressed state of red-600 fills."
+   },
+   {
+    "name": "red-50",
+    "value": "#fbeaea",
+    "usage": "Red 50. Tinted blocks on light surfaces; behind red-600 text (5.5:1)."
+   },
+   {
+    "name": "ink-950",
+    "value": "#0a0a0b",
+    "usage": "Ink 950 (Black). Primary text on light; app frame and sidebar in the dark theme."
+   },
+   {
+    "name": "ink-900",
+    "value": "#121214",
+    "usage": "Ink 900. App frame and sidebar in the light theme; main pane in the dark theme."
+   },
+   {
+    "name": "ink-800",
+    "value": "#1c1c1f",
+    "usage": "Ink 800. Sidebar hover; raised surfaces (menus, modals) in the dark theme."
+   },
+   {
+    "name": "ink-700",
+    "value": "#2a2a2e",
+    "usage": "Ink 700. Active sidebar item; borders in the dark theme."
+   },
+   {
+    "name": "ink-600",
+    "value": "#4a4a51",
+    "usage": "Ink 600. Secondary text on light surfaces, including ink-100 (7.5:1)."
+   },
+   {
+    "name": "ink-500",
+    "value": "#6e6e76",
+    "usage": "Ink 500. Muted text on white and ink-50 only (fails on ink-100); strong borders in the dark theme."
+   },
+   {
+    "name": "ink-400",
+    "value": "#8a8a93",
+    "usage": "Ink 400. Muted text on dark; input borders on light (3.4:1 on white)."
+   },
+   {
+    "name": "ink-300",
+    "value": "#b4b4bb",
+    "usage": "Ink 300. Sidebar item text; secondary text in the dark theme."
+   },
+   {
+    "name": "ink-200",
+    "value": "#d4d4d9",
+    "usage": "Ink 200. Hairlines and dividers on light surfaces."
+   },
+   {
+    "name": "ink-100",
+    "value": "#ededef",
+    "usage": "Ink 100. Primary text in the dark theme; neutral chips on light."
+   },
+   {
+    "name": "ink-50",
+    "value": "#f7f7f8",
+    "usage": "Ink 50. Row hover and sunken areas on light surfaces."
+   },
+   {
+    "name": "white",
+    "value": "#ffffff",
+    "usage": "White. Main pane on light; text on red-600 and on the dark sidebar's active item."
+   },
+   {
+    "name": "success",
+    "value": "#15803d",
+    "usage": "Success. Presence (active) dot and success toasts; white text on it is 5.0:1. Always paired with a word or icon."
+   },
+   {
+    "name": "warning",
+    "value": "#f59e0b",
+    "usage": "Warning. Fills only, with on-warning text (6.6:1). Never warning-coloured text."
+   },
+   {
+    "name": "on-warning",
+    "value": "#3d2600",
+    "usage": "Text and icons on a warning fill."
+   },
+   {
+    "name": "error",
+    "value": "{red-600}",
+    "usage": "Error. Same as Spark Red; always with an alert icon and a plain-language message."
+   },
+   {
+    "name": "app-frame",
+    "value": {
+     "light": "{ink-900}",
+     "dark": "{ink-950}"
+    },
+    "usage": "The dark frame behind the sidebar. The main pane sits on it as a rounded card inset by space-2."
+   },
+   {
+    "name": "sidebar-hover",
+    "value": "{ink-800}",
+    "usage": "Hovered sidebar items."
+   },
+   {
+    "name": "sidebar-active",
+    "value": "{ink-700}",
+    "usage": "The current channel, DM or page in the sidebar."
+   },
+   {
+    "name": "sidebar-text",
+    "value": "{ink-300}",
+    "usage": "Read channels and DMs, Work and Manage items (9.1:1 on app-frame light, 9.6:1 dark, 8.3:1 on sidebar-hover)."
+   },
+   {
+    "name": "sidebar-text-strong",
+    "value": "{white}",
+    "usage": "Unread channel names (with weight 600) and the active item's label."
+   },
+   {
+    "name": "sidebar-text-muted",
+    "value": "{ink-400}",
+    "usage": "Section labels (CHANNELS), muted channels (5.5:1 on app-frame)."
+   },
+   {
+    "name": "sidebar-accent",
+    "value": "{red-400}",
+    "usage": "The active item's icon and the starred icon in the sidebar (3.9:1 on sidebar-active)."
+   },
+   {
+    "name": "surface",
+    "value": {
+     "light": "{white}",
+     "dark": "{ink-900}"
+    },
+    "usage": "Main pane, thread panel and composer background."
+   },
+   {
+    "name": "surface-hover",
+    "value": {
+     "light": "{ink-50}",
+     "dark": "{ink-800}"
+    },
+    "usage": "Hovered message rows, menu items and list rows."
+   },
+   {
+    "name": "surface-raised",
+    "value": {
+     "light": "{white}",
+     "dark": "{ink-800}"
+    },
+    "usage": "Menus, popovers, the message toolbar, modals and toasts. Pair with a shadow token."
+   },
+   {
+    "name": "surface-sunken",
+    "value": {
+     "light": "{ink-50}",
+     "dark": "{ink-950}"
+    },
+    "usage": "Code blocks, file cards, the composer's attachment tray and search inputs."
+   },
+   {
+    "name": "surface-selected",
+    "value": {
+     "light": "#fef3dc",
+     "dark": "#2a2110"
+    },
+    "usage": "The message whose thread is open, or that a link or search result jumped to. Fades out 2s after a jump. Product addition (amber tint of warning)."
+   },
+   {
+    "name": "surface-mention",
+    "value": {
+     "light": "{red-50}",
+     "dark": "#2b1415"
+    },
+    "usage": "Rows that mention the current user, and the current user's own reaction chips. Dark value is a product addition (red-400 text on it is 4.7:1)."
+   },
+   {
+    "name": "line",
+    "value": {
+     "light": "{ink-200}",
+     "dark": "{ink-700}"
+    },
+    "usage": "Hairlines: header and tab bottoms, dividers, card and menu borders."
+   },
+   {
+    "name": "line-strong",
+    "value": {
+     "light": "{ink-400}",
+     "dark": "{ink-500}"
+    },
+    "usage": "Borders of inputs and the composer, which identify a control (3.4:1 light, 3.7:1 dark)."
+   },
+   {
+    "name": "text",
+    "value": {
+     "light": "{ink-950}",
+     "dark": "{ink-100}"
+    },
+    "usage": "Message bodies, author names, headings on surface, surface-hover, surface-selected and surface-mention."
+   },
+   {
+    "name": "text-secondary",
+    "value": {
+     "light": "{ink-600}",
+     "dark": "{ink-300}"
+    },
+    "usage": "Channel topic, descriptions, menu shortcuts, system messages (7.5:1 or more on every surface)."
+   },
+   {
+    "name": "text-muted",
+    "value": {
+     "light": "{ink-500}",
+     "dark": "{ink-400}"
+    },
+    "usage": "Timestamps, placeholders, counts. On surface and surface-hover only (4.7:1 light on hover, 5.0:1 dark on raised)."
+   },
+   {
+    "name": "accent",
+    "value": {
+     "light": "{red-600}",
+     "dark": "{red-400}"
+    },
+    "usage": "Red as text or an icon: links, 'N replies', mention pills, destructive menu items."
+   },
+   {
+    "name": "accent-fill",
+    "value": "{red-600}",
+    "usage": "Red as a fill: the primary button, the enabled Send button, mention badges, the active tab rule."
+   },
+   {
+    "name": "accent-fill-hover",
+    "value": "{red-700}",
+    "usage": "Hover and pressed state of accent-fill."
+   },
+   {
+    "name": "on-accent",
+    "value": "{white}",
+    "usage": "Text and icons on accent-fill (6.4:1)."
+   },
+   {
+    "name": "presence-active",
+    "value": "{success}",
+    "usage": "The 'active' presence dot (3.7:1 on the sidebar, 5.0:1 on white)."
+   },
+   {
+    "name": "focus",
+    "value": {
+     "light": "{red-600}",
+     "dark": "{red-400}"
+    },
+    "usage": "Keyboard focus ring colour; used by the focus-ring shadow."
+   },
+   {
+    "name": "overlay",
+    "value": {
+     "light": "rgba(10, 10, 11, 0.5)",
+     "dark": "rgba(0, 0, 0, 0.64)"
+    },
+    "usage": "Scrim behind modals and the mobile drawer."
+   }
+  ]
+ },
+ "type": {
+  "fonts": [],
+  "families": {
+   "sans": "\"Readex Pro\", system-ui, -apple-system, \"Segoe UI\", sans-serif",
+   "mono": "ui-monospace, \"SF Mono\", Menlo, Consolas, monospace"
+  },
+  "groups": [
+   {
+    "name": "App",
+    "family": "sans",
+    "styles": [
+     {
+      "name": "display",
+      "fontSize": "28px",
+      "lineHeight": "36px",
+      "fontWeight": 600,
+      "letterSpacing": "-0.01em",
+      "sample": "# backend",
+      "usage": "Channel intro heading at the beginning of history. One per view."
+     },
+     {
+      "name": "title",
+      "fontSize": "20px",
+      "lineHeight": "28px",
+      "fontWeight": 600,
+      "sample": "Add people to #backend",
+      "usage": "Modal and full-page titles (Search, Activity)."
+     },
+     {
+      "name": "heading",
+      "fontSize": "16px",
+      "lineHeight": "24px",
+      "fontWeight": 600,
+      "sample": "# backend",
+      "usage": "Channel name in the header, thread panel title, section headings in panels."
+     },
+     {
+      "name": "body",
+      "fontSize": "14px",
+      "lineHeight": "22px",
+      "fontWeight": 400,
+      "sample": "NEX-104 is on staging. p95 fell from 1.8 s to 62 ms.",
+      "usage": "Message bodies and long text. Readex runs wide: 14px reads like Slack's 15px."
+     },
+     {
+      "name": "body-strong",
+      "fontSize": "14px",
+      "lineHeight": "22px",
+      "fontWeight": 600,
+      "sample": "Nour El-Sayed",
+      "usage": "Author names; unread channel names in the sidebar; emphasis in bodies."
+     },
+     {
+      "name": "ui",
+      "fontSize": "14px",
+      "lineHeight": "20px",
+      "fontWeight": 400,
+      "sample": "Copy link",
+      "usage": "Sidebar items, menu items, inputs, list rows."
+     },
+     {
+      "name": "ui-medium",
+      "fontSize": "14px",
+      "lineHeight": "20px",
+      "fontWeight": 500,
+      "sample": "Add people",
+      "usage": "Buttons, tabs, the selected item of a segmented control."
+     },
+     {
+      "name": "small",
+      "fontSize": "13px",
+      "lineHeight": "18px",
+      "fontWeight": 400,
+      "sample": "2 replies · Last reply 5 days ago",
+      "usage": "Thread summaries, file subtitles, helper text, the typing indicator."
+     },
+     {
+      "name": "meta",
+      "fontSize": "12px",
+      "lineHeight": "16px",
+      "fontWeight": 400,
+      "sample": "10:03 AM",
+      "usage": "Timestamps, counts in chips, captions. The minimum size."
+     },
+     {
+      "name": "label",
+      "fontSize": "12px",
+      "lineHeight": "16px",
+      "fontWeight": 500,
+      "letterSpacing": "0.12em",
+      "sample": "CHANNELS",
+      "usage": "Uppercase section labels (set text-transform: uppercase), echoing the SYSTEMS line of the logo. English only: never track Arabic."
+     }
+    ]
+   },
+   {
+    "name": "Arabic",
+    "family": "sans",
+    "styles": [
+     {
+      "name": "body-ar",
+      "fontSize": "14px",
+      "lineHeight": "26px",
+      "fontWeight": 400,
+      "sample": "تمت إضافة الفهرس على بيئة الاختبار.",
+      "usage": "Message bodies when dir=rtl or the text is Arabic (line height 1.8)."
+     },
+     {
+      "name": "heading-ar",
+      "fontSize": "16px",
+      "lineHeight": "22px",
+      "fontWeight": 600,
+      "sample": "قناة الخادم",
+      "usage": "Arabic headings (line height 1.3). No letter-spacing."
+     }
+    ]
+   },
+   {
+    "name": "Code",
+    "family": "mono",
+    "styles": [
+     {
+      "name": "code",
+      "fontSize": "13px",
+      "lineHeight": "20px",
+      "fontWeight": 400,
+      "sample": "WHERE channel_id = $1 AND created_at > $2",
+      "usage": "Inline code, code blocks, snippet previews, ticket keys (NEX-104)."
+     }
+    ]
+   }
+  ]
+ },
+ "spacing": {
+  "tokens": [
+   {
+    "name": "space-1",
+    "value": "4px",
+    "usage": "Icon-to-label gap inside chips; reaction chip vertical padding."
+   },
+   {
+    "name": "space-2",
+    "value": "8px",
+    "usage": "Gap between toolbar buttons; message row vertical padding; menu padding."
+   },
+   {
+    "name": "space-3",
+    "value": "12px",
+    "usage": "Avatar-to-text gap in a message; menu item horizontal padding."
+   },
+   {
+    "name": "space-4",
+    "value": "16px",
+    "usage": "Sidebar horizontal padding; card padding; composer inner padding."
+   },
+   {
+    "name": "space-6",
+    "value": "24px",
+    "usage": "Message list and header horizontal padding; modal padding."
+   },
+   {
+    "name": "space-8",
+    "value": "32px",
+    "usage": "Gap between sections in panels and modals."
+   },
+   {
+    "name": "space-12",
+    "value": "48px",
+    "usage": "Empty-state padding."
+   },
+   {
+    "name": "space-16",
+    "value": "64px",
+    "usage": "Outer padding of full-page empty states."
+   }
+  ]
+ },
+ "radius": {
+  "tokens": [
+   {
+    "name": "radius-sm",
+    "value": "4px",
+    "usage": "Inline code, kbd hints, small (20px) avatars, checkboxes."
+   },
+   {
+    "name": "radius-md",
+    "value": "6px",
+    "usage": "Buttons, inputs, icon buttons, menu items, sidebar items, 36px avatars, file cards."
+   },
+   {
+    "name": "radius-lg",
+    "value": "12px",
+    "usage": "The main pane card, composer, menus, popovers, modals, toasts, the message toolbar."
+   },
+   {
+    "name": "radius-full",
+    "value": "9999px",
+    "usage": "Presence dots, count badges, reaction chips, the date-divider pill."
+   }
+  ]
+ },
+ "shadow": {
+  "tokens": [
+   {
+    "name": "shadow-toolbar",
+    "value": {
+     "light": "0 1px 2px rgba(10, 10, 11, 0.08), 0 0 0 1px #d4d4d9",
+     "dark": "0 1px 2px rgba(0, 0, 0, 0.5), 0 0 0 1px #2a2a2e"
+    },
+    "usage": "The floating message toolbar and the date-divider pill."
+   },
+   {
+    "name": "shadow-menu",
+    "value": {
+     "light": "0 8px 24px rgba(10, 10, 11, 0.12), 0 0 0 1px #d4d4d9",
+     "dark": "0 8px 24px rgba(0, 0, 0, 0.56), 0 0 0 1px #2a2a2e"
+    },
+    "usage": "Menus, popovers, autocomplete, the emoji picker, toasts."
+   },
+   {
+    "name": "shadow-modal",
+    "value": {
+     "light": "0 24px 64px rgba(10, 10, 11, 0.24), 0 0 0 1px #d4d4d9",
+     "dark": "0 24px 64px rgba(0, 0, 0, 0.64), 0 0 0 1px #2a2a2e"
+    },
+    "usage": "Modals and the call window."
+   },
+   {
+    "name": "focus-ring",
+    "value": {
+     "light": "0 0 0 2px #ffffff, 0 0 0 4px #b72427",
+     "dark": "0 0 0 2px #121214, 0 0 0 4px #f2453d"
+    },
+    "usage": "Keyboard focus on every interactive element: a 2px gap in the surface colour, then a solid 2px red ring (6.4:1 light, 5.1:1 dark). On the sidebar use the dark value in both themes."
+   }
+  ]
+ },
+ "size": {
+  "tokens": [
+   {
+    "name": "size-avatar",
+    "value": "36px",
+    "usage": "Message avatars."
+   },
+   {
+    "name": "size-avatar-sm",
+    "value": "20px",
+    "usage": "Sidebar DMs, thread-summary facepiles, member chips."
+   },
+   {
+    "name": "size-control",
+    "value": "32px",
+    "usage": "Icon buttons, composer and toolbar buttons, sidebar item height (28px rows plus 4px gap)."
+   },
+   {
+    "name": "size-input",
+    "value": "36px",
+    "usage": "Buttons with labels, text inputs, the search box."
+   },
+   {
+    "name": "size-topbar",
+    "value": "56px",
+    "usage": "The top bar at the top of the main pane: sidebar toggle, search, notifications, profile."
+   },
+   {
+    "name": "size-header",
+    "value": "52px",
+    "usage": "Channel header row."
+   },
+   {
+    "name": "size-tabs",
+    "value": "40px",
+    "usage": "Channel tabs row."
+   },
+   {
+    "name": "size-sidebar",
+    "value": "260px",
+    "usage": "Default sidebar width; resizable 200–420px."
+   },
+   {
+    "name": "size-panel",
+    "value": "420px",
+    "usage": "Thread, file details and channel details panels; resizable 360–640px."
+   }
+  ]
+ },
+ "zIndex": {
+  "tokens": [
+   {
+    "name": "z-sticky",
+    "value": "10",
+    "usage": "Sticky date dividers and the jump pill."
+   },
+   {
+    "name": "z-toolbar",
+    "value": "20",
+    "usage": "The message hover toolbar."
+   },
+   {
+    "name": "z-menu",
+    "value": "1000",
+    "usage": "Menus, popovers, autocomplete, the emoji picker."
+   },
+   {
+    "name": "z-modal",
+    "value": "1100",
+    "usage": "Modals and their scrim."
+   },
+   {
+    "name": "z-toast",
+    "value": "1200",
+    "usage": "Toasts."
+   }
+  ]
+ }
+}
