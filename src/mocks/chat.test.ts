@@ -30,7 +30,7 @@ async function addMessages(channelId: string, count: number) {
   await db.update((d) => {
     for (let i = 0; i < count; i++) {
       d.messages.push({
-        id: `m-extra-${i}`, channelId, senderId: 'u-2', content: `extra ${i}`,
+        id: `m-extra-${i}`, channelId, seq: 1000 + i, senderId: 'u-2', content: `extra ${i}`,
         attachments: [], reactions: [], threadCount: 0, lastReplyAt: null, linkedTicketKeys: [], mentions: [], editedAt: null,
         createdAt: new Date(Date.UTC(2030, 0, 1, 0, 0, i)).toISOString(),
       })
@@ -85,7 +85,7 @@ describe('chat.messages', () => {
     await db.update((d) => {
       for (let i = 0; i < 75; i++) {
         d.messages.push({
-          id: `m-tie-${String(i).padStart(3, '0')}`, channelId: 'c-general', senderId: 'u-2', content: `tie ${i}`,
+          id: `m-tie-${String(i).padStart(3, '0')}`, channelId: 'c-general', seq: 1000 + i, senderId: 'u-2', content: `tie ${i}`,
           attachments: [], reactions: [], threadCount: 0, lastReplyAt: null, linkedTicketKeys: [], mentions: [], editedAt: null, createdAt: at,
         })
       }
@@ -121,14 +121,12 @@ describe('chat.channels and unreadCount', () => {
     expect(dms.filter((n) => n > 0)).toEqual([1])
   })
 
-  it('markRead saves the read time for that channel only', async () => {
-    const before = (await db.read()).reads['u-1']!
-    const t0 = new Date().toISOString()
+  it('markRead moves the marker for that channel only', async () => {
+    const before = (await db.read()).channelState['u-1']!
     await api.chat.markRead('c-frontend')
-    const reads = (await db.read()).reads['u-1']!
-    expect(reads['c-frontend'] >= t0).toBe(true) // set to the current time
-    expect(reads['c-frontend']).not.toBe(before['c-frontend'])
-    expect(reads['c-dm-2']).toBe(before['c-dm-2'])
+    const after = (await db.read()).channelState['u-1']!
+    expect(after['c-frontend'].lastReadSeq).toBe(before['c-frontend'].lastReadSeq + 3)
+    expect(after['c-dm-2']).toEqual(before['c-dm-2'])
   })
 
   it('markRead throws ApiError 404 for an unknown channel', async () => {
@@ -136,14 +134,14 @@ describe('chat.channels and unreadCount', () => {
   })
 
   it('own messages do not count as unread', async () => {
-    await db.update((d) => { d.reads['u-1'] = { ...d.reads['u-1'], 'c-backend': new Date(Date.now() - 3_600_000).toISOString() } }) // read an hour ago
+    await db.update((d) => { d.channelState['u-1']['c-backend'].lastReadSeq = d.messages.filter((m) => m.channelId === 'c-backend').length }) // read to the end
     expect((await api.chat.channel('c-backend')).unreadCount).toBe(0)
     await sendMessage(db, hub, { channelId: 'c-backend', content: 'mine' })
     expect((await api.chat.channel('c-backend')).unreadCount).toBe(0)
     // someone else's message after the read time does count
     await db.update((d) => {
       d.messages.push({
-        id: 'm-other', channelId: 'c-backend', senderId: 'u-2', content: 'theirs',
+        id: 'm-other', channelId: 'c-backend', seq: 999, senderId: 'u-2', content: 'theirs',
         attachments: [], reactions: [], threadCount: 0, lastReplyAt: null, linkedTicketKeys: [], mentions: [], editedAt: null,
         createdAt: new Date(Date.now() + 60_000).toISOString(),
       })
@@ -608,3 +606,84 @@ describe('archiving a channel twice', () => {
   })
 })
 
+
+describe('read state by seq (spec §7 ChannelMember, §8 read marker)', () => {
+  const seqs = async (channelId: string) => (await db.read()).messages.filter((m) => m.channelId === channelId).map((m) => m.seq)
+
+  it('every message has a seq, 1..n per channel in time order', async () => {
+    const data = await db.read()
+    for (const c of data.channels) {
+      const own = data.messages.filter((m) => m.channelId === c.id).sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1))
+      expect(own.map((m) => m.seq)).toEqual(own.map((_, i) => i + 1))
+    }
+  })
+
+  it('send gives the next seq in that channel only, and the channel reports it as lastSeq', async () => {
+    const before = await seqs('c-backend')
+    const other = await seqs('c-general')
+    const sent = await api.chat.send('c-backend', 'next')
+    expect(sent.seq).toBe(Math.max(...before) + 1)
+    expect(await seqs('c-general')).toEqual(other)
+    expect((await api.chat.channel('c-backend')).lastSeq).toBe(sent.seq)
+  })
+
+  it('sending the same client id twice stores one message and publishes once', async () => {
+    const first = await api.chat.send('c-backend', 'once', 'client-1')
+    events.length = 0
+    const again = await api.chat.send('c-backend', 'once', 'client-1')
+    expect(again).toEqual(first)
+    expect(first.clientId).toBe('client-1')
+    expect((await db.read()).messages.filter((m) => m.clientId === 'client-1')).toHaveLength(1)
+    expect(events).toEqual([])
+  })
+
+  it('the same client id from another person is a different message', async () => {
+    const mine = await api.chat.send('c-general', 'hi', 'client-2')
+    await api.users.viewAs('u-2')
+    const theirs = await api.chat.send('c-general', 'hi', 'client-2')
+    expect(theirs.id).not.toBe(mine.id)
+  })
+
+  it('unreadCount counts messages from others after my lastReadSeq', async () => {
+    const channel = await api.chat.channel('c-frontend')
+    expect(channel.unreadCount).toBe(3)
+    expect(channel.lastReadSeq).toBe(channel.lastSeq - 3)
+  })
+
+  it('markRead with a seq moves my marker there, publishes it, and never moves it back', async () => {
+    const { lastSeq } = await api.chat.channel('c-frontend')
+    events.length = 0
+    await api.chat.markRead('c-frontend', lastSeq - 1)
+    expect(await api.chat.channel('c-frontend')).toMatchObject({ lastReadSeq: lastSeq - 1, unreadCount: 1 })
+    expect(events).toEqual([{ type: 'readChanged', userId: 'u-1', channelId: 'c-frontend', seq: lastSeq - 1 }])
+    await api.chat.markRead('c-frontend', 1)
+    expect((await api.chat.channel('c-frontend')).lastReadSeq).toBe(lastSeq - 1)
+  })
+
+  it('markRead without a seq, or past the end, reads to the last message', async () => {
+    const { lastSeq } = await api.chat.channel('c-frontend')
+    await api.chat.markRead('c-frontend', lastSeq + 50)
+    expect((await api.chat.channel('c-frontend')).lastReadSeq).toBe(lastSeq)
+    await api.chat.send('c-frontend', 'more')
+    await api.chat.markRead('c-frontend')
+    expect((await api.chat.channel('c-frontend')).lastReadSeq).toBe(lastSeq + 1)
+  })
+
+  it('star and mute are mine alone and publish my state change', async () => {
+    events.length = 0
+    expect(await api.chat.setStarred('c-general', true)).toMatchObject({ starred: true, muted: false })
+    expect(await api.chat.setMuted('c-general', true)).toMatchObject({ starred: true, muted: true })
+    expect(events).toEqual([
+      { type: 'readChanged', userId: 'u-1', channelId: 'c-general' },
+      { type: 'readChanged', userId: 'u-1', channelId: 'c-general' },
+    ])
+    await api.users.viewAs('u-2')
+    expect(await api.chat.channel('c-general')).toMatchObject({ starred: false, muted: false })
+  })
+
+  it('star and mute of a private channel I am not in are refused', async () => {
+    await api.users.viewAs('u-3') // Mariam: not in #release-v2
+    await expect(api.chat.setStarred('c-release', true)).rejects.toMatchObject({ status: 403 })
+    await expect(api.chat.setMuted('c-release', true)).rejects.toMatchObject({ status: 403 })
+  })
+})

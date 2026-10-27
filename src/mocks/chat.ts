@@ -1,5 +1,5 @@
 import { can } from '@/lib/permissions'
-import type { Api, Attachment, Channel, ChatMessage, ChatTarget, StoredChannel, ThreadReply } from '@/api/types'
+import type { Api, Attachment, Channel, ChannelMemberState, ChatMessage, ChatTarget, StoredChannel, ThreadReply } from '@/api/types'
 import { channelFormErrors } from '@/lib/channelForm'
 import { REACTIONS } from '@/lib/reactions'
 import type { DbData, MockDb } from './db'
@@ -25,13 +25,27 @@ function decodeCursor(cursor: string): SortKey | null {
   return at < 0 ? null : { createdAt: cursor.slice(0, at), id: cursor.slice(at + 1) }
 }
 
-/** The current user's unread count: messages after their own read time that someone else sent, not deleted. */
+const freshState = (): ChannelMemberState => ({ lastReadSeq: 0, starred: false, muted: false, notifyLevel: 'all' })
+
+/** The current user's own state in a channel, created with the defaults when first needed. */
+function myState(data: DbData, channelId: string): ChannelMemberState {
+  const mine = (data.channelState[data.currentUserId] ??= {})
+  return (mine[channelId] ??= freshState())
+}
+
+/** The seq of a channel's newest message; 0 when it has none. */
+const lastSeqOf = (data: DbData, channelId: string) => data.messages.reduce((n, m) => (m.channelId === channelId && m.seq > n ? m.seq : n), 0)
+
+/**
+ * The channel as the current user sees it: their own state, and their unread count (messages past their read marker
+ * that someone else sent, not deleted).
+ */
 function withUnread(data: DbData, channel: StoredChannel): Channel {
-  const readAt = data.reads[data.currentUserId]?.[channel.id] ?? ''
+  const state = data.channelState[data.currentUserId]?.[channel.id] ?? freshState()
   const unreadCount = data.messages.filter(
-    (m) => m.channelId === channel.id && m.createdAt > readAt && m.senderId !== data.currentUserId && !m.deletedAt,
+    (m) => m.channelId === channel.id && m.seq > state.lastReadSeq && m.senderId !== data.currentUserId && !m.deletedAt,
   ).length
-  return { ...channel, unreadCount }
+  return { ...channel, ...state, lastSeq: lastSeqOf(data, channel.id), unreadCount }
 }
 
 function findChannel(data: DbData, id: string): StoredChannel {
@@ -162,6 +176,17 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
     return clone(channel)
   }
   const changed = (channelId: string, messageId: string) => hub.publish({ type: 'messageChanged', channelId, messageId })
+  /** Sets one of my own flags on a channel I can read; only I am told (my other tabs follow). */
+  const setMine = async (id: string, patch: Partial<Pick<ChannelMemberState, 'starred' | 'muted'>>) => {
+    await delay()
+    const result = await db.update((data) => {
+      const channel = readableChannel(data, id)
+      Object.assign(myState(data, id), patch)
+      return { channel: withUnread(data, channel), userId: data.currentUserId }
+    })
+    hub.publish({ type: 'readChanged', userId: result.userId, channelId: id })
+    return clone(result.channel)
+  }
   return {
     async openDm(workspaceId, userIds) {
       await delay()
@@ -279,14 +304,17 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       })
       changed(channelId, messageId)
     },
-    async send(channelId, content) {
+    async send(channelId, content, clientId) {
       await delay()
-      const message = await db.update((data) => {
+      const { message, repeat } = await db.update((data) => {
         const channel = findChannel(data, channelId)
-        checkCanPost(data, channel)
-        return postMessage(data, { channelId, content: checkText(content) })
+        const me = checkCanPost(data, channel)
+        // A retry of a send that did arrive gets the message it stored, not a second one (spec §8: writes are idempotent).
+        const stored = clientId ? data.messages.find((m) => m.channelId === channelId && m.senderId === me.id && m.clientId === clientId) : undefined
+        if (stored) return { message: stored, repeat: true }
+        return { message: postMessage(data, { channelId, content: checkText(content), clientId }), repeat: false }
       })
-      hub.publish({ type: 'messageReceived', message: clone(message) })
+      if (!repeat) hub.publish({ type: 'messageReceived', message: clone(message) })
       return clone(message)
     },
     async reply(messageId, content) {
@@ -335,21 +363,25 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       readableChannel(data, findMessage(data, messageId).channelId)
       return data.replies.filter((r) => r.messageId === messageId).sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1))
     },
-    async markRead(channelId) {
+    async markRead(channelId, seq) {
       await delay()
-      const userId = await db.update((data) => {
+      const result = await db.update((data) => {
         readableChannel(data, channelId)
-        data.reads[data.currentUserId] = { ...data.reads[data.currentUserId], [channelId]: new Date().toISOString() }
-        return data.currentUserId
+        const last = lastSeqOf(data, channelId)
+        const state = myState(data, channelId)
+        state.lastReadSeq = Math.max(state.lastReadSeq, Math.min(seq ?? last, last))
+        return { userId: data.currentUserId, seq: state.lastReadSeq }
       })
-      hub.publish({ type: 'readChanged', userId })
+      hub.publish({ type: 'readChanged', userId: result.userId, channelId, seq: result.seq })
     },
+    setStarred: (id, starred) => setMine(id, { starred }),
+    setMuted: (id, muted) => setMine(id, { muted }),
   }
 }
 
 // ── Mutations (not on Api until Phases 3–4) ───────────────────────────────
 
-export type SendMessageInput = { channelId: string; content: string; attachments?: Attachment[] }
+export type SendMessageInput = { channelId: string; content: string; attachments?: Attachment[]; clientId?: string }
 export type AddReplyInput = { messageId: string; content: string }
 
 /**
@@ -363,6 +395,8 @@ export function postMessage(data: DbData, input: SendMessageInput, extra: Partia
   const created: ChatMessage = {
     id: newId('m'),
     channelId: channel.id,
+    seq: lastSeqOf(data, channel.id) + 1,
+    ...(input.clientId ? { clientId: input.clientId } : {}),
     senderId: data.currentUserId,
     content: input.content,
     attachments: input.attachments ?? [],

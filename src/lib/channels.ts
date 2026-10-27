@@ -55,3 +55,12 @@ export function unreadMentions(items: MentionItem[] | undefined, workspaceId: st
   }
   return { total, byChannel }
 }
+
+/**
+ * How a sidebar row shows a channel (spec §5.1): bold while it has unread messages, with a count of my mentions (every
+ * unread message in a DM). A muted row is never bold and never has a count.
+ */
+export function sidebarRowState(channel: Channel, mentions: number): { bold: boolean; count: number; muted: boolean } {
+  if (channel.muted) return { bold: false, count: 0, muted: true }
+  return { bold: channel.unreadCount > 0, count: channel.kind === 'dm' ? channel.unreadCount : mentions, muted: false }
+}

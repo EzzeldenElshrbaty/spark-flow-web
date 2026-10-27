@@ -154,7 +154,7 @@ describe('read state reaches other tabs', () => {
     await api.chat.markRead('c-general')
     expect(events).toEqual([
       { type: 'readChanged', userId: 'u-1' },
-      { type: 'readChanged', userId: 'u-1' },
+      expect.objectContaining({ type: 'readChanged', userId: 'u-1', channelId: 'c-general' }),
     ])
   })
 })

@@ -186,7 +186,7 @@ describe('seed', () => {
 
   it('leaves exactly 3 messages unread in #frontend-dev and 1 in one DM, all from others', () => {
     const unread = (channelId: string) =>
-      data.messages.filter((m) => m.channelId === channelId && m.createdAt > (data.reads[data.currentUserId]?.[channelId] ?? '') && m.senderId !== data.currentUserId)
+      data.messages.filter((m) => m.channelId === channelId && m.seq > (data.channelState[data.currentUserId]?.[channelId]?.lastReadSeq ?? 0) && m.senderId !== data.currentUserId)
     expect(unread('c-frontend')).toHaveLength(3)
     expect(data.channels.filter((c) => c.kind === 'dm').map((c) => unread(c.id).length).filter((n) => n > 0)).toEqual([1])
   })

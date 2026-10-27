@@ -21,5 +21,31 @@ describe('migrations', () => {
     const next = migrate({ version: 5, rates: [{ userId: 'u1', hourlyCost: 300, currency: 'EGP' }] }, 6)!
     expect(next.rates).toEqual([{ id: 'r-u1', userId: 'u1', hourlyCost: 300, currency: 'EGP', effectiveFrom: '1970-01-01T00:00:00.000Z' }])
   })
-})
 
+  it('6 → 7 numbers each channel\'s messages in time order and turns read times into read seqs', () => {
+    const v6 = {
+      version: 6,
+      channels: [{ id: 'c1' }, { id: 'c2' }],
+      messages: [
+        { id: 'b', channelId: 'c1', createdAt: 'T2' },
+        { id: 'a', channelId: 'c1', createdAt: 'T2' },
+        { id: 'c', channelId: 'c1', createdAt: 'T1' },
+        { id: 'd', channelId: 'c2', createdAt: 'T3' },
+      ],
+      reads: { u1: { c1: 'T1', c2: 'T0' }, u2: { c1: 'T9' } },
+    }
+    const next = migrate(v6, 7)!
+    const seq = Object.fromEntries((next.messages as { id: string; seq: number }[]).map((m) => [m.id, m.seq]))
+    expect(seq).toEqual({ c: 1, a: 2, b: 3, d: 1 })
+    expect(next.reads).toBeUndefined()
+    const fresh = { starred: false, muted: false, notifyLevel: 'all' }
+    expect(next.channelState).toEqual({
+      u1: { c1: { ...fresh, lastReadSeq: 1 }, c2: { ...fresh, lastReadSeq: 0 } },
+      u2: { c1: { ...fresh, lastReadSeq: 3 } },
+    })
+  })
+
+  it('6 → 7 with no messages or reads still gives an empty state map', () => {
+    expect(migrate({ version: 6 }, 7)).toMatchObject({ messages: [], channelState: {} })
+  })
+})

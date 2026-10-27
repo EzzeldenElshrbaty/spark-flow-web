@@ -35,6 +35,31 @@ export const migrations: Record<number, (doc: Record<string, unknown>) => void> 
     const rates = Array.isArray(doc.rates) ? (doc.rates as Record<string, unknown>[]) : []
     doc.rates = rates.map((r) => ({ id: `r-${String(r.userId)}`, ...r, effectiveFrom: typeof r.effectiveFrom === 'string' ? r.effectiveFrom : '1970-01-01T00:00:00.000Z' }))
   },
+  // 7: messages are numbered per channel (seq) and each person's read time becomes a read seq, with star, mute and
+  // notification level starting unset. What was read stays read.
+  6: (doc) => {
+    const messages = Array.isArray(doc.messages) ? (doc.messages as { id: string; channelId: string; createdAt: string; seq?: number }[]) : []
+    const byChannel = new Map<string, typeof messages>()
+    for (const m of messages) byChannel.set(m.channelId, [...(byChannel.get(m.channelId) ?? []), m])
+    for (const own of byChannel.values()) {
+      own.sort((a, b) => (a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : a.id < b.id ? -1 : 1))
+      own.forEach((m, i) => (m.seq = i + 1))
+    }
+    doc.messages = messages
+    const reads = (doc.reads ?? {}) as Record<string, Record<string, string>>
+    doc.channelState = Object.fromEntries(
+      Object.entries(reads).map(([userId, channels]) => [
+        userId,
+        Object.fromEntries(
+          Object.entries(channels ?? {}).map(([channelId, readAt]) => {
+            const read = (byChannel.get(channelId) ?? []).filter((m) => m.createdAt <= readAt)
+            return [channelId, { lastReadSeq: read.length ? read[read.length - 1].seq : 0, starred: false, muted: false, notifyLevel: 'all' }]
+          }),
+        ),
+      ]),
+    )
+    delete doc.reads
+  },
 }
 
 /** The document brought up to `to`, or null when a step on the way is missing. */

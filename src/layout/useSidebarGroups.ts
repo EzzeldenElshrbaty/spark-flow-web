@@ -30,10 +30,14 @@ export function useSidebarGroups() {
   }
   const projects: Project[] = projectsQuery.data ?? []
 
+  // A starred channel or DM is listed once, under Starred (spec §5.1).
+  const listed = [...sidebarChannels(sorted.channels, persona.id, myProjectChannelIds), ...sorted.dms].map(row)
+
   return {
     workspace,
-    channels: sidebarChannels(sorted.channels, persona.id, myProjectChannelIds).map(row),
-    dms: sorted.dms.map(row),
+    starred: listed.filter((r) => r.channel.starred),
+    channels: listed.filter((r) => r.channel.kind === 'channel' && !r.channel.starred),
+    dms: listed.filter((r) => r.channel.kind === 'dm' && !r.channel.starred),
     projects,
     /** My unread mentions here: Activity's count, and each channel row's badge. */
     mentions: unreadMentions(mentionsQuery.data, workspace?.id),

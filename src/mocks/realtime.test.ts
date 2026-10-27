@@ -12,7 +12,7 @@ const sampleTicket: Ticket = {
   phaseId: null, type: 'task', dueAt: null, estimateHours: null,
 }
 const sampleMessage: ChatMessage = {
-  id: 'm1', channelId: 'c1', senderId: 'u1', content: 'hi',
+  id: 'm1', channelId: 'c1', seq: 1, senderId: 'u1', content: 'hi',
   attachments: [], reactions: [], threadCount: 0, lastReplyAt: null,
   linkedTicketKeys: [], mentions: [], editedAt: null, createdAt: '2026-01-01T00:00:00.000Z',
 }

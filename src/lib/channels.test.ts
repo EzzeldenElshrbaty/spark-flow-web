@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Channel, MentionItem } from '@/api/types'
-import { channelLabel, inWorkspace, readOnlyFor, sidebarChannels, sortChannels, unreadMentions } from '@/lib/channels'
+import { channelLabel, inWorkspace, readOnlyFor, sidebarChannels, sidebarRowState, sortChannels, unreadMentions } from '@/lib/channels'
 import { seed } from '@/mocks/seed'
 
 const data = seed(new Date('2026-10-26T09:00:00Z')).data
@@ -10,6 +10,7 @@ const other = users.find((u) => u.id === 'u-2')!
 
 const dm = (memberIds: string[]): Channel => ({
   id: 'c-x', workspaceId: 'ws-eng', kind: 'dm', name: null, topic: '', memberIds, isPrivate: true, lastMessageAt: null, unreadCount: 0,
+  lastSeq: 0, lastReadSeq: 0, starred: false, muted: false, notifyLevel: 'all',
 })
 const channel = (name: string, lastMessageAt: string | null = null): Channel => ({ ...dm([]), id: `c-${name}`, kind: 'channel', name, isPrivate: false, lastMessageAt })
 
@@ -104,5 +105,23 @@ describe('unreadMentions', () => {
 
   it('is empty before the mentions load', () => {
     expect(unreadMentions(undefined, 'ws-eng')).toEqual({ total: 0, byChannel: new Map() })
+  })
+})
+
+describe('sidebarRowState (spec §5.1 row rules)', () => {
+  const state = { lastSeq: 5, lastReadSeq: 2, starred: false, muted: false, notifyLevel: 'all' as const }
+  it('a channel with unread is bold and counts only my mentions', () => {
+    expect(sidebarRowState({ ...channel('a'), ...state, unreadCount: 3 }, 1)).toEqual({ bold: true, count: 1, muted: false })
+    expect(sidebarRowState({ ...channel('a'), ...state, unreadCount: 3 }, 0)).toEqual({ bold: true, count: 0, muted: false })
+  })
+  it('a DM counts every unread message', () => {
+    expect(sidebarRowState({ ...dm([me.id, other.id]), ...state, unreadCount: 3 }, 0)).toEqual({ bold: true, count: 3, muted: false })
+  })
+  it('a read row is plain', () => {
+    expect(sidebarRowState({ ...channel('a'), ...state, unreadCount: 0 }, 0)).toEqual({ bold: false, count: 0, muted: false })
+  })
+  it('a muted row is never bold and never has a count', () => {
+    expect(sidebarRowState({ ...channel('a'), ...state, muted: true, unreadCount: 3 }, 2)).toEqual({ bold: false, count: 0, muted: true })
+    expect(sidebarRowState({ ...dm([me.id, other.id]), ...state, muted: true, unreadCount: 3 }, 0)).toEqual({ bold: false, count: 0, muted: true })
   })
 })

@@ -103,10 +103,20 @@ export type Channel = {
   lastMessageAt: string | null; unreadCount: number      // unreadCount is per the current user
   /** Set while archived: read-only until restored. A project's channel is archived with its project. */
   archivedAt?: string | null
-}
+  /** The seq of the channel's newest message (0 when empty). */
+  lastSeq: number
+} & ChannelMemberState
+
+export type NotifyLevel = 'all' | 'mentions' | 'none'
+/** The current user's own state in a channel (spec §7 ChannelMember). Everyone starts at nothing read, nothing set. */
+export type ChannelMemberState = { lastReadSeq: number; starred: boolean; muted: boolean; notifyLevel: NotifyLevel }
 
 export type ChatMessage = {
   id: string; channelId: string; senderId: string; content: string
+  /** Its place in the channel: 1, 2, 3… in the order the server stored them. Ordering and read state go by it. */
+  seq: number
+  /** The id the sender's client made up for it, so a retried send stores it once. */
+  clientId?: string
   attachments: Attachment[]; reactions: Reaction[]
   threadCount: number; lastReplyAt: string | null
   linkedTicketKeys: string[]; mentions: Mention[]; editedAt: string | null; createdAt: string
@@ -160,8 +170,8 @@ export type Page<T> = { items: T[]; nextCursor: string | null }
 export type ProblemDetails = { title: string; status: number; detail?: string }
 
 // ── Derived shapes ────────────────────────────────────────────────────────
-/** A channel as stored: unreadCount is worked out per user, never saved. */
-export type StoredChannel = Omit<Channel, 'unreadCount'>
+/** A channel as stored: unreadCount, lastSeq and the member state are worked out per user, never saved on it. */
+export type StoredChannel = Omit<Channel, 'unreadCount' | 'lastSeq' | keyof ChannelMemberState>
 
 /** A new channel; you are always one of its members. */
 export type NewChannel = { workspaceId: string; name: string; topic: string; isPrivate: boolean; memberIds: string[] }
@@ -255,9 +265,10 @@ export interface Api {
     messages(channelId: string, cursor?: string): Promise<Page<ChatMessage>>
     message(id: string): Promise<ChatMessage>
     replies(messageId: string): Promise<ThreadReply[]>
-    markRead(channelId: string): Promise<void>
-    /** Posts as the current user; mentions are worked out from the text. */
-    send(channelId: string, content: string): Promise<ChatMessage>
+    /** Moves my read marker forward to `seq` (default: the newest message); it never moves back. */
+    markRead(channelId: string, seq?: number): Promise<void>
+    /** Posts as the current user; mentions are worked out from the text. The same `clientId` again returns the first message. */
+    send(channelId: string, content: string, clientId?: string): Promise<ChatMessage>
     reply(messageId: string, content: string): Promise<ThreadReply>
     /** Adds the current user's reaction, or takes it back if it's there; only the emoji in REACTIONS. */
     react(target: ChatTarget, emoji: string): Promise<void>
@@ -278,6 +289,9 @@ export interface Api {
     join(id: string): Promise<Channel>
     /** Not a project's channel (its members follow the project) or a DM. */
     leave(id: string): Promise<Channel>
+    /** My own star and mute on a channel I can read. */
+    setStarred(id: string, starred: boolean): Promise<Channel>
+    setMuted(id: string, muted: boolean): Promise<Channel>
   }
   tickets: {
     sprints(projectId: string): Promise<Sprint[]>

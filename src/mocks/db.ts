@@ -1,4 +1,5 @@
 import type {
+  ChannelMemberState,
   ActivityEntry,
   Attachment,
   ChatMessage,
@@ -24,7 +25,7 @@ import { memoryActor, type Actor } from './actor'
 import { migrate } from './migrations'
 import type { MockStore } from './store'
 
-export const DB_VERSION = 6 // 2: the company-system document (spec §3); 3: mention read state; 4: channel reads per person; 5: typed columns, history; 6: rate history
+export const DB_VERSION = 7 // 2: the company-system document (spec §3); 3: mention read state; 4: channel reads per person; 5: typed columns, history; 6: rate history; 7: message seq, channel member state
 /** Phase 1+2 kept the mock database in localStorage under keys starting with this. */
 const LEGACY_PREFIX = 'spark-flow.mockdb.v1'
 
@@ -48,8 +49,8 @@ export type DbData = {
   timeEntries: TimeEntry[]
   checkIns: CheckIn[]
   rates: Rate[]
-  /** userId -> channelId -> ISO time they last read it. */
-  reads: Record<string, Record<string, string>>
+  /** userId -> channelId -> their own state there (read marker, star, mute). Missing means the defaults. */
+  channelState: Record<string, Record<string, ChannelMemberState>>
   /** userId -> ids of the mentions they have read. */
   mentionReads: Record<string, string[]>
   counters: Record<string, number> // projectId -> next ticket number
@@ -93,7 +94,7 @@ function hasShape(value: unknown): value is DbData {
     typeof value.currentUserId === 'string' &&
     COLLECTIONS.every((name) => Array.isArray(value[name])) &&
     isRecord(value.counters) &&
-    isRecord(value.reads) &&
+    isRecord(value.channelState) &&
     isRecord(value.mentionReads)
   )
 }

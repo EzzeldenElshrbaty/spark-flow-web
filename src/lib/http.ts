@@ -71,8 +71,8 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
         get(`/api/channels/${enc(channelId)}/messages${cursor ? `?cursor=${enc(cursor)}` : ''}`),
       message: (id) => get(`/api/messages/${enc(id)}`),
       replies: (messageId) => get(`/api/messages/${enc(messageId)}/replies`),
-      markRead: (channelId) => request<void>(`/api/channels/${enc(channelId)}/read`, { method: 'POST' }, fetchFn),
-      send: (channelId, content) => send('POST', `/api/channels/${enc(channelId)}/messages`, { content }),
+      markRead: (channelId, seq) => send('POST', `/api/channels/${enc(channelId)}/read`, seq === undefined ? undefined : { seq }),
+      send: (channelId, content, clientId) => send('POST', `/api/channels/${enc(channelId)}/messages`, clientId ? { content, clientId } : { content }),
       reply: (messageId, content) => send('POST', `/api/messages/${enc(messageId)}/replies`, { content }),
       react: (target, emoji) => send<void>('POST', `${targetPath(target)}/reactions`, { emoji }),
       edit: (target, content) => send('PATCH', targetPath(target), { content }),
@@ -84,6 +84,8 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
       restoreChannel: (id) => send('POST', `/api/channels/${enc(id)}/restore`),
       join: (id) => send('POST', `/api/channels/${enc(id)}/join`),
       leave: (id) => send('POST', `/api/channels/${enc(id)}/leave`),
+      setStarred: (id, starred) => send('PATCH', `/api/channels/${enc(id)}/me`, { starred }),
+      setMuted: (id, muted) => send('PATCH', `/api/channels/${enc(id)}/me`, { muted }),
     },
     tickets: {
       // One name for tasks on the wire: /tasks, for reads as for writes.

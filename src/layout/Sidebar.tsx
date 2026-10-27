@@ -27,7 +27,8 @@ import { Avatar } from '@/components/sf/Avatar'
 import { Count } from '@/components/sf/Badge'
 import { IconButton } from '@/components/sf/Button'
 import { Icon } from '@/components/sf/Icon'
-import { useSidebarGroups } from '@/layout/useSidebarGroups'
+import { useSidebarGroups, type ChannelRow } from '@/layout/useSidebarGroups'
+import { sidebarRowState } from '@/lib/channels'
 import { hasFeature } from '@/lib/features'
 import { paths } from '@/lib/paths'
 import { SIDEBAR_WIDTH, useUiStore } from '@/lib/uiStore'
@@ -220,6 +221,26 @@ function GroupSkeleton() {
   )
 }
 
+/** A channel or DM row: `#` or a lock, or the other person's avatar; bold, count and muted by `sidebarRowState`. */
+function ChannelLink({ slug, row: r, mentions, collapsed, onNavigate }: { slug: string; row: ChannelRow; mentions: number; collapsed?: boolean; onNavigate?: () => void }) {
+  const { channel, label, presence, group, otherId } = r
+  const state = sidebarRowState(channel, mentions)
+  const icon =
+    channel.kind === 'channel' ? (channel.isPrivate ? IconLock : IconHash) : group ? IconUsers : <Avatar id={otherId} name={label} size="sm" presence={presence} on="frame" decorative />
+  return (
+    <SideLink
+      to={paths.channel(slug, channel.id)}
+      label={label}
+      icon={icon}
+      unread={state.bold}
+      mentions={state.count}
+      muted={state.muted}
+      collapsed={Boolean(collapsed)}
+      onNavigate={onNavigate}
+    />
+  )
+}
+
 export function SidebarContent({
   collapsed = false,
   onNavigate,
@@ -229,7 +250,7 @@ export function SidebarContent({
 }) {
   const { role, persona } = useRole()
   const check = usePermission()
-  const { workspace, channels, dms, projects, mentions, chatLoading, projectsLoading, failed } = useSidebarGroups()
+  const { workspace, starred, channels, dms, projects, mentions, chatLoading, projectsLoading, failed } = useSidebarGroups()
   const slug = workspace?.slug
   const [newChannel, setNewChannel] = useState(false)
   const [newMessage, setNewMessage] = useState(false)
@@ -297,6 +318,16 @@ export function SidebarContent({
           </SideSection>
         )}
 
+        {slug && workspace && !chatLoading && starred.length > 0 && (
+          <SideSection id="starred" label="Starred" {...row}>
+            {starred.map((r) => (
+              <li key={r.channel.id} className="flex-none">
+                <ChannelLink slug={slug} row={r} mentions={mentions.byChannel.get(r.channel.id) ?? 0} {...row} />
+              </li>
+            ))}
+          </SideSection>
+        )}
+
         {slug && workspace && (
           <SideSection
             id="channels"
@@ -309,16 +340,9 @@ export function SidebarContent({
             {chatLoading ? (
               <GroupSkeleton />
             ) : (
-              channels.map(({ channel, label }) => (
-                <li key={channel.id} className="flex-none">
-                  <SideLink
-                    to={paths.channel(slug, channel.id)}
-                    label={label}
-                    icon={channel.isPrivate ? IconLock : IconHash}
-                    unread={channel.unreadCount > 0}
-                    mentions={mentions.byChannel.get(channel.id)}
-                    {...row}
-                  />
+              channels.map((r) => (
+                <li key={r.channel.id} className="flex-none">
+                  <ChannelLink slug={slug} row={r} mentions={mentions.byChannel.get(r.channel.id) ?? 0} {...row} />
                 </li>
               ))
             )}
@@ -337,19 +361,9 @@ export function SidebarContent({
             {chatLoading ? (
               <GroupSkeleton />
             ) : (
-              dms.map(({ channel, label, presence, group, otherId }) => (
-                <li key={channel.id} className="flex-none">
-                  <SideLink
-                    to={paths.channel(slug, channel.id)}
-                    label={label}
-                    icon={
-                      group ? IconUsers : <Avatar id={otherId} name={label} size="sm" presence={presence} on="frame" decorative />
-                    }
-                    unread={channel.unreadCount > 0}
-                    // Every message in a DM is meant for me, so its unread messages are its count.
-                    mentions={channel.unreadCount}
-                    {...row}
-                  />
+              dms.map((r) => (
+                <li key={r.channel.id} className="flex-none">
+                  <ChannelLink slug={slug} row={r} mentions={0} {...row} />
                 </li>
               ))
             )}

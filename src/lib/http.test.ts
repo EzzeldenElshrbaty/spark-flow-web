@@ -143,6 +143,21 @@ describe('createHttpApi', () => {
     expect(calls[17].init?.body).toBeInstanceOf(FormData)
   })
 
+  it('sends the read seq, the client id, and my channel flags (spec §8)', async () => {
+    const { calls, fetchFn } = recordingFetch()
+    const api = createHttpApi(fetchFn)
+    await api.chat.markRead('c1', 7)
+    await api.chat.send('c1', 'hi', 'k1')
+    await api.chat.setStarred('c1', true)
+    await api.chat.setMuted('c1', false)
+    expect(calls.map((c) => `${c.init?.method} ${c.url} ${String(c.init?.body)}`)).toEqual([
+      'POST /api/channels/c1/read {"seq":7}',
+      'POST /api/channels/c1/messages {"content":"hi","clientId":"k1"}',
+      'PATCH /api/channels/c1/me {"starred":true}',
+      'PATCH /api/channels/c1/me {"muted":false}',
+    ])
+  })
+
   it('maps calls to the HTTP routes', async () => {
     const { calls, fetchFn } = recordingFetch()
     const api = createHttpApi(fetchFn)

@@ -63,22 +63,24 @@ export function ChannelFeed({
   // The channel on screen stays read: opening it, or a new message, marks it read once its newest message is shown in
   // a tab in view, and coming back to the tab does too. A channel opened or left open in a background tab keeps its badge.
   const newestId = newest?.id ?? null
+  // Read up to the newest message on screen, not the channel's end: one that arrives meanwhile stays unread.
+  const newestSeq = newest?.seq
   const seen = useRef<string | null>(null)
   useEffect(() => {
     if (shouldMarkRead(seen.current, newestId, document.visibilityState === 'visible', !messages.isFetching)) {
       seen.current = newestId
-      markRead(channelId)
+      markRead({ channelId, seq: newestSeq })
     }
-  }, [newestId, channelId, markRead, messages.isFetching])
+  }, [newestId, newestSeq, channelId, markRead, messages.isFetching])
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return
       seen.current = newestId
-      markRead(channelId)
+      markRead({ channelId, seq: newestSeq })
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
-  }, [newestId, channelId, markRead])
+  }, [newestId, newestSeq, channelId, markRead])
 
   let body
   if (messages.isError && !messages.data) body = <QueryError what="Messages" onRetry={() => void messages.refetch()} />

@@ -26,8 +26,11 @@ export interface RealtimeClient {
   onRatesChanged(cb: () => void): () => void
   /** A file was added to a project. */
   onFilesChanged(cb: (event: { projectId: string }) => void): () => void
-  /** Someone read a channel or mentions: their badges and bell follow, in each of their tabs. */
-  onReadChanged(cb: (event: { userId: string }) => void): () => void
+  /**
+   * Someone read a channel or mentions, or changed their own state in a channel (star, mute): their badges and bell
+   * follow, in each of their tabs. `channelId` is set for a channel, `seq` for a new read marker.
+   */
+  onReadChanged(cb: (event: { userId: string; channelId?: string; seq?: number }) => void): () => void
   /** The demo data was reset or reloaded: everything on screen is out of date. */
   onDataReset(cb: () => void): () => void
 }
@@ -45,7 +48,7 @@ export type RealtimeEvent =
   | { type: 'projectChanged'; projectId: string }
   | { type: 'ratesChanged' }
   | { type: 'filesChanged'; projectId: string }
-  | { type: 'readChanged'; userId: string }
+  | { type: 'readChanged'; userId: string; channelId?: string; seq?: number }
   | { type: 'dataReset' }
 
 const noop = () => {}

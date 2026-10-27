@@ -71,7 +71,7 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
     case 'filesChanged':
       return [qk.files(event.projectId)]
     case 'readChanged':
-      return [qk.channelsAll(), qk.mentions()]
+      return [qk.channelsAll(), qk.mentions(), ...(event.channelId ? [qk.channel(event.channelId)] : [])]
     case 'dataReset':
       // The empty key matches every query.
       return [[]]

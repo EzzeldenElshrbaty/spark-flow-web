@@ -25,7 +25,7 @@ const emptyData = (): DbData => ({
   timeEntries: [],
   checkIns: [],
   rates: [],
-  reads: {},
+  channelState: {},
   mentionReads: {},
   activity: [],
   counters: {},
@@ -47,7 +47,7 @@ describe('createDb', () => {
   })
 
   it('reseeds an older or wrong-shape doc', async () => {
-    for (const bad of [{ ...emptyData(), version: DB_VERSION - 1, users: [] }, { ...emptyData(), users: 'nope' }, { ...emptyData(), reads: [] }]) {
+    for (const bad of [{ ...emptyData(), version: DB_VERSION - 1, users: [] }, { ...emptyData(), users: 'nope' }, { ...emptyData(), channelState: [] }]) {
       const store = createMemoryStore()
       await store.transact(() => ({ doc: bad, result: null }))
       expect((await createDb(store, fakeSeed).read()).users).toHaveLength(1)
@@ -79,13 +79,15 @@ describe('createDb', () => {
 
   it('a v3 document is migrated, not reseeded: its records stay and reads move to the default person', async () => {
     const store = createMemoryStore()
-    const v3 = { ...emptyData(), version: 3, reads: { c1: '2026-02-02T00:00:00.000Z' } as unknown as DbData['reads'], counters: { p1: 7 } }
+    const { channelState: _, ...v3Base } = emptyData()
+    const v3 = { ...v3Base, version: 3, reads: { c1: '2026-02-02T00:00:00.000Z' }, counters: { p1: 7 } }
     await store.transact(() => ({ doc: v3, result: null }))
     const data = await createDb(store, fakeSeed).read()
     expect(data.version).toBe(DB_VERSION)
     expect(data.counters).toEqual({ p1: 7 })
-    expect(data.reads).toEqual({ u1: { c1: '2026-02-02T00:00:00.000Z' } })
-    expect(await store.readDoc()).toMatchObject({ version: DB_VERSION, reads: { u1: { c1: '2026-02-02T00:00:00.000Z' } } })
+    // No messages yet, so the read time becomes a marker before the first one.
+    expect(data.channelState).toEqual({ u1: { c1: state } })
+    expect(await store.readDoc()).toMatchObject({ version: DB_VERSION, channelState: { u1: { c1: state } } })
   })
 
   it('a v4 document migrates: custom names and order are kept, types come from the old ids, activity starts empty', async () => {
@@ -130,7 +132,7 @@ describe('createDb', () => {
     })
     expect((await db.read()).users[0].name).toBe('Changed')
     await db.update((d) => {
-      d.reads.u1 = { c1: 'T' }
+      d.channelState.u1 = { c1: state }
     })
     expect(await store.readDoc()).toEqual(newer)
     expect(warn).toHaveBeenCalledOnce()
@@ -164,9 +166,9 @@ describe('createDb', () => {
     const store = createMemoryStore()
     const db = createDb(store, fakeSeed)
     await db.update((d) => {
-      d.reads.u1 = { c1: '2026-02-02T00:00:00.000Z' }
+      d.channelState.u1 = { c1: { ...state, lastReadSeq: 4 } }
     })
-    expect(await store.readDoc()).toMatchObject({ reads: { u1: { c1: '2026-02-02T00:00:00.000Z' } } })
+    expect(await store.readDoc()).toMatchObject({ channelState: { u1: { c1: { lastReadSeq: 4 } } } })
   })
 
   it('concurrent updates from two dbs on one IndexedDB keep both changes', async () => {
@@ -177,11 +179,11 @@ describe('createDb', () => {
     await Promise.all(
       Array.from({ length: 10 }, (_, i) =>
         (i % 2 ? a : b).update((d) => {
-          d.reads[`u${i}`] = { c: 'T' }
+          d.channelState[`u${i}`] = { c: state }
         }),
       ),
     )
-    expect(Object.keys((await b.read()).reads).sort()).toEqual(Array.from({ length: 10 }, (_, i) => `u${i}`).sort())
+    expect(Object.keys((await b.read()).channelState).sort()).toEqual(Array.from({ length: 10 }, (_, i) => `u${i}`).sort())
   })
 
   it('reset clears everything and seeds again', async () => {
@@ -200,7 +202,7 @@ describe('createDb', () => {
     const db = createDb(createMemoryStore(), fakeSeed)
     await db.update((d) => {
       d.users[0].name = 'Exported'
-      d.reads.u1 = { c1: 'T' }
+      d.channelState.u1 = { c1: state }
     })
     const bundle = await db.exportAll()
     expect(bundle).toMatchObject({ app: 'spark-flow', version: DB_VERSION })
@@ -342,4 +344,6 @@ describe("import over a newer build's data", () => {
     expect((await createDb(store, fakeSeed).read()).counters).toEqual({ p1: 42 })
   })
 })
+
+const state = { lastReadSeq: 0, starred: false, muted: false, notifyLevel: 'all' as const }
 

@@ -35,8 +35,9 @@ export function useThread(messageId: string | undefined) {
   return useQuery({ queryKey: qk.replies(messageId ?? ''), queryFn: () => api.chat.replies(messageId!), retry, enabled: Boolean(messageId) })
 }
 
+/** Moves my read marker to `seq` (the newest message I've seen); without one, to the channel's end. */
 export function useMarkRead() {
-  return useMutation({ mutationFn: (channelId: string) => api.chat.markRead(channelId) })
+  return useMutation({ mutationFn: ({ channelId, seq }: { channelId: string; seq?: number }) => api.chat.markRead(channelId, seq) })
 }
 
 /** Posts in a channel as the current user. The feed refreshes from the live event and the global invalidate. */

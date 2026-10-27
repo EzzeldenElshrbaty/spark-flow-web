@@ -1,4 +1,5 @@
 import type {
+  ChannelMemberState,
   Attachment,
   ChatMessage,
   CheckIn,
@@ -50,7 +51,7 @@ const byTimeThenId = (a: { createdAt: string; id: string }, b: { createdAt: stri
 
 const latestOf = (times: string[]): string | null => (times.length ? times.reduce((a, b) => (a >= b ? a : b)) : null)
 
-/** Adds threadCount, lastReplyAt and linkedTicketKeys, which the server works out. */
+/** Adds threadCount, lastReplyAt, linkedTicketKeys and seq (1, 2, 3… per channel), which the server works out. */
 function buildMessages(raw: RawMessage[], replies: ThreadReply[]): ChatMessage[] {
   return raw
     .map((m) => {
@@ -63,9 +64,11 @@ function buildMessages(raw: RawMessage[], replies: ThreadReply[]): ChatMessage[]
         linkedTicketKeys: parseTicketKeys(m.content),
         mentions: parseMentions(m.content),
         editedAt: null,
+        seq: 0,
       }
     })
     .sort(byTimeThenId)
+    .map((m, _, all) => ({ ...m, seq: all.filter((o) => o.channelId === m.channelId && o !== m && byTimeThenId(o, m) < 0).length + 1 }))
 }
 
 function buildReplies(raw: RawReply[], messages: RawMessage[]): ThreadReply[] {
@@ -130,21 +133,18 @@ function buildCounters(projectIds: string[], tickets: Ticket[]): Record<string, 
 }
 
 /**
- * The current user's last-read time per channel. A channel with `unread[id] = n` is read up to the message
- * just before its last n; every other channel is read up to `now`.
+ * A person's state per channel. A channel with `unread[id] = n` is read up to the message just before its last n;
+ * every other channel is read to its end. `starred` and `muted` list the channels set so.
  */
-function buildReads(
+function buildChannelState(
   channelIds: string[],
   messages: ChatMessage[],
-  unread: Record<string, number>,
-  now: Date,
-): Record<string, string> {
+  { unread, starred, muted }: { unread: Record<string, number>; starred: string[]; muted: string[] },
+): Record<string, ChannelMemberState> {
   return Object.fromEntries(
     channelIds.map((id) => {
-      const n = unread[id] ?? 0
-      if (n === 0) return [id, now.toISOString()]
-      const own = messages.filter((m) => m.channelId === id) // already oldest first
-      return [id, own[own.length - n - 1].createdAt]
+      const last = messages.filter((m) => m.channelId === id).length // seq runs 1..n
+      return [id, { lastReadSeq: Math.max(0, last - (unread[id] ?? 0)), starred: starred.includes(id), muted: muted.includes(id), notifyLevel: 'all' }]
     }),
   )
 }
@@ -528,8 +528,10 @@ export function seed(now: Date): SeedResult {
     timeEntries,
     checkIns,
     rates,
-    // Everyone starts with the same read state, so each persona sees the demo's unread badges.
-    reads: Object.fromEntries(users.map((u) => [u.id, buildReads(rawChannels.map((c) => c.id), messages, { 'c-frontend': 3, 'c-dm-2': 1 }, now)])),
+    // Everyone starts with the same state, so each persona sees the demo's unread badges, a starred and a muted channel.
+    channelState: Object.fromEntries(
+      users.map((u) => [u.id, buildChannelState(rawChannels.map((c) => c.id), messages, { unread: { 'c-frontend': 3, 'c-dm-2': 1 }, starred: ['c-backend'], muted: ['c-design'] })]),
+    ),
     counters: buildCounters(projects.map((p) => p.id), tickets),
     mentionReads: {} as Record<string, string[]>,
     // History starts with each task's creation, by whoever reported it, so the History tabs aren't empty.
