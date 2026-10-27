@@ -67,7 +67,7 @@ export function requireCan(
   data: { currentUserId: string; users: User[]; projects: (ProjectRef & { managerId: string })[] },
   action: Action,
   project?: ProjectRef,
-  extra: { taskAssigneeId?: string | null } = {},
+  extra: { taskAssigneeId?: string | null; managesAny?: boolean } = {},
 ): User {
   const me = currentUser(data)
   const ok = can(action as Exclude<Action, ProjectScoped>, {

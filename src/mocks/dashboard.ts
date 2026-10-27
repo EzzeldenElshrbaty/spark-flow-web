@@ -12,7 +12,9 @@ const WEEK = 7 * 24 * HOUR
 /** The projects this viewer runs the dashboard for: Admin and Sales all of them, a PM the ones they manage. */
 function inScope(data: DbData, workspaceId: string) {
   if (!data.workspaces.some((w) => w.id === workspaceId)) throw notFound('Workspace', workspaceId)
-  const me = requireCan(data, 'dashboard.view')
+  // "Manages a project" means here, in this workspace (as the UI decides it).
+  const self = data.users.find((u) => u.id === data.currentUserId)
+  const me = requireCan(data, 'dashboard.view', undefined, { managesAny: data.projects.some((p) => p.workspaceId === workspaceId && p.managerId === self?.id) })
   // Archived projects are out of the dashboard (their time stays in the Time & cost report).
   const all = data.projects.filter((p) => p.workspaceId === workspaceId && !p.archivedAt)
   return { me, projects: me.role === 'admin' || me.role === 'sales' ? all : all.filter((p) => p.managerId === me.id) }
@@ -82,7 +84,9 @@ export function dashboardApi(db: MockDb, now: () => Date): Api['dashboard'] {
           .sort((a, b) => (a.checkedInAt < b.checkedInAt ? 1 : -1))
           .map((c): CheckedInNow => {
             const running = data.timeEntries.find((e) => e.userId === c.userId && e.endedAt === null)
-            return { userId: c.userId, since: c.checkedInAt, running: running ? { taskId: running.taskId, projectId: running.projectId, startedAt: running.startedAt } : null }
+            // What they're running shows only when it's on a project this dashboard covers.
+            const shown = running && (me.role === 'admin' || projects.some((p) => p.id === running.projectId))
+            return { userId: c.userId, since: c.checkedInAt, running: shown ? { taskId: running.taskId, projectId: running.projectId, startedAt: running.startedAt } : null }
           }),
       )
     },

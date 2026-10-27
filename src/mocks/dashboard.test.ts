@@ -111,3 +111,18 @@ describe('last week, unrounded', () => {
   })
 })
 
+describe('dashboard scope', () => {
+  it("a PM sees who's in, not what they run on projects outside their scope", async () => {
+    await api.users.viewAs('u-5') // Salma: on Nexus Core and Mobile App
+    await api.time.checkIn({ plan: 'QA', target: { taskId: 't-mob-103' } })
+    await api.users.viewAs('u-2') // Nour manages Nexus Core, not Mobile App
+    const salma = (await api.dashboard.checkedIn('ws-eng')).find((c) => c.userId === 'u-5')!
+    expect(salma.running).toBeNull()
+  })
+  it('managing a project in another workspace opens no dashboard here', async () => {
+    await api.users.viewAs('u-7') // Dina manages Brand Refresh (Spark Design) only
+    await expect(api.dashboard.projects('ws-eng')).rejects.toMatchObject({ status: 403 })
+    expect(await api.dashboard.projects('ws-design')).toHaveLength(1)
+  })
+})
+
