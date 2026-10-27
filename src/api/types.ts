@@ -80,7 +80,8 @@ export type TimeEntry = {
   source: 'timer' | 'manual'; note: string
 }
 export type CheckIn = { id: string; userId: string; day: string /* YYYY-MM-DD local */; checkedInAt: string; checkedOutAt: string | null; plan: string }
-export type Rate = { userId: string; hourlyCost: number; currency: 'EGP' } // admin only
+/** One hourly cost from `effectiveFrom` on (admin only); a person's rows are their rate's history. */
+export type Rate = { id: string; userId: string; hourlyCost: number; currency: 'EGP'; effectiveFrom: string }
 
 // ── Documents (MongoDB) ───────────────────────────────────────────────────
 /** A stored file's details; its bytes live in the file store and are opened through api.files.url(id). */

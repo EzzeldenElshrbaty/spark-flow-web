@@ -47,3 +47,21 @@ describe('rates reach other tabs', () => {
     expect(events).toEqual(['ratesChanged'])
   })
 })
+
+describe('rate history', () => {
+  it('a new rate changes cost only from today on', async () => {
+    const report = async () => (await api.time.report('ws-eng', 30)).byPerson.find((p) => p.userId === 'u-3')!
+    const before = await report()
+    await api.rates.update('u-3', 1000)
+    const after = await report()
+    expect(after.cost).toBeCloseTo(before.cost, 0) // every seeded entry is from an earlier day (the rolling window moves a few ms)
+    expect(after.rate).toBe(1000)
+  })
+  it('two changes on one day keep one row', async () => {
+    await api.rates.update('u-3', 500)
+    await api.rates.update('u-3', 510)
+    const mine = (await api.rates.list()).filter((r) => r.userId === 'u-3')
+    expect(mine.map((r) => r.hourlyCost)).toEqual([300, 510])
+  })
+})
+

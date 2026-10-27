@@ -13,7 +13,7 @@ describe('totalsByPerson', () => {
     e('a', '2026-10-26T11:00:00Z', null), // running: 1 h so far
   ]
   it('sums hours per person, most hours first, with cost when rates are given (missing rate costs 0)', () => {
-    const rates: Rate[] = [{ userId: 'a', hourlyCost: 300, currency: 'EGP' }]
+    const rates: Rate[] = [{ id: 'r-a', userId: 'a', hourlyCost: 300, currency: 'EGP', effectiveFrom: '1970-01-01T00:00:00.000Z' }]
     expect(totalsByPerson(entries, rates, now)).toEqual({
       people: [
         { userId: 'a', hours: 3, cost: 900 },

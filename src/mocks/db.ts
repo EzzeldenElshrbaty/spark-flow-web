@@ -24,7 +24,7 @@ import { memoryActor, type Actor } from './actor'
 import { migrate } from './migrations'
 import type { MockStore } from './store'
 
-export const DB_VERSION = 5 // 2: the company-system document (spec §3); 3: mention read state; 4: channel reads per person; 5: typed columns, history
+export const DB_VERSION = 6 // 2: the company-system document (spec §3); 3: mention read state; 4: channel reads per person; 5: typed columns, history; 6: rate history
 /** Phase 1+2 kept the mock database in localStorage under keys starting with this. */
 const LEGACY_PREFIX = 'spark-flow.mockdb.v1'
 
@@ -100,12 +100,12 @@ function hasShape(value: unknown): value is DbData {
 
 /**
  * Whether an imported document's records are usable, not just its top-level shape: every record has a string id
- * (rates are keyed by userId), and the current user exists, or nobody could sign in as admin to reset it.
+ * and the current user exists, or nobody could sign in as admin to reset it.
  */
 function hasUsableRecords(data: DbData): boolean {
-  const keyed = (list: unknown[], key: 'id' | 'userId') => list.every((item) => isRecord(item) && typeof item[key] === 'string')
+  const keyed = (list: unknown[]) => list.every((item) => isRecord(item) && typeof item.id === 'string')
   return (
-    COLLECTIONS.every((name) => keyed(data[name], name === 'rates' ? 'userId' : 'id')) &&
+    COLLECTIONS.every((name) => keyed(data[name])) &&
     data.users.some((user) => user.id === data.currentUserId)
   )
 }

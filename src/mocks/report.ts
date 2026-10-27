@@ -1,3 +1,4 @@
+import { rateAt } from '@/lib/rates'
 import type { Rate, ReportRow, TimeEntry, TimeReport } from '@/api/types'
 import { weekStart } from '@/lib/dates'
 import { entryEnd } from '@/lib/hours'
@@ -14,7 +15,8 @@ const overlap = (start: number, end: number, from: number, to: number) => Math.m
  */
 export function buildReport(entries: TimeEntry[], rates: Rate[], projectIds: string[], from: Date, to: Date): TimeReport {
   const inWorkspace = new Set(projectIds)
-  const rateOf = (userId: string) => rates.find((r) => r.userId === userId)?.hourlyCost ?? 0
+  // byPerson shows each person's rate now; cost goes entry by entry at the rate of the day it started.
+  const rateOf = (userId: string) => rateAt(rates, userId, to.toISOString())
   const f = from.getTime()
   const t = to.getTime()
 
@@ -37,7 +39,7 @@ export function buildReport(entries: TimeEntry[], rates: Rate[], projectIds: str
     const end = entryEnd(e, to)
     const hours = overlap(start, end, f, t)
     if (hours <= 0) continue
-    const rate = rateOf(e.userId)
+    const rate = rateAt(rates, e.userId, e.startedAt)
     add(byProject, e.projectId, hours, hours * rate)
     add(byPerson, e.userId, hours, hours * rate)
     weeks.forEach((w, i) => {

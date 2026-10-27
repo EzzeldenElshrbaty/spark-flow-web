@@ -2,6 +2,8 @@ import { ArrowLeft } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { useRates, useUpdateRate } from '@/api/rates'
+import { formatDate } from '@/lib/format'
+import { currentRates } from '@/lib/rates'
 import type { User } from '@/api/types'
 import { useUsers } from '@/api/users'
 import { Avatar } from '@/components/ui/Avatar'
@@ -14,7 +16,10 @@ import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { paths } from '@/lib/paths'
 import { useAccess } from '@/lib/usePermission'
 
-function RateRow({ person, saved }: { person: User; saved: number | undefined }) {
+/** What a migrated rate starts from: it has always been in effect. */
+const START_OF_TIME = '1970-01-01T00:00:00.000Z'
+
+function RateRow({ person, saved, since }: { person: User; saved: number | undefined; since: string | undefined }) {
   const update = useUpdateRate()
   const [value, setValue] = useState(saved === undefined ? '' : String(saved))
   const changed = value !== (saved === undefined ? '' : String(saved))
@@ -26,7 +31,9 @@ function RateRow({ person, saved }: { person: User; saved: number | undefined })
         <Avatar name={person.name} size="sm" />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm text-fg">{person.name}</span>
-          <span className="block truncate text-xs text-fg-muted">{person.title}</span>
+          <span className="block truncate text-xs text-fg-muted">
+            {person.title} · {since && since !== START_OF_TIME ? `Since ${formatDate(since)}` : '—'}
+          </span>
         </span>
         <label className="flex items-center gap-2 text-sm text-fg-muted">
           <span className="sr-only">Hourly cost for {person.name}</span>
@@ -93,9 +100,11 @@ export function RatesPage() {
       <Card className="max-w-2xl">
         <ul className="divide-y divide-line-subtle px-5">
           {people.data.map((person) => {
-            const saved = rates.data.find((r) => r.userId === person.id)?.hourlyCost
+            // The rate now; earlier rows stay, so past time keeps the cost it had.
+            const current = currentRates(rates.data).find((r) => r.userId === person.id)
+            const saved = current?.hourlyCost
             // The key carries the saved value, so a row resets to it after a save.
-            return <RateRow key={`${person.id}:${saved ?? ''}`} person={person} saved={saved} />
+            return <RateRow key={`${person.id}:${saved ?? ''}`} person={person} saved={saved} since={current?.effectiveFrom} />
           })}
         </ul>
       </Card>

@@ -11,6 +11,7 @@ import { QueryError } from '@/components/ui/QueryError'
 import { formatDate, formatMoney, formatTime } from '@/lib/format'
 import { entryHours } from '@/lib/hours'
 import { useNow } from '@/lib/useNow'
+import { rateAt } from '@/lib/rates'
 import { taskLabel } from '@/lib/taskLabel'
 import { useCanLog } from '@/lib/useCanLog'
 import { useRole } from '@/lib/useRole'
@@ -57,7 +58,7 @@ export function TimeTab({ project, people }: { project: ProjectSummary; people: 
 
   const nameOf = (id: string) => people.find((u) => u.id === id)?.name ?? 'Unknown person'
   const taskOf = (id: string | null) => (id ? tasks.find((t) => t.id === id) : undefined)
-  const rateOf = (userId: string) => rates?.find((r) => r.userId === userId)?.hourlyCost ?? 0
+  const costOf = (e: TimeEntry) => Math.round(entryHours(e, now) * (rates ? rateAt(rates, e.userId, e.startedAt) : 0))
   const totals = totalsByPerson(entries, rates, now)
 
   const columns: Column<TimeEntry>[] = [
@@ -90,7 +91,7 @@ export function TimeTab({ project, people }: { project: ProjectSummary; people: 
     },
     { id: 'hours', header: 'Hours', width: 80, align: 'right', cell: (e) => <span className="tabular-nums text-fg">{tenth(entryHours(e, now))}h</span> },
     ...(rates
-      ? [{ id: 'cost', header: 'Cost', width: 120, align: 'right' as const, cell: (e: TimeEntry) => <span className="tabular-nums text-fg-secondary">{formatMoney(Math.round(entryHours(e, now) * rateOf(e.userId)))}</span> }]
+      ? [{ id: 'cost', header: 'Cost', width: 120, align: 'right' as const, cell: (e: TimeEntry) => <span className="tabular-nums text-fg-secondary">{formatMoney(costOf(e))}</span> }]
       : []),
     { id: 'actions', header: '', width: 120, align: 'right', cell: (e) => <EntryRowExtras entry={e} compact /> },
   ]

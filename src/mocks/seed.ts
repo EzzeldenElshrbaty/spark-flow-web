@@ -482,7 +482,7 @@ export function seed(now: Date): SeedResult {
   // Hourly cost in EGP (Admin only)
   const rates: Rate[] = [
     ['u-1', 650], ['u-2', 420], ['u-3', 300], ['u-4', 400], ['u-5', 240], ['u-6', 320], ['u-7', 280], ['u-8', 300], ['u-9', 260],
-  ].map(([userId, hourlyCost]) => ({ userId: userId as string, hourlyCost: hourlyCost as number, currency: 'EGP' }))
+  ].map(([userId, hourlyCost]) => ({ id: `r-${userId}`, userId: userId as string, hourlyCost: hourlyCost as number, currency: 'EGP', effectiveFrom: '1970-01-01T00:00:00.000Z' }))
 
   // ── Files, comments and bugs ────────────────────────────────────────────
   const fileOf = (id: string, name: string, mimeType: string, base64: string, createdAt: string) => ({

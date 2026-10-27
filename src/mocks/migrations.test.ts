@@ -16,4 +16,10 @@ describe('migrations', () => {
     const next = migrate({ version: 3, currentUserId: 'u1', users: {}, reads: { c1: 'T1' } }, 4)!
     expect(next.reads).toEqual({ u1: { c1: 'T1' } })
   })
+
+  it('5 → 6 gives every rate an id and the start of time', () => {
+    const next = migrate({ version: 5, rates: [{ userId: 'u1', hourlyCost: 300, currency: 'EGP' }] }, 6)!
+    expect(next.rates).toEqual([{ id: 'r-u1', userId: 'u1', hourlyCost: 300, currency: 'EGP', effectiveFrom: '1970-01-01T00:00:00.000Z' }])
+  })
 })
+

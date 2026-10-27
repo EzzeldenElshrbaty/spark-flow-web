@@ -1,3 +1,4 @@
+import { rateAt } from '@/lib/rates'
 import type { Phase, Project, ProjectSummary, Rate, Role, StatusCategory, TaskView, Ticket, TimeEntry } from '@/api/types'
 import { categoryOf } from '@/lib/boardColumns'
 import { entryHours } from '@/lib/hours'
@@ -49,8 +50,8 @@ export function summarize(project: Project, data: Source, now: Date, viewer: { u
     expectedFinish = latest(expectedFinish, new Date(now.getTime() + (remaining / HOURS_PER_DAY) * 24 * HOUR).toISOString())
   }
 
-  const rateOf = new Map(data.rates.map((r) => [r.userId, r.hourlyCost]))
-  const cost = can('cost.view', viewer) ? entries.reduce((sum, e) => sum + entryHours(e, now) * (rateOf.get(e.userId) ?? 0), 0) : null
+  // Each entry at the rate in effect when it started.
+  const cost = can('cost.view', viewer) ? entries.reduce((sum, e) => sum + entryHours(e, now) * rateAt(data.rates, e.userId, e.startedAt), 0) : null
 
   return {
     ...project,

@@ -29,6 +29,12 @@ export const migrations: Record<number, (doc: Record<string, unknown>) => void> 
     }
     doc.activity = []
   },
+  // 6: rates keep their history. Each old rate is a row with an id, in effect since the start of time, so past cost
+  // stays what it was.
+  5: (doc) => {
+    const rates = Array.isArray(doc.rates) ? (doc.rates as Record<string, unknown>[]) : []
+    doc.rates = rates.map((r) => ({ id: `r-${String(r.userId)}`, ...r, effectiveFrom: typeof r.effectiveFrom === 'string' ? r.effectiveFrom : '1970-01-01T00:00:00.000Z' }))
+  },
 }
 
 /** The document brought up to `to`, or null when a step on the way is missing. */

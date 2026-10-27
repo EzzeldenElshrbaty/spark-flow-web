@@ -71,7 +71,7 @@ describe('summarize', () => {
 
   it('cost is hours × rate for admins only, a missing rate counts 0', () => {
     const timeEntries = [entry({ id: 'a', userId: 'u-1', startedAt: iso(-3), endedAt: iso(-1) }), entry({ id: 'b', userId: 'u-2', startedAt: iso(-2), endedAt: iso(-1) })]
-    const rates: Rate[] = [{ userId: 'u-1', hourlyCost: 300, currency: 'EGP' }]
+    const rates: Rate[] = [{ id: 'r-u-1', userId: 'u-1', hourlyCost: 300, currency: 'EGP', effectiveFrom: '1970-01-01T00:00:00.000Z' }]
     expect(summarize(project, data({ timeEntries, rates }), now, admin)).toMatchObject({ loggedHours: 3, cost: 600 })
     expect(summarize(project, data({ timeEntries, rates }), now, sales).cost).toBeNull()
   })

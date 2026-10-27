@@ -220,6 +220,15 @@ describe('createDb', () => {
     expect((await db.exportAll()).data.currentUserId).toBe('u1')
   })
 
+  it('a v5 export imports and is upgraded', async () => {
+    const db = createDb(createMemoryStore(), fakeSeed)
+    const v5 = { ...emptyData(), version: 5, rates: [{ userId: 'u1', hourlyCost: 300, currency: 'EGP' }] } as unknown as DbData
+    await db.importAll({ app: 'spark-flow', version: 5, exportedAt: 'T', data: v5 })
+    const data = await db.read()
+    expect(data.version).toBe(DB_VERSION)
+    expect(data.rates).toEqual([{ id: 'r-u1', userId: 'u1', hourlyCost: 300, currency: 'EGP', effectiveFrom: '1970-01-01T00:00:00.000Z' }])
+  })
+
   it('a v4 export imports and is upgraded', async () => {
     const db = createDb(createMemoryStore(), fakeSeed)
     const v4 = { ...emptyData(), version: 4, counters: { p1: 3 }, projects: [{ id: 'p1', board: [{ status: 'done', label: 'Shipped' }] }] } as unknown as DbData

@@ -48,7 +48,7 @@ export function createMockApi(db: MockDb, hub: MockHub, now: () => Date = () => 
     tasks: tasksApi(db, hub, now),
     teams: teamsApi(db),
     time: timeApi(db, hub, now),
-    rates: ratesApi(db, hub),
+    rates: ratesApi(db, hub, now),
     comments: commentsApi(db, hub, now),
     activity: activityApi(db),
     mentions: mentionsApi(db, hub),
