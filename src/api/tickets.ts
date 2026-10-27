@@ -40,6 +40,9 @@ export function useRestoreTask() {
 export function useUpdateTask() {
   return useMutation({ mutationFn: ({ key, patch }: { key: string; patch: TicketPatch }) => api.tasks.update(key, patch) })
 }
+export function useMoveTask() {
+  return useMutation({ mutationFn: ({ key, status, index, visibleKeys }: { key: string; status: string; index: number; visibleKeys?: string[] }) => api.tasks.moveTo(key, status, index, visibleKeys) })
+}
 
 /** Every task of several projects (one query each, shared with each project's Tasks tab). */
 /** The archived tasks of several projects (their time rows still name them). */

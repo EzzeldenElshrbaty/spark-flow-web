@@ -317,6 +317,8 @@ export interface Api {
   tasks: {
     create(input: NewTicket): Promise<TaskView>
     update(key: string, patch: TicketPatch): Promise<TaskView>
+    /** Into column `status` at `index` among `visibleKeys` (the cards shown), renumbering that column in the same write. */
+    moveTo(key: string, status: string, index: number, visibleKeys?: string[]): Promise<TaskView>
     /** The project's manager (and Admins); a running timer on it stops. */
     archive(key: string): Promise<TaskView>
     restore(key: string): Promise<TaskView>

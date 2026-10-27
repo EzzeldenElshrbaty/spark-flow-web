@@ -302,6 +302,7 @@ export function ProjectBoard({
   users,
   canMove = () => false,
   onMove,
+  onMoveTo,
   error,
   board,
   onBoard,
@@ -315,6 +316,8 @@ export function ProjectBoard({
   users: User[]
   canMove?: (ticket: TaskView) => boolean
   onMove?: (ticket: TaskView, patch: TicketPatch) => Promise<unknown>
+  /** A drop that needs its column renumbered: placed by the server in one write. */
+  onMoveTo?: (ticket: TaskView, status: string, index: number, visibleKeys: string[]) => Promise<unknown>
   error?: string | null
   /** The project's columns (names and order); missing is the standard board. */
   board?: Column[]
@@ -431,10 +434,10 @@ export function ProjectBoard({
     const drop = boardDrop(ticket, to, column, full, index)
     if (!drop || !onMove) return
     const { patch } = drop
-    // Ranks too close to split: the column was renumbered; each changed card goes with its new rank.
-    for (const r of drop.renumber) {
-      const other = full.find((t) => t.key === r.key)
-      if (other) void onMove(other, { rank: r.rank }).catch(() => {})
+    // Ranks too close to split: one move on the server places it and renumbers the column (a member can't patch others' cards).
+    if (drop.renumber.length > 0 && onMoveTo) {
+      void onMoveTo(ticket, to, index, column.filter((t) => t.key !== ticket.key).map((t) => t.key)).catch(() => {})
+      return
     }
     const base = tickets.find((t) => t.key === ticket.key)!
     setPending((p) => ({ ...p, [ticket.key]: { patch, updatedAt: base.updatedAt } }))

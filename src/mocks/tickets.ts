@@ -147,6 +147,31 @@ export function tasksApi(db: MockDb, hub: MockHub, now: () => Date): Api['tasks'
       })
       return taskView(updated, await db.read(), now())
     },
+    async moveTo(key, status, index, visibleKeys) {
+      await delay()
+      // Placed and its column renumbered in one write, so no other card needs its own (maybe refused) save.
+      const patch: TicketPatch = { status }
+      const updated = await updateTicket(db, hub, key, patch, now, (data, ticket) => {
+        const project = openProject(data, ticket.projectId)
+        try {
+          requireCan(data, 'task.manage', project)
+        } catch {
+          requireCan(data, 'task.updateOwnStatus', project, { taskAssigneeId: ticket.assigneeId })
+        }
+        checkTaskInput(data, ticket.projectId, { status }, ticket)
+        const column = data.tickets.filter((t) => t.projectId === ticket.projectId && t.status === status && !t.archivedAt && t.key !== key).sort((a, b) => a.rank - b.rank)
+        // Right before the visible card at `index`, or right after the last visible one (hidden cards keep their places).
+        const visible = visibleKeys ? column.filter((t) => visibleKeys.includes(t.key)) : column
+        const at = Math.max(0, Math.min(index, visible.length))
+        const place = at < visible.length ? column.indexOf(visible[at]!) : visible.length ? column.indexOf(visible.at(-1)!) + 1 : column.length
+        const order = [...column.slice(0, place), ticket, ...column.slice(place)]
+        order.forEach((t, i) => {
+          if (t === ticket) patch.rank = (i + 1) * 1000
+          else t.rank = (i + 1) * 1000
+        })
+      })
+      return taskView(updated, await db.read(), now())
+    },
   }
 }
 

@@ -3,7 +3,7 @@ import { Columns3, List } from 'lucide-react'
 import { useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { useSetBoard } from '@/api/projects'
-import { useArchivedTasks, useSprints, useTickets, useUpdateTask } from '@/api/tickets'
+import { useArchivedTasks, useSprints, useTickets, useUpdateTask, useMoveTask } from '@/api/tickets'
 import type { BoardColumn, Phase, ProjectSummary, TaskView, TicketPatch, User } from '@/api/types'
 import { selectClass } from '@/components/ui/Field'
 import { QueryError } from '@/components/ui/QueryError'
@@ -84,6 +84,7 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
 
   const check = usePermission()
   const update = useUpdateTask()
+  const moveTask = useMoveTask()
   const canMove = (t: TaskView) => check('task.updateOwnStatus', { project, taskAssigneeId: t.assigneeId })
   const move = (t: TaskView, patch: TicketPatch) => update.mutateAsync({ key: t.key, patch })
   const setBoard = useSetBoard()
@@ -107,7 +108,7 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
   if (tickets.isError) body = <QueryError what="Tasks" onRetry={() => void tickets.refetch()} />
   else if (tickets.isPending) body = view === 'board' ? <BoardSkeleton /> : <BacklogSkeleton />
   else if (view === 'board') body = (
-      <ProjectBoard tickets={shown} allTickets={tickets.data ?? []} users={people} canMove={canMove} onMove={move} error={update.error ? update.error.message : null} board={project.board} onBoard={onBoard} projectId={project.id} countOf={(id) => columnTaskCount(tickets.data ?? [], archivedAll, id)} />
+      <ProjectBoard tickets={shown} allTickets={tickets.data ?? []} users={people} canMove={canMove} onMove={move} onMoveTo={(t, status, index, visibleKeys) => moveTask.mutateAsync({ key: t.key, status, index, visibleKeys })} error={(update.error ?? moveTask.error)?.message ?? null} board={project.board} onBoard={onBoard} projectId={project.id} countOf={(id) => columnTaskCount(tickets.data ?? [], archivedAll, id)} />
     )
   else body = <ProjectBacklog tasks={shown} phases={phases} users={people} board={project.board} />
 

@@ -118,6 +118,7 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
     tasks: {
       create: (input) => send('POST', `/api/projects/${enc(input.projectId)}/tasks`, input),
       update: (key, patch) => send('PATCH', `/api/tasks/${enc(key)}`, patch),
+      moveTo: (key, status, index, visibleKeys) => send('POST', `/api/tasks/${enc(key)}/move`, { status, index, visibleKeys }),
       archive: (key) => send('POST', `/api/tasks/${enc(key)}/archive`),
       restore: (key) => send('POST', `/api/tasks/${enc(key)}/restore`),
     },

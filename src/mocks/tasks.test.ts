@@ -287,3 +287,25 @@ describe('moved cards keep column names', () => {
     expect(card.taskEvent).toMatchObject({ statusLabel: 'Ready to ship' })
   })
 })
+
+describe('moveTo', () => {
+  const order = async () => (await db.read()).tickets.filter((t) => t.projectId === 'p-nex' && t.status === 'todo' && !t.archivedAt).sort((a, b) => a.rank - b.rank).map((t) => [t.key, t.rank])
+  it("a member's drop into a vanishing gap lands where dropped", async () => {
+    const api = apiAt()
+    await db.update((d) => {
+      for (const t of d.tickets.filter((x) => x.projectId === 'p-nex' && x.status === 'todo')) t.rank = 9000
+      d.tickets.find((x) => x.key === 'NEX-102')!.rank = 1000
+      d.tickets.find((x) => x.key === 'NEX-110')!.rank = 1000 + 1e-7
+    })
+    await api.users.viewAs('u-3') // Mariam, NEX-106's assignee
+    await api.tasks.moveTo('NEX-106', 'todo', 1, ['NEX-102', 'NEX-110'])
+    const now = await order()
+    expect(now.slice(0, 3)).toEqual([['NEX-102', 1000], ['NEX-106', 2000], ['NEX-110', 3000]])
+  })
+  it('moveTo refuses someone who may not move it', async () => {
+    const api = apiAt()
+    await api.users.viewAs('u-8')
+    await expect(api.tasks.moveTo('NEX-106', 'done', 0)).rejects.toMatchObject({ status: 403 })
+  })
+})
+
