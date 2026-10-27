@@ -47,6 +47,8 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
     case 'timeLogged':
       // Hours change everywhere: my day, every task and project summary (under 'tickets'), and the Time tabs.
       return [qk.myDay(), ['tickets'], qk.timeAll(), ['dashboard'], ['time', 'report']]
+    case 'messageChanged':
+      return [qk.messages(event.channelId), qk.message(event.messageId), qk.replies(event.messageId), qk.mentions()]
     case 'commentAdded':
       return [qk.comments(event.taskKey), qk.mentions()]
     case 'userTyping':

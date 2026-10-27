@@ -287,3 +287,118 @@ describe('send and reply', () => {
     await expect(api.chat.reply(parent.id, ' ')).rejects.toMatchObject({ detail: 'Write a message first.' })
   })
 })
+
+describe('message actions', () => {
+  const msg = (message: { id: string }) => ({ kind: 'message' as const, id: message.id })
+
+  it('react toggles me on and off; an empty emoji goes away', async () => {
+    const sent = await api.chat.send('c-general', 'Ship it')
+    await api.chat.react(msg(sent), '👍')
+    expect((await api.chat.message(sent.id)).reactions).toEqual([{ emoji: '👍', userIds: ['u-1'] }])
+    await api.users.viewAs('u-2')
+    await api.chat.react(msg(sent), '👍')
+    expect((await api.chat.message(sent.id)).reactions).toEqual([{ emoji: '👍', userIds: ['u-1', 'u-2'] }])
+    await api.chat.react(msg(sent), '👍')
+    await api.users.viewAs('u-1')
+    await api.chat.react(msg(sent), '👍')
+    expect((await api.chat.message(sent.id)).reactions).toEqual([])
+  })
+
+  it('react refuses an emoji outside REACTIONS', async () => {
+    const sent = await api.chat.send('c-general', 'Ship it')
+    await expect(api.chat.react(msg(sent), '🐍')).rejects.toMatchObject({ status: 400, detail: 'Pick one of the reactions shown.' })
+  })
+
+  it('react on a private channel I am not in is refused', async () => {
+    const sent = await api.chat.send('c-release', 'Go/no-go at 4')
+    await api.users.viewAs('u-3') // Mariam: not in #release-v2
+    await expect(api.chat.react(msg(sent), '👍')).rejects.toMatchObject({ status: 403, detail: "You're not in this channel." })
+  })
+
+  it('edit re-parses mentions and keys, sets editedAt, keeps keys of tasks made from it', async () => {
+    const sent = await api.chat.send('c-p-nex', 'Look at NEX-101 @[Nour](u-2)')
+    await db.update((d) => {
+      d.tickets.find((t) => t.key === 'NEX-102')!.linkedMessageId = sent.id
+    })
+    const edited = await api.chat.edit(msg(sent), 'Look at NEX-103 @[Mariam](u-3)')
+    expect(edited.content).toBe('Look at NEX-103 @[Mariam](u-3)')
+    expect(edited.mentions.some((m) => m.kind === 'user' && m.id === 'u-3')).toBe(true)
+    expect(edited.mentions.some((m) => m.kind === 'user' && m.id === 'u-2')).toBe(false)
+    expect([...(edited as ChatMessage).linkedTicketKeys].sort()).toEqual(['NEX-102', 'NEX-103'])
+    expect((edited as ChatMessage).editedAt).toEqual(expect.any(String))
+  })
+
+  it('edit with the same text writes nothing and publishes nothing', async () => {
+    const sent = await api.chat.send('c-general', 'Same')
+    events.length = 0
+    const edited = await api.chat.edit(msg(sent), '  Same  ')
+    expect((edited as ChatMessage).editedAt).toBeNull()
+    expect(events).toEqual([])
+  })
+
+  it("edit or remove someone else's message is refused", async () => {
+    const sent = await api.chat.send('c-general', 'Mine')
+    await api.users.viewAs('u-2')
+    await expect(api.chat.edit(msg(sent), 'Yours')).rejects.toMatchObject({ status: 403, detail: 'You can only change your own messages.' })
+    await expect(api.chat.remove(msg(sent))).rejects.toMatchObject({ status: 403, detail: 'You can only change your own messages.' })
+  })
+
+  it('edit or remove a comment card is refused', async () => {
+    await api.users.viewAs('u-4') // Ahmed manages Mobile App
+    await api.comments.create({ taskKey: 'MOB-104', kind: 'comment', body: 'Looks good', files: [] })
+    const card = (await db.read()).messages.find((m) => m.commentId && m.senderId === 'u-4')!
+    await expect(api.chat.edit(msg(card), 'Changed')).rejects.toMatchObject({ status: 400, detail: "This message can't be changed." })
+    await expect(api.chat.remove(msg(card))).rejects.toMatchObject({ status: 400 })
+  })
+
+  it('remove keeps the row and its replies, clears content, files, mentions and reactions, sets deletedAt', async () => {
+    const sent = await api.chat.send('c-general', 'Oops @[Nour](u-2) NEX-101')
+    await api.chat.react(msg(sent), '👀')
+    await api.chat.reply(sent.id, 'seen')
+    await api.chat.remove(msg(sent))
+    const row = await api.chat.message(sent.id)
+    expect(row).toMatchObject({ content: '', attachments: [], mentions: [], reactions: [], linkedTicketKeys: [], threadCount: 1 })
+    expect(row.deletedAt).toEqual(expect.any(String))
+    expect(await api.chat.replies(sent.id)).toHaveLength(1)
+    await expect(api.chat.edit(msg(sent), 'back')).rejects.toMatchObject({ status: 400 })
+    await expect(api.chat.react(msg(sent), '👍')).rejects.toMatchObject({ status: 400 })
+  })
+
+  it('a reply can be reacted to, edited and removed by its author', async () => {
+    const parent = await api.chat.send('c-general', 'Thread')
+    const reply = await api.chat.reply(parent.id, 'first')
+    const target = { kind: 'reply' as const, id: reply.id }
+    await api.chat.react(target, '🎉')
+    const edited = await api.chat.edit(target, 'first, edited')
+    expect(edited).toMatchObject({ content: 'first, edited', reactions: [{ emoji: '🎉', userIds: ['u-1'] }] })
+    expect((edited as { editedAt?: string | null }).editedAt).toEqual(expect.any(String))
+    await api.chat.remove(target)
+    const [row] = await api.chat.replies(parent.id)
+    expect(row).toMatchObject({ content: '', reactions: [] })
+    expect(row.deletedAt).toEqual(expect.any(String))
+  })
+
+  it('each write publishes messageChanged with the parent id for a reply', async () => {
+    const parent = await api.chat.send('c-general', 'Thread')
+    const reply = await api.chat.reply(parent.id, 'first')
+    events.length = 0
+    await api.chat.react({ kind: 'message', id: parent.id }, '👍')
+    await api.chat.edit({ kind: 'reply', id: reply.id }, 'second')
+    await api.chat.remove({ kind: 'reply', id: reply.id })
+    expect(events).toEqual([
+      { type: 'messageChanged', channelId: 'c-general', messageId: parent.id },
+      { type: 'messageChanged', channelId: 'c-general', messageId: parent.id },
+      { type: 'messageChanged', channelId: 'c-general', messageId: parent.id },
+    ])
+  })
+
+  it('a stored message without deletedAt or taskEvent reads as a plain message', async () => {
+    await addMessages('c-general', 1) // written the old way: no deletedAt, no taskEvent
+    const row = await api.chat.message('m-extra-0')
+    expect(row.deletedAt ?? null).toBeNull()
+    expect(row.taskEvent ?? null).toBeNull()
+    await api.users.viewAs('u-2')
+    await api.chat.react({ kind: 'message', id: row.id }, '✅')
+    expect(await api.chat.edit({ kind: 'message', id: row.id }, 'extra 0, edited')).toMatchObject({ content: 'extra 0, edited' })
+  })
+})

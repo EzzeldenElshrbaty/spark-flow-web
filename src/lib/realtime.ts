@@ -14,6 +14,8 @@ export interface RealtimeClient {
   onUserTyping(cb: (event: { channelId: string; userId: string }) => void): () => void
   onTimeLogged(cb: (event: { userId: string; projectId: string | null }) => void): () => void
   onCommentAdded(cb: (event: { taskKey: string; projectId: string }) => void): () => void
+  /** A message or reply changed (reaction, edit, delete); messageId is the message, or a reply's parent. */
+  onMessageChanged(cb: (event: { channelId: string; messageId: string }) => void): () => void
 }
 
 /** One live update, as the mock hub carries it between tabs. */
@@ -24,6 +26,7 @@ export type RealtimeEvent =
   | { type: 'userTyping'; channelId: string; userId: string }
   | { type: 'timeLogged'; userId: string; projectId: string | null }
   | { type: 'commentAdded'; taskKey: string; projectId: string }
+  | { type: 'messageChanged'; channelId: string; messageId: string }
 
 const noop = () => {}
 
@@ -45,6 +48,7 @@ function createUnconnectedClient(): RealtimeClient {
     onUserTyping: () => noop,
     onTimeLogged: () => noop,
     onCommentAdded: () => noop,
+    onMessageChanged: () => noop,
   }
 }
 

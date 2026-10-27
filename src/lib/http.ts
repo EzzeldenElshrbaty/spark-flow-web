@@ -1,4 +1,4 @@
-import type { Api, ProblemDetails } from '@/api/types'
+import type { Api, ChatTarget, ProblemDetails } from '@/api/types'
 import { apiUrl } from '@/lib/api'
 import { ApiError } from '@/lib/apiError'
 
@@ -38,6 +38,7 @@ export async function request<T>(path: string, init?: RequestInit, fetchFn: type
 }
 
 const enc = encodeURIComponent
+const targetPath = (target: ChatTarget) => `/api/${target.kind === 'reply' ? 'replies' : 'messages'}/${enc(target.id)}`
 
 /** The Api over HTTP: one route per call, as the backend serves them. */
 /** For the demo-only actions: the real backend refuses them. */
@@ -70,6 +71,9 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
       markRead: (channelId) => request<void>(`/api/channels/${enc(channelId)}/read`, { method: 'POST' }, fetchFn),
       send: (channelId, content) => send('POST', `/api/channels/${enc(channelId)}/messages`, { content }),
       reply: (messageId, content) => send('POST', `/api/messages/${enc(messageId)}/replies`, { content }),
+      react: (target, emoji) => send<void>('POST', `${targetPath(target)}/reactions`, { emoji }),
+      edit: (target, content) => send('PATCH', targetPath(target), { content }),
+      remove: (target) => send<void>('DELETE', targetPath(target)),
     },
     tickets: {
       projects: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/projects`),

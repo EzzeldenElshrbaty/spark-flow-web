@@ -36,11 +36,11 @@ export function mentionsFor(data: DbData, userId: string): Omit<MentionItem, 're
   const closed = (channelId: string) => data.channels.find((c) => c.id === channelId)?.isPrivate ?? false
   const items: Omit<MentionItem, 'read'>[] = []
   for (const m of data.messages) {
-    if (m.commentId || m.senderId === userId || !reaches(m.mentions, userId, members(m.channelId), closed(m.channelId))) continue
+    if (m.commentId || m.deletedAt || m.senderId === userId || !reaches(m.mentions, userId, members(m.channelId), closed(m.channelId))) continue
     items.push({ id: m.id, source: 'message', authorId: m.senderId, excerpt: excerptOf(m.content), createdAt: m.createdAt, channelId: m.channelId, messageId: m.id, taskKey: null, projectId: null })
   }
   for (const r of data.replies) {
-    if (r.senderId === userId || !reaches(r.mentions, userId, members(r.channelId), closed(r.channelId))) continue
+    if (r.deletedAt || r.senderId === userId || !reaches(r.mentions, userId, members(r.channelId), closed(r.channelId))) continue
     items.push({ id: r.id, source: 'reply', authorId: r.senderId, excerpt: excerptOf(r.content), createdAt: r.createdAt, channelId: r.channelId, messageId: r.messageId, taskKey: null, projectId: null })
   }
   for (const c of data.comments) {

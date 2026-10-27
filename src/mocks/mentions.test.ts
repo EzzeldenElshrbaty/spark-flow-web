@@ -112,3 +112,23 @@ describe('mentions', () => {
     expect(item.excerpt.endsWith('…')).toBe(true)
   })
 })
+
+describe('mentions after edit and delete', () => {
+  it('a deleted message leaves the feed', async () => {
+    const sent = await api.chat.send('c-general', 'Ping @[Nour](u-2)')
+    await api.chat.remove({ kind: 'message', id: sent.id })
+    await as('u-2')
+    expect((await api.mentions.mine()).some((m) => m.id === sent.id)).toBe(false)
+  })
+
+  it('an edit that adds @me brings it in; one that removes it takes it out', async () => {
+    const sent = await api.chat.send('c-general', 'Ping nobody')
+    await api.chat.edit({ kind: 'message', id: sent.id }, 'Ping @[Nour](u-2)')
+    await as('u-2')
+    expect((await api.mentions.mine()).some((m) => m.id === sent.id)).toBe(true)
+    await as('u-1')
+    await api.chat.edit({ kind: 'message', id: sent.id }, 'Ping nobody again')
+    await as('u-2')
+    expect((await api.mentions.mine()).some((m) => m.id === sent.id)).toBe(false)
+  })
+})

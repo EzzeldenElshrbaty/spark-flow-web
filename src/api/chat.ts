@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
 import { qk } from '@/api/queryKeys'
 import { retryUnlessNotFound as retry } from '@/api/retry'
+import type { ChatTarget } from '@/api/types'
 import { api } from '@/lib/api'
 
 // Every hook below takes an id that may still be unknown (a route param, a lookup in progress): without one it
@@ -41,6 +42,15 @@ export function useMarkRead() {
 /** Posts in a channel as the current user. The feed refreshes from the live event and the global invalidate. */
 export function useSendMessage() {
   return useMutation({ mutationFn: ({ channelId, content }: { channelId: string; content: string }) => api.chat.send(channelId, content) })
+}
+export function useReact() {
+  return useMutation({ mutationFn: ({ target, emoji }: { target: ChatTarget; emoji: string }) => api.chat.react(target, emoji) })
+}
+export function useEditMessage() {
+  return useMutation({ mutationFn: ({ target, content }: { target: ChatTarget; content: string }) => api.chat.edit(target, content) })
+}
+export function useDeleteMessage() {
+  return useMutation({ mutationFn: (target: ChatTarget) => api.chat.remove(target) })
 }
 export function useReply() {
   return useMutation({ mutationFn: ({ messageId, content }: { messageId: string; content: string }) => api.chat.reply(messageId, content) })

@@ -1,4 +1,5 @@
-import type { Api, Attachment, Channel, ChatMessage, StoredChannel, ThreadReply } from '@/api/types'
+import type { Api, Attachment, Channel, ChatMessage, ChatTarget, StoredChannel, ThreadReply } from '@/api/types'
+import { REACTIONS } from '@/lib/reactions'
 import type { DbData, MockDb } from './db'
 import { delay } from './latency'
 import type { MockHub } from './realtime'
@@ -65,8 +66,86 @@ function checkCanPost(data: DbData, channel: StoredChannel) {
   return me
 }
 
+type Row = ChatMessage | ThreadReply
+
+/** The message or reply an action is about, its channel, and the message whose thread it is (itself for a message). */
+function findTarget(data: DbData, target: ChatTarget): { row: Row; channel: StoredChannel; messageId: string } {
+  if (target.kind === 'message') {
+    const row = findMessage(data, target.id)
+    return { row, channel: findChannel(data, row.channelId), messageId: row.id }
+  }
+  const row = data.replies.find((r) => r.id === target.id)
+  if (!row) throw notFound('Reply', target.id)
+  return { row, channel: findChannel(data, row.channelId), messageId: row.messageId }
+}
+
+const forbiddenOwn = () => new ApiError({ title: 'Forbidden', status: 403, detail: 'You can only change your own messages.' })
+
+/** Cards (a comment's, a task event's) and deleted rows stay as they are. */
+function checkPlain(row: Row) {
+  if (row.deletedAt || ('commentId' in row && row.commentId) || ('taskEvent' in row && row.taskEvent)) throw badRequest("This message can't be changed.")
+}
+
+/** Keys of tasks someone made from this message: an edit keeps them linked even when the text no longer says them. */
+const keysMadeFrom = (data: DbData, messageId: string) => data.tickets.filter((t) => t.linkedMessageId === messageId).map((t) => t.key)
+
 export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
+  const changed = (channelId: string, messageId: string) => hub.publish({ type: 'messageChanged', channelId, messageId })
   return {
+    async react(target, emoji) {
+      await delay()
+      if (!(REACTIONS as readonly string[]).includes(emoji)) throw badRequest('Pick one of the reactions shown.')
+      const { channelId, messageId } = await db.update((data) => {
+        const { row, channel, messageId } = findTarget(data, target)
+        const me = checkCanPost(data, channel)
+        if (row.deletedAt) throw badRequest("This message can't be changed.")
+        const reaction = row.reactions.find((r) => r.emoji === emoji)
+        if (!reaction) row.reactions.push({ emoji, userIds: [me.id] })
+        else if (reaction.userIds.includes(me.id)) reaction.userIds = reaction.userIds.filter((id) => id !== me.id)
+        else reaction.userIds.push(me.id)
+        row.reactions = row.reactions.filter((r) => r.userIds.length > 0)
+        return { channelId: channel.id, messageId }
+      })
+      changed(channelId, messageId)
+    },
+    async edit(target, content) {
+      await delay()
+      const text = checkText(content)
+      const result = await db.update((data) => {
+        const { row, channel, messageId } = findTarget(data, target)
+        const me = checkCanPost(data, channel)
+        if (row.senderId !== me.id) throw forbiddenOwn()
+        checkPlain(row)
+        if (row.content === text) return { row: clone(row), channelId: channel.id, messageId, same: true }
+        row.content = text
+        row.mentions = parseMentions(text)
+        row.editedAt = new Date().toISOString()
+        if (target.kind === 'message') {
+          const message = row as ChatMessage
+          message.linkedTicketKeys = [...new Set([...parseTicketKeys(text), ...keysMadeFrom(data, message.id)])]
+        }
+        return { row: clone(row), channelId: channel.id, messageId, same: false }
+      })
+      if (!result.same) changed(result.channelId, result.messageId)
+      return result.row
+    },
+    async remove(target) {
+      await delay()
+      const { channelId, messageId } = await db.update((data) => {
+        const { row, channel, messageId } = findTarget(data, target)
+        const me = checkCanPost(data, channel)
+        if (row.senderId !== me.id) throw forbiddenOwn()
+        checkPlain(row)
+        row.content = ''
+        row.attachments = []
+        row.mentions = []
+        row.reactions = []
+        row.deletedAt = new Date().toISOString()
+        if (target.kind === 'message') (row as ChatMessage).linkedTicketKeys = []
+        return { channelId: channel.id, messageId }
+      })
+      changed(channelId, messageId)
+    },
     async send(channelId, content) {
       await delay()
       const message = await db.update((data) => {

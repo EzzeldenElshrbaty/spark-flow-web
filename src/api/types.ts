@@ -93,11 +93,22 @@ export type ChatMessage = {
   linkedTicketKeys: string[]; mentions: Mention[]; editedAt: string | null; createdAt: string
   /** Set on the card a task comment or bug posts in its project's chat. */
   commentId?: string
+  /** Set on the card a task change posts in its project's chat. */
+  taskEvent?: TaskEvent
+  /** Set once the author deletes it: the row stays (its thread too) with its text, files, mentions and reactions gone. */
+  deletedAt?: string | null
 }
+
+/** What a task event card says: the task, and what happened to it. */
+export type TaskEvent = { key: string; kind: 'created' | 'assigned' | 'status' | 'done'; status?: TicketStatus; assigneeId?: string }
+
+/** A message or a thread reply, for the actions both have (react, edit, delete). */
+export type ChatTarget = { kind: 'message' | 'reply'; id: string }
 
 export type ThreadReply = {
   id: string; messageId: string; channelId: string; senderId: string; content: string
   attachments: Attachment[]; reactions: Reaction[]; mentions: Mention[]; createdAt: string
+  editedAt?: string | null; deletedAt?: string | null
 }
 
 // ── Transport ─────────────────────────────────────────────────────────────
@@ -199,6 +210,12 @@ export interface Api {
     /** Posts as the current user; mentions are worked out from the text. */
     send(channelId: string, content: string): Promise<ChatMessage>
     reply(messageId: string, content: string): Promise<ThreadReply>
+    /** Adds the current user's reaction, or takes it back if it's there; only the emoji in REACTIONS. */
+    react(target: ChatTarget, emoji: string): Promise<void>
+    /** The author's own plain message or reply; mentions and task keys are worked out again. */
+    edit(target: ChatTarget, content: string): Promise<ChatMessage | ThreadReply>
+    /** The author's own plain message or reply; the row stays and reads as deleted. */
+    remove(target: ChatTarget): Promise<void>
   }
   tickets: {
     /** The same list as projects.list; kept for the Phase 1+2 pages. */
