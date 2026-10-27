@@ -73,7 +73,8 @@ export function projectsApi(db: MockDb, now: () => Date): Pick<Api, 'projects' |
             const name = input.name.trim()
             if (!name) throw badRequest('Give the project a name.')
             if (!KEY.test(input.key)) throw badRequest('The key is 2 to 5 capital letters, such as NEX.')
-            if (data.projects.some((p) => p.workspaceId === input.workspaceId && p.key === input.key)) throw badRequest(`Key ${input.key} is already used.`)
+            // Unique across workspaces: task keys (NEX-101) are looked up by key alone.
+            if (data.projects.some((p) => p.key === input.key)) throw badRequest(`Key ${input.key} is already used.`)
             if (!data.users.some((u) => u.id === input.managerId)) throw badRequest('Pick a project manager.')
             checkDates(input.startDate, input.dueDate)
 

@@ -47,6 +47,10 @@ describe('projects', () => {
     await expect(api.projects.create(newProject({ dueDate: '2026-10-01T00:00:00.000Z' }))).rejects.toMatchObject({ status: 400, detail: 'The due date is before the start date.' })
   })
 
+  it('a key used in another workspace is refused', async () => {
+    await expect(api.projects.create(newProject({ workspaceId: 'ws-design', key: 'NEX' }))).rejects.toMatchObject({ status: 400, detail: 'Key NEX is already used.' })
+  })
+
   it('member cannot create or edit', async () => {
     await api.users.viewAs('u-8') // Member
     const before = await db.read()

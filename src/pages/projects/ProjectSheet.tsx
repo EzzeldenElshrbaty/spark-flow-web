@@ -69,6 +69,8 @@ export function ProjectSheet({
   const [errors, setErrors] = useState<ProjectFormErrors>({})
   const saving = create.isPending || update.isPending
   const failure = (create.error ?? update.error) as Error | null
+  // A key taken in another workspace is only known to the server: show it where the key is.
+  const keyFailure = failure?.message.startsWith('Key ') ? failure.message : undefined
 
   const set = <K extends keyof ProjectFormValues>(field: K, value: ProjectFormValues[K]) => setValues((v) => ({ ...v, [field]: value }))
   const toggle = (field: 'memberIds' | 'teamIds', id: string) =>
@@ -126,7 +128,7 @@ export function ProjectSheet({
           />
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Key" required error={errors.key} hint={project ? 'Keys don’t change once tasks use them.' : 'Task numbers start with it, such as NEX-101.'}>
+          <Field label="Key" required error={errors.key ?? keyFailure} hint={project ? 'Keys don’t change once tasks use them.' : 'Task numbers start with it, such as NEX-101.'}>
             <input
               className={clsx(inputClass, 'font-mono uppercase')}
               value={values.key}
@@ -255,7 +257,7 @@ export function ProjectSheet({
           </div>
         </fieldset>
 
-        {failure && (
+        {failure && !keyFailure && (
           <p role="alert" className="text-sm text-red-600 dark:text-red-400">
             {failure.message}
           </p>
