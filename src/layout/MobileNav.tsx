@@ -80,7 +80,8 @@ export function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => 
   return (
     <div ref={ref} className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
       <button type="button" tabIndex={-1} className="absolute inset-0 bg-black/50" onClick={onClose} aria-label="Close menu" />
-      <div className="absolute inset-y-0 start-0 flex w-72 max-w-[85vw] flex-col bg-ink-900 shadow-xl dark:bg-surface-sunken">
+      {/* Focusable, so a click on its padding keeps focus in the drawer (Tab and Escape still work). */}
+      <div tabIndex={-1} className="absolute inset-y-0 start-0 flex w-72 max-w-[85vw] flex-col bg-ink-900 shadow-xl outline-none dark:bg-surface-sunken">
         <div className="flex h-16 items-center justify-between border-b border-white/10 px-4">
           <Logo onClick={onClose} />
           <button type="button" data-autofocus onClick={onClose} className="rounded-md p-1 text-neutral-400 hover:text-white" aria-label="Close menu">
