@@ -8,8 +8,8 @@ const placeholder: Persona = { id: '', name: '', title: '', role: 'member' }
 
 /** Who is using the app and the role that decides what they see. The persona comes from the API. */
 export function useRole() {
-  const { data, isPending } = useMe()
+  const { data, isPending, error, refetch } = useMe()
   const persona: Persona = data ? { id: data.id, name: data.name, title: data.title, role: data.role } : placeholder
   // loading: the persona is still the placeholder, so its role must not decide what is refused yet.
-  return { persona, role: persona.role, loading: !data && isPending }
+  return { persona, role: persona.role, loading: !data && isPending, error: data ? null : (error as Error | null), retry: () => void refetch() }
 }

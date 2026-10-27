@@ -22,7 +22,8 @@ async function toApiError(res: Response): Promise<ApiError> {
 export async function request<T>(path: string, init?: RequestInit, fetchFn: typeof fetch = fetch): Promise<T> {
   let res: Response
   try {
-    res = await fetchFn(apiUrl(path), { ...init, headers: { Accept: 'application/json', ...init?.headers } })
+    // The session is a cookie on the backend's own origin (assumed with the .NET team), so cross-origin calls carry it.
+    res = await fetchFn(apiUrl(path), { credentials: 'include', ...init, headers: { Accept: 'application/json', ...init?.headers } })
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') throw error // cancelled on purpose, not a failure
     throw new ApiError({ title: "Couldn't reach the server", status: 0 })

@@ -41,7 +41,7 @@ Spark Flow is a sister product of **Spark CRM** (Spark Systems). The two apps mu
 
 - `npm run dev`
 - `npm run build:prototype`: the demo build gate, `tsc -b && vite build --mode prototype`
-- `npm run build`: production build; fails unless `VITE_BACKEND=on` and `VITE_API_URL` are set
+- `npm run build`: production build; fails unless `VITE_BACKEND=on` and `VITE_API_URL` are set. With the backend on, requests send cookies (`credentials: 'include'`); a 401 shows "You're signed out." with a link to `${VITE_API_URL}/signin?returnTo=<url>` (an assumption to agree with the .NET team)
 - `npm run lint`
 - `npm test`
 - `npx vitest run <file>`

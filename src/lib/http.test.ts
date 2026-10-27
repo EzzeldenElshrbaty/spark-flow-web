@@ -242,3 +242,11 @@ describe('request', () => {
     await expect(request('/api/x', undefined, fetchReturning(200, 'oops'))).rejects.toMatchObject({ name: 'ApiError', status: 200 })
   })
 })
+
+describe('request credentials', () => {
+  it('requests send cookies', async () => {
+    const { calls, fetchFn } = recordingFetch()
+    await request('/api/me', undefined, fetchFn)
+    expect(calls[0]!.init?.credentials).toBe('include')
+  })
+})

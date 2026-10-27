@@ -8,6 +8,8 @@ import { Sidebar } from '@/layout/Sidebar'
 import { PhoneTimerBar, TimerAnnouncer } from '@/layout/TimerBar'
 import { TopBar } from '@/layout/TopBar'
 import { useUiStore } from '@/lib/uiStore'
+import { useRole } from '@/lib/useRole'
+import { AccountState } from '@/layout/AccountState'
 
 export function AppLayout() {
   const collapsed = useUiStore((state) => state.sidebarCollapsed)
@@ -15,6 +17,8 @@ export function AppLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   // The phone search screen opens from the top bar; its state lives here with the other overlays.
   const [searchOpen, setSearchOpen] = useState(false)
+  // Without an account nothing below can be decided: say why instead of refusing every page.
+  const account = useRole()
 
   return (
     // On desktop the content floats as a rounded panel on the sidebar's colour and scrolls on its own.
@@ -32,9 +36,13 @@ export function AppLayout() {
         />
         <main className="w-full flex-1 px-4 pb-[calc(6rem+var(--timer-bar,0px))] pt-6 md:px-6 lg:pb-10 xl:px-8">
           {/* Each page's code loads when it's first opened; this shows meanwhile (usually a blink). */}
-          <Suspense fallback={<PageSkeleton />}>
-            <Outlet />
-          </Suspense>
+          {account.error ? (
+            <AccountState error={account.error} onRetry={account.retry} />
+          ) : (
+            <Suspense fallback={<PageSkeleton />}>
+              <Outlet />
+            </Suspense>
+          )}
         </main>
       </div>
       {/* Thread or ticket beside the content (xl), over it (sm–lg) or as a bottom sheet (phones); driven by the URL. */}
