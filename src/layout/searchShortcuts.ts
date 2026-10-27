@@ -3,7 +3,7 @@
 // it can (?new=1) or the page, tab or filter where it's done.
 import { FolderKanban, Hash, ListChecks, Lock, MessageSquare, UserRound, type LucideIcon } from 'lucide-react'
 import type { Channel, Project, TaskView, User, Workspace } from '@/api/types'
-import { channelLabel } from '@/lib/channels'
+import { channelLabel, isArchived } from '@/lib/channels'
 import { paths } from '@/lib/paths'
 import type { Role } from '@/lib/roles'
 import { allNavItems, canSee, settingsItem } from '@/navigation'
@@ -44,7 +44,8 @@ export function shortcutsFor(role: Role, workspaceSlug: string | null): { pages:
 /** The channels, DMs and project boards of one workspace, so search finds them like pages. */
 export function workspaceShortcuts(ws: Workspace, channels: Channel[], projects: Project[], users: User[], meId: string): Shortcut[] {
   return [
-    ...channels.map((channel): Shortcut => {
+    // Archived channels are left out; every other public channel is found here (the sidebar lists only mine).
+    ...channels.filter((c) => !isArchived(c)).map((channel): Shortcut => {
       const dm = channel.kind === 'dm'
       const label = channelLabel(channel, users, meId)
       return {

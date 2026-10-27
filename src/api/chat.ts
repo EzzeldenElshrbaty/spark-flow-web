@@ -64,6 +64,12 @@ export function useUpdateChannel() {
 export function useArchiveChannel() {
   return useMutation({ mutationFn: (id: string) => api.chat.archiveChannel(id) })
 }
+export function useJoinChannel() {
+  return useMutation({ mutationFn: (id: string) => api.chat.join(id) })
+}
+export function useLeaveChannel() {
+  return useMutation({ mutationFn: (id: string) => api.chat.leave(id) })
+}
 export function useRestoreChannel() {
   return useMutation({ mutationFn: (id: string) => api.chat.restoreChannel(id) })
 }

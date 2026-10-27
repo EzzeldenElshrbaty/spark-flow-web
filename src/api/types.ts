@@ -268,6 +268,10 @@ export interface Api {
     /** Its members and admins; not a project's channel (it follows its project) or a DM. Read-only until restored. */
     archiveChannel(id: string): Promise<Channel>
     restoreChannel(id: string): Promise<Channel>
+    /** A public channel that isn't a project's: I become a member (it shows in my sidebar). */
+    join(id: string): Promise<Channel>
+    /** Not a project's channel (its members follow the project) or a DM. */
+    leave(id: string): Promise<Channel>
   }
   tickets: {
     /** The same list as projects.list; kept for the Phase 1+2 pages. */

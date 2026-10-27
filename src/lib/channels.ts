@@ -24,6 +24,14 @@ export function sortChannels(channels: Channel[]): { channels: Channel[]; dms: C
   }
 }
 
+/**
+ * The channels the sidebar lists: the ones I'm in, and the chats of my projects; never archived ones. Other public
+ * channels are found through search, where Join adds them.
+ */
+export function sidebarChannels(channels: Channel[], meId: string, myProjectChannelIds: Set<string>): Channel[] {
+  return channels.filter((c) => !isArchived(c) && (c.memberIds.includes(meId) || myProjectChannelIds.has(c.id)))
+}
+
 /** Whether a channel belongs to the workspace in the URL. One from another workspace is treated as not found there. */
 export function inWorkspace(channel: Pick<Channel, 'workspaceId'>, workspaceId: string | undefined): boolean {
   return Boolean(workspaceId) && channel.workspaceId === workspaceId

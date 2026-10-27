@@ -1,6 +1,7 @@
-import { Archive, MoreHorizontal, Pencil } from 'lucide-react'
+import { Archive, LogOut, MoreHorizontal, Pencil } from 'lucide-react'
+import { useNavigate } from 'react-router'
 import { useRef, useState } from 'react'
-import { useArchiveChannel, useRestoreChannel } from '@/api/chat'
+import { useArchiveChannel, useJoinChannel, useLeaveChannel, useRestoreChannel } from '@/api/chat'
 import { useProjectSummaries } from '@/api/projects'
 import type { Channel } from '@/api/types'
 import { ConfirmDeleteSheet } from '@/components/ConfirmDeleteSheet'
@@ -8,6 +9,7 @@ import { Button } from '@/components/ui/Button'
 import { MenuPanel } from '@/components/ui/Menu'
 import { roundButtonClass, roundButtonFill } from '@/components/ui/styles'
 import { isArchived } from '@/lib/channels'
+import { paths } from '@/lib/paths'
 import { useRole } from '@/lib/useRole'
 import { ChannelSheet } from '@/pages/chat/ChannelSheet'
 import { menuItemClass } from '@/pages/chat/MessageActions'
@@ -28,6 +30,9 @@ export function useCanManageChannel(channel: Channel): boolean {
 export function ChannelMenu({ channel, workspaceSlug }: { channel: Channel; workspaceSlug: string }) {
   const editable = useCanManageChannel(channel)
   const archive = useArchiveChannel()
+  const leave = useLeaveChannel()
+  const navigate = useNavigate()
+  const { persona } = useRole()
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const [archiving, setArchiving] = useState(false)
@@ -61,6 +66,19 @@ export function ChannelMenu({ channel, workspaceSlug }: { channel: Channel; work
         >
           <Archive className="size-4 shrink-0" /> Archive channel
         </button>
+        {channel.memberIds.includes(persona.id) && (
+          <button
+            type="button"
+            role="menuitem"
+            className={menuItemClass}
+            onClick={() => {
+              setOpen(false)
+              leave.mutate(channel.id, { onSuccess: () => navigate(paths.home(workspaceSlug)) })
+            }}
+          >
+            <LogOut className="size-4 shrink-0" /> Leave channel
+          </button>
+        )}
       </MenuPanel>
       {editing && <ChannelSheet workspaceId={channel.workspaceId} workspaceSlug={workspaceSlug} channel={channel} onClose={() => setEditing(false)} />}
       <ConfirmDeleteSheet
@@ -73,6 +91,20 @@ export function ChannelMenu({ channel, workspaceSlug }: { channel: Channel; work
         onConfirm={() => archive.mutateAsync(channel.id)}
         onClose={() => setArchiving(false)}
       />
+    </div>
+  )
+}
+
+/** A public channel I'm not in shows Join in place of the composer; once in, it's in my sidebar. */
+export function JoinChannelLine({ channel }: { channel: Channel }) {
+  const join = useJoinChannel()
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <p className="text-sm text-fg-muted">You're not in this channel.</p>
+      <Button onClick={() => join.mutate(channel.id)} disabled={join.isPending}>
+        {join.isPending ? 'Joining…' : 'Join channel'}
+      </Button>
+      {join.error && <p className="w-full text-sm text-red-600 dark:text-red-400">{(join.error as Error).message}</p>}
     </div>
   )
 }

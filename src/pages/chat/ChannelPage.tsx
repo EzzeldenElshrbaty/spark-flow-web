@@ -14,7 +14,8 @@ import { ChannelFeed } from '@/pages/chat/ChannelFeed'
 import { Composer } from '@/pages/chat/Composer'
 import { useCanPost, useReadOnlyLine } from '@/pages/chat/useCanPost'
 import { useTaskFromMessage } from '@/pages/chat/useTaskFromMessage'
-import { ArchivedChannelLine, ChannelMenu } from '@/pages/chat/ChannelMenu'
+import { ArchivedChannelLine, ChannelMenu, JoinChannelLine } from '@/pages/chat/ChannelMenu'
+import { useProjectSummaries } from '@/api/projects'
 import { MessageSkeleton } from '@/pages/chat/MessageRow'
 
 /** A channel or DM: its name and topic, then its messages with the newest at the bottom. Read-only in Phase 1. */
@@ -28,6 +29,7 @@ export function ChannelPage() {
   const send = useSendMessage()
   const readOnly = useReadOnlyLine(channel.data)
   const fromMessage = useTaskFromMessage(channelId, workspace?.id)
+  const projects = useProjectSummaries(workspace?.id)
   // An error belongs to the channel it happened in.
   const { reset } = send
   useEffect(() => reset(), [channelId, reset])
@@ -83,6 +85,8 @@ export function ChannelPage() {
         composer={
           isArchived(current) ? (
             <ArchivedChannelLine channel={current} />
+          ) : current.kind === 'channel' && !current.isPrivate && !current.memberIds.includes(persona.id) && projects.data && !projects.data.some((p) => p.channelId === current.id) ? (
+            <JoinChannelLine channel={current} />
           ) : canPost === false ? (
             <p className="text-sm text-fg-muted">{readOnly}</p>
           ) : canPost ? (

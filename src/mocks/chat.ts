@@ -115,6 +115,26 @@ function checkPlain(row: Row) {
 const keysMadeFrom = (data: DbData, messageId: string) => data.tickets.filter((t) => t.linkedMessageId === messageId).map((t) => t.key)
 
 export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
+  /** Joins or leaves a channel as the current user. A project's channel follows its people; a DM keeps its own. */
+  const setMember = async (id: string, join: boolean) => {
+    await delay()
+    const channel = await db.update((data) => {
+      const channel = findChannel(data, id)
+      const me = currentUser(data)
+      if (channel.kind === 'dm') throw badRequest(join ? 'You can only join public channels.' : "You can't leave a conversation.")
+      if (data.projects.some((p) => p.channelId === id)) throw badRequest('This channel follows its project.')
+      if (join) {
+        if (channel.isPrivate) throw badRequest('You can only join public channels.')
+        if (channel.archivedAt) throw badRequest('This channel is archived.')
+        if (!channel.memberIds.includes(me.id)) channel.memberIds.push(me.id)
+      } else {
+        channel.memberIds = channel.memberIds.filter((m) => m !== me.id)
+      }
+      return withUnread(data, channel)
+    })
+    hub.publish({ type: 'channelChanged', channelId: id })
+    return clone(channel)
+  }
   /** Archives or restores a channel: its members and admins; a project's channel follows its project, a DM never is. */
   const setArchived = async (id: string, archive: boolean) => {
     await delay()
@@ -191,6 +211,8 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       hub.publish({ type: 'channelChanged', channelId: id })
       return clone(channel)
     },
+    join: (id) => setMember(id, true),
+    leave: (id) => setMember(id, false),
     archiveChannel: (id) => setArchived(id, true),
     restoreChannel: (id) => setArchived(id, false),
     async react(target, emoji) {

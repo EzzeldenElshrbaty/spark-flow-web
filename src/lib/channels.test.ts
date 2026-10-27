@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Channel } from '@/api/types'
-import { channelLabel, inWorkspace, readOnlyFor, sortChannels } from '@/lib/channels'
+import { channelLabel, inWorkspace, readOnlyFor, sidebarChannels, sortChannels } from '@/lib/channels'
 import { seed } from '@/mocks/seed'
 
 const data = seed(new Date('2026-10-26T09:00:00Z')).data
@@ -67,3 +67,12 @@ describe('readOnlyFor', () => {
     expect(readOnlyFor(false)).toBe('You can read this channel. Only its members can write here.')
   })
 })
+
+describe('sidebarChannels', () => {
+  const ch = (id: string, memberIds: string[], archivedAt: string | null = null) => ({ id, kind: 'channel', name: id, memberIds, archivedAt }) as unknown as Channel
+  it("keeps my channels and my projects' channels, not other public or archived ones", () => {
+    const list = [ch('mine', ['u1']), ch('other', ['u2']), ch('proj', ['u2']), ch('old', ['u1'], '2026-10-01T00:00:00.000Z')]
+    expect(sidebarChannels(list, 'u1', new Set(['proj'])).map((c) => c.id)).toEqual(['mine', 'proj'])
+  })
+})
+

@@ -2,7 +2,8 @@ import type { Channel, Presence, Project } from '@/api/types'
 import { useChannels } from '@/api/chat'
 import { useProjects } from '@/api/tickets'
 import { useUsers } from '@/api/users'
-import { channelLabel, sortChannels } from '@/lib/channels'
+import { channelLabel, sidebarChannels, sortChannels } from '@/lib/channels'
+import { projectPeopleIds } from '@/lib/projectPeople'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { useRole } from '@/lib/useRole'
 
@@ -19,6 +20,8 @@ export function useSidebarGroups() {
 
   const users = usersQuery.data ?? []
   const sorted = sortChannels(channelsQuery.data ?? [])
+  // Channels I'm in, and my projects' chats (their members follow the project).
+  const myProjectChannelIds = new Set((projectsQuery.data ?? []).filter((p) => projectPeopleIds(p, users).has(persona.id)).map((p) => p.channelId))
   const row = (channel: Channel): ChannelRow => {
     const other = channel.memberIds.find((id) => id !== persona.id) ?? persona.id
     return { channel, label: channelLabel(channel, users, persona.id), presence: users.find((u) => u.id === other)?.presence ?? 'offline', group: channel.memberIds.length > 2 }
@@ -27,7 +30,7 @@ export function useSidebarGroups() {
 
   return {
     workspace,
-    channels: sorted.channels.map(row),
+    channels: sidebarChannels(sorted.channels, persona.id, myProjectChannelIds).map(row),
     dms: sorted.dms.map(row),
     projects,
     // The channel list and the people behind DM names arrive separately; show rows only when both are there.

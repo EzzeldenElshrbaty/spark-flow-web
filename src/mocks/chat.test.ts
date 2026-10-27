@@ -563,3 +563,24 @@ describe('archiving channels', () => {
   })
 })
 
+describe('joining and leaving channels', () => {
+  it('join adds me; leave removes me', async () => {
+    await api.users.viewAs('u-8') // Tarek, not in #backend
+    expect((await api.chat.join('c-backend')).memberIds).toContain('u-8')
+    expect((await api.chat.leave('c-backend')).memberIds).not.toContain('u-8')
+    expect(events.filter((e) => e.type === 'channelChanged')).toHaveLength(2)
+  })
+  it('join a private or archived channel is refused', async () => {
+    await api.users.viewAs('u-3')
+    await expect(api.chat.join('c-release')).rejects.toMatchObject({ status: 400, detail: 'You can only join public channels.' })
+    await api.users.viewAs('u-1')
+    await api.chat.archiveChannel('c-backend')
+    await api.users.viewAs('u-8')
+    await expect(api.chat.join('c-backend')).rejects.toMatchObject({ status: 400, detail: 'This channel is archived.' })
+  })
+  it('leave a project channel or a DM is refused', async () => {
+    await expect(api.chat.leave('c-p-nex')).rejects.toMatchObject({ status: 400, detail: 'This channel follows its project.' })
+    await expect(api.chat.leave('c-dm-1')).rejects.toMatchObject({ status: 400, detail: "You can't leave a conversation." })
+  })
+})
+

@@ -80,6 +80,8 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
       updateChannel: (id, patch) => send('PATCH', `/api/channels/${enc(id)}`, patch),
       archiveChannel: (id) => send('POST', `/api/channels/${enc(id)}/archive`),
       restoreChannel: (id) => send('POST', `/api/channels/${enc(id)}/restore`),
+      join: (id) => send('POST', `/api/channels/${enc(id)}/join`),
+      leave: (id) => send('POST', `/api/channels/${enc(id)}/leave`),
     },
     tickets: {
       projects: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/projects`),
