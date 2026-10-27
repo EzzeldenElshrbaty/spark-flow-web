@@ -8,12 +8,16 @@ import { paths } from '@/lib/paths'
 import { ChannelFeed } from '@/pages/chat/ChannelFeed'
 import { Composer } from '@/pages/chat/Composer'
 import { useCanPost, useReadOnlyLine } from '@/pages/chat/useCanPost'
+import { CanPostError } from '@/pages/chat/CanPostError'
+import { TypingLine } from '@/pages/chat/ChannelTyping'
+import { useRealtime } from '@/lib/realtime'
 import { useTaskFromMessage } from '@/pages/chat/useTaskFromMessage'
 
 /** The project's channel, to read and write in; "Open in Chat" goes to the full channel. */
 export function ChatTab({ ws, project, people, usersLoading }: { ws: string; project: ProjectSummary; people: User[]; usersLoading: boolean }) {
   const channel = useChannel(project.channelId)
   const canPost = useCanPost(channel.data)
+  const realtime = useRealtime()
   const readOnly = useReadOnlyLine(channel.data)
   const fromMessage = useTaskFromMessage(project.channelId, project.workspaceId)
   const send = useSendMessage()
@@ -40,15 +44,21 @@ export function ChatTab({ ws, project, people, usersLoading }: { ws: string; pro
           canPost === false ? (
             <p className="text-sm text-fg-muted">{readOnly}</p>
           ) : canPost ? (
+            <>
+            <TypingLine channelId={project.channelId} people={people} meId={persona.id} />
             <Composer
               quiet
               placeholder={`Message ${project.name}`}
+              onTyping={() => realtime.sendTyping(project.channelId, persona.id)}
               submitLabel="Send"
               pendingLabel="Sending…"
               error={send.error as Error | null}
               onSubmit={(content) => send.mutateAsync({ channelId: project.channelId, content })}
             />
-          ) : null
+            </>
+          ) : (
+            <CanPostError channel={channel.data} />
+          )
         }
       />
       {fromMessage.sheet}

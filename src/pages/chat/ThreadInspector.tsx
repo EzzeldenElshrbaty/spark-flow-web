@@ -11,6 +11,7 @@ import { NotFound } from '@/pages/NotFound'
 import { Composer } from '@/pages/chat/Composer'
 import { MessageRow } from '@/pages/chat/MessageRow'
 import { useCanPost, useReadOnlyLine } from '@/pages/chat/useCanPost'
+import { CanPostError } from '@/pages/chat/CanPostError'
 
 const isNotFound = (error: Error | null) => error instanceof ApiError && error.status === 404
 const isForbidden = (error: Error | null) => error instanceof ApiError && error.status === 403
@@ -72,7 +73,9 @@ export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: st
             <p className="text-sm text-fg-muted">{readOnly}</p>
           ) : canPost ? (
             <Composer quiet placeholder="Reply in the thread" submitLabel="Reply" pendingLabel="Replying…" error={reply.error as Error | null} onSubmit={(content) => reply.mutateAsync({ messageId, content })} />
-          ) : null}
+          ) : (
+            <CanPostError channel={channel.data} />
+          )}
         </div>
       </>
     )
