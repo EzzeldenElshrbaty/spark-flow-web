@@ -9,4 +9,10 @@ describe('shouldMarkRead', () => {
     expect(shouldMarkRead(null, null, true)).toBe(false)
     expect(shouldMarkRead(null, 'm1', true)).toBe(true)
   })
+
+  it('a channel just opened is marked once its first message loads, only in a visible tab', () => {
+    expect(shouldMarkRead(null, 'm1', true)).toBe(true)
+    expect(shouldMarkRead(null, 'm1', false)).toBe(false)
+    expect(shouldMarkRead(null, null, true)).toBe(false)
+  })
 })

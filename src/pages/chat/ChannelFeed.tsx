@@ -39,8 +39,6 @@ export function ChannelFeed({
   const endRef = useRef<HTMLDivElement>(null)
   const scrolledFor = useRef<string | null>(null)
 
-  useEffect(() => markRead(channelId), [channelId, markRead])
-
   useEffect(() => {
     realtime.joinChannel(channelId)
     return () => realtime.leaveChannel(channelId)
@@ -62,8 +60,8 @@ export function ChannelFeed({
     if (newestMine) endRef.current?.scrollIntoView({ block: 'end' })
   }, [newestMine])
 
-  // The channel on screen stays read: a new message marks it read again while the tab is in view, and coming back to
-  // the tab does too. A channel left open in a background tab keeps its badge.
+  // The channel on screen stays read: opening it, or a new message, marks it read once its newest message is shown in
+  // a tab in view, and coming back to the tab does too. A channel opened or left open in a background tab keeps its badge.
   const newestId = newest?.id ?? null
   const seen = useRef<string | null>(null)
   useEffect(() => {
