@@ -17,6 +17,15 @@ describe('uiStore', () => {
     expect(useUiStore.getState().typing.c1).toEqual([{ userId: 'u2', until: 4_000 }])
   })
 
+  it('toggleSection collapses and reopens one sidebar section, and is kept with the other preferences', () => {
+    useUiStore.getState().toggleSection('channels')
+    useUiStore.getState().toggleSection('starred')
+    useUiStore.getState().toggleSection('starred')
+    expect(useUiStore.getState().collapsedSections).toEqual(['channels'])
+    useUiStore.getState().forgetPlaces()
+    expect(useUiStore.getState().collapsedSections).toEqual(['channels'])
+  })
+
   it('visit records last place per workspace', () => {
     useUiStore.getState().visit('engineering', '/w/engineering/c/c-backend')
     expect(useUiStore.getState()).toMatchObject({ lastWorkspace: 'engineering', lastVisited: { engineering: '/w/engineering/c/c-backend' } })

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { Channel } from '@/api/types'
-import { channelLabel, inWorkspace, readOnlyFor, sidebarChannels, sortChannels } from '@/lib/channels'
+import type { Channel, MentionItem } from '@/api/types'
+import { channelLabel, inWorkspace, readOnlyFor, sidebarChannels, sortChannels, unreadMentions } from '@/lib/channels'
 import { seed } from '@/mocks/seed'
 
 const data = seed(new Date('2026-10-26T09:00:00Z')).data
@@ -76,3 +76,33 @@ describe('sidebarChannels', () => {
   })
 })
 
+
+describe('unreadMentions', () => {
+  const item = (over: Partial<MentionItem>): MentionItem => ({
+    id: 'm', source: 'message', authorId: 'u-2', authorName: 'Hala', excerpt: '', createdAt: '2026-10-26T09:00:00Z',
+    read: false, workspaceId: 'ws-eng', channelId: 'c-general', messageId: 'x', taskKey: null, projectId: null, ...over,
+  })
+
+  it('counts my unread mentions per channel of the workspace on screen', () => {
+    const counts = unreadMentions(
+      [
+        item({ id: '1' }),
+        item({ id: '2', source: 'reply' }),
+        item({ id: '3', read: true }),
+        item({ id: '4', channelId: 'c-backend' }),
+        item({ id: '5', workspaceId: 'ws-design', channelId: 'c-design' }),
+        item({ id: '6', source: 'comment', channelId: null, taskKey: 'NEX-1' }),
+      ],
+      'ws-eng',
+    )
+    expect(counts.byChannel.get('c-general')).toBe(2)
+    expect(counts.byChannel.get('c-backend')).toBe(1)
+    expect(counts.byChannel.has('c-design')).toBe(false)
+    // Activity counts every unread mention in the workspace, task comments included.
+    expect(counts.total).toBe(4)
+  })
+
+  it('is empty before the mentions load', () => {
+    expect(unreadMentions(undefined, 'ws-eng')).toEqual({ total: 0, byChannel: new Map() })
+  })
+})

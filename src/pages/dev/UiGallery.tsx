@@ -2,6 +2,9 @@ import {
   IconArrowBackUp,
   IconBell,
   IconBold,
+  IconAt,
+  IconHash,
+  IconLock,
   IconBookmark,
   IconClock,
   IconDots,
@@ -26,6 +29,7 @@ import { ToastProvider, ToastRegion, useToast } from '@/components/sf/Toast'
 import { Checkbox, Toggle } from '@/components/sf/Toggle'
 import { TokenInput, type Suggestion, type Token } from '@/components/sf/TokenInput'
 import { Tooltip } from '@/components/sf/Tooltip'
+import { SideLink } from '@/layout/Sidebar'
 
 // Dev-only page (not in production builds): every Phase 0 primitive and state, light and dark side by side.
 
@@ -61,6 +65,43 @@ function Column({ theme }: { theme: 'Light' | 'Dark' }) {
   return (
     <div className="sf relative min-w-0 flex-1 bg-sf-surface px-6 pb-20 text-sf-text">
       <h1 className="sf-title mt-6 mb-0">{theme}</h1>
+
+      <Section title="Sidebar rows">
+        <ul className="flex w-[260px] flex-col gap-0.5 rounded-sf-lg bg-sf-app-frame p-2">
+          <li>
+            <SideLink to="/dev/ui" end label="Active" icon={IconHash} collapsed={false} />
+          </li>
+          <li>
+            <SideLink to="/read" label="read" icon={IconHash} collapsed={false} active={false} />
+          </li>
+          <li>
+            <SideLink to="/unread" label="unread" icon={IconHash} unread collapsed={false} />
+          </li>
+          <li>
+            <SideLink to="/mentions" label="mentions" icon={IconHash} mentions={3} collapsed={false} />
+          </li>
+          <li>
+            <SideLink to="/muted" label="muted" icon={IconHash} muted mentions={3} collapsed={false} />
+          </li>
+          <li>
+            <SideLink to="/draft" label="draft" icon={IconHash} draft collapsed={false} />
+          </li>
+          <li>
+            <SideLink to="/private" label="private-channel" icon={IconLock} collapsed={false} />
+          </li>
+          <li>
+            <SideLink to="/drafts" label="Drafts & sent" icon={IconAt} trail={4} collapsed={false} />
+          </li>
+          <li>
+            <SideLink
+              to="/dm"
+              label="Hala Nabil"
+              icon={<Avatar id="u-2" name="Hala Nabil" size="sm" presence="active" on="frame" decorative />}
+              collapsed={false}
+            />
+          </li>
+        </ul>
+      </Section>
 
       <Section title="Type">
         <div className="flex flex-col gap-1">

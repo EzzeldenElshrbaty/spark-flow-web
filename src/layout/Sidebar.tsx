@@ -1,267 +1,433 @@
+import {
+  IconAt,
+  IconBellOff,
+  IconBookmark,
+  IconChevronDown,
+  IconClock,
+  IconEdit,
+  IconFolder,
+  IconHash,
+  IconHome,
+  IconLayoutDashboard,
+  IconLayoutKanban,
+  IconListCheck,
+  IconLock,
+  IconMessages,
+  IconPencil,
+  IconPlus,
+  IconSend,
+  IconSettings,
+  IconUsers,
+  type TablerIcon,
+} from '@tabler/icons-react'
 import clsx from 'clsx'
-import { Clock, Folder, FolderKanban, Hash, House, LayoutDashboard, ListChecks, Lock, Plus, Users } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
+import { useId, useState, type ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router'
-import type { Presence } from '@/api/types'
+import { Avatar } from '@/components/sf/Avatar'
+import { Count } from '@/components/sf/Badge'
+import { IconButton } from '@/components/sf/Button'
+import { Icon } from '@/components/sf/Icon'
 import { useSidebarGroups } from '@/layout/useSidebarGroups'
+import { hasFeature } from '@/lib/features'
 import { paths } from '@/lib/paths'
+import { useUiStore } from '@/lib/uiStore'
 import { usePermission } from '@/lib/usePermission'
 import { useRole } from '@/lib/useRole'
 import { canSee, settingsItem } from '@/navigation'
 import { ChannelSheet } from '@/pages/chat/ChannelSheet'
 import { NewMessageSheet } from '@/pages/chat/NewMessageSheet'
 
-type SidebarLinkProps = {
+type SideLinkProps = {
   to: string
   label: string
-  icon?: ReactNode
-  /** An unread count; shown as the brand pill (a dot on the icon when the sidebar is collapsed). */
-  badge?: number
+  /** A Tabler icon, or a node such as a DM's avatar. */
+  icon?: TablerIcon | ReactNode
+  /** Unread mentions: the red count at the end. */
+  mentions?: number
+  /** Something new to read: bold, strong text. */
+  unread?: boolean
+  /** Muted channels: dim, a bell-off icon, never a count. */
+  muted?: boolean
+  /** An unsent draft: a pencil at the end when there's no count. */
+  draft?: boolean
+  /** Muted trailing number (Drafts & sent, Saved). */
+  trail?: number
   /** The row is active anywhere under this path (a project's link goes to one view but stays lit on the other). */
   within?: string
   /** Active only on this exact path (Home, whose path is the start of every other). */
   end?: boolean
+  /** Overrides the route match (a row that borrows another page's link never lights up). */
+  active?: boolean
   collapsed: boolean
   onNavigate?: () => void
 }
 
-/** One row of the sidebar. The icon is whatever marks the row: a lucide icon, a presence dot. */
-function SidebarLink({ to, label, icon, badge, within, end, collapsed, onNavigate }: SidebarLinkProps) {
+function isIcon(icon: SideLinkProps['icon']): icon is TablerIcon {
+  return typeof icon === 'function' || (typeof icon === 'object' && icon !== null && 'render' in icon)
+}
+
+/** One 28px row of the sidebar (spec 5.1): read, unread, active, muted, mentions and draft states. */
+export function SideLink({
+  to,
+  label,
+  icon,
+  mentions = 0,
+  unread = false,
+  muted = false,
+  draft = false,
+  trail,
+  within,
+  end,
+  active: forced,
+  collapsed,
+  onNavigate,
+}: SideLinkProps) {
   const { pathname } = useLocation()
-  const inside = within ? pathname === within || pathname.startsWith(`${within}/`) : undefined
+  const inside = forced ?? (within ? pathname === within || pathname.startsWith(`${within}/`) : undefined)
+  const count = muted ? 0 : mentions
+  const bold = !muted && (unread || count > 0)
   return (
     <NavLink
       to={to}
       end={end}
       onClick={onNavigate}
-      title={collapsed ? label : undefined}
+      aria-label={collapsed ? label : undefined}
       className={({ isActive }) =>
         clsx(
-          'group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-          (inside ?? isActive) ? 'bg-white/10 text-white' : 'text-neutral-400 hover:bg-white/5 hover:text-white',
-          collapsed && 'justify-center px-2',
+          'sf-focus flex h-7 w-full flex-none items-center gap-2 rounded-sf-md px-2 font-sf text-[14px]/[20px] whitespace-nowrap transition-colors duration-150 ease-sf',
+          collapsed && 'justify-center',
+          (inside ?? isActive)
+            ? 'bg-sf-sidebar-active text-sf-sidebar-text-strong'
+            : clsx(
+                'hover:bg-sf-sidebar-hover',
+                bold ? 'text-sf-sidebar-text-strong' : muted ? 'text-sf-sidebar-text-muted' : 'text-sf-sidebar-text',
+              ),
+          bold ? 'font-semibold' : 'font-normal',
         )
       }
     >
-      {({ isActive }) => (
-        <>
-          {icon && (
-            <span className={clsx('relative flex size-[18px] shrink-0 items-center justify-center', (inside ?? isActive) && 'text-brand-400')}>
-              {icon}
-              {collapsed && badge ? <span className="absolute -end-1 -top-1 size-2 rounded-full bg-brand-500" aria-label={`${badge} unread`} /> : null}
-            </span>
-          )}
-          {!collapsed && <span className="flex-1 truncate">{label}</span>}
-          {!collapsed && badge ? (
-            <span className="rounded-full bg-brand-500 px-1.5 py-0.5 text-[11px] font-semibold leading-none text-white">{badge > 99 ? '99+' : badge}</span>
-          ) : null}
-        </>
-      )}
+      {({ isActive }) => {
+        const active = inside ?? isActive
+        return (
+          <>
+            {icon && (
+              <span className="relative inline-flex flex-none">
+                {isIcon(icon) ? (
+                  <Icon
+                    icon={icon}
+                    size={18}
+                    className={
+                      active ? 'text-sf-sidebar-accent' : bold ? 'text-sf-sidebar-text-strong' : 'text-sf-sidebar-text-muted'
+                    }
+                  />
+                ) : (
+                  icon
+                )}
+                {collapsed && (count > 0 || unread) && !muted && (
+                  <span aria-hidden className="absolute -end-1 -top-1 size-2 rounded-sf-full bg-sf-accent-fill" />
+                )}
+              </span>
+            )}
+            {collapsed ? (
+              (count > 0 || unread) && !muted && <span className="sr-only">{count > 0 ? `, ${count} mentions` : ', unread'}</span>
+            ) : (
+              <>
+                <span className="min-w-0 flex-1 truncate">{label}</span>
+                {count > 0 ? (
+                  <>
+                    {/* Read as "backend, 3 mentions". */}
+                    <span className="sr-only">, </span>
+                    <Count value={count} label={count === 1 ? 'mention' : 'mentions'} className="ms-auto" />
+                  </>
+                ) : muted ? (
+                  <Icon icon={IconBellOff} size={16} className="ms-auto text-sf-sidebar-text-muted" />
+                ) : draft ? (
+                  <span className="ms-auto inline-flex">
+                    <Icon icon={IconPencil} size={16} className="text-sf-sidebar-text-muted" />
+                    <span className="sr-only">, draft</span>
+                  </span>
+                ) : trail ? (
+                  <span className="sf-meta ms-auto text-sf-sidebar-text-muted tabular-nums">{trail}</span>
+                ) : null}
+              </>
+            )}
+          </>
+        )
+      }}
     </NavLink>
   )
 }
 
-const presenceDot: Record<Presence, string> = {
-  active: 'bg-emerald-400',
-  away: 'bg-amber-400',
-  offline: 'bg-neutral-500',
-}
-
-function PresenceDot({ presence }: { presence: Presence }) {
-  return <span className={clsx('size-2.5 rounded-full', presenceDot[presence])} role="img" aria-label={presence === 'active' ? 'Online' : presence === 'away' ? 'Away' : 'Offline'} />
-}
-
-function GroupLabel({ children, collapsed }: { children: string; collapsed: boolean }) {
-  if (collapsed) return null
-  return <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-neutral-500">{children}</p>
+/** A labelled group of rows with a chevron to close it; open or closed is remembered. */
+export function SideSection({
+  id,
+  label,
+  actions,
+  collapsed,
+  first = false,
+  children,
+}: {
+  id: string
+  label: string
+  /** Buttons at the end of the label row (add, options); shown on hover or focus where hover exists. */
+  actions?: ReactNode
+  collapsed: boolean
+  first?: boolean
+  children: ReactNode
+}) {
+  const listId = useId()
+  const closed = useUiStore((state) => state.collapsedSections.includes(id))
+  const toggle = useUiStore((state) => state.toggleSection)
+  if (collapsed) return <ul className={clsx('flex flex-col gap-0.5', !first && 'mt-3')}>{children}</ul>
+  return (
+    <div className={clsx('flex flex-none flex-col gap-0.5', !first && 'mt-3')}>
+      <div className="group/section flex h-7 flex-none items-center gap-1 ps-2 pe-1 text-sf-sidebar-text-muted">
+        <button
+          type="button"
+          aria-expanded={!closed}
+          aria-controls={listId}
+          onClick={() => toggle(id)}
+          className="sf-focus sf-label inline-flex cursor-pointer items-center gap-1 rounded-sf-sm hover:text-sf-sidebar-text-strong"
+        >
+          {label}
+          <Icon
+            icon={IconChevronDown}
+            size={14}
+            className={clsx('transition-transform duration-150 ease-sf', closed && '-rotate-90 rtl:rotate-90')}
+          />
+        </button>
+        {actions && (
+          <span className="ms-auto flex gap-0.5 group-hover/section:opacity-100 focus-within:opacity-100 [@media(hover:hover)]:opacity-0">
+            {actions}
+          </span>
+        )}
+      </div>
+      <ul id={listId} hidden={closed} className="flex flex-col gap-0.5">
+        {children}
+      </ul>
+    </div>
+  )
 }
 
 /** Three pulse rows while a group loads. */
 function GroupSkeleton() {
   return (
-    <div className="space-y-0.5" aria-hidden>
+    <>
       {[0, 1, 2].map((row) => (
-        <div key={row} className="h-9 animate-pulse rounded-lg bg-white/5" />
+        <li key={row} aria-hidden className="h-7 flex-none animate-pulse rounded-sf-md bg-sf-sidebar-hover" />
       ))}
-    </div>
+    </>
   )
 }
 
-export function SidebarContent({ collapsed = false, onNavigate }: { collapsed?: boolean; onNavigate?: () => void }) {
+export function SidebarContent({
+  collapsed = false,
+  onNavigate,
+}: {
+  collapsed?: boolean
+  onNavigate?: () => void
+}) {
   const { role, persona } = useRole()
   const check = usePermission()
-  const { workspace, channels, dms, projects, chatLoading, projectsLoading, failed } = useSidebarGroups()
+  const { workspace, channels, dms, projects, mentions, chatLoading, projectsLoading, failed } = useSidebarGroups()
   const slug = workspace?.slug
   const [newChannel, setNewChannel] = useState(false)
   const [newMessage, setNewMessage] = useState(false)
   const managesAny = projectsLoading ? undefined : projects.some((p) => p.managerId === persona.id)
   const canDashboard = check('dashboard.view', { managesAny })
+  const preview = hasFeature('chatRedesign')
+  const row = { collapsed, onNavigate }
 
   return (
-    <div className="flex h-full flex-col">
-      <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4" aria-label="Workspace">
+    <div className="sf flex h-full flex-col px-2 pb-2 text-sf-sidebar-text">
+      <nav className="flex min-h-0 flex-1 flex-col overflow-y-auto pt-1" aria-label="Workspace">
         {slug && (
-          <div>
-            <GroupLabel collapsed={collapsed}>Work</GroupLabel>
-            <ul className="space-y-0.5">
-              <li>
-                <SidebarLink to={paths.home(slug)} end label="Home" icon={<House className="size-[18px]" />} collapsed={collapsed} onNavigate={onNavigate} />
-              </li>
-              <li>
-                <SidebarLink to={paths.projects(slug)} label="Projects" icon={<FolderKanban className="size-[18px]" />} collapsed={collapsed} onNavigate={onNavigate} />
-              </li>
-              <li>
-                <SidebarLink to={paths.tasks(slug)} label="My tasks" icon={<ListChecks className="size-[18px]" />} collapsed={collapsed} onNavigate={onNavigate} />
-              </li>
-              <li>
-                <SidebarLink to={paths.teams(slug)} label="Teams" icon={<Users className="size-[18px]" />} collapsed={collapsed} onNavigate={onNavigate} />
-              </li>
-            </ul>
-          </div>
+          <SideSection id="work" label="Work" first {...row}>
+            <li className="flex-none">
+              <SideLink to={paths.home(slug)} end label="Home" icon={IconHome} {...row} />
+            </li>
+            <li className="flex-none">
+              <SideLink to={paths.projects(slug)} label="Projects" icon={IconLayoutKanban} {...row} />
+            </li>
+            <li className="flex-none">
+              <SideLink to={paths.tasks(slug)} label="My tasks" icon={IconListCheck} {...row} />
+            </li>
+            <li className="flex-none">
+              <SideLink to={paths.teams(slug)} label="Teams" icon={IconUsers} {...row} />
+            </li>
+          </SideSection>
         )}
 
         {slug && (canDashboard || check('timeCost.view')) && (
-          <div>
-            <GroupLabel collapsed={collapsed}>Manage</GroupLabel>
-            <ul className="space-y-0.5">
-              {canDashboard && (
-                <li>
-                  <SidebarLink to={paths.dashboard(slug)} label="Dashboard" icon={<LayoutDashboard className="size-[18px]" />} collapsed={collapsed} onNavigate={onNavigate} />
+          <SideSection id="manage" label="Manage" {...row}>
+            {canDashboard && (
+              <li className="flex-none">
+                <SideLink to={paths.dashboard(slug)} label="Dashboard" icon={IconLayoutDashboard} {...row} />
+              </li>
+            )}
+            {check('timeCost.view') && (
+              <li className="flex-none">
+                <SideLink to={paths.timeCost(slug)} label="Time & cost" icon={IconClock} {...row} />
+              </li>
+            )}
+          </SideSection>
+        )}
+
+        {slug && (
+          <SideSection id="chat" label="Chat" {...row}>
+            {preview && (
+              <li className="flex-none">
+                <SideLink to={`/w/${slug}/threads`} label="Threads" icon={IconMessages} {...row} />
+              </li>
+            )}
+            <li className="flex-none">
+              {/* TODO(chat phase 3): the Activity view. Until then mentions are read on Home and in the bell. */}
+              <SideLink to={paths.home(slug)} label="Activity" icon={IconAt} mentions={mentions.total} active={false} {...row} />
+            </li>
+            {preview && (
+              <>
+                <li className="flex-none">
+                  <SideLink to={`/w/${slug}/drafts`} label="Drafts & sent" icon={IconSend} {...row} />
                 </li>
-              )}
-              {check('timeCost.view') && (
-                <li>
-                  <SidebarLink to={paths.timeCost(slug)} label="Time & cost" icon={<Clock className="size-[18px]" />} collapsed={collapsed} onNavigate={onNavigate} />
+                <li className="flex-none">
+                  <SideLink to={`/w/${slug}/saved`} label="Saved" icon={IconBookmark} {...row} />
                 </li>
-              )}
-            </ul>
-          </div>
+              </>
+            )}
+          </SideSection>
         )}
 
         {slug && workspace && (
-          <div>
-            <div className="flex items-center">
-              <GroupLabel collapsed={collapsed}>Channels</GroupLabel>
-              {!collapsed && (
-                <button
-                  type="button"
-                  aria-label="New channel"
-                  title="New channel"
-                  onClick={() => setNewChannel(true)}
-                  className="-mt-2 me-2 ms-auto flex size-6 items-center justify-center rounded-md text-neutral-500 transition hover:bg-white/10 hover:text-white"
-                >
-                  <Plus className="size-4" />
-                </button>
-              )}
-            </div>
+          <SideSection
+            id="channels"
+            label="Channels"
+            actions={
+              <IconButton label="New channel" icon={IconPlus} size="xs" tone="sidebar-muted" onClick={() => setNewChannel(true)} />
+            }
+            {...row}
+          >
             {chatLoading ? (
               <GroupSkeleton />
             ) : (
-              <ul className="space-y-0.5">
-                {channels.map(({ channel, label }) => (
-                  <li key={channel.id}>
-                    <SidebarLink
-                      to={paths.channel(slug, channel.id)}
-                      label={label}
-                      icon={channel.isPrivate ? <Lock className="size-[18px]" /> : <Hash className="size-[18px]" />}
-                      badge={channel.unreadCount}
-                      collapsed={collapsed}
-                      onNavigate={onNavigate}
-                    />
-                  </li>
-                ))}
-              </ul>
+              channels.map(({ channel, label }) => (
+                <li key={channel.id} className="flex-none">
+                  <SideLink
+                    to={paths.channel(slug, channel.id)}
+                    label={label}
+                    icon={channel.isPrivate ? IconLock : IconHash}
+                    unread={channel.unreadCount > 0}
+                    mentions={mentions.byChannel.get(channel.id)}
+                    {...row}
+                  />
+                </li>
+              ))
             )}
-          </div>
+          </SideSection>
         )}
 
         {slug && workspace && (
-          <div>
-            <div className="flex items-center">
-              <GroupLabel collapsed={collapsed}>Direct messages</GroupLabel>
-              {!collapsed && (
-                <button
-                  type="button"
-                  aria-label="New message"
-                  title="New message"
-                  onClick={() => setNewMessage(true)}
-                  className="-mt-2 me-2 ms-auto flex size-6 items-center justify-center rounded-md text-neutral-500 transition hover:bg-white/10 hover:text-white"
-                >
-                  <Plus className="size-4" />
-                </button>
-              )}
-            </div>
+          <SideSection
+            id="dms"
+            label="Direct messages"
+            actions={
+              <IconButton label="New message" icon={IconPlus} size="xs" tone="sidebar-muted" onClick={() => setNewMessage(true)} />
+            }
+            {...row}
+          >
             {chatLoading ? (
               <GroupSkeleton />
             ) : (
-              <ul className="space-y-0.5">
-                {dms.map(({ channel, label, presence, group }) => (
-                  <li key={channel.id}>
-                    <SidebarLink
-                      to={paths.channel(slug, channel.id)}
-                      label={label}
-                      icon={group ? <Users className="size-[18px]" aria-hidden /> : <PresenceDot presence={presence} />}
-                      badge={channel.unreadCount}
-                      collapsed={collapsed}
-                      onNavigate={onNavigate}
-                    />
-                  </li>
-                ))}
-              </ul>
+              dms.map(({ channel, label, presence, group, otherId }) => (
+                <li key={channel.id} className="flex-none">
+                  <SideLink
+                    to={paths.channel(slug, channel.id)}
+                    label={label}
+                    icon={
+                      group ? IconUsers : <Avatar id={otherId} name={label} size="sm" presence={presence} on="frame" decorative />
+                    }
+                    unread={channel.unreadCount > 0}
+                    // Every message in a DM is meant for me, so its unread messages are its count.
+                    mentions={channel.unreadCount}
+                    {...row}
+                  />
+                </li>
+              ))
             )}
-          </div>
+          </SideSection>
         )}
 
         {slug && (projectsLoading || projects.length > 0) && (
-          <div>
-            <GroupLabel collapsed={collapsed}>Projects</GroupLabel>
+          <SideSection id="projects" label="Projects" {...row}>
             {projectsLoading ? (
               <GroupSkeleton />
             ) : (
-              <ul className="space-y-0.5">
-                {projects.map((project) => (
-                  <li key={project.id}>
-                    <SidebarLink
-                      to={paths.project(slug, project.key)}
-                      label={project.name}
-                      within={paths.project(slug, project.key).replace(/\/[^/]+$/, '')}
-                      icon={<Folder className="size-[18px]" />}
-                      collapsed={collapsed}
-                      onNavigate={onNavigate}
-                    />
-                  </li>
-                ))}
-              </ul>
+              projects.map((project) => (
+                <li key={project.id} className="flex-none">
+                  <SideLink
+                    to={paths.project(slug, project.key)}
+                    label={project.name}
+                    within={paths.project(slug, project.key).replace(/\/[^/]+$/, '')}
+                    icon={IconFolder}
+                    {...row}
+                  />
+                </li>
+              ))
             )}
-          </div>
+          </SideSection>
         )}
 
-        {failed && !collapsed && <p className="px-3 text-xs text-neutral-500">Some of this list didn’t load. Refresh to try again.</p>}
+        {failed && !collapsed && (
+          <p className="sf-meta mt-3 px-2 text-sf-sidebar-text-muted">Some of this list didn’t load. Refresh to try again.</p>
+        )}
       </nav>
-      {slug && canSee(settingsItem, role) && settingsItem.icon && (
-        <div className="border-t border-white/10 px-3 py-3">
-          <SidebarLink to={paths.settings(slug)} label={settingsItem.label} icon={<settingsItem.icon className="size-[18px]" />} collapsed={collapsed} onNavigate={onNavigate} />
+      {slug && canSee(settingsItem, role) && (
+        <div className="flex-none border-t border-sf-sidebar-hover pt-2">
+          <SideLink to={paths.settings(slug)} label={settingsItem.label} icon={IconSettings} {...row} />
         </div>
       )}
-      {newChannel && workspace && <ChannelSheet workspaceId={workspace.id} workspaceSlug={workspace.slug} onClose={() => setNewChannel(false)} />}
-      {newMessage && workspace && <NewMessageSheet workspaceId={workspace.id} workspaceSlug={workspace.slug} onClose={() => setNewMessage(false)} />}
+      {newChannel && workspace && (
+        <ChannelSheet workspaceId={workspace.id} workspaceSlug={workspace.slug} onClose={() => setNewChannel(false)} />
+      )}
+      {newMessage && workspace && (
+        <NewMessageSheet workspaceId={workspace.id} workspaceSlug={workspace.slug} onClose={() => setNewMessage(false)} />
+      )}
     </div>
   )
 }
 
-/** The logo goes to Home, which opens the last place visited. */
+/** The logo goes to Home, which opens the last place visited. Logo lockup: white Spark logo, divider, FLOW. */
 export function Logo({ collapsed = false, onClick }: { collapsed?: boolean; onClick?: () => void }) {
   return (
-    <Link to="/" onClick={onClick} className="flex items-center gap-3" aria-label="Home">
+    <Link to="/" onClick={onClick} className="sf-focus flex items-center gap-3 rounded-sf-md" aria-label="Home">
       {collapsed ? (
         <img src="/spark-mark-white.png" alt="Spark Flow" className="h-4 w-auto" />
       ) : (
-        <span dir="ltr" className="flex items-center gap-3">
+        <span dir="ltr" className="flex items-center gap-3 ps-2">
           <img src="/spark-logo-white.png" alt="Spark Systems" className="h-7 w-auto" />
-          <span className="border-s border-white/15 ps-3 text-[13px] font-semibold tracking-[0.2em] text-neutral-400">FLOW</span>
+          <span aria-hidden className="h-5 w-px bg-sf-ink-700" />
+          <span className="sf-label text-sf-sidebar-text">FLOW</span>
         </span>
       )}
     </Link>
+  )
+}
+
+/** Logo row with the white New message button at the end (spec 5.1). */
+export function SidebarHeader({ collapsed = false, onNavigate }: { collapsed?: boolean; onNavigate?: () => void }) {
+  const { workspace } = useSidebarGroups()
+  const [newMessage, setNewMessage] = useState(false)
+  return (
+    <div className={clsx('sf flex h-14 flex-none items-center gap-1 ps-2 pe-3', collapsed && 'justify-center px-0')}>
+      <Logo collapsed={collapsed} onClick={onNavigate} />
+      {!collapsed && workspace && (
+        <>
+          <IconButton label="New message" icon={IconEdit} tone="compose" className="ms-auto" onClick={() => setNewMessage(true)} />
+          {newMessage && (
+            <NewMessageSheet workspaceId={workspace.id} workspaceSlug={workspace.slug} onClose={() => setNewMessage(false)} />
+          )}
+        </>
+      )}
+    </div>
   )
 }
 
@@ -269,13 +435,11 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
   return (
     <aside
       className={clsx(
-        'sticky top-0 hidden h-screen shrink-0 flex-col bg-ink-900 dark:bg-surface-sunken transition-[width] duration-200 lg:flex',
-        collapsed ? 'w-[72px]' : 'w-64',
+        'sf sticky top-0 hidden h-screen flex-none flex-col bg-sf-app-frame transition-[width] duration-200 ease-sf lg:flex',
+        collapsed ? 'w-[72px]' : 'w-sf-sidebar',
       )}
     >
-      <div className={clsx('flex h-20 items-center px-4', collapsed && 'justify-center')}>
-        <Logo collapsed={collapsed} />
-      </div>
+      <SidebarHeader collapsed={collapsed} />
       <div className="min-h-0 flex-1">
         <SidebarContent collapsed={collapsed} />
       </div>

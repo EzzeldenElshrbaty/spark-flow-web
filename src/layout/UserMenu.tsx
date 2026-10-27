@@ -1,11 +1,13 @@
 import clsx from 'clsx'
 import { useQueryClient } from '@tanstack/react-query'
-import { Check, ChevronDown, KeyRound, LogOut, Moon, Sun } from 'lucide-react'
+import { IconChevronDown } from '@tabler/icons-react'
+import { Check, KeyRound, LogOut, Moon, Sun } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useUsers, useViewAs } from '@/api/users'
+import { Avatar } from '@/components/sf/Avatar'
+import { Icon } from '@/components/sf/Icon'
 import { MenuPanel } from '@/components/ui/Menu'
-import { roundButtonClass } from '@/components/ui/styles'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { backendOn } from '@/lib/api'
 import { roleLabels } from '@/lib/roles'
@@ -60,27 +62,26 @@ export function UserMenu() {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={loaded ? `Account menu for ${persona.name}` : 'Account menu'}
-        className="group flex items-center gap-2.5 rounded-full focus-visible:outline-none"
+        className="sf-focus flex h-11 flex-none cursor-pointer items-center gap-2 rounded-sf-md ps-1 pe-2 hover:bg-sf-surface-hover"
       >
-        {/* Same circle as the notifications button, filled with the initials. */}
-        <span
-          className={clsx(
-            roundButtonClass,
-            'text-xs font-semibold group-focus-visible:ring-2 group-focus-visible:ring-brand-500',
-            loaded ? 'bg-ink-800 text-white hover:bg-ink-700 dark:bg-surface-strong' : 'animate-pulse bg-surface-strong',
-          )}
-        >
-          {initials}
-        </span>
         {loaded ? (
-          <span className="hidden text-start leading-tight xl:block">
-            <span className="block text-sm font-medium text-fg">{persona.name}</span>
-            <span className="block text-xs text-fg-muted">{persona.title}</span>
+          <Avatar id={persona.id} name={persona.name} presence={people.data?.find((u) => u.id === persona.id)?.presence} decorative />
+        ) : (
+          <span aria-hidden className="size-sf-avatar animate-pulse rounded-sf-md bg-sf-surface-hover" />
+        )}
+        {loaded ? (
+          <span className="hidden text-start md:block">
+            <span className="sf-ui-medium block text-sf-text">{persona.name}</span>
+            <span className="sf-meta block text-sf-text-muted">{persona.title}</span>
           </span>
         ) : (
-          <span className="hidden h-8 w-28 animate-pulse rounded-md bg-surface-strong xl:block" aria-hidden />
+          <span className="hidden h-8 w-28 animate-pulse rounded-sf-md bg-sf-surface-hover md:block" aria-hidden />
         )}
-        <ChevronDown className={clsx('hidden size-4 text-fg-muted transition-transform sm:block', open && 'rotate-180')} />
+        <Icon
+          icon={IconChevronDown}
+          size={16}
+          className={clsx('hidden text-sf-text-secondary transition-transform duration-150 ease-sf sm:block', open && 'rotate-180')}
+        />
       </button>
 
       <MenuPanel open={open} onClose={() => setOpen(false)} triggerRef={triggerRef} label="Account" className="sm:w-80">

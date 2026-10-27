@@ -1,5 +1,6 @@
 import clsx from 'clsx'
-import { AtSign, Bell } from 'lucide-react'
+import { IconBell } from '@tabler/icons-react'
+import { AtSign } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useMarkMentionsRead, useMyMentions } from '@/api/mentions'
@@ -8,7 +9,7 @@ import { useWorkspaces } from '@/api/workspaces'
 import type { MentionItem } from '@/api/types'
 import { Button } from '@/components/ui/Button'
 import { MenuPanel } from '@/components/ui/Menu'
-import { roundButtonClass, roundButtonFill } from '@/components/ui/styles'
+import { Icon } from '@/components/sf/Icon'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { timeAgo } from '@/lib/format'
 import { mentionLink } from '@/lib/mentionLink'
@@ -49,16 +50,14 @@ export function NotificationsMenu() {
         }}
         aria-haspopup="menu"
         aria-expanded={open}
-        className={clsx(roundButtonClass, roundButtonFill, 'text-fg-tertiary')}
+        className="sf-focus relative inline-grid size-sf-control flex-none cursor-pointer place-items-center rounded-sf-full border border-sf-line text-sf-text-secondary transition-colors duration-150 ease-sf hover:bg-sf-surface-hover hover:text-sf-text"
         aria-label={unread ? `Notifications, ${unread} unread` : 'Notifications'}
         title="Notifications"
       >
-        <Bell className="size-[18px]" />
-        {/* Unread count on the circle's top-right edge. */}
+        <Icon icon={IconBell} />
+        {/* A red dot while something is unread; the count is in the label and the menu. */}
         {unread > 0 && (
-          <span className="absolute -end-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-500 px-1 text-[10px] font-semibold text-white ring-2 ring-surface">
-            {unread > 99 ? '99+' : unread}
-          </span>
+          <span aria-hidden className="absolute end-[7px] top-1.5 size-2 rounded-sf-full bg-sf-accent-fill shadow-[0_0_0_2px_var(--surface)]" />
         )}
       </button>
 

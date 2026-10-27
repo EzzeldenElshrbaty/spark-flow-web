@@ -1,4 +1,4 @@
-import type { Channel, User } from '@/api/types'
+import type { Channel, MentionItem, User } from '@/api/types'
 
 /** Whether a channel is archived (read-only until restored). */
 export const isArchived = (channel: { archivedAt?: string | null }): boolean => Boolean(channel.archivedAt)
@@ -40,3 +40,18 @@ export function inWorkspace(channel: Pick<Channel, 'workspaceId'>, workspaceId: 
 /** The line shown instead of the composer to someone who may read a channel but not write in it. */
 export const readOnlyFor = (isProjectChannel: boolean) =>
   isProjectChannel ? 'You can read this channel. Only its project’s people can write here.' : 'You can read this channel. Only its members can write here.'
+
+/**
+ * My unread mentions in a workspace: the total (the sidebar's Activity count) and per channel (the red badge on
+ * its row; a channel's other unread messages only make the row bold).
+ */
+export function unreadMentions(items: MentionItem[] | undefined, workspaceId: string | undefined) {
+  const byChannel = new Map<string, number>()
+  let total = 0
+  for (const item of items ?? []) {
+    if (item.read || item.workspaceId !== workspaceId) continue
+    total++
+    if (item.channelId) byChannel.set(item.channelId, (byChannel.get(item.channelId) ?? 0) + 1)
+  }
+  return { total, byChannel }
+}

@@ -1,4 +1,5 @@
 import { Suspense, useState } from 'react'
+import { ToastProvider, ToastRegion } from '@/components/sf/Toast'
 import { Outlet } from 'react-router'
 import { Inspector } from '@/layout/Inspector'
 import { PageSkeleton } from '@/layout/PageSkeleton'
@@ -23,35 +24,45 @@ export function AppLayout() {
   return (
     // On desktop the content floats as a rounded panel on the sidebar's colour and scrolls on its own.
     // The panel is "relative" so hidden screen-reader text inside it cannot stretch the page below it.
-    <div className="flex min-h-screen lg:h-screen lg:overflow-hidden lg:bg-ink-900 lg:dark:bg-surface-sunken">
-      <RealtimeBridge />
-      <Sidebar collapsed={collapsed} />
-      <div className="relative flex min-w-0 flex-1 flex-col lg:m-2 lg:overflow-y-auto lg:rounded-2xl lg:border lg:border-line lg:bg-canvas lg:shadow-lg">
-        <TopBar
-          onOpenMenu={() => setDrawerOpen(true)}
-          sidebarCollapsed={collapsed}
-          onToggleSidebar={toggleSidebar}
-          searchOpen={searchOpen}
-          onSearchOpenChange={setSearchOpen}
-        />
-        <main className="w-full flex-1 px-4 pb-[calc(6rem+var(--timer-bar,0px))] pt-6 md:px-6 lg:pb-10 xl:px-8">
-          {/* Each page's code loads when it's first opened; this shows meanwhile (usually a blink). */}
-          {account.error ? (
-            <AccountState error={account.error} onRetry={account.retry} retrying={account.retrying} />
-          ) : (
-            <Suspense fallback={<PageSkeleton />}>
-              <Outlet />
-            </Suspense>
-          )}
-        </main>
+    <ToastProvider>
+      <div className="flex min-h-screen lg:h-screen lg:overflow-hidden">
+        {/* The dark frame behind the sidebar and the card. Its own .sf element, so the chat tokens don't reach the pages. */}
+        <div aria-hidden className="sf fixed inset-0 -z-10 hidden bg-sf-app-frame lg:block" />
+        <RealtimeBridge />
+        <Sidebar collapsed={collapsed} />
+        {/* The main card (spec 5.3): inset 8px from the top, end and bottom, radius-lg (12px), clips its content; the
+            top bar stays put and the page scrolls under it. */}
+        <div className="relative flex min-w-0 flex-1 flex-col lg:my-2 lg:me-2 lg:overflow-hidden lg:rounded-[12px] lg:bg-canvas">
+          <TopBar
+            onOpenMenu={() => setDrawerOpen(true)}
+            sidebarCollapsed={collapsed}
+            onToggleSidebar={toggleSidebar}
+            searchOpen={searchOpen}
+            onSearchOpenChange={setSearchOpen}
+          />
+          {/* The scroller has no padding of its own, so sticky parts of a page (the channel composer) stick to its edge. */}
+          <div className="flex flex-1 flex-col lg:min-h-0 lg:overflow-y-auto">
+            <main className="w-full flex-1 px-4 pb-[calc(6rem+var(--timer-bar,0px))] pt-6 md:px-6 lg:pb-10 xl:px-8">
+              {/* Each page's code loads when it's first opened; this shows meanwhile (usually a blink). */}
+              {account.error ? (
+                <AccountState error={account.error} onRetry={account.retry} retrying={account.retrying} />
+              ) : (
+                <Suspense fallback={<PageSkeleton />}>
+                  <Outlet />
+                </Suspense>
+              )}
+            </main>
+          </div>
+          <ToastRegion />
+        </div>
+        {/* Thread or ticket beside the content (xl), over it (sm–lg) or as a bottom sheet (phones); driven by the URL.
+            Not without an account: nothing in it could load either. */}
+        {!account.error && <Inspector />}
+        <PhoneTimerBar />
+        <TimerAnnouncer />
+        <MobileBottomBar onOpenMore={() => setDrawerOpen(true)} />
+        <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
       </div>
-      {/* Thread or ticket beside the content (xl), over it (sm–lg) or as a bottom sheet (phones); driven by the URL.
-          Not without an account: nothing in it could load either. */}
-      {!account.error && <Inspector />}
-      <PhoneTimerBar />
-      <TimerAnnouncer />
-      <MobileBottomBar onOpenMore={() => setDrawerOpen(true)} />
-      <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
-    </div>
+    </ToastProvider>
   )
 }

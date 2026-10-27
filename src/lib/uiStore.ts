@@ -9,6 +9,7 @@ const TYPING_MS = 3000
 
 type UiState = {
   sidebarCollapsed: boolean
+  collapsedSections: string[]                    // sidebar sections closed by their chevron (work, channels…)
   lastWorkspace: string | null
   lastVisited: Record<string, string>            // workspace slug → last path opened in it
   lastProjectView: Record<string, ProjectView>   // project key → board or list on its Tasks tab
@@ -18,6 +19,7 @@ type UiState = {
 
 type UiActions = {
   toggleSidebar: () => void
+  toggleSection: (id: string) => void
   visit: (workspaceSlug: string, path: string) => void
   /** Forgets where the person was (after the demo data is reset, those places may be gone). */
   forgetPlaces: () => void
@@ -28,6 +30,7 @@ type UiActions = {
 
 export const initialUiState: UiState = {
   sidebarCollapsed: false,
+  collapsedSections: [],
   lastWorkspace: null,
   lastVisited: {},
   lastProjectView: {},
@@ -84,6 +87,12 @@ export const useUiStore = create<UiState & UiActions>()(
     (set) => ({
       ...initialUiState,
       toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+      toggleSection: (id) =>
+        set((state) => ({
+          collapsedSections: state.collapsedSections.includes(id)
+            ? state.collapsedSections.filter((s) => s !== id)
+            : [...state.collapsedSections, id],
+        })),
       visit: (workspaceSlug, path) =>
         set((state) => ({ lastWorkspace: workspaceSlug, lastVisited: { ...state.lastVisited, [workspaceSlug]: path } })),
       forgetPlaces: () => set({ lastWorkspace: null, lastVisited: {} }),

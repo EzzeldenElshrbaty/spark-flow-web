@@ -31,7 +31,7 @@ export function useToast() {
 }
 
 /**
- * Where toasts appear: bottom-start of the main card. Always mounted, so screen readers hear each new one
+ * Where toasts appear: bottom-start of the main card (above the bottom bar on phones). Always mounted, so screen readers hear each new one
  * through the live region. A new toast replaces the current one.
  */
 export function ToastRegion() {
@@ -39,7 +39,7 @@ export function ToastRegion() {
   if (!ctx) throw new Error('ToastRegion needs a <ToastProvider>.')
   const { toast, dismiss } = ctx
   return (
-    <div role="status" aria-live="polite" className="pointer-events-none absolute start-4 bottom-4 z-[var(--z-toast)]">
+    <div role="status" aria-live="polite" className="sf pointer-events-none fixed inset-x-4 bottom-24 z-[var(--z-toast)] lg:absolute lg:inset-x-auto lg:start-4 lg:bottom-4">
       {toast && <Toast key={toast.id} toast={toast} onDismiss={dismiss} />}
     </div>
   )

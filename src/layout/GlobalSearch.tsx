@@ -3,7 +3,10 @@ import { LayoutGrid, ListChecks, Search, UserRound, X, Zap, type LucideIcon } fr
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router'
-import { roundButtonClass, roundButtonFill } from '@/components/ui/styles'
+import { IconSearch, IconX } from '@tabler/icons-react'
+import { Kbd } from '@/components/sf/Badge'
+import { IconButton } from '@/components/sf/Button'
+import { Icon } from '@/components/sf/Icon'
 import { useChannels, useOpenDm } from '@/api/chat'
 import { useProjects, useTasksOf } from '@/api/tickets'
 import { useUsers } from '@/api/users'
@@ -185,6 +188,9 @@ function useKeyboard(groups: Group[], open: (link: string) => void, close: () =>
 }
 
 /** The search box in the top bar (tablets and up). Ctrl+K or / jumps to it. */
+/** ⌘ on Apple keyboards, Ctrl elsewhere (both work). */
+const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
+
 export function DesktopSearch() {
   const [term, setTerm] = useState('')
   const [open, setOpen] = useState(false)
@@ -223,8 +229,8 @@ export function DesktopSearch() {
   }, [])
 
   return (
-    <div ref={boxRef} className="relative hidden max-w-md flex-1 md:block">
-      <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-fg-subtle" />
+    <div ref={boxRef} className="relative hidden w-full max-w-[440px] min-w-0 md:block">
+      <Icon icon={IconSearch} size={18} className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-sf-text-muted" />
       <input
         ref={inputRef}
         type="text"
@@ -234,6 +240,7 @@ export function DesktopSearch() {
         aria-controls={listId}
         aria-activedescendant={keys.active ? `${listId}-${keys.active}` : undefined}
         aria-label={searchLabel}
+        aria-keyshortcuts="Meta+K Control+K"
         value={term}
         onChange={(event) => {
           setTerm(event.target.value)
@@ -242,9 +249,29 @@ export function DesktopSearch() {
         }}
         onFocus={() => setOpen(true)}
         onKeyDown={keys.onKeyDown}
-        placeholder="Search pages, tasks, people…"
-        className="w-full rounded-lg border border-line bg-surface-sunken py-2 ps-9 pe-3 text-sm placeholder:text-fg-subtle focus:border-brand-500 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent-soft"
+        placeholder="Search pages, tasks, people, messages…"
+        className="sf-ui h-sf-input w-full truncate rounded-sf-md border border-sf-line bg-sf-surface-sunken ps-9 pe-16 text-sf-text outline-none placeholder:text-sf-text-muted focus:border-sf-focus focus:shadow-[0_0_0_3px_var(--surface-mention)]"
       />
+      <span className="absolute end-2 top-1/2 flex -translate-y-1/2 items-center gap-1">
+        {term ? (
+          <IconButton
+            label="Clear search"
+            icon={IconX}
+            size="xs"
+            tooltip={false}
+            onClick={() => {
+              setTerm('')
+              keys.reset()
+              inputRef.current?.focus()
+            }}
+          />
+        ) : (
+          <span aria-hidden className="flex gap-1">
+            <Kbd>{isMac ? '⌘' : 'Ctrl'}</Kbd>
+            <Kbd>K</Kbd>
+          </span>
+        )}
+      </span>
       {open && term.trim() && (
         <div className="absolute inset-x-0 top-full z-50 mt-2 max-h-[70vh] overflow-y-auto rounded-xl border border-line bg-surface shadow-xl motion-safe:animate-pop-in">
           <Status term={term} empty={!groups.length} />
@@ -264,8 +291,13 @@ export function DesktopSearch() {
 export function PhoneSearch({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   return (
     <>
-      <button type="button" onClick={() => onOpenChange(true)} className={clsx(roundButtonClass, roundButtonFill, 'text-fg-tertiary md:hidden')} aria-label="Search" title="Search">
-        <Search className="size-[18px]" />
+      <button
+        type="button"
+        onClick={() => onOpenChange(true)}
+        aria-label="Search"
+        className="sf-focus inline-grid size-sf-control flex-none cursor-pointer place-items-center rounded-sf-full border border-sf-line text-sf-text-secondary hover:bg-sf-surface-hover hover:text-sf-text md:hidden"
+      >
+        <Icon icon={IconSearch} />
       </button>
       {open && createPortal(<SearchScreen onClose={() => onOpenChange(false)} />, document.body)}
     </>

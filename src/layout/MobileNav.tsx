@@ -1,9 +1,11 @@
 import clsx from 'clsx'
-import { Ellipsis, FolderKanban, House, MessagesSquare, X, type LucideIcon } from 'lucide-react'
+import { Ellipsis, FolderKanban, House, MessagesSquare, type LucideIcon } from 'lucide-react'
+import { IconX } from '@tabler/icons-react'
 import { useRef } from 'react'
 import { NavLink, useMatch } from 'react-router'
 import { useChannels } from '@/api/chat'
 import { useProjects } from '@/api/tickets'
+import { IconButton } from '@/components/sf/Button'
 import { Logo, SidebarContent } from '@/layout/Sidebar'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { landingPath, paths, savedPlace, validSavedPlace } from '@/lib/paths'
@@ -78,15 +80,13 @@ export function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => 
   useDialogFocus(open, ref, onClose)
   if (!open) return null
   return (
-    <div ref={ref} className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
-      <button type="button" tabIndex={-1} className="absolute inset-0 bg-black/50" onClick={onClose} aria-label="Close menu" />
+    <div ref={ref} className="sf fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
+      <button type="button" tabIndex={-1} className="absolute inset-0 bg-sf-overlay" onClick={onClose} aria-label="Close menu" />
       {/* Focusable, so a click on its padding keeps focus in the drawer (Tab and Escape still work). */}
-      <div tabIndex={-1} className="absolute inset-y-0 start-0 flex w-72 max-w-[85vw] flex-col bg-ink-900 shadow-xl outline-none dark:bg-surface-sunken">
-        <div className="flex h-16 items-center justify-between border-b border-white/10 px-4">
+      <div tabIndex={-1} className="absolute inset-y-0 start-0 flex w-sf-sidebar max-w-[85vw] flex-col bg-sf-app-frame shadow-sf-modal outline-none">
+        <div className="flex h-14 flex-none items-center justify-between ps-2 pe-3">
           <Logo onClick={onClose} />
-          <button type="button" data-autofocus onClick={onClose} className="rounded-md p-1 text-neutral-400 hover:text-white" aria-label="Close menu">
-            <X className="size-5" />
-          </button>
+          <IconButton label="Close menu" icon={IconX} tone="sidebar" tooltip={false} onClick={onClose} data-autofocus />
         </div>
         <div className="min-h-0 flex-1">
           <SidebarContent onNavigate={onClose} />
