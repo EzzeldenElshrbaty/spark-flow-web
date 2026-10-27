@@ -2,7 +2,8 @@ import { Play } from 'lucide-react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { useMarkMentionsRead, useMyMentions } from '@/api/mentions'
 import { useProjectSummaries } from '@/api/projects'
-import { useTasksOf } from '@/api/tickets'
+import { useArchivedTasksOf, useTasksOf } from '@/api/tickets'
+import { taskLabel } from '@/lib/taskLabel'
 import { useMyDay, useStartTimer } from '@/api/time'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
@@ -28,6 +29,7 @@ export function HomePage() {
   const day = useMyDay()
   const projects = useProjectSummaries(workspace?.id)
   const tasks = useTasksOf((projects.data ?? []).map((p) => p.id))
+  const archived = useArchivedTasksOf((projects.data ?? []).map((p) => p.id))
   const start = useStartTimer()
   const [params] = useSearchParams()
   const now = useNow(60_000)
@@ -42,8 +44,9 @@ export function HomePage() {
   const overdue = mine.filter((t) => t.overdue).length
   const projectName = (id: string) => projects.data?.find((p) => p.id === id)?.name ?? '—'
   const label = (taskId: string | null, projectId: string) => {
-    const t = taskId ? all.find((x) => x.id === taskId) : undefined
-    return t ? `${t.key} · ${t.title}` : projectName(projectId)
+    // Archived tasks keep their time, so today's entries still name them.
+    const t = taskId ? (all.find((x) => x.id === taskId) ?? archived.find((x) => x.id === taskId)) : undefined
+    return t ? taskLabel(t) : projectName(projectId)
   }
   const subtitle = mine.length ? `${mine.length} open ${mine.length === 1 ? 'task' : 'tasks'} · ${overdue} overdue` : 'Nothing assigned to you.'
   const loading = day.isPending || projects.isPending || tasks.isPending

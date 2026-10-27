@@ -129,7 +129,7 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
         )}
         <dl className="divide-y divide-line-subtle text-sm">
           <Field label="Status">
-            {canStatus ? (
+            {canStatus && !t.archivedAt ? (
               <select
                 className={selectClass}
                 aria-label="Status"
@@ -180,6 +180,7 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
           description="It leaves the board, the lists and the project's counts. Its logged time and cost stay. You can restore it."
           actionLabel="Archive task"
           pendingLabel="Archiving…"
+          tone="primary"
           onConfirm={() => archive.mutateAsync(t.key)}
           onClose={() => setArchiving(false)}
         />

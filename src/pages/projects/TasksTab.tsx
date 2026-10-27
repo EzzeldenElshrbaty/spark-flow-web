@@ -83,9 +83,11 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
 
   const shown = filterTasks(tickets.data ?? [], { phase, sprint })
   // The list can also show the archived tasks, below the others, kept in ?archived=1.
-  const showArchived = view === 'list' && params.get('archived') === '1'
+  // Showing archived tasks only makes sense while there are some (the toggle goes when the last one is restored).
+  const showArchivedAsked = view === 'list' && params.get('archived') === '1'
   const archivedAll = useArchivedTasks(project.id, true).data ?? []
   const archived = filterTasks(archivedAll, { phase, sprint })
+  const showArchived = showArchivedAsked && archived.length > 0
   let body
   if (tickets.isError) body = <QueryError what="Tasks" onRetry={() => void tickets.refetch()} />
   else if (tickets.isPending) body = view === 'board' ? <BoardSkeleton /> : <BacklogSkeleton />
@@ -123,7 +125,7 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
               ))}
             </select>
           )}
-          {view === 'list' && (archived.length > 0 || showArchived) && (
+          {view === 'list' && archived.length > 0 && (
             <button type="button" aria-pressed={showArchived} onClick={() => setParam('archived', showArchived ? null : '1')} className={chip(showArchived)}>
               Show archived ({archived.length})
             </button>

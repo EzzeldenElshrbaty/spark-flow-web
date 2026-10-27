@@ -1,7 +1,7 @@
 import { Clock } from 'lucide-react'
 import { useState } from 'react'
 import { useProjectTime } from '@/api/projects'
-import { useTickets } from '@/api/tickets'
+import { useArchivedTasks, useTickets } from '@/api/tickets'
 import type { ProjectSummary, TimeEntry, User } from '@/api/types'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
@@ -11,6 +11,7 @@ import { QueryError } from '@/components/ui/QueryError'
 import { formatDate, formatMoney, formatTime } from '@/lib/format'
 import { entryHours } from '@/lib/hours'
 import { useNow } from '@/lib/useNow'
+import { taskLabel } from '@/lib/taskLabel'
 import { useCanLog } from '@/lib/useCanLog'
 import { useRole } from '@/lib/useRole'
 import { AddTimeSheet } from '@/pages/time/AddTimeSheet'
@@ -22,7 +23,9 @@ const tenth = (n: number) => Math.round(n * 10) / 10
 /** Time logged on the project: totals per person, then every entry, newest first. Cost for admins only; "Add time" logs your own. */
 export function TimeTab({ project, people }: { project: ProjectSummary; people: User[] }) {
   const time = useProjectTime(project.id)
-  const tasks = useTickets(project.id).data ?? []
+  // Archived tasks keep their time, so their rows still name them.
+  const archivedTasks = useArchivedTasks(project.id, true).data ?? []
+  const tasks = [...(useTickets(project.id).data ?? []), ...archivedTasks]
   const now = useNow(60_000)
   const [adding, setAdding] = useState(false)
   const canLog = useCanLog()(project)
@@ -75,7 +78,7 @@ export function TimeTab({ project, people }: { project: ProjectSummary; people: 
       width: 260,
       cell: (e) => {
         const t = taskOf(e.taskId)
-        return <span className="block truncate text-fg-secondary">{t ? `${t.key} · ${t.title}` : '—'}</span>
+        return <span className="block truncate text-fg-secondary">{taskLabel(t)}</span>
       },
     },
     { id: 'day', header: 'Day', width: 120, cell: (e) => <span className="tabular-nums text-fg-secondary">{formatDate(e.startedAt)}</span> },
@@ -119,7 +122,7 @@ export function TimeTab({ project, people }: { project: ProjectSummary; people: 
             <li key={e.id} className="flex items-center gap-3 px-4 py-3">
               <Avatar name={nameOf(e.userId)} size="sm" />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm text-fg">{t ? `${t.key} · ${t.title}` : nameOf(e.userId)}</span>
+                <span className="block truncate text-sm text-fg">{t ? taskLabel(t) : nameOf(e.userId)}</span>
                 <span className="block truncate text-xs text-fg-muted">
                   {nameOf(e.userId)} · {formatDate(e.startedAt)} · {formatTime(e.startedAt)} – {e.endedAt ? formatTime(e.endedAt) : 'running'}
                 </span>

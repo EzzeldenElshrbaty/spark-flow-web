@@ -1,4 +1,5 @@
 import { useMutation } from '@tanstack/react-query'
+import { useEffect } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Sheet } from '@/components/ui/Sheet'
 
@@ -12,6 +13,7 @@ export function ConfirmDeleteSheet({
   description,
   actionLabel,
   pendingLabel = 'Deleting…',
+  tone = 'danger',
   onConfirm,
   onClose,
 }: {
@@ -20,22 +22,33 @@ export function ConfirmDeleteSheet({
   description: string
   actionLabel: string
   pendingLabel?: string
+  /** Red for what can't be undone; primary for what can (archiving). */
+  tone?: 'danger' | 'primary'
   onConfirm: () => Promise<unknown>
   onClose: () => void
 }) {
   const run = useMutation({ mutationFn: onConfirm, onSuccess: onClose })
+  const { reset } = run
+  // Each opening starts clean: an old failure doesn't greet the next try.
+  useEffect(() => {
+    if (open) reset()
+  }, [open, reset])
+  // While it's working, it stays open (the ✕ and Cancel wait too).
+  const close = () => {
+    if (!run.isPending) onClose()
+  }
   return (
     <Sheet
       open={open}
-      onClose={onClose}
+      onClose={close}
       title={title}
       description={description}
       footer={
         <>
-          <Button variant="secondary" onClick={onClose} disabled={run.isPending}>
+          <Button variant="secondary" onClick={close} disabled={run.isPending}>
             Cancel
           </Button>
-          <Button variant="danger" disabled={run.isPending} onClick={() => run.mutate()}>
+          <Button variant={tone} disabled={run.isPending} onClick={() => run.mutate()}>
             {run.isPending ? pendingLabel : actionLabel}
           </Button>
         </>

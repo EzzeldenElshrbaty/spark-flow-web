@@ -160,3 +160,14 @@ describe('archiving tasks', () => {
     expect((await api.tickets.list('p-nex', { archived: true })).map((t) => t.key)).toEqual(['NEX-104'])
   })
 })
+
+describe('an archived task is read-only', () => {
+  it('an archived task refuses a move and a comment', async () => {
+    const api = apiAt()
+    await api.tasks.archive('NEX-101')
+    await expect(api.tasks.update('NEX-101', { status: 'done' })).rejects.toMatchObject({ status: 400, detail: 'This task is archived. Restore it first.' })
+    await expect(api.comments.create({ taskKey: 'NEX-101', kind: 'comment', body: 'still here?', files: [] })).rejects.toMatchObject({ status: 400, detail: 'This task is archived. Restore it first.' })
+    await api.tasks.restore('NEX-101')
+    expect((await api.tasks.update('NEX-101', { status: 'done' })).status).toBe('done')
+  })
+})

@@ -38,7 +38,9 @@ export function TaskActivity({ task, project, users }: { task: TaskView; project
         </ol>
       )}
 
-      {canPost ? (
+      {task.archivedAt ? (
+        <p className="text-sm text-fg-muted">This task is archived. Restore it first.</p>
+      ) : canPost ? (
         <Composer
           quiet
           allowEmpty={files.length > 0}

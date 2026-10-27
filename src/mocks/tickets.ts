@@ -176,6 +176,7 @@ export async function createTicket(db: MockDb, hub: MockHub, input: NewTicket, c
 export async function updateTicket(db: MockDb, hub: MockHub, key: string, patch: TicketPatch, now: () => Date = () => new Date()): Promise<Ticket> {
   const { ticket, cards } = await db.update((data) => {
     const ticket = findTicket(data, key)
+    if (ticket.archivedAt && patch.status !== undefined) throw badRequest('This task is archived. Restore it first.')
     // The column is checked here, in this write: another tab may have deleted it since the caller looked.
     if (patch.status !== undefined && !columnOf(findProject(data, ticket.projectId), patch.status)) throw badRequest('That column no longer exists.')
     const before = clone(ticket)

@@ -66,6 +66,7 @@ export function commentsApi(db: MockDb, hub: MockHub, now: () => Date): Api['com
       const before = await db.read()
       const task = findTask(before, taskKey)
       requireCan(before, 'collab.post', findProject(before, task.projectId))
+      if (task.archivedAt) throw badRequest('This task is archived. Restore it first.')
       // A bug can be just a screenshot; with no file, there must be words.
       if (!text && files.length === 0) throw badRequest('Write a comment first.')
       if (text.length > MAX_BODY) throw badRequest(`Keep the comment under ${MAX_BODY} characters.`)
@@ -80,6 +81,7 @@ export function commentsApi(db: MockDb, hub: MockHub, now: () => Date): Api['com
       const { comment, card } = await db.update((data) => {
         const project = findProject(data, findTask(data, taskKey).projectId)
         const me = requireCan(data, 'collab.post', project)
+        if (findTask(data, taskKey).archivedAt) throw badRequest('This task is archived. Restore it first.')
         const comment: Comment = { id: newId('cm'), taskId: task.id, projectId: project.id, authorId: me.id, kind, body: text, attachmentIds: attachments.map((a) => a.id), createdAt: at }
         data.attachments.push(...attachments)
         data.comments.push(comment)
