@@ -51,7 +51,7 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
       // Project summaries (progress, overdue) and the dashboard are worked out from tasks too.
       return [
         qk.tickets(event.ticket.projectId), qk.archivedTickets(event.ticket.projectId), qk.ticket(event.ticket.key), qk.taskHistory(event.ticket.key), qk.projectHistory(event.ticket.projectId),
-        ['tickets', 'projects'], ['dashboard'],
+        ['tickets', 'projects'], ['tickets', 'project'], ['dashboard'],
       ]
     case 'timeLogged':
       // Hours change everywhere: my day, every task and project summary (under 'tickets'), and the Time tabs.

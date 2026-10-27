@@ -28,7 +28,7 @@ describe('keysForEvent', () => {
     expect(keysForEvent({ type: 'commentAdded', taskKey: 'NEX-1', projectId: 'p1' })).toEqual([qk.comments('NEX-1'), qk.mentions(), qk.taskHistory('NEX-1'), qk.projectHistory('p1')])
     expect(keysForEvent({ type: 'ticketUpdated', ticket: { ...t, projectId: 'p1', key: 'NEX-1' } })).toEqual([
       qk.tickets('p1'), qk.archivedTickets('p1'), qk.ticket('NEX-1'), qk.taskHistory('NEX-1'), qk.projectHistory('p1'),
-      ['tickets', 'projects'], ['dashboard'],
+      ['tickets', 'projects'], ['tickets', 'project'], ['dashboard'],
     ])
     expect(keysForEvent({ type: 'timeLogged', userId: 'u1', projectId: 'p1' })).toEqual([qk.myDay(), ['tickets'], ['projects', 'time'], ['dashboard'], ['time', 'report']])
     expect(keysForEvent({ type: 'userTyping', channelId: 'c1', userId: 'u2' })).toEqual([])
@@ -41,7 +41,7 @@ describe('keysForEvent', () => {
 describe('keysForEvent (M10)', () => {
   it('a task change also refreshes project summaries and the dashboard', () => {
     const keys = keysForEvent({ type: 'ticketUpdated', ticket: { ...t, projectId: 'p1', key: 'NEX-1' } })
-    expect(keys).toEqual(expect.arrayContaining([['tickets', 'projects'], ['dashboard']]))
+    expect(keys).toEqual(expect.arrayContaining([['tickets', 'projects'], ['tickets', 'project'], ['dashboard']]))
   })
   it('rates, files, read state and a reset name what they make stale', () => {
     expect(keysForEvent({ type: 'ratesChanged' })).toEqual([qk.rates(), ['time', 'report'], ['dashboard'], qk.timeAll()])

@@ -80,6 +80,13 @@ describe('archiving projects', () => {
     for (const [name, write] of writes) await expect(write(), name).rejects.toMatchObject(closed)
   })
 
+  it("an archived project's time can't be deleted or moved off it", async () => {
+    const entry = await api.time.addManual({ projectId: 'p-nex', startedAt: '2026-10-20T08:00:00.000Z', endedAt: '2026-10-20T09:00:00.000Z', note: '' })
+    await api.projects.archive('p-nex')
+    await expect(api.time.remove(entry.id)).rejects.toMatchObject(closed)
+    await expect(api.time.update(entry.id, { target: { projectId: 'p-mob' } })).rejects.toMatchObject(closed)
+  })
+
   it('archiving stops running timers on its tasks and archives its channel', async () => {
     await api.time.start({ projectId: 'p-nex' })
     await api.projects.archive('p-nex')

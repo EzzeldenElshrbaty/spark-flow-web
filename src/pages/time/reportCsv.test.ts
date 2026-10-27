@@ -15,5 +15,8 @@ describe('reportRows', () => {
     expect(reportRows(report, 'project', names)).toEqual([['Project', 'Hours', 'Cost (EGP)'], ['Nexus Core', 3, 900]])
     expect(reportRows(report, 'person', names)).toEqual([['Person', 'Rate (EGP/h)', 'Hours', 'Cost (EGP)'], ['Mariam Fathy', 300, 3, 900]])
     expect(reportRows(report, 'week', names)[1]![0]).toBe('2026-10-25')
+    // A week starts at local midnight; in Cairo that's the evening before in UTC.
+    const local = { ...report, byWeek: [{ weekStart: new Date(2026, 9, 25).toISOString(), hours: 1, cost: 1 }] } as TimeReport
+    expect(reportRows(local, 'week', names)[1]![0]).toBe('2026-10-25')
   })
 })

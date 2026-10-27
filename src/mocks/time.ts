@@ -100,6 +100,8 @@ function changeableEntry(data: DbData, id: string): TimeEntry {
   if (!entry) throw notFound('Time entry', id)
   if (entry.userId !== me.id && me.role !== 'admin') throw new ApiError({ title: 'Forbidden', status: 403, detail: 'You can only change your own time.' })
   if (entry.endedAt === null) throw badRequest('Stop the timer first.')
+  // An archived project's time stays as it is: not edited, moved off it or deleted.
+  openProject(data, entry.projectId)
   return entry
 }
 

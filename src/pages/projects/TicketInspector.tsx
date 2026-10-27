@@ -2,8 +2,8 @@ import clsx from 'clsx'
 import { Archive, Clock, Pencil, Play, Square } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { useComments } from '@/api/comments'
-import { usePhases } from '@/api/projects'
-import { useArchiveTask, useProjects, useRestoreTask, useSprints, useTicket, useUpdateTask } from '@/api/tickets'
+import { usePhases, useProjectSummary } from '@/api/projects'
+import { useArchiveTask, useRestoreTask, useSprints, useTicket, useUpdateTask } from '@/api/tickets'
 import { useMyDay, useStartTimer, useStopTimer } from '@/api/time'
 import type { TicketStatus } from '@/api/types'
 import { useUsers } from '@/api/users'
@@ -56,7 +56,8 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
   const { workspace } = useCurrentWorkspace()
   const ticket = useTicket(ticketKey)
   const users = useUsers(workspace?.id)
-  const projects = useProjects(workspace?.id)
+  // By key (a task key starts with its project's), so an archived project's tasks still open; the list leaves those out.
+  const projectQuery = useProjectSummary(workspace?.id, ticketKey.split('-')[0])
   const sprints = useSprints(ticket.data?.projectId)
   const phases = usePhases(ticket.data?.projectId)
   const update = useUpdateTask()
@@ -73,22 +74,22 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
   const myDay = useMyDay()
   const start = useStartTimer()
   const stop = useStopTimer()
-  const project = projects.data?.find((p) => p.id === ticket.data?.projectId)
+  const project = projectQuery.data && projectQuery.data.id === ticket.data?.projectId ? projectQuery.data : undefined
   // A ticket of another workspace's project is not found in this one.
-  const foreign = Boolean(ticket.data && projects.data && !projects.data.some((p) => p.id === ticket.data.projectId))
+  const foreign = Boolean(ticket.data && projectQuery.isSuccess && !project)
 
   const eyebrow = (
     <>
       Task · <bdi dir="ltr">{ticketKey}</bdi>
     </>
   )
-  const title = foreign ? 'Ticket' : ticket.data && projects.data ? ticket.data.title : ticket.isPending || projects.isLoading ? <TitleSkeleton /> : 'Ticket'
+  const title = foreign ? 'Ticket' : ticket.data && projectQuery.data !== undefined ? ticket.data.title : ticket.isPending || projectQuery.isLoading ? <TitleSkeleton /> : 'Ticket'
 
   let body
   if (foreign || (ticket.error instanceof ApiError && ticket.error.status === 404)) body = <NotFound what="ticket" backTo={closeTo} backLabel="Close the ticket" />
   else if (ticket.isError) body = <QueryError what="Ticket" onRetry={() => void ticket.refetch()} />
-  else if (projects.isError) body = <QueryError what="Projects" onRetry={() => void projects.refetch()} />
-  else if (ticket.isPending || projects.isLoading || users.isLoading) body = <InspectorSkeleton />
+  else if (projectQuery.isError) body = <QueryError what="Project" onRetry={() => void projectQuery.refetch()} />
+  else if (ticket.isPending || projectQuery.isLoading || users.isLoading) body = <InspectorSkeleton />
   else {
     const t = ticket.data
     const nameOf = (id: string | null) => (id ? (users.data?.find((u) => u.id === id)?.name ?? 'Unknown person') : null)
