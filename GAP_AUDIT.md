@@ -33,6 +33,8 @@
 
 **M10 (28 Oct 2026)** fixed GAP-012, 014, 015, 016 and 024; the rules are in the spec, §4.4.
 
+**M11 (28 Oct 2026)** fixed GAP-009, 018–023, 025–029 and 033; the rules are in the spec, §4.3–4.4.
+
 ## 1. Executive summary
 
 Spark Flow is **well built for its scope**. The mock backend wraps every write in one transaction with its permission check, and every `Api` method (54 of them) has an HTTP route. The `can()` table agrees with the UI gates, and every realtime event that is emitted is handled. The demo flows work end to end.
@@ -297,6 +299,7 @@ The layers are types → mock (with its permission check) → `http.ts` → hook
 ### Medium
 
 **GAP-009: An accidental check-out can't be undone, and you can't check in again that day**
+- **Status:** ✅ Fixed in M11, `acc1e3e`.
 - **Category:** Missing capability · **Severity:** Medium · **Certainty:** Confirmed
 - **Evidence:**
   - A second check-in on the same day is refused with "You've already checked in today." (`src/mocks/time.ts:108`).
@@ -416,6 +419,7 @@ The layers are types → mock (with its permission check) → `http.ts` → hook
 - **Effort:** S
 
 **GAP-018: Channels can't be archived, and the sidebar lists every public channel**
+- **Status:** ✅ Fixed in M11, `c865b37, ba06b0d`.
 - **Category:** Missing capability · **Severity:** Medium · **Certainty:** Confirmed
 - **Evidence:**
   - There is no archive or delete in any layer.
@@ -430,6 +434,7 @@ The layers are types → mock (with its permission check) → `http.ts` → hook
 - **Effort:** M
 
 **GAP-019: Mentions link to the wrong place**
+- **Status:** ✅ Fixed in M11, `53676df`.
 - **Category:** Logic bug / UX state · **Severity:** Medium · **Certainty:** Confirmed, except the cross-workspace case, which is Likely
 - **Evidence:**
   - The bell ignores the workspace (`src/mocks/mentions.ts:34-67`, and `MentionItem` has no `workspaceId`), while `mentionLink` uses the current workspace's slug (`src/lib/mentionLink.ts:5-13`). A mention from another workspace opens "not found" (`ChannelPage.tsx:35-38`).
@@ -443,6 +448,7 @@ The layers are types → mock (with its permission check) → `http.ts` → hook
 - **Effort:** S–M
 
 **GAP-020: Uploads have no progress or cancel, and a failed comment leaves its file behind**
+- **Status:** ✅ Fixed in M11, `63c919b, 8e020dc`.
 - **Category:** Partial implementation · **Severity:** Medium · **Certainty:** Confirmed
 - **Evidence:**
   - `FileDrop` dropped the CRM's progress rows (`src/components/ui/FileDrop.tsx:10`).
@@ -458,6 +464,7 @@ The layers are types → mock (with its permission check) → `http.ts` → hook
 - **Effort:** M
 
 **GAP-021: Project files can't be removed, and only the first dropped file is uploaded**
+- **Status:** ✅ Fixed in M11, `8e020dc`.
 - **Category:** Missing capability / Logic bug · **Severity:** Medium · **Certainty:** Confirmed
 - **Evidence:** The `files` Api has url, list and upload only (`src/api/types.ts:278-282`). `ProjectFiles` sends `list?.[0]` (`src/pages/projects/ProjectFiles.tsx:22-25`).
 - **User impact:** A wrong or confidential file stays visible to everyone on the project. Dropping 3 files quietly stores 1.
@@ -465,6 +472,7 @@ The layers are types → mock (with its permission check) → `http.ts` → hook
 - **Effort:** S
 
 **GAP-022: Deliverables can be added and ticked, but not edited or removed**
+- **Status:** ✅ Fixed in M11, `df899fc`.
 - **Category:** Partial implementation · **Severity:** Medium · **Certainty:** Confirmed
 - **Evidence:**
   - `DeliverablePatch` has title, phase and due (`src/api/types.ts:159`), and the mock supports them, but the UI only toggles done (`src/pages/projects/OverviewTab.tsx:58-72`).
@@ -475,6 +483,7 @@ The layers are types → mock (with its permission check) → `http.ts` → hook
 - **Effort:** S
 
 **GAP-023: Projects can't be archived or deleted**
+- **Status:** ✅ Fixed in M11, `fe799a3`.
 - **Category:** Missing capability · **Severity:** Medium · **Certainty:** Confirmed
 - **Evidence:** Only `projects.update` with a status (`src/api/types.ts:239-246`).
 - **User impact:** Test or cancelled projects stay in the list, the dashboard and the sidebar along with their channels. Delivered projects pile up.
@@ -493,6 +502,7 @@ The layers are types → mock (with its permission check) → `http.ts` → hook
 - **Effort:** S
 
 **GAP-025: A rate change rewrites all past cost**
+- **Status:** ✅ Fixed in M11, `8865b43`.
 - **Category:** Data integrity · **Severity:** Medium · **Certainty:** Confirmed; the M2 plan chose this, so it's also a question (Q4)
 - **Evidence:** `Rate` has no effective date (`src/api/types.ts:74`). `rates.update` replaces it (`src/mocks/rates.ts:22-25`), and every cost uses the current rate (`derive.ts:48-49`, `report.ts:17`, `timeTotals.ts:12`).
 - **User impact:** After a raise, last quarter's cost changes and no longer matches what was reported.
@@ -500,6 +510,7 @@ The layers are types → mock (with its permission check) → `http.ts` → hook
 - **Effort:** M
 
 **GAP-026: The dashboard's "over estimate" compares unlike hours**
+- **Status:** ✅ Fixed in M11, `9b5075b`.
 - **Category:** Logic bug · **Severity:** Medium · **Certainty:** Confirmed
 - **Evidence:** The estimate is the sum of task estimates (`src/mocks/dashboard.ts:51,55`), while logged hours include time with no task and time on tasks with no estimate (`derive.ts:36,54`). So `over = logged > estimate` (`dashboardCard.ts:11`).
 - **User impact:** A project shows red "over" while every estimated task is within its estimate.
@@ -507,6 +518,7 @@ The layers are types → mock (with its permission check) → `http.ts` → hook
 - **Effort:** S
 
 **GAP-027: A forgotten timer runs on silently**
+- **Status:** ✅ Fixed in M11, `da9e0cc`.
 - **Category:** UX state / Logic bug · **Severity:** Medium · **Certainty:** Confirmed
 - **Evidence:**
   - The live clock isn't capped (`src/lib/format.ts:83`, used in `TimerBar.tsx:70,124` and `CheckInCard.tsx:69`), while hours stop at 12.
@@ -522,6 +534,7 @@ The layers are types → mock (with its permission check) → `http.ts` → hook
 - **Effort:** S · **Depends on:** GAP-001
 
 **GAP-028: Time and cost can't be exported or filtered**
+- **Status:** ✅ Fixed in M11, `216eacf, 0b72b3f`.
 - **Category:** Missing capability · **Severity:** Medium · **Certainty:** Confirmed
 - **Evidence:**
   - The report takes only `days` of 7, 30 or 90 (`src/api/types.ts:166,276`).
@@ -536,6 +549,7 @@ The layers are types → mock (with its permission check) → `http.ts` → hook
 - **Effort:** M
 
 **GAP-029: The "day" of a check-in or report is the server's day, and the contract carries no time zone**
+- **Status:** ✅ Fixed in M11, `ec18750`.
 - **Category:** Inconsistency (backend handoff) · **Severity:** Medium · **Certainty:** Likely
 - **Evidence:**
   - `CheckIn.day` is documented as browser-local (`src/api/types.ts:73`), yet the mock computes it with `localDay(now())` inside the "server" (`src/mocks/time.ts:107`, `dashboard.ts:72`, and the Sunday week in `report.ts:22`).
@@ -568,6 +582,7 @@ The layers are types → mock (with its permission check) → `http.ts` → hook
 - **Effort:** S
 
 **GAP-033: The typing indicator is dead code**
+- **Status:** ✅ Fixed in M11, `707f8c0`.
 - **Category:** Dead/unreachable · **Severity:** Medium (it's part of the chat baseline) · **Certainty:** Confirmed
 - **Evidence:**
   - `RealtimeClient` can listen for typing but has no way to send it (`src/lib/realtime.ts:6-21`), and nothing publishes `userTyping`.

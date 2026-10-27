@@ -125,6 +125,7 @@ HTTP paths follow the Phases 1+2 style (`POST /api/projects`, `POST /api/time/st
 | Comment, bug, upload, chat | ✓ | ✓ | ✓ | ✓ (projects they're on) |
 | Dashboard | ✓ | ✓ | own projects | — |
 | Time & cost page, rates, Database page | ✓ | — | — | — |
+| Archive or restore a project | ✓ | — | — | — |
 
 "View as" (user menu, demo only, hidden when `backendOn`) switches the current user among seeded people of each role.
 
@@ -153,6 +154,18 @@ HTTP paths follow the Phases 1+2 style (`POST /api/projects`, `POST /api/time/st
   - `ticketUpdated` → the task, its lists and history, project summaries, the dashboard; `projectChanged` → project, phases, deliverables, board, summaries, dashboard; `channelChanged` → channel lists.
   - `ratesChanged` → rates, the time report, the dashboard, project time; `filesChanged{projectId}` → its files.
   - `readChanged{userId}` → channel lists and mentions; `dataReset` (a reset or reload) → everything.
+
+- **Archived projects** (Admin, `project.archive`): out of the project lists, the sidebar, search and the dashboard; still open by address; their hours stay in Time & cost. Every write on one — the project, its board, phases, deliverables, tasks, comments, files and time — is `This project is archived. Restore it first.`, for Admins too; its channel is archived with it and running timers on its tasks stop.
+- **Archived channels** (a member or an Admin; not a project's channel — `This channel follows its project.` — nor a DM — `Conversations can't be archived.`): read-only (`This channel is archived.`) until restored.
+- **The sidebar lists my channels**: those I'm a member of and my projects' chats. Other public channels are found through search; **join** works on public, non-project, open channels (`You can only join public channels.`); **leave** on any but a project's (`This channel follows its project.`) or a DM (`You can't leave a conversation.`).
+- **Project files** are removed by whoever added them, the manager or an Admin (`You can only remove files you added.`); the bytes go when nothing else uses them. A refused or cancelled upload leaves no bytes behind; `upload` takes an abort signal.
+- **Rates keep their history**: each change adds a row `{ id, userId, hourlyCost, currency, effectiveFrom }` (a second change the same day corrects that day's row). Every cost is entry by entry at `rateAt(rates, userId, entry.startedAt)`; time before every row uses the earliest. DB_VERSION 6 migrates old rates to rows in effect since the start of time.
+- **Check-out can be undone** the same local day (`You haven't checked out today.`); the stopped timer stays stopped.
+- **Timers stop** when their task moves into a Done-type column, when the person checks in on a new day (at the 12-hour limit), and at 12 hours on screen.
+- **Time zone**: every request sends `X-Time-Zone: <IANA zone>`; "today", check-ins and report weeks are that zone's.
+- **Typing**: the client sends `userTyping { channelId, userId }` at most every 2 s while typing; readers show it for 3 s.
+- **Text fields** must be text (`Title must be text.`, `Name must be text.`…); links are `{ label, url }` (`Each link needs a label and an address.`); an unknown phase is `That phase no longer exists.` A task's create is checked in its own write, like an update.
+- **Events added**: `filesChanged` also on remove; `channelChanged` on archive, restore, join and leave; `projectChanged` + `channelChanged` + `timeLogged` on a project's archive.
 
 ## 5. Screens (copy the named Spark CRM screen in `design/screenshots/`)
 
