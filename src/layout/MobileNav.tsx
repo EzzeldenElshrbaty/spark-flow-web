@@ -1,11 +1,13 @@
 import clsx from 'clsx'
 import { Ellipsis, FolderKanban, House, MessagesSquare, X, type LucideIcon } from 'lucide-react'
+import { useRef } from 'react'
 import { NavLink, useMatch } from 'react-router'
 import { useChannels } from '@/api/chat'
 import { useProjects } from '@/api/tickets'
 import { Logo, SidebarContent } from '@/layout/Sidebar'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { landingPath, paths, savedPlace, validSavedPlace } from '@/lib/paths'
+import { useDialogFocus } from '@/lib/useDialogFocus'
 import { useUiStore } from '@/lib/uiStore'
 
 const itemClass = 'flex w-full flex-col items-center gap-1 py-2 text-[11px] font-medium'
@@ -72,14 +74,16 @@ export function MobileBottomBar({ onOpenMore }: { onOpenMore: () => void }) {
 }
 
 export function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useDialogFocus(open, ref, onClose)
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true">
-      <button type="button" className="absolute inset-0 bg-black/50" onClick={onClose} aria-label="Close menu" />
+    <div ref={ref} className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
+      <button type="button" tabIndex={-1} className="absolute inset-0 bg-black/50" onClick={onClose} aria-label="Close menu" />
       <div className="absolute inset-y-0 start-0 flex w-72 max-w-[85vw] flex-col bg-ink-900 shadow-xl dark:bg-surface-sunken">
         <div className="flex h-16 items-center justify-between border-b border-white/10 px-4">
           <Logo onClick={onClose} />
-          <button type="button" onClick={onClose} className="rounded-md p-1 text-neutral-400 hover:text-white" aria-label="Close menu">
+          <button type="button" data-autofocus onClick={onClose} className="rounded-md p-1 text-neutral-400 hover:text-white" aria-label="Close menu">
             <X className="size-5" />
           </button>
         </div>
