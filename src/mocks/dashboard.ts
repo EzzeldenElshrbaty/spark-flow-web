@@ -1,6 +1,6 @@
 import type { Api, CheckedInNow, DashboardProject } from '@/api/types'
 import { localDay } from '@/lib/dates'
-import { entryEnd } from '@/lib/hours'
+import { entryEnd, entryHours } from '@/lib/hours'
 import type { DbData, MockDb } from './db'
 import { summarize } from './derive'
 import { delay } from './latency'
@@ -54,6 +54,10 @@ export function dashboardApi(db: MockDb, now: () => Date): Api['dashboard'] {
             ...summary,
             phaseName: data.phases.find((ph) => ph.id === summary.currentPhaseId)?.name ?? null,
             estimateHours: estimated.length ? estimated.reduce((s, t) => s + (t.estimateHours ?? 0), 0) : null,
+            // Like with like: only time on those same tasks counts against their estimates.
+            estimatedLoggedHours: data.timeEntries
+              .filter((e) => e.taskId !== null && estimated.some((t) => t.id === e.taskId))
+              .reduce((s, e) => s + entryHours(e, at), 0),
             week: lastWeek(data, p.id, at),
           }
         }),

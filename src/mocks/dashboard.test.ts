@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { Api } from '@/api/types'
+import { entryHours } from '@/lib/hours'
 import { createDb, type MockDb } from './db'
 import { createMockApi } from './index'
 import { latency } from './latency'
@@ -84,3 +85,20 @@ describe('dashboard', () => {
     expect((await api.dashboard.checkedIn('ws-eng')).some((c) => c.userId === 'u-8')).toBe(false)
   })
 })
+
+describe('over estimate', () => {
+  it("hours on unestimated tasks and on no task don't count toward over", async () => {
+    const card = (await api.dashboard.projects('ws-eng')).find((p) => p.id === 'p-nex')!
+    const data = await db.read()
+    const estimated = new Set(data.tickets.filter((t) => t.projectId === 'p-nex' && !t.archivedAt && t.estimateHours !== null).map((t) => t.id))
+    const entries = data.timeEntries.filter((e) => e.projectId === 'p-nex')
+    const expected = entries.filter((e) => e.taskId && estimated.has(e.taskId)).reduce((s, e) => s + entryHours(e, new Date()), 0)
+    expect(card.estimatedLoggedHours).toBeCloseTo(expected, 1)
+    // Two hours on the project but on no task: logged, not estimated.
+    await db.update((d) => void d.timeEntries.push({ id: 'te-extra', userId: 'u-3', projectId: 'p-nex', taskId: null, startedAt: '2026-10-01T08:00:00.000Z', endedAt: '2026-10-01T10:00:00.000Z', source: 'manual', note: '' }))
+    const after = (await api.dashboard.projects('ws-eng')).find((p) => p.id === 'p-nex')!
+    expect(after.loggedHours).toBeCloseTo(card.loggedHours + 2, 1)
+    expect(after.estimatedLoggedHours).toBeCloseTo(card.estimatedLoggedHours, 1)
+  })
+})
+

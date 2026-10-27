@@ -8,11 +8,15 @@ const shortDay = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { da
 
 /** What a dashboard card says about a project: done share, hours against the estimate, and when it should finish. */
 export function cardFacts(p: DashboardProject, now: Date): CardFacts {
-  const over = p.estimateHours !== null && p.loggedHours > p.estimateHours
+  // Hours on the estimated tasks against their estimates; time on other tasks (or none) isn't part of the estimate.
+  const over = p.estimateHours !== null && p.estimatedLoggedHours > p.estimateHours
   const late = p.status !== 'delivered' && (isPastDue(p.dueDate, now) || p.expectedFinish.slice(0, 10) > p.dueDate.slice(0, 10))
   return {
     ring: Math.round(p.progress * 100),
-    hoursLine: p.estimateHours === null ? `${formatHours(p.loggedHours)} · no estimate` : `${formatHours(p.loggedHours)} of ${formatHours(p.estimateHours)}`,
+    hoursLine:
+      p.estimateHours === null
+        ? `${formatHours(p.loggedHours)} · no estimate`
+        : `${formatHours(p.estimatedLoggedHours)} of ${formatHours(p.estimateHours)} estimated · ${formatHours(p.loggedHours)} in all`,
     finishLine: late ? `Expected ${formatDate(p.expectedFinish)} · due ${shortDay(p.dueDate)}` : `Expected ${formatDate(p.expectedFinish)}`,
     late,
     over,

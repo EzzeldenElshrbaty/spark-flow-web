@@ -213,6 +213,7 @@ export type TimeReport = {
 export type DashboardProject = ProjectSummary & {
   phaseName: string | null                        // the current phase; null when every phase is done or there are none
   estimateHours: number | null                    // Σ task estimates; null when no task has one
+  estimatedLoggedHours: number                    // hours logged on the tasks that have an estimate (what "over" compares)
   week: { userId: string; hours: number }[]       // the last 7 days, most hours first
 }
 /** Someone checked in today and not out yet, with their running timer. */
