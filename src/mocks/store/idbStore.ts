@@ -99,6 +99,11 @@ export async function createIdbStore(factory: IDBFactory): Promise<MockStore> {
       const value = await done(txn.objectStore(FILES).get(id))
       return value instanceof Blob ? value : null
     },
+    async deleteFile(id) {
+      const txn = await transaction(FILES, 'readwrite')
+      txn.objectStore(FILES).delete(id)
+      await finished(txn)
+    },
     async putFile(id, blob) {
       const txn = await transaction(FILES, 'readwrite')
       txn.objectStore(FILES).put(blob, id)

@@ -9,6 +9,8 @@ export interface MockStore {
   transact<T>(fn: (doc: unknown | null) => { doc: unknown; result: T }): Promise<T>
   getFile(id: string): Promise<Blob | null>
   putFile(id: string, blob: Blob): Promise<void>
+  /** Throws a file's bytes away; nothing happens when there are none. */
+  deleteFile(id: string): Promise<void>
   /** Empties the document and every file. */
   clearAll(): Promise<void>
   kind: 'indexeddb' | 'memory'

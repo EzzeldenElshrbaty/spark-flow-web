@@ -27,6 +27,9 @@ export function createMemoryStore(): MockStore {
     async putFile(id, blob) {
       files.set(id, blob)
     },
+    async deleteFile(id) {
+      files.delete(id)
+    },
     async clearAll() {
       doc = null
       files.clear()

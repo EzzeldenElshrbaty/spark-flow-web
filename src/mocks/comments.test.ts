@@ -142,3 +142,18 @@ describe('editing comments', () => {
     await expect(api.comments.update(made.id, 'x'.repeat(4001))).rejects.toMatchObject({ status: 400 })
   })
 })
+
+describe('no bytes left behind', () => {
+  it('a comment refused after its bytes were saved leaves no bytes behind', async () => {
+    await api.users.viewAs('u-4') // Ahmed manages Mobile App
+    const stale = await db.read()
+    await api.tasks.archive('MOB-104') // refused inside the write; the stale read still says open
+    const ids: string[] = []
+    const spy: MockDb = { ...db, read: async () => structuredClone(stale), putFile: (id, b) => (ids.push(id), db.putFile(id, b)) }
+    const staleApi = createMockApi(spy, hub)
+    await expect(staleApi.comments.create({ taskKey: 'MOB-104', kind: 'bug', body: 'x', files: [png()] })).rejects.toMatchObject({ status: 400 })
+    expect(ids).toHaveLength(1)
+    expect(await db.getFile(ids[0]!)).toBeNull()
+  })
+})
+

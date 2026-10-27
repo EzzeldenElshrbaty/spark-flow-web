@@ -67,6 +67,7 @@ export interface MockDb {
   update<T>(fn: (data: DbData) => T): Promise<T>
   getFile(id: string): Promise<Blob | null>
   putFile(id: string, blob: Blob): Promise<void>
+  deleteFile(id: string): Promise<void>
   /** Throws every record and file away and seeds again. */
   reset(): Promise<void>
   exportAll(): Promise<ExportBundle & { data: DbData }>
@@ -237,6 +238,9 @@ export function createDb(store: MockStore, seed: (now: Date) => SeedResult, now:
     },
     putFile(id, blob) {
       return store.putFile(id, blob)
+    },
+    deleteFile(id) {
+      return store.deleteFile(id)
     },
     async reset() {
       memory = null

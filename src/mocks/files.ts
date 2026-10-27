@@ -13,6 +13,24 @@ export function checkUpload(file: { size: number; name: string }) {
   if (!isAcceptedFile(file.name)) throw badRequest("That type of file can't be added.")
 }
 
+/**
+ * Saves the bytes, then runs the write that records them. Bytes first, so a record never points at bytes that weren't
+ * saved; and if saving any of them or the write fails, the bytes saved so far are thrown away, so none are left behind.
+ */
+export async function withSavedBytes<T>(db: MockDb, bytes: [id: string, blob: Blob][], write: () => Promise<T>): Promise<T> {
+  const saved: string[] = []
+  try {
+    for (const [id, blob] of bytes) {
+      await db.putFile(id, blob)
+      saved.push(id)
+    }
+    return await write()
+  } catch (error) {
+    await Promise.all(saved.map((id) => db.deleteFile(id)))
+    throw error
+  }
+}
+
 export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'] {
   return {
     /** A blob: address for a stored file. The page that shows it frees it with URL.revokeObjectURL when done. */
@@ -39,15 +57,15 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
       checkUpload(file)
       const at = now().toISOString()
       const attachment: Attachment = { id: newId('a'), name: file.name, mimeType: file.type || 'application/octet-stream', size: file.size, createdAt: at }
-      // Bytes first, then the record: a record never points at bytes that weren't saved.
-      await db.putFile(attachment.id, file)
-      const stored: StoredFile = await db.update((data) => {
-        const me = requireCan(data, 'collab.post', findProject(data, projectId))
-        const record: ProjectFile = { id: newId('pf'), projectId, attachmentId: attachment.id, uploadedBy: me.id, createdAt: at }
-        data.attachments.push(attachment)
-        data.projectFiles.push(record)
-        return { ...record, attachment }
-      })
+      const stored: StoredFile = await withSavedBytes(db, [[attachment.id, file]], () =>
+        db.update((data) => {
+          const me = requireCan(data, 'collab.post', findProject(data, projectId))
+          const record: ProjectFile = { id: newId('pf'), projectId, attachmentId: attachment.id, uploadedBy: me.id, createdAt: at }
+          data.attachments.push(attachment)
+          data.projectFiles.push(record)
+          return { ...record, attachment }
+        }),
+      )
       hub.publish({ type: 'filesChanged', projectId })
       return clone(stored)
     },

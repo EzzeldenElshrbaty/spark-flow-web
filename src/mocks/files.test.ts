@@ -59,3 +59,20 @@ describe('files reach other tabs', () => {
     expect(events).toContainEqual({ type: 'filesChanged', projectId: 'p-mob' })
   })
 })
+
+describe('no bytes left behind', () => {
+  it('a project upload refused in the write leaves no bytes behind', async () => {
+    await api.users.viewAs('u-8') // Tarek, a member of Mobile App
+    const stale = await db.read()
+    await api.users.viewAs('u-4')
+    await api.projects.update('p-mob', { memberIds: ['u-4', 'u-5', 'u-6'] }) // Tarek off as a member…
+    await api.projects.update('p-mob', { teamIds: [] }) // …and through the Mobile team
+    await api.users.viewAs('u-8')
+    const ids: string[] = []
+    const spy: MockDb = { ...db, read: async () => structuredClone(stale), putFile: (id, b) => (ids.push(id), db.putFile(id, b)) }
+    await expect(createMockApi(spy, hub).files.upload('p-mob', file('a.pdf', ['%PDF-1.4 x']))).rejects.toMatchObject({ status: 403 })
+    expect(ids).toHaveLength(1)
+    expect(await db.getFile(ids[0]!)).toBeNull()
+  })
+})
+

@@ -1,7 +1,7 @@
 import type { Api, Attachment, Comment, CommentView, Ticket } from '@/api/types'
 import { postMessage } from './chat'
 import type { DbData, MockDb } from './db'
-import { checkUpload } from './files'
+import { checkUpload, withSavedBytes } from './files'
 import { delay } from './latency'
 import { findProject } from './projects'
 import type { MockHub } from './realtime'
@@ -76,23 +76,22 @@ export function commentsApi(db: MockDb, hub: MockHub, now: () => Date): Api['com
 
       const at = now().toISOString()
       const attachments: Attachment[] = files.map((f) => ({ id: newId('a'), name: f.name, mimeType: f.type || 'application/octet-stream', size: f.size, createdAt: at }))
-      // Bytes first, then the records: a record never points at bytes that weren't saved.
-      for (const [i, f] of files.entries()) await db.putFile(attachments[i]!.id, f)
-
-      const { comment, card } = await db.update((data) => {
-        const project = findProject(data, findTask(data, taskKey).projectId)
-        const me = requireCan(data, 'collab.post', project)
-        if (findTask(data, taskKey).archivedAt) throw badRequest('This task is archived. Restore it first.')
-        const comment: Comment = { id: newId('cm'), taskId: task.id, projectId: project.id, authorId: me.id, kind, body: text, attachmentIds: attachments.map((a) => a.id), createdAt: at }
-        data.attachments.push(...attachments)
-        data.comments.push(comment)
-        const card = postMessage(data, { channelId: project.channelId, content: cardText(kind, task.key, text), attachments }, { commentId: comment.id })
-        // History says a comment or bug was added, never what it says.
-        logActivity(data, { projectId: project.id, taskKey: task.key, kind: 'comment.added', subject: kind, changes: [] }, now().toISOString())
-        // The card names its task even when the body doesn't.
-        card.linkedTicketKeys = [task.key]
-        return { comment: withAttachments(data, comment), card: clone(card) }
-      })
+      const { comment, card } = await withSavedBytes(db, files.map((f, i) => [attachments[i]!.id, f] as [string, Blob]), () =>
+        db.update((data) => {
+          const project = findProject(data, findTask(data, taskKey).projectId)
+          const me = requireCan(data, 'collab.post', project)
+          if (findTask(data, taskKey).archivedAt) throw badRequest('This task is archived. Restore it first.')
+          const comment: Comment = { id: newId('cm'), taskId: task.id, projectId: project.id, authorId: me.id, kind, body: text, attachmentIds: attachments.map((a) => a.id), createdAt: at }
+          data.attachments.push(...attachments)
+          data.comments.push(comment)
+          const card = postMessage(data, { channelId: project.channelId, content: cardText(kind, task.key, text), attachments }, { commentId: comment.id })
+          // History says a comment or bug was added, never what it says.
+          logActivity(data, { projectId: project.id, taskKey: task.key, kind: 'comment.added', subject: kind, changes: [] }, now().toISOString())
+          // The card names its task even when the body doesn't.
+          card.linkedTicketKeys = [task.key]
+          return { comment: withAttachments(data, comment), card: clone(card) }
+        }),
+      )
       hub.publish({ type: 'messageReceived', message: card })
       hub.publish({ type: 'commentAdded', taskKey: task.key, projectId: comment.projectId })
       return clone(comment)

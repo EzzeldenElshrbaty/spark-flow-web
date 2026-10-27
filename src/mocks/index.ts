@@ -84,6 +84,7 @@ function lazyDb(): MockDb {
     update: (fn) => ready().then((db) => db.update(fn)),
     getFile: (id) => ready().then((db) => db.getFile(id)),
     putFile: (id, blob) => ready().then((db) => db.putFile(id, blob)),
+    deleteFile: (id) => ready().then((db) => db.deleteFile(id)),
     reset: () => ready().then((db) => db.reset()),
     exportAll: () => ready().then((db) => db.exportAll()),
     importAll: (bundle) => ready().then((db) => db.importAll(bundle)),
