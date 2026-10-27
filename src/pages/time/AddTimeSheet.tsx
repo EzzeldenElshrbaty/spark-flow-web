@@ -87,7 +87,7 @@ export function AddTimeSheet({ projectId: forProject, taskId, entry, onClose }: 
             <select className={selectClass} value={values.taskId ?? ''} disabled={!values.projectId} onChange={(e) => set('taskId', e.target.value || null)}>
               <option value="">No task</option>
               {tasks
-                .filter((t) => t.status !== 'done' || t.id === values.taskId)
+                .filter((t) => t.category !== 'done' || t.id === values.taskId)
                 .map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.key} · {t.title}

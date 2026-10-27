@@ -526,6 +526,7 @@ export function seed(now: Date): SeedResult {
     reads: Object.fromEntries(users.map((u) => [u.id, buildReads(rawChannels.map((c) => c.id), messages, { 'c-frontend': 3, 'c-dm-2': 1 }, now)])),
     counters: buildCounters(projects.map((p) => p.id), tickets),
     mentionReads: {} as Record<string, string[]>,
+    activity: [],
   }
   // The bell starts with the last day's mentions only: everything older counts as read.
   const dayAgo = new Date(now.getTime() - 24 * 3_600_000).toISOString()

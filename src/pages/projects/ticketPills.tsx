@@ -1,12 +1,16 @@
 import clsx from 'clsx'
-import type { Priority, TicketStatus } from '@/api/types'
+import type { Priority, StatusCategory, TicketStatus } from '@/api/types'
 
-// Board order and names live in lib (the mock's event cards use them too); the hues are the pages'.
+// Columns, their names and types live in lib (the mock's event cards use them too); the hues are the pages'.
 import { statusLabel } from '@/lib/statuses'
 
-export { statuses, statusLabel } from '@/lib/statuses'
+export { statusLabel } from '@/lib/statuses'
 
-const statusStyle: Record<TicketStatus, { pill: string; dot: string }> = {
+type Pill = { pill: string; dot: string }
+type Tint = { head: string; body: string; border: string; dot: string }
+
+// The five standard columns keep their own hues; any other column takes its type's: grey, amber, emerald.
+const statusStyle: Record<string, Pill> = {
   backlog: { pill: 'bg-surface-muted text-fg-secondary', dot: 'bg-fg-subtle' },
   todo: { pill: 'bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300', dot: 'bg-sky-500' },
   inProgress: { pill: 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300', dot: 'bg-amber-500' },
@@ -14,8 +18,8 @@ const statusStyle: Record<TicketStatus, { pill: string; dot: string }> = {
   done: { pill: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300', dot: 'bg-emerald-500' },
 }
 
-/** Pastel column tints for the board, one per status (as the Opportunities board's stages). */
-export const statusTint: Record<TicketStatus, { head: string; body: string; border: string; dot: string }> = {
+/** Pastel column tints for the board, one per standard column (as the Opportunities board's stages). */
+const statusTint: Record<string, Tint> = {
   backlog: { head: 'bg-surface-muted', body: 'bg-surface-sunken/60', border: 'border-line', dot: 'bg-fg-subtle' },
   todo: { head: 'bg-sky-50 dark:bg-sky-500/10', body: 'bg-sky-50/40 dark:bg-sky-500/[0.04]', border: 'border-sky-100 dark:border-sky-500/20', dot: 'bg-sky-400' },
   inProgress: { head: 'bg-amber-50 dark:bg-amber-500/10', body: 'bg-amber-50/40 dark:bg-amber-500/[0.04]', border: 'border-amber-100 dark:border-amber-500/20', dot: 'bg-amber-400' },
@@ -23,9 +27,14 @@ export const statusTint: Record<TicketStatus, { head: string; body: string; bord
   done: { head: 'bg-emerald-50 dark:bg-emerald-500/10', body: 'bg-emerald-50/40 dark:bg-emerald-500/[0.04]', border: 'border-emerald-100 dark:border-emerald-500/20', dot: 'bg-emerald-400' },
 }
 
+const byCategory = { todo: 'backlog', inProgress: 'inProgress', done: 'done' } as const
+
+/** A column's tint: its own for the standard ids, else its type's. */
+export const tintOf = (status: TicketStatus, category: StatusCategory): Tint => statusTint[status] ?? statusTint[byCategory[category]]!
+
 /** Status pill with a dot (the record-status pill of the kit); `label` is the project's name for it, if it has one. */
-export function StatusPill({ status, label }: { status: TicketStatus; label?: string }) {
-  const style = statusStyle[status]
+export function StatusPill({ status, label, category = 'todo' }: { status: TicketStatus; label?: string; category?: StatusCategory }) {
+  const style = statusStyle[status] ?? statusStyle[byCategory[category]]!
   return (
     <span className={clsx('inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium', style.pill)}>
       <span className={clsx('size-1.5 rounded-full', style.dot)} aria-hidden />

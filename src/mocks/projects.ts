@@ -1,6 +1,6 @@
 import type { Api, Deliverable, Phase, Project } from '@/api/types'
 import type { DbData, MockDb } from './db'
-import { columnErrors } from '@/lib/boardColumns'
+import { columnErrors, columnsOf } from '@/lib/boardColumns'
 import { summarize } from './derive'
 import { delay } from './latency'
 import { badRequest, clone, currentUser, newId, notFound, requireCan } from './shared'
@@ -120,13 +120,16 @@ export function projectsApi(db: MockDb, now: () => Date): Pick<Api, 'projects' |
       },
       async setBoard(id, columns) {
         await delay()
-        const board = columns.map((c) => ({ status: c.status, label: c.label.trim() }))
+        const board = columns.map((c) => ({ id: c.id, label: c.label.trim(), category: c.category }))
         const problem = columnErrors(board)
         if (problem) throw badRequest(problem)
         return clone(
           await db.update((data) => {
             const project = findProject(data, id)
             requireCan(data, 'phase.manage', project)
+            // Names, order and types change here; adding and deleting columns have their own calls.
+            const current = columnsOf(project).map((c) => c.id).sort()
+            if (board.map((c) => c.id).sort().join() !== current.join()) throw badRequest('That column no longer exists.')
             project.board = board
             return project
           }),

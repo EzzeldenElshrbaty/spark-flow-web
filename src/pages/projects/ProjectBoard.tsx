@@ -18,12 +18,13 @@ import { CSS } from '@dnd-kit/utilities'
 import clsx from 'clsx'
 import { ArrowLeft, ArrowRight, Inbox, MoreHorizontal, Pencil } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { BoardColumn as Column, TaskView, TicketPatch, TicketStatus, User } from '@/api/types'
+import type { BoardColumn as Column, StatusCategory, TaskView, TicketPatch, TicketStatus, User } from '@/api/types'
 import { MenuPanel } from '@/components/ui/Menu'
-import { boardColumns, columnErrors, moveColumn } from '@/lib/boardColumns'
+import { columnErrors, columnsOf, moveColumn } from '@/lib/boardColumns'
+import { DEFAULT_COLUMNS } from '@/lib/statuses'
 import { boardMove, prunePending, withPending, type PendingMoves } from '@/pages/projects/boardMove'
 import { TicketRow } from '@/pages/projects/TicketRow'
-import { statuses, statusTint } from '@/pages/projects/ticketPills'
+import { tintOf } from '@/pages/projects/ticketPills'
 
 const nameOf = (users: User[], id: string | null) => (id ? (users.find((u) => u.id === id)?.name ?? 'Unknown person') : null)
 const COLUMN = 'column:'
@@ -35,8 +36,8 @@ const byRank = (a: TaskView, b: TaskView) => a.rank - b.rank
 export function BoardSkeleton() {
   return (
     <div className="relative flex gap-3 overflow-hidden" aria-busy="true">
-      {statuses.map(({ status }) => (
-        <div key={status} className="h-96 w-[85%] shrink-0 animate-pulse rounded-xl bg-surface-muted md:w-[296px]" />
+      {DEFAULT_COLUMNS.map(({ id }) => (
+        <div key={id} className="h-96 w-[85%] shrink-0 animate-pulse rounded-xl bg-surface-muted md:w-[296px]" />
       ))}
     </div>
   )
@@ -126,6 +127,7 @@ function ColumnMenu({ label, first, last, onRename, onMove }: { label: string; f
 function BoardColumn({
   status,
   label,
+  category,
   items,
   users,
   canMove,
@@ -138,6 +140,7 @@ function BoardColumn({
 }: {
   status: TicketStatus
   label: string
+  category: StatusCategory
   items: TaskView[]
   users: User[]
   canMove: (t: TaskView) => boolean
@@ -154,7 +157,7 @@ function BoardColumn({
   const [draft, setDraft] = useState(label)
   const [error, setError] = useState<string | null>(null)
   const hours = Math.round(items.reduce((sum, t) => sum + t.loggedHours, 0) * 10) / 10
-  const tint = statusTint[status]
+  const tint = tintOf(status, category)
   const startRename = () => {
     setDraft(label)
     setError(null)
@@ -241,7 +244,7 @@ function BoardColumn({
  * the board; on phones each column takes most of the width and snaps, with the next one peeking in.
  * A card the person may move drags to another column or another place in its column, with mouse, touch or keyboard;
  * the drop shows at once and goes back if saving fails. The project's manager also renames columns and puts them in
- * another order (drag a header, or its ⋯ menu); they stay the same 5 statuses.
+ * another order (drag a header, or its ⋯ menu).
  */
 export function ProjectBoard({
   tickets,
@@ -279,7 +282,7 @@ export function ProjectBoard({
   }, [live, pending])
   const shown = useMemo(() => withPending(tickets, live), [live, tickets])
   // A column change shows at once too, until the saved board matches it or the save fails.
-  const savedBoard = useMemo(() => boardColumns({ board }), [board])
+  const savedBoard = useMemo(() => columnsOf({ board }), [board])
   const [boardDraft, setBoardDraft] = useState<Column[] | null>(null)
   const boardSaved = boardDraft != null && JSON.stringify(boardDraft) === JSON.stringify(savedBoard)
   useEffect(() => {
@@ -287,11 +290,11 @@ export function ProjectBoard({
   }, [boardSaved])
   const order = boardDraft ?? savedBoard
   const editable = Boolean(onBoard)
-  const columns = order.map(({ status, label }) => ({ status, label, items: shown.filter((t) => t.status === status).sort(byRank) }))
+  const columns = order.map(({ id, label, category }) => ({ status: id, label, category, items: shown.filter((t) => t.status === id).sort(byRank) }))
   const find = (key: string) => shown.find((t) => t.key === key)
   const columnOf = (id: string) =>
     id.startsWith(COLUMN) ? (id.slice(COLUMN.length) as TicketStatus) : id.startsWith(HEADER) ? (id.slice(HEADER.length) as TicketStatus) : find(id)?.status
-  const labelOf = (status: TicketStatus | undefined) => order.find((c) => c.status === status)?.label ?? ''
+  const labelOf = (status: TicketStatus | undefined) => order.find((c) => c.id === status)?.label ?? ''
   const active = activeKey && !activeKey.startsWith(HEADER) ? find(activeKey) : undefined
   const activeColumn = activeKey?.startsWith(HEADER) ? columns.find((c) => HEADER + c.status === activeKey) : undefined
 
@@ -308,10 +311,10 @@ export function ProjectBoard({
       return (e as Error).message
     }
   }
-  const rename = (status: TicketStatus) => (label: string) => saveBoard(order.map((c) => (c.status === status ? { ...c, label: label.trim() } : c)))
+  const rename = (status: TicketStatus) => (label: string) => saveBoard(order.map((c) => (c.id === status ? { ...c, label: label.trim() } : c)))
   const moveSide = (status: TicketStatus) => (side: 'left' | 'right') => {
     const rtl = document.documentElement.dir === 'rtl'
-    const at = order.findIndex((c) => c.status === status)
+    const at = order.findIndex((c) => c.id === status)
     void saveBoard(moveColumn(order, status, at + ((side === 'right') !== rtl ? 1 : -1)))
   }
 
@@ -333,7 +336,7 @@ export function ProjectBoard({
       // A header dropped over another column takes that column's place.
       const from = columnOf(String(active.id))
       const to = over ? columnOf(String(over.id)) : undefined
-      if (from && to && from !== to) void saveBoard(moveColumn(order, from, order.findIndex((c) => c.status === to)))
+      if (from && to && from !== to) void saveBoard(moveColumn(order, from, order.findIndex((c) => c.id === to)))
       return
     }
     const ticket = find(String(active.id))
@@ -410,7 +413,7 @@ export function ProjectBoard({
             </div>
           )}
           {activeColumn && (
-            <div className={clsx('w-[296px] cursor-grabbing rounded-xl border px-3.5 py-3 text-sm font-semibold text-fg shadow-xl', statusTint[activeColumn.status].head, statusTint[activeColumn.status].border)}>
+            <div className={clsx('w-[296px] cursor-grabbing rounded-xl border px-3.5 py-3 text-sm font-semibold text-fg shadow-xl', tintOf(activeColumn.status, activeColumn.category).head, tintOf(activeColumn.status, activeColumn.category).border)}>
               {activeColumn.label} · <span className="tabular-nums">{activeColumn.items.length}</span>
             </div>
           )}

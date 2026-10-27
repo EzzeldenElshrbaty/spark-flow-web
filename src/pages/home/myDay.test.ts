@@ -4,7 +4,7 @@ import { daySummary, dueTodayOrOverdue, greeting } from './myDay'
 
 const at = (h: number, m = 0, dayOffset = 0) => new Date(2026, 9, 28 + dayOffset, h, m)
 const entry = (start: Date, end: Date | null): TimeEntry => ({ id: Math.random().toString(), userId: 'u', projectId: 'p', taskId: null, startedAt: start.toISOString(), endedAt: end?.toISOString() ?? null, source: 'timer', note: '' })
-const task = (over: Partial<TaskView>): TaskView => ({ id: over.key ?? 'x', key: 'P-1', status: 'todo', assigneeId: 'me', dueAt: null, overdue: false, ...over }) as TaskView
+const task = (over: Partial<TaskView>): TaskView => ({ id: over.key ?? 'x', key: 'P-1', status: 'todo', category: over.status === 'done' ? 'done' : 'todo', assigneeId: 'me', dueAt: null, overdue: false, ...over }) as TaskView
 
 describe('greeting', () => {
   it('by the hour, first name only', () => {

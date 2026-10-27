@@ -1,3 +1,5 @@
+import { DEFAULT_COLUMNS } from '@/lib/statuses'
+
 /**
  * Steps that bring an older saved document up to date, keyed by the version each upgrades from. A step changes the
  * document in place; it only runs on a copy, inside the transaction that then saves it.
@@ -6,6 +8,22 @@ export const migrations: Record<number, (doc: Record<string, unknown>) => void> 
   // 4: channel read state per person. What was read so far belongs to the document's default person.
   3: (doc) => {
     doc.reads = { [String(doc.currentUserId)]: doc.reads ?? {} }
+  },
+  // 5: board columns have an id and a type; history starts empty. Old names and order stay; types come from the ids.
+  4: (doc) => {
+    for (const project of (doc.projects as Record<string, unknown>[]) ?? []) {
+      const own = Array.isArray(project.board) ? (project.board as { status: string; label: string }[]) : []
+      const seen = new Set<string>()
+      const board = []
+      for (const c of own) {
+        const standard = DEFAULT_COLUMNS.find((d) => d.id === c.status)
+        if (!standard || seen.has(c.status)) continue
+        seen.add(c.status)
+        board.push({ id: c.status, label: c.label?.trim() || standard.label, category: standard.category })
+      }
+      project.board = [...board, ...DEFAULT_COLUMNS.filter((d) => !seen.has(d.id)).map((d) => ({ ...d }))]
+    }
+    doc.activity = []
   },
 }
 

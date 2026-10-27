@@ -3,7 +3,7 @@ import type { Phase, TaskView } from '@/api/types'
 import { filterTasks, groupByPhase, myOpenTasks, validSprint, viewOf } from './taskFilters'
 
 const t = (over: Partial<TaskView>): TaskView =>
-  ({ id: over.key ?? 'x', key: 'P-1', status: 'todo', phaseId: null, sprintId: null, assigneeId: null, dueAt: null, overdue: false, rank: 0, ...over }) as TaskView
+  ({ id: over.key ?? 'x', key: 'P-1', status: 'todo', category: over.status === 'done' ? 'done' : 'todo', phaseId: null, sprintId: null, assigneeId: null, dueAt: null, overdue: false, rank: 0, ...over }) as TaskView
 const phase = (id: string, order: number): Phase => ({ id, projectId: 'p', name: id, order, startDate: '', dueDate: '', status: 'notStarted' })
 
 describe('filterTasks', () => {
@@ -56,5 +56,12 @@ describe('viewOf and validSprint', () => {
     expect(validSprint('s-2', sprints)).toBe('s-2')
     expect(validSprint('s-gone', sprints)).toBeNull()
     expect(validSprint(null, sprints)).toBeNull()
+  })
+})
+
+describe('myOpenTasks and column types', () => {
+  it('leaves out tasks of every Done-type column, whatever the column is called', () => {
+    const tasks = [t({ key: 'A', assigneeId: 'me', status: 'col-ship', category: 'done' }), t({ key: 'B', assigneeId: 'me', status: 'done', category: 'inProgress' })]
+    expect(myOpenTasks(tasks, 'me').map((x) => x.key)).toEqual(['B'])
   })
 })

@@ -22,7 +22,7 @@ const keys = new Intl.Collator('en', { numeric: true })
 /** My open tasks: overdue first, then the nearest due date (none last), then by key. */
 export const myOpenTasks = (tasks: TaskView[], userId: string) =>
   tasks
-    .filter((t) => t.assigneeId === userId && t.status !== 'done')
+    .filter((t) => t.assigneeId === userId && t.category !== 'done')
     .sort(
       (a, b) =>
         Number(b.overdue) - Number(a.overdue) ||

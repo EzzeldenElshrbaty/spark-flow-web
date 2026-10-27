@@ -133,17 +133,17 @@ describe('teams', () => {
 
 describe('board columns', () => {
   const columns = [
-    { status: 'backlog' as const, label: 'Backlog' },
-    { status: 'todo' as const, label: 'To do' },
-    { status: 'inProgress' as const, label: 'In progress' },
-    { status: 'done' as const, label: 'Done' },
-    { status: 'inReview' as const, label: ' Testing ' },
+    { id: 'backlog', label: 'Backlog', category: 'todo' as const },
+    { id: 'todo', label: 'To do', category: 'todo' as const },
+    { id: 'inProgress', label: 'In progress', category: 'inProgress' as const },
+    { id: 'done', label: 'Done', category: 'done' as const },
+    { id: 'inReview', label: ' Testing ', category: 'inProgress' as const },
   ]
 
-  it('setBoard saves names and order for the manager', async () => {
+  it('setBoard saves names, order and types for the manager', async () => {
     await api.users.viewAs('u-2') // Nour manages Nexus Core
     const project = await api.projects.setBoard('p-nex', columns)
-    expect(project.board).toEqual([...columns.slice(0, 4), { status: 'inReview', label: 'Testing' }])
+    expect(project.board).toEqual([...columns.slice(0, 4), { id: 'inReview', label: 'Testing', category: 'inProgress' }])
     expect((await api.projects.get('ws-eng', 'NEX')).board?.[4]?.label).toBe('Testing')
   })
 
@@ -154,8 +154,9 @@ describe('board columns', () => {
     await expect(api.projects.setBoard('p-nex', columns)).rejects.toMatchObject({ status: 403 })
   })
 
-  it('bad columns are refused', async () => {
-    await expect(api.projects.setBoard('p-nex', columns.slice(0, 4))).rejects.toMatchObject({ status: 400, detail: 'Every status needs one column.' })
+  it('bad columns are refused; setBoard neither adds nor drops columns', async () => {
+    await expect(api.projects.setBoard('p-nex', columns.slice(0, 4))).rejects.toMatchObject({ status: 400, detail: 'That column no longer exists.' })
     await expect(api.projects.setBoard('p-nex', columns.map((c) => ({ ...c, label: 'Same' })))).rejects.toMatchObject({ status: 400, detail: "Two columns can't share a name." })
+    await expect(api.projects.setBoard('p-nex', columns.map((c) => ({ ...c, category: 'todo' as const })))).rejects.toMatchObject({ status: 400, detail: 'Each type needs at least one column.' })
   })
 })

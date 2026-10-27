@@ -1,14 +1,20 @@
 import type { ChatMessage, Project, TaskEvent, Ticket } from '@/api/types'
-import { columnLabel } from '@/lib/boardColumns'
+import { categoryOf, columnLabel } from '@/lib/boardColumns'
 import { postMessage } from './chat'
 import type { DbData } from './db'
 
-/** What a task change says in its project's chat: created; assigned to a person; a new status (done is its own). */
-export function taskEventOf(before: Ticket | null, after: Ticket): TaskEvent[] {
+/**
+ * What a task change says in its project's chat: created; assigned to a person; a new column (moving into a Done-type
+ * column is its own kind). The column's name is kept on the card as it was then.
+ */
+export function taskEventOf(before: Ticket | null, after: Ticket, project: Pick<Project, 'board'> = {}): TaskEvent[] {
   if (!before) return [{ key: after.key, kind: 'created' }]
   const events: TaskEvent[] = []
   if (after.assigneeId && after.assigneeId !== before.assigneeId) events.push({ key: after.key, kind: 'assigned', assigneeId: after.assigneeId })
-  if (after.status !== before.status) events.push({ key: after.key, kind: after.status === 'done' ? 'done' : 'status', status: after.status })
+  if (after.status !== before.status) {
+    const kind = categoryOf(project, after.status) === 'done' ? 'done' : 'status'
+    events.push({ key: after.key, kind, status: after.status, statusLabel: columnLabel(project, after.status) })
+  }
   return events
 }
 
@@ -20,7 +26,7 @@ function textOf(data: DbData, event: TaskEvent, task: Ticket, project: Project):
     case 'assigned':
       return `Assigned ${task.key} to ${data.users.find((u) => u.id === event.assigneeId)?.name ?? 'someone'}`
     case 'status':
-      return `Moved ${task.key} to ${columnLabel(project, event.status!)}`
+      return `Moved ${task.key} to ${event.statusLabel ?? columnLabel(project, event.status!)}`
     case 'done':
       return `Done: ${task.key} ${task.title}`
   }
@@ -33,7 +39,7 @@ function textOf(data: DbData, event: TaskEvent, task: Ticket, project: Project):
 export function postTaskEvents(data: DbData, before: Ticket | null, after: Ticket): ChatMessage[] {
   const project = data.projects.find((p) => p.id === after.projectId)
   if (!project) return []
-  return taskEventOf(before, after).map((event) => {
+  return taskEventOf(before, after, project).map((event) => {
     const card = postMessage(data, { channelId: project.channelId, content: textOf(data, event, after, project) }, { taskEvent: event })
     card.mentions = []
     card.linkedTicketKeys = [after.key]

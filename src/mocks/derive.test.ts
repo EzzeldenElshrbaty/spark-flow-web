@@ -83,3 +83,29 @@ describe('summarize', () => {
     expect(summarize(project, data({ phases: [phase({ status: 'done' })] }), now, admin).currentPhaseId).toBeNull()
   })
 })
+
+
+describe('done follows the column type', () => {
+  const board = [
+    { id: 'todo', label: 'Next', category: 'todo' as const },
+    { id: 'done', label: 'Done', category: 'inProgress' as const },
+    { id: 'col-ship', label: 'Shipped', category: 'done' as const },
+  ]
+  const p = { ...project, board }
+
+  it('a task in a Done-type column named Shipped counts as done: progress, never overdue', () => {
+    const t = task({ status: 'col-ship', dueAt: day(-2) })
+    const view = taskView(t, { timeEntries: [], projects: [p] }, now)
+    expect(view.category).toBe('done')
+    expect(view.overdue).toBe(false)
+    expect(summarize(p, data({ tickets: [t] }), now, { userId: 'u-1', role: 'admin' }).progress).toBe(1)
+  })
+
+  it('a column named Done with type In progress counts as open', () => {
+    const t = task({ status: 'done', dueAt: day(-2) })
+    const view = taskView(t, { timeEntries: [], projects: [p] }, now)
+    expect(view.category).toBe('inProgress')
+    expect(view.overdue).toBe(true)
+    expect(summarize(p, data({ tickets: [t] }), now, { userId: 'u-1', role: 'admin' }).progress).toBe(0)
+  })
+})

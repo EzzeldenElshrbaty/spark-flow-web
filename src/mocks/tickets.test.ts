@@ -192,7 +192,11 @@ describe('task event cards', () => {
 
   it("a status card uses the project's column name", async () => {
     await db.update((d) => {
-      d.projects.find((p) => p.id === 'p-nex')!.board = [{ status: 'inProgress', label: 'Building' }]
+      d.projects.find((p) => p.id === 'p-nex')!.board = [
+        { id: 'todo', label: 'To do', category: 'todo' },
+        { id: 'inProgress', label: 'Building', category: 'inProgress' },
+        { id: 'done', label: 'Done', category: 'done' },
+      ]
     })
     await updateTicket(db, hub, 'NEX-101', { status: 'inProgress' })
     expect((await cards()).map((m) => m.content)).toEqual(['Moved NEX-101 to Building'])
@@ -202,5 +206,36 @@ describe('task event cards', () => {
     events.length = 0
     await updateTicket(db, hub, 'NEX-101', { assigneeId: 'u-3', status: 'inProgress' })
     expect(events.filter((e) => e.type === 'messageReceived').map((e) => e.type === 'messageReceived' && e.message.taskEvent?.kind)).toEqual(['assigned', 'status'])
+  })
+})
+
+describe('columns with a type', () => {
+  const custom = async () => {
+    await db.update((d) => {
+      d.projects.find((p) => p.id === 'p-nex')!.board = [
+        { id: 'col-next', label: 'Next', category: 'todo' },
+        { id: 'inProgress', label: 'Building', category: 'inProgress' },
+        { id: 'col-ship', label: 'Shipped', category: 'done' },
+      ]
+    })
+  }
+
+  it('status must be a column of the project', async () => {
+    await custom()
+    await expect(api.tasks.update('NEX-101', { status: 'todo' })).rejects.toMatchObject({ status: 400, detail: 'That column no longer exists.' })
+    await expect(api.tasks.create({ ...newTicket(), status: 'nope' })).rejects.toMatchObject({ status: 400, detail: 'That column no longer exists.' })
+  })
+
+  it('a new task starts in the first To do column when its status is the default', async () => {
+    await custom()
+    const t = await createTicket(db, hub, newTicket({ status: '' }))
+    expect(t.status).toBe('col-next')
+  })
+
+  it('moving into any Done-type column posts the done card, with the column name', async () => {
+    await custom()
+    await updateTicket(db, hub, 'NEX-101', { status: 'col-ship' })
+    const card = (await db.read()).messages.find((m) => m.taskEvent?.key === 'NEX-101')!
+    expect(card.taskEvent).toMatchObject({ kind: 'done', status: 'col-ship', statusLabel: 'Shipped' })
   })
 })

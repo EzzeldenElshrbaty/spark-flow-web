@@ -1,6 +1,6 @@
 import clsx from 'clsx'
 import { Link, useSearchParams } from 'react-router'
-import type { TaskView } from '@/api/types'
+import type { StatusCategory, TaskView } from '@/api/types'
 import { Avatar } from '@/components/ui/Avatar'
 import { formatDate } from '@/lib/format'
 import { parseInspector, withInspector } from '@/lib/inspector'
@@ -21,7 +21,7 @@ function Assignee({ name }: { name: string | null }) {
  * A task as a board card or a list row: Bug and Overdue chips, hours against the estimate, and (rows) the due date.
  * Either opens the ticket inspector (`?ticket=KEY`) and keeps the rest of the URL; the open ticket stays outlined.
  */
-export function TicketRow({ ticket, assignee, variant, project, statusName }: { ticket: TaskView; assignee: string | null; variant: 'card' | 'row'; project?: string; statusName?: string }) {
+export function TicketRow({ ticket, assignee, variant, project, statusName, statusCategory }: { ticket: TaskView; assignee: string | null; variant: 'card' | 'row'; project?: string; statusName?: string; statusCategory?: StatusCategory }) {
   const [params] = useSearchParams()
   const open = parseInspector(params)
   const selected = open?.kind === 'ticket' && open.key === ticket.key
@@ -69,10 +69,10 @@ export function TicketRow({ ticket, assignee, variant, project, statusName }: { 
         <div className="mt-1.5 flex flex-wrap items-center gap-2 sm:mt-0 sm:shrink-0 sm:flex-nowrap">
           {ticket.type === 'bug' && <BugPill />}
           {ticket.overdue && <OverduePill />}
-          <StatusPill status={ticket.status} label={statusName} />
+          <StatusPill status={ticket.status} label={statusName} category={statusCategory ?? ticket.category} />
           <PriorityPill priority={ticket.priority} />
           <span className="ms-auto flex items-center gap-2 sm:ms-0">
-            <span className={clsx('w-20 text-end text-xs tabular-nums', ticket.dueAt && ticket.status !== 'done' && isPastDue(ticket.dueAt, new Date()) ? 'text-red-600 dark:text-red-400' : 'text-fg-muted')}>
+            <span className={clsx('w-20 text-end text-xs tabular-nums', ticket.dueAt && ticket.category !== 'done' && isPastDue(ticket.dueAt, new Date()) ? 'text-red-600 dark:text-red-400' : 'text-fg-muted')}>
               {ticket.dueAt ? formatDate(ticket.dueAt) : '—'}
             </span>
             <span className="w-20 text-end text-xs tabular-nums text-fg-muted">{hoursLabel(ticket.loggedHours, ticket.estimateHours)}</span>

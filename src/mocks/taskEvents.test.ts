@@ -13,8 +13,8 @@ describe('taskEventOf', () => {
     expect(taskEventOf(t({ assigneeId: 'u-3' }), t({ assigneeId: null }))).toEqual([])
   })
   it('status change gives status, to done gives done', () => {
-    expect(taskEventOf(t(), t({ status: 'inReview' }))).toEqual([{ key: 'NEX-1', kind: 'status', status: 'inReview' }])
-    expect(taskEventOf(t(), t({ status: 'done' }))).toEqual([{ key: 'NEX-1', kind: 'done', status: 'done' }])
+    expect(taskEventOf(t(), t({ status: 'inReview' }))).toEqual([{ key: 'NEX-1', kind: 'status', status: 'inReview', statusLabel: 'In review' }])
+    expect(taskEventOf(t(), t({ status: 'done' }))).toEqual([{ key: 'NEX-1', kind: 'done', status: 'done', statusLabel: 'Done' }])
   })
   it('assigned comes before the status change', () => {
     expect(taskEventOf(t(), t({ assigneeId: 'u-3', status: 'inProgress' })).map((e) => e.kind)).toEqual(['assigned', 'status'])

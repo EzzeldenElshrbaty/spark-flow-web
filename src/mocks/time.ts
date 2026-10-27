@@ -1,4 +1,5 @@
 import type { Api, MyDay, TimeEntry, TimeTarget } from '@/api/types'
+import { categoryOf } from '@/lib/boardColumns'
 import { localDay } from '@/lib/dates'
 import { entryEnd, MAX_ENTRY_HOURS } from '@/lib/hours'
 import { can } from '@/lib/permissions'
@@ -21,7 +22,7 @@ function resolveTarget(data: DbData, target: TimeTarget, keepTaskId?: string | n
     if (!task) throw badRequest("That task doesn't exist.")
     // New time can't go on an archived task; an entry already on it can still be fixed (keepTaskId).
     if (task.archivedAt && task.id !== keepTaskId) throw badRequest('That task is archived. Restore it to log time.')
-    return { projectId: task.projectId, taskId: task.id, done: task.status === 'done' }
+    return { projectId: task.projectId, taskId: task.id, done: categoryOf(findProject(data, task.projectId), task.status) === 'done' }
   }
   return { projectId: findProject(data, target.projectId).id, taskId: null, done: false }
 }

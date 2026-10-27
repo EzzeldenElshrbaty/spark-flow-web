@@ -1,50 +1,59 @@
 import { describe, expect, it } from 'vitest'
 import type { BoardColumn } from '@/api/types'
-import { boardColumns, columnErrors, columnLabel, moveColumn } from './boardColumns'
+import { categoryOf, columnErrors, columnLabel, columnsOf, firstOf, moveColumn } from './boardColumns'
+import { DEFAULT_COLUMNS } from './statuses'
 
-const standard: BoardColumn[] = [
-  { status: 'backlog', label: 'Backlog' },
-  { status: 'todo', label: 'To do' },
-  { status: 'inProgress', label: 'In progress' },
-  { status: 'inReview', label: 'In review' },
-  { status: 'done', label: 'Done' },
+const custom: BoardColumn[] = [
+  { id: 'todo', label: 'Next', category: 'todo' },
+  { id: 'col-1', label: 'Building', category: 'inProgress' },
+  { id: 'col-2', label: 'Shipped', category: 'done' },
 ]
 
-describe('boardColumns', () => {
-  it('no board gives the standard five', () => {
-    expect(boardColumns({})).toEqual(standard)
+describe('columnsOf', () => {
+  it('no board gives the standard five, typed', () => {
+    expect(columnsOf({})).toEqual(DEFAULT_COLUMNS)
+    expect(DEFAULT_COLUMNS.map((c) => [c.id, c.category])).toEqual([
+      ['backlog', 'todo'],
+      ['todo', 'todo'],
+      ['inProgress', 'inProgress'],
+      ['inReview', 'inProgress'],
+      ['done', 'done'],
+    ])
   })
-  it('keeps the project order and labels', () => {
-    const board: BoardColumn[] = [standard[1]!, standard[0]!, standard[2]!, { status: 'inReview', label: 'Testing' }, standard[4]!]
-    expect(boardColumns({ board })).toEqual(board)
-    expect(columnLabel({ board }, 'inReview')).toBe('Testing')
-    expect(columnLabel({}, 'inReview')).toBe('In review')
+  it("keeps the project's own columns", () => {
+    expect(columnsOf({ board: custom })).toEqual(custom)
   })
-  it('a missing status is added at the end with its standard name; a blank label falls back', () => {
-    const cols = boardColumns({ board: [{ status: 'done', label: '  ' }, { status: 'todo', label: 'Next' }] })
-    expect(cols.map((c) => c.status)).toEqual(['done', 'todo', 'backlog', 'inProgress', 'inReview'])
-    expect(cols[0]!.label).toBe('Done')
-    expect(cols[1]!.label).toBe('Next')
+})
+
+describe('categoryOf, columnLabel, firstOf', () => {
+  it('maps the defaults and custom columns; an unknown id reads as to do and —', () => {
+    expect(categoryOf({}, 'inReview')).toBe('inProgress')
+    expect(categoryOf({ board: custom }, 'col-2')).toBe('done')
+    expect(categoryOf({ board: custom }, 'gone')).toBe('todo')
+    expect(columnLabel({ board: custom }, 'col-1')).toBe('Building')
+    expect(columnLabel({ board: custom }, 'gone')).toBe('—')
+    expect(firstOf({ board: custom }, 'todo').id).toBe('todo')
+    expect(firstOf({}, 'done').id).toBe('done')
   })
 })
 
 describe('moveColumn', () => {
   it('moves a column to an index', () => {
-    expect(moveColumn(standard, 'inReview', 4).map((c) => c.status)).toEqual(['backlog', 'todo', 'inProgress', 'done', 'inReview'])
-    expect(moveColumn(standard, 'done', 0).map((c) => c.status)).toEqual(['done', 'backlog', 'todo', 'inProgress', 'inReview'])
+    expect(moveColumn(custom, 'col-2', 0).map((c) => c.id)).toEqual(['col-2', 'todo', 'col-1'])
   })
 })
 
 describe('columnErrors', () => {
-  const with_ = (i: number, label: string) => standard.map((c, j) => (j === i ? { ...c, label } : c))
+  const with_ = (i: number, over: Partial<BoardColumn>) => custom.map((c, j) => (j === i ? { ...c, ...over } : c))
   it('good columns have none', () => {
-    expect(columnErrors(standard)).toBeNull()
+    expect(columnErrors(custom)).toBeNull()
   })
   it('each rule, in order', () => {
-    expect(columnErrors(with_(0, ' '))).toBe('Name each column.')
-    expect(columnErrors(with_(0, 'x'.repeat(31)))).toBe('Keep column names under 30 characters.')
-    expect(columnErrors(with_(0, 'done'))).toBe("Two columns can't share a name.")
-    expect(columnErrors(standard.slice(0, 4))).toBe('Every status needs one column.')
-    expect(columnErrors([...standard.slice(0, 4), { status: 'todo', label: 'Again' }])).toBe('Every status needs one column.')
+    expect(columnErrors(with_(0, { label: ' ' }))).toBe('Name each column.')
+    expect(columnErrors(with_(0, { label: 'x'.repeat(31) }))).toBe('Keep column names under 30 characters.')
+    expect(columnErrors(with_(0, { label: 'shipped' }))).toBe("Two columns can't share a name.")
+    expect(columnErrors(with_(2, { category: 'inProgress' }))).toBe('Each type needs at least one column.')
+    const many = Array.from({ length: 11 }, (_, i): BoardColumn => ({ id: `c${i}`, label: `C${i}`, category: i === 0 ? 'todo' : i === 1 ? 'done' : 'inProgress' }))
+    expect(columnErrors(many)).toBe('A board can have up to 10 columns.')
   })
 })

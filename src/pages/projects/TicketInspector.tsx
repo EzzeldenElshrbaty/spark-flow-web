@@ -20,10 +20,11 @@ import { usePermission } from '@/lib/usePermission'
 import { TaskSheet } from '@/pages/projects/TaskSheet'
 import { AddTimeSheet } from '@/pages/time/AddTimeSheet'
 import { TaskActivity } from '@/pages/projects/TaskActivity'
-import { BugPill, OverduePill, PriorityPill, StatusPill, hoursLabel, statuses } from '@/pages/projects/ticketPills'
+import { BugPill, OverduePill, PriorityPill, StatusPill, hoursLabel } from '@/pages/projects/ticketPills'
 import { NotFound } from '@/pages/NotFound'
 import { isPastDue } from '@/lib/dates'
-import { boardColumns, columnLabel } from '@/lib/boardColumns'
+import { columnLabel, columnsOf } from '@/lib/boardColumns'
+import { DEFAULT_COLUMNS } from '@/lib/statuses'
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -131,14 +132,14 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
                 disabled={update.isPending}
                 onChange={(e) => update.mutate({ key: t.key, patch: { status: e.target.value as TicketStatus } })}
               >
-                {(project ? boardColumns(project) : statuses).map((s) => (
-                  <option key={s.status} value={s.status}>
+                {(project ? columnsOf(project) : DEFAULT_COLUMNS).map((s) => (
+                  <option key={s.id} value={s.id}>
                     {s.label}
                   </option>
                 ))}
               </select>
             ) : (
-              <StatusPill status={t.status} label={project ? columnLabel(project, t.status) : undefined} />
+              <StatusPill status={t.status} category={t.category} label={project ? columnLabel(project, t.status) : undefined} />
             )}
             {update.error && <span className="mt-1 block text-xs text-red-600 dark:text-red-400">{(update.error as Error).message}</span>}
           </Field>
@@ -154,7 +155,7 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
             <Person name={nameOf(t.reporterId)} />
           </Field>
           <Field label="Due">
-            <span className={t.dueAt && t.status !== 'done' && isPastDue(t.dueAt, new Date()) ? 'tabular-nums text-red-600 dark:text-red-400' : 'tabular-nums'}>{t.dueAt ? formatDate(t.dueAt) : '—'}</span>
+            <span className={t.dueAt && t.category !== 'done' && isPastDue(t.dueAt, new Date()) ? 'tabular-nums text-red-600 dark:text-red-400' : 'tabular-nums'}>{t.dueAt ? formatDate(t.dueAt) : '—'}</span>
           </Field>
           <Field label="Hours">
             <span className="tabular-nums">{hoursLabel(t.loggedHours, t.estimateHours)}</span>
@@ -179,7 +180,7 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
         />
         {!archived && (
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          {t.status !== 'done' &&
+          {t.category !== 'done' &&
             (myDay.data?.running?.taskId === t.id ? (
               <Button variant="secondary" onClick={() => stop.mutate()} disabled={stop.isPending}>
                 <Square className="size-3.5 fill-current" /> {stop.isPending ? 'Stopping…' : 'Stop timer'}

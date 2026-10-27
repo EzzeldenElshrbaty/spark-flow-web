@@ -263,3 +263,17 @@ describe('editing time, edge cases from review', () => {
     await expect(api.time.update(made.id, { target: { taskId: 't-nex-103' } })).rejects.toMatchObject({ detail: 'That task is archived. Restore it to log time.' })
   })
 })
+
+describe('timers and column types', () => {
+  it('a timer is refused on a task in a Done-type column', async () => {
+    await db.update((d) => {
+      d.projects.find((p) => p.id === 'p-nex')!.board = [
+        { id: 'todo', label: 'To do', category: 'todo' },
+        { id: 'inProgress', label: 'Doing', category: 'inProgress' },
+        { id: 'col-ship', label: 'Shipped', category: 'done' },
+      ]
+      d.tickets.find((t) => t.key === 'NEX-102')!.status = 'col-ship'
+    })
+    await expect(api.time.start({ taskId: 't-nex-102' })).rejects.toMatchObject({ detail: 'That task is done. Reopen it to log time.' })
+  })
+})

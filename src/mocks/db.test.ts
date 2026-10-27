@@ -27,6 +27,7 @@ const emptyData = (): DbData => ({
   rates: [],
   reads: {},
   mentionReads: {},
+  activity: [],
   counters: {},
 })
 
@@ -62,6 +63,31 @@ describe('createDb', () => {
     expect(data.counters).toEqual({ p1: 7 })
     expect(data.reads).toEqual({ u1: { c1: '2026-02-02T00:00:00.000Z' } })
     expect(await store.readDoc()).toMatchObject({ version: DB_VERSION, reads: { u1: { c1: '2026-02-02T00:00:00.000Z' } } })
+  })
+
+  it('a v4 document migrates: custom names and order are kept, types come from the old ids, activity starts empty', async () => {
+    const store = createMemoryStore()
+    const v4 = {
+      ...emptyData(),
+      version: 4,
+      projects: [
+        { id: 'p1', board: [{ status: 'done', label: 'Shipped' }, { status: 'inReview', label: 'Testing' }] },
+        { id: 'p2' },
+      ],
+    } as unknown as DbData
+    delete (v4 as Partial<DbData>).activity
+    await store.transact(() => ({ doc: v4, result: null }))
+    const data = await createDb(store, fakeSeed).read()
+    expect(data.version).toBe(DB_VERSION)
+    expect(data.activity).toEqual([])
+    expect(data.projects[0]!.board).toEqual([
+      { id: 'done', label: 'Shipped', category: 'done' },
+      { id: 'inReview', label: 'Testing', category: 'inProgress' },
+      { id: 'backlog', label: 'Backlog', category: 'todo' },
+      { id: 'todo', label: 'To do', category: 'todo' },
+      { id: 'inProgress', label: 'In progress', category: 'inProgress' },
+    ])
+    expect(data.projects[1]!.board).toHaveLength(5)
   })
 
   it('a document older than any migration is still reseeded', async () => {

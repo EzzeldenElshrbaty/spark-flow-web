@@ -15,10 +15,11 @@ const badge = (event: TaskEvent): { tone: BadgeTone; label: string } => {
 /** What the card says under its badge, from the event (not the stored text, which is for search). */
 function line(message: ChatMessage, event: TaskEvent, users: User[]) {
   if (event.kind === 'assigned') return `To ${users.find((u) => u.id === event.assigneeId)?.name ?? 'someone'}`
-  // The column's name as the project called it then: "Moved NEX-1 to Testing".
+  // The column's name as the project called it then: "Moved NEX-1 to Ready to ship". Older cards kept it in the text only.
   if (event.kind === 'status') {
-    const to = message.content.lastIndexOf(' to ')
-    return `Moved to ${to >= 0 ? message.content.slice(to + 4) : statusLabel(event.status ?? 'todo')}`
+    if (event.statusLabel) return `Moved to ${event.statusLabel}`
+    const prefix = `Moved ${event.key} to `
+    return `Moved to ${message.content.startsWith(prefix) ? message.content.slice(prefix.length) : statusLabel(event.status ?? 'todo')}`
   }
   // "Created NEX-1: title" / "Done: NEX-1 title": the title is what follows the key.
   const at = message.content.indexOf(event.key)

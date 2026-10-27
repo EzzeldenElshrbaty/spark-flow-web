@@ -3,11 +3,9 @@ import { Badge } from '@/components/ui/Badge'
 import { Card } from '@/components/ui/Card'
 import { formatDate } from '@/lib/format'
 import { TicketRow } from '@/pages/projects/TicketRow'
-import { statuses } from '@/pages/projects/ticketPills'
 import { groupByPhase } from './taskFilters'
-import { columnLabel } from '@/lib/boardColumns'
+import { columnLabel, columnsOf } from '@/lib/boardColumns'
 
-const statusOrder = (task: TaskView) => statuses.findIndex((s) => s.status === task.status)
 const phaseBadge = { notStarted: { tone: 'neutral', label: 'Not started' }, inProgress: { tone: 'info', label: 'In progress' }, done: { tone: 'success', label: 'Done' } } as const
 
 /** Pulse rows while the list loads. */
@@ -24,6 +22,9 @@ export function BacklogSkeleton() {
 /** The List view: tasks grouped by phase in phase order, then those without a phase. Empty phases are left out. */
 export function ProjectBacklog({ tasks, phases, users, board }: { tasks: TaskView[]; phases: Phase[]; users: User[]; board?: BoardColumn[] }) {
   const nameOf = (id: string | null) => (id ? (users.find((u) => u.id === id)?.name ?? 'Unknown person') : null)
+  // In board order: the project's columns, then by rank within one.
+  const ids = columnsOf({ board }).map((c) => c.id)
+  const statusOrder = (task: TaskView) => ids.indexOf(task.status)
   const sorted = [...tasks].sort((a, b) => statusOrder(a) - statusOrder(b) || a.rank - b.rank)
   const groups = groupByPhase(sorted, phases).filter((g) => g.tasks.length > 0)
   if (groups.length === 0) return <p className="rounded-xl border border-dashed border-line-strong p-10 text-center text-sm text-fg-secondary">No tasks here.</p>
@@ -53,7 +54,7 @@ export function ProjectBacklog({ tasks, phases, users, board }: { tasks: TaskVie
             <ul className="divide-y divide-line-subtle">
               {items.map((task) => (
                 <li key={task.id}>
-                  <TicketRow ticket={task} assignee={nameOf(task.assigneeId)} variant="row" statusName={board && columnLabel({ board }, task.status)} />
+                  <TicketRow ticket={task} assignee={nameOf(task.assigneeId)} variant="row" statusName={board && columnLabel({ board }, task.status)} statusCategory={task.category} />
                 </li>
               ))}
             </ul>

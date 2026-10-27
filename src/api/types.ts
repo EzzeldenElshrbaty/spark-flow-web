@@ -22,7 +22,10 @@ export type Project = {
   board?: BoardColumn[]
 }
 
-export type BoardColumn = { status: TicketStatus; label: string }
+/** What a board column means, whatever it is called: done-ness (progress, overdue, timers) follows this. */
+export type StatusCategory = 'todo' | 'inProgress' | 'done'
+/** A project's board column. A task's status is the id of its column. */
+export type BoardColumn = { id: string; label: string; category: StatusCategory }
 
 export type PhaseStatus = 'notStarted' | 'inProgress' | 'done'
 export type Phase = { id: string; projectId: string; name: string; order: number; startDate: string; dueDate: string; status: PhaseStatus }
@@ -44,7 +47,8 @@ export type Sprint = {
   startDate: string; endDate: string; state: SprintState
 }
 
-export type TicketStatus = 'backlog' | 'todo' | 'inProgress' | 'inReview' | 'done'
+/** The id of the task's column on its project's board (the defaults are backlog, todo, inProgress, inReview, done). */
+export type TicketStatus = string
 export type Priority = 'urgent' | 'high' | 'medium' | 'low'
 export type Ticket = {
   id: string; key: string; projectId: string            // key: 'NEX-101'
@@ -64,7 +68,8 @@ export type TaskType = 'task' | 'bug'
 export type Task = Ticket
 
 /** A task as the API returns it: with the hours logged so far and whether it is overdue (spec §3). */
-export type TaskView = Task & { loggedHours: number; overdue: boolean }
+/** A task as read: `category` is its column's type (done-ness follows it). */
+export type TaskView = Task & { loggedHours: number; overdue: boolean; category: StatusCategory }
 
 // ── Time and cost ─────────────────────────────────────────────────────────
 export type TimeEntry = {
@@ -109,7 +114,27 @@ export type ChatMessage = {
 }
 
 /** What a task event card says: the task, and what happened to it. */
-export type TaskEvent = { key: string; kind: 'created' | 'assigned' | 'status' | 'done'; status?: TicketStatus; assigneeId?: string }
+/** `statusLabel` is the column's name when the card was posted (renaming or deleting it later doesn't change the card). */
+export type TaskEvent = { key: string; kind: 'created' | 'assigned' | 'status' | 'done'; status?: TicketStatus; statusLabel?: string; assigneeId?: string }
+
+/** What a project's history records. */
+export type ActivityKind =
+  | 'task.created' | 'task.changed' | 'task.moved' | 'task.archived' | 'task.restored'
+  | 'comment.added' | 'comment.edited' | 'comment.deleted'
+  | 'column.added' | 'column.renamed' | 'column.moved' | 'column.typed' | 'column.deleted'
+  | 'phase.added' | 'phase.changed' | 'phase.removed'
+  | 'project.changed' | 'deliverable.added' | 'deliverable.changed'
+/** One field's change; labels are snapshots (a column, phase or sprint may be gone by the time it is read). */
+export type FieldChange = { field: string; from: string | null; to: string | null; fromLabel?: string; toLabel?: string }
+/** One line of history: who did what to which task (or the board, a phase, a deliverable), and when. Never edited. */
+export type ActivityEntry = {
+  id: string; projectId: string; taskKey: string | null; actorId: string; at: string; kind: ActivityKind
+  changes: FieldChange[]
+  /** The column, phase or deliverable's name, or a comment's kind ('comment' | 'bug'). */
+  subject?: string
+  /** How many tasks a column delete moved. */
+  count?: number
+}
 
 /** A message or a thread reply, for the actions both have (react, edit, delete). */
 export type ChatTarget = { kind: 'message' | 'reply'; id: string }

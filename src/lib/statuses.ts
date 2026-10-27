@@ -1,12 +1,20 @@
-import type { TicketStatus } from '@/api/types'
+import type { BoardColumn, StatusCategory } from '@/api/types'
 
-/** Board order and standard name of each status; the pages and the mock (event cards) share it. */
-export const statuses: { status: TicketStatus; label: string }[] = [
-  { status: 'backlog', label: 'Backlog' },
-  { status: 'todo', label: 'To do' },
-  { status: 'inProgress', label: 'In progress' },
-  { status: 'inReview', label: 'In review' },
-  { status: 'done', label: 'Done' },
+/** The board every project starts with; its ids are the statuses tasks had before columns could change. */
+export const DEFAULT_COLUMNS: BoardColumn[] = [
+  { id: 'backlog', label: 'Backlog', category: 'todo' },
+  { id: 'todo', label: 'To do', category: 'todo' },
+  { id: 'inProgress', label: 'In progress', category: 'inProgress' },
+  { id: 'inReview', label: 'In review', category: 'inProgress' },
+  { id: 'done', label: 'Done', category: 'done' },
 ]
 
-export const statusLabel = (status: TicketStatus) => statuses.find((s) => s.status === status)?.label ?? status
+/** The three column types, in board order, with their names. */
+export const CATEGORIES: { category: StatusCategory; label: string }[] = [
+  { category: 'todo', label: 'To do' },
+  { category: 'inProgress', label: 'In progress' },
+  { category: 'done', label: 'Done' },
+]
+
+/** A default column's name (for places with no project at hand); other ids read as themselves. */
+export const statusLabel = (status: string) => DEFAULT_COLUMNS.find((c) => c.id === status)?.label ?? status

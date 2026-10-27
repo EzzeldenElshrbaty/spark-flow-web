@@ -7,7 +7,7 @@ import { Field, inputClass, selectClass } from '@/components/ui/Field'
 import { Sheet } from '@/components/ui/Sheet'
 import { usePermission } from '@/lib/usePermission'
 import { byOrder } from './phases'
-import { boardColumns } from '@/lib/boardColumns'
+import { columnsOf, firstOf } from '@/lib/boardColumns'
 
 const priorities: [Priority, string][] = [
   ['urgent', 'Urgent'],
@@ -36,12 +36,12 @@ type Values = {
 /** What a new task starts from when it is made from somewhere else (a chat message). */
 export type TaskDraft = Pick<NewTicket, 'title' | 'description'> & Partial<Pick<NewTicket, 'linkedChannelId' | 'linkedMessageId'>>
 
-const valuesOf = (task: TaskView | undefined, phaseId: string | null, draft?: TaskDraft): Values => ({
+const valuesOf = (task: TaskView | undefined, phaseId: string | null, firstStatus: string, draft?: TaskDraft): Values => ({
   title: task?.title ?? draft?.title ?? '',
   description: task?.description ?? draft?.description ?? '',
   type: task?.type ?? 'task',
   phaseId: (task ? task.phaseId : phaseId) ?? '',
-  status: task?.status ?? 'todo',
+  status: task?.status ?? firstStatus,
   priority: task?.priority ?? 'medium',
   assigneeId: task?.assigneeId ?? '',
   due: task?.dueAt ? task.dueAt.slice(0, 10) : '',
@@ -76,7 +76,7 @@ export function TaskSheet({
   const canStatus = canManage || check('task.updateOwnStatus', { project, taskAssigneeId: task?.assigneeId ?? null })
   const create = useCreateTask()
   const update = useUpdateTask()
-  const [values, setValues] = useState(() => valuesOf(task, project.currentPhaseId ?? null, draft))
+  const [values, setValues] = useState(() => valuesOf(task, project.currentPhaseId ?? null, firstOf(project, 'todo').id, draft))
   const [errors, setErrors] = useState<Partial<Record<keyof Values, string>>>({})
   const set = <K extends keyof Values>(k: K, v: Values[K]) => setValues((s) => ({ ...s, [k]: v }))
   const people = projectPeople(project, users)
@@ -173,8 +173,8 @@ export function TaskSheet({
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Status">
             <select className={selectClass} value={values.status} disabled={!canStatus} onChange={(e) => set('status', e.target.value as TicketStatus)}>
-              {boardColumns(project).map((s) => (
-                <option key={s.status} value={s.status}>
+              {columnsOf(project).map((s) => (
+                <option key={s.id} value={s.id}>
                   {s.label}
                 </option>
               ))}
