@@ -55,6 +55,11 @@ function Reactions({ reactions, users, target, meId, canReact }: { reactions: Re
           </li>
         )
       })}
+      {react.error && (
+        <li role="alert" className="basis-full text-xs text-red-600 dark:text-red-400">
+          {(react.error as Error).message}
+        </li>
+      )}
     </ul>
   )
 }
@@ -159,7 +164,10 @@ export function MessageRow({
           pendingLabel="Saving…"
           quiet
           initialText={message.content}
-          onCancel={() => setEditing(false)}
+          onCancel={() => {
+            editMessage.reset()
+            setEditing(false)
+          }}
           error={editMessage.error}
           onSubmit={(text) => editMessage.mutateAsync({ target, content: text }, { onSuccess: () => setEditing(false) })}
         />
@@ -187,7 +195,11 @@ export function MessageRow({
               {edited && ' · edited'}
             </time>
           </p>
-          {!editing && <MessageActions target={target} can={can} onEdit={() => setEditing(true)} extra={message.deletedAt ? undefined : actions} />}
+          {!editing && <MessageActions target={target} can={can} onEdit={() => {
+            // A new edit starts without the last one's error.
+            editMessage.reset()
+            setEditing(true)
+          }} extra={message.deletedAt ? undefined : actions} />}
         </div>
         {body}
         {!message.deletedAt && <Reactions reactions={message.reactions} users={users} target={target} meId={meId} canReact={can.react} />}
