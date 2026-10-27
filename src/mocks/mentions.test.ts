@@ -132,3 +132,16 @@ describe('mentions after edit and delete', () => {
     expect((await api.mentions.mine()).some((m) => m.id === sent.id)).toBe(false)
   })
 })
+
+describe('mentions in deleted comments', () => {
+  it('a deleted comment leaves the mentions feed', async () => {
+    await as('u-4')
+    const made = await api.comments.create({ taskKey: 'MOB-104', kind: 'comment', body: 'Check this @[Tarek Lotfy](u-8)', files: [] })
+    await as('u-8')
+    expect((await api.mentions.mine()).some((m) => m.id === made.id)).toBe(true)
+    await as('u-4')
+    await api.comments.remove(made.id)
+    await as('u-8')
+    expect((await api.mentions.mine()).some((m) => m.id === made.id)).toBe(false)
+  })
+})

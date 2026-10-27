@@ -3,15 +3,11 @@ import { useState } from 'react'
 import { useAddComment, useComments } from '@/api/comments'
 import type { CommentKind, ProjectSummary, TaskView, User } from '@/api/types'
 import { useMe } from '@/api/users'
-import { AttachmentView } from '@/components/AttachmentView'
-import { MentionText } from '@/components/MentionText'
-import { Avatar } from '@/components/ui/Avatar'
-import { Badge } from '@/components/ui/Badge'
 import { FileDrop } from '@/components/ui/FileDrop'
 import { QueryError } from '@/components/ui/QueryError'
-import { timeAgo } from '@/lib/format'
 import { usePermission } from '@/lib/usePermission'
 import { Composer } from '@/pages/chat/Composer'
+import { CommentRow } from '@/pages/projects/CommentRow'
 
 const MAX_FILES = 5
 
@@ -37,18 +33,7 @@ export function TaskActivity({ task, project, users }: { task: TaskView; project
       ) : (
         <ol className="space-y-4">
           {comments.data.map((c) => (
-            <li key={c.id} className="flex gap-3">
-              <Avatar name={nameOf(c.authorId)} size="sm" />
-              <div className="min-w-0 flex-1">
-                <p className="flex flex-wrap items-center gap-x-2 text-sm">
-                  <span className="font-semibold text-fg">{nameOf(c.authorId)}</span>
-                  <span className="text-xs text-fg-muted">{timeAgo(c.createdAt)}</span>
-                  {c.kind === 'bug' && <Badge tone="danger">Bug</Badge>}
-                </p>
-                <MentionText text={c.body} className="mt-0.5 text-sm text-fg-secondary" />
-                <AttachmentView attachments={c.attachments} />
-              </div>
-            </li>
+            <CommentRow key={c.id} comment={c} author={nameOf(c.authorId)} mine={canPost && c.authorId === me?.id} />
           ))}
         </ol>
       )}

@@ -79,7 +79,10 @@ export type Rate = { userId: string; hourlyCost: number; currency: 'EGP' } // ad
 /** A stored file's details; its bytes live in the file store and are opened through api.files.url(id). */
 export type Attachment = { id: string; name: string; mimeType: string; size: number; createdAt: string }
 export type CommentKind = 'comment' | 'bug'
-export type Comment = { id: string; taskId: string; projectId: string; authorId: string; kind: CommentKind; body: string; attachmentIds: string[]; createdAt: string }
+export type Comment = {
+  id: string; taskId: string; projectId: string; authorId: string; kind: CommentKind; body: string; attachmentIds: string[]; createdAt: string
+  editedAt?: string | null; deletedAt?: string | null
+}
 export type ProjectFile = { id: string; projectId: string; attachmentId: string; uploadedBy: string; createdAt: string }
 export type Mention = { kind: 'user' | 'project' | 'task' | 'all'; id: string } // userId | project key | task key | 'all'
 export type Reaction = { emoji: string; userIds: string[] }
@@ -296,6 +299,10 @@ export interface Api {
   comments: {
     list(taskKey: string): Promise<CommentView[]>
     create(input: { taskKey: string; kind: CommentKind; body: string; files: UploadFile[] }): Promise<CommentView>
+    /** The author's own; its card in the chat follows. Files stay as they are. */
+    update(id: string, body: string): Promise<CommentView>
+    /** The author's own; it (and its card) stays as a "deleted" placeholder. */
+    remove(id: string): Promise<void>
   }
   /** Mentions of me (spec §5: the bell and Home), newest first, at most 50; read state is per person. */
   mentions: { mine(): Promise<MentionItem[]>; markRead(ids: string[]): Promise<void> }

@@ -44,7 +44,7 @@ export function mentionsFor(data: DbData, userId: string): Omit<MentionItem, 're
     items.push({ id: r.id, source: 'reply', authorId: r.senderId, excerpt: excerptOf(r.content), createdAt: r.createdAt, channelId: r.channelId, messageId: r.messageId, taskKey: null, projectId: null })
   }
   for (const c of data.comments) {
-    if (c.authorId === userId) continue
+    if (c.authorId === userId || c.deletedAt) continue
     // Comments keep their text; their mentions are read from it, like a message's.
     const card = data.messages.find((m) => m.commentId === c.id)
     const mentions = card?.mentions ?? []

@@ -84,3 +84,51 @@ describe('comments', () => {
     expect(list.find((c) => c.id === 'cm-002')?.attachments.map((a) => a.id)).toEqual(['a-shot-105'])
   })
 })
+
+describe('editing comments', () => {
+  const card = async (commentId: string) => (await db.read()).messages.find((m) => m.commentId === commentId)!
+
+  it('the author edits a comment: the text, editedAt and the card change, and mentions are parsed again', async () => {
+    await api.users.viewAs('u-4') // Ahmed manages Mobile App
+    const made = await api.comments.create({ taskKey: 'MOB-104', kind: 'bug', body: 'Crashes on start', files: [] })
+    const events: RealtimeEvent[] = []
+    hub.subscribe((e) => events.push(e))
+    const edited = await api.comments.update(made.id, 'Crashes on start @[Tarek Lotfy](u-8)')
+    expect(edited).toMatchObject({ id: made.id, body: 'Crashes on start @[Tarek Lotfy](u-8)' })
+    expect(edited.editedAt).toEqual(expect.any(String))
+    const c = await card(made.id)
+    expect(c.content).toBe('Bug on MOB-104: Crashes on start @[Tarek Lotfy](u-8)')
+    expect(c.mentions).toEqual([{ kind: 'user', id: 'u-8' }])
+    expect(c.editedAt).toEqual(expect.any(String))
+    expect(events).toContainEqual({ type: 'messageChanged', channelId: c.channelId, messageId: c.id })
+    expect(events).toContainEqual({ type: 'commentAdded', taskKey: 'MOB-104', projectId: 'p-mob' })
+  })
+
+  it('remove leaves a placeholder and soft-deletes the card', async () => {
+    await api.users.viewAs('u-4')
+    const made = await api.comments.create({ taskKey: 'MOB-104', kind: 'comment', body: 'Looks fine', files: [png()] })
+    await api.comments.remove(made.id)
+    const [row] = (await api.comments.list('MOB-104')).filter((c) => c.id === made.id)
+    expect(row).toMatchObject({ body: '', attachments: [] })
+    expect(row!.deletedAt).toEqual(expect.any(String))
+    const c = await card(made.id)
+    expect(c).toMatchObject({ content: '', mentions: [], attachments: [] })
+    expect(c.deletedAt).toEqual(expect.any(String))
+    await expect(api.comments.update(made.id, 'back')).rejects.toMatchObject({ status: 400 })
+  })
+
+  it('someone else is refused', async () => {
+    await api.users.viewAs('u-4')
+    const made = await api.comments.create({ taskKey: 'MOB-104', kind: 'comment', body: 'Mine', files: [] })
+    await api.users.viewAs('u-8')
+    await expect(api.comments.update(made.id, 'Yours')).rejects.toMatchObject({ status: 403, detail: 'You can only change your own comments.' })
+    await expect(api.comments.remove(made.id)).rejects.toMatchObject({ status: 403 })
+  })
+
+  it('an edit follows the create rules', async () => {
+    await api.users.viewAs('u-4')
+    const made = await api.comments.create({ taskKey: 'MOB-104', kind: 'comment', body: 'Text', files: [] })
+    await expect(api.comments.update(made.id, '  ')).rejects.toMatchObject({ status: 400, detail: 'Write a comment first.' })
+    await expect(api.comments.update(made.id, 'x'.repeat(4001))).rejects.toMatchObject({ status: 400 })
+  })
+})

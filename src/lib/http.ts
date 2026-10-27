@@ -130,6 +130,8 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
         for (const file of files) form.append('files', file, file.name)
         return request(`/api/tasks/${enc(taskKey)}/comments`, { method: 'POST', body: form }, fetchFn)
       },
+      update: (id, body) => send('PATCH', `/api/comments/${enc(id)}`, { body }),
+      remove: (id) => send<void>('DELETE', `/api/comments/${enc(id)}`),
     },
     dashboard: {
       projects: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/dashboard`),
