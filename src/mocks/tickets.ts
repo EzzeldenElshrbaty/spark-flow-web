@@ -80,7 +80,7 @@ export function tasksApi(db: MockDb, hub: MockHub, now: () => Date): Api['tasks'
       }
       ticket.archivedAt = archive ? at.toISOString() : null
       ticket.updatedAt = stamp(ticket.updatedAt)
-      logActivity(data, { projectId: ticket.projectId, taskKey: ticket.key, kind: archive ? 'task.archived' : 'task.restored', changes: [] })
+      logActivity(data, { projectId: ticket.projectId, taskKey: ticket.key, kind: archive ? 'task.archived' : 'task.restored', changes: [] }, at.toISOString())
       return { ticket: clone(ticket), stopped }
     })
     hub.publish({ type: 'ticketUpdated', ticket })
@@ -101,7 +101,7 @@ export function tasksApi(db: MockDb, hub: MockHub, now: () => Date): Api['tasks'
         const message = before.messages.find((m) => m.id === input.linkedMessageId)
         if (!message || message.channelId !== project.channelId || message.deletedAt) throw badRequest("This message isn't in the project's chat.")
       }
-      const created = await createTicket(db, hub, input)
+      const created = await createTicket(db, hub, input, now)
       return taskView(created, await db.read(), now())
     },
     async update(key, patch) {
@@ -117,7 +117,7 @@ export function tasksApi(db: MockDb, hub: MockHub, now: () => Date): Api['tasks'
         requireCan(before, 'task.updateOwnStatus', project, { taskAssigneeId: ticket.assigneeId })
       }
       checkTaskInput(before, ticket.projectId, { phaseId: patch.phaseId, estimateHours: patch.estimateHours, title: patch.title as string, status: patch.status })
-      const updated = await updateTicket(db, hub, key, patch)
+      const updated = await updateTicket(db, hub, key, patch, now)
       return taskView(updated, await db.read(), now())
     },
   }
@@ -126,7 +126,7 @@ export function tasksApi(db: MockDb, hub: MockHub, now: () => Date): Api['tasks'
 // ── Mutations (not on Api until Phase 4) ──────────────────────────────────
 
 /** Opens a ticket as the current user: next key for the project, last in its column; posts a Created card. */
-export async function createTicket(db: MockDb, hub: MockHub, input: NewTicket): Promise<Ticket> {
+export async function createTicket(db: MockDb, hub: MockHub, input: NewTicket, clock: () => Date = () => new Date()): Promise<Ticket> {
   const { ticket, cards, source } = await db.update((data) => {
     const project = findProject(data, input.projectId)
     const own = data.tickets.filter((t) => t.projectId === project.id)
@@ -160,7 +160,7 @@ export async function createTicket(db: MockDb, hub: MockHub, input: NewTicket): 
     }
     data.tickets.push(created)
     data.counters[project.id] = number + 1
-    logActivity(data, { projectId: project.id, taskKey: key, kind: 'task.created', changes: [] })
+    logActivity(data, { projectId: project.id, taskKey: key, kind: 'task.created', changes: [] }, clock().toISOString())
     // The message it was made from names it from now on (its task chip).
     const source = created.linkedMessageId ? data.messages.find((m) => m.id === created.linkedMessageId) : undefined
     if (source && !source.linkedTicketKeys.includes(key)) source.linkedTicketKeys.push(key)
@@ -173,7 +173,7 @@ export async function createTicket(db: MockDb, hub: MockHub, input: NewTicket): 
 }
 
 /** Changes the given fields of a ticket and bumps updatedAt; an assignee or status change posts its card (taskEvents). */
-export async function updateTicket(db: MockDb, hub: MockHub, key: string, patch: TicketPatch): Promise<Ticket> {
+export async function updateTicket(db: MockDb, hub: MockHub, key: string, patch: TicketPatch, now: () => Date = () => new Date()): Promise<Ticket> {
   const { ticket, cards } = await db.update((data) => {
     const ticket = findTicket(data, key)
     // The column is checked here, in this write: another tab may have deleted it since the caller looked.
@@ -183,7 +183,7 @@ export async function updateTicket(db: MockDb, hub: MockHub, key: string, patch:
       if (value !== undefined) (ticket as Record<string, unknown>)[field] = value
     }
     ticket.updatedAt = stamp(ticket.updatedAt)
-    logTaskUpdate(data, before, ticket)
+    logTaskUpdate(data, before, ticket, now().toISOString())
     // The change, its history and its cards in the project's chat are one write.
     return { ticket, cards: clone(postTaskEvents(data, before, ticket)) }
   })

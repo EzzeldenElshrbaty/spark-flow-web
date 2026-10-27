@@ -2,6 +2,7 @@ import clsx from 'clsx'
 import type { Priority, StatusCategory, TicketStatus } from '@/api/types'
 
 // Columns, their names and types live in lib (the mock's event cards use them too); the hues are the pages'.
+import { hueKey } from '@/lib/boardColumns'
 import { statusLabel } from '@/lib/statuses'
 
 export { statusLabel } from '@/lib/statuses'
@@ -27,14 +28,12 @@ const statusTint: Record<string, Tint> = {
   done: { head: 'bg-emerald-50 dark:bg-emerald-500/10', body: 'bg-emerald-50/40 dark:bg-emerald-500/[0.04]', border: 'border-emerald-100 dark:border-emerald-500/20', dot: 'bg-emerald-400' },
 }
 
-const byCategory = { todo: 'backlog', inProgress: 'inProgress', done: 'done' } as const
-
-/** A column's tint: its own for the standard ids, else its type's. */
-export const tintOf = (status: TicketStatus, category: StatusCategory): Tint => statusTint[status] ?? statusTint[byCategory[category]]!
+/** A column's tint: a standard column's own while its type is the standard one's, else its type's. */
+export const tintOf = (status: TicketStatus, category: StatusCategory): Tint => statusTint[hueKey(status, category)]!
 
 /** Status pill with a dot (the record-status pill of the kit); `label` is the project's name for it, if it has one. */
 export function StatusPill({ status, label, category = 'todo' }: { status: TicketStatus; label?: string; category?: StatusCategory }) {
-  const style = statusStyle[status] ?? statusStyle[byCategory[category]]!
+  const style = statusStyle[hueKey(status, category)]!
   return (
     <span className={clsx('inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium', style.pill)}>
       <span className={clsx('size-1.5 rounded-full', style.dot)} aria-hidden />

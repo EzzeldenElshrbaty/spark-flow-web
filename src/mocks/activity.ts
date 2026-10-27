@@ -2,7 +2,7 @@ import type { ActivityEntry, Api, FieldChange, Project, Ticket } from '@/api/typ
 import { columnLabel } from '@/lib/boardColumns'
 import type { DbData, MockDb } from './db'
 import { delay } from './latency'
-import { clone, newId, notFound, stamp } from './shared'
+import { clone, newId, notFound } from './shared'
 
 const PAGE_SIZE = 30
 
@@ -15,8 +15,10 @@ const text = (v: unknown) => (v === null || v === undefined ? null : String(v))
  * Appends one line to the project's history, inside the caller's transaction, as the current person. Times only go
  * forward, so "newest first" holds even for lines written in the same millisecond.
  */
-export function logActivity(data: DbData, entry: Omit<ActivityEntry, 'id' | 'at' | 'actorId'>): ActivityEntry {
-  const line: ActivityEntry = { id: newId('act'), at: stamp(data.activity.at(-1)?.at), actorId: data.currentUserId, ...entry }
+export function logActivity(data: DbData, entry: Omit<ActivityEntry, 'id' | 'at' | 'actorId'>, now: string = new Date().toISOString()): ActivityEntry {
+  const last = data.activity.at(-1)?.at
+  const at = last && last >= now ? new Date(new Date(last).getTime() + 1).toISOString() : now
+  const line: ActivityEntry = { id: newId('act'), at, actorId: data.currentUserId, ...entry }
   data.activity.push(line)
   return line
 }
@@ -50,12 +52,12 @@ export function diffTask(data: DbData, before: Ticket, after: Ticket): FieldChan
 }
 
 /** Logs a task's update: a move (its column) and the other fields as separate lines, nothing for a rank-only change. */
-export function logTaskUpdate(data: DbData, before: Ticket, after: Ticket) {
+export function logTaskUpdate(data: DbData, before: Ticket, after: Ticket, now?: string) {
   const project = data.projects.find((p) => p.id === after.projectId)
   if (!project) return
-  if (before.status !== after.status) logActivity(data, { projectId: project.id, taskKey: after.key, kind: 'task.moved', changes: [statusChange(project, before.status, after.status)] })
+  if (before.status !== after.status) logActivity(data, { projectId: project.id, taskKey: after.key, kind: 'task.moved', changes: [statusChange(project, before.status, after.status)] }, now)
   const changes = diffTask(data, before, after)
-  if (changes.length) logActivity(data, { projectId: project.id, taskKey: after.key, kind: 'task.changed', changes })
+  if (changes.length) logActivity(data, { projectId: project.id, taskKey: after.key, kind: 'task.changed', changes }, now)
 }
 
 type SortKey = Pick<ActivityEntry, 'at' | 'id'>

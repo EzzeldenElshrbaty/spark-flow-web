@@ -7,6 +7,7 @@ import { useArchivedTasks, useSprints, useTickets, useUpdateTask } from '@/api/t
 import type { BoardColumn, Phase, ProjectSummary, TaskView, TicketPatch, User } from '@/api/types'
 import { selectClass } from '@/components/ui/Field'
 import { QueryError } from '@/components/ui/QueryError'
+import { columnTaskCount } from '@/lib/boardColumns'
 import { useUiStore, type ProjectView } from '@/lib/uiStore'
 import { usePermission } from '@/lib/usePermission'
 import { BacklogSkeleton, ProjectBacklog } from '@/pages/projects/ProjectBacklog'
@@ -83,12 +84,13 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
   const shown = filterTasks(tickets.data ?? [], { phase, sprint })
   // The list can also show the archived tasks, below the others, kept in ?archived=1.
   const showArchived = view === 'list' && params.get('archived') === '1'
-  const archived = filterTasks(useArchivedTasks(project.id, view === 'list').data ?? [], { phase, sprint })
+  const archivedAll = useArchivedTasks(project.id, true).data ?? []
+  const archived = filterTasks(archivedAll, { phase, sprint })
   let body
   if (tickets.isError) body = <QueryError what="Tasks" onRetry={() => void tickets.refetch()} />
   else if (tickets.isPending) body = view === 'board' ? <BoardSkeleton /> : <BacklogSkeleton />
   else if (view === 'board') body = (
-      <ProjectBoard tickets={shown} users={people} canMove={canMove} onMove={move} error={update.error ? update.error.message : null} board={project.board} onBoard={onBoard} projectId={project.id} />
+      <ProjectBoard tickets={shown} users={people} canMove={canMove} onMove={move} error={update.error ? update.error.message : null} board={project.board} onBoard={onBoard} projectId={project.id} countOf={(id) => columnTaskCount(tickets.data ?? [], archivedAll, id)} />
     )
   else body = <ProjectBacklog tasks={shown} phases={phases} users={people} board={project.board} />
 

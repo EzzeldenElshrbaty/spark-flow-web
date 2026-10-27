@@ -4,7 +4,7 @@ import { CATEGORIES } from '@/lib/statuses'
 
 export type ActivityContext = {
   nameOf: (userId: string) => string
-  /** The column's name today, or undefined if it's gone (then the line's snapshot is used). */
+  /** The column's name today: used only when a line kept no name of its own. */
   columnLabel: (status: string) => string | undefined
   phaseName: (id: string) => string | undefined
   /** False inside a task's own history: "moved it", "changed the title". */
@@ -35,11 +35,12 @@ function valueOf(change: FieldChange, side: 'from' | 'to', ctx: ActivityContext)
   switch (change.field) {
     case 'status':
     case 'moveTo':
-      return ctx.columnLabel(v) ?? snapshot ?? '—'
+      // The name it had then; the live one only for lines that didn't keep it.
+      return snapshot ?? ctx.columnLabel(v) ?? '—'
     case 'assigneeId':
       return ctx.nameOf(v)
     case 'phaseId':
-      return ctx.phaseName(v) ?? snapshot ?? '—'
+      return snapshot ?? ctx.phaseName(v) ?? '—'
     case 'sprintId':
       return snapshot ?? '—'
     case 'dueAt':

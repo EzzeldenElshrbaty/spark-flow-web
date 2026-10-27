@@ -26,3 +26,11 @@ describe('taskEventOf', () => {
     expect(taskEventOf(t({ status: 'done' }), t({ status: 'done' }))).toEqual([])
   })
 })
+
+describe('done cards follow the type change', () => {
+  it('moving between two Done-type columns posts a status card, not another Done', () => {
+    const board = { board: [{ id: 'todo', label: 'To do', category: 'todo' as const }, { id: 'done', label: 'Done', category: 'done' as const }, { id: 'col-ship', label: 'Shipped', category: 'done' as const }] }
+    expect(taskEventOf(t({ status: 'done' }), t({ status: 'col-ship' }), board).map((e) => e.kind)).toEqual(['status'])
+    expect(taskEventOf(t({ status: 'todo' }), t({ status: 'col-ship' }), board).map((e) => e.kind)).toEqual(['done'])
+  })
+})

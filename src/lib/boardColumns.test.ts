@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { BoardColumn } from '@/api/types'
-import { categoryOf, columnErrors, columnLabel, columnsOf, defaultMoveTo, firstOf, moveColumn, startColumn } from './boardColumns'
+import { categoryOf, columnErrors, columnLabel, columnsOf, columnTaskCount, defaultMoveTo, firstOf, hueKey, moveColumn, startColumn } from './boardColumns'
 import { DEFAULT_COLUMNS, statusLabel } from './statuses'
 
 const custom: BoardColumn[] = [
@@ -84,5 +84,18 @@ describe('startColumn', () => {
     expect(startColumn({})).toBe('todo')
     expect(startColumn({ board: custom })).toBe('todo')
     expect(startColumn({ board: [{ id: 'col-next', label: 'Next', category: 'todo' }, ...custom.slice(1)] })).toBe('col-next')
+  })
+})
+
+describe('hueKey and columnTaskCount', () => {
+  it("a default column keeps its own hue only while its type is the default one's", () => {
+    expect(hueKey('inReview', 'inProgress')).toBe('inReview')
+    expect(hueKey('done', 'inProgress')).toBe('inProgress')
+    expect(hueKey('col-1', 'done')).toBe('done')
+    expect(hueKey('col-1', 'todo')).toBe('backlog')
+  })
+  it("counts a column's tasks among all of them, archived included", () => {
+    const t = (status: string) => ({ status }) as { status: string }
+    expect(columnTaskCount([t('a'), t('b'), t('a')], [t('a')], 'a')).toBe(3)
   })
 })

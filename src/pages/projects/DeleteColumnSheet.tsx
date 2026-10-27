@@ -16,7 +16,7 @@ export function DeleteColumnSheet({ projectId, columns, column, count, onClose }
       open
       onClose={onClose}
       title={`Delete ${column.label}?`}
-      description={count > 0 ? `Its ${count} ${count === 1 ? 'task moves' : 'tasks move'} to the column you pick.` : 'It has no tasks.'}
+      description={count > 0 ? `Its ${count} ${count === 1 ? 'task moves' : 'tasks move'} to the column you pick.` : 'Any tasks in it move to the column you pick.'}
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={remove.isPending}>
@@ -29,7 +29,7 @@ export function DeleteColumnSheet({ projectId, columns, column, count, onClose }
       }
     >
       <div className="space-y-4">
-        {count > 0 && (
+        {others.length > 0 && (
           <Field label="Move them to">
             <select className={selectClass} value={moveTo} onChange={(e) => setMoveTo(e.target.value)}>
               {others.map((c) => (

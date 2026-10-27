@@ -12,7 +12,8 @@ export function taskEventOf(before: Ticket | null, after: Ticket, project: Pick<
   const events: TaskEvent[] = []
   if (after.assigneeId && after.assigneeId !== before.assigneeId) events.push({ key: after.key, kind: 'assigned', assigneeId: after.assigneeId })
   if (after.status !== before.status) {
-    const kind = categoryOf(project, after.status) === 'done' ? 'done' : 'status'
+    // Done is its own card only when the task becomes done (not between two Done-type columns).
+    const kind = categoryOf(project, after.status) === 'done' && categoryOf(project, before.status) !== 'done' ? 'done' : 'status'
     events.push({ key: after.key, kind, status: after.status, statusLabel: columnLabel(project, after.status) })
   }
   return events

@@ -22,6 +22,18 @@ export const firstOf = (project: Pick<Project, 'board'>, category: StatusCategor
 /** Where a new task starts: the To do column when the board has it, else the first To do-type column. */
 export const startColumn = (project: Pick<Project, 'board'>): string => columnOf(project, 'todo')?.id ?? firstOf(project, 'todo').id
 
+const HUE_OF_TYPE = { todo: 'backlog', inProgress: 'inProgress', done: 'done' } as const
+
+/** Which hue a column wears: a standard column's own while its type is still the standard one's, else its type's. */
+export function hueKey(id: string, category: StatusCategory): string {
+  const standard = DEFAULT_COLUMNS.find((c) => c.id === id)
+  return standard && standard.category === category ? id : HUE_OF_TYPE[category]
+}
+
+/** How many tasks sit in a column, archived ones included (deleting the column moves all of them). */
+export const columnTaskCount = (all: { status: string }[], archived: { status: string }[], id: string) =>
+  [...all, ...archived].filter((t) => t.status === id).length
+
 /** The columns with one moved to a place. */
 export function moveColumn(columns: BoardColumn[], id: string, to: number): BoardColumn[] {
   const moving = columns.find((c) => c.id === id)

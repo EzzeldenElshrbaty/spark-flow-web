@@ -65,13 +65,23 @@ export function ColumnSheet({ projectId, columns, column, onClose }: { projectId
         <fieldset>
           <legend className="mb-1.5 text-sm font-medium text-fg-secondary">Type</legend>
           <div className="inline-flex rounded-lg border border-line p-0.5" role="radiogroup" aria-label="Type">
-            {CATEGORIES.map((c) => (
+            {CATEGORIES.map((c, i) => (
               <button
                 key={c.category}
                 type="button"
                 role="radio"
                 aria-checked={category === c.category}
+                tabIndex={category === c.category ? 0 : -1}
                 onClick={() => setCategory(c.category)}
+                onKeyDown={(e) => {
+                  // A radio group: the arrow keys move the choice (and focus) along it.
+                  const step = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0
+                  if (!step) return
+                  e.preventDefault()
+                  const at = (i + step + CATEGORIES.length) % CATEGORIES.length
+                  setCategory(CATEGORIES[at]!.category)
+                  e.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role=radio]')[at]?.focus()
+                }}
                 className={`rounded-md px-3 py-1.5 text-sm ${category === c.category ? 'bg-surface-muted font-medium text-fg' : 'text-fg-secondary hover:text-fg'}`}
               >
                 {c.label}

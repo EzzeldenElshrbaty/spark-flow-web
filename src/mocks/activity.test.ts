@@ -142,3 +142,30 @@ describe('history beyond tasks', () => {
     expect(await since(n)).toEqual([])
   })
 })
+
+describe('history polish (M8)', () => {
+  it('history times follow the api clock', async () => {
+    const at = new Date('2031-01-02T03:04:05.000Z')
+    const fixed = createMockApi(db, hub, () => at)
+    await fixed.tasks.update('NEX-101', { priority: 'low' })
+    expect((await db.read()).activity.at(-1)!.at).toBe(at.toISOString())
+  })
+
+  it('a project update that changes nothing logs nothing', async () => {
+    const p = (await db.read()).projects.find((x) => x.id === 'p-nex')!
+    const n = (await db.read()).activity.length
+    await api.projects.update('p-nex', { description: p.description })
+    expect((await db.read()).activity.length).toBe(n)
+  })
+
+  it('removing a phase logs the phase change on each of its tasks', async () => {
+    const d = await db.read()
+    const phase = d.phases.find((p) => p.projectId === 'p-nex' && d.tickets.some((t) => t.phaseId === p.id))!
+    const keys = d.tickets.filter((t) => t.phaseId === phase.id).map((t) => t.key)
+    const n = d.activity.length
+    await api.phases.remove(phase.id)
+    const lines = (await db.read()).activity.slice(n).filter((l) => l.kind === 'task.changed')
+    expect(lines.map((l) => l.taskKey).sort()).toEqual([...keys].sort())
+    expect(lines[0]!.changes).toEqual([{ field: 'phaseId', from: phase.id, to: null, fromLabel: phase.name }])
+  })
+})

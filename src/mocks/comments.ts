@@ -85,7 +85,7 @@ export function commentsApi(db: MockDb, hub: MockHub, now: () => Date): Api['com
         data.comments.push(comment)
         const card = postMessage(data, { channelId: project.channelId, content: cardText(kind, task.key, text), attachments }, { commentId: comment.id })
         // History says a comment or bug was added, never what it says.
-        logActivity(data, { projectId: project.id, taskKey: task.key, kind: 'comment.added', subject: kind, changes: [] })
+        logActivity(data, { projectId: project.id, taskKey: task.key, kind: 'comment.added', subject: kind, changes: [] }, now().toISOString())
         // The card names its task even when the body doesn't.
         card.linkedTicketKeys = [task.key]
         return { comment: withAttachments(data, comment), card: clone(card) }
@@ -105,7 +105,7 @@ export function commentsApi(db: MockDb, hub: MockHub, now: () => Date): Api['com
         const at = now().toISOString()
         comment.body = text
         comment.editedAt = at
-        logActivity(data, { projectId: comment.projectId, taskKey: task.key, kind: 'comment.edited', subject: comment.kind, changes: [] })
+        logActivity(data, { projectId: comment.projectId, taskKey: task.key, kind: 'comment.edited', subject: comment.kind, changes: [] }, now().toISOString())
         // The card in the chat says the same, with its mentions worked out again.
         const card = data.messages.find((m) => m.commentId === comment.id)
         if (card) {
@@ -126,7 +126,7 @@ export function commentsApi(db: MockDb, hub: MockHub, now: () => Date): Api['com
         const { comment, task } = ownComment(data, id)
         const at = now().toISOString()
         Object.assign(comment, { body: '', attachmentIds: [], deletedAt: at })
-        logActivity(data, { projectId: comment.projectId, taskKey: task.key, kind: 'comment.deleted', subject: comment.kind, changes: [] })
+        logActivity(data, { projectId: comment.projectId, taskKey: task.key, kind: 'comment.deleted', subject: comment.kind, changes: [] }, now().toISOString())
         const card = data.messages.find((m) => m.commentId === comment.id)
         if (card) Object.assign(card, { content: '', attachments: [], mentions: [], reactions: [], deletedAt: at })
         return { card: card && { channelId: card.channelId, messageId: card.id }, taskKey: task.key, projectId: comment.projectId }

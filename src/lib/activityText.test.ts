@@ -18,8 +18,9 @@ describe('describeActivity', () => {
     expect(describeActivity(e({ kind: 'task.restored' }), ctx())).toBe('Nour restored NEX-1')
   })
 
-  it('a move uses the live column names, and snapshots for columns that are gone', () => {
-    expect(describeActivity(e({ kind: 'task.moved', changes: [{ field: 'status', from: 'todo', to: 'done', fromLabel: 'To do', toLabel: 'Done' }] }), ctx())).toBe('Nour moved NEX-1 from To do to Shipped')
+  it('a line written before a rename keeps the old name; with no snapshot, the live name', () => {
+    expect(describeActivity(e({ kind: 'task.moved', changes: [{ field: 'status', from: 'todo', to: 'done', fromLabel: 'To do', toLabel: 'Done' }] }), ctx())).toBe('Nour moved NEX-1 from To do to Done')
+    expect(describeActivity(e({ kind: 'task.moved', changes: [{ field: 'status', from: 'todo', to: 'done' }] }), ctx())).toBe('Nour moved NEX-1 from To do to Shipped')
     expect(describeActivity(e({ kind: 'task.moved', changes: [{ field: 'status', from: 'col-qa', to: 'todo', fromLabel: 'QA', toLabel: 'To do' }] }), ctx())).toBe('Nour moved NEX-1 from QA to To do')
   })
 

@@ -300,6 +300,7 @@ export function ProjectBoard({
   board,
   onBoard,
   projectId,
+  countOf,
 }: {
   tickets: TaskView[]
   users: User[]
@@ -312,6 +313,8 @@ export function ProjectBoard({
   onBoard?: (columns: Column[]) => Promise<unknown>
   /** For adding and deleting columns (with onBoard). */
   projectId?: string
+  /** How many tasks a column holds in all (filters and archived included), for the delete sheet. */
+  countOf?: (columnId: string) => number
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -332,10 +335,15 @@ export function ProjectBoard({
   // A column change shows at once too, until the saved board matches it or the save fails.
   const savedBoard = useMemo(() => columnsOf({ board }), [board])
   const [boardDraft, setBoardDraft] = useState<Column[] | null>(null)
-  const boardSaved = boardDraft != null && JSON.stringify(boardDraft) === JSON.stringify(savedBoard)
+  const [boardError, setBoardError] = useState<string | null>(null)
+  // The draft holds until the server sends any newer board (this save, or another tab's change), then the server wins.
+  const draftBase = useRef(board)
   useEffect(() => {
-    if (boardSaved) setBoardDraft(null)
-  }, [boardSaved])
+    if (board !== draftBase.current) {
+      draftBase.current = board
+      setBoardDraft(null)
+    }
+  }, [board])
   const order = boardDraft ?? savedBoard
   const editable = Boolean(onBoard)
   const [adding, setAdding] = useState(false)
@@ -354,6 +362,7 @@ export function ProjectBoard({
     const problem = columnErrors(next)
     if (problem || !onBoard) return problem
     setBoardDraft(next)
+    setBoardError(null)
     try {
       await onBoard(next)
       return null
@@ -362,11 +371,13 @@ export function ProjectBoard({
       return (e as Error).message
     }
   }
+  /** A column change from the menu or a header drag: its failure shows above the board. */
+  const saveAndSay = (next: Column[]) => void saveBoard(next).then((problem) => problem && setBoardError(problem))
   const rename = (status: TicketStatus) => (label: string) => saveBoard(order.map((c) => (c.id === status ? { ...c, label: label.trim() } : c)))
   const moveSide = (status: TicketStatus) => (side: 'left' | 'right') => {
     const rtl = document.documentElement.dir === 'rtl'
     const at = order.findIndex((c) => c.id === status)
-    void saveBoard(moveColumn(order, status, at + ((side === 'right') !== rtl ? 1 : -1)))
+    saveAndSay(moveColumn(order, status, at + ((side === 'right') !== rtl ? 1 : -1)))
   }
 
   const named = (id: string | number) => (String(id).startsWith(HEADER) ? `column ${labelOf(columnOf(String(id)))}` : String(id))
@@ -387,7 +398,7 @@ export function ProjectBoard({
       // A header dropped over another column takes that column's place.
       const from = columnOf(String(active.id))
       const to = over ? columnOf(String(over.id)) : undefined
-      if (from && to && from !== to) void saveBoard(moveColumn(order, from, order.findIndex((c) => c.id === to)))
+      if (from && to && from !== to) saveAndSay(moveColumn(order, from, order.findIndex((c) => c.id === to)))
       return
     }
     const ticket = find(String(active.id))
@@ -422,9 +433,9 @@ export function ProjectBoard({
       <p id="board-hint" className="sr-only">
         To move a task, press Space on it, use the arrow keys, and press Space again. You can also change its status in the task panel.
       </p>
-      {error && (
+      {(error || boardError) && (
         <p role="alert" className="mb-3 text-sm text-red-600 dark:text-red-400">
-          {error}
+          {error || boardError}
         </p>
       )}
       <DndContext
@@ -489,7 +500,7 @@ export function ProjectBoard({
           projectId={projectId}
           columns={order}
           column={deleting}
-          count={tickets.filter((t) => t.status === deleting.id).length}
+          count={countOf ? countOf(deleting.id) : tickets.filter((t) => t.status === deleting.id).length}
           onClose={() => setDeleting(null)}
         />
       )}
