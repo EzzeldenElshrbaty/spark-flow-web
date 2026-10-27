@@ -132,6 +132,7 @@ export async function createTicket(db: MockDb, hub: MockHub, input: NewTicket): 
     const own = data.tickets.filter((t) => t.projectId === project.id)
     const number = data.counters[project.id] ?? Math.max(0, ...own.map(ticketNumber)) + 1
     const status = input.status || firstOf(project, 'todo').id
+    if (!columnOf(project, status)) throw badRequest('That column no longer exists.')
     const lastRank = Math.max(0, ...own.filter((t) => t.status === status).map((t) => t.rank))
     const now = stamp()
     const key = `${project.key}-${number}`
@@ -175,6 +176,8 @@ export async function createTicket(db: MockDb, hub: MockHub, input: NewTicket): 
 export async function updateTicket(db: MockDb, hub: MockHub, key: string, patch: TicketPatch): Promise<Ticket> {
   const { ticket, cards } = await db.update((data) => {
     const ticket = findTicket(data, key)
+    // The column is checked here, in this write: another tab may have deleted it since the caller looked.
+    if (patch.status !== undefined && !columnOf(findProject(data, ticket.projectId), patch.status)) throw badRequest('That column no longer exists.')
     const before = clone(ticket)
     for (const [field, value] of Object.entries(patch)) {
       if (value !== undefined) (ticket as Record<string, unknown>)[field] = value

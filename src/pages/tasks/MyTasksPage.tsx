@@ -9,6 +9,7 @@ import { useRole } from '@/lib/useRole'
 import { BacklogSkeleton } from '@/pages/projects/ProjectBacklog'
 import { myOpenTasks } from '@/pages/projects/taskFilters'
 import { TicketRow } from '@/pages/projects/TicketRow'
+import { columnLabel } from '@/lib/boardColumns'
 
 /** Your open tasks across every project of the workspace: overdue first, then by due date. */
 export function MyTasksPage() {
@@ -19,6 +20,11 @@ export function MyTasksPage() {
   const people = useUsers(workspace?.id).data ?? []
   const mine = myOpenTasks(tasks.data, persona.id)
   const projectName = (id: string) => projects.data?.find((p) => p.id === id)?.name
+  // Each task's column as its project names it (a custom column has no standard name).
+  const statusNameOf = (projectId: string, status: string) => {
+    const project = projects.data?.find((p) => p.id === projectId)
+    return project ? columnLabel(project, status) : undefined
+  }
   const overdue = mine.filter((t) => t.overdue).length
 
   let body
@@ -31,7 +37,7 @@ export function MyTasksPage() {
         <ul className="divide-y divide-line-subtle">
           {mine.map((task) => (
             <li key={task.id}>
-              <TicketRow ticket={task} assignee={people.find((u) => u.id === task.assigneeId)?.name ?? null} variant="row" project={projectName(task.projectId)} />
+              <TicketRow ticket={task} assignee={people.find((u) => u.id === task.assigneeId)?.name ?? null} variant="row" project={projectName(task.projectId)} statusName={statusNameOf(task.projectId, task.status)} />
             </li>
           ))}
         </ul>

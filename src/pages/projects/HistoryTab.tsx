@@ -4,7 +4,7 @@ import { useProjectHistory } from '@/api/activity'
 import type { Phase, ProjectSummary, User } from '@/api/types'
 import { QueryError } from '@/components/ui/QueryError'
 import { HistoryList } from '@/pages/projects/HistoryList'
-import { historyFilter, type HistoryShow } from './historyFilter'
+import { emptyNote, historyFilter, type HistoryShow } from './historyFilter'
 
 const chips: [HistoryShow, string][] = [
   ['all', 'All'],
@@ -59,6 +59,7 @@ export function HistoryTab({ project, people, phases }: { project: ProjectSummar
           withKey
           onLoadMore={history.hasNextPage ? () => void history.fetchNextPage() : undefined}
           loadingMore={history.isFetchingNextPage}
+          emptyText={emptyNote(show, Boolean(history.hasNextPage))}
         />
       )}
     </div>

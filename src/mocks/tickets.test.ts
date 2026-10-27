@@ -239,3 +239,11 @@ describe('columns with a type', () => {
     expect(card.taskEvent).toMatchObject({ kind: 'done', status: 'col-ship', statusLabel: 'Shipped' })
   })
 })
+
+describe('the status is checked inside the write', () => {
+  it('updateTicket and createTicket refuse a column the board no longer has, in their own transaction', async () => {
+    await expect(updateTicket(db, hub, 'NEX-101', { status: 'col-gone' })).rejects.toMatchObject({ status: 400, detail: 'That column no longer exists.' })
+    await expect(createTicket(db, hub, newTicket({ status: 'col-gone' }))).rejects.toMatchObject({ status: 400, detail: 'That column no longer exists.' })
+    expect((await db.read()).tickets.find((t) => t.key === 'NEX-101')!.status).not.toBe('col-gone')
+  })
+})

@@ -16,5 +16,5 @@ export const CATEGORIES: { category: StatusCategory; label: string }[] = [
   { category: 'done', label: 'Done' },
 ]
 
-/** A default column's name (for places with no project at hand); other ids read as themselves. */
-export const statusLabel = (status: string) => DEFAULT_COLUMNS.find((c) => c.id === status)?.label ?? status
+/** A default column's name, for places with no project at hand; any other id reads as — (never as the raw id). */
+export const statusLabel = (status: string) => DEFAULT_COLUMNS.find((c) => c.id === status)?.label ?? '—'

@@ -19,6 +19,7 @@ export function HistoryList({
   withKey,
   onLoadMore,
   loadingMore,
+  emptyText = 'Nothing has happened here yet.',
 }: {
   entries: ActivityEntry[]
   users: User[]
@@ -27,6 +28,7 @@ export function HistoryList({
   withKey: boolean
   onLoadMore?: () => void
   loadingMore?: boolean
+  emptyText?: string
 }) {
   const [params] = useSearchParams()
   const ctx: ActivityContext = {
@@ -35,9 +37,9 @@ export function HistoryList({
     phaseName: (id) => phases.find((p) => p.id === id)?.name,
     withKey,
   }
-  if (entries.length === 0) return <p className="text-sm text-fg-muted">Nothing has happened here yet.</p>
   return (
     <>
+      {entries.length === 0 && <p className="text-sm text-fg-muted">{emptyText}</p>}
       <ol className="space-y-3">
         {entries.map((entry) => {
           const line = describeActivity(entry, ctx)
