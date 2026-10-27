@@ -6,7 +6,7 @@ import { delay } from './latency'
 import type { MockHub } from './realtime'
 import { logActivity, statusChange } from './activity'
 import { entryEnd } from '@/lib/hours'
-import { badRequest, clone, currentUser, isDate, newId, notFound, pickPatch, requireCan } from './shared'
+import { badRequest, clone, currentUser, isDate, newId, notFound, pickPatch, requireCan, text } from './shared'
 import { CHANNEL_NAME } from '@/lib/channelForm'
 import { projectPeopleIds } from '@/lib/projectPeople'
 
@@ -74,8 +74,20 @@ function splitPhases(projectId: string, names: string[], startDate: string, dueD
   }))
 }
 
-const slug = (name: string) =>
-  name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'project'
+const slug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+
+/** Links are a label and an address each. */
+function checkLinks(links: unknown) {
+  if (!Array.isArray(links) || !links.every((l) => typeof l?.label === 'string' && typeof l?.url === 'string')) throw badRequest('Each link needs a label and an address.')
+}
+
+/** A phase of the project, by id: gone is a 400, another project's too. */
+function phaseOf(data: DbData, phaseId: string, projectId: string) {
+  const phase = data.phases.find((p) => p.id === phaseId)
+  if (!phase) throw badRequest('That phase no longer exists.')
+  if (phase.projectId !== projectId) throw badRequest('That phase belongs to another project.')
+  return phase
+}
 
 const NAME_MAX = 40 // CHANNEL_NAME allows 40 characters
 
@@ -86,8 +98,9 @@ const cut = (text: string, max: number) => text.slice(0, max).replace(/-+$/, '')
  * A project channel's name: the project name's slug, or `slug-2`, `slug-3`… when another channel in the workspace has
  * it. Always a valid channel name (CHANNEL_NAME).
  */
-export function channelNameFor(data: DbData, workspaceId: string, projectName: string, exceptChannelId?: string): string {
-  const base = cut(slug(projectName), NAME_MAX)
+export function channelNameFor(data: DbData, workspaceId: string, projectName: string, exceptChannelId?: string, key = 'project'): string {
+  // A name with no Latin letters or digits (Arabic, say) takes the project's key: #arb.
+  const base = cut(slug(projectName) || key.toLowerCase(), NAME_MAX)
   const taken = (name: string) => data.channels.some((c) => c.workspaceId === workspaceId && c.id !== exceptChannelId && c.name === name)
   let name = base
   for (let n = 2; taken(name); n++) name = `${cut(base, NAME_MAX - String(n).length - 1)}-${n}`
@@ -103,7 +116,7 @@ export function channelNameFor(data: DbData, workspaceId: string, projectName: s
 export function syncProjectChannel(data: DbData, project: Project, rename: boolean): boolean {
   const channel = data.channels.find((c) => c.id === project.channelId)
   if (!channel) return false
-  const name = rename ? channelNameFor(data, project.workspaceId, project.name, channel.id) : channel.name
+  const name = rename ? channelNameFor(data, project.workspaceId, project.name, channel.id, project.key) : channel.name
   const memberIds = [...projectPeopleIds(project, data.users)]
   const changed = channel.name !== name || [...channel.memberIds].sort().join() !== [...memberIds].sort().join()
   Object.assign(channel, { name, memberIds })
@@ -195,7 +208,8 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
         return write((p) => p.id, (data) => {
             requireCan(data, 'project.create')
             if (!data.workspaces.some((w) => w.id === input.workspaceId)) throw notFound('Workspace', input.workspaceId)
-            const name = input.name.trim()
+            const name = text(input.name, 'Name')
+            checkLinks(input.links)
             if (!name) throw badRequest('Give the project a name.')
             if (!KEY.test(input.key)) throw badRequest('The key is 2 to 5 capital letters, such as NEX.')
             // Unique across workspaces: task keys (NEX-101) are looked up by key alone.
@@ -237,7 +251,10 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
             if (next.managerId !== project.managerId || !same(next.memberIds, project.memberIds) || !same(next.teamIds, project.teamIds)) {
               requireCan(data, 'phase.manage', project)
             }
-            if (!next.name.trim()) throw badRequest('Give the project a name.')
+            if (!text(next.name, 'Name')) throw badRequest('Give the project a name.')
+            text(next.clientName, 'Client')
+            text(next.description, 'About')
+            checkLinks(next.links)
             checkDates(next.startDate, next.dueDate)
             const changed = JSON.stringify({ ...project, ...next }) !== JSON.stringify(project)
             const renamed = next.name !== project.name
@@ -326,7 +343,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
         return write((p) => p.projectId, (data) => {
             const project = openProject(data, input.projectId)
             requireCan(data, 'phase.manage', project)
-            if (!input.name.trim()) throw badRequest('Give the phase a name.')
+            if (!text(input.name, 'Name')) throw badRequest('Give the phase a name.')
             checkDates(input.startDate, input.dueDate)
             const order = Math.max(0, ...data.phases.filter((p) => p.projectId === project.id).map((p) => p.order)) + 1
             const phase: Phase = { ...input, name: input.name.trim(), id: newId('ph'), order, status: 'notStarted' }
@@ -341,7 +358,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
             const phase = findPhase(data, id)
             requireCan(data, 'phase.manage', openProject(data, phase.projectId))
             const next = { ...phase, ...pickPatch(patch, PHASE_FIELDS) } as Phase
-            if (!next.name.trim()) throw badRequest('Give the phase a name.')
+            if (!text(next.name, 'Name')) throw badRequest('Give the phase a name.')
             if (!PHASE_STATUSES.includes(next.status)) throw badRequest("That isn't a phase status.")
             checkDates(next.startDate, next.dueDate)
             Object.assign(phase, next)
@@ -392,8 +409,8 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
         return write((d) => d.projectId, (data) => {
             const project = openProject(data, input.projectId)
             requireCan(data, 'project.edit', project)
-            if (!input.title.trim()) throw badRequest('Give the deliverable a title.')
-            if (input.phaseId && findPhase(data, input.phaseId).projectId !== project.id) throw badRequest('That phase belongs to another project.')
+            if (!text(input.title, 'Title')) throw badRequest('Give the deliverable a title.')
+            if (input.phaseId) phaseOf(data, input.phaseId, project.id)
             const deliverable: Deliverable = { ...input, title: input.title.trim(), id: newId('d'), doneAt: null }
             data.deliverables.push(deliverable)
             logActivity(data, { projectId: project.id, taskKey: null, kind: 'deliverable.added', subject: deliverable.title, changes: [] }, now().toISOString())
@@ -407,8 +424,8 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
             if (!deliverable) throw notFound('Deliverable', id)
             requireCan(data, 'project.edit', openProject(data, deliverable.projectId))
             const next = { ...deliverable, ...pickPatch(patch, DELIVERABLE_FIELDS) } as Deliverable
-            if (!next.title.trim()) throw badRequest('Give the deliverable a title.')
-            if (next.phaseId && findPhase(data, next.phaseId).projectId !== deliverable.projectId) throw badRequest('That phase belongs to another project.')
+            if (!text(next.title, 'Title')) throw badRequest('Give the deliverable a title.')
+            if (next.phaseId) phaseOf(data, next.phaseId, deliverable.projectId)
             if (!isDate(next.dueDate)) throw badRequest('Pick a due date.')
             if (next.doneAt !== null && !isDate(next.doneAt)) throw badRequest('Pick a done date.')
             Object.assign(deliverable, next)

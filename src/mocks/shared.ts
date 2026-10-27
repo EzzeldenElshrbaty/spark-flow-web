@@ -53,6 +53,12 @@ export function pickPatch<K extends string>(patch: object, allowed: readonly K[]
   return Object.fromEntries(entries.filter(([, value]) => value !== undefined)) as Partial<Record<K, unknown>>
 }
 
+/** A text field's value, trimmed; anything that isn't text is a 400 naming the field ("Title must be text."). */
+export function text(value: unknown, field: string): string {
+  if (typeof value !== 'string') throw badRequest(`${field} must be text.`)
+  return value.trim()
+}
+
 /** Whether a value is an ISO date the mock can read. */
 export const isDate = (value: unknown): boolean => typeof value === 'string' && !Number.isNaN(Date.parse(value))
 

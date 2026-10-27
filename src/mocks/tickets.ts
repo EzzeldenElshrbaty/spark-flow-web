@@ -5,7 +5,7 @@ import { delay } from './latency'
 import type { MockHub } from './realtime'
 import { categoryOf, columnOf, columnsOf, startColumn } from '@/lib/boardColumns'
 import { entryEnd } from '@/lib/hours'
-import { badRequest, clone, isDate, notFound, pickPatch, requireCan, stamp } from './shared'
+import { badRequest, clone, isDate, notFound, pickPatch, requireCan, stamp, text } from './shared'
 import { projectPeopleIds } from '@/lib/projectPeople'
 
 /** In board order (the project's columns), then by rank within a column; a column that's gone sorts last. */
@@ -68,7 +68,8 @@ const TYPES: readonly TaskType[] = ['task', 'bug']
  */
 function checkTaskInput(data: DbData, projectId: string, input: Partial<TicketPatch>, ticket?: Ticket) {
   const project = findProject(data, projectId)
-  if (input.title !== undefined && !input.title.trim()) throw badRequest('Give the task a title.')
+  if (input.title !== undefined && !text(input.title, 'Title')) throw badRequest('Give the task a title.')
+  if (input.description !== undefined) text(input.description, 'Description')
   if (input.priority !== undefined && !PRIORITIES.includes(input.priority)) throw badRequest("That isn't a priority.")
   if (input.type !== undefined && !TYPES.includes(input.type)) throw badRequest("That isn't a task type.")
   if (input.assigneeId != null && input.assigneeId !== ticket?.assigneeId && !projectPeopleIds(project, data.users).has(input.assigneeId))
@@ -79,7 +80,11 @@ function checkTaskInput(data: DbData, projectId: string, input: Partial<TicketPa
   if (input.rank !== undefined && !Number.isFinite(input.rank)) throw badRequest('That position on the board is not a number.')
   // A status is a column of the project's board ('' on create means where new tasks start: To do).
   if (input.status && !columnOf(project, input.status)) throw badRequest('That column no longer exists.')
-  if (input.phaseId && data.phases.find((p) => p.id === input.phaseId)?.projectId !== projectId) throw badRequest('That phase belongs to another project.')
+  if (input.phaseId) {
+    const phase = data.phases.find((p) => p.id === input.phaseId)
+    if (!phase) throw badRequest('That phase no longer exists.')
+    if (phase.projectId !== projectId) throw badRequest('That phase belongs to another project.')
+  }
   if (input.estimateHours != null && (input.estimateHours < 0 || !Number.isFinite(input.estimateHours))) throw badRequest('The estimate is a number of hours, 0 or more.')
 }
 
@@ -113,16 +118,17 @@ export function tasksApi(db: MockDb, hub: MockHub, now: () => Date): Api['tasks'
     restore: (key) => setArchived(key, false),
     async create(input) {
       await delay()
-      const before = await db.read()
-      const project = openProject(before, input.projectId)
-      requireCan(before, 'task.manage', project)
-      checkTaskInput(before, input.projectId, input)
-      // A task made from a chat message: that message is in this project's chat, and still there.
-      if (input.linkedMessageId) {
-        const message = before.messages.find((m) => m.id === input.linkedMessageId)
-        if (!message || message.channelId !== project.channelId || message.deletedAt) throw badRequest("This message isn't in the project's chat.")
-      }
-      const created = await createTicket(db, hub, input, now)
+      // Rights and values are checked in the write that creates it, on the data it sees.
+      const created = await createTicket(db, hub, input, now, (data) => {
+        const project = openProject(data, input.projectId)
+        requireCan(data, 'task.manage', project)
+        checkTaskInput(data, input.projectId, input)
+        // A task made from a chat message: that message is in this project's chat, and still there.
+        if (input.linkedMessageId) {
+          const message = data.messages.find((m) => m.id === input.linkedMessageId)
+          if (!message || message.channelId !== project.channelId || message.deletedAt) throw badRequest("This message isn't in the project's chat.")
+        }
+      })
       return taskView(created, await db.read(), now())
     },
     async update(key, patch) {
@@ -148,8 +154,9 @@ export function tasksApi(db: MockDb, hub: MockHub, now: () => Date): Api['tasks'
 // ── Mutations (not on Api until Phase 4) ──────────────────────────────────
 
 /** Opens a ticket as the current user: next key for the project, last in its column; posts a Created card. */
-export async function createTicket(db: MockDb, hub: MockHub, input: NewTicket, clock: () => Date = () => new Date()): Promise<Ticket> {
+export async function createTicket(db: MockDb, hub: MockHub, input: NewTicket, clock: () => Date = () => new Date(), check?: (data: DbData) => void): Promise<Ticket> {
   const { ticket, cards, source } = await db.update((data) => {
+    check?.(data)
     const project = openProject(data, input.projectId)
     const own = data.tickets.filter((t) => t.projectId === project.id)
     const number = data.counters[project.id] ?? Math.max(0, ...own.map(ticketNumber)) + 1
@@ -208,9 +215,9 @@ export async function updateTicket(
 ): Promise<Ticket> {
   const { ticket, cards, stopped } = await db.update((data) => {
     const ticket = findTicket(data, key)
-    check?.(data, ticket)
-    // Archived tasks are read-only until restored (restore doesn't come through here).
+    // Archived tasks are read-only until restored (restore doesn't come through here); that comes first, for anyone.
     if (ticket.archivedAt) throw badRequest('This task is archived. Restore it first.')
+    check?.(data, ticket)
     // The column is checked here, in this write: another tab may have deleted it since the caller looked.
     if (patch.status !== undefined && !columnOf(findProject(data, ticket.projectId), patch.status)) throw badRequest('That column no longer exists.')
     const before = clone(ticket)

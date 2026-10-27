@@ -252,3 +252,27 @@ describe('done stops timers', () => {
   })
 })
 
+describe('write-path refusals', () => {
+  it('an archived task says so first, whoever asks and whatever the patch', async () => {
+    const api = apiAt()
+    await api.tasks.archive('NEX-101')
+    await api.users.viewAs('u-8') // on no NEX team, no rights
+    await expect(api.tasks.update('NEX-101', { priority: 'asap' as never })).rejects.toMatchObject({ status: 400, detail: 'This task is archived. Restore it first.' })
+  })
+  it('create checks rights in its write, not on an earlier read', async () => {
+    const api = apiAt()
+    await api.users.viewAs('u-2')
+    const stale = await db.read() // Nour still manages NEX here
+    await api.users.viewAs('u-1')
+    await api.projects.update('p-nex', { managerId: 'u-1' })
+    await api.users.viewAs('u-2')
+    const staleApi = createMockApi({ ...db, read: async () => structuredClone(stale) }, hub, () => clock)
+    await expect(staleApi.tasks.create({ projectId: 'p-nex', title: 'Late', description: '', status: '', priority: 'medium', storyPoints: null, assigneeId: null, sprintId: null })).rejects.toMatchObject({ status: 403 })
+  })
+  it('a title that isn\'t text, or an unknown phase, is a 400 with a sentence', async () => {
+    const api = apiAt()
+    await expect(api.tasks.update('NEX-101', { title: 42 as never })).rejects.toMatchObject({ status: 400, detail: 'Title must be text.' })
+    await expect(api.tasks.update('NEX-101', { phaseId: 'ph-gone' })).rejects.toMatchObject({ status: 400, detail: 'That phase no longer exists.' })
+  })
+})
+

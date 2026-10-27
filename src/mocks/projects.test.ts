@@ -323,3 +323,16 @@ describe('removing deliverables', () => {
   })
 })
 
+describe('project write refusals', () => {
+  it('a name that isn\'t text, bad links, and an unknown deliverable phase are 400s with a sentence', async () => {
+    await expect(api.projects.update('p-nex', { name: 7 as never })).rejects.toMatchObject({ status: 400, detail: 'Name must be text.' })
+    await expect(api.projects.update('p-nex', { links: [{ label: 'x' }] as never })).rejects.toMatchObject({ status: 400, detail: 'Each link needs a label and an address.' })
+    await expect(api.deliverables.update('d-nex-1', { phaseId: 'ph-gone' })).rejects.toMatchObject({ status: 400, detail: 'That phase no longer exists.' })
+  })
+  it('a project name with no Latin letters gets its key as the channel name', async () => {
+    const created = await api.projects.create(newProject({ name: 'مشروع البوابة', key: 'ARB' }))
+    const data = await db.read()
+    expect(data.channels.find((c) => c.id === created.channelId)!.name).toBe('arb')
+  })
+})
+
