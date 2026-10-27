@@ -108,3 +108,13 @@ describe('removing project files', () => {
   })
 })
 
+describe('file addresses', () => {
+  it("a file's address is refused to someone off its project, and served to someone on it", async () => {
+    const stored = await api.files.upload('p-nex', file('spec.pdf', ['%PDF-1.4 spec']))
+    await api.users.viewAs('u-8') // Tarek: not on Nexus Core
+    await expect(api.files.url(stored.attachmentId)).rejects.toMatchObject({ status: 403 })
+    await api.users.viewAs('u-3') // Mariam: on it
+    expect((await api.files.url(stored.attachmentId)).startsWith('blob:')).toBe(true)
+  })
+})
+

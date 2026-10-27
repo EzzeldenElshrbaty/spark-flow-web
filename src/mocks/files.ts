@@ -46,6 +46,11 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
       await delay()
       const [blob, data] = await Promise.all([db.getFile(id), db.read()])
       if (!blob || !data.attachments.some((a) => a.id === id)) throw notFound('File', id)
+      // Served only to people who can see where it is: its project (a project file, or a comment's attachment).
+      const projectId = data.projectFiles.find((f) => f.attachmentId === id)?.projectId ?? data.comments.find((c) => c.attachmentIds.includes(id))?.projectId
+      if (!projectId) throw notFound('File', id)
+      // Reading isn't frozen: an archived project's files still open.
+      requireCan(data, 'collab.post', { ...findProject(data, projectId), archivedAt: null })
       return URL.createObjectURL(blob)
     },
     async list(projectId) {
