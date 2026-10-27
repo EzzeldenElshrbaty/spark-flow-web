@@ -1,4 +1,4 @@
-import type { Api, Deliverable, Phase, Project } from '@/api/types'
+import type { Api, BoardColumn, Deliverable, Phase, Project } from '@/api/types'
 import type { DbData, MockDb } from './db'
 import { columnErrors, columnsOf } from '@/lib/boardColumns'
 import { summarize } from './derive'
@@ -47,6 +47,31 @@ function splitPhases(projectId: string, names: string[], startDate: string, dueD
 
 const slug = (name: string) =>
   name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'project'
+
+/**
+ * History lines for a board change: each renamed or retyped column, and each column that moved. A column moved when
+ * it isn't in the longest run that kept its old order, so dragging one column is one line, not one per neighbour.
+ */
+function logBoardChanges(data: DbData, projectId: string, before: BoardColumn[], after: BoardColumn[]) {
+  const was = (id: string) => before.find((c) => c.id === id)!
+  for (const c of after) {
+    const old = was(c.id)
+    if (old.label !== c.label) logActivity(data, { projectId, taskKey: null, kind: 'column.renamed', subject: c.label, changes: [{ field: 'label', from: old.label, to: c.label }] })
+    if (old.category !== c.category) logActivity(data, { projectId, taskKey: null, kind: 'column.typed', subject: c.label, changes: [{ field: 'category', from: old.category, to: c.category }] })
+  }
+  const order = after.map((c) => before.findIndex((b) => b.id === c.id))
+  // Longest increasing run of old positions (n ≤ 10, so the simple way).
+  const best = order.map(() => 1)
+  const prev = order.map(() => -1)
+  order.forEach((v, i) => {
+    for (let j = 0; j < i; j++) if (order[j]! < v && best[j]! + 1 > best[i]!) [best[i], prev[i]] = [best[j]! + 1, j]
+  })
+  const kept = new Set<number>()
+  for (let i = best.indexOf(Math.max(...best)); i >= 0; i = prev[i]!) kept.add(i)
+  after.forEach((c, i) => {
+    if (!kept.has(i)) logActivity(data, { projectId, taskKey: null, kind: 'column.moved', subject: c.label, changes: [] })
+  })
+}
 
 export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api, 'projects' | 'phases' | 'deliverables'> & { summaries: Api['tickets']['projects'] } {
   /** One write about a project, then tells every tab that project changed (board, phases, deliverables, details). */
@@ -119,6 +144,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
             if (!next.name.trim()) throw badRequest('Give the project a name.')
             checkDates(next.startDate, next.dueDate)
             Object.assign(project, next)
+            logActivity(data, { projectId: project.id, taskKey: null, kind: 'project.changed', changes: [] })
             return project
           })
       },
@@ -135,6 +161,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
           const problem = columnErrors(board)
           if (problem) throw badRequest(problem)
           project.board = board
+          logActivity(data, { projectId: project.id, taskKey: null, kind: 'column.added', subject: added.label, changes: [{ field: 'category', from: null, to: added.category }] })
           return project
         })
       },
@@ -179,6 +206,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
             // Names, order and types change here; adding and deleting columns have their own calls.
             const current = columnsOf(project).map((c) => c.id).sort()
             if (board.map((c) => c.id).sort().join() !== current.join()) throw badRequest('That column no longer exists.')
+            logBoardChanges(data, project.id, columnsOf(project), board)
             project.board = board
             return project
           })
@@ -202,6 +230,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
             const order = Math.max(0, ...data.phases.filter((p) => p.projectId === project.id).map((p) => p.order)) + 1
             const phase: Phase = { ...input, name: input.name.trim(), id: newId('ph'), order, status: 'notStarted' }
             data.phases.push(phase)
+            logActivity(data, { projectId: project.id, taskKey: null, kind: 'phase.added', subject: phase.name, changes: [] })
             return phase
           })
       },
@@ -214,6 +243,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
             if (!next.name.trim()) throw badRequest('Give the phase a name.')
             checkDates(next.startDate, next.dueDate)
             Object.assign(phase, next)
+            logActivity(data, { projectId: phase.projectId, taskKey: null, kind: 'phase.changed', subject: phase.name, changes: [] })
             return phase
           })
       },
@@ -223,6 +253,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
           const phase = findPhase(data, id)
           requireCan(data, 'phase.manage', findProject(data, phase.projectId))
           data.phases = data.phases.filter((p) => p.id !== id)
+          logActivity(data, { projectId: phase.projectId, taskKey: null, kind: 'phase.removed', subject: phase.name, changes: [] })
           for (const t of data.tickets) if (t.phaseId === id) t.phaseId = null
           for (const d of data.deliverables) if (d.phaseId === id) d.phaseId = null
           return phase.projectId
@@ -258,6 +289,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
             if (input.phaseId && findPhase(data, input.phaseId).projectId !== project.id) throw badRequest('That phase belongs to another project.')
             const deliverable: Deliverable = { ...input, title: input.title.trim(), id: newId('d'), doneAt: null }
             data.deliverables.push(deliverable)
+            logActivity(data, { projectId: project.id, taskKey: null, kind: 'deliverable.added', subject: deliverable.title, changes: [] })
             return deliverable
           })
       },
@@ -269,6 +301,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
             requireCan(data, 'project.edit', findProject(data, deliverable.projectId))
             Object.assign(deliverable, Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)))
             if (!deliverable.title.trim()) throw badRequest('Give the deliverable a title.')
+            logActivity(data, { projectId: deliverable.projectId, taskKey: null, kind: 'deliverable.changed', subject: deliverable.title, changes: [] })
             return deliverable
           })
       },

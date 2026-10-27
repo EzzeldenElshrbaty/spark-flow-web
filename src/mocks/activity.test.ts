@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { Api } from '@/api/types'
+import { columnsOf } from '@/lib/boardColumns'
 import { createDb, type MockDb } from './db'
 import { createMockApi } from './index'
 import { latency } from './latency'
@@ -77,5 +78,67 @@ describe('task history', () => {
     const next = await api.activity.forProject('p-nex', first.nextCursor!)
     expect(next.items.some((a) => first.items.some((f) => f.id === a.id))).toBe(false)
     expect(next.items.length).toBeGreaterThan(0)
+  })
+})
+
+describe('history beyond tasks', () => {
+  const since = async (n: number) => (await db.read()).activity.slice(n)
+  const count = async () => (await db.read()).activity.length
+
+  it('a comment, a bug, an edit and a delete are logged without their text', async () => {
+    await api.users.viewAs('u-4') // Ahmed manages Mobile App
+    const n = await count()
+    const c = await api.comments.create({ taskKey: 'MOB-104', kind: 'comment', body: 'secret words', files: [] })
+    await api.comments.create({ taskKey: 'MOB-104', kind: 'bug', body: 'more secret', files: [] })
+    await api.comments.update(c.id, 'edited secret')
+    await api.comments.remove(c.id)
+    const lines = await since(n)
+    expect(lines.map((l) => [l.kind, l.subject, l.taskKey])).toEqual([
+      ['comment.added', 'comment', 'MOB-104'],
+      ['comment.added', 'bug', 'MOB-104'],
+      ['comment.edited', 'comment', 'MOB-104'],
+      ['comment.deleted', 'comment', 'MOB-104'],
+    ])
+    expect(JSON.stringify(lines)).not.toContain('secret')
+  })
+
+  it('setBoard logs one entry per renamed, moved or retyped column; addColumn logs the new one', async () => {
+    const board = columnsOf(await api.projects.get('ws-eng', 'NEX'))
+    const n = await count()
+    const next = board.map((c) => (c.id === 'inReview' ? { ...c, label: 'Testing' } : c.id === 'backlog' ? { ...c, category: 'inProgress' as const } : c))
+    await api.projects.setBoard('p-nex', [next[1]!, next[0]!, ...next.slice(2)])
+    await api.projects.addColumn('p-nex', { label: 'QA', category: 'inProgress' })
+    const lines = await since(n)
+    expect(lines.map((l) => l.kind).sort()).toEqual(['column.added', 'column.moved', 'column.renamed', 'column.typed'].sort())
+    expect(lines.find((l) => l.kind === 'column.renamed')).toMatchObject({ subject: 'Testing', changes: [{ field: 'label', from: 'In review', to: 'Testing' }] })
+    expect(lines.find((l) => l.kind === 'column.typed')).toMatchObject({ subject: 'Backlog', changes: [{ field: 'category', from: 'todo', to: 'inProgress' }] })
+    expect(lines.find((l) => l.kind === 'column.added')).toMatchObject({ subject: 'QA', changes: [{ field: 'category', from: null, to: 'inProgress' }] })
+  })
+
+  it('phase and deliverable changes and a project edit are logged', async () => {
+    await api.users.viewAs('u-2')
+    const n = await count()
+    const phase = await api.phases.create({ projectId: 'p-nex', name: 'Hardening', startDate: '2026-11-01T00:00:00.000Z', dueDate: '2026-11-10T00:00:00.000Z' })
+    await api.phases.update(phase.id, { name: 'Hardening 2' })
+    await api.phases.remove(phase.id)
+    const d = await api.deliverables.create({ projectId: 'p-nex', title: 'API docs', phaseId: null, dueDate: '2026-11-12T00:00:00.000Z' })
+    await api.deliverables.update(d.id, { doneAt: '2026-11-02T00:00:00.000Z' })
+    await api.projects.update('p-nex', { description: 'About changed' })
+    expect((await since(n)).map((l) => [l.kind, l.subject ?? null])).toEqual([
+      ['phase.added', 'Hardening'],
+      ['phase.changed', 'Hardening 2'],
+      ['phase.removed', 'Hardening 2'],
+      ['deliverable.added', 'API docs'],
+      ['deliverable.changed', 'API docs'],
+      ['project.changed', null],
+    ])
+  })
+
+  it('nothing from chat messages or time entries is logged', async () => {
+    const n = await count()
+    await api.chat.send('c-p-nex', 'hello')
+    await api.time.start({ taskId: 't-nex-102' })
+    await api.time.stop()
+    expect(await since(n)).toEqual([])
   })
 })
