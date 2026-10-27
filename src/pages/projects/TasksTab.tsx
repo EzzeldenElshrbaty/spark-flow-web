@@ -2,13 +2,15 @@ import clsx from 'clsx'
 import { Columns3, List } from 'lucide-react'
 import { useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router'
-import { useSprints, useTickets } from '@/api/tickets'
-import type { Phase, ProjectSummary, User } from '@/api/types'
+import { useSprints, useTickets, useUpdateTask } from '@/api/tickets'
+import type { Phase, ProjectSummary, TaskView, TicketStatus, User } from '@/api/types'
 import { selectClass } from '@/components/ui/Field'
 import { QueryError } from '@/components/ui/QueryError'
 import { useUiStore, type ProjectView } from '@/lib/uiStore'
+import { usePermission } from '@/lib/usePermission'
 import { BacklogSkeleton, ProjectBacklog } from '@/pages/projects/ProjectBacklog'
 import { BoardSkeleton, ProjectBoard } from '@/pages/projects/ProjectBoard'
+import { boardMove } from './boardMove'
 import { byOrder } from './phases'
 import { filterTasks, validSprint, viewOf } from './taskFilters'
 
@@ -70,11 +72,21 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
       { replace: true },
     )
 
+  const check = usePermission()
+  const update = useUpdateTask()
+  const canMove = (t: TaskView) => check('task.updateOwnStatus', { project, taskAssigneeId: t.assigneeId })
+  const move = (t: TaskView, to: TicketStatus) => {
+    const patch = boardMove(t, to, (tickets.data ?? []).filter((x) => x.status === to))
+    if (patch) update.mutate({ key: t.key, patch })
+  }
+
   const shown = filterTasks(tickets.data ?? [], { phase, sprint })
   let body
   if (tickets.isError) body = <QueryError what="Tasks" onRetry={() => void tickets.refetch()} />
   else if (tickets.isPending) body = view === 'board' ? <BoardSkeleton /> : <BacklogSkeleton />
-  else if (view === 'board') body = <ProjectBoard tickets={shown} users={people} />
+  else if (view === 'board') body = (
+      <ProjectBoard tickets={shown} users={people} canMove={canMove} onMove={move} error={update.error ? update.error.message : null} />
+    )
   else body = <ProjectBacklog tasks={shown} phases={phases} users={people} />
 
   const chip = (active: boolean) =>
