@@ -29,6 +29,8 @@
 
 **M6 (28 Oct 2026)** fixed GAP-001 to GAP-008 and GAP-030; see each finding's Status line. Everything else stands as written.
 
+**M8 (28 Oct 2026)** fixed GAP-010, 011, 013, 017, 031 and 032; see each finding's Status line.
+
 ## 1. Executive summary
 
 Spark Flow is **well built for its scope**. The mock backend wraps every write in one transaction with its permission check, and every `Api` method (54 of them) has an HTTP route. The `can()` table agrees with the UI gates, and every realtime event that is emitted is handled. The demo flows work end to end.
@@ -302,6 +304,7 @@ The layers are types → mock (with its permission check) → `http.ts` → hook
 - **Effort:** S
 
 **GAP-010: Anyone can log time, and so cost, on any project**
+- **Status:** ✅ Fixed in M8, `f1afd57`.
 - **Category:** Authorization · **Severity:** Medium · **Certainty:** Confirmed (what's intended is in Q3)
 - **Evidence:**
   - `time.logOwn` is always true (`src/lib/permissions.ts:54-55`).
@@ -313,6 +316,7 @@ The layers are types → mock (with its permission check) → `http.ts` → hook
 - **Effort:** S
 
 **GAP-011: Everyone can read everyone's start and end times on every project**
+- **Status:** ✅ Fixed in M8, `f1afd57`.
 - **Category:** Authorization (IDOR) · **Severity:** Medium · **Certainty:** Confirmed
 - **Evidence:**
   - `time.list(projectId)` checks only that the project exists (`src/mocks/time.ts:75-83`).
@@ -335,6 +339,7 @@ The layers are types → mock (with its permission check) → `http.ts` → hook
 - **Effort:** M
 
 **GAP-013: Global search finds almost no pages, and no tasks or people**
+- **Status:** ✅ Fixed in M8, `fa125f7`.
 - **Category:** Partial implementation · **Severity:** Medium · **Certainty:** Confirmed
 - **Evidence:**
   - `navGroups = []` (`src/navigation.ts:19`) and `actionsByPage = {}` (`src/layout/searchShortcuts.ts:16`).
@@ -391,6 +396,7 @@ The layers are types → mock (with its permission check) → `http.ts` → hook
 - **Effort:** S
 
 **GAP-017: Unread badges are wrong for the channel you're in and for deleted messages**
+- **Status:** ✅ Fixed in M8, `090bdc9`.
 - **Category:** Logic bug · **Severity:** Medium · **Certainty:** Confirmed
 - **Evidence:**
   - `markRead` runs only when the channel changes (`src/pages/chat/ChannelFeed.tsx:41`). New messages invalidate `channelsAll` (`queryKeys.ts:39`), so the open channel's badge goes up (`Sidebar.tsx:165`).
@@ -540,6 +546,7 @@ The layers are types → mock (with its permission check) → `http.ts` → hook
 - **Effort:** S
 
 **GAP-031: The phone drawer is a modal that doesn't act like one**
+- **Status:** ✅ Fixed in M8, `265b4b7`.
 - **Category:** UX state (accessibility) · **Severity:** Medium · **Certainty:** Confirmed
 - **Evidence:** `MobileNav.tsx` sets `role="dialog" aria-modal="true"` but has no Escape key, no first focus, no focus trap and no focus return. `Sheet` and `MenuPanel` have all of these (`Sheet.tsx:51-56`, `Menu.tsx:48-75`). There's no skip link either.
 - **User impact:** Keyboard and screen-reader users get stuck behind the overlay.
@@ -547,6 +554,7 @@ The layers are types → mock (with its permission check) → `http.ts` → hook
 - **Effort:** S
 
 **GAP-032: The bell shows a pulsing skeleton forever when mentions fail to load**
+- **Status:** ✅ Fixed in M8, `090bdc9`.
 - **Category:** UX state · **Severity:** Medium · **Certainty:** Confirmed
 - **Evidence:** `NotificationsMenu.tsx:98` treats "no data" as loading, so an error never ends. Home handles the same error properly (`HomePage.tsx:102`).
 - **Fix approach:** Show `QueryError` with a Retry when the query has failed.

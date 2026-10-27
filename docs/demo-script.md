@@ -34,6 +34,8 @@ reload it, so do it shortly before the demo. Switch people with the user menu �
 3. **Mariam** → the bell: "Salma Ibrahim mentioned you". Click it.
 4. **Salma** → **NEX-108** → **Start timer** (the NEX-105 entry stops by itself). Home → **Check out**: the day's
    summary.
+5. **Mariam** → Nexus Core → **Time**: only her own entries, with "Only you and the project's manager see your
+   entries." **Nour** (its manager) sees everyone's. **Tarek** isn't on it, so there's no **Add time**.
 
 ## Story 3: the manager's view (about 3 minutes)
 
@@ -56,6 +58,8 @@ reload it, so do it shortly before the demo. Switch people with the user menu �
    ("· edited" appears), then **Delete message** ("This message was deleted.", its thread stays).
 5. Sidebar **+** by Channels → **New channel**: "design", **Private**, add Mariam. As **Tarek** (not in it) it isn't
    in the sidebar, and its link says "You're not in this channel."
+6. Search (top bar) → "NEX-10": NEX-101 to NEX-105 in key order; pick one and its panel opens. "Mar" offers Mariam
+   under People, and picking her opens your conversation with her.
 
 ## Story 5: fixing mistakes (about 3 minutes)
 
