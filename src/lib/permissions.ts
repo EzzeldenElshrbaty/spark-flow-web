@@ -5,7 +5,7 @@ import type { Project, Role } from '@/api/types'
 
 export type Action =
   | 'rates.view' | 'cost.view' | 'project.create' | 'project.edit' | 'phase.manage' | 'task.manage' | 'task.updateOwnStatus'
-  | 'time.logOwn' | 'time.logOn' | 'collab.post' | 'dashboard.view' | 'timeCost.view' | 'database.manage' | 'project.archive'
+  | 'time.logOwn' | 'time.logOn' | 'collab.post' | 'dashboard.view' | 'timeCost.view' | 'database.manage' | 'project.archive' | 'channel.manage'
 
 export type ProjectRef = Pick<Project, 'managerId' | 'memberIds' | 'teamIds'> & { archivedAt?: string | null }
 
@@ -15,6 +15,8 @@ export type PermissionContext = {
   /** The project the action is about, when there is one. */
   project?: ProjectRef
   userTeamIds?: string[]
+  /** For channel.manage: the channel's privacy and members. */
+  channel?: { isPrivate: boolean; memberIds: string[] }
   taskAssigneeId?: string | null
   /** Whether the person manages at least one project (a member can be named a project's manager). */
   managesAny?: boolean
@@ -40,6 +42,8 @@ export function can(action: ProjectScoped, ctx: PermissionContext & { project: P
 export function can(action: Action, ctx: PermissionContext): boolean {
   // An archived project is frozen for everyone, Admins too, until it's restored (that is 'project.archive').
   if (ctx.project?.archivedAt && FROZEN.has(action)) return false
+  // A channel's members manage it; Admins too, but only public ones: a private channel stays its members'.
+  if (action === 'channel.manage') return Boolean(ctx.channel && (ctx.channel.memberIds.includes(ctx.userId) || (ctx.role === 'admin' && !ctx.channel.isPrivate)))
   if (ctx.role === 'admin') return true
   switch (action) {
     case 'rates.view':

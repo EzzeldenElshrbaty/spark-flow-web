@@ -108,3 +108,15 @@ describe('time.logOn', () => {
     expect(can('time.logOn', { userId: 'p2', role: 'pm', project })).toBe(false)
   })
 })
+
+describe('channel.manage', () => {
+  it('members, or Admins on public channels', () => {
+    const pub = { isPrivate: false, memberIds: ['u-m'] }
+    const priv = { isPrivate: true, memberIds: ['u-m'] }
+    expect(can('channel.manage', { ...as('member', 'u-m'), channel: priv })).toBe(true)
+    expect(can('channel.manage', { ...as('member', 'u-x'), channel: pub })).toBe(false)
+    expect(can('channel.manage', { ...as('admin', 'u-a'), channel: pub })).toBe(true)
+    expect(can('channel.manage', { ...as('admin', 'u-a'), channel: priv })).toBe(false)
+  })
+})
+

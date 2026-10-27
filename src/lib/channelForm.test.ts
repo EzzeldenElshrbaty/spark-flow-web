@@ -10,7 +10,7 @@ describe('channelFormErrors', () => {
   it('the name: needed, the pattern, unique', () => {
     expect(channelFormErrors({ ...ok, name: '' }, []).name).toBe('Give the channel a name.')
     expect(channelFormErrors({ ...ok, name: 'Design Team' }, []).name).toBe('Use lowercase letters, numbers and hyphens.')
-    expect(channelFormErrors({ ...ok, name: 'general' }, ['general']).name).toBe('A channel with this name already exists.')
+    expect(channelFormErrors({ ...ok, name: 'general' }, ['general']).name).toBe('That name is taken.')
   })
   it('the topic: under 250 characters', () => {
     expect(channelFormErrors({ ...ok, topic: 'x'.repeat(251) }, []).topic).toBe('Keep the topic under 250 characters.')

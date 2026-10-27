@@ -1,3 +1,4 @@
+import { can } from '@/lib/permissions'
 import type { Api, Attachment, Channel, ChatMessage, ChatTarget, StoredChannel, ThreadReply } from '@/api/types'
 import { channelFormErrors } from '@/lib/channelForm'
 import { REACTIONS } from '@/lib/reactions'
@@ -55,6 +56,13 @@ function readableChannel(data: DbData, id: string): StoredChannel {
   const channel = findChannel(data, id)
   if (!visible(data, channel)) throw notInChannel()
   return channel
+}
+
+/** Who may change a channel (spec §4.3, channel.manage): its members, or an Admin for a public one. */
+function requireManage(data: DbData, channel: StoredChannel) {
+  const me = currentUser(data)
+  if (!can('channel.manage', { userId: me.id, role: me.role, channel })) throw new ApiError({ title: 'Forbidden', status: 403, detail: 'Only its members can change this channel.' })
+  return me
 }
 
 /** The first rule a channel's values break, as the 400 the form would show; names are unique in the workspace. */
@@ -139,11 +147,10 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
   const setArchived = async (id: string, archive: boolean) => {
     await delay()
     const channel = await db.update((data) => {
-      const channel = findChannel(data, id)
+      const channel = readableChannel(data, id)
       if (channel.kind === 'dm') throw badRequest("Conversations can't be archived.")
       if (data.projects.some((p) => p.channelId === id)) throw badRequest('This channel follows its project.')
-      const me = currentUser(data)
-      if (!channel.memberIds.includes(me.id) && me.role !== 'admin') throw new ApiError({ title: 'Forbidden', status: 403, detail: 'Only its members can change this channel.' })
+      requireManage(data, channel)
       channel.archivedAt = archive ? new Date().toISOString() : null
       return withUnread(data, channel)
     })
@@ -194,12 +201,11 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
     async updateChannel(id, patch) {
       await delay()
       const channel = await db.update((data) => {
-        const channel = findChannel(data, id)
+        const channel = readableChannel(data, id)
         if (channel.kind === 'dm') throw badRequest("Direct messages can't be edited.")
         if (data.projects.some((p) => p.channelId === id)) throw badRequest('This channel follows its project.')
-        const me = currentUser(data)
+        const me = requireManage(data, channel)
         const member = channel.memberIds.includes(me.id)
-        if (!member && me.role !== 'admin') throw new ApiError({ title: 'Forbidden', status: 403, detail: 'Only its members can change this channel.' })
         const memberIds = patch.memberIds ? [...new Set(patch.memberIds)] : channel.memberIds
         if (member && !memberIds.includes(me.id)) throw badRequest("You can't remove yourself.")
         const name = (patch.name ?? channel.name ?? '').trim()

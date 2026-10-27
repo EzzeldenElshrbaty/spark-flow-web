@@ -94,7 +94,8 @@ export function ChannelSheet({ workspaceId, workspaceSlug, channel, onClose }: {
         <fieldset>
           <legend className="mb-1.5 text-sm font-medium text-fg-secondary">People</legend>
           <ul className="max-h-72 space-y-0.5 overflow-y-auto rounded-lg border border-line p-1">
-            {me && (
+            {/* I'm in a new channel always; in an existing one only if I'm a member (an Admin may not be). */}
+            {me && (!channel || channel.memberIds.includes(me.id)) && (
               <li>
                 <label className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm text-fg-muted">
                   <input type="checkbox" className="size-4 accent-brand-500" checked disabled />

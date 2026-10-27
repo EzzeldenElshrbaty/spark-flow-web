@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button'
 import { MenuPanel } from '@/components/ui/Menu'
 import { roundButtonClass, roundButtonFill } from '@/components/ui/styles'
 import { isArchived } from '@/lib/channels'
+import { can } from '@/lib/permissions'
 import { paths } from '@/lib/paths'
 import { useRole } from '@/lib/useRole'
 import { ChannelSheet } from '@/pages/chat/ChannelSheet'
@@ -25,7 +26,7 @@ export function useCanManageChannel(channel: Channel): boolean {
     channel.kind === 'channel' &&
     known &&
     ![...(projects.data ?? []), ...(archivedProjects.data ?? [])].some((p) => p.channelId === channel.id) &&
-    (persona.role === 'admin' || channel.memberIds.includes(persona.id))
+    can('channel.manage', { userId: persona.id, role: persona.role, channel })
   )
 }
 

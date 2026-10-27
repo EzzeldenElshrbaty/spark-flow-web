@@ -10,7 +10,7 @@ export function channelFormErrors(values: ChannelValues, takenNames: string[]): 
   const name = values.name.trim()
   if (!name) errors.name = 'Give the channel a name.'
   else if (!CHANNEL_NAME.test(name)) errors.name = 'Use lowercase letters, numbers and hyphens.'
-  else if (takenNames.includes(name)) errors.name = 'A channel with this name already exists.'
+  else if (takenNames.includes(name)) errors.name = 'That name is taken.'
   if (values.topic.trim().length > MAX_TOPIC) errors.topic = `Keep the topic under ${MAX_TOPIC} characters.`
   if (values.isPrivate && values.memberIds.length === 0) errors.members = 'Add at least one person.'
   return errors

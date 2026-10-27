@@ -416,7 +416,7 @@ describe('channels', () => {
 
   it('name must match the pattern and be unique in the workspace', async () => {
     await expect(api.chat.createChannel(input({ name: 'Design Team' }))).rejects.toMatchObject({ status: 400, detail: 'Use lowercase letters, numbers and hyphens.' })
-    await expect(api.chat.createChannel(input({ name: 'general' }))).rejects.toMatchObject({ status: 400, detail: 'A channel with this name already exists.' })
+    await expect(api.chat.createChannel(input({ name: 'general' }))).rejects.toMatchObject({ status: 400, detail: 'That name is taken.' })
     await expect(api.chat.createChannel(input({ topic: 'x'.repeat(251) }))).rejects.toMatchObject({ status: 400 })
   })
 
@@ -429,8 +429,8 @@ describe('channels', () => {
     const channel = await api.chat.createChannel(input({ isPrivate: true, memberIds: ['u-6'] }))
     await api.users.viewAs('u-6')
     expect((await api.chat.updateChannel(channel.id, { topic: 'New topic' })).topic).toBe('New topic')
-    await api.users.viewAs('u-1') // admin, not a member
-    expect((await api.chat.updateChannel(channel.id, { name: 'design-2' })).name).toBe('design-2')
+    await api.users.viewAs('u-1') // admin, not a member: a private channel stays its members' (M12)
+    await expect(api.chat.updateChannel(channel.id, { name: 'design-2' })).rejects.toMatchObject({ status: 403 })
     await api.users.viewAs('u-8')
     await expect(api.chat.updateChannel(channel.id, { topic: 'Mine' })).rejects.toMatchObject({ status: 403 })
   })
@@ -581,6 +581,19 @@ describe('joining and leaving channels', () => {
   it('leave a project channel or a DM is refused', async () => {
     await expect(api.chat.leave('c-p-nex')).rejects.toMatchObject({ status: 400, detail: 'This channel follows its project.' })
     await expect(api.chat.leave('c-dm-1')).rejects.toMatchObject({ status: 400, detail: "You can't leave a conversation." })
+  })
+})
+
+describe('admins and private channels', () => {
+  it("an Admin not in a private channel can't edit or archive it", async () => {
+    await db.update((d) => void (d.channels.find((c) => c.id === 'c-release')!.memberIds = ['u-2', 'u-4']))
+    const refused = { status: 403, detail: "You're not in this channel." }
+    await expect(api.chat.updateChannel('c-release', { topic: 'x' })).rejects.toMatchObject(refused)
+    await expect(api.chat.archiveChannel('c-release')).rejects.toMatchObject(refused)
+  })
+  it('a name taken by a hidden private channel reads like any other clash', async () => {
+    await api.users.viewAs('u-3') // not in #release-v2
+    await expect(api.chat.createChannel({ workspaceId: 'ws-eng', name: 'release-v2', topic: '', isPrivate: false, memberIds: [] })).rejects.toMatchObject({ status: 400, detail: 'That name is taken.' })
   })
 })
 
