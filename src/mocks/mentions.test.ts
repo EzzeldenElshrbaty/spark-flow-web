@@ -171,3 +171,14 @@ describe('@all in a project channel follows the project', () => {
   })
 })
 
+describe('mention workspaces', () => {
+  it('each mention carries its workspace', async () => {
+    await api.chat.send('c-general', 'Ping @[Nour](u-2)')
+    await api.chat.send('c-design', 'Design ping @[Nour](u-2)')
+    await as('u-2')
+    const mine = await api.mentions.mine()
+    expect(mine.find((m) => m.excerpt.startsWith('Ping'))?.workspaceId).toBe('ws-eng')
+    expect(mine.find((m) => m.excerpt.startsWith('Design ping'))?.workspaceId).toBe('ws-design')
+  })
+})
+

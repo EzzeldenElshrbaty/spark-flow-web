@@ -4,7 +4,7 @@ import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useMarkMentionsRead, useMyMentions } from '@/api/mentions'
 import { useShownError } from '@/lib/useShownError'
-import { useProjectSummaries } from '@/api/projects'
+import { useWorkspaces } from '@/api/workspaces'
 import type { MentionItem } from '@/api/types'
 import { useUsers } from '@/api/users'
 import { Button } from '@/components/ui/Button'
@@ -28,7 +28,7 @@ export function NotificationsMenu() {
   const mentionsError = useShownError(mentions)
   const markRead = useMarkMentionsRead()
   const people = useUsers(workspace?.id).data ?? []
-  const projects = useProjectSummaries(workspace?.id).data ?? []
+  const workspaces = useWorkspaces().data ?? []
   const data = mentions.data
   const nameOf = (id: string) => people.find((u) => u.id === id)?.name ?? 'Someone'
 
@@ -38,7 +38,7 @@ export function NotificationsMenu() {
   const pick = (item: MentionItem) => {
     if (!item.read) markRead.mutate([item.id])
     setOpen(false)
-    navigate(mentionLink(item, workspace?.slug ?? '', projects))
+    navigate(mentionLink(item, workspaces, workspace?.slug ?? ''))
   }
 
   return (

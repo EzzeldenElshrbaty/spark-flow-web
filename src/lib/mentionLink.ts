@@ -1,14 +1,17 @@
 import type { MentionItem } from '@/api/types'
 import { paths } from '@/lib/paths'
 
-/** Where a mention opens: its channel, its thread beside the channel, or its task on the project's Tasks tab. */
-export function mentionLink(item: MentionItem, ws: string, projects: { id: string; key: string }[]): string {
+/**
+ * Where a mention opens, in the mention's own workspace: a message or reply in its thread beside the channel, a comment
+ * on its task in the project's Tasks tab (a task key starts with its project's key). Home here when it can't be found.
+ */
+export function mentionLink(item: MentionItem, workspaces: { id: string; slug: string }[], currentSlug: string): string {
+  const ws = workspaces.find((w) => w.id === item.workspaceId)?.slug
+  if (!ws) return paths.home(currentSlug)
   if (item.source === 'comment') {
-    const project = projects.find((p) => p.id === item.projectId)
-    if (!project || !item.taskKey) return paths.home(ws)
-    return `${paths.project(ws, project.key, 'tasks')}?ticket=${encodeURIComponent(item.taskKey)}`
+    if (!item.taskKey) return paths.home(currentSlug)
+    return `${paths.project(ws, item.taskKey.split('-')[0]!, 'tasks')}?ticket=${encodeURIComponent(item.taskKey)}`
   }
-  if (!item.channelId) return paths.home(ws)
-  const channel = paths.channel(ws, item.channelId)
-  return item.source === 'reply' && item.messageId ? `${channel}?thread=${encodeURIComponent(item.messageId)}` : channel
+  if (!item.channelId || !item.messageId) return paths.home(currentSlug)
+  return `${paths.channel(ws, item.channelId)}?thread=${encodeURIComponent(item.messageId)}`
 }

@@ -2,6 +2,7 @@ import { Play } from 'lucide-react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { useMarkMentionsRead, useMyMentions } from '@/api/mentions'
 import { useProjectSummaries } from '@/api/projects'
+import { useWorkspaces } from '@/api/workspaces'
 import { useArchivedTasksOf, useTasksOf } from '@/api/tickets'
 import { taskLabel } from '@/lib/taskLabel'
 import { useMyDay, useStartTimer } from '@/api/time'
@@ -29,6 +30,7 @@ export function HomePage() {
   const { persona } = useRole()
   const day = useMyDay()
   const projects = useProjectSummaries(workspace?.id)
+  const workspaces = useWorkspaces()
   const tasks = useTasksOf((projects.data ?? []).map((p) => p.id))
   const archived = useArchivedTasksOf((projects.data ?? []).map((p) => p.id))
   const start = useStartTimer()
@@ -124,7 +126,7 @@ export function HomePage() {
                         type="button"
                         onClick={() => {
                           if (!m.read) markRead.mutate([m.id])
-                          navigate(mentionLink(m, workspace?.slug ?? '', projects.data ?? []))
+                          navigate(mentionLink(m, workspaces.data ?? [], workspace?.slug ?? ''))
                         }}
                         className="flex w-full items-start gap-3 px-5 py-3 text-start hover:bg-surface-muted"
                       >
