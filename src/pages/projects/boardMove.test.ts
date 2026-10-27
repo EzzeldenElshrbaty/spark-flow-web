@@ -66,3 +66,12 @@ describe('boardDrop', () => {
   })
 })
 
+describe('boardDrop with saving drops', () => {
+  it('matches cards by key: a shown card that is a copy (a drop still saving) still places the next drop right', () => {
+    const full = [t('A', 'done', 1000), t('B', 'done', 2000)]
+    const shown = full.map((c) => ({ ...c })) // withPending makes copies
+    const drop = boardDrop(t('X', 'todo', 1), 'done', shown, full, 2)! // at the end of Done
+    expect(drop.patch.rank).toBe(3000)
+  })
+})
+

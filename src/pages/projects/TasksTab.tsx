@@ -13,7 +13,7 @@ import { usePermission } from '@/lib/usePermission'
 import { BacklogSkeleton, ProjectBacklog } from '@/pages/projects/ProjectBacklog'
 import { BoardSkeleton, ProjectBoard } from '@/pages/projects/ProjectBoard'
 import { byOrder } from './phases'
-import { filterTasks, staleArchivedParam, validSprint, viewOf } from './taskFilters'
+import { filtersFrom, filterTasks, staleArchivedParam, validSprint, viewOf } from './taskFilters'
 
 const views = [
   ['board', 'Board', Columns3],
@@ -59,14 +59,9 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
   // The address wins; without phase or sprint in it, the tab reopens on the last ones picked here.
   const lastFilters = useUiStore((state) => state.lastFilters[project.key])
   const setProjectFilters = useUiStore((state) => state.setProjectFilters)
-  const filtersInUrl = params.has('phase') || params.has('sprint')
-  const askedPhase = filtersInUrl ? params.get('phase') : (lastFilters?.phase ?? null)
-  const askedSprint = filtersInUrl ? params.get('sprint') : (lastFilters?.sprint ?? null)
-  const phase = phases.some((p) => p.id === askedPhase) ? askedPhase : null
-  const sprint = agile ? validSprint(askedSprint, sprints.data ?? []) : null
-  useEffect(() => {
-    if (filtersInUrl) setProjectFilters(project.key, { phase: params.get('phase') ?? undefined, sprint: params.get('sprint') ?? undefined })
-  }, [filtersInUrl, params, project.key, setProjectFilters])
+  const picked = filtersFrom(params, lastFilters)
+  const phase = phases.some((p) => p.id === picked.phase) ? picked.phase : null
+  const sprint = agile ? validSprint(picked.sprint, sprints.data ?? []) : null
 
   // Remember the view shown so the tab reopens it.
   useEffect(() => setProjectView(project.key, view), [view, project.key, setProjectView])

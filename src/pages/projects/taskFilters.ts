@@ -47,3 +47,15 @@ export const loggableTasks = (tasks: TaskView[], canLogOn: (projectId: string) =
 export function staleArchivedParam(asked: boolean, archivedCount: number | undefined): boolean {
   return asked && archivedCount === 0
 }
+
+/**
+ * The Tasks tab's phase and sprint: each from the address when it's there, else the one last picked on this project
+ * (so picking a phase doesn't drop a remembered sprint).
+ */
+export function filtersFrom(params: URLSearchParams, last: { phase?: string; sprint?: string } | undefined): { phase: string | null; sprint: string | null } {
+  return {
+    phase: params.has('phase') ? params.get('phase') : (last?.phase ?? null),
+    sprint: params.has('sprint') ? params.get('sprint') : (last?.sprint ?? null),
+  }
+}
+

@@ -29,7 +29,9 @@ export function boardDrop(ticket: TaskView, to: TicketStatus, shown: TaskView[],
   const otherShown = shown.filter((t) => t.key !== ticket.key)
   const others = full.filter((t) => t.key !== ticket.key)
   const at = Math.max(0, Math.min(index, otherShown.length))
-  const place = at < otherShown.length ? others.indexOf(otherShown[at]!) : otherShown.length ? others.indexOf(otherShown.at(-1)!) + 1 : others.length
+  // By key: a shown card can be a copy (a drop still saving), not the same object as in `full`.
+  const indexOf = (card: TaskView) => others.findIndex((t) => t.key === card.key)
+  const place = at < otherShown.length ? indexOf(otherShown[at]!) : otherShown.length ? indexOf(otherShown.at(-1)!) + 1 : others.length
   if (ticket.status === to && full.findIndex((t) => t.key === ticket.key) === place) return null
   const before = others[place - 1]
   const after = others[place]

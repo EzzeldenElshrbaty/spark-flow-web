@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Phase, TaskView } from '@/api/types'
-import { filterTasks, groupByPhase, loggableTasks, myOpenTasks, staleArchivedParam, validSprint, viewOf } from './taskFilters'
+import { filtersFrom, filterTasks, groupByPhase, loggableTasks, myOpenTasks, staleArchivedParam, validSprint, viewOf } from './taskFilters'
 
 const t = (over: Partial<TaskView>): TaskView =>
   ({ id: over.key ?? 'x', key: 'P-1', status: 'todo', category: over.status === 'done' ? 'done' : 'todo', phaseId: null, sprintId: null, assigneeId: null, dueAt: null, overdue: false, rank: 0, ...over }) as TaskView
@@ -79,3 +79,13 @@ describe('loggableTasks', () => {
     expect(staleArchivedParam(false, 0)).toBe(false)
   })
 })
+
+describe('filtersFrom', () => {
+  it('each filter comes from the address when it is there, else from memory', () => {
+    const last = { phase: 'ph-old', sprint: 's2' }
+    expect(filtersFrom(new URLSearchParams(''), last)).toEqual({ phase: 'ph-old', sprint: 's2' })
+    expect(filtersFrom(new URLSearchParams('phase=design'), last)).toEqual({ phase: 'design', sprint: 's2' })
+    expect(filtersFrom(new URLSearchParams('sprint=s1'), undefined)).toEqual({ phase: null, sprint: 's1' })
+  })
+})
+

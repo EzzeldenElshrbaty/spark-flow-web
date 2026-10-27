@@ -426,7 +426,8 @@ export function ProjectBoard({
       }
     }
     // Ranked against the whole column (allTickets), so a card hidden by a filter never ties with the drop.
-    const full = (allTickets ?? tickets).filter((t) => t.status === to).sort((a, b) => a.rank - b.rank)
+    // With the drops still saving applied, like the cards on screen.
+    const full = withPending(allTickets ?? tickets, pending).filter((t) => t.status === to).sort((a, b) => a.rank - b.rank)
     const drop = boardDrop(ticket, to, column, full, index)
     if (!drop || !onMove) return
     const { patch } = drop
