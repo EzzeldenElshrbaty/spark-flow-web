@@ -526,7 +526,10 @@ export function seed(now: Date): SeedResult {
     reads: Object.fromEntries(users.map((u) => [u.id, buildReads(rawChannels.map((c) => c.id), messages, { 'c-frontend': 3, 'c-dm-2': 1 }, now)])),
     counters: buildCounters(projects.map((p) => p.id), tickets),
     mentionReads: {} as Record<string, string[]>,
-    activity: [],
+    // History starts with each task's creation, by whoever reported it, so the History tabs aren't empty.
+    activity: tickets
+      .map((t) => ({ id: `act-${t.id}`, projectId: t.projectId, taskKey: t.key, actorId: t.reporterId, at: t.createdAt, kind: 'task.created' as const, changes: [] }))
+      .sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0)),
   }
   // The bell starts with the last day's mentions only: everything older counts as read.
   const dayAgo = new Date(now.getTime() - 24 * 3_600_000).toISOString()

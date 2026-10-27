@@ -208,3 +208,15 @@ describe('demo story for now', () => {
     for (const e of data.timeEntries.filter((x) => x.id.endsWith('-now'))) expect(localDay(new Date(e.startedAt))).toBe(localDay(early))
   })
 })
+
+describe('seeded history', () => {
+  it('every seeded task has a created entry, by its reporter at its createdAt, oldest first', () => {
+    const d = seed(new Date('2026-10-28T09:00:00Z')).data
+    for (const t of d.tickets) {
+      expect(d.activity).toContainEqual(expect.objectContaining({ kind: 'task.created', taskKey: t.key, projectId: t.projectId, actorId: t.reporterId, at: t.createdAt }))
+    }
+    expect(d.activity.every((a) => d.users.some((u) => u.id === a.actorId))).toBe(true)
+    const times = d.activity.map((a) => a.at)
+    expect(times).toEqual([...times].sort())
+  })
+})

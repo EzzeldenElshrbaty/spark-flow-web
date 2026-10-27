@@ -46,7 +46,7 @@ Prepared 28 Oct 2026, after M0–M4 (branch `feat/company-system`). It compares 
 |---|---|---|---|
 | ✅ | Columns by status, with counts. | Board with 5 fixed status columns and an hours total per column. | — |
 | ⬜ | **Drag a card to change its status.** | Status changes only through the task form or the panel's Status select. | **P1** |
-| ⬜ | Add, delete and move columns; map statuses to columns; unmapped statuses hide their work items *(verified)*. See [doc](https://support.atlassian.com/jira-software-cloud/docs/configure-columns/). | Statuses are fixed (`backlog · todo · inProgress · inReview · done`). | P3 |
+| ✅ | Add, delete and move columns; map statuses to columns; unmapped statuses hide their work items *(verified)*. See [doc](https://support.atlassian.com/jira-software-cloud/docs/configure-columns/). | M7: per-project columns, each typed To do / In progress / Done; deleting one moves its tasks. | — |
 | ⬜ | Column min/max limits (WIP) *(verified)*: a red or yellow header as a warning only. The right-most column counts as done. | — | P2 |
 | ⬜ | Manage workflows (custom statuses and transitions). | — | P3 |
 | ⬜ | Group by (swimlanes) and quick or custom filters *(verified; group-by sits in View settings)*. | The Tasks tab has phase chips and a sprint select. No group-by and no saved filters. | P2 |
@@ -158,10 +158,11 @@ Sources: [create and update from Slack](https://support.atlassian.com/jira-softw
 - [x] Edit and delete your own messages ("edited" label; a deleted message shows "This message was deleted.").
 - [x] Create a channel (public or private) and edit its topic and members.
 - [x] Rename and reorder board columns per project (the manager); on dnd-kit with order inside a column, touch and keyboard. *(M5, added)*
+- [x] Add and delete board columns, each with a type that decides what done means. *(M7)*
 
 **Next milestone (P2)**:
 - [ ] Sprints: create, start (with dates and goal), complete (move unfinished work), drag between sprints and the backlog.
-- [ ] Task history, a per-task work log in the panel, and a project "Recent activity" feed.
+- [x] Task history, a per-task work log in the panel, and a project "Recent activity" feed. *(M7: task History tab and project History tab; time entries stay out of it)*
 - [ ] Space Summary tiles (completed, updated and created in the last 7 days, due in the next 7) that open a filtered list, plus a status donut.
 - [ ] Board insights (overdue, stuck, blocked) and WIP limits per column.
 - [ ] Calendar view with an Unscheduled drawer; drag to set the due date.

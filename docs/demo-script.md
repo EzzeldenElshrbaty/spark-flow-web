@@ -69,6 +69,16 @@ reload it, so do it shortly before the demo. Switch people with the user menu �
    one. **Teams** → **Message** on Mariam opens the DM you already have.
 5. Two tabs: **View as Mariam** in one. The other stays Youssef, and each sends as itself.
 
+## Story 6: your own board, and what happened (about 3 minutes)
+
+1. **Nour** → Nexus Core → **Tasks** → Board → **+ Add column**: "QA", type **In progress**, after In progress. Drag a
+   card into QA.
+2. QA's ⋯ → **Delete column** → move its tasks to **In review** → **Delete column**. The only Done column can't be
+   deleted ("Each type needs at least one column.").
+3. Rename **Done** to "Shipped": progress and My tasks still count it as done, because its type is Done.
+4. Open the card → **History**: "moved it from QA to In review", with who and when. Project → **History** tab →
+   **Board**: the column lines. **Tasks** shows each task's created line from the start.
+
 ## If something looks off
 
 - Reload the seed (Settings → Database). It replaces everything in this browser, including uploads.
