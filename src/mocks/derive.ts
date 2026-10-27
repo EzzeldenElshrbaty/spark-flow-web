@@ -32,7 +32,8 @@ export function taskView(task: Ticket, data: Pick<Source, 'timeEntries'>, now: D
 const latest = (...isoTimes: string[]) => isoTimes.reduce((a, b) => (new Date(a).getTime() >= new Date(b).getTime() ? a : b))
 
 export function summarize(project: Project, data: Source, now: Date, viewer: { userId: string; role: Role }): ProjectSummary {
-  const tasks = data.tickets.filter((t) => t.projectId === project.id).map((t) => taskView(t, data, now))
+  // Archived tasks are out of the counts and progress; their time still counts in hours and cost (entries below).
+  const tasks = data.tickets.filter((t) => t.projectId === project.id && !t.archivedAt).map((t) => taskView(t, data, now))
   const entries = data.timeEntries.filter((e) => e.projectId === project.id)
   const phases = data.phases.filter((p) => p.projectId === project.id).sort((a, b) => a.order - b.order)
   const openPhases = phases.filter((p) => p.status !== 'done')

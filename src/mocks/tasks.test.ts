@@ -113,3 +113,50 @@ describe('the board, as the assignee', () => {
     await expect(api.tasks.update('MOB-103', { rank: 9 })).rejects.toMatchObject({ status: 403 }) // not his
   })
 })
+
+describe('archiving tasks', () => {
+  it('the manager archives a task: it leaves the list and the totals, keeps its hours, and get still finds it', async () => {
+    const api = apiAt()
+    await api.users.viewAs('u-2') // Nour manages Nexus Core
+    const before = (await api.projects.list('ws-eng')).find((p) => p.key === 'NEX')!
+    const hours = (await api.tickets.get('NEX-101')).loggedHours
+    expect(hours).toBeGreaterThan(0)
+    const archived = await api.tasks.archive('NEX-101')
+    expect(archived.archivedAt).toEqual(expect.any(String))
+    expect((await api.tickets.list('p-nex')).some((t) => t.key === 'NEX-101')).toBe(false)
+    const after = (await api.projects.list('ws-eng')).find((p) => p.key === 'NEX')!
+    expect(after.taskCount).toBe(before.taskCount - 1)
+    expect(after.loggedHours).toBe(before.loggedHours)
+    expect((await api.tickets.get('NEX-101')).archivedAt).toEqual(expect.any(String))
+  })
+
+  it('archiving stops a running timer on it, and an archived task takes no new time', async () => {
+    const api = apiAt()
+    await api.users.viewAs('u-2')
+    clock = new Date('2026-10-26T09:00:00Z')
+    await api.time.start({ taskId: 't-nex-102' })
+    clock = new Date('2026-10-26T10:00:00Z')
+    await api.tasks.archive('NEX-102')
+    expect((await api.time.today()).running).toBeNull()
+    await expect(api.time.start({ taskId: 't-nex-102' })).rejects.toMatchObject({ status: 400, detail: 'That task is archived. Restore it to log time.' })
+  })
+
+  it('restore brings it back', async () => {
+    const api = apiAt()
+    await api.tasks.archive('NEX-103')
+    expect((await api.tasks.restore('NEX-103')).archivedAt ?? null).toBeNull()
+    expect((await api.tickets.list('p-nex')).some((t) => t.key === 'NEX-103')).toBe(true)
+  })
+
+  it('a member is refused', async () => {
+    const api = apiAt()
+    await api.users.viewAs('u-3')
+    await expect(api.tasks.archive('NEX-101')).rejects.toMatchObject({ status: 403 })
+  })
+
+  it('list with archived: true returns only archived tasks', async () => {
+    const api = apiAt()
+    await api.tasks.archive('NEX-104')
+    expect((await api.tickets.list('p-nex', { archived: true })).map((t) => t.key)).toEqual(['NEX-104'])
+  })
+})

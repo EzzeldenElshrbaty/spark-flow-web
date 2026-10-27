@@ -19,6 +19,7 @@ function resolveTarget(data: DbData, target: TimeTarget): { projectId: string; t
   if ('taskId' in target) {
     const task = data.tickets.find((t) => t.id === target.taskId)
     if (!task) throw badRequest("That task doesn't exist.")
+    if (task.archivedAt) throw badRequest('That task is archived. Restore it to log time.')
     return { projectId: task.projectId, taskId: task.id, done: task.status === 'done' }
   }
   return { projectId: findProject(data, target.projectId).id, taskId: null, done: false }

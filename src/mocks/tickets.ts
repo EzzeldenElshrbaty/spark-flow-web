@@ -3,6 +3,7 @@ import { taskView } from './derive'
 import type { DbData, MockDb } from './db'
 import { delay } from './latency'
 import type { MockHub } from './realtime'
+import { entryEnd } from '@/lib/hours'
 import { badRequest, clone, notFound, requireCan, stamp } from './shared'
 
 const STATUS_ORDER: TicketStatus[] = ['backlog', 'todo', 'inProgress', 'inReview', 'done']
@@ -30,11 +31,15 @@ export function ticketsApi(db: MockDb, now: () => Date, projects: Api['tickets']
       findProject(data, projectId)
       return data.sprints.filter((s) => s.projectId === projectId)
     },
-    async list(projectId) {
+    async list(projectId, opts) {
       await delay()
       const data = await db.read()
       findProject(data, projectId)
-      return data.tickets.filter((t) => t.projectId === projectId).sort(byStatusThenRank).map((t) => taskView(t, data, now()))
+      const archived = Boolean(opts?.archived)
+      return data.tickets
+        .filter((t) => t.projectId === projectId && Boolean(t.archivedAt) === archived)
+        .sort(byStatusThenRank)
+        .map((t) => taskView(t, data, now()))
     },
     async get(key) {
       await delay()
@@ -54,7 +59,31 @@ function checkTaskInput(data: DbData, projectId: string, input: Pick<NewTicket, 
 
 /** Task writes, checked against the permission table (spec §4.3). */
 export function tasksApi(db: MockDb, hub: MockHub, now: () => Date): Api['tasks'] {
+  /** Archives or restores, in one write; archiving also stops the timers running on the task. */
+  const setArchived = async (key: string, archive: boolean) => {
+    await delay()
+    const { ticket, stopped } = await db.update((data) => {
+      const ticket = findTicket(data, key)
+      requireCan(data, 'task.manage', findProject(data, ticket.projectId))
+      const at = now()
+      const stopped: string[] = []
+      if (archive) {
+        for (const e of data.timeEntries.filter((e) => e.taskId === ticket.id && e.endedAt === null)) {
+          e.endedAt = new Date(entryEnd(e, at)).toISOString()
+          stopped.push(e.userId)
+        }
+      }
+      ticket.archivedAt = archive ? at.toISOString() : null
+      ticket.updatedAt = stamp(ticket.updatedAt)
+      return { ticket: clone(ticket), stopped }
+    })
+    hub.publish({ type: 'ticketUpdated', ticket })
+    for (const userId of stopped) hub.publish({ type: 'timeLogged', userId, projectId: ticket.projectId })
+    return taskView(ticket, await db.read(), now())
+  }
   return {
+    archive: (key) => setArchived(key, true),
+    restore: (key) => setArchived(key, false),
     async create(input) {
       await delay()
       const before = await db.read()

@@ -1,12 +1,13 @@
 import clsx from 'clsx'
-import { Clock, Pencil, Play, Square } from 'lucide-react'
+import { Archive, Clock, Pencil, Play, Square } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { useComments } from '@/api/comments'
 import { usePhases } from '@/api/projects'
-import { useProjects, useSprints, useTicket, useUpdateTask } from '@/api/tickets'
+import { useArchiveTask, useProjects, useRestoreTask, useSprints, useTicket, useUpdateTask } from '@/api/tickets'
 import { useMyDay, useStartTimer, useStopTimer } from '@/api/time'
 import type { TicketStatus } from '@/api/types'
 import { useUsers } from '@/api/users'
+import { ConfirmDeleteSheet } from '@/components/ConfirmDeleteSheet'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { selectClass } from '@/components/ui/Field'
@@ -58,6 +59,9 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
   const check = usePermission()
   const [editing, setEditing] = useState(false)
   const [addingTime, setAddingTime] = useState(false)
+  const [archiving, setArchiving] = useState(false)
+  const archive = useArchiveTask()
+  const restore = useRestoreTask()
   const [tab, setTab] = useState<'details' | 'activity'>('details')
   const comments = useComments(ticketKey)
   const myDay = useMyDay()
@@ -86,16 +90,34 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
     const phase = t.phaseId ? phases.data?.find((p) => p.id === t.phaseId) : undefined
     const canManage = project ? check('task.manage', { project }) : false
     const canStatus = project ? check('task.updateOwnStatus', { project, taskAssigneeId: t.assigneeId }) : false
+    const archived = Boolean(t.archivedAt)
     const details = (
       <>
-        {(t.type === 'bug' || t.overdue || canManage) && (
+        {archived && (
+          <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-line bg-surface-muted px-3 py-2 text-sm text-fg-secondary">
+            <Archive className="size-4 shrink-0" />
+            <span className="me-auto">This task is archived.</span>
+            {canManage && (
+              <Button variant="secondary" onClick={() => restore.mutate(t.key)} disabled={restore.isPending}>
+                {restore.isPending ? 'Restoring…' : 'Restore task'}
+              </Button>
+            )}
+            {restore.error && <span className="w-full text-xs text-red-600 dark:text-red-400">{restore.error.message}</span>}
+          </div>
+        )}
+        {(t.type === 'bug' || t.overdue || (canManage && !archived)) && (
           <div className="mb-3 flex items-center gap-2">
             {t.type === 'bug' && <BugPill />}
             {t.overdue && <OverduePill />}
-            {canManage && (
-              <Button variant="secondary" className="ms-auto" onClick={() => setEditing(true)}>
-                <Pencil className="size-4" /> Edit task
-              </Button>
+            {canManage && !archived && (
+              <span className="ms-auto flex items-center gap-2">
+                <Button variant="ghost" onClick={() => setArchiving(true)}>
+                  <Archive className="size-4" /> Archive task
+                </Button>
+                <Button variant="secondary" onClick={() => setEditing(true)}>
+                  <Pencil className="size-4" /> Edit task
+                </Button>
+              </span>
             )}
           </div>
         )}
@@ -146,6 +168,16 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
             <span className="tabular-nums">{formatDate(t.updatedAt)}</span>
           </Field>
         </dl>
+        <ConfirmDeleteSheet
+          open={archiving}
+          title="Archive this task?"
+          description="It leaves the board, the lists and the project's counts. Its logged time and cost stay. You can restore it."
+          actionLabel="Archive task"
+          pendingLabel="Archiving…"
+          onConfirm={() => archive.mutateAsync(t.key)}
+          onClose={() => setArchiving(false)}
+        />
+        {!archived && (
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {t.status !== 'done' &&
             (myDay.data?.running?.taskId === t.id ? (
@@ -161,6 +193,7 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
             <Clock className="size-4" /> Add time
           </Button>
         </div>
+        )}
         {(start.error || stop.error) && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{((start.error ?? stop.error) as Error).message}</p>}
         {addingTime && <AddTimeSheet projectId={t.projectId} taskId={t.id} onClose={() => setAddingTime(false)} />}
         <h3 className="mt-5 text-xs font-medium uppercase tracking-wide text-fg-muted">Description</h3>

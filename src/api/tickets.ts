@@ -37,6 +37,15 @@ export function useCreateTask() {
   return useMutation({ mutationFn: (input: NewTicket) => api.tasks.create(input) })
 }
 
+export function useArchivedTasks(projectId: string | undefined, enabled: boolean) {
+  return useQuery({ queryKey: qk.archivedTickets(projectId ?? ''), queryFn: () => api.tickets.list(projectId!, { archived: true }), retry, enabled: enabled && Boolean(projectId) })
+}
+export function useArchiveTask() {
+  return useMutation({ mutationFn: (key: string) => api.tasks.archive(key) })
+}
+export function useRestoreTask() {
+  return useMutation({ mutationFn: (key: string) => api.tasks.restore(key) })
+}
 export function useUpdateTask() {
   return useMutation({ mutationFn: ({ key, patch }: { key: string; patch: TicketPatch }) => api.tasks.update(key, patch) })
 }

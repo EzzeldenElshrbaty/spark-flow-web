@@ -47,7 +47,7 @@ export function dashboardApi(db: MockDb, now: () => Date): Api['dashboard'] {
       return clone(
         projects.map((p): DashboardProject => {
           const summary = summarize(p, data, at, { userId: me.id, role: me.role })
-          const tasks = data.tickets.filter((t) => t.projectId === p.id)
+          const tasks = data.tickets.filter((t) => t.projectId === p.id && !t.archivedAt)
           const estimated = tasks.filter((t) => t.estimateHours !== null)
           return {
             ...summary,

@@ -56,6 +56,8 @@ export type Ticket = {
   createdAt: string; updatedAt: string
   phaseId: string | null; type: TaskType
   dueAt: string | null; estimateHours: number | null     // either, both or neither; overdue is derived
+  /** Set while archived: off the board, lists and totals; its time and cost stay on the project. */
+  archivedAt?: string | null
 }
 export type TaskType = 'task' | 'bug'
 /** The company system calls tickets tasks; the contract and keys (NEX-101) are the same. */
@@ -235,7 +237,9 @@ export interface Api {
     /** The same list as projects.list; kept for the Phase 1+2 pages. */
     projects(workspaceId: string): Promise<ProjectSummary[]>
     sprints(projectId: string): Promise<Sprint[]>
-    list(projectId: string): Promise<TaskView[]>
+    /** The project's tasks; archived ones only with `archived: true` (and then only those). */
+    list(projectId: string, opts?: { archived?: boolean }): Promise<TaskView[]>
+    /** Also finds an archived task, so old links still open it. */
     get(key: string): Promise<TaskView>
   }
   projects: {
@@ -261,6 +265,9 @@ export interface Api {
   tasks: {
     create(input: NewTicket): Promise<TaskView>
     update(key: string, patch: TicketPatch): Promise<TaskView>
+    /** The project's manager (and Admins); a running timer on it stops. */
+    archive(key: string): Promise<TaskView>
+    restore(key: string): Promise<TaskView>
   }
   teams: { list(workspaceId: string): Promise<Team[]> }
   time: {

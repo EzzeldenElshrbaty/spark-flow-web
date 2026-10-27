@@ -80,7 +80,7 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
     tickets: {
       projects: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/projects`),
       sprints: (projectId) => get(`/api/projects/${enc(projectId)}/sprints`),
-      list: (projectId) => get(`/api/projects/${enc(projectId)}/tickets`),
+      list: (projectId, opts) => get(`/api/projects/${enc(projectId)}/tickets${opts?.archived ? '?archived=true' : ''}`),
       get: (key) => get(`/api/tickets/${enc(key)}`),
     },
     projects: {
@@ -105,6 +105,8 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
     tasks: {
       create: (input) => send('POST', `/api/projects/${enc(input.projectId)}/tasks`, input),
       update: (key, patch) => send('PATCH', `/api/tasks/${enc(key)}`, patch),
+      archive: (key) => send('POST', `/api/tasks/${enc(key)}/archive`),
+      restore: (key) => send('POST', `/api/tasks/${enc(key)}/restore`),
     },
     teams: { list: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/teams`) },
     time: {

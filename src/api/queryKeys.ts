@@ -15,6 +15,7 @@ export const qk = {
   projects: (workspaceId: string) => ['tickets', 'projects', workspaceId],
   sprints: (projectId: string) => ['tickets', 'sprints', projectId],
   tickets: (projectId: string) => ['tickets', 'list', projectId],
+  archivedTickets: (projectId: string) => ['tickets', 'archived', projectId],
   ticket: (key: string) => ['tickets', 'one', key],
   phases: (projectId: string) => ['projects', 'phases', projectId],
   deliverables: (projectId: string) => ['projects', 'deliverables', projectId],
@@ -43,7 +44,7 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
       return [qk.replies(messageId), qk.message(messageId), qk.messages(channelId), qk.channelsAll(), qk.channel(channelId), qk.mentions()]
     }
     case 'ticketUpdated':
-      return [qk.tickets(event.ticket.projectId), qk.ticket(event.ticket.key)]
+      return [qk.tickets(event.ticket.projectId), qk.archivedTickets(event.ticket.projectId), qk.ticket(event.ticket.key)]
     case 'timeLogged':
       // Hours change everywhere: my day, every task and project summary (under 'tickets'), and the Time tabs.
       return [qk.myDay(), ['tickets'], qk.timeAll(), ['dashboard'], ['time', 'report']]

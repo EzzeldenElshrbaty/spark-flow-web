@@ -3,7 +3,7 @@ import { Columns3, List } from 'lucide-react'
 import { useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { useSetBoard } from '@/api/projects'
-import { useSprints, useTickets, useUpdateTask } from '@/api/tickets'
+import { useArchivedTasks, useSprints, useTickets, useUpdateTask } from '@/api/tickets'
 import type { BoardColumn, Phase, ProjectSummary, TaskView, TicketPatch, User } from '@/api/types'
 import { selectClass } from '@/components/ui/Field'
 import { QueryError } from '@/components/ui/QueryError'
@@ -81,6 +81,9 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
   const onBoard = check('phase.manage', { project }) ? (columns: BoardColumn[]) => setBoard.mutateAsync({ id: project.id, columns }) : undefined
 
   const shown = filterTasks(tickets.data ?? [], { phase, sprint })
+  // The list can also show the archived tasks, below the others, kept in ?archived=1.
+  const showArchived = view === 'list' && params.get('archived') === '1'
+  const archived = filterTasks(useArchivedTasks(project.id, view === 'list').data ?? [], { phase, sprint })
   let body
   if (tickets.isError) body = <QueryError what="Tasks" onRetry={() => void tickets.refetch()} />
   else if (tickets.isPending) body = view === 'board' ? <BoardSkeleton /> : <BacklogSkeleton />
@@ -118,10 +121,21 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
               ))}
             </select>
           )}
+          {view === 'list' && (archived.length > 0 || showArchived) && (
+            <button type="button" aria-pressed={showArchived} onClick={() => setParam('archived', showArchived ? null : '1')} className={chip(showArchived)}>
+              Show archived ({archived.length})
+            </button>
+          )}
           <ViewSwitch view={view} />
         </div>
       </div>
       {body}
+      {showArchived && archived.length > 0 && (
+        <section aria-label="Archived tasks" className="mt-6 opacity-75">
+          <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-fg-muted">Archived</h2>
+          <ProjectBacklog tasks={archived} phases={phases} users={people} board={project.board} />
+        </section>
+      )}
     </>
   )
 }
