@@ -24,11 +24,11 @@ function decodeCursor(cursor: string): SortKey | null {
   return at < 0 ? null : { createdAt: cursor.slice(0, at), id: cursor.slice(at + 1) }
 }
 
-/** The current user's unread count: messages after their read time that someone else sent. */
+/** The current user's unread count: messages after their own read time that someone else sent, not deleted. */
 function withUnread(data: DbData, channel: StoredChannel): Channel {
-  const readAt = data.reads[channel.id] ?? ''
+  const readAt = data.reads[data.currentUserId]?.[channel.id] ?? ''
   const unreadCount = data.messages.filter(
-    (m) => m.channelId === channel.id && m.createdAt > readAt && m.senderId !== data.currentUserId,
+    (m) => m.channelId === channel.id && m.createdAt > readAt && m.senderId !== data.currentUserId && !m.deletedAt,
   ).length
   return { ...channel, unreadCount }
 }
@@ -265,7 +265,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       await delay()
       await db.update((data) => {
         readableChannel(data, channelId)
-        data.reads[channelId] = new Date().toISOString()
+        data.reads[data.currentUserId] = { ...data.reads[data.currentUserId], [channelId]: new Date().toISOString() }
       })
     },
   }

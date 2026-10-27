@@ -522,7 +522,8 @@ export function seed(now: Date): SeedResult {
     timeEntries,
     checkIns,
     rates,
-    reads: buildReads(rawChannels.map((c) => c.id), messages, { 'c-frontend': 3, 'c-dm-2': 1 }, now),
+    // Everyone starts with the same read state, so each persona sees the demo's unread badges.
+    reads: Object.fromEntries(users.map((u) => [u.id, buildReads(rawChannels.map((c) => c.id), messages, { 'c-frontend': 3, 'c-dm-2': 1 }, now)])),
     counters: buildCounters(projects.map((p) => p.id), tickets),
     mentionReads: {} as Record<string, string[]>,
   }

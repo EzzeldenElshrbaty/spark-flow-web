@@ -122,10 +122,10 @@ describe('chat.channels and unreadCount', () => {
   })
 
   it('markRead saves the read time for that channel only', async () => {
-    const before = (await db.read()).reads
+    const before = (await db.read()).reads['u-1']!
     const t0 = new Date().toISOString()
     await api.chat.markRead('c-frontend')
-    const reads = (await db.read()).reads
+    const reads = (await db.read()).reads['u-1']!
     expect(reads['c-frontend'] >= t0).toBe(true) // set to the current time
     expect(reads['c-frontend']).not.toBe(before['c-frontend'])
     expect(reads['c-dm-2']).toBe(before['c-dm-2'])
@@ -136,7 +136,7 @@ describe('chat.channels and unreadCount', () => {
   })
 
   it('own messages do not count as unread', async () => {
-    await db.update((d) => { d.reads['c-backend'] = new Date(Date.now() - 3_600_000).toISOString() }) // read an hour ago
+    await db.update((d) => { d.reads['u-1'] = { ...d.reads['u-1'], 'c-backend': new Date(Date.now() - 3_600_000).toISOString() } }) // read an hour ago
     expect((await api.chat.channel('c-backend')).unreadCount).toBe(0)
     await sendMessage(db, hub, { channelId: 'c-backend', content: 'mine' })
     expect((await api.chat.channel('c-backend')).unreadCount).toBe(0)
@@ -469,5 +469,32 @@ describe('a private thread', () => {
     await expect(api.chat.message(secret.id)).rejects.toMatchObject({ status: 403, detail: "You're not in this channel." })
     await expect(api.chat.replies(secret.id)).rejects.toMatchObject({ status: 403 })
     await expect(api.chat.markRead('c-release')).rejects.toMatchObject({ status: 403 })
+  })
+})
+
+describe('read state per person', () => {
+  it('my markRead does not clear the badge for someone else', async () => {
+    await api.users.viewAs('u-3')
+    await api.chat.send('c-general', 'Lunch at 1?')
+    await api.users.viewAs('u-1')
+    await api.users.viewAs('u-2')
+    const before = (await api.chat.channel('c-general')).unreadCount
+    await api.users.viewAs('u-1')
+    await api.chat.markRead('c-general')
+    expect((await api.chat.channel('c-general')).unreadCount).toBe(0)
+    await api.users.viewAs('u-2')
+    expect((await api.chat.channel('c-general')).unreadCount).toBe(before)
+    expect(before).toBeGreaterThan(0)
+  })
+
+  it('deleted messages do not count as unread', async () => {
+    await api.users.viewAs('u-3')
+    const sent = await api.chat.send('c-general', 'Oops')
+    await api.users.viewAs('u-2')
+    const before = (await api.chat.channel('c-general')).unreadCount
+    await api.users.viewAs('u-3')
+    await api.chat.remove({ kind: 'message', id: sent.id })
+    await api.users.viewAs('u-2')
+    expect((await api.chat.channel('c-general')).unreadCount).toBe(before - 1)
   })
 })

@@ -53,6 +53,23 @@ describe('createDb', () => {
     }
   })
 
+  it('a v3 document is migrated, not reseeded: its records stay and reads move to the default person', async () => {
+    const store = createMemoryStore()
+    const v3 = { ...emptyData(), version: 3, reads: { c1: '2026-02-02T00:00:00.000Z' } as unknown as DbData['reads'], counters: { p1: 7 } }
+    await store.transact(() => ({ doc: v3, result: null }))
+    const data = await createDb(store, fakeSeed).read()
+    expect(data.version).toBe(DB_VERSION)
+    expect(data.counters).toEqual({ p1: 7 })
+    expect(data.reads).toEqual({ u1: { c1: '2026-02-02T00:00:00.000Z' } })
+    expect(await store.readDoc()).toMatchObject({ version: DB_VERSION, reads: { u1: { c1: '2026-02-02T00:00:00.000Z' } } })
+  })
+
+  it('a document older than any migration is still reseeded', async () => {
+    const store = createMemoryStore()
+    await store.transact(() => ({ doc: { ...emptyData(), version: 1, counters: { p1: 7 } }, result: null }))
+    expect((await createDb(store, fakeSeed).read()).counters).toEqual({})
+  })
+
   it('keeps a newer doc untouched, works from memory and warns once', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const store = createMemoryStore()
@@ -64,7 +81,7 @@ describe('createDb', () => {
     })
     expect((await db.read()).users[0].name).toBe('Changed')
     await db.update((d) => {
-      d.reads.c1 = 'T'
+      d.reads.u1 = { c1: 'T' }
     })
     expect(await store.readDoc()).toEqual(newer)
     expect(warn).toHaveBeenCalledOnce()
@@ -98,9 +115,9 @@ describe('createDb', () => {
     const store = createMemoryStore()
     const db = createDb(store, fakeSeed)
     await db.update((d) => {
-      d.reads.c1 = '2026-02-02T00:00:00.000Z'
+      d.reads.u1 = { c1: '2026-02-02T00:00:00.000Z' }
     })
-    expect(await store.readDoc()).toMatchObject({ reads: { c1: '2026-02-02T00:00:00.000Z' } })
+    expect(await store.readDoc()).toMatchObject({ reads: { u1: { c1: '2026-02-02T00:00:00.000Z' } } })
   })
 
   it('concurrent updates from two dbs on one IndexedDB keep both changes', async () => {
@@ -111,11 +128,11 @@ describe('createDb', () => {
     await Promise.all(
       Array.from({ length: 10 }, (_, i) =>
         (i % 2 ? a : b).update((d) => {
-          d.reads[`c${i}`] = 'T'
+          d.reads[`u${i}`] = { c: 'T' }
         }),
       ),
     )
-    expect(Object.keys((await b.read()).reads).sort()).toEqual(Array.from({ length: 10 }, (_, i) => `c${i}`).sort())
+    expect(Object.keys((await b.read()).reads).sort()).toEqual(Array.from({ length: 10 }, (_, i) => `u${i}`).sort())
   })
 
   it('reset clears everything and seeds again', async () => {
@@ -134,7 +151,7 @@ describe('createDb', () => {
     const db = createDb(createMemoryStore(), fakeSeed)
     await db.update((d) => {
       d.users[0].name = 'Exported'
-      d.reads.c1 = 'T'
+      d.reads.u1 = { c1: 'T' }
     })
     const bundle = await db.exportAll()
     expect(bundle).toMatchObject({ app: 'spark-flow', version: DB_VERSION })

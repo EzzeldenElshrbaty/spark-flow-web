@@ -19,9 +19,10 @@ import type {
   Workspace,
 } from '@/api/types'
 import { ApiError } from '@/lib/apiError'
+import { migrate } from './migrations'
 import type { MockStore } from './store'
 
-export const DB_VERSION = 3 // 2: the company-system document (spec §3); 3: mention read state
+export const DB_VERSION = 4 // 2: the company-system document (spec §3); 3: mention read state; 4: channel reads per person
 /** Phase 1+2 kept the mock database in localStorage under keys starting with this. */
 const LEGACY_PREFIX = 'spark-flow.mockdb.v1'
 
@@ -45,8 +46,8 @@ export type DbData = {
   timeEntries: TimeEntry[]
   checkIns: CheckIn[]
   rates: Rate[]
-  /** channelId -> ISO time the current user last read it. */
-  reads: Record<string, string>
+  /** userId -> channelId -> ISO time they last read it. */
+  reads: Record<string, Record<string, string>>
   /** userId -> ids of the mentions they have read. */
   mentionReads: Record<string, string[]>
   counters: Record<string, number> // projectId -> next ticket number
@@ -111,6 +112,13 @@ function conditionOf(doc: unknown): Condition {
   return doc.version > DB_VERSION ? 'newer' : 'outdated'
 }
 
+/** An older document brought up to date, when every step exists and the result is usable; else null (reseed). */
+function upgraded(doc: unknown): DbData | null {
+  if (!isRecord(doc) || typeof doc.version !== 'number' || doc.version >= DB_VERSION) return null
+  const next = migrate(doc, DB_VERSION)
+  return next && hasShape(next) && hasUsableRecords(next) ? next : null
+}
+
 const toBlob = ({ mimeType, base64 }: { mimeType: string; base64: string }) =>
   new Blob([Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))], { type: mimeType })
 
@@ -157,8 +165,11 @@ export function createDb(store: MockStore, seed: (now: Date) => SeedResult, now:
         return { doc, result: undefined as T }
       }
       let data: DbData
+      const migrated = condition === 'outdated' ? upgraded(doc) : null
       if (condition === 'ok') {
         data = doc as DbData
+      } else if (migrated) {
+        data = migrated
       } else {
         const seeded = seed(now())
         data = seeded.data
