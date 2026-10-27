@@ -35,6 +35,8 @@
 
 **M11 (28 Oct 2026)** fixed GAP-009, 018–023, 025–029 and 033; the rules are in the spec, §4.3–4.4.
 
+**M13 (28 Oct 2026)** fixed the small issues deferred from the M9–M12 reviews; the rules are in the spec, §4.4.
+
 **M12 (28 Oct 2026)** fixed every Low gap, GAP-034 to 050 (GAP-034 and GAP-050's first bullet were already fixed). `trackLoading` stays: it feeds the loading bar.
 
 ## 1. Executive summary
