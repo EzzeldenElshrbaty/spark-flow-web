@@ -1,3 +1,4 @@
+import { coarsePointer, shouldSendOnEnter } from '@/pages/chat/composerKeys'
 import clsx from 'clsx'
 import { AtSign, Folder, ListChecks, SendHorizontal, Users } from 'lucide-react'
 import { useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
@@ -65,6 +66,8 @@ export function Composer({
   const [dismissedAt, setDismissedAt] = useState<number | null>(null)
   const ref = useRef<HTMLTextAreaElement>(null)
   const lastTyping = useRef(0)
+  // Read once: whether this is a touch screen, where Enter makes a new line.
+  const [coarse] = useState(coarsePointer)
   const listId = useId()
 
   const mention = activeMention(text, caret)
@@ -138,7 +141,7 @@ export function Composer({
       onCancel()
       return
     }
-    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+    if (shouldSendOnEnter({ key: e.key, shiftKey: e.shiftKey, isComposing: e.nativeEvent.isComposing }, coarse)) {
       e.preventDefault()
       void submit()
     }
@@ -212,7 +215,7 @@ export function Composer({
         />
         <div className="flex flex-wrap items-center gap-2 px-1 pt-1">
           <span className="hidden items-center gap-1 text-xs text-fg-muted sm:inline-flex">
-            <AtSign className="size-3.5" /> to mention · Shift+Enter for a new line
+            <AtSign className="size-3.5" /> to mention{coarse ? '' : ' · Shift+Enter for a new line'}
           </span>
           {extra}
           {onCancel && (
