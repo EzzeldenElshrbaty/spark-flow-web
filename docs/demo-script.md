@@ -72,6 +72,8 @@ reload it, so do it shortly before the demo. Switch people with the user menu �
 4. Sidebar **+** by Direct messages → pick Salma and Hossam → **Open conversation**. Doing it again opens the same
    one. **Teams** → **Message** on Mariam opens the DM you already have.
 5. Two tabs: **View as Mariam** in one. The other stays Youssef, and each sends as itself.
+6. Nexus Core → **Edit project**: untick Hossam and the Backend team. The form says "Hossam Gaber keeps 1 open task
+   here." Save: #nexus-core drops him, and NEX-107 reads "Hossam Gaber (not on this project)" until reassigned.
 
 ## Story 6: your own board, and what happened (about 3 minutes)
 

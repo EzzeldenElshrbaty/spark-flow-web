@@ -31,6 +31,8 @@
 
 **M8 (28 Oct 2026)** fixed GAP-010, 011, 013, 017, 031 and 032; see each finding's Status line.
 
+**M10 (28 Oct 2026)** fixed GAP-012, 014, 015, 016 and 024; the rules are in the spec, §4.4.
+
 ## 1. Executive summary
 
 Spark Flow is **well built for its scope**. The mock backend wraps every write in one transaction with its permission check, and every `Api` method (54 of them) has an HTTP route. The `can()` table agrees with the UI gates, and every realtime event that is emitted is handled. The demo flows work end to end.
@@ -327,6 +329,7 @@ The layers are types → mock (with its permission check) → `http.ts` → hook
 - **Effort:** S
 
 **GAP-012: Many changes don't reach other open tabs**
+- **Status:** ✅ Fixed in M10, `eb5a569`.
 - **Category:** Partial implementation · **Severity:** Medium · **Certainty:** Confirmed
 - **Evidence:**
   - There is no `hub.publish` in `src/mocks/projects.ts` (projects, phases, deliverables, board columns), `rates.ts`, `files.upload`, `mentions.markRead`, `chat.markRead` or `dbApi.ts` (reset and reload; see the comment at `dbApi.ts:7`).
@@ -354,6 +357,7 @@ The layers are types → mock (with its permission check) → `http.ts` → hook
 - **Effort:** M
 
 **GAP-014: Writes accept unchecked values and extra fields**
+- **Status:** ✅ Fixed in M10, `739bde2`.
 - **Category:** Data integrity / Authorization · **Severity:** Medium · **Certainty:** Confirmed
 - **Evidence:**
   - `checkTaskInput` checks title, phase and estimate only (`src/mocks/tickets.ts:49-53`); `updateTicket` writes every key it is sent (`:142-144`).
@@ -368,6 +372,7 @@ The layers are types → mock (with its permission check) → `http.ts` → hook
 - **Effort:** S
 
 **GAP-015: Saving a task overwrites changes made since it was opened; the permission is checked on a stale read**
+- **Status:** ✅ Fixed in M10, `3c0f179`. Same-field edits still keep the last save; `If-Match` → 409 is in the spec for the backend.
 - **Category:** Concurrency · **Severity:** Medium · **Certainty:** Confirmed
 - **Evidence:**
   - TaskSheet sends every field, status included (`src/pages/projects/TaskSheet.tsx:98-110`).
@@ -382,6 +387,7 @@ The layers are types → mock (with its permission check) → `http.ts` → hook
 - **Effort:** S–M
 
 **GAP-016: A project's chat channel drifts from its project**
+- **Status:** ✅ Fixed in M10, `99fd9c0`.
 - **Category:** Data integrity / Inconsistency · **Severity:** Medium · **Certainty:** Confirmed
 - **Evidence:**
   - The channel's `memberIds` and name are copied once, at create (`src/mocks/projects.ts:85-93`), and `projects.update` never touches them (`:101-117`).
@@ -476,6 +482,7 @@ The layers are types → mock (with its permission check) → `http.ts` → hook
 - **Effort:** M · **Depends on:** GAP-018
 
 **GAP-024: Removing someone from a project leaves their tasks assigned, while the form shows "Unassigned"**
+- **Status:** ✅ Fixed in M10, `11ce06e`. No bulk reassign (Q6): the project form warns instead.
 - **Category:** Data integrity / UX state · **Severity:** Medium · **Certainty:** Likely
 - **Evidence:**
   - `projects.update` changes members without touching tasks (`src/mocks/projects.ts:101-117`).

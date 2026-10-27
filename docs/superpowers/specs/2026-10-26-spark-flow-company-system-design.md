@@ -128,6 +128,32 @@ HTTP paths follow the Phases 1+2 style (`POST /api/projects`, `POST /api/time/st
 
 "View as" (user menu, demo only, hidden when `backendOn`) switches the current user among seeded people of each role.
 
+### 4.4 Write rules (enforced in the mock — 400 `ApiError` with the sentence the form shows — for the backend to copy)
+
+- **Patches take listed fields only.** Any other field → `Some of these fields can't be changed.`
+  - Task: `title, description, status, priority, storyPoints, assigneeId, sprintId, rank, phaseId, type, dueAt, estimateHours`.
+  - Project: `name, clientName, description, links, managerId, memberIds, teamIds, status, startDate, dueDate, logoFileId`.
+  - Phase: `name, startDate, dueDate, status`. Deliverable: `phaseId, title, dueDate, doneAt`.
+- **Task values** (create and update):
+  - `priority` is urgent / high / medium / low (`That isn't a priority.`); `type` is task / bug (`That isn't a task type.`).
+  - `status` is a column of the project's board (`That column no longer exists.`).
+  - `assigneeId` is one of the project's people — manager, members, people on its teams — or the one the task already has (`Pick someone on the project.`).
+  - `sprintId` and `phaseId` belong to the task's project (`That sprint belongs to another project.`, `That phase belongs to another project.`).
+  - `storyPoints` ≥ 0 (`Story points are a number, 0 or more.`); `estimateHours` ≥ 0; `dueAt` a date (`Pick a due date.`); `rank` a number.
+  - An archived task takes no change (`This task is archived. Restore it first.`).
+- **Project, phase, deliverable values:**
+  - Project `status` planned / active / onHold / delivered; `managerId` an existing person (`Pick a project manager.`); every `memberIds` entry a person (`Someone on this list doesn't exist.`); every `teamIds` entry a team (`That team doesn't exist.`).
+  - Phase `status` notStarted / inProgress / done (`That isn't a phase status.`).
+  - Deliverable `phaseId` of its own project; `dueDate` a date; `doneAt` null or a date (`Pick a done date.`).
+- **A task save sends only the fields that changed** since the form opened. Rights and values are checked in the same transaction as the write, never on an earlier read.
+  - The backend may also take `If-Match: <updatedAt>` and answer 409 "This task changed since you opened it." The prototype doesn't send it.
+- **A project's chat follows the project** on every project write: its name is the project name's slug (`nexus-core`), with `-2`, `-3`… when another channel in the workspace has it, always a valid channel name; its members are the project's people. A change publishes `channelChanged`.
+- **Removing people from a project leaves their tasks assigned.** The task form shows the assignee as "Name (not on this project)"; the project form says who keeps how many open tasks.
+- **Live events** (one per change, after the write) and what each makes stale:
+  - `ticketUpdated` → the task, its lists and history, project summaries, the dashboard; `projectChanged` → project, phases, deliverables, board, summaries, dashboard; `channelChanged` → channel lists.
+  - `ratesChanged` → rates, the time report, the dashboard, project time; `filesChanged{projectId}` → its files.
+  - `readChanged{userId}` → channel lists and mentions; `dataReset` (a reset or reload) → everything.
+
 ## 5. Screens (copy the named Spark CRM screen in `design/screenshots/`)
 
 Sidebar groups: **WORK** Home, Projects, My tasks · **TEAM** Chat, Teams · **MANAGE** Dashboard, Time & cost ·
