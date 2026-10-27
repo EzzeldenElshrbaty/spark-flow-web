@@ -1,4 +1,4 @@
-import { IconChevronRight, IconListCheck, IconMessage } from '@tabler/icons-react'
+import { IconChevronRight, IconListCheck, IconMessage, IconMoodPlus } from '@tabler/icons-react'
 import clsx from 'clsx'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { useLinkPreview, useOpenDm, useReact } from '@/api/chat'
@@ -8,6 +8,10 @@ import { Tag } from '@/components/sf/Badge'
 import { Button } from '@/components/sf/Button'
 import { Icon } from '@/components/sf/Icon'
 import { Popover } from '@/components/sf/Popover'
+import { Tooltip } from '@/components/sf/Tooltip'
+import { emojiInfo } from '@/lib/emoji'
+import { reactorsText } from '@/lib/reactions'
+import { EmojiPicker } from '@/pages/chat/EmojiPicker'
 import { timeAgo } from '@/lib/format'
 import { withInspector } from '@/lib/inspector'
 import { parseBody } from '@/lib/messageBody'
@@ -80,16 +84,27 @@ function ProfileCard({ user, ctx, close }: { user: User; ctx: BodyContext; close
   )
 }
 
-/** Reaction pills (spec 6.6): the emoji is the people's own, the count is ours; mine is outlined in accent. */
+/**
+ * Reaction pills (spec 6.6): the emoji is the people's own, the count is ours; mine is outlined in accent. The tooltip
+ * shows the emoji large, who reacted and its alias. While the row is hovered (or has focus) an add chip opens the
+ * emoji picker.
+ */
 export function Reactions({ reactions, users, target, meId, canReact }: { reactions: Reaction[]; users: User[]; target: ChatTarget; meId?: string; canReact: boolean }) {
-  const react = useReact()
+  const react = useReact(meId)
   const shown = reactions.filter((reaction) => reaction.userIds.length > 0)
   if (shown.length === 0) return null
   return (
     <ul className="mt-1 flex flex-wrap gap-1" aria-label="Reactions">
       {shown.map((reaction) => {
         const mine = meId != null && reaction.userIds.includes(meId)
-        const who = reaction.userIds.map((id) => users.find((u) => u.id === id)?.name ?? 'Unknown person').join(', ')
+        const who = reactorsText(reaction.userIds, meId, (id) => users.find((u) => u.id === id)?.name ?? 'Unknown person')
+        const alias = emojiInfo(reaction.emoji)?.aliases[0]
+        const tip = (
+          <span className="flex items-center gap-2">
+            <span className="sf-emoji text-[28px]/none">{reaction.emoji}</span>
+            {who}
+          </span>
+        )
         const pill = clsx(
           'inline-flex h-6 items-center gap-1 rounded-sf-full border px-2 font-sf text-[12px]/[16px] tabular-nums',
           mine ? 'border-sf-accent bg-sf-surface-mention font-semibold text-sf-accent' : 'border-sf-line bg-sf-surface font-medium text-sf-text-secondary',
@@ -103,9 +118,9 @@ export function Reactions({ reactions, users, target, meId, canReact }: { reacti
         return (
           <li key={reaction.emoji}>
             {canReact ? (
+              <Tooltip label={tip} sub={alias && `:${alias}:`}>
               <button
                 type="button"
-                title={who}
                 aria-pressed={mine}
                 aria-label={`${reaction.emoji} ${reaction.userIds.length}: ${who}`}
                 disabled={react.isPending}
@@ -114,6 +129,7 @@ export function Reactions({ reactions, users, target, meId, canReact }: { reacti
               >
                 {content}
               </button>
+              </Tooltip>
             ) : (
               <span title={who} aria-label={`${reaction.emoji} ${reaction.userIds.length}: ${who}`} className={pill}>
                 {content}
@@ -122,6 +138,34 @@ export function Reactions({ reactions, users, target, meId, canReact }: { reacti
           </li>
         )
       })}
+      {canReact && (
+        <li className="hidden group-focus-within:block group-hover:block">
+          <Popover
+            label="Add reaction"
+            className="w-[352px] max-w-[calc(100vw-16px)] overflow-hidden"
+            trigger={(props) => (
+              <button
+                type="button"
+                {...props}
+                aria-label="Add reaction"
+                className="sf-focus inline-flex h-6 w-8 items-center justify-center rounded-sf-full border border-sf-line bg-sf-surface text-sf-text-secondary hover:border-sf-line-strong"
+              >
+                <Icon icon={IconMoodPlus} size={16} />
+              </button>
+            )}
+          >
+            {(close) => (
+              <EmojiPicker
+                onPick={(emoji) => {
+                  close()
+                  // Picking one I already gave isn't a toggle off: the picker only adds.
+                  if (!reactions.some((r) => r.emoji === emoji && meId && r.userIds.includes(meId))) react.mutate({ target, emoji })
+                }}
+              />
+            )}
+          </Popover>
+        </li>
+      )}
       {react.error && (
         <li role="alert" className="sf-small basis-full text-sf-error">
           {(react.error as Error).message}
@@ -194,7 +238,7 @@ export function LinkedTasks({ message, ctx }: { message: ChatMessage; ctx: BodyC
 const CARD = /^(Bug|Comment) on ([A-Z]{2,5}-\d+)(?:: |$)/
 
 /** The card a task comment or bug posts in its project's chat: the task, the kind, the text and its files. */
-export function CommentCard({ message, ctx }: { message: ChatMessage; ctx: BodyContext }) {
+export function CommentCard({ message, ctx, link }: { message: ChatMessage; ctx: BodyContext; link?: string }) {
   const [params] = useSearchParams()
   const match = CARD.exec(message.content)
   const bug = match?.[1] === 'Bug'
@@ -217,7 +261,7 @@ export function CommentCard({ message, ctx }: { message: ChatMessage; ctx: BodyC
         {task && <span className="sf-small min-w-0 truncate text-sf-text-secondary">{task.title}</span>}
       </div>
       {text.trim() && <div className="mt-2"><MessageBody body={parseBody(text)} ctx={ctx} /></div>}
-      <MessageFiles attachments={message.attachments} />
+      <MessageFiles attachments={message.attachments} link={link} />
     </div>
   )
 }

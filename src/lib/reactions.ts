@@ -1,2 +1,30 @@
-/** The reactions people can add to a message or reply; the mock refuses any other emoji. */
+import type { Reaction } from '@/api/types'
+
+/** The quick reactions the ⋯ menu offers; the picker offers any emoji. */
 export const REACTIONS = ['👍', '❤️', '😂', '🎉', '👀', '✅'] as const
+
+/** At most this many different emoji on one message (spec 6.6). */
+export const MAX_DISTINCT_REACTIONS = 50
+
+/**
+ * Reactions after `userId` toggles `emoji`: added (as a new emoji, or to one already there) or taken back; an emoji
+ * nobody reacts with any more goes. Null when adding it would pass the cap. The server and the optimistic update
+ * both use it, so the screen shows what the server will store.
+ */
+export function toggleReaction(reactions: Reaction[], emoji: string, userId: string): Reaction[] | null {
+  const existing = reactions.find((r) => r.emoji === emoji)
+  if (!existing) return reactions.length >= MAX_DISTINCT_REACTIONS ? null : [...reactions, { emoji, userIds: [userId] }]
+  const userIds = existing.userIds.includes(userId) ? existing.userIds.filter((id) => id !== userId) : [...existing.userIds, userId]
+  return reactions.map((r) => (r.emoji === emoji ? { ...r, userIds } : r)).filter((r) => r.userIds.length > 0)
+}
+
+/** At most this many people are named in a reaction's tooltip; the rest are counted. */
+const NAMED = 2
+
+/** Who reacted, as the tooltip says it (spec 6.6): "You and Hossam Gaber", "You, Hossam Gaber and 2 others". */
+export function reactorsText(userIds: string[], meId: string | undefined, nameOf: (id: string) => string): string {
+  const names = [...(meId && userIds.includes(meId) ? ['You'] : []), ...userIds.filter((id) => id !== meId).map(nameOf)]
+  if (names.length <= 1) return names[0] ?? ''
+  if (names.length <= NAMED + 1) return `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
+  return `${names.slice(0, NAMED).join(', ')} and ${names.length - NAMED} others`
+}

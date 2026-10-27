@@ -148,10 +148,30 @@ describe('ChannelMessage parts (feature 4 follow-up)', () => {
 
   it('reactions: mine is pressed and outlined in accent, with who reacted in its name', () => {
     show(message('hi', { reactions: [{ emoji: '👍', userIds: ['u-1', 'u-2'] }, { emoji: '🎉', userIds: ['u-2'] }] }))
-    const mine = screen.getByRole('button', { name: '👍 2: Youssef Abdelrahman, Nour El-Sayed' })
+    const mine = screen.getByRole('button', { name: '👍 2: You and Nour El-Sayed' })
     expect(mine.getAttribute('aria-pressed')).toBe('true')
     expect(mine.className).toContain('border-sf-accent')
     expect(screen.getByRole('button', { name: '🎉 1: Nour El-Sayed' }).getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('an add chip opens the emoji picker; picking one closes it', () => {
+    show(message('hi', { reactions: [{ emoji: '👍', userIds: ['u-2'] }] }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add reaction' }))
+    const picker = screen.getByRole('dialog', { name: 'Add reaction' })
+    expect(picker.querySelector('input[type="search"]')).toBe(document.activeElement)
+    fireEvent.click(screen.getAllByRole('button', { name: 'party popper' })[0])
+    expect(screen.queryByRole('dialog', { name: 'Add reaction' })).toBeNull()
+  })
+
+  it('no add chip where I may not react', () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <ChannelMessage message={message('hi', { reactions: [{ emoji: '👍', userIds: ['u-2'] }] })} users={users} ctx={ctx} meId="u-1" canPost={false} continuation={false} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    expect(screen.queryByRole('button', { name: 'Add reaction' })).toBeNull()
   })
 
   it('the thread summary shows who replied and how many, and opens the thread', () => {

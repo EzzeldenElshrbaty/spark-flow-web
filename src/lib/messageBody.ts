@@ -1,3 +1,5 @@
+import { graphemes, isEmojiGrapheme } from '@/lib/emojiText'
+
 /**
  * A message's body as structured rich text (spec §7): blocks of inline runs with marks and entities. The server
  * stores it next to the plain `content`; the page renders it as elements, never as HTML.
@@ -136,7 +138,6 @@ export function bodyText(body: Body): string {
 }
 
 const JUMBO_MAX = 23
-const PICTOGRAPH = /\p{Extended_Pictographic}|\p{Regional_Indicator}/u
 
 /** Whether a message is emoji and nothing else (up to 23), shown large (spec 6.3). */
 export function isJumbo(body: Body): boolean {
@@ -144,6 +145,6 @@ export function isJumbo(body: Body): boolean {
   const nodes = body[0].children
   if (!nodes.every((n) => n.type === 'text' && !n.marks)) return false
   const text = nodes.map((n) => (n.type === 'text' ? n.text : '')).join('').replace(/\s+/g, '')
-  const graphemes = [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(text)].map((s) => s.segment)
-  return graphemes.length > 0 && graphemes.length <= JUMBO_MAX && graphemes.every((g) => PICTOGRAPH.test(g))
+  const all = graphemes(text)
+  return all.length > 0 && all.length <= JUMBO_MAX && all.every(isEmojiGrapheme)
 }

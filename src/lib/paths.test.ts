@@ -24,6 +24,13 @@ describe('paths', () => {
   })
 })
 
+describe('paths.message', () => {
+  it('is the channel with the message to jump to, its id escaped', () => {
+    expect(paths.message('engineering', 'c-backend', 'm-b07')).toBe('/w/engineering/c/c-backend?message=m-b07')
+    expect(paths.message('engineering', 'c-1', 'a&b')).toBe('/w/engineering/c/c-1?message=a%26b')
+  })
+})
+
 describe('landingPath', () => {
   it('uses the saved place for that workspace', () => {
     expect(landingPath('engineering', { engineering: '/w/engineering/p/NEX/tasks' }, engineering)).toBe('/w/engineering/p/NEX/tasks')

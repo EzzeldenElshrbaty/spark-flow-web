@@ -302,9 +302,25 @@ describe('message actions', () => {
     expect((await api.chat.message(sent.id)).reactions).toEqual([])
   })
 
-  it('react refuses an emoji outside REACTIONS', async () => {
+  it('react takes any one emoji (spec 6.6), and refuses text or several emoji', async () => {
     const sent = await api.chat.send('c-general', 'Ship it')
-    await expect(api.chat.react(msg(sent), '🐍')).rejects.toMatchObject({ status: 400, detail: 'Pick one of the reactions shown.' })
+    await api.chat.react(msg(sent), '🐍')
+    await api.chat.react(msg(sent), '👍🏽')
+    expect((await api.chat.message(sent.id)).reactions.map((r) => r.emoji)).toEqual(['🐍', '👍🏽'])
+    for (const bad of ['ok', '🐍🐍', '', '1'])
+      await expect(api.chat.react(msg(sent), bad)).rejects.toMatchObject({ status: 400, detail: 'Pick an emoji.' })
+  })
+
+  it('a message takes at most 50 different emoji; adding to one already there still works', async () => {
+    const sent = await api.chat.send('c-general', 'Popular')
+    const fifty = [...'😀😃😄😁😆😅😂🤣😊😇🙂🙃😉😌😍🥰😘😗😙😚😋😛😝😜🤪🤨🧐🤓😎🤩🥳😏😒😞😔😟😕🙁😣😖😫😩🥺😢😭😤😠😡🤬🤯']
+    expect(fifty).toHaveLength(50)
+    await db.update((d) => {
+      d.messages.find((m) => m.id === sent.id)!.reactions = fifty.map((emoji) => ({ emoji, userIds: ['u-2'] }))
+    })
+    await expect(api.chat.react(msg(sent), '🐍')).rejects.toMatchObject({ status: 400, detail: 'This message has 50 different reactions already.' })
+    await api.chat.react(msg(sent), '😀')
+    expect((await api.chat.message(sent.id)).reactions[0].userIds).toEqual(['u-2', 'u-1'])
   })
 
   it('react on a private channel I am not in is refused', async () => {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
-import { useChannel, useJumpTarget, useLeaveChannel, useMarkRead, useMessages, useMessagesFrom, useSendMessage, useSetMuted, useSetStarred } from '@/api/chat'
+import { useChannel, useJumpTarget, useLeaveChannel, useMarkRead, useMessage, useMessages, useMessagesFrom, useSendMessage, useSetMuted, useSetStarred } from '@/api/chat'
 import { useUsers } from '@/api/users'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
@@ -210,20 +210,39 @@ function PaneFeed({
   const jumped = useMessagesFrom(channel.id, view.from)
   const messages = view.from === null ? live : jumped
   const jumpTarget = useJumpTarget()
-  const [jumpError, setJumpError] = useState(false)
+  const [jumpError, setJumpError] = useState<string | null>(null)
+  /** Brings message `seq` to the top: scrolled to when it's loaded, else the list opens from it. */
+  const goTo = (seq: number) =>
+    setView((v) => {
+      const loaded = (v.from === null ? live : jumped).data?.pages.some((p) => p.items.some((m) => m.seq === seq))
+      return loaded ? { ...v, focus: seq, nonce: v.nonce + 1 } : { from: seq, focus: seq, nonce: v.nonce + 1, atEnd: false }
+    })
   const onJump = (choice: JumpChoice) => {
-    setJumpError(false)
+    setJumpError(null)
     jumpTarget(channel.id, jumpSince(choice, new Date())).then(
-      (seq) =>
-        setView((v) => {
-          // Nothing that recent: the newest message is the closest there is.
-          if (seq === null) return { from: null, focus: null, nonce: v.nonce + 1, atEnd: true }
-          const loaded = (v.from === null ? live : jumped).data?.pages.some((p) => p.items.some((m) => m.seq === seq))
-          return loaded ? { ...v, focus: seq, nonce: v.nonce + 1 } : { from: seq, focus: seq, nonce: v.nonce + 1, atEnd: false }
-        }),
-      () => setJumpError(true),
+      // Nothing that recent: the newest message is the closest there is.
+      (seq) => (seq === null ? setView((v) => ({ from: null, focus: null, nonce: v.nonce + 1, atEnd: true })) : goTo(seq)),
+      () => setJumpError("Couldn't jump there. Try again."),
     )
   }
+  // A permalink (?message=, from Copy link) opens the channel on that message, once; the address then drops it.
+  const [params, setParams] = useSearchParams()
+  const linked = params.get('message')
+  const linkedMessage = useMessage(linked ?? undefined)
+  useEffect(() => {
+    if (!linked || (!linkedMessage.data && !linkedMessage.isError)) return
+    const m = linkedMessage.data
+    if (m && m.channelId === channel.id) goTo(m.seq)
+    else setJumpError("That message isn't in this channel any more.")
+    setParams(
+      (p) => {
+        p.delete('message')
+        return p
+      },
+      { replace: true },
+    )
+    // Runs when the linked message arrives (goTo reads the latest lists through setView).
+  }, [linked, linkedMessage.data, linkedMessage.isError])
   const realtime = useRealtime()
   const { mutate: markRead } = useMarkRead()
   useEffect(() => {
@@ -261,7 +280,7 @@ function PaneFeed({
           scope={scope}
         />
       )}
-      {jumpError && <p className="sf sf-small flex-none px-4 pt-2 text-sf-error md:px-6">Couldn't jump there. Try again.</p>}
+      {jumpError && <p className="sf sf-small flex-none px-4 pt-2 text-sf-error md:px-6">{jumpError}</p>}
       {composer && <div className="flex-none px-4 pt-2 pb-3 md:px-6">{composer}</div>}
     </>
   )

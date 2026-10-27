@@ -1,7 +1,8 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData, type QueryKey } from '@tanstack/react-query'
 import { qk } from '@/api/queryKeys'
 import { retryUnlessNotFound as retry } from '@/api/retry'
-import type { ChannelPatch, ChatTarget, NewChannel } from '@/api/types'
+import type { ChannelPatch, ChatTarget, NewChannel, Page, Reaction } from '@/api/types'
+import { toggleReaction } from '@/lib/reactions'
 import { api } from '@/lib/api'
 
 // Every hook below takes an id that may still be unknown (a route param, a lookup in progress): without one it
@@ -75,8 +76,41 @@ export function useMarkRead() {
 export function useSendMessage() {
   return useMutation({ mutationFn: ({ channelId, content }: { channelId: string; content: string }) => api.chat.send(channelId, content) })
 }
-export function useReact() {
-  return useMutation({ mutationFn: ({ target, emoji }: { target: ChatTarget; emoji: string }) => api.chat.react(target, emoji) })
+// Where a message or reply can be on screen: a channel's pages, one message, a thread's replies.
+const ROWS_KEYS = [['chat', 'messages'], ['chat', 'message'], ['chat', 'replies']]
+
+type Row = { id: string; reactions: Reaction[] }
+/** The cached data with `id`'s reactions toggled, whichever shape it is (pages, one message, a list of replies). */
+function toggledIn(data: unknown, id: string, emoji: string, meId: string): unknown {
+  const fix = <T extends Row>(row: T): T => (row.id === id ? { ...row, reactions: toggleReaction(row.reactions, emoji, meId) ?? row.reactions } : row)
+  if (Array.isArray(data)) return data.map(fix)
+  if (data && typeof data === 'object' && 'pages' in data) {
+    const pages = (data as InfiniteData<Page<Row>>).pages
+    return { ...data, pages: pages.map((page) => ({ ...page, items: page.items.map(fix) })) }
+  }
+  if (data && typeof data === 'object' && 'reactions' in data) return fix(data as Row)
+  return data
+}
+
+/**
+ * Toggles my reaction (spec 6.6): on screen at once, put back if the server refuses; the live event and the refresh
+ * after it bring everyone else's view in line.
+ */
+export function useReact(meId: string | undefined) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ target, emoji }: { target: ChatTarget; emoji: string }) => api.chat.react(target, emoji),
+    onMutate: async ({ target, emoji }) => {
+      if (!meId) return { before: [] as [QueryKey, unknown][] }
+      await Promise.all(ROWS_KEYS.map((queryKey) => queryClient.cancelQueries({ queryKey })))
+      const before = ROWS_KEYS.flatMap((queryKey) => queryClient.getQueriesData({ queryKey }))
+      for (const [key, data] of before) queryClient.setQueryData(key, toggledIn(data, target.id, emoji, meId))
+      return { before }
+    },
+    onError: (_error, _vars, context) => {
+      for (const [key, data] of context?.before ?? []) queryClient.setQueryData(key, data)
+    },
+  })
 }
 export function useEditMessage() {
   return useMutation({ mutationFn: ({ target, content }: { target: ChatTarget; content: string }) => api.chat.edit(target, content) })

@@ -102,8 +102,8 @@ function Panel({
         style={phone ? undefined : pos ? { top: pos.top, left: pos.left } : { top: 0, left: 0, visibility: 'hidden' }}
         className={clsx(
           'sf-ui fixed z-[var(--z-menu)] bg-sf-surface-raised text-sf-text shadow-sf-menu outline-none',
-          phone ? 'inset-x-0 bottom-0 rounded-t-sf-lg pb-[max(16px,env(safe-area-inset-bottom))]' : 'w-[300px] max-w-[calc(100vw-16px)] rounded-sf-lg',
-          className,
+          // `className` sizes the panel instead of the 300px card (the emoji picker sizes itself).
+          phone ? 'inset-x-0 bottom-0 rounded-t-sf-lg pb-[max(16px,env(safe-area-inset-bottom))]' : clsx('rounded-sf-lg', className ?? 'w-[300px] max-w-[calc(100vw-16px)]'),
         )}
       >
         {children}

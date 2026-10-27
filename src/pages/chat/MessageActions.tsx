@@ -6,6 +6,7 @@ import type { ChatTarget } from '@/api/types'
 import { ConfirmDeleteSheet } from '@/components/ConfirmDeleteSheet'
 import { MenuPanel } from '@/components/ui/Menu'
 import { REACTIONS } from '@/lib/reactions'
+import { useRole } from '@/lib/useRole'
 
 export const menuItemClass = 'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start text-sm text-fg-secondary hover:bg-surface-muted'
 
@@ -28,7 +29,8 @@ export function MessageActions({
   const [open, setOpen] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
-  const react = useReact()
+  const { persona } = useRole()
+  const react = useReact(persona.id)
   const remove = useDeleteMessage()
   const close = () => setOpen(false)
   const more = extra?.(close)

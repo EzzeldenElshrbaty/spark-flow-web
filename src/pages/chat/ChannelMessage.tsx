@@ -7,6 +7,7 @@ import { Avatar } from '@/components/sf/Avatar'
 import { Icon } from '@/components/sf/Icon'
 import { formatDate, formatTime } from '@/lib/format'
 import { firstPreviewable } from '@/lib/linkPreview'
+import { paths } from '@/lib/paths'
 import { Composer } from '@/pages/chat/Composer'
 import { firstTask, MessageBody, TaskUnfurl, type BodyContext } from '@/pages/chat/MessageBody'
 import { MessageActions } from '@/pages/chat/MessageActions'
@@ -73,6 +74,11 @@ export function ChannelMessage({
   const author = users.find((u) => u.id === message.senderId)
   const name = author?.name ?? 'Unknown person'
   const target: ChatTarget = { kind: reply ? 'reply' : 'message', id: message.id }
+  // Where a link to this message (or to a reply's thread) goes; Copy link to file gives it.
+  const permalink = new URL(
+    reply ? `${paths.channel(ctx.ws, message.channelId)}?thread=${encodeURIComponent(message.messageId)}` : paths.message(ctx.ws, message.channelId, message.id),
+    window.location.origin,
+  ).href
   const can = actionsFor(message, meId, canPost)
   const full = `${formatDate(message.createdAt)}, ${formatTime(message.createdAt)}`
   const time = (
@@ -108,7 +114,7 @@ export function ChannelMessage({
         />
       </div>
     )
-  else if (root?.commentId) body = <CommentCard message={root} ctx={ctx} />
+  else if (root?.commentId) body = <CommentCard message={root} ctx={ctx} link={permalink} />
   else if (root?.taskEvent) body = <TaskEventCard message={root} users={users} ctx={ctx} />
   else {
     const unfurl = firstTask(message.body, ctx.tasks)
@@ -116,7 +122,7 @@ export function ChannelMessage({
     body = (
       <>
         <MessageBody body={message.body} ctx={ctx} after={message.editedAt && <span className="sf-meta text-sf-text-muted">(edited)</span>} />
-        <MessageFiles attachments={message.attachments} />
+        <MessageFiles attachments={message.attachments} link={permalink} />
         {root && <LinkedTasks message={root} ctx={ctx} />}
         {unfurl && <TaskUnfurl task={unfurl} users={users} />}
         {link && <LinkPreviewCard url={link} />}

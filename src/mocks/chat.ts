@@ -1,7 +1,8 @@
 import { can } from '@/lib/permissions'
 import type { Api, Attachment, Channel, ChannelMemberState, ChatMessage, SystemEvent, ChatTarget, StoredChannel, ThreadReply } from '@/api/types'
 import { channelFormErrors } from '@/lib/channelForm'
-import { REACTIONS } from '@/lib/reactions'
+import { isOneEmoji } from '@/lib/emojiText'
+import { MAX_DISTINCT_REACTIONS, toggleReaction } from '@/lib/reactions'
 import type { DbData, MockDb } from './db'
 import { delay } from './latency'
 import type { MockHub } from './realtime'
@@ -265,16 +266,14 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
     restoreChannel: (id) => setArchived(id, false),
     async react(target, emoji) {
       await delay()
-      if (!(REACTIONS as readonly string[]).includes(emoji)) throw badRequest('Pick one of the reactions shown.')
+      if (!isOneEmoji(emoji)) throw badRequest('Pick an emoji.')
       const { channelId, messageId } = await db.update((data) => {
         const { row, channel, messageId } = findTarget(data, target)
         const me = checkCanPost(data, channel)
         if (row.deletedAt) throw badRequest("This message can't be changed.")
-        const reaction = row.reactions.find((r) => r.emoji === emoji)
-        if (!reaction) row.reactions.push({ emoji, userIds: [me.id] })
-        else if (reaction.userIds.includes(me.id)) reaction.userIds = reaction.userIds.filter((id) => id !== me.id)
-        else reaction.userIds.push(me.id)
-        row.reactions = row.reactions.filter((r) => r.userIds.length > 0)
+        const next = toggleReaction(row.reactions, emoji, me.id)
+        if (!next) throw badRequest(`This message has ${MAX_DISTINCT_REACTIONS} different reactions already.`)
+        row.reactions = next
         return { channelId: channel.id, messageId }
       })
       changed(channelId, messageId)

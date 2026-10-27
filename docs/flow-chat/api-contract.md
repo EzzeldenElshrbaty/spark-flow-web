@@ -110,3 +110,11 @@ Messages read from the API carry `replyUserIds`: who replied last, newest first,
 - **The server fetches the page, never the browser.** Guard the fetch: http and https only, resolve the host and refuse private, loopback and link-local addresses (SSRF), follow at most 3 redirects and re-check each one against the allow-list, 3s timeout, read at most 1 MB, and send no cookies or credentials.
 - Take `og:title` / `<title>`, `og:description`, `og:site_name` and `og:image`. Return `image` only as an https address (better: proxied through the API). Cache results for an hour.
 - The client shows one preview per message: the first allowed link.
+
+### Reactions
+
+`POST /api/messages/:id/reactions` (and the reply equivalent) toggles the person's reaction with any single emoji (one grapheme, e.g. 👍🏽 or 🇪🇬); anything else is `400` "Pick an emoji.". A message holds at most 50 different emoji: a new one past that is `400` "This message has 50 different reactions already." The client toggles optimistically and rolls back on an error, so the rule must match `toggleReaction` in `src/lib/reactions.ts`.
+
+### Permalinks
+
+`/w/:ws/c/:channelId?message=:messageId` opens the channel on that message (Copy link to file gives it); a reply's link is `?thread=:messageId`. The client looks the message up with `GET /api/messages/:id`.

@@ -16,6 +16,8 @@ export const paths = {
   workspace: (ws: string) => `/w/${ws}`,
   home: (ws: string) => `/w/${ws}`, // Home / My day is the workspace's own page
   channel: (ws: string, id: string) => `/w/${ws}/c/${id}`,
+  /** A permalink to one message: the channel opens on it (spec 6.2 jump). */
+  message: (ws: string, channelId: string, messageId: string) => `/w/${ws}/c/${channelId}?message=${encodeURIComponent(messageId)}`,
   projects: (ws: string) => `/w/${ws}/projects`,
   tasks: (ws: string) => `/w/${ws}/tasks`,
   project: (ws: string, key: string, tab: ProjectTab = 'overview', q?: TasksQuery) => `/w/${ws}/p/${key}/${tab}${query(q)}`,
