@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { TaskView, User } from '@/api/types'
-import { assigneeOptions, changedFields, tasksLeftWith } from './taskForm'
+import { assigneeOptions, changedFields, savePatch, tasksLeftWith } from './taskForm'
 
 const task = {
   title: 'Login', description: '', type: 'task', phaseId: 'ph1', status: 'todo', priority: 'medium', assigneeId: 'u-8',
@@ -27,6 +27,22 @@ const tarek = person('u-8', 'Tarek Lotfy')
 const salma = person('u-5', 'Salma Ibrahim')
 const hossam = person('u-6', 'Hossam Gaber')
 const users = [nour, mariam, tarek, salma, hossam]
+
+describe('changedFields and dates', () => {
+  it('a due date the form only rewrote (same day, midnight) is not a change', () => {
+    const seeded = { ...task, dueAt: '2026-11-01T14:30:00.000Z' } as TaskView
+    expect(changedFields(seeded, { ...same, dueAt: '2026-11-01T00:00:00.000Z' })).toEqual({})
+    expect(changedFields(seeded, { ...same, dueAt: '2026-11-02T00:00:00.000Z' })).toEqual({ dueAt: '2026-11-02T00:00:00.000Z' })
+  })
+})
+
+describe('savePatch', () => {
+  it("the assignee's save sends the status only when they changed it", () => {
+    expect(savePatch(task, same, false)).toEqual({})
+    expect(savePatch(task, { ...same, status: 'inReview', title: 'Ignored' }, false)).toEqual({ status: 'inReview' })
+    expect(savePatch(task, { ...same, title: 'New' }, true)).toEqual({ title: 'New' })
+  })
+})
 
 describe('assigneeOptions', () => {
   it('the current assignee stays an option when they left the project', () => {

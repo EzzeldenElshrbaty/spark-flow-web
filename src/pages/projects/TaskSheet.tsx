@@ -8,7 +8,7 @@ import { Sheet } from '@/components/ui/Sheet'
 import { projectPeople } from '@/lib/projectPeople'
 import { usePermission } from '@/lib/usePermission'
 import { byOrder } from './phases'
-import { assigneeOptions, changedFields } from './taskForm'
+import { assigneeOptions, savePatch } from './taskForm'
 import { columnsOf, startColumn } from '@/lib/boardColumns'
 
 const priorities: [Priority, string][] = [
@@ -92,7 +92,9 @@ export function TaskSheet({
     setErrors(found)
     if (Object.keys(found).length) return
     if (task && !canManage) {
-      update.mutate({ key: task.key, patch: { status: values.status } }, { onSuccess: onClose })
+      const patch = savePatch(opened ?? task, { status: values.status }, false)
+      if (Object.keys(patch).length === 0) onClose()
+      else update.mutate({ key: task.key, patch }, { onSuccess: onClose })
       return
     }
     const fields = {
@@ -109,7 +111,7 @@ export function TaskSheet({
     }
     if (task) {
       // Only what changed: the rest may have moved on since the sheet was opened.
-      const patch = changedFields(opened ?? task, fields)
+      const patch = savePatch(opened ?? task, fields, true)
       if (Object.keys(patch).length === 0) onClose()
       else update.mutate({ key: task.key, patch }, { onSuccess: onClose })
     }

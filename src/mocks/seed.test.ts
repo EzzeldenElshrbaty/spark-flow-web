@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { localDay } from '@/lib/dates'
 import { DB_VERSION } from './db'
 import { seed } from './seed'
+import { projectPeopleIds } from '@/lib/projectPeople'
 import { parseMentions, parseTicketKeys } from './text'
 
 const now = new Date('2026-10-26T12:00:00Z') // a Monday
@@ -56,6 +57,13 @@ describe('seed', () => {
     const logged = (taskId: string) => data.timeEntries.filter((e) => e.taskId === taskId).reduce((sum, e) => sum + hours(e), 0)
     const overEstimate = mob.filter((t) => t.estimateHours !== null && logged(t.id) > t.estimateHours)
     expect(overEstimate.map((t) => t.key)).toContain('MOB-104')
+  })
+
+  it("each project's channel holds exactly its people (the rule every project edit keeps)", () => {
+    for (const p of data.projects) {
+      const channel = data.channels.find((c) => c.id === p.channelId)!
+      expect(new Set(channel.memberIds)).toEqual(projectPeopleIds(p, data.users))
+    }
   })
 
   it('resolves every reference', () => {

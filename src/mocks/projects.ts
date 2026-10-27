@@ -85,11 +85,15 @@ export function channelNameFor(data: DbData, workspaceId: string, projectName: s
   return name
 }
 
-/** Keeps a project's channel in step with it: the name from the project's name, the members its people. */
-export function syncProjectChannel(data: DbData, project: Project): boolean {
+/**
+ * Keeps a project's channel in step with it: its members are the project's people, and when the project is named or
+ * renamed (`rename`), its name follows. An edit that keeps the name keeps the channel's name, so a channel named
+ * before this rule (#el-moasser) isn't renamed by changing a date.
+ */
+export function syncProjectChannel(data: DbData, project: Project, rename: boolean): boolean {
   const channel = data.channels.find((c) => c.id === project.channelId)
   if (!channel) return false
-  const name = channelNameFor(data, project.workspaceId, project.name, channel.id)
+  const name = rename ? channelNameFor(data, project.workspaceId, project.name, channel.id) : channel.name
   const memberIds = [...projectPeopleIds(project, data.users)]
   const changed = channel.name !== name || [...channel.memberIds].sort().join() !== [...memberIds].sort().join()
   Object.assign(channel, { name, memberIds })
@@ -173,7 +177,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
               lastMessageAt: null,
             })
             // Its name and people, worked out the same way every later edit keeps them.
-            syncProjectChannel(data, project)
+            syncProjectChannel(data, project, true)
             data.phases.push(...splitPhases(id, input.methodology === 'waterfall' ? WATERFALL : ['Build'], input.startDate, input.dueDate))
             data.counters[id] = 101
             return project
@@ -195,8 +199,9 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
             if (!next.name.trim()) throw badRequest('Give the project a name.')
             checkDates(next.startDate, next.dueDate)
             const changed = JSON.stringify({ ...project, ...next }) !== JSON.stringify(project)
+            const renamed = next.name !== project.name
             Object.assign(project, next)
-            channelChanged = syncProjectChannel(data, project)
+            channelChanged = syncProjectChannel(data, project, renamed)
             if (changed) logActivity(data, { projectId: project.id, taskKey: null, kind: 'project.changed', changes: [] }, now().toISOString())
             return project
           })

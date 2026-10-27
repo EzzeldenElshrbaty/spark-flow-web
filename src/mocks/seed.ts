@@ -26,6 +26,7 @@ import { checklistTxt, screenshotPng, scopePdf } from './seedFiles'
 import { localDay } from '@/lib/dates'
 import { mentionsFor } from './mentions'
 import { parseMentions, parseTicketKeys } from './text'
+import { projectPeopleIds } from '@/lib/projectPeople'
 
 // ── Builders and derived-field helpers ────────────────────────────────────
 // Everything below is pure: the same `now` always gives the same data (no Math.random, no Date.now).
@@ -434,6 +435,11 @@ export function seed(now: Date): SeedResult {
   // ── Assemble, then derive ───────────────────────────────────────────────
   const replies = buildReplies(rawReplies, rawMessages)
   const messages = buildMessages(rawMessages, replies)
+  // A project's channel holds exactly its people, as every later project edit keeps it (spec §4.4).
+  for (const c of rawChannels) {
+    const project = projects.find((p) => p.channelId === c.id)
+    if (project) c.memberIds = [...projectPeopleIds(project, users)]
+  }
   const channels = buildChannels(rawChannels, messages, replies)
   const tickets = buildTickets(rawTickets)
 

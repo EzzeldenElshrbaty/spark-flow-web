@@ -6,7 +6,16 @@ import { categoryOf } from '@/lib/boardColumns'
  * what someone else changed meanwhile (a status moved on the board, say).
  */
 export function changedFields(task: TaskView, fields: TicketPatch): TicketPatch {
-  return Object.fromEntries(Object.entries(fields).filter(([key, value]) => value !== (task as Record<string, unknown>)[key])) as TicketPatch
+  const was = task as Record<string, unknown>
+  // The form keeps a due date as a day (midnight UTC); a stored one may carry a time, which is the same day.
+  const same = (key: string, value: unknown) =>
+    key === 'dueAt' && typeof value === 'string' && typeof was.dueAt === 'string' ? value.slice(0, 10) === was.dueAt.slice(0, 10) : value === was[key]
+  return Object.fromEntries(Object.entries(fields).filter(([key, value]) => !same(key, value))) as TicketPatch
+}
+
+/** What a task sheet's save sends: what changed, and for someone who may only move the task, just its status. */
+export function savePatch(opened: TaskView, fields: TicketPatch, canManage: boolean): TicketPatch {
+  return changedFields(opened, canManage ? fields : { status: fields.status })
 }
 
 /**

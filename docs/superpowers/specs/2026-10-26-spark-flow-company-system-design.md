@@ -145,9 +145,9 @@ HTTP paths follow the Phases 1+2 style (`POST /api/projects`, `POST /api/time/st
   - Project `status` planned / active / onHold / delivered; `managerId` an existing person (`Pick a project manager.`); every `memberIds` entry a person (`Someone on this list doesn't exist.`); every `teamIds` entry a team (`That team doesn't exist.`).
   - Phase `status` notStarted / inProgress / done (`That isn't a phase status.`).
   - Deliverable `phaseId` of its own project; `dueDate` a date; `doneAt` null or a date (`Pick a done date.`).
-- **A task save sends only the fields that changed** since the form opened. Rights and values are checked in the same transaction as the write, never on an earlier read.
+- **A task save sends only the fields that changed** since the form opened (a due date is compared by day), for the assignee's status-only save too. Rights and values are checked in the same transaction as the write, never on an earlier read.
   - The backend may also take `If-Match: <updatedAt>` and answer 409 "This task changed since you opened it." The prototype doesn't send it.
-- **A project's chat follows the project** on every project write: its name is the project name's slug (`nexus-core`), with `-2`, `-3`… when another channel in the workspace has it, always a valid channel name; its members are the project's people. A change publishes `channelChanged`.
+- **A project's chat follows the project.** Its members are the project's people, on every project write (the seed starts that way). When the project is created or renamed, its channel's name becomes the project name's slug (`nexus-core`), with `-2`, `-3`… when another channel in the workspace has it, always a valid channel name; other edits keep the name. A change publishes `channelChanged`.
 - **Removing people from a project leaves their tasks assigned.** The task form shows the assignee as "Name (not on this project)"; the project form says who keeps how many open tasks.
 - **Live events** (one per change, after the write) and what each makes stale:
   - `ticketUpdated` → the task, its lists and history, project summaries, the dashboard; `projectChanged` → project, phases, deliverables, board, summaries, dashboard; `channelChanged` → channel lists.

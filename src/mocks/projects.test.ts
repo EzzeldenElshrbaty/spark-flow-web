@@ -266,6 +266,10 @@ describe('the project channel follows the project', () => {
     const data = await db.read()
     return data.channels.find((c) => c.id === data.projects.find((p) => p.id === projectId)!.channelId)!
   }
+  it("an edit that doesn't rename the project leaves its channel's name alone", async () => {
+    await api.projects.update('p-elm', { clientName: 'El Moasser Group' })
+    expect((await channelOf('p-elm')).name).toBe('el-moasser')
+  })
   it('renaming the project renames its channel', async () => {
     await api.projects.update('p-nex', { name: 'Nexus Two' })
     expect((await channelOf('p-nex')).name).toBe('nexus-two')
