@@ -151,12 +151,13 @@ Sources: [create and update from Slack](https://support.atlassian.com/jira-softw
 ## D. To-do, in order
 
 **Before or right after Thursday (P1)**. Each item is small and visible in a demo:
-- [ ] Drag a card to change its status (Board), with the same permission check as the status select.
-- [ ] Create a task from a chat message, via the message's ⋯ menu → "Create task". Prefill the title and description; the task records `linkedMessageId`; the message shows the task chip.
-- [ ] Post task events to the project chat as cards: created, assigned, status changed, done.
-- [ ] Emoji reactions: add or remove on messages and replies, with live updates in other tabs.
-- [ ] Edit and delete your own messages ("edited" label; a deleted message shows "This message was deleted.").
-- [ ] Create a channel (public or private) and edit its topic and members.
+- [x] Drag a card to change its status (Board), with the same permission check as the status select.
+- [x] Create a task from a chat message, via the message's ⋯ menu → "Create task". Prefill the title and description; the task records `linkedMessageId`; the message shows the task chip.
+- [x] Post task events to the project chat as cards: created, assigned, status changed, done.
+- [x] Emoji reactions: add or remove on messages and replies, with live updates in other tabs.
+- [x] Edit and delete your own messages ("edited" label; a deleted message shows "This message was deleted.").
+- [x] Create a channel (public or private) and edit its topic and members.
+- [x] Rename and reorder board columns per project (the manager); on dnd-kit with order inside a column, touch and keyboard. *(M5, added)*
 
 **Next milestone (P2)**:
 - [ ] Sprints: create, start (with dates and goal), complete (move unfinished work), drag between sprints and the backlog.

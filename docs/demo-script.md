@@ -43,6 +43,20 @@ reload it, so do it shortly before the demo. Switch people with the user menu �
    rate and come back: the cost moves.
 3. A Member typing `/dashboard` or `/time` is told they don't have access.
 
+## Story 4: the board and the chat work together (about 4 minutes)
+
+1. **Nour** → Nexus Core → **Tasks** → Board. Drag **NEX-106** into **In review**. Then drag a card between two
+   others in its column: the order holds. It also works on a phone (press and hold a card) and with the keyboard
+   (Space, the arrow keys, Space).
+2. Still Nour: the ⋯ on **In review** → **Rename column** → "Testing". Drag the Testing header after Done, then
+   back. The task panel's Status select now says Testing.
+3. **Chat** tab: "Moved NEX-106 to Testing" is there as a card. Hover a message → ⋯ → **Create task**: the title
+   and description come from the message; **Save task**. The message shows its NEX chip, and a "Created" card follows.
+4. In #general: ⋯ → 🎉 on someone's message; click the pill to take it back. ⋯ → **Edit message** on your own
+   ("· edited" appears), then **Delete message** ("This message was deleted.", its thread stays).
+5. Sidebar **+** by Channels → **New channel**: "design", **Private**, add Mariam. As **Tarek** (not in it) it isn't
+   in the sidebar, and its link says "You're not in this channel."
+
 ## If something looks off
 
 - Reload the seed (Settings → Database). It replaces everything in this browser, including uploads.
