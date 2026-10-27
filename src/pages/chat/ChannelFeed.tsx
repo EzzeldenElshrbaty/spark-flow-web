@@ -4,6 +4,7 @@ import type { ChatMessage, User } from '@/api/types'
 import { Button } from '@/components/ui/Button'
 import { QueryError } from '@/components/ui/QueryError'
 import { createRealtimeClient } from '@/lib/realtime'
+import { shouldMarkRead } from '@/pages/chat/markRead'
 import { MessageRow, MessageSkeleton } from '@/pages/chat/MessageRow'
 
 /**
@@ -60,6 +61,26 @@ export function ChannelFeed({
   useEffect(() => {
     if (newestMine) endRef.current?.scrollIntoView({ block: 'end' })
   }, [newestMine])
+
+  // The channel on screen stays read: a new message marks it read again while the tab is in view, and coming back to
+  // the tab does too. A channel left open in a background tab keeps its badge.
+  const newestId = newest?.id ?? null
+  const seen = useRef<string | null>(null)
+  useEffect(() => {
+    if (shouldMarkRead(seen.current, newestId, document.visibilityState === 'visible')) {
+      seen.current = newestId
+      markRead(channelId)
+    }
+  }, [newestId, channelId, markRead])
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return
+      seen.current = newestId
+      markRead(channelId)
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [newestId, channelId, markRead])
 
   let body
   if (messages.isError && !messages.data) body = <QueryError what="Messages" onRetry={() => void messages.refetch()} />

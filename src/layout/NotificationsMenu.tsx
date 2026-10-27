@@ -6,6 +6,7 @@ import { useMarkMentionsRead, useMyMentions } from '@/api/mentions'
 import { useProjectSummaries } from '@/api/projects'
 import type { MentionItem } from '@/api/types'
 import { useUsers } from '@/api/users'
+import { Button } from '@/components/ui/Button'
 import { MenuPanel } from '@/components/ui/Menu'
 import { roundButtonClass, roundButtonFill } from '@/components/ui/styles'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
@@ -95,7 +96,14 @@ export function NotificationsMenu() {
           </div>
         </div>
 
-        {!data ? (
+        {!data && mentions.isError ? (
+          <div className="space-y-3 p-4 text-center" role="alert">
+            <p className="text-sm text-fg-secondary">Mentions didn't load.</p>
+            <Button variant="secondary" onClick={() => void mentions.refetch()} disabled={mentions.isFetching}>
+              {mentions.isFetching ? 'Trying…' : 'Try again'}
+            </Button>
+          </div>
+        ) : !data ? (
           <div className="space-y-3 p-4" aria-busy="true">
             {[0, 1, 2].map((i) => (
               <div key={i} className="h-12 animate-pulse rounded-lg bg-surface-muted" />
