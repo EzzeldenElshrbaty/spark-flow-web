@@ -33,9 +33,12 @@ type Values = {
   sprintId: string
 }
 
-const valuesOf = (task: TaskView | undefined, phaseId: string | null): Values => ({
-  title: task?.title ?? '',
-  description: task?.description ?? '',
+/** What a new task starts from when it is made from somewhere else (a chat message). */
+export type TaskDraft = Pick<NewTicket, 'title' | 'description'> & Partial<Pick<NewTicket, 'linkedChannelId' | 'linkedMessageId'>>
+
+const valuesOf = (task: TaskView | undefined, phaseId: string | null, draft?: TaskDraft): Values => ({
+  title: task?.title ?? draft?.title ?? '',
+  description: task?.description ?? draft?.description ?? '',
   type: task?.type ?? 'task',
   phaseId: (task ? task.phaseId : phaseId) ?? '',
   status: task?.status ?? 'todo',
@@ -56,6 +59,7 @@ export function TaskSheet({
   sprints,
   users,
   task,
+  draft,
   onClose,
 }: {
   project: Project & { currentPhaseId?: string | null }
@@ -63,6 +67,8 @@ export function TaskSheet({
   sprints: Sprint[]
   users: User[]
   task?: TaskView
+  /** Starts a new task from these values and links it back to where it came from. */
+  draft?: TaskDraft
   onClose: () => void
 }) {
   const check = usePermission()
@@ -70,7 +76,7 @@ export function TaskSheet({
   const canStatus = canManage || check('task.updateOwnStatus', { project, taskAssigneeId: task?.assigneeId ?? null })
   const create = useCreateTask()
   const update = useUpdateTask()
-  const [values, setValues] = useState(() => valuesOf(task, project.currentPhaseId ?? null))
+  const [values, setValues] = useState(() => valuesOf(task, project.currentPhaseId ?? null, draft))
   const [errors, setErrors] = useState<Partial<Record<keyof Values, string>>>({})
   const set = <K extends keyof Values>(k: K, v: Values[K]) => setValues((s) => ({ ...s, [k]: v }))
   const people = projectPeople(project, users)
@@ -102,7 +108,11 @@ export function TaskSheet({
       sprintId: project.methodology === 'agile' ? values.sprintId || null : (task?.sprintId ?? null),
     }
     if (task) update.mutate({ key: task.key, patch: fields }, { onSuccess: onClose })
-    else create.mutate({ ...fields, projectId: project.id, storyPoints: null } satisfies NewTicket, { onSuccess: onClose })
+    else
+      create.mutate(
+        { ...fields, projectId: project.id, storyPoints: null, linkedChannelId: draft?.linkedChannelId, linkedMessageId: draft?.linkedMessageId } satisfies NewTicket,
+        { onSuccess: onClose },
+      )
   }
 
   return (

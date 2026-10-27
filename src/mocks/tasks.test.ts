@@ -72,3 +72,34 @@ describe('tasks', () => {
     expect(mob104.overdue).toBe(true)
   })
 })
+
+describe('a task from a chat message', () => {
+  it('links both ways and publishes messageChanged', async () => {
+    const api = apiAt()
+    await api.users.viewAs('u-4') // Ahmed manages Mobile App
+    const message = await api.chat.send('c-p-mob', 'Store screenshots are missing')
+    const events: RealtimeEvent[] = []
+    hub.subscribe((e) => events.push(e))
+    const task = await api.tasks.create(newTask({ linkedChannelId: 'c-p-mob', linkedMessageId: message.id }))
+    expect(task).toMatchObject({ linkedChannelId: 'c-p-mob', linkedMessageId: message.id })
+    expect((await api.chat.message(message.id)).linkedTicketKeys).toContain(task.key)
+    expect(events).toContainEqual({ type: 'messageChanged', channelId: 'c-p-mob', messageId: message.id })
+  })
+
+  it("a message from another channel, or a deleted one, is refused", async () => {
+    const api = apiAt()
+    await api.users.viewAs('u-4')
+    const other = await api.chat.send('c-general', 'Not about Mobile App')
+    await expect(api.tasks.create(newTask({ linkedChannelId: 'c-general', linkedMessageId: other.id }))).rejects.toMatchObject({ status: 400, detail: "This message isn't in the project's chat." })
+    const gone = await api.chat.send('c-p-mob', 'Oops')
+    await api.chat.remove({ kind: 'message', id: gone.id })
+    await expect(api.tasks.create(newTask({ linkedChannelId: 'c-p-mob', linkedMessageId: gone.id }))).rejects.toMatchObject({ status: 400 })
+  })
+
+  it('without task.manage it is refused', async () => {
+    const api = apiAt()
+    await api.users.viewAs('u-8') // a member on Mobile App
+    const message = await api.chat.send('c-p-mob', 'Can someone make this a task?')
+    await expect(api.tasks.create(newTask({ linkedChannelId: 'c-p-mob', linkedMessageId: message.id }))).rejects.toMatchObject({ status: 403 })
+  })
+})

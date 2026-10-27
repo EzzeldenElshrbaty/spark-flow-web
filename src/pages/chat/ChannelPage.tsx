@@ -13,6 +13,7 @@ import { NotFound } from '@/pages/NotFound'
 import { ChannelFeed } from '@/pages/chat/ChannelFeed'
 import { Composer } from '@/pages/chat/Composer'
 import { useCanPost, useReadOnlyLine } from '@/pages/chat/useCanPost'
+import { useTaskFromMessage } from '@/pages/chat/useTaskFromMessage'
 import { MessageSkeleton } from '@/pages/chat/MessageRow'
 
 /** A channel or DM: its name and topic, then its messages with the newest at the bottom. Read-only in Phase 1. */
@@ -25,6 +26,7 @@ export function ChannelPage() {
   const canPost = useCanPost(channel.data)
   const send = useSendMessage()
   const readOnly = useReadOnlyLine(channel.data)
+  const fromMessage = useTaskFromMessage(channelId, workspace?.id)
   // An error belongs to the channel it happened in.
   const { reset } = send
   useEffect(() => reset(), [channelId, reset])
@@ -68,6 +70,7 @@ export function ChannelPage() {
         usersLoading={users.isLoading}
         meId={persona.id}
         canPost={canPost === true}
+        messageActions={fromMessage.messageActions}
         composer={
           canPost === false ? (
             <p className="text-sm text-fg-muted">{readOnly}</p>
@@ -82,6 +85,7 @@ export function ChannelPage() {
           ) : null
         }
       />
+      {fromMessage.sheet}
     </>
   )
 }

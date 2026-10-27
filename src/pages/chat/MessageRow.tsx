@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { MessageSquare } from 'lucide-react'
+import { ListChecks, MessageSquare } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { useEditMessage, useReact } from '@/api/chat'
@@ -83,6 +83,28 @@ function CommentCard({ message }: { message: ChatMessage }) {
   )
 }
 
+/** Tasks made from this message that its text doesn't name: one chip each, opening the task beside the channel. */
+function LinkedTasks({ message }: { message: ChatMessage }) {
+  const [params] = useSearchParams()
+  const keys = message.linkedTicketKeys.filter((key) => !message.content.includes(key))
+  if (keys.length === 0) return null
+  return (
+    <ul className="mt-1.5 flex flex-wrap gap-1.5" aria-label="Tasks made from this message">
+      {keys.map((key) => (
+        <li key={key}>
+          <Link
+            to={{ search: withInspector(params, { kind: 'ticket', key }).toString() }}
+            className="inline-flex items-center gap-1.5 rounded-md border border-line bg-surface px-2 py-0.5 text-xs text-fg-secondary hover:border-line-strong"
+          >
+            <ListChecks className="size-3.5" />
+            <TicketKey value={key} />
+          </Link>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 /** "3 replies · 2h ago", opening the thread beside the channel. */
 function ThreadLink({ message }: { message: ChatMessage }) {
   const [params] = useSearchParams()
@@ -149,6 +171,7 @@ export function MessageRow({
       <>
         <MentionText text={message.content} />
         <AttachmentView attachments={message.attachments} />
+        {'linkedTicketKeys' in message && <LinkedTasks message={message} />}
       </>
     )
   return (

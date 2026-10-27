@@ -58,8 +58,14 @@ export function tasksApi(db: MockDb, hub: MockHub, now: () => Date): Api['tasks'
     async create(input) {
       await delay()
       const before = await db.read()
-      requireCan(before, 'task.manage', findProject(before, input.projectId))
+      const project = findProject(before, input.projectId)
+      requireCan(before, 'task.manage', project)
       checkTaskInput(before, input.projectId, input)
+      // A task made from a chat message: that message is in this project's chat, and still there.
+      if (input.linkedMessageId) {
+        const message = before.messages.find((m) => m.id === input.linkedMessageId)
+        if (!message || message.channelId !== project.channelId || message.deletedAt) throw badRequest("This message isn't in the project's chat.")
+      }
       const created = await createTicket(db, hub, input)
       return taskView(created, await db.read(), now())
     },
@@ -86,7 +92,7 @@ export function tasksApi(db: MockDb, hub: MockHub, now: () => Date): Api['tasks'
 
 /** Opens a ticket as the current user: next key for the project, last in its column; posts a Created card. */
 export async function createTicket(db: MockDb, hub: MockHub, input: NewTicket): Promise<Ticket> {
-  const { ticket, cards } = await db.update((data) => {
+  const { ticket, cards, source } = await db.update((data) => {
     const project = findProject(data, input.projectId)
     const own = data.tickets.filter((t) => t.projectId === project.id)
     const number = data.counters[project.id] ?? Math.max(0, ...own.map(ticketNumber)) + 1
@@ -117,9 +123,13 @@ export async function createTicket(db: MockDb, hub: MockHub, input: NewTicket): 
     }
     data.tickets.push(created)
     data.counters[project.id] = number + 1
-    return { ticket: created, cards: clone(postTaskEvents(data, null, created)) }
+    // The message it was made from names it from now on (its task chip).
+    const source = created.linkedMessageId ? data.messages.find((m) => m.id === created.linkedMessageId) : undefined
+    if (source && !source.linkedTicketKeys.includes(key)) source.linkedTicketKeys.push(key)
+    return { ticket: created, cards: clone(postTaskEvents(data, null, created)), source: source && { channelId: source.channelId, messageId: source.id } }
   })
   hub.publish({ type: 'ticketUpdated', ticket: clone(ticket) })
+  if (source) hub.publish({ type: 'messageChanged', ...source })
   for (const message of cards) hub.publish({ type: 'messageReceived', message })
   return ticket
 }

@@ -8,12 +8,14 @@ import { paths } from '@/lib/paths'
 import { ChannelFeed } from '@/pages/chat/ChannelFeed'
 import { Composer } from '@/pages/chat/Composer'
 import { useCanPost, useReadOnlyLine } from '@/pages/chat/useCanPost'
+import { useTaskFromMessage } from '@/pages/chat/useTaskFromMessage'
 
 /** The project's channel, to read and write in; "Open in Chat" goes to the full channel. */
 export function ChatTab({ ws, project, people, usersLoading }: { ws: string; project: ProjectSummary; people: User[]; usersLoading: boolean }) {
   const channel = useChannel(project.channelId)
   const canPost = useCanPost(channel.data)
   const readOnly = useReadOnlyLine(channel.data)
+  const fromMessage = useTaskFromMessage(project.channelId, project.workspaceId)
   const send = useSendMessage()
   const { reset } = send
   useEffect(() => reset(), [project.channelId, reset])
@@ -33,6 +35,7 @@ export function ChatTab({ ws, project, people, usersLoading }: { ws: string; pro
         usersLoading={usersLoading}
         meId={persona.id}
         canPost={canPost === true}
+        messageActions={fromMessage.messageActions}
         composer={
           canPost === false ? (
             <p className="text-sm text-fg-muted">{readOnly}</p>
@@ -48,6 +51,7 @@ export function ChatTab({ ws, project, people, usersLoading }: { ws: string; pro
           ) : null
         }
       />
+      {fromMessage.sheet}
     </>
   )
 }
