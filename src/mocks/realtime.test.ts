@@ -169,3 +169,15 @@ describe('createMockHub', () => {
     expect(handler).not.toHaveBeenCalled()
   })
 })
+
+describe('sending typing', () => {
+  it('sendTyping publishes userTyping for the channel and person', () => {
+    const hub = createMockHub(`test-typing-${Math.random()}`, null)
+    const seen: unknown[] = []
+    hub.subscribe((e) => seen.push(e))
+    createMockRealtimeClient(hub).sendTyping('c1', 'u1')
+    expect(seen).toEqual([{ type: 'userTyping', channelId: 'c1', userId: 'u1' }])
+    hub.close()
+  })
+})
+

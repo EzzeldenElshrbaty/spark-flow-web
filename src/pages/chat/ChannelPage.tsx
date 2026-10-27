@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'react-router'
 import { useChannel, useSendMessage } from '@/api/chat'
 import { useUsers } from '@/api/users'
@@ -9,6 +9,10 @@ import { ApiError } from '@/lib/api'
 import { channelLabel, inWorkspace, isArchived } from '@/lib/channels'
 import { paths } from '@/lib/paths'
 import { useRole } from '@/lib/useRole'
+import { createRealtimeClient } from '@/lib/realtime'
+import { activeTypers, useUiStore } from '@/lib/uiStore'
+import { useNow } from '@/lib/useNow'
+import { typingLine } from '@/pages/chat/typingLine'
 import { NotFound } from '@/pages/NotFound'
 import { ChannelFeed } from '@/pages/chat/ChannelFeed'
 import { Composer } from '@/pages/chat/Composer'
@@ -30,6 +34,11 @@ export function ChannelPage() {
   const readOnly = useReadOnlyLine(channel.data)
   const fromMessage = useTaskFromMessage(channelId, workspace?.id)
   const projects = useProjectSummaries(workspace?.id)
+  // Who else is typing here (the store forgets them 3 s after their last keystroke; the clock re-checks each second).
+  const [realtime] = useState(createRealtimeClient)
+  const typing = useUiStore((s) => s.typing)
+  const now = useNow(channelId && typing[channelId]?.length ? 1000 : 0)
+  const typers = channelId ? activeTypers(typing, channelId, now.getTime()).filter((id) => id !== persona.id) : []
   // An error belongs to the channel it happened in.
   const { reset } = send
   useEffect(() => reset(), [channelId, reset])
@@ -90,13 +99,19 @@ export function ChannelPage() {
           ) : canPost === false ? (
             <p className="text-sm text-fg-muted">{readOnly}</p>
           ) : canPost ? (
+            <>
+            <p className="h-4 text-xs text-fg-muted" aria-live="polite">
+              {typingLine(typers.map((id) => people.find((u) => u.id === id)?.name ?? 'Someone')) ?? ''}
+            </p>
             <Composer
               placeholder={`Message ${title}`}
+              onTyping={() => realtime.sendTyping(current.id, persona.id)}
               submitLabel="Send"
               pendingLabel="Sending…"
               error={send.error as Error | null}
               onSubmit={(content) => send.mutateAsync({ channelId: current.id, content })}
             />
+            </>
           ) : null
         }
       />

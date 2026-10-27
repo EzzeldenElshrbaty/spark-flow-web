@@ -23,6 +23,9 @@ function optionLabel(o: MentionOption) {
  * people, projects, tasks and @all (a list, not a menu: it filters as you type); choosing one inserts the mention the
  * server reads. The text clears only once it is saved; a failure shows as a sentence underneath.
  */
+/** How often a typing composer says so. */
+const TYPING_EVERY_MS = 2000
+
 export function Composer({
   placeholder,
   submitLabel,
@@ -34,6 +37,7 @@ export function Composer({
   allowEmpty = false,
   initialText = '',
   onCancel,
+  onTyping,
 }: {
   placeholder: string
   submitLabel: string
@@ -48,6 +52,8 @@ export function Composer({
   allowEmpty?: boolean
   /** The text to start from (editing a message); the box takes focus with the caret at the end. */
   initialText?: string
+  /** Called while the person types, at most once every 2 seconds (the channel's "is typing…"). */
+  onTyping?: () => void
   /** Shows Cancel and makes Escape cancel (editing a message). */
   onCancel?: () => void
 }) {
@@ -58,6 +64,7 @@ export function Composer({
   const [highlight, setHighlight] = useState(0)
   const [dismissedAt, setDismissedAt] = useState<number | null>(null)
   const ref = useRef<HTMLTextAreaElement>(null)
+  const lastTyping = useRef(0)
   const listId = useId()
 
   const mention = activeMention(text, caret)
@@ -188,6 +195,10 @@ export function Composer({
           aria-autocomplete="list"
           onChange={(e) => {
             setText(e.target.value)
+            if (onTyping && e.target.value && Date.now() - lastTyping.current > TYPING_EVERY_MS) {
+              lastTyping.current = Date.now()
+              onTyping()
+            }
             setCaret(e.target.selectionStart)
             // A dismissed list stays shut for the same @word; once that @word is gone, or an @ starts elsewhere, it opens again.
             const next = activeMention(e.target.value, e.target.selectionStart)?.start ?? null

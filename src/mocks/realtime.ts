@@ -65,6 +65,7 @@ export function createMockRealtimeClient(hub: MockHub): RealtimeClient {
     stop: async () => {},
     joinChannel: () => {},
     leaveChannel: () => {},
+    sendTyping: (channelId, userId) => hub.publish({ type: 'userTyping', channelId, userId }),
     onMessageReceived: (cb) => on(hub, 'messageReceived', (e) => cb(e.message)),
     onReplyReceived: (cb) => on(hub, 'replyReceived', (e) => cb(e.reply)),
     onTicketUpdated: (cb) => on(hub, 'ticketUpdated', (e) => cb(e.ticket)),

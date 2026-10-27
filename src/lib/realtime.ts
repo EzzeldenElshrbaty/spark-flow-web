@@ -8,6 +8,8 @@ export interface RealtimeClient {
   stop(): Promise<void>
   joinChannel(channelId: string): void                  // SignalR group later
   leaveChannel(channelId: string): void
+  /** Tells the channel's other readers I'm typing (the page sends it at most every 2 s). */
+  sendTyping(channelId: string, userId: string): void
   onMessageReceived(cb: (message: ChatMessage) => void): () => void
   onReplyReceived(cb: (reply: ThreadReply) => void): () => void
   onTicketUpdated(cb: (ticket: Ticket) => void): () => void
@@ -60,6 +62,7 @@ function createUnconnectedClient(): RealtimeClient {
     async stop() {},
     joinChannel: noop,
     leaveChannel: noop,
+    sendTyping: noop,
     onMessageReceived: () => noop,
     onReplyReceived: () => noop,
     onTicketUpdated: () => noop,
