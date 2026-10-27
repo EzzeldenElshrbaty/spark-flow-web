@@ -14,7 +14,7 @@ export function SettingsPage() {
 
   return (
     <>
-      <PageHeader title="Settings" subtitle="Demo data and preferences." />
+      <PageHeader title="Settings" subtitle="Demo data and hourly costs." />
       {!showRates && !showDatabase && <p className="text-sm text-fg-muted">Nothing to set up here yet.</p>}
       {(showRates || showDatabase) && (
         <Card className="max-w-2xl divide-y divide-line-subtle">

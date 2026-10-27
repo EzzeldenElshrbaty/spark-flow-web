@@ -1,3 +1,4 @@
+import { NotFound } from '@/pages/NotFound'
 import { lazy, type ComponentType } from 'react'
 import { createBrowserRouter, Navigate, useLocation, useParams } from 'react-router'
 import { AppLayout } from '@/layout/AppLayout'
@@ -62,8 +63,8 @@ export const router = createBrowserRouter([
           { path: 'settings/rates', element: <RatesPage /> },
         ],
       },
-      // Old or mistyped links go to where you were last.
-      { path: '*', element: <Navigate to="/" replace /> },
+      // Old or mistyped links say so, with the way home.
+      { path: '*', element: <NotFound what="page" backTo="/" backLabel="Back to Home" /> },
     ],
   },
 ])

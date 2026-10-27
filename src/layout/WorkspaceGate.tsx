@@ -1,5 +1,6 @@
+import { NotFound } from '@/pages/NotFound'
 import { useEffect } from 'react'
-import { Navigate, Outlet, useLocation, useParams } from 'react-router'
+import { Outlet, useLocation, useParams } from 'react-router'
 import { useWorkspaces } from '@/api/workspaces'
 import { PageSkeleton } from '@/layout/PageSkeleton'
 import { paths } from '@/lib/paths'
@@ -20,6 +21,6 @@ export function WorkspaceGate() {
 
   if (isPending) return <PageSkeleton />
   if (isError) return <p className="text-sm text-fg-muted">Spark Flow couldn’t load your workspaces. Refresh to try again.</p>
-  if (!known) return <Navigate to="/" replace />
+  if (!known) return <NotFound what="workspace" backTo="/" backLabel="Back to Home" />
   return <Outlet />
 }

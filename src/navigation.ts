@@ -20,7 +20,7 @@ export type NavGroup = { label: string; items: NavItem[] }
 
 /**
  * Spark Flow's pages, by group, as search offers them (the sidebar adds the workspace's channels, DMs and projects).
- * The sidebar still lists these pages itself; it moves to this list once its pending edits land.
+ * The sidebar keeps its own list of these pages for now (it checks dashboard access per project it manages).
  */
 export const navGroups: NavGroup[] = [
   {

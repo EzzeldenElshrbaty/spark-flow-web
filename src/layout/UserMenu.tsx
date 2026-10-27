@@ -29,12 +29,16 @@ export function UserMenu() {
   const navigate = useNavigate()
 
   // Demo only: become someone else, then start fresh on that workspace's home, since what they may see differs.
-  const switchTo = async (userId: string) => {
+  // A failure shows its sentence in the menu (viewAs.isError) instead of being thrown.
+  const switchTo = (userId: string) => {
     if (userId === persona.id) return
-    await viewAs.mutateAsync(userId)
-    setOpen(false)
-    queryClient.clear()
-    navigate(workspace ? `/w/${workspace.slug}` : '/')
+    viewAs.mutate(userId, {
+      onSuccess: () => {
+        setOpen(false)
+        queryClient.clear()
+        navigate(workspace ? `/w/${workspace.slug}` : '/')
+      },
+    })
   }
 
   // The account loads after the shell: until the name is known, the avatar is a pulse placeholder.

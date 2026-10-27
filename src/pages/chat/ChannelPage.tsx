@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useParams } from 'react-router'
 import { useChannel, useSendMessage } from '@/api/chat'
 import { useUsers } from '@/api/users'
@@ -9,7 +9,7 @@ import { ApiError } from '@/lib/api'
 import { channelLabel, inWorkspace, isArchived } from '@/lib/channels'
 import { paths } from '@/lib/paths'
 import { useRole } from '@/lib/useRole'
-import { createRealtimeClient } from '@/lib/realtime'
+import { useRealtime } from '@/lib/realtime'
 import { activeTypers, useUiStore } from '@/lib/uiStore'
 import { useNow } from '@/lib/useNow'
 import { typingLine } from '@/pages/chat/typingLine'
@@ -35,9 +35,10 @@ export function ChannelPage() {
   const fromMessage = useTaskFromMessage(channelId, workspace?.id)
   const projects = useProjectSummaries(workspace?.id)
   // Who else is typing here (the store forgets them 3 s after their last keystroke; the clock re-checks each second).
-  const [realtime] = useState(createRealtimeClient)
+  const realtime = useRealtime()
   const typing = useUiStore((s) => s.typing)
-  const now = useNow(channelId && typing[channelId]?.length ? 1000 : 0)
+  // The clock ticks only while someone is still typing here.
+  const now = useNow(channelId && activeTypers(typing, channelId).length ? 1000 : 0)
   const typers = channelId ? activeTypers(typing, channelId, now.getTime()).filter((id) => id !== persona.id) : []
   // An error belongs to the channel it happened in.
   const { reset } = send

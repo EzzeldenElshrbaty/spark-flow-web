@@ -83,3 +83,9 @@ function createUnconnectedClient(): RealtimeClient {
 export function createRealtimeClient(): RealtimeClient {
   return backendOn ? createUnconnectedClient() : createMockRealtimeClient(mockHub)
 }
+
+let shared: RealtimeClient | null = null
+/** The app's one realtime client (one SignalR connection with the backend): RealtimeBridge starts it, pages join and send on it. */
+export function useRealtime(): RealtimeClient {
+  return (shared ??= createRealtimeClient())
+}

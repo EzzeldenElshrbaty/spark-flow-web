@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { useMarkRead, useMessages } from '@/api/chat'
 import type { ChatMessage, User } from '@/api/types'
 import { Button } from '@/components/ui/Button'
 import { QueryError } from '@/components/ui/QueryError'
-import { createRealtimeClient } from '@/lib/realtime'
+import { useRealtime } from '@/lib/realtime'
 import { shouldMarkRead } from '@/pages/chat/markRead'
 import { MessageRow, MessageSkeleton } from '@/pages/chat/MessageRow'
 
@@ -35,7 +35,7 @@ export function ChannelFeed({
   const messages = useMessages(channelId)
   const { mutate: markRead } = useMarkRead()
   // One live connection per feed on screen; it follows the channel shown.
-  const [realtime] = useState(createRealtimeClient)
+  const realtime = useRealtime()
   const endRef = useRef<HTMLDivElement>(null)
   const scrolledFor = useRef<string | null>(null)
 

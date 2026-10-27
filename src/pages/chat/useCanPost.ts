@@ -13,7 +13,8 @@ export function useCanPost(channel: Channel | undefined): boolean | null {
   const me = useMe().data
   const check = usePermission()
   if (channel && isArchived(channel)) return false
-  if (!channel || !me || projects.isPending) return null
+  // Unknown while projects load or fail: a project's channel follows the project, so don't guess.
+  if (!channel || !me || projects.isPending || projects.isError) return null
   const project = projects.data?.find((p) => p.channelId === channel.id)
   if (project) return check('collab.post', { project, userTeamIds: me.teamIds })
   return !channel.isPrivate || channel.memberIds.includes(me.id)

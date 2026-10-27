@@ -89,7 +89,8 @@ export const useUiStore = create<UiState & UiActions>()(
         set((state) => ({
           typing: {
             ...state.typing,
-            [channelId]: [...(state.typing[channelId] ?? []).filter((typer) => typer.userId !== userId), { userId, until: now + TYPING_MS }],
+            // Expired typers go too, so a quiet channel's list empties instead of growing.
+            [channelId]: [...(state.typing[channelId] ?? []).filter((typer) => typer.userId !== userId && typer.until > now), { userId, until: now + TYPING_MS }],
           },
         })),
     }),

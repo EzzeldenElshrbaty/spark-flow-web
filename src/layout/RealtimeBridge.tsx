@@ -1,15 +1,16 @@
 import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { keysForEvent } from '@/api/queryKeys'
-import { createRealtimeClient, type RealtimeEvent } from '@/lib/realtime'
+import { useRealtime, type RealtimeEvent } from '@/lib/realtime'
 import { useUiStore } from '@/lib/uiStore'
 
 /** Listens for live updates for the whole signed-in app: makes affected queries stale and tracks who is typing. */
 export function RealtimeBridge(): null {
   const queryClient = useQueryClient()
+  const realtime = useRealtime()
 
   useEffect(() => {
-    const client = createRealtimeClient()
+    const client = realtime
     const invalidate = (event: RealtimeEvent) => {
       for (const queryKey of keysForEvent(event)) void queryClient.invalidateQueries({ queryKey })
     }
@@ -35,7 +36,7 @@ export function RealtimeBridge(): null {
       unsubscribers.forEach((off) => off())
       void client.stop()
     }
-  }, [queryClient])
+  }, [queryClient, realtime])
 
   return null
 }

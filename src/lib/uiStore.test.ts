@@ -65,3 +65,13 @@ describe('uiStore storage', () => {
     expect(storage.getItem('k')).toBeNull()
   })
 })
+
+describe('typers expire from the store', () => {
+  it('addTyper forgets typers whose time is up', () => {
+    useUiStore.setState({ typing: {} })
+    useUiStore.getState().addTyper('c1', 'u1', 0)
+    useUiStore.getState().addTyper('c1', 'u2', 5000)
+    expect(useUiStore.getState().typing.c1!.map((t) => t.userId)).toEqual(['u2'])
+  })
+})
+
