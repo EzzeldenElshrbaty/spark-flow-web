@@ -124,6 +124,7 @@ export type ActivityKind =
   | 'column.added' | 'column.renamed' | 'column.moved' | 'column.typed' | 'column.deleted'
   | 'phase.added' | 'phase.changed' | 'phase.removed'
   | 'project.changed' | 'deliverable.added' | 'deliverable.changed'
+  | 'file.removed'
 /** One field's change; labels are snapshots (a column, phase or sprint may be gone by the time it is read). */
 export type FieldChange = { field: string; from: string | null; to: string | null; fromLabel?: string; toLabel?: string }
 /** One line of history: who did what to which task (or the board, a phase, a deliverable), and when. Never edited. */
@@ -324,7 +325,10 @@ export interface Api {
   files: {
     url(id: string): Promise<string>
     list(projectId: string): Promise<StoredFile[]>
-    upload(projectId: string, file: UploadFile): Promise<StoredFile>
+    /** `signal` cancels it; a cancelled upload saves nothing and rejects with an AbortError. */
+    upload(projectId: string, file: UploadFile, signal?: AbortSignal): Promise<StoredFile>
+    /** By whoever added it, the project's manager or an Admin. */
+    remove(id: string): Promise<void>
   }
   /** Task comments and bugs (spec §2): each also posts a card in the project's chat. */
   comments: {

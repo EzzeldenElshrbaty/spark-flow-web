@@ -10,6 +10,7 @@ import { formatDate, formatMoney } from '@/lib/format'
 import { DeliverableSheet } from './DeliverableSheet'
 import { ProjectFiles } from './ProjectFiles'
 import { isPastDue } from '@/lib/dates'
+import { usePermission } from '@/lib/usePermission'
 
 function Stat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: 'danger' }) {
   return (
@@ -148,6 +149,8 @@ export function OverviewTab({
   canEdit: boolean
   canPost: boolean
 }) {
+  // Removing someone else's file is the manager's (and Admins').
+  const canManageFiles = usePermission()('phase.manage', { project })
   const late = project.status !== 'delivered' && project.expectedFinish > project.dueDate
   const hours = Math.round(project.loggedHours * 10) / 10
   return (
@@ -175,7 +178,7 @@ export function OverviewTab({
         </div>
         <div className="space-y-5">
           <TeamCard project={project} people={people} teams={teams} />
-          <ProjectFiles projectId={project.id} people={people} canUpload={canPost} />
+          <ProjectFiles projectId={project.id} people={people} canUpload={canPost} canManage={canManageFiles} />
         </div>
       </div>
     </div>

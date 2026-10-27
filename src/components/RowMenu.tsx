@@ -1,0 +1,44 @@
+import { MoreHorizontal, type LucideIcon } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { MenuPanel } from '@/components/ui/Menu'
+import { menuItemClass } from '@/pages/chat/MessageActions'
+
+export type RowMenuItem = { label: string; icon: LucideIcon; danger?: boolean; onSelect: () => void }
+
+/** A row's ⋯ button and its menu (a bottom sheet on phones), as on comments. */
+export function RowMenu({ label, items }: { label: string; items: RowMenuItem[] }) {
+  const [open, setOpen] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  return (
+    <div className="relative shrink-0">
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={label}
+        title={label}
+        className="flex size-8 items-center justify-center rounded-lg text-fg-tertiary hover:bg-surface-muted hover:text-fg"
+      >
+        <MoreHorizontal className="size-4" />
+      </button>
+      <MenuPanel open={open} onClose={() => setOpen(false)} triggerRef={triggerRef} label={label} className="p-1.5 sm:w-52">
+        {items.map(({ label: text, icon: Icon, danger, onSelect }) => (
+          <button
+            key={text}
+            type="button"
+            role="menuitem"
+            className={danger ? `${menuItemClass} text-red-600 dark:text-red-400` : menuItemClass}
+            onClick={() => {
+              setOpen(false)
+              onSelect()
+            }}
+          >
+            <Icon className="size-4 shrink-0" /> {text}
+          </button>
+        ))}
+      </MenuPanel>
+    </div>
+  )
+}

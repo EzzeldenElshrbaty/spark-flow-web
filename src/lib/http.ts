@@ -156,11 +156,12 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
     files: {
       url: (id) => Promise.resolve(apiUrl(`/api/files/${enc(id)}`)),
       list: (projectId) => get(`/api/projects/${enc(projectId)}/files`),
-      upload: (projectId, file) => {
+      upload: (projectId, file, signal) => {
         const form = new FormData()
         form.append('file', file, file.name)
-        return request(`/api/projects/${enc(projectId)}/files`, { method: 'POST', body: form }, fetchFn)
+        return request(`/api/projects/${enc(projectId)}/files`, { method: 'POST', body: form, signal }, fetchFn)
       },
+      remove: (id) => send('DELETE', `/api/files/${enc(id)}`),
     },
     // The demo data lives in the browser's mock database; the real backend has none of these.
     db: {

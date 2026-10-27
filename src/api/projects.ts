@@ -71,7 +71,12 @@ export function useProjectFiles(projectId: string | undefined) {
   return useQuery({ queryKey: qk.files(projectId ?? ''), queryFn: () => api.files.list(projectId!), retry, enabled: Boolean(projectId) })
 }
 export function useUploadFile() {
-  return useMutation({ mutationFn: ({ projectId, file }: { projectId: string; file: UploadFile }) => api.files.upload(projectId, file) })
+  return useMutation({
+    mutationFn: ({ projectId, file, signal }: { projectId: string; file: UploadFile; signal?: AbortSignal }) => api.files.upload(projectId, file, signal),
+  })
+}
+export function useRemoveFile() {
+  return useMutation({ mutationFn: (id: string) => api.files.remove(id) })
 }
 
 /** A blob: address for a stored file, to show it; the caller revokes it (URL.revokeObjectURL) when done. Not a query: it isn't cached. */

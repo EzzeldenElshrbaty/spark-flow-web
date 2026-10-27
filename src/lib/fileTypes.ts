@@ -41,10 +41,12 @@ export const downloadUrl = (url: string) => (url.includes('/api/documents/') ? `
  * with the sentence saying why.
  */
 export function acceptFiles<F extends { name: string; size: number; lastModified: number }>(current: F[], picked: F[], max = Infinity): { files: F[]; refused: string[] } {
-  const ok = picked.filter((file) => isAcceptedFile(file.name) && file.size <= maxFileMb * 1024 * 1024)
+  const ok = picked.filter((file) => isAcceptedFile(file.name) && file.size > 0 && file.size <= maxFileMb * 1024 * 1024)
   const refused = picked
     .filter((file) => !ok.includes(file))
-    .map((file) => (isAcceptedFile(file.name) ? `${file.name} is over ${maxFileMb} MB.` : `${file.name}: this type of file can't be added.`))
+    .map((file) =>
+      !isAcceptedFile(file.name) ? `${file.name}: this type of file can't be added.` : file.size === 0 ? `${file.name} is empty.` : `${file.name} is over ${maxFileMb} MB.`,
+    )
   // Picking the same file twice adds it once.
   const id = (file: F) => `${file.name}|${file.size}|${file.lastModified}`
   const known = new Set(current.map(id))

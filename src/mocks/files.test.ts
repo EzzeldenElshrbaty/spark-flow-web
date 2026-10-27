@@ -76,3 +76,35 @@ describe('no bytes left behind', () => {
   })
 })
 
+describe('removing project files', () => {
+  const add = async (as: string) => {
+    await api.users.viewAs(as)
+    return api.files.upload('p-mob', file('notes.pdf', ['%PDF-1.4 notes']))
+  }
+  it('the uploader removes a file; it leaves the list, its bytes and the history says so', async () => {
+    const stored = await add('u-8') // Tarek, a Mobile member
+    await api.files.remove(stored.id)
+    expect((await api.files.list('p-mob')).some((f) => f.id === stored.id)).toBe(false)
+    expect(await db.getFile(stored.attachment.id)).toBeNull()
+    expect((await db.read()).activity.at(-1)).toMatchObject({ kind: 'file.removed', subject: 'notes.pdf', projectId: 'p-mob' })
+  })
+  it("the manager can remove anyone's file; another member gets 403", async () => {
+    const stored = await add('u-8')
+    await api.users.viewAs('u-5') // Salma, also on Mobile
+    await expect(api.files.remove(stored.id)).rejects.toMatchObject({ status: 403, detail: 'You can only remove files you added.' })
+    await api.users.viewAs('u-4') // Ahmed manages Mobile
+    await api.files.remove(stored.id)
+    expect((await api.files.list('p-mob')).some((f) => f.id === stored.id)).toBe(false)
+  })
+  it('an upload cancelled before the write saves nothing', async () => {
+    const before = await api.files.list('p-mob')
+    const ids: string[] = []
+    const spy: MockDb = { ...db, putFile: (id, b) => (ids.push(id), db.putFile(id, b)) }
+    const c = new AbortController()
+    c.abort()
+    await expect(createMockApi(spy, hub).files.upload('p-mob', file('late.pdf', ['%PDF-1.4 late']), c.signal)).rejects.toMatchObject({ name: 'AbortError' })
+    expect(await api.files.list('p-mob')).toEqual(before)
+    for (const id of ids) expect(await db.getFile(id)).toBeNull()
+  })
+})
+

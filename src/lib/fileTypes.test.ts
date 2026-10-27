@@ -20,3 +20,11 @@ describe('acceptFiles', () => {
     expect(acceptFiles([], [f('a.png'), f('b.png')]).files).toHaveLength(2)
   })
 })
+
+describe('empty files', () => {
+  it('an empty file is refused, with its name', () => {
+    const empty = { name: 'blank.pdf', size: 0, lastModified: 1 }
+    expect(acceptFiles([], [empty])).toEqual({ files: [], refused: ['blank.pdf is empty.'] })
+  })
+})
+
