@@ -26,6 +26,16 @@ describe('uiStore', () => {
     expect(useUiStore.getState().collapsedSections).toEqual(['channels'])
   })
 
+  it('setSidebarWidth keeps the sidebar between 200 and 420px, and 260 is the default', () => {
+    expect(initialUiState.sidebarWidth).toBe(260)
+    useUiStore.getState().setSidebarWidth(320.6)
+    expect(useUiStore.getState().sidebarWidth).toBe(321)
+    useUiStore.getState().setSidebarWidth(90)
+    expect(useUiStore.getState().sidebarWidth).toBe(200)
+    useUiStore.getState().setSidebarWidth(900)
+    expect(useUiStore.getState().sidebarWidth).toBe(420)
+  })
+
   it('visit records last place per workspace', () => {
     useUiStore.getState().visit('engineering', '/w/engineering/c/c-backend')
     expect(useUiStore.getState()).toMatchObject({ lastWorkspace: 'engineering', lastVisited: { engineering: '/w/engineering/c/c-backend' } })

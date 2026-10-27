@@ -21,7 +21,7 @@ import {
   type TablerIcon,
 } from '@tabler/icons-react'
 import clsx from 'clsx'
-import { useId, useState, type ReactNode } from 'react'
+import { useId, useRef, useState, type ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router'
 import { Avatar } from '@/components/sf/Avatar'
 import { Count } from '@/components/sf/Badge'
@@ -30,7 +30,7 @@ import { Icon } from '@/components/sf/Icon'
 import { useSidebarGroups } from '@/layout/useSidebarGroups'
 import { hasFeature } from '@/lib/features'
 import { paths } from '@/lib/paths'
-import { useUiStore } from '@/lib/uiStore'
+import { SIDEBAR_WIDTH, useUiStore } from '@/lib/uiStore'
 import { usePermission } from '@/lib/usePermission'
 import { useRole } from '@/lib/useRole'
 import { canSee, settingsItem } from '@/navigation'
@@ -66,7 +66,7 @@ function isIcon(icon: SideLinkProps['icon']): icon is TablerIcon {
   return typeof icon === 'function' || (typeof icon === 'object' && icon !== null && 'render' in icon)
 }
 
-/** One 28px row of the sidebar (spec 5.1): read, unread, active, muted, mentions and draft states. */
+/** One 28px row of the sidebar (44px in the phone and tablet drawer, for touch; spec 5.1 and 6.16): read, unread, active, muted, mentions and draft states. */
 export function SideLink({
   to,
   label,
@@ -94,7 +94,7 @@ export function SideLink({
       aria-label={collapsed ? label : undefined}
       className={({ isActive }) =>
         clsx(
-          'sf-focus flex h-7 w-full flex-none items-center gap-2 rounded-sf-md px-2 font-sf text-[14px]/[20px] whitespace-nowrap transition-colors duration-150 ease-sf',
+          'sf-focus flex h-11 w-full flex-none items-center gap-2 rounded-sf-md px-2 font-sf lg:h-7 text-[14px]/[20px] whitespace-nowrap transition-colors duration-150 ease-sf',
           collapsed && 'justify-center',
           (inside ?? isActive)
             ? 'bg-sf-sidebar-active text-sf-sidebar-text-strong'
@@ -181,13 +181,13 @@ export function SideSection({
   if (collapsed) return <ul className={clsx('flex flex-col gap-0.5', !first && 'mt-3')}>{children}</ul>
   return (
     <div className={clsx('flex flex-none flex-col gap-0.5', !first && 'mt-3')}>
-      <div className="group/section flex h-7 flex-none items-center gap-1 ps-2 pe-1 text-sf-sidebar-text-muted">
+      <div className="group/section flex h-11 flex-none items-center gap-1 ps-2 pe-1 text-sf-sidebar-text-muted lg:h-7">
         <button
           type="button"
           aria-expanded={!closed}
           aria-controls={listId}
           onClick={() => toggle(id)}
-          className="sf-focus sf-label inline-flex cursor-pointer items-center gap-1 rounded-sf-sm hover:text-sf-sidebar-text-strong"
+          className="sf-focus sf-label inline-flex h-11 cursor-pointer items-center gap-1 rounded-sf-sm hover:text-sf-sidebar-text-strong lg:h-auto"
         >
           {label}
           <Icon
@@ -214,7 +214,7 @@ function GroupSkeleton() {
   return (
     <>
       {[0, 1, 2].map((row) => (
-        <li key={row} aria-hidden className="h-7 flex-none animate-pulse rounded-sf-md bg-sf-sidebar-hover" />
+        <li key={row} aria-hidden className="h-11 flex-none animate-pulse lg:h-7 rounded-sf-md bg-sf-sidebar-hover" />
       ))}
     </>
   )
@@ -302,7 +302,7 @@ export function SidebarContent({
             id="channels"
             label="Channels"
             actions={
-              <IconButton label="New channel" icon={IconPlus} size="xs" tone="sidebar-muted" onClick={() => setNewChannel(true)} />
+              <IconButton label="New channel" icon={IconPlus} size="xs" tone="sidebar-muted" className="max-lg:size-11" onClick={() => setNewChannel(true)} />
             }
             {...row}
           >
@@ -330,7 +330,7 @@ export function SidebarContent({
             id="dms"
             label="Direct messages"
             actions={
-              <IconButton label="New message" icon={IconPlus} size="xs" tone="sidebar-muted" onClick={() => setNewMessage(true)} />
+              <IconButton label="New message" icon={IconPlus} size="xs" tone="sidebar-muted" className="max-lg:size-11" onClick={() => setNewMessage(true)} />
             }
             {...row}
           >
@@ -431,18 +431,76 @@ export function SidebarHeader({ collapsed = false, onNavigate }: { collapsed?: b
   )
 }
 
+const KEY_STEP = 16
+
+function rtl(el: Element) {
+  return el.closest('[dir]')?.getAttribute('dir') === 'rtl'
+}
+
+/**
+ * The sidebar's end edge: drag it, or focus it and use the arrow keys (Home / End for the limits), to set the
+ * width between 200 and 420px (spec 5.1). Double-click goes back to 260. The width is remembered.
+ */
+export function SidebarResizer() {
+  const width = useUiStore((state) => state.sidebarWidth)
+  const setWidth = useUiStore((state) => state.setSidebarWidth)
+  const drag = useRef<{ x: number; width: number; pointerId: number } | null>(null)
+
+  return (
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize sidebar"
+      aria-valuenow={width}
+      aria-valuemin={SIDEBAR_WIDTH.min}
+      aria-valuemax={SIDEBAR_WIDTH.max}
+      tabIndex={0}
+      onKeyDown={(event) => {
+        const grow = rtl(event.currentTarget) ? 'ArrowLeft' : 'ArrowRight'
+        const shrink = grow === 'ArrowRight' ? 'ArrowLeft' : 'ArrowRight'
+        if (event.key === grow) setWidth(width + KEY_STEP)
+        else if (event.key === shrink) setWidth(width - KEY_STEP)
+        else if (event.key === 'Home') setWidth(SIDEBAR_WIDTH.min)
+        else if (event.key === 'End') setWidth(SIDEBAR_WIDTH.max)
+        else return
+        event.preventDefault()
+      }}
+      onDoubleClick={() => setWidth(SIDEBAR_WIDTH.initial)}
+      onPointerDown={(event) => {
+        if (event.button !== 0) return
+        drag.current = { x: event.clientX, width, pointerId: event.pointerId }
+        event.currentTarget.setPointerCapture?.(event.pointerId)
+        event.preventDefault()
+      }}
+      onPointerMove={(event) => {
+        const start = drag.current
+        if (!start || start.pointerId !== event.pointerId) return
+        const delta = event.clientX - start.x
+        setWidth(start.width + (rtl(event.currentTarget) ? -delta : delta))
+      }}
+      onPointerUp={() => {
+        drag.current = null
+      }}
+      onPointerCancel={() => {
+        drag.current = null
+      }}
+      className="sf-focus absolute inset-y-0 -end-1 z-10 w-2 cursor-col-resize touch-none after:absolute after:inset-y-0 after:start-[3px] after:w-0.5 after:bg-transparent after:transition-colors after:duration-150 hover:after:bg-sf-sidebar-active focus-visible:after:bg-sf-sidebar-accent"
+    />
+  )
+}
+
 export function Sidebar({ collapsed }: { collapsed: boolean }) {
+  const width = useUiStore((state) => state.sidebarWidth)
   return (
     <aside
-      className={clsx(
-        'sf sticky top-0 hidden h-screen flex-none flex-col bg-sf-app-frame transition-[width] duration-200 ease-sf lg:flex',
-        collapsed ? 'w-[72px]' : 'w-sf-sidebar',
-      )}
+      style={{ width: collapsed ? 72 : width }}
+      className="sf sticky top-0 hidden h-screen flex-none flex-col bg-sf-app-frame lg:flex"
     >
       <SidebarHeader collapsed={collapsed} />
       <div className="min-h-0 flex-1">
         <SidebarContent collapsed={collapsed} />
       </div>
+      {!collapsed && <SidebarResizer />}
     </aside>
   )
 }

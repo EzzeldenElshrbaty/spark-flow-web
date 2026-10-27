@@ -40,7 +40,8 @@ export function NotificationsMenu() {
   }
 
   return (
-    <div className="relative shrink-0">
+    // Phones hide the bell (spec 5.4): mentions are on Home and in the Activity row there.
+    <div className="relative hidden shrink-0 md:block">
       <button
         ref={triggerRef}
         type="button"

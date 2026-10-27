@@ -7,8 +7,12 @@ export type Typer = { userId: string; until: number }
 /** How long someone stays "typing" after their last keystroke event. */
 const TYPING_MS = 3000
 
+/** The desktop sidebar's width range (spec 5.1); it opens at 260px. */
+export const SIDEBAR_WIDTH = { min: 200, max: 420, initial: 260 }
+
 type UiState = {
   sidebarCollapsed: boolean
+  sidebarWidth: number                           // px, dragged between SIDEBAR_WIDTH.min and max
   collapsedSections: string[]                    // sidebar sections closed by their chevron (work, channels…)
   lastWorkspace: string | null
   lastVisited: Record<string, string>            // workspace slug → last path opened in it
@@ -20,6 +24,7 @@ type UiState = {
 type UiActions = {
   toggleSidebar: () => void
   toggleSection: (id: string) => void
+  setSidebarWidth: (px: number) => void
   visit: (workspaceSlug: string, path: string) => void
   /** Forgets where the person was (after the demo data is reset, those places may be gone). */
   forgetPlaces: () => void
@@ -30,6 +35,7 @@ type UiActions = {
 
 export const initialUiState: UiState = {
   sidebarCollapsed: false,
+  sidebarWidth: SIDEBAR_WIDTH.initial,
   collapsedSections: [],
   lastWorkspace: null,
   lastVisited: {},
@@ -87,6 +93,8 @@ export const useUiStore = create<UiState & UiActions>()(
     (set) => ({
       ...initialUiState,
       toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+      setSidebarWidth: (px) =>
+        set({ sidebarWidth: Math.round(Math.min(SIDEBAR_WIDTH.max, Math.max(SIDEBAR_WIDTH.min, px))) }),
       toggleSection: (id) =>
         set((state) => ({
           collapsedSections: state.collapsedSections.includes(id)

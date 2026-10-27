@@ -249,7 +249,7 @@ export function DesktopSearch() {
         }}
         onFocus={() => setOpen(true)}
         onKeyDown={keys.onKeyDown}
-        placeholder="Search pages, tasks, people, messages…"
+        placeholder="Search pages, tasks, people, channels…"
         className="sf-ui h-sf-input w-full truncate rounded-sf-md border border-sf-line bg-sf-surface-sunken ps-9 pe-16 text-sf-text outline-none placeholder:text-sf-text-muted focus:border-sf-focus focus:shadow-[0_0_0_3px_var(--surface-mention)]"
       />
       <span className="absolute end-2 top-1/2 flex -translate-y-1/2 items-center gap-1">
