@@ -242,7 +242,7 @@ export function DesktopSearch() {
         }}
         onFocus={() => setOpen(true)}
         onKeyDown={keys.onKeyDown}
-        placeholder="Search pages, channels, projects…"
+        placeholder="Search pages, tasks, people…"
         className="w-full rounded-lg border border-line bg-surface-sunken py-2 ps-9 pe-3 text-sm placeholder:text-fg-subtle focus:border-brand-500 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent-soft"
       />
       {open && term.trim() && (
