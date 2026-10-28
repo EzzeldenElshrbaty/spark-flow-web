@@ -9,7 +9,7 @@ export function hasOpenLayer() {
   return stack.length > 0
 }
 
-/** While `active`, Escape calls `onEscape` if this is the top-most layer. */
+/** While `active`, Escape calls `onEscape` if this is the top-most layer and nothing inside used the key first. */
 export function useEscapeLayer(active: boolean, onEscape: () => void) {
   const onEscapeRef = useRef(onEscape)
   useEffect(() => {
@@ -20,7 +20,8 @@ export function useEscapeLayer(active: boolean, onEscape: () => void) {
     const id = Symbol('layer')
     stack.push(id)
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || stack[stack.length - 1] !== id) return
+      // A field that used the key itself (a suggestion list closing, an edit cancelled) said so with preventDefault.
+      if (event.key !== 'Escape' || event.defaultPrevented || stack[stack.length - 1] !== id) return
       event.preventDefault()
       onEscapeRef.current()
     }

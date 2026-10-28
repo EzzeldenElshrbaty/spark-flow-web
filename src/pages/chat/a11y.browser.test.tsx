@@ -574,3 +574,42 @@ describe('Channel details on a phone (spec 10, 6.16)', () => {
   })
 })
 
+
+describe('Esc in Channel details, with real key presses (spec 10, review)', () => {
+  const more = [
+    ...users,
+    { id: 'u-3', name: 'Mariam Fathy', title: 'Designer', email: 'm@spark-sys.com', presence: 'offline', role: 'member' },
+    { id: 'u-4', name: 'Omar Hassan', title: 'QA', email: 'o@spark-sys.com', presence: 'active', role: 'member' },
+  ] as User[]
+
+  it('in the Add people suggestions it closes the list and keeps the picks; then Add people; then the details', async () => {
+    const onClose = vi.fn()
+    mount(details({ tab: 'members', people: more, onClose }), false)
+    await userEvent.click(screen.getByRole('button', { name: 'Add people' }))
+    const names = screen.getByRole('combobox', { name: 'Names' })
+    await userEvent.click(names)
+    await userEvent.keyboard('Mar{Enter}Om')
+    expect(names.getAttribute('aria-expanded')).toBe('true')
+    await userEvent.keyboard('{Escape}')
+    expect(screen.getByRole('dialog', { name: 'Add people to #backend' })).toBeTruthy()
+    expect(names.getAttribute('aria-expanded')).toBe('false')
+    expect(screen.getByRole('button', { name: 'Remove Mariam Fathy' })).toBeTruthy()
+    await userEvent.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog', { name: 'Add people to #backend' })).toBeNull()
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('in an open field it cancels the edit and keeps the details open; then it closes them', async () => {
+    const onClose = vi.fn()
+    mount(details({ editTopic: true, onClose }), false)
+    const topic = screen.getByRole('textbox', { name: 'Topic' })
+    await userEvent.click(topic)
+    await userEvent.keyboard(' and more')
+    await userEvent.keyboard('{Escape}')
+    expect(screen.queryByRole('textbox', { name: 'Topic' })).toBeNull()
+    expect(screen.getByRole('group', { name: 'Topic' }).textContent).toContain('APIs and jobs')
+    expect(onClose).not.toHaveBeenCalled()
+    await userEvent.keyboard('{Escape}')
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+})

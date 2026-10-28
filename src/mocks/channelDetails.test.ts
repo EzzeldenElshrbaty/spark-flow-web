@@ -116,3 +116,18 @@ describe('who can post, in the channel (spec §9)', () => {
     expect((await api.chat.message(root.id)).reactions).toContainEqual({ emoji: '👍', userIds: ['u-2'] })
   })
 })
+
+describe('an archived channel is read-only (review)', () => {
+  it('its details and people can’t change until it’s restored, as nothing can be posted in it', async () => {
+    const channel = await ops()
+    await api.chat.addMembers(channel.id, ['u-2'])
+    await api.chat.archiveChannel(channel.id)
+    const refused = { status: 400, detail: 'This channel is archived.' }
+    await expect(api.chat.updateChannel(channel.id, { name: 'ops-old' })).rejects.toMatchObject(refused)
+    await expect(api.chat.updateChannel(channel.id, { whoCanPost: 'admins' })).rejects.toMatchObject(refused)
+    await expect(api.chat.addMembers(channel.id, ['u-3'])).rejects.toMatchObject(refused)
+    await expect(api.chat.removeMember(channel.id, 'u-2')).rejects.toMatchObject(refused)
+    await api.chat.restoreChannel(channel.id)
+    expect((await api.chat.updateChannel(channel.id, { name: 'ops-old' })).name).toBe('ops-old')
+  })
+})

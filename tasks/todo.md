@@ -598,3 +598,29 @@ Rulings while building: posting rules live in `can()` (`channel.restrictPosting`
 - Verified: 1150 tests (axe in light and dark on every tab, the level menu and Add people; a 390px fit and 44px touch check), tsc, lint, `build:prototype`; in the app as Youssef: description saved, Mariam added then removed (both system messages shown), Only admins set; as Nour the composer line shows; set back to Everyone.
 - Not pushed.
 
+## Fresh review (slice 4) — 0 critical, 3 important, 16 minor
+
+Fixed, test first:
+- [x] On Settings, losing the right to manage (archived elsewhere, or taken off a public channel) crashed the page (`tabs.find(...)!`) → the shown tab falls back to About; an open field closes when its right goes.
+- [x] An archived channel could still be renamed, re-described, re-staffed and re-archived → 400 "This channel is archived." on the details and members routes; `detailsRights` makes the details read-only (no Edit, no Settings) while archived.
+- [x] Esc in the Add people suggestions closed the whole dialog and dropped the picks → `useEscapeLayer` skips an Esc a field already used (`defaultPrevented`); tested with real key presses inside the Modal.
+- [x] Esc in an open card closed the details and lost the draft (re-graded up from minor, same harm) → Esc cancels the edit only; a second Esc closes the details.
+
+Deferred minors:
+- Enter doesn't save an open field (Ctrl/⌘+Enter for the description).
+- Several cards can be open at once: several red Save buttons.
+- First focus lands on the level button; focus can drop to the page after the topic is added.
+- "Add a topic" reopens the topic field on coming back to About; a tab switch drops open drafts.
+- Remove has no confirmation; two quick removes share one pending state.
+- A description's line breaks are shown as one line.
+- The Who can post radio jumps back while saving.
+- Star, level and mute errors from the details header show behind the modal.
+- Add people's refusals aren't announced (no live region on the TokenInput error).
+- Under 44px on phones: the Modal ×, Add people's footer buttons, a chip's ×, Open project, Find members.
+- A removed person's open thread says "couldn't load" rather than "You're not in this channel."
+- Contract: who receives `channel.updated` on add and remove; the 403 sentence for a non-member of a private channel.
+- Bad stored values (`whoCanPost: 'owner'`, a number for the description) block every edit.
+- A retried send that already arrived gets 403 after a switch to Only admins (the clientId lookup should come first).
+- An admin not in a public channel can "add" themselves ("added Youssef Abdelrahman").
+- An archived project's channel shows no Project card.
+

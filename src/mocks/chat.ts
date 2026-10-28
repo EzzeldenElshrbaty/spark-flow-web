@@ -194,11 +194,15 @@ function checkCanWrite(data: DbData, channel: StoredChannel) {
 
 const WHO_CAN_POST: WhoCanPost[] = ['everyone', 'admins']
 
-/** A channel whose people I may change (spec 6.10): not a DM, not a project's (it follows its project). */
+/**
+ * A channel whose details and people I may change (spec 6.10): not a DM, not a project's (it follows its project), and
+ * not while archived (read-only until it's restored).
+ */
 function editableChannel(data: DbData, id: string) {
   const channel = readableChannel(data, id)
   if (channel.kind === 'dm') throw badRequest("Direct messages can't be edited.")
   if (data.projects.some((p) => p.channelId === id)) throw badRequest('This channel follows its project.')
+  if (channel.archivedAt) throw badRequest('This channel is archived.')
   return { channel, me: requireManage(data, channel) }
 }
 

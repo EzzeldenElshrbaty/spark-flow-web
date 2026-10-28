@@ -347,3 +347,19 @@ describe('Popover (a small card that is not a menu: the profile card)', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 })
+
+describe('Escape a field has already used (spec 10: Esc closes the top-most layer)', () => {
+  it('closes no layer when the field it was pressed in handled it (a suggestion list, an edit)', () => {
+    const onClose = vi.fn()
+    render(
+      <Modal open onClose={onClose} title="Add people">
+        <input aria-label="Names" onKeyDown={(event) => event.key === 'Escape' && event.preventDefault()} />
+        <input aria-label="Other" />
+      </Modal>,
+    )
+    fireEvent.keyDown(screen.getByRole('textbox', { name: 'Names' }), { key: 'Escape' })
+    expect(onClose).not.toHaveBeenCalled()
+    fireEvent.keyDown(screen.getByRole('textbox', { name: 'Other' }), { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+})

@@ -29,7 +29,7 @@ import { useCanPost, useCanWrite, useReadOnlyLine } from '@/pages/chat/useCanPos
 import { useTaskFromMessage } from '@/pages/chat/useTaskFromMessage'
 import { ArchiveChannelModal, ArchivedChannelLine, JoinChannelLine, useChannelRights } from '@/pages/chat/ChannelActions'
 import { ChannelHeader } from '@/pages/chat/ChannelHeader'
-import { ChannelDetails, type DetailsTab } from '@/pages/chat/ChannelDetails'
+import { ChannelDetails, detailsRights, type DetailsTab } from '@/pages/chat/ChannelDetails'
 import { ChannelTabs, TabStub, tabFromParam, type ChannelTab } from '@/pages/chat/ChannelTabs'
 import type { Channel, ChatMessage, User } from '@/api/types'
 import { useProjectSummaries } from '@/api/projects'
@@ -214,7 +214,7 @@ function ChannelTop({ channel, people, workspaceSlug, tab, onTab, panelId }: { c
           people={people}
           takenNames={takenNames}
           project={own ? { name: own.name, key: own.key, href: paths.project(workspaceSlug, own.key) } : null}
-          rights={{ ...rights, restrictPosting: check('channel.restrictPosting', { channel }) }}
+          rights={detailsRights(channel, rights, check('channel.restrictPosting', { channel }))}
           tab={details.tab}
           editTopic={details.editTopic}
           onClose={() => setDetails(null)}

@@ -22,6 +22,15 @@ const TOUCH = 'relative max-md:after:absolute max-md:after:-inset-1.5'
 const message = (error: unknown) => (error instanceof Error ? error.message : 'Something went wrong. Try again.')
 
 /**
+ * What Channel details lets me do: manage and Leave as the channel allows, who can post for Admins; an archived channel
+ * is read-only until it's restored, so neither its details nor its people change.
+ */
+export function detailsRights(channel: Pick<Channel, 'archivedAt'>, rights: { manage: boolean; leave: boolean }, restrictPosting: boolean) {
+  const open = !channel.archivedAt
+  return { manage: rights.manage && open, leave: rights.leave, restrictPosting: restrictPosting && rights.manage && open }
+}
+
+/**
  * Channel details (spec 6.10): the name with the star and the notification level, then About, Members and, for whoever
  * may manage the channel, Settings. Everything it changes goes through its callbacks; the page wires them to the API.
  */
@@ -69,13 +78,15 @@ export function ChannelDetails({
   onLeave: () => void
   onArchive: () => void
 }) {
-  const [tab, setTab] = useState<DetailsTab>(firstTab === 'settings' && !rights.manage ? 'about' : firstTab)
+  const [chosen, setTab] = useState<DetailsTab>(firstTab)
   const panelId = useId()
   const tabs = [
     { id: 'about' as const, label: 'About' },
     { id: 'members' as const, label: 'Members', count: channel.memberIds.length },
     ...(rights.manage ? [{ id: 'settings' as const, label: 'Settings' }] : []),
   ]
+  // Settings goes when the right to manage does (archived, or taken off a channel): About stands in.
+  const tab = tabs.some((t) => t.id === chosen) ? chosen : 'about'
   const bell = 'Channel notifications'
   const state = channel.muted ? 'Muted' : levelLabel(channel.notifyLevel)
 
@@ -169,7 +180,9 @@ function EditableCard({
   check: (text: string) => string | undefined
   onSave: (text: string) => Promise<unknown>
 }) {
-  const [editing, setEditing] = useState(startOpen && editable)
+  const [opened, setEditing] = useState(startOpen && editable)
+  // The field closes when the right to change it goes while it's open.
+  const editing = opened && editable
   const [draft, setDraft] = useState(value)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
@@ -209,6 +222,12 @@ function EditableCard({
     'aria-describedby': error ? errorId : undefined,
     value: draft,
     onChange: (event: { target: { value: string } }) => setDraft(prepare(event.target.value)),
+    // Esc cancels the edit only (the details stay open); preventDefault tells the dialog's Esc it's been used.
+    onKeyDown: (event: { key: string; preventDefault: () => void }) => {
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      setEditing(false)
+    },
     className: 'sf-ui w-full rounded-sf-md border border-sf-line-strong bg-sf-surface px-3 py-2 text-sf-text outline-none focus:border-sf-focus focus:shadow-[0_0_0_3px_var(--surface-mention)]',
   }
   return (

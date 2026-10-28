@@ -4,7 +4,7 @@ import type { ComponentProps } from 'react'
 import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Channel, User } from '@/api/types'
-import { ChannelDetails } from '@/pages/chat/ChannelDetails'
+import { ChannelDetails, detailsRights } from '@/pages/chat/ChannelDetails'
 
 afterEach(cleanup)
 window.matchMedia ??= ((media: string) => ({ matches: false, media, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia
@@ -21,6 +21,7 @@ const people = [
 ] as User[]
 
 type Props = ComponentProps<typeof ChannelDetails>
+const base = (props: Partial<Props>) => ({ channel: backend, meId: 'u-1', people, takenNames: ['general', 'frontend-dev'], project: null, rights: { manage: true, leave: true, restrictPosting: true }, tab: 'about' as const, ...props })
 function show(props: Partial<Props> = {}) {
   const handlers = {
     onClose: vi.fn(), onSave: vi.fn(async () => {}), onAdd: vi.fn(async () => {}), onRemove: vi.fn(async () => {}), onStar: vi.fn(), onNotifyLevel: vi.fn(),
@@ -225,3 +226,39 @@ describe('Channel details: Settings (spec 6.10, §9)', () => {
     expect(screen.getByText('Private channel. Only its members can see it, and that can’t be changed.')).toBeTruthy()
   })
 })
+
+describe('Channel details when rights change while it is open (review)', () => {
+  const handlers = () => ({
+    onClose: vi.fn(), onSave: vi.fn(async () => {}), onAdd: vi.fn(async () => {}), onRemove: vi.fn(async () => {}), onStar: vi.fn(), onNotifyLevel: vi.fn(),
+    onMute: vi.fn(), onCopyLink: vi.fn(async () => {}), onLeave: vi.fn(), onArchive: vi.fn(),
+  })
+
+  it('on Settings, losing the right to manage it goes back to About instead of failing', () => {
+    const on = handlers()
+    const { rerender } = render(<MemoryRouter><ChannelDetails {...base({ tab: 'settings' })} {...on} /></MemoryRouter>)
+    expect(screen.getByRole('radiogroup', { name: 'Who can post' })).toBeTruthy()
+    rerender(<MemoryRouter><ChannelDetails {...base({ tab: 'settings', rights: { manage: false, leave: true, restrictPosting: false } })} {...on} /></MemoryRouter>)
+    expect(screen.queryByRole('tab', { name: 'Settings' })).toBeNull()
+    expect(screen.getByRole('tab', { name: 'About' }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('tabpanel', { name: 'About' })).toBeTruthy()
+  })
+
+  it('an open field closes when the right to change it goes', () => {
+    const on = handlers()
+    const { rerender } = render(<MemoryRouter><ChannelDetails {...base({ editTopic: true })} {...on} /></MemoryRouter>)
+    expect(within(card('Topic')).getByRole('textbox', { name: 'Topic' })).toBeTruthy()
+    rerender(<MemoryRouter><ChannelDetails {...base({ editTopic: true, rights: { manage: false, leave: true, restrictPosting: false } })} {...on} /></MemoryRouter>)
+    expect(within(card('Topic')).queryByRole('textbox')).toBeNull()
+    expect(within(card('Topic')).queryByRole('button', { name: 'Save' })).toBeNull()
+  })
+})
+
+describe('detailsRights: what the details let me do (review)', () => {
+  it('an archived channel is read-only: no edits, no Settings, no who can post', () => {
+    const rights = { manage: true, leave: true }
+    expect(detailsRights(backend, rights, true)).toEqual({ manage: true, leave: true, restrictPosting: true })
+    expect(detailsRights({ ...backend, archivedAt: '2026-10-28T10:00:00.000Z' }, { manage: true, leave: false }, true)).toEqual({ manage: false, leave: false, restrictPosting: false })
+    expect(detailsRights(backend, { manage: false, leave: true }, true)).toEqual({ manage: false, leave: true, restrictPosting: false })
+  })
+})
+
