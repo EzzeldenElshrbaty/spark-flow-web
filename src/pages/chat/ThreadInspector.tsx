@@ -5,7 +5,9 @@ import { QueryError } from '@/components/ui/QueryError'
 import { InspectorFrame, InspectorSkeleton, TitleSkeleton, type InspectorBodyProps } from '@/layout/InspectorFrame'
 import { ApiError } from '@/lib/api'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
-import { channelLabel, inWorkspace } from '@/lib/channels'
+import { channelLabel, inWorkspace, mustJoin } from '@/lib/channels'
+import { useProjectSummaries } from '@/api/projects'
+import { JoinChannelLine } from '@/pages/chat/ChannelActions'
 import { firstLine } from '@/lib/inspector'
 import { useRole } from '@/lib/useRole'
 import { NotFound } from '@/pages/NotFound'
@@ -34,6 +36,8 @@ export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: st
   const canPost = useCanPost(channel.data)
   const readOnly = useReadOnlyLine(channel.data)
   const reply = useReply()
+  // As in the channel: a public channel I'm not in asks me to join before I write, here too.
+  const projects = useProjectSummaries(channel.data?.workspaceId)
   const projectKeys = useProjectKeys(channel.data?.workspaceId)
   const people = useMemo(() => users.data ?? [], [users.data])
   const scope = useMemo(() => ({ users: people, projectKeys, ws: workspace?.slug ?? '', workspaceId: channel.data?.workspaceId ?? '' }), [people, projectKeys, workspace, channel.data])
@@ -93,7 +97,9 @@ export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: st
           </ul>
         )}
         <div ref={replyBox} className="mt-4">
-          {canPost === false ? (
+          {channel.data && mustJoin(channel.data, persona.id, projects.data) ? (
+            <JoinChannelLine channel={channel.data} />
+          ) : canPost === false ? (
             <p className="text-sm text-fg-muted">{readOnly}</p>
           ) : canPost && channel.data ? (
             <ThreadComposer

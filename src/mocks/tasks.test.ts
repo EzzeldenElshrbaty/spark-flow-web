@@ -86,6 +86,14 @@ describe('a task from a chat message', () => {
     expect(events).toContainEqual({ type: 'messageChanged', channelId: 'c-p-mob', messageId: message.id })
   })
 
+  it('a thread reply also sent to the project’s chat is refused: tasks are made from messages', async () => {
+    const api = apiAt()
+    await api.users.viewAs('u-4')
+    const root = await api.chat.send('c-p-mob', 'The build fails at signing')
+    const sent = await api.chat.reply(root.id, 'The key expired', undefined, true)
+    await expect(api.tasks.create(newTask({ linkedChannelId: 'c-p-mob', linkedMessageId: sent.id }))).rejects.toMatchObject({ status: 400, detail: "A task can't be made from a thread reply." })
+  })
+
   it("a message from another channel, or a deleted one, is refused", async () => {
     const api = apiAt()
     await api.users.viewAs('u-4')

@@ -7,6 +7,24 @@ export const replyState: ThreadNavState = { focus: 'reply' }
 
 const REPLY_BOX = 'textarea, [contenteditable="true"]'
 
+/** Focuses the reply box with the caret at its end, after a saved draft, to carry on typing. */
+function focusAtEnd(reply: HTMLElement) {
+  reply.focus()
+  if (reply instanceof HTMLTextAreaElement) return reply.setSelectionRange(reply.value.length, reply.value.length)
+  const selection = window.getSelection()
+  if (!selection) return
+  let last: Node = reply
+  while (last.lastChild) last = last.lastChild
+  const range = document.createRange()
+  if (last.nodeType === Node.TEXT_NODE) range.setStart(last, last.textContent?.length ?? 0)
+  else {
+    range.selectNodeContents(last.parentNode ?? reply)
+    range.collapse(false)
+  }
+  selection.removeAllRanges()
+  selection.addRange(range)
+}
+
 /**
  * The reply box's caret when the thread was opened to reply (Reply in thread, T): on arrival, and again each time
  * I ask while it's open. A ref for the element around the reply box; a thread opened any other way leaves focus be.
@@ -23,13 +41,13 @@ export function useReplyFocus() {
     waiting.current = null
     if (!el) return
     const reply = el.querySelector<HTMLElement>(REPLY_BOX)
-    if (reply) return reply.focus()
+    if (reply) return focusAtEnd(reply)
     const observer = new MutationObserver(() => {
       const late = el.querySelector<HTMLElement>(REPLY_BOX)
       if (!late) return
       observer.disconnect()
       waiting.current = null
-      late.focus()
+      focusAtEnd(late)
     })
     observer.observe(el, { childList: true, subtree: true })
     waiting.current = observer

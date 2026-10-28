@@ -39,12 +39,19 @@ describe('the thread panel’s ⋮ (spec 6.7)', () => {
     await vi.waitFor(() => expect(setFollowing).toHaveBeenCalledWith('m1', false))
   })
 
-  it('Copy link copies the thread’s link and says so', async () => {
+  it('Copy link copies the thread’s link and says so, on screen and read out', async () => {
     const writeText = vi.fn(async () => {})
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
     fireEvent.click(within(show()).getByRole('menuitem', { name: 'Copy link' }))
     expect(writeText).toHaveBeenCalledWith(link)
     await vi.waitFor(() => expect(screen.getByRole('status').textContent).toBe('Link copied'))
+    expect(screen.getByText('Link copied', { selector: 'p' })).toBeTruthy()
+  })
+
+  it('a copy the browser refuses says so, and the words stay', async () => {
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: vi.fn(async () => Promise.reject(new Error('denied'))) }, configurable: true })
+    fireEvent.click(within(show()).getByRole('menuitem', { name: 'Copy link' }))
+    expect(await screen.findByText("Couldn't copy the link", { selector: 'p' })).toBeTruthy()
   })
 
   it('Open in a new window opens the thread’s link there', () => {

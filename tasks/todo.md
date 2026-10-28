@@ -484,3 +484,19 @@ Range `1819445..52de4fc`. One fresh reviewer: no Critical, 2 Important, 6 Minor.
 - `npm test`: 1049/1049 (111 files). Lint and `build:prototype` (with `tsc -b`) pass.
 - In the app: with the thread open, Up in the empty channel composer opened one edit box, in the channel, with focus there (the broadcast reply "Fixed on staging too").
 - Deferred minors: M1 the thread ⋮'s "Link copied" is only read out, not shown; M3 Create task from a broadcast row links the task to its channel entry, not the reply (the chip shows only in the channel); M4 a non-member of a public channel gets "Also send to #channel" in the thread panel while the channel asks them to join first; M5 Reply in thread or T puts the caret at the start of a saved draft; M6 `CLAUDE.md` still says the old textarea Composer serves threads.
+
+# Flow chat — the 5 deferred minors from the threads review — 2026-10-28 — done
+
+Each test written first and watched fail (M6 is text).
+
+- [x] M1 — the thread ⋮'s "Link copied" (and its failure) was only read out. It's shown under the ⋮ too: a success clears after 2s, a failure stays. Tests: `ThreadMenu.test.tsx` "says so, on screen and read out", "a copy the browser refuses says so".
+- [x] M3 — Create task from a broadcast row linked the task to its channel entry, not the reply. A broadcast row offers no Create task (`canMakeTask`), and the mock refuses one: "A task can't be made from a thread reply." Tests: `taskDraft.test.ts` "canMakeTask", `tasks.test.ts` "a thread reply also sent to the project's chat is refused".
+- [x] M4 — a non-member of a public channel got the thread's reply box (and Also send) while the channel asks them to join first. One rule, `mustJoin` (`lib/channels.ts`), shows Join channel in both. Test: `channels.test.ts` "mustJoin".
+- [x] M5 — Reply in thread or T put the caret at the start of a saved draft. `useReplyFocus` puts it at the end. Test: `useReplyFocus.test.tsx` "the caret goes after the draft" (RED: offset 0).
+- [x] M6 — `CLAUDE.md` says a thread replies with `ThreadComposer` and edits use the rich editor; the old textarea Composer serves the project Chat tab and task comments.
+
+## Review — minors
+
+- `npm test`: 1056/1056 (111 files). Lint and `build:prototype` (with `tsc -b`) pass.
+- In the app: a thread draft "half a thought", closed and reopened with Reply in thread: the caret came back at its end (typing "!" gave "half a thought!"). The thread ⋮'s Copy link showed "Couldn't copy the link" under it (the pane refuses clipboard writes).
+- Not seen in the app: the Join channel line in a thread (needs a public channel I'm not in); covered by the rule's test and the same line as the channel page.

@@ -37,6 +37,14 @@ export function inWorkspace(channel: Pick<Channel, 'workspaceId'>, workspaceId: 
   return Boolean(workspaceId) && channel.workspaceId === workspaceId
 }
 
+/**
+ * Whether I must join a channel before writing in it (in the channel or a thread): a public channel I'm not in that no
+ * project owns (a project's people follow the project). False until the projects are known, so the line doesn't flash.
+ */
+export function mustJoin(channel: Channel, meId: string, projects: { channelId: string }[] | undefined): boolean {
+  return channel.kind === 'channel' && !channel.isPrivate && !channel.memberIds.includes(meId) && projects !== undefined && !projects.some((p) => p.channelId === channel.id)
+}
+
 /** The line shown instead of the composer to someone who may read a channel but not write in it. */
 export const readOnlyFor = (isProjectChannel: boolean) =>
   isProjectChannel ? 'You can read this channel. Only its project’s people can write here.' : 'You can read this channel. Only its members can write here.'

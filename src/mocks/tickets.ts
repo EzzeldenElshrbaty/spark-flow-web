@@ -142,6 +142,8 @@ export function tasksApi(db: MockDb, hub: MockHub, now: () => Date): Api['tasks'
         // A task made from a chat message: that message is in this project's chat, and still there.
         if (input.linkedMessageId) {
           const message = data.messages.find((m) => m.id === input.linkedMessageId)
+          // A reply also sent to the chat is listed there, but it's a reply: tasks are made from messages.
+          if (message?.broadcast) throw badRequest("A task can't be made from a thread reply.")
           if (!message || message.channelId !== project.channelId || message.deletedAt) throw badRequest("This message isn't in the project's chat.")
         }
       })

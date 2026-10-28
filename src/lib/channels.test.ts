@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Channel, MentionItem } from '@/api/types'
-import { channelLabel, inWorkspace, readOnlyFor, sidebarChannels, sidebarRowState, sortChannels, unreadMentions } from '@/lib/channels'
+import { channelLabel, inWorkspace, mustJoin, readOnlyFor, sidebarChannels, sidebarRowState, sortChannels, unreadMentions } from '@/lib/channels'
 import { seed } from '@/mocks/seed'
 
 const data = seed(new Date('2026-10-26T09:00:00Z')).data
@@ -123,5 +123,21 @@ describe('sidebarRowState (spec §5.1 row rules)', () => {
   it('a muted row is never bold and never has a count', () => {
     expect(sidebarRowState({ ...channel('a'), ...state, muted: true, unreadCount: 3 }, 2)).toEqual({ bold: false, count: 0, muted: true })
     expect(sidebarRowState({ ...dm([me.id, other.id]), ...state, muted: true, unreadCount: 3 }, 0)).toEqual({ bold: false, count: 0, muted: true })
+  })
+})
+
+describe('mustJoin (post in a public channel: join it first)', () => {
+  const projects = [{ channelId: 'c-p-nex' }]
+  it('a public channel I’m not in, that no project owns', () => {
+    expect(mustJoin({ ...channel('random'), memberIds: ['u-2'] }, 'u-1', projects)).toBe(true)
+  })
+  it('not when I’m in it, it’s private, a DM, or a project’s channel (its people follow the project)', () => {
+    expect(mustJoin({ ...channel('random'), memberIds: ['u-1'] }, 'u-1', projects)).toBe(false)
+    expect(mustJoin({ ...channel('random'), isPrivate: true }, 'u-1', projects)).toBe(false)
+    expect(mustJoin(dm(['u-2']), 'u-1', projects)).toBe(false)
+    expect(mustJoin({ ...channel('nex'), id: 'c-p-nex' }, 'u-1', projects)).toBe(false)
+  })
+  it('not before the projects are known (no flash of Join channel)', () => {
+    expect(mustJoin({ ...channel('random'), memberIds: ['u-2'] }, 'u-1', undefined)).toBe(false)
   })
 })

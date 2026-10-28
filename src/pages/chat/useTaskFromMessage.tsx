@@ -6,7 +6,7 @@ import type { ChatMessage } from '@/api/types'
 import { useUsers } from '@/api/users'
 import { MenuItem } from '@/components/sf/Menu'
 import { usePermission } from '@/lib/usePermission'
-import { taskDraft } from '@/pages/chat/taskDraft'
+import { canMakeTask, taskDraft } from '@/pages/chat/taskDraft'
 import { TaskSheet } from '@/pages/projects/TaskSheet'
 
 /**
@@ -24,7 +24,7 @@ export function useTaskFromMessage(channelId: string | undefined, workspaceId: s
 
   if (!project || !allowed) return { sheet: null }
   const messageActions = (message: ChatMessage) =>
-    message.taskEvent || message.commentId ? null : (
+    !canMakeTask(message) ? null : (
       <MenuItem key="task" icon={IconListCheck} onSelect={() => setFrom(message)}>
         Create task
       </MenuItem>

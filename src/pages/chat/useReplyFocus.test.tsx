@@ -72,3 +72,27 @@ describe('useReplyFocus (Reply in thread, T: spec 6.4 and 10)', () => {
     await vi.waitFor(() => expect(document.activeElement).toBe(reply()))
   })
 })
+
+describe('useReplyFocus with a saved draft (spec 6.8)', () => {
+  it('the caret goes after the draft, to carry on typing', () => {
+    function Drafted() {
+      const box = useReplyFocus()
+      return (
+        <div ref={box}>
+          <div contentEditable suppressContentEditableWarning aria-label="Reply in the thread" role="textbox">
+            half a thought
+          </div>
+        </div>
+      )
+    }
+    render(
+      <MemoryRouter initialEntries={[{ pathname: '/c', search: '?thread=m1', state: replyState }]}>
+        <Drafted />
+      </MemoryRouter>,
+    )
+    const selection = window.getSelection()!
+    expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Reply in the thread' }))
+    expect(selection.isCollapsed).toBe(true)
+    expect(selection.focusOffset).toBe('half a thought'.length)
+  })
+})

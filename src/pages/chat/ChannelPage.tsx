@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { ApiError } from '@/lib/api'
-import { channelLabel, inWorkspace, isArchived } from '@/lib/channels'
+import { channelLabel, inWorkspace, isArchived, mustJoin } from '@/lib/channels'
 import { paths } from '@/lib/paths'
 import { useRole } from '@/lib/useRole'
 import { useRealtime } from '@/lib/realtime'
@@ -121,7 +121,7 @@ export function ChannelPage() {
         composer={
           isArchived(current) ? (
             <ArchivedChannelLine channel={current} />
-          ) : current.kind === 'channel' && !current.isPrivate && !current.memberIds.includes(persona.id) && projects.data && !projects.data.some((p) => p.channelId === current.id) ? (
+          ) : mustJoin(current, persona.id, projects.data) ? (
             <JoinChannelLine channel={current} />
           ) : canPost === false ? (
             <p className="text-sm text-fg-muted">{readOnly}</p>
