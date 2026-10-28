@@ -146,3 +146,26 @@ describe('sharing a file in another channel (spec 6.9 Share)', () => {
     await expect(api.files.share(f.id, 'c-general')).rejects.toMatchObject({ status: 403 })
   })
 })
+
+describe('security review of part A', () => {
+  it('only whoever uploaded a file, or an Admin, shares it, so nobody else can carry it to a wider channel', async () => {
+    const f = await upload('secret.pdf', 'c-release')
+    await api.chat.send('c-release', 'Scope', undefined, undefined, [f.id])
+    await api.users.viewAs('u-2')
+    await expect(api.files.share(f.id, 'c-general', 'Everyone should see')).rejects.toMatchObject({ status: 403, detail: 'Only whoever uploaded it, or an admin, can share this file.' })
+    expect((await api.files.details(f.id)).sharedIn.map((s) => s.channelId)).toEqual(['c-release'])
+  })
+
+  it('an archived project’s or channel’s file can’t be edited or deleted until it’s restored', async () => {
+    await api.projects.archive('p-mob')
+    const frozen = { status: 400, detail: 'This project is archived. Restore it first.' }
+    await expect(api.files.delete('a-mob-scope')).rejects.toMatchObject(frozen)
+    await expect(api.files.update('a-mob-scope', { title: 'New' })).rejects.toMatchObject(frozen)
+    const ops = await api.chat.createChannel({ workspaceId: 'ws-eng', name: 'ops', topic: '', isPrivate: false, memberIds: [] })
+    const f = await upload('notes.txt', ops.id)
+    await api.chat.send(ops.id, 'Notes', undefined, undefined, [f.id])
+    await api.chat.archiveChannel(ops.id)
+    await expect(api.files.delete(f.id)).rejects.toMatchObject({ status: 400, detail: 'This channel is archived.' })
+    await expect(api.files.update(f.id, { title: 'New' })).rejects.toMatchObject({ status: 400, detail: 'This channel is archived.' })
+  })
+})

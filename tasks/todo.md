@@ -726,6 +726,7 @@ Part A — files data and routes
 - [x] send and reply take `fileIds` (≤ 10, mine, complete, clean, uploaded for this channel); idempotent by clientId.
 - [x] `GET /api/files/:id` serves chat files to whoever reads a channel they're in; `GET /api/files/:id/details`; `PATCH /api/files/:id { title?, description? }` and `DELETE /api/files/:id` (uploader or Admin; "This file was deleted." where it was); `POST /api/files/:id/share { channelId, content? }`.
 - [x] Project-file removal moves to `DELETE /api/projects/:projectId/files/:fileId`.
+- [x] Security review of part A: Share is for whoever uploaded the file or an Admin (nobody else carries it to a wider channel); Edit file details and Delete file are refused while a project or channel the file is in is archived.
 - [x] Events: shared, updated, deleted refresh the messages, threads and details that show the file. http, hooks, query keys; tests first.
 
 Part B — Attach menu, tray, upload

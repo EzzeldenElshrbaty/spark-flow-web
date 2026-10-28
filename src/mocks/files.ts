@@ -86,6 +86,20 @@ function requireFileManage(data: DbData, file: Attachment) {
   }
 }
 
+/**
+ * Nothing where the file is may be archived: an archived project is frozen, and an archived channel is read-only, until
+ * they're restored.
+ */
+function requireUnfrozen(data: DbData, fileId: string) {
+  const projectIds = [
+    ...data.projectFiles.filter((f) => f.attachmentId === fileId).map((f) => f.projectId),
+    ...data.comments.filter((c) => c.attachmentIds.includes(fileId)).map((c) => c.projectId),
+  ]
+  for (const projectId of new Set(projectIds)) openProject(data, projectId)
+  const channelIds = [...data.messages, ...data.replies].filter((row) => row.attachments.some((a) => a.id === fileId)).map((row) => row.channelId)
+  if (channelIds.some((id) => data.channels.find((c) => c.id === id)?.archivedAt)) throw badRequest('This channel is archived.')
+}
+
 /** Applies a change to a file's record and to every copy of it in messages and replies; says which messages changed. */
 function changeEverywhere(data: DbData, fileId: string, change: Partial<Attachment>): { channelId: string; messageId: string }[] {
   const changed: { channelId: string; messageId: string }[] = []
@@ -214,6 +228,7 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
       const { file, changed } = await db.update((data) => {
         const file = visibleFile(data, id)
         requireFileManage(data, file)
+        requireUnfrozen(data, id)
         const title = (patch.title ?? file.title).trim()
         const description = (patch.description ?? file.description).trim()
         const wrong = fileTitleError(title) ?? fileDescriptionError(description)
@@ -230,6 +245,7 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
       const { changed, projectIds } = await db.update((data) => {
         const file = visibleFile(data, id)
         requireFileManage(data, file)
+        requireUnfrozen(data, id)
         const projectIds = data.projectFiles.filter((f) => f.attachmentId === id).map((f) => f.projectId)
         // The record stays, marked, so where it was shared can say it was deleted; the bytes go.
         return { changed: changeEverywhere(data, id, { deletedAt: now().toISOString() }), projectIds }
@@ -243,8 +259,13 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
       await delay()
       const { message, mentioned } = await db.update((data) => {
         const file = visibleFile(data, id)
+        // Only whoever uploaded it, or an Admin: nobody else carries a file from where it is to a wider channel.
+        const me = currentUser(data)
+        if (!can('file.manage', { userId: me.id, role: me.role, uploadedBy: file.uploadedBy })) {
+          throw new ApiError({ title: 'Forbidden', status: 403, detail: 'Only whoever uploaded it, or an admin, can share this file.' })
+        }
         if (file.scanStatus !== 'clean') throw badRequest(file.scanStatus === 'blocked' ? 'This file was blocked.' : 'This file is still being checked.')
-        const me = checkCanWrite(data, findChannel(data, channelId))
+        checkCanWrite(data, findChannel(data, channelId))
         const message: ChatMessage = postMessage(data, { channelId, content: content.trim(), attachments: [clone(file)] })
         return { message, mentioned: reachedBy(data, message.mentions, channelId, me.id) }
       })
