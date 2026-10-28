@@ -29,6 +29,11 @@ describe('canContinue (spec 6.2 grouping rule)', () => {
   it('a message with thread replies ends its group', () => {
     expect(canContinue(msg({ threadCount: 2 }), msg())).toBe(false)
   })
+  it('a reply also sent to the channel stands alone there, before or after (spec 6.7)', () => {
+    const sent = msg({ broadcast: { rootId: 'm0', rootText: 'Release notes?' } })
+    expect(canContinue(msg(), sent)).toBe(false)
+    expect(canContinue(sent, msg())).toBe(false)
+  })
   it('cards (task events, comments) never group, before or after', () => {
     const card = msg({ taskEvent: { key: 'NEX-1', kind: 'created' } })
     expect(canContinue(card, msg())).toBe(false)

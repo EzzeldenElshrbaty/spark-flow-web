@@ -11,6 +11,7 @@ import { badRequest, clone, currentUser, newId, notFound, requireCan, stamp } fr
 import { parseMentions, parseTicketKeys } from './text'
 import { bodyTaskKeys, bodyText, mentionsOf, parseBody, validBody, type Body } from '@/lib/messageBody'
 import { linkPreviewFor } from './linkPreviews'
+import { firstLine } from '@/lib/inspector'
 
 const PAGE_SIZE = 30
 
@@ -48,9 +49,10 @@ const lastSeqOf = (data: DbData, channelId: string) => data.messages.reduce((n, 
  */
 function withUnread(data: DbData, channel: StoredChannel): Channel {
   const state = data.channelState[data.currentUserId]?.[channel.id] ?? freshState()
-  const unreadCount = data.messages.filter(
-    (m) => m.channelId === channel.id && m.seq > state.lastReadSeq && m.senderId !== data.currentUserId && !m.deletedAt && !m.system,
-  ).length
+  const unreadCount = data.messages
+    .filter((m) => m.channelId === channel.id && m.seq > state.lastReadSeq && m.senderId !== data.currentUserId)
+    .map((m) => listed(data, m))
+    .filter((m) => !m.deletedAt && !m.system).length
   return { ...channel, ...state, lastSeq: lastSeqOf(data, channel.id), unreadCount }
 }
 
@@ -70,10 +72,33 @@ function follows(data: DbData, message: ChatMessage, replies: ThreadReply[], use
 }
 
 /**
+ * A message as its channel lists it. A broadcast reply (spec 6.7) is the reply itself: the channel keeps only its place
+ * (seq) and its thread's root, and everything else (text, files, reactions, edits, a delete) is read from the reply.
+ */
+function listed(data: DbData, message: ChatMessage): ChatMessage {
+  if (!message.broadcast) return message
+  const reply = data.replies.find((r) => r.id === message.id)
+  const root = data.messages.find((m) => m.id === message.broadcast?.rootId)
+  if (!reply) return message
+  return {
+    ...message,
+    content: reply.content,
+    body: reply.body,
+    attachments: reply.attachments,
+    reactions: reply.reactions,
+    mentions: reply.mentions,
+    editedAt: reply.editedAt ?? null,
+    deletedAt: reply.deletedAt ?? null,
+    broadcast: { rootId: message.broadcast.rootId, rootText: root && !root.deletedAt ? firstLine(root.content) : '' },
+  }
+}
+
+/**
  * A message with who last replied to it (spec §7 reply_user_ids): the latest 5 people, newest first, each once; and
- * whether the current user follows its thread.
+ * whether the current user follows its thread. A broadcast reply has no thread of its own.
  */
 function withThread(data: DbData, message: ChatMessage): ChatMessage {
+  if (message.broadcast) return listed(data, message)
   const replies = data.replies.filter((r) => r.messageId === message.id).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
   return { ...message, replyUserIds: [...new Set(replies.map((r) => r.senderId))].slice(0, REPLY_FACES), following: follows(data, message, replies, data.currentUserId) }
 }
@@ -158,6 +183,8 @@ type Row = ChatMessage | ThreadReply
 function findTarget(data: DbData, target: ChatTarget): { row: Row; channel: StoredChannel; messageId: string } {
   if (target.kind === 'message') {
     const row = findMessage(data, target.id)
+    // A broadcast reply is changed as the reply it is.
+    if (row.broadcast) throw notFound('Message', target.id)
     return { row, channel: findChannel(data, row.channelId), messageId: row.id }
   }
   const row = data.replies.find((r) => r.id === target.id)
@@ -394,11 +421,13 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       if (!repeat) hub.publish({ type: 'messageReceived', message: clone(message) })
       return clone(message)
     },
-    async reply(messageId, content) {
+    async reply(messageId, content, body, alsoInChannel) {
       await delay()
       const reply = await db.update((data) => {
         checkCanPost(data, findChannel(data, findMessage(data, messageId).channelId))
-        return postReply(data, { messageId, content: checkText(content) })
+        // From the rich composer the body is the reply and its plain text the content; otherwise the text is parsed.
+        const input = body === undefined ? { content: checkText(content) } : (({ body: b, text }) => ({ content: text, body: b }))(checkBody(body))
+        return postReply(data, { messageId, ...input, alsoInChannel: Boolean(alsoInChannel) })
       })
       hub.publish({ type: 'replyReceived', reply: clone(reply) })
       return clone(reply)
@@ -408,6 +437,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       const message = await db.update((data) => {
         const root = findMessage(data, messageId)
         readableChannel(data, root.channelId)
+        if (root.broadcast) throw badRequest('Threads are one level only.')
         const userId = data.currentUserId
         data.threadFollows = [...data.threadFollows.filter((f) => !(f.userId === userId && f.rootId === root.id)), { userId, rootId: root.id, following }]
         return root
@@ -530,7 +560,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
 // ── Mutations (not on Api until Phases 3–4) ───────────────────────────────
 
 export type SendMessageInput = { channelId: string; content: string; attachments?: Attachment[]; clientId?: string; body?: Body }
-export type AddReplyInput = { messageId: string; content: string }
+export type AddReplyInput = { messageId: string; content: string; body?: Body; alsoInChannel?: boolean }
 
 /**
  * Adds a message from the current user inside a transaction; mentions and ticket keys come from the text. `extra`
@@ -571,6 +601,7 @@ function postSystem(data: DbData, channelId: string, event: SystemEvent): ChatMe
 /** Adds a thread reply from the current user inside a transaction. */
 export function postReply(data: DbData, input: AddReplyInput): ThreadReply {
   const parent = findMessage(data, input.messageId)
+  if (parent.broadcast) throw badRequest('Threads are one level only.')
   const channel = findChannel(data, parent.channelId)
   const createdAt = stamp(parent.lastReplyAt)
   const created: ThreadReply = {
@@ -581,9 +612,18 @@ export function postReply(data: DbData, input: AddReplyInput): ThreadReply {
     content: input.content,
     attachments: [],
     reactions: [],
-    mentions: parseMentions(input.content),
-    body: parseBody(input.content),
+    mentions: input.body ? mentionsOf(input.body) : parseMentions(input.content),
+    body: input.body ?? parseBody(input.content),
     createdAt,
+  }
+  if (input.alsoInChannel) {
+    // Also sent to the channel (spec 6.7): it takes the channel's next seq; the channel keeps only its place there.
+    created.alsoInChannel = true
+    created.seq = lastSeqOf(data, channel.id) + 1
+    data.messages.push({
+      id: created.id, channelId: channel.id, seq: created.seq, senderId: created.senderId, content: '', body: [], attachments: [], reactions: [],
+      threadCount: 0, lastReplyAt: null, linkedTicketKeys: [], mentions: [], editedAt: null, createdAt, broadcast: { rootId: parent.id, rootText: '' },
+    })
   }
   data.replies.push(created)
   // Replying, or being mentioned in a reply, follows the thread again, whatever was chosen before.

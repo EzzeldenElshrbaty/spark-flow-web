@@ -9,7 +9,8 @@ import { channelLabel, inWorkspace } from '@/lib/channels'
 import { firstLine } from '@/lib/inspector'
 import { useRole } from '@/lib/useRole'
 import { NotFound } from '@/pages/NotFound'
-import { Composer } from '@/pages/chat/Composer'
+import { ThreadComposer } from '@/pages/chat/ThreadComposer'
+import { bodyText } from '@/lib/messageBody'
 import { ChannelMessage } from '@/pages/chat/ChannelMessage'
 import { canContinue } from '@/pages/chat/messageRows'
 import { useBodyContext, useProjectKeys } from '@/pages/chat/useBodyContext'
@@ -85,6 +86,7 @@ export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: st
                   canPost={canPost === true}
                   continuation={i > 0 && canContinue(replies.data[i - 1], reply)}
                   compact
+                  alsoSentTo={where ?? undefined}
                 />
               </li>
             ))}
@@ -93,8 +95,14 @@ export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: st
         <div ref={replyBox} className="mt-4">
           {canPost === false ? (
             <p className="text-sm text-fg-muted">{readOnly}</p>
-          ) : canPost ? (
-            <Composer quiet placeholder="Reply in the thread" submitLabel="Reply" pendingLabel="Replying…" error={reply.error as Error | null} onSubmit={(content) => reply.mutateAsync({ messageId, content })} />
+          ) : canPost && channel.data ? (
+            <ThreadComposer
+              channel={channel.data}
+              rootId={messageId}
+              sendTo={where ?? 'the channel'}
+              error={reply.error as Error | null}
+              onSend={(body, alsoInChannel) => reply.mutateAsync({ messageId, content: bodyText(body), body, alsoInChannel })}
+            />
           ) : (
             <CanPostError channel={channel.data} />
           )}

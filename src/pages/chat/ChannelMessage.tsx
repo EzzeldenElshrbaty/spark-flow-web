@@ -1,7 +1,7 @@
 import { IconAlertCircle, IconTrash } from '@tabler/icons-react'
 import clsx from 'clsx'
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import { useNavigate, useSearchParams } from 'react-router'
+import { Link, useNavigate, useSearchParams } from 'react-router'
 import { useEditMessage, useSetFollowing } from '@/api/chat'
 import { bodyText } from '@/lib/messageBody'
 import type { ChatMessage, ChatTarget, SystemEvent, ThreadReply, User } from '@/api/types'
@@ -69,6 +69,7 @@ export function ChannelMessage({
   onRetry,
   onDiscard,
   onMarkUnread,
+  alsoSentTo,
 }: {
   message: ChatMessage | ThreadReply
   users: User[]
@@ -89,9 +90,13 @@ export function ChannelMessage({
   onDiscard?: () => void
   /** Mark unread (U) from this message, where the page offers it (the channel's list). */
   onMarkUnread?: () => Promise<unknown>
+  /** In a thread: where a reply also sent to the channel went ("#backend"), said under it (spec 6.7). */
+  alsoSentTo?: string
 }) {
   const reply = 'messageId' in message
   const root = reply ? null : message
+  // A reply also sent to the channel (spec 6.7), as the channel lists it: it acts as the reply it is.
+  const broadcast = root?.broadcast
   const editing = useEditing((s) => s.id === message.id)
   const startEditing = () => useEditing.getState().start(message.id)
   const stopEditing = () => useEditing.getState().stop()
@@ -109,10 +114,12 @@ export function ChannelMessage({
   }, [editing])
   const author = users.find((u) => u.id === message.senderId)
   const name = author?.name ?? 'Unknown person'
-  const target: ChatTarget = { kind: reply ? 'reply' : 'message', id: message.id }
+  const target: ChatTarget = { kind: reply || broadcast ? 'reply' : 'message', id: message.id }
   // Where a link to this message (or to a reply's thread) goes; Copy link to file gives it.
   const permalink = new URL(
-    reply ? `${paths.channel(ctx.ws, message.channelId)}?thread=${encodeURIComponent(message.messageId)}` : paths.message(ctx.ws, message.channelId, message.id),
+    reply || broadcast
+      ? `${paths.channel(ctx.ws, message.channelId)}?thread=${encodeURIComponent(reply ? message.messageId : broadcast!.rootId)}`
+      : paths.message(ctx.ws, message.channelId, message.id),
     window.location.origin,
   ).href
   const admin = ctx.users.find((u) => u.id === meId)?.role === 'admin'
@@ -138,21 +145,23 @@ export function ChannelMessage({
     new Promise<void>((resolve) => resolve(navigator.clipboard.writeText(text))).then(() => say(done), () => say(failed, true))
   const copyLink = () => copy(permalink, 'Link copied', "Couldn't copy the link")
   const copyText = () => copy(bodyText(message.body), 'Text copied', "Couldn't copy the text")
-  // Following its thread (spec 6.7): a top-level message's, from its ⋯ menu.
+  // Following its thread (spec 6.7): a top-level message's, from its ⋯ menu (a broadcast reply has no thread).
   const setFollowing = useSetFollowing()
   const follow =
-    root && !root.system
+    root && !root.system && !broadcast
       ? { following: Boolean(root.following), onToggle: () => setFollowing.mutate({ messageId: root.id, following: !root.following }, { onError: () => say("Couldn't change that. Try again.", true) }) }
       : undefined
   // Reply in thread (T, spec 6.4): a top-level message outside its own thread, where I may post; the thread opens to
   // its reply box. Asked again while that thread is open, it doesn't add a step to the history.
   const navigate = useNavigate()
   const [params] = useSearchParams()
+  // A broadcast reply's is its root's thread.
+  const threadId = broadcast?.rootId ?? root?.id
   const openThread =
-    root && showThread && !root.deletedAt && canPost
+    root && threadId && showThread && !root.deletedAt && canPost
       ? () => {
           const open = parseInspector(params)
-          navigate({ search: withInspector(params, { kind: 'thread', messageId: root.id }).toString() }, { state: replyState, replace: open?.kind === 'thread' && open.messageId === root.id })
+          navigate({ search: withInspector(params, { kind: 'thread', messageId: threadId }).toString() }, { state: replyState, replace: open?.kind === 'thread' && open.messageId === threadId })
         }
       : undefined
   const full = `${formatDate(message.createdAt)}, ${formatTime(message.createdAt)}`
@@ -239,7 +248,21 @@ export function ChannelMessage({
           {continuation ? <span>{name}</span> : <AuthorName userId={message.senderId} name={name} ctx={ctx} />}
           {time}
         </p>
+        {broadcast && (
+          <p className="sf-meta text-sf-text-secondary">
+            replied to a thread:{' '}
+            <Link to={{ search: withInspector(params, { kind: 'thread', messageId: broadcast.rootId }).toString() }} className="sf-focus rounded-sf-sm font-medium text-sf-accent hover:underline">
+              {broadcast.rootText || 'a message'}
+            </Link>
+          </p>
+        )}
         {body}
+        {reply && message.alsoInChannel && alsoSentTo && (
+          <p className="sf-meta mt-0.5 text-sf-text-muted">
+            <span aria-hidden>↪ </span>
+            <span>Also sent to {alsoSentTo}</span>
+          </p>
+        )}
         {sendState === 'failed' && (
           <p title={sendError} className="sf-meta mt-0.5 flex items-center gap-1 font-medium text-sf-accent">
             <Icon icon={IconAlertCircle} size={16} />

@@ -232,8 +232,12 @@ export function useRestoreChannel() {
 export function useSetFollowing() {
   return useMutation({ mutationFn: ({ messageId, following }: { messageId: string; following: boolean }) => api.chat.setFollowing(messageId, following) })
 }
+/** Replies in a thread; from the rich composer with its `body`, and also to the channel with `alsoInChannel` (spec 6.7). */
 export function useReply() {
-  return useMutation({ mutationFn: ({ messageId, content }: { messageId: string; content: string }) => api.chat.reply(messageId, content) })
+  return useMutation({
+    mutationFn: ({ messageId, content, body, alsoInChannel }: { messageId: string; content: string; body?: Body; alsoInChannel?: boolean }) =>
+      api.chat.reply(messageId, content, body, alsoInChannel),
+  })
 }
 export function useSetStarred() {
   return useMutation({ mutationFn: ({ id, starred }: { id: string; starred: boolean }) => api.chat.setStarred(id, starred) })

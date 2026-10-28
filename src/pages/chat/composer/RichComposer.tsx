@@ -83,6 +83,7 @@ export function RichComposer({
   error,
   directory,
   autoFocus = false,
+  showFormatting = true,
 }: {
   /** send: the channel's box; edit: a message's body being edited in place, with Cancel and Save (spec 6.3). */
   mode?: 'send' | 'edit'
@@ -100,6 +101,8 @@ export function RichComposer({
   directory: ComposerDirectory
   /** Take focus on open, caret at the end (edit mode always does): after Alt+↑/↓ to this channel. */
   autoFocus?: boolean
+  /** Whether the formatting row starts shown: the channel's box (spec 6.8), not a thread's (spec 6.7). Aa toggles it. */
+  showFormatting?: boolean
 }) {
   const config = {
     namespace: 'flow-composer',
@@ -124,18 +127,19 @@ export function RichComposer({
         error={error}
         directory={directory}
         autoFocus={autoFocus}
+        showFormatting={showFormatting}
       />
     </LexicalComposer>
   )
 }
 
-function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEditLast, onDraft, onTyping, error, directory, autoFocus }: Parameters<typeof RichComposer>[0]) {
+function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEditLast, onDraft, onTyping, error, directory, autoFocus, showFormatting = true }: Parameters<typeof RichComposer>[0]) {
   const editing = mode === 'edit'
   const [editor] = useLexicalComposerContext()
   const boxRef = useRef<HTMLDivElement>(null)
   const menuOpen = useRef(false)
   const [body, setBody] = useState<Body>(initialBody ?? [])
-  const [formatting, setFormatting] = useState(true)
+  const [formatting, setFormatting] = useState(showFormatting)
   const [pending, setPending] = useState(false)
   const [linking, setLinking] = useState<{ url: string; selection: BaseSelection | null } | null>(null)
   const draftTimer = useRef<number | undefined>(undefined)

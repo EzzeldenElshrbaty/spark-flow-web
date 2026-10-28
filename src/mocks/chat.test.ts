@@ -1018,3 +1018,67 @@ describe('following a thread (spec 6.7)', () => {
   })
 })
 
+describe('Also send to #channel: a broadcast reply (spec 6.7)', () => {
+  const listed = async (channelId: string, id: string) => (await api.chat.messages(channelId)).items.find((m) => m.id === id)
+
+  it('takes the channel’s next seq and shows there as a reply to the thread, with its root’s first line', async () => {
+    const root = await api.chat.send('c-general', 'Release notes for 2.4?\nDraft is in the doc.')
+    const reply = await api.chat.reply(root.id, 'Posted them', undefined, true)
+    expect(reply).toMatchObject({ alsoInChannel: true, seq: root.seq + 1 })
+    expect(await listed('c-general', reply.id)).toMatchObject({ seq: root.seq + 1, content: 'Posted them', senderId: 'u-1', broadcast: { rootId: root.id, rootText: 'Release notes for 2.4?' } })
+    expect((await api.chat.replies(root.id)).map((r) => r.id)).toContain(reply.id)
+    expect((await api.chat.channel('c-general')).lastSeq).toBe(root.seq + 1)
+  })
+
+  it('a plain reply takes no seq and stays in its thread', async () => {
+    const root = await api.chat.send('c-general', 'Question')
+    const reply = await api.chat.reply(root.id, 'Answer')
+    expect(reply.seq).toBeUndefined()
+    expect(await listed('c-general', reply.id)).toBeUndefined()
+  })
+
+  it('counts as unread for the others, like any message', async () => {
+    const root = await api.chat.send('c-general', 'Question')
+    await api.users.viewAs('u-2')
+    await api.chat.markRead('c-general')
+    await api.users.viewAs('u-1')
+    await api.chat.reply(root.id, 'Answer for everyone', undefined, true)
+    await api.users.viewAs('u-2')
+    expect((await api.chat.channel('c-general')).unreadCount).toBe(1)
+  })
+
+  it('is one record: an edit, a reaction or a delete of the reply shows in the channel too', async () => {
+    const root = await api.chat.send('c-general', 'Question')
+    const reply = await api.chat.reply(root.id, 'Answer', undefined, true)
+    await api.chat.edit({ kind: 'reply', id: reply.id }, 'Better answer')
+    await api.chat.react({ kind: 'reply', id: reply.id }, '👍')
+    expect(await listed('c-general', reply.id)).toMatchObject({ content: 'Better answer', reactions: [{ emoji: '👍', userIds: ['u-1'] }] })
+    expect((await listed('c-general', reply.id))?.editedAt).toBeTruthy()
+    await api.chat.remove({ kind: 'reply', id: reply.id })
+    expect((await listed('c-general', reply.id))?.deletedAt).toBeTruthy()
+  })
+
+  it('from the rich composer: its body, and the mentions in it', async () => {
+    const root = await api.chat.send('c-general', 'Question')
+    const body = parseBody('Thoughts, @[Nour El-Sayed](u-2)?')
+    const reply = await api.chat.reply(root.id, 'ignored', body, true)
+    expect(reply.content).toBe(bodyText(body))
+    expect(reply.mentions).toEqual([{ kind: 'user', id: 'u-2' }])
+    expect((await listed('c-general', reply.id))?.mentions).toEqual([{ kind: 'user', id: 'u-2' }])
+  })
+
+  it('threads are one level: a broadcast reply in the channel takes no replies and no following', async () => {
+    const root = await api.chat.send('c-general', 'Question')
+    const reply = await api.chat.reply(root.id, 'Answer', undefined, true)
+    await expect(api.chat.reply(reply.id, 'Nested')).rejects.toMatchObject({ status: 400 })
+    await expect(api.chat.setFollowing(reply.id, true)).rejects.toMatchObject({ status: 400 })
+  })
+
+  it('the live event says so', async () => {
+    const root = await api.chat.send('c-general', 'Question')
+    events = []
+    const reply = await api.chat.reply(root.id, 'Answer', undefined, true)
+    expect(events).toContainEqual({ type: 'replyReceived', reply: expect.objectContaining({ id: reply.id, alsoInChannel: true }) })
+  })
+})
+

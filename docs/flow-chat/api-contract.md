@@ -169,3 +169,32 @@ What a delete takes is kept only for the Undo window, then dropped (retention be
 - **Esc** marks the open channel read: `POST /api/channels/:id/read` with no `seq`, as the header does.
 - **Shift+Esc** marks everything read after a confirm: one `POST /api/channels/:id/read` (no `seq`) per channel or DM in the sidebar with `unreadCount > 0`, sent together. A bulk route (for example `POST /api/workspaces/:id/read`) can replace this later without the person noticing.
 - **Alt+↑/↓** and **L** need nothing from the server.
+
+## Phase 2 · Slice 2: threads (spec 6.7)
+
+### Following
+
+| Call | Route | Body | Returns |
+|---|---|---|---|
+| Follow a thread | `PUT /api/messages/:id/follow` | — | `204` |
+| Stop following | `DELETE /api/messages/:id/follow` | — | `204` |
+
+- `:id` is the thread's root: a top-level message. A reply also sent to the channel (see below) has no thread of its own: `400` "Threads are one level only.". Read access to the channel, as for reading it; `404` / `403` as usual.
+- Each person's own choice is stored (spec §7 `ThreadFollow`: `userId`, `rootId`, `following`). Without one, the defaults decide: you follow a thread when you wrote its root, replied to it, or were mentioned by name (`@[Name](userId)`, not `@all`) in the root or a reply.
+- Replying, or being mentioned in a new reply, clears that person's choice, so they follow again.
+- Every message read (`GET` a message, a channel's pages) carries `following: boolean`, worked out for the person reading.
+- A change sends `messageChanged` `{ channelId, messageId }` (spec §8 `thread.updated`).
+- Delivery (the bell, Activity, the Threads view's counts) comes in later slices; they read the same state.
+
+### Replies, and Also send to #channel
+
+`POST /api/messages/:id/replies` takes `{ content, body?, alsoInChannel? }`.
+- From the rich composer, `body` is the reply (checked with `validBody`, its plain text stored as `content`), as for sending a message.
+- With `alsoInChannel: true` the reply is also sent to the channel (spec 6.7 broadcast). It stays one record, the reply, and also takes the channel's next `seq`. It returns `alsoInChannel: true` and `seq`; without the flag a reply has neither.
+- A channel's pages (`GET /api/channels/:id/messages`, `?after=`, `/messages/first`) list it at its `seq` as a message:
+  - its `id` is the reply's id;
+  - it carries `broadcast: { rootId, rootText }`, where `rootText` is the root's first line, worked out on read and `""` once the root is deleted;
+  - its text, body, files, reactions, mentions, `editedAt` and `deletedAt` are the reply's.
+- Edits, deletes, restores and reactions on it go to `/api/replies/:id`. The `/api/messages/:id` routes answer `404` for it.
+- It counts as unread like any message from someone else, and a deleted one leaves the channel the way a deleted message without replies does.
+- `replyReceived` carries the reply with `alsoInChannel`; the channel's list refreshes on it as it does for any reply (spec §8 `message.created` and `thread.updated`).

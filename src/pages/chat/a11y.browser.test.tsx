@@ -22,6 +22,7 @@ import { EmojiPicker } from '@/pages/chat/EmojiPicker'
 import { useEditing } from '@/pages/chat/editingStore'
 import { MarkAllReadModal } from '@/pages/chat/ChannelShortcuts'
 import { ThreadMenu } from '@/pages/chat/ThreadMenu'
+import { ThreadComposer } from '@/pages/chat/ThreadComposer'
 import type { BodyContext } from '@/pages/chat/MessageBody'
 
 // Spec 10: every text and control pair meets the 3.2 contrast, checked automatically in CI. These render the chat's
@@ -151,6 +152,17 @@ describe.each([
     mount(<ThreadMenu messageId="m1" following={false} link="https://flow.example/w/engineering/c/c-backend?thread=m1" />, dark)
     await userEvent.click(screen.getByRole('button', { name: 'Thread actions' }))
     expect(screen.getByRole('menuitem', { name: 'Get notified about replies' })).toBeTruthy()
+    expect(await violations()).toEqual([])
+  })
+
+  it('the thread composer, with Also send, has no axe violations', async () => {
+    mount(<ThreadComposer channel={channel} rootId="m1" sendTo="#backend" onSend={async () => {}} />, dark)
+    await screen.findByRole('textbox', { name: 'Reply in the thread' }, { timeout: 3000 })
+    expect(await violations()).toEqual([])
+  })
+
+  it('a reply also sent to the channel, as the channel shows it, has no axe violations', async () => {
+    mount(<ChannelMessage message={message('Posted them', { broadcast: { rootId: 'm0', rootText: 'Release notes for 2.4?' } })} users={users} ctx={ctx} meId="u-1" canPost continuation={false} />, dark)
     expect(await violations()).toEqual([])
   })
 

@@ -531,3 +531,43 @@ describe('following from the ⋯ menu (spec 6.7)', () => {
   })
 })
 
+describe('a reply also sent to the channel (spec 6.7)', () => {
+  const sent = (over: Partial<ChatMessage> = {}) => message('Posted them', { id: 'r9', seq: 12, broadcast: { rootId: 'm1', rootText: 'Release notes for 2.4?' }, ...over })
+
+  it('says it replied to a thread, linking to that thread', () => {
+    show(sent())
+    const link = screen.getByRole('link', { name: 'Release notes for 2.4?' })
+    expect(link.getAttribute('href')).toContain('thread=m1')
+    expect(link.closest('p')?.textContent).toContain('replied to a thread:')
+  })
+
+  it('its toolbar acts on the reply it is, and Reply in thread opens that thread', async () => {
+    const react = vi.spyOn(api.chat, 'react').mockResolvedValue()
+    show(sent())
+    fireEvent.click(screen.getByRole('button', { name: 'React with 👀' }))
+    await vi.waitFor(() => expect(react).toHaveBeenCalledWith({ kind: 'reply', id: 'r9' }, '👀'))
+    fireEvent.click(screen.getByRole('button', { name: 'Reply in thread' }))
+    expect(screen.getByTestId('where').textContent).toBe('?thread=m1 {"focus":"reply"}')
+  })
+
+  it('has no thread of its own to follow', () => {
+    show(sent())
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }))
+    expect(screen.queryByRole('menuitem', { name: /notified|notifications/ })).toBeNull()
+  })
+
+  it('in its thread, says it was also sent to the channel', () => {
+    const reply: ThreadReply = { id: 'r9', messageId: 'm1', channelId: 'c1', senderId: 'u-2', content: 'ok', body: parseBody('ok'), attachments: [], reactions: [], mentions: [], createdAt: '2026-10-28T09:00:00.000Z', alsoInChannel: true, seq: 12 }
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ToastProvider>
+          <MemoryRouter>
+            <ChannelMessage message={reply} users={users} ctx={ctx} meId="u-1" canPost continuation={false} compact alsoSentTo="#backend" />
+          </MemoryRouter>
+        </ToastProvider>
+      </QueryClientProvider>,
+    )
+    expect(screen.getByText('Also sent to #backend')).toBeTruthy()
+  })
+})
+

@@ -303,3 +303,18 @@ describe('RichComposer Up in an empty box (spec 6.8)', () => {
     expect(prevented).toEqual([false, false, false, false])
   })
 })
+
+describe('RichComposer formatting row (spec 6.7, 6.8)', () => {
+  it('a thread’s box starts without it; Aa shows it', async () => {
+    await ready({ showFormatting: false })
+    expect(screen.queryByRole('toolbar', { name: 'Formatting' })).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: 'Show formatting' }))
+    expect(screen.getByRole('toolbar', { name: 'Formatting' })).toBeTruthy()
+  })
+
+  it('the channel’s box starts with it', async () => {
+    await ready()
+    expect(screen.getByRole('toolbar', { name: 'Formatting' })).toBeTruthy()
+  })
+})
+

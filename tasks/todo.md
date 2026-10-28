@@ -439,7 +439,7 @@ Rulings approved with the plan: a permalink or a date jump opens the channel too
 - Not seen in the app: the bar's Mark as unread (the pane runs as a background page and the bar doesn't come up there; covered by the browser test).
 - Seen, not changed: the project's Chat tab (`ChannelFeed`) has its own read handling and isn't part of this change.
 
-# Flow chat — Phase 2 slice 2: threads (spec 6.7) — 2026-10-28
+# Flow chat — Phase 2 slice 2: threads (spec 6.7) — 2026-10-28 — done
 
 Approved: part A (following and the panel header menu), then part B (the rich thread composer, Also send to #channel, broadcast replies), with the contract updated.
 
@@ -452,11 +452,19 @@ Part A — following
 - [x] Thread panel header ⋮ (sf Menu): Copy link, the same follow item, Open in a new window. `InspectorFrame` gets an `actions` slot.
 
 Part B — replies
-- [ ] Reply route `POST /api/messages/:id/replies { content, body?, alsoInChannel? }`: rich text; with `alsoInChannel` it also takes the channel's next seq (one record: the reply). Channel pages list it as a message with `broadcast: { rootId, rootText }`, its id the reply's; its edits, deletes and reactions go to `/api/replies/:id`. Counts as unread like any message. `replyReceived` carries `alsoInChannel`.
-- [ ] Thread composer: the rich composer with its formatting row hidden until Aa, a draft per thread, and "Also send to #channel" (a DM: "Also send to <name>"), unchecked each time.
-- [ ] Channel: a broadcast reply reads "replied to a thread: <first line>" (a link to the thread), stands alone (no grouping); its toolbar acts on the reply, Reply in thread opens its root's thread.
-- [ ] Panel: a broadcast reply shows "↪ Also sent to #channel".
-- [ ] Contract (`docs/flow-chat/api-contract.md`): the routes, fields and events above.
-- [ ] Tests first: mock (follow rules, broadcast seq / unread / one record), http, migration; menus, header menu, composer checkbox, the broadcast row and label; axe on the header menu and the thread composer.
+- [x] Reply route `POST /api/messages/:id/replies { content, body?, alsoInChannel? }`: rich text; with `alsoInChannel` it also takes the channel's next seq (one record: the reply). Channel pages list it as a message with `broadcast: { rootId, rootText }`, its id the reply's; its edits, deletes and reactions go to `/api/replies/:id`. Counts as unread like any message. `replyReceived` carries `alsoInChannel`.
+- [x] Thread composer: the rich composer with its formatting row hidden until Aa, a draft per thread, and "Also send to #channel" (a DM: "Also send to <name>"), unchecked each time.
+- [x] Channel: a broadcast reply reads "replied to a thread: <first line>" (a link to the thread), stands alone (no grouping); its toolbar acts on the reply, Reply in thread opens its root's thread.
+- [x] Panel: a broadcast reply shows "↪ Also sent to #channel".
+- [x] Contract (`docs/flow-chat/api-contract.md`): the routes, fields and events above.
+- [x] Tests first: mock (follow rules, broadcast seq / unread / one record), http, migration; menus, header menu, composer checkbox, the broadcast row and label; axe on the header menu and the thread composer.
 
 Rulings approved with the plan: one record for a broadcast reply; following is stored and shown, not yet delivered (bell, Activity, Threads come later); no Mute in the header menu; the panel stays 384px; the same wording for following everywhere.
+
+## Review — threads slice
+
+- `npm test`: 1045/1045 (111 files). Lint and `build:prototype` (with `tsc -b`) pass.
+- Watched RED first: part A: `setFollowing is not a function`, `following` undefined, migration null; the menu item and the header menu missing. Part B: no `alsoInChannel` / `seq`, the reply not in the channel's list, rich body ignored, nested replies allowed; the composer's formatting row shown, no ThreadComposer, no "replied to a thread:", reactions on the message route, no "Also sent to".
+- In the app: the database moved to version 11 on load. The thread panel's ⋮ shows Copy link, Get notified about replies, Open in a new window, and following flips its label. The thread composer has no formatting row (Aa shows it) and "Also send to #frontend-dev"; a reply sent with it showed in the channel as "replied to a thread: Bug: a long ticket title…", with a link to the thread, and in the panel with "↪ Also sent to #frontend-dev"; the box came back unchecked.
+- Fixed along the way: the "L copies the link … then clears" test could miss its timer under load (it now lets the note's effect start the timer first).
+- Not changed: the project's Chat tab still uses the old plain composer for its own messages; following doesn't notify yet (bell, Activity, Threads come later).

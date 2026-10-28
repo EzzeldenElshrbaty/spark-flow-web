@@ -144,6 +144,11 @@ export type ChatMessage = {
    * replied to it, or was mentioned by name in it or a reply.
    */
   following?: boolean
+  /**
+   * Set on a thread reply also sent to the channel (spec 6.7): it shows here with its root's first line. Its `id` is
+   * the reply's, and its edits, deletes and reactions go to the reply (`/api/replies/:id`).
+   */
+  broadcast?: { rootId: string; rootText: string }
 }
 
 /** A person's own choice to follow a thread or not (spec §7 ThreadFollow); without one, the defaults decide. */
@@ -190,6 +195,9 @@ export type ThreadReply = {
   attachments: Attachment[]; reactions: Reaction[]; mentions: Mention[]; createdAt: string
   editedAt?: string | null; deletedAt?: string | null
   body: Body
+  /** Also sent to the channel (spec 6.7): then it has a `seq` there too, and shows in the channel's list. */
+  alsoInChannel?: boolean
+  seq?: number
 }
 
 // ── Transport ─────────────────────────────────────────────────────────────
@@ -314,7 +322,8 @@ export interface Api {
     drafts(workspaceId: string): Promise<Draft[]>
     /** Saves my draft for a channel (or a thread in it); an empty body deletes it and returns null. */
     saveDraft(channelId: string, body: Body, rootId?: string | null): Promise<Draft | null>
-    reply(messageId: string, content: string): Promise<ThreadReply>
+    /** From the rich composer with its `body`; `alsoInChannel` also sends it to the channel (spec 6.7). */
+    reply(messageId: string, content: string, body?: Body, alsoInChannel?: boolean): Promise<ThreadReply>
     /** Get notified about replies, or turn it off (spec 6.7): my own choice for a thread's root message. */
     setFollowing(messageId: string, following: boolean): Promise<void>
     /** Adds the current user's reaction, or takes it back if it's there; only the emoji in REACTIONS. */
