@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ApiError } from '@/lib/apiError'
 import { createHttpApi, request } from '@/lib/http'
+import { parseBody } from '@/lib/messageBody'
 
 type Call = { url: string; init?: RequestInit }
 
@@ -50,6 +51,23 @@ describe('createHttpApi', () => {
     expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url}`)).toEqual(['POST /api/channels/c1/messages', 'POST /api/messages/m1/replies'])
     expect(JSON.parse(String(calls[0].init?.body))).toEqual({ content: 'hi' })
     expect(JSON.parse(String(calls[1].init?.body))).toEqual({ content: 'ok' })
+  })
+
+  it('sends the message body with the text (spec 6.8: mentions, links and formatting live in the body)', async () => {
+    const { calls, fetchFn } = recordingFetch()
+    const api = createHttpApi(fetchFn)
+    const body = parseBody('*hi* @all')
+    await api.chat.send('c1', 'hi @all', 'k1', body)
+    await api.chat.send('c1', 'plain', undefined, body)
+    expect(JSON.parse(String(calls[0].init?.body))).toEqual({ content: 'hi @all', clientId: 'k1', body })
+    expect(JSON.parse(String(calls[1].init?.body))).toEqual({ content: 'plain', body })
+  })
+
+  it('asks for older messages before a seq with before=, not a made-up cursor (spec §8)', async () => {
+    const { calls, fetchFn } = recordingFetch(() => Response.json({ items: [], nextCursor: null }))
+    const api = createHttpApi(fetchFn)
+    await api.chat.messagesBefore('c1', 12)
+    expect(calls.map((c) => c.url)).toEqual(['/api/channels/c1/messages?before=12'])
   })
 
   it('maps the comments calls', async () => {

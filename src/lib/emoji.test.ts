@@ -32,6 +32,20 @@ describe('emoji set (spec 6.6 picker)', () => {
   })
 })
 
+describe('isOneEmoji (what a reaction must be, spec 6.6)', () => {
+  it('takes one emoji, with skin tones, flags, ZWJ families and tag flags', () => {
+    for (const e of ['👍', '👍🏽', '❤️', '🇪🇬', '👨‍👩‍👧‍👦', '👩🏽‍🤝‍👨🏿', '🏴󠁧󠁢󠁥󠁮󠁧󠁿']) expect(isOneEmoji(e), e).toBe(true)
+  })
+
+  it('refuses one "character" stretched with marks or joins (spills over rows, no limit on size)', () => {
+    expect(isOneEmoji('👍' + '\u0301'.repeat(500))).toBe(false)
+    expect(isOneEmoji('👍\u0301')).toBe(false)
+    expect(isOneEmoji(Array(20).fill('👩').join('\u200d'))).toBe(false)
+    expect(isOneEmoji('a')).toBe(false)
+    expect(isOneEmoji('👍👍')).toBe(false)
+  })
+})
+
 // The node test environment has no localStorage: give it one.
 const store = new Map<string, string>()
 globalThis.localStorage ??= {

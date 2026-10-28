@@ -177,6 +177,21 @@ describe('RichComposer drafts and limits (spec 6.8)', () => {
     expect(bodyText(onDraft.mock.calls.at(-1)![0])).toBe('half a thought!')
   })
 
+  it('leaving the channel within 500ms of typing still saves what was typed', async () => {
+    const { onDraft, editor } = await ready()
+    await userEvent.click(editor)
+    await userEvent.keyboard('last words')
+    cleanup()
+    expect(onDraft).toHaveBeenCalledTimes(1)
+    expect(bodyText(onDraft.mock.calls[0][0])).toBe('last words')
+  })
+
+  it('leaving with nothing new typed saves nothing', async () => {
+    const { onDraft } = await ready({ initialBody: [{ type: 'p', children: [{ type: 'text', text: 'saved before' }] }] })
+    cleanup()
+    expect(onDraft).not.toHaveBeenCalled()
+  })
+
   it('a draft that fails to save says so, tries again by itself, and clears the note once saved', async () => {
     const onDraft = vi.fn().mockResolvedValueOnce(false).mockResolvedValue(true)
     const { editor } = await ready({ onDraft })

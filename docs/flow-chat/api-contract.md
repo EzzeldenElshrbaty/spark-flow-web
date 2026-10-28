@@ -70,6 +70,7 @@ On open the client may page back up to 10 pages to reach the person's first unre
 |---|---|---|
 | Where a jump lands | `GET /api/channels/:id/messages/first?since=<ISO>` (no `since`: the very beginning) | The `seq` of the first message at or after `since`, or `null` when there is none. |
 | Newer messages | `GET /api/channels/:id/messages?after=<seq>` | Up to 30 messages with a larger `seq`, newest first. `nextCursor` is the newest `seq` on the page while more newer ones exist, else `null`. |
+| Older messages | `GET /api/channels/:id/messages?before=<seq>` | Up to 30 messages with a smaller `seq`, newest first: the first page back from a jump. `nextCursor` is the usual opaque cursor, which goes on with `?cursor=`. The client never builds a `cursor` itself. |
 
 The date menu offers Today, Yesterday, Last week, Last month (each from local midnight) and The very beginning. "Jump to a specific date…" comes in Phase 3.
 
@@ -113,7 +114,7 @@ Messages read from the API carry `replyUserIds`: who replied last, newest first,
 
 ### Reactions
 
-`POST /api/messages/:id/reactions` (and the reply equivalent) toggles the person's reaction with any single emoji (one grapheme, e.g. 👍🏽 or 🇪🇬); anything else is `400` "Pick an emoji.". A message holds at most 50 different emoji: a new one past that is `400` "This message has 50 different reactions already." The client toggles optimistically and rolls back on an error, so the rule must match `toggleReaction` in `src/lib/reactions.ts`.
+`POST /api/messages/:id/reactions` (and the reply equivalent) toggles the person's reaction with any single emoji (one grapheme, e.g. 👍🏽 or 🇪🇬) of at most 16 code points, made only of pictographs, flag letters, skin tones, U+FE0F, U+200D and the tag letters U+E0020–E007F (`isOneEmoji` in `src/lib/emojiText.ts`); anything else, such as an emoji stretched with combining marks, is `400` "Pick an emoji.". A message holds at most 50 different emoji: a new one past that is `400` "This message has 50 different reactions already." The client toggles optimistically and rolls back on an error, so the rule must match `toggleReaction` in `src/lib/reactions.ts`.
 
 ### Permalinks
 
@@ -125,7 +126,7 @@ Messages read from the API carry `replyUserIds`: who replied last, newest first,
 
 `POST /api/channels/:id/messages` takes `{ content, clientId?, body? }`. From the rich composer `body` is set (the structured message) and `content` is its plain text. The server must:
 
-- Check `body` node by node exactly like `validBody` in `src/lib/messageBody.ts` (known blocks, inlines and marks only; links http/https only; ids `[\w-]{1,100}`; quotes don't nest; unknown fields dropped) and answer `400` "That message couldn't be read." otherwise.
+- Check `body` node by node exactly like `validBody` in `src/lib/messageBody.ts` (known blocks, inlines and marks only; links http/https only; ids `[\w-]{1,100}`; quotes don't nest; at most 2,000 blocks and 10,000 nodes in all, counting blocks, list items and inlines, empty ones included; unknown fields dropped) and answer `400` "That message couldn't be read." otherwise.
 - Store `content` as the body's plain text (`bodyText`), and take mentions and task keys from the body (`mentionsOf`, `bodyTaskKeys`), not from `content`.
 - Allow up to **40,000** characters of plain text (`400` "Keep the message under 40000 characters.").
 
@@ -138,13 +139,13 @@ Without `body` the server parses `content` as before.
 | My drafts | `GET /api/workspaces/:id/drafts` | | `Draft[]` (`channelId, rootId, body, updatedAt`) for channels I can read |
 | Save a draft | `PUT /api/channels/:id/draft` | `{ body, rootId }` | the `Draft`, or `null` when the body is empty (the draft is deleted) |
 
-One draft per (user, channel, thread root). The composer saves 500ms after typing stops and deletes the draft when the message is sent. Each save sends `draft.updated` `{ userId, channelId }` to that user's own connections (client handler `onDraftChanged`).
+One draft per (user, channel, thread root). The composer saves 500ms after typing stops (and at once when the person leaves the channel), and deletes the draft when the message is sent. A client sends one place's draft writes one at a time, in order, so the last write the server gets is the newest; the server keeps the last write. Each save sends `draft.updated` `{ userId, channelId }` to that user's own connections (client handler `onDraftChanged`).
 
 ## Phase 1 · Feature 6: optimistic send, edit in place, delete with Undo
 
 ### Optimistic send
 
-The client shows a message the moment it's sent ("Sending…") with a `clientId` it made up (`crypto.randomUUID()`), and sends one message at a time per channel, in order. Send must stay idempotent by `(sender, clientId)` (feature 1): a resend after a lost response returns the stored message. While offline (`navigator.onLine` false, or a request that never reaches the server: `ApiError` status 0) messages wait and go when the connection is back; a refusal (4xx/5xx) shows "Not sent. Retry · Delete" with the server's `detail` as the reason.
+The client shows a message the moment it's sent ("Sending…") with a `clientId` it made up (`crypto.randomUUID()`), and sends one message at a time per channel, in order. Send must stay idempotent by `(sender, clientId)` (feature 1): a resend after a lost response returns the stored message. While offline (`navigator.onLine` false) messages wait and go when the connection is back; when a request never reaches the server (`ApiError` status 0) although the browser is online, the client waits 1s, 2s, 4s… up to 30s between tries, and goes at once when the browser reports `online` or the person presses Retry; a refusal (4xx/5xx) shows "Not sent. Retry · Delete" with the server's `detail` as the reason.
 
 ### Edit
 

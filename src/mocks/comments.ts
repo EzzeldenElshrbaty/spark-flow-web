@@ -6,6 +6,7 @@ import { delay } from './latency'
 import { openProject } from './projects'
 import type { MockHub } from './realtime'
 import { ApiError } from '@/lib/apiError'
+import { parseBody } from '@/lib/messageBody'
 import { badRequest, clone, currentUser, newId, notFound, requireCan } from './shared'
 import { parseMentions } from './text'
 import { logActivity } from './activity'
@@ -112,6 +113,7 @@ export function commentsApi(db: MockDb, hub: MockHub, now: () => Date): Api['com
         const card = data.messages.find((m) => m.commentId === comment.id)
         if (card) {
           card.content = cardText(comment.kind, task.key, text)
+          card.body = parseBody(card.content)
           card.mentions = parseMentions(text)
           card.editedAt = at
         }
@@ -130,7 +132,7 @@ export function commentsApi(db: MockDb, hub: MockHub, now: () => Date): Api['com
         Object.assign(comment, { body: '', attachmentIds: [], deletedAt: at })
         logActivity(data, { projectId: comment.projectId, taskKey: task.key, kind: 'comment.deleted', subject: comment.kind, changes: [] }, now().toISOString())
         const card = data.messages.find((m) => m.commentId === comment.id)
-        if (card) Object.assign(card, { content: '', attachments: [], mentions: [], reactions: [], deletedAt: at })
+        if (card) Object.assign(card, { content: '', body: [], attachments: [], mentions: [], reactions: [], deletedAt: at })
         return { card: card && { channelId: card.channelId, messageId: card.id }, taskKey: task.key, projectId: comment.projectId }
       })
       if (card) hub.publish({ type: 'messageChanged', ...card })

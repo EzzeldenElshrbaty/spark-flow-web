@@ -86,6 +86,14 @@ describe('isJumbo (spec 6.3 jumbo emoji)', () => {
 })
 
 describe('validBody (the server takes a body from the composer; spec §7)', () => {
+  it('refuses a body of more than 10,000 nodes, however little text they hold (every viewer would draw them all)', () => {
+    const empties = (n: number) => Array.from({ length: n }, () => ({ type: 'text', text: '' }))
+    expect(validBody([{ type: 'p', children: empties(9_999) }])).not.toBeNull()
+    expect(validBody([{ type: 'p', children: empties(10_000) }])).toBeNull()
+    expect(validBody([{ type: 'ul', items: Array.from({ length: 10_000 }, () => []) }])).toBeNull()
+    expect(validBody([{ type: 'quote', children: Array.from({ length: 1_000 }, () => ({ type: 'p', children: empties(10) })) }])).toBeNull()
+  })
+
   it('keeps a well-formed body as it is', () => {
     const body = parseBody('*Hi* @[Nour](u-2) in #[backend](c-backend), see https://spark-sys.com\n\n> q\n- a\n1. b\n```\nc\n```')
     expect(validBody(body)).toEqual(body)

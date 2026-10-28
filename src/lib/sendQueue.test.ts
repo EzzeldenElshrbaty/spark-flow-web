@@ -71,6 +71,64 @@ describe('send queue (spec 6.2: optimistic send, retry, offline queue)', () => {
     expect(sent).toEqual(['a', 'a'])
   })
 
+  it('an unreachable server while the browser says online is tried again after a growing wait, not at once', async () => {
+    vi.useFakeTimers()
+    try {
+      const unreachable = new ApiError({ title: "Couldn't reach the server", status: 0 })
+      const { queue, gates, sent, statuses } = setup()
+      queue.enqueue(msg('a'))
+      gates.a.reject(unreachable)
+      await vi.advanceTimersByTimeAsync(0)
+      expect(statuses()).toEqual({ a: 'queued' })
+      expect(sent).toEqual(['a'])
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(sent).toEqual(['a', 'a'])
+      gates.a.reject(unreachable)
+      // The wait doubles: nothing after one more second, the next try after two.
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(sent).toEqual(['a', 'a'])
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(sent).toEqual(['a', 'a', 'a'])
+      // Once one gets through, the next message goes at once.
+      gates.a.resolve()
+      await vi.advanceTimersByTimeAsync(0)
+      queue.enqueue(msg('b'))
+      expect(sent).toEqual(['a', 'a', 'a', 'b'])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('the connection coming back sends what waits without sitting out the pause', async () => {
+    vi.useFakeTimers()
+    try {
+      const { queue, gates, sent } = setup()
+      queue.enqueue(msg('a'))
+      gates.a.reject(new ApiError({ title: "Couldn't reach the server", status: 0 }))
+      await vi.advanceTimersByTimeAsync(0)
+      queue.wake()
+      expect(sent).toEqual(['a', 'a'])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('Retry tries at once, even while the queue waits out a pause', async () => {
+    vi.useFakeTimers()
+    try {
+      const { queue, gates, sent } = setup()
+      queue.enqueue(msg('a'))
+      queue.enqueue(msg('x', 'c2'))
+      gates.x.reject(new ApiError({ title: 'Bad request', status: 400 }))
+      gates.a.reject(new ApiError({ title: "Couldn't reach the server", status: 0 }))
+      await vi.advanceTimersByTimeAsync(0)
+      queue.retry('x')
+      expect(sent).toEqual(['a', 'x', 'a', 'x'])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('a refused send is marked failed with the reason; the next one still goes; Retry sends it again', async () => {
     const { queue, gates, sent, statuses } = setup()
     queue.enqueue(msg('a'))

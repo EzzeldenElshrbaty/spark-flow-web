@@ -731,6 +731,18 @@ describe('jumping through a channel (spec 6.2 date menu, §8 around)', () => {
     expect(rest.items.map((m) => m.seq)).toEqual(all.slice(31).map((m) => m.seq).reverse())
     expect(rest.nextCursor).toBeNull()
   })
+
+  it('messagesBefore pages back from a seq, newest first; its cursor goes on with messages()', async () => {
+    await addMessages('c-general', 40)
+    const all = await general()
+    const at = all[all.length - 5].seq
+    const first = await api.chat.messagesBefore('c-general', at)
+    const older = all.filter((m) => m.seq < at)
+    expect(first.items.map((m) => m.seq)).toEqual(older.slice(-30).map((m) => m.seq).reverse())
+    expect(first.nextCursor).not.toBeNull()
+    const rest = await api.chat.messages('c-general', first.nextCursor!)
+    expect(rest.items.map((m) => m.seq)).toEqual(older.slice(0, -30).map((m) => m.seq).reverse())
+  })
 })
 
 describe('message bodies and system messages (spec 6.3, §7)', () => {

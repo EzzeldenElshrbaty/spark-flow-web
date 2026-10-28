@@ -286,6 +286,8 @@ export interface Api {
     channels(workspaceId: string): Promise<Channel[]>
     channel(id: string): Promise<Channel>
     messages(channelId: string, cursor?: string): Promise<Page<ChatMessage>>
+    /** Messages older than `seq`, 30 at a time, newest first (a jump paging back); nextCursor goes on with messages(). */
+    messagesBefore(channelId: string, seq: number): Promise<Page<ChatMessage>>
     /** Messages newer than the cursor (a seq), 30 at a time, newest first; nextCursor continues toward the newest. */
     messagesAfter(channelId: string, cursor: string): Promise<Page<ChatMessage>>
     /** A preview card for a link on an allowed domain (spec 6.3); null for any other link or a page with nothing to show. */

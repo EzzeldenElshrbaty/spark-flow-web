@@ -1,5 +1,5 @@
 import { can } from '@/lib/permissions'
-import type { Api, Attachment, Channel, ChannelMemberState, ChatMessage, SystemEvent, ChatTarget, StoredChannel, ThreadReply } from '@/api/types'
+import type { Api, Attachment, Channel, ChannelMemberState, ChatMessage, Page, SystemEvent, ChatTarget, StoredChannel, ThreadReply } from '@/api/types'
 import { channelFormErrors } from '@/lib/channelForm'
 import { isOneEmoji } from '@/lib/emojiText'
 import { MAX_DISTINCT_REACTIONS, toggleReaction } from '@/lib/reactions'
@@ -21,6 +21,14 @@ const encodeCursor = (m: Pick<ChatMessage, 'seq'>) => String(m.seq)
 function decodeCursor(cursor: string): number | null {
   const seq = Number(cursor)
   return Number.isInteger(seq) && seq > 0 ? seq : null
+}
+
+/** A page of a channel's messages older than `before` (all of them when null), newest first by seq (spec §8). */
+function olderPage(data: DbData, channelId: string, before: number | null): Page<ChatMessage> {
+  readableChannel(data, channelId)
+  const older = data.messages.filter((m) => m.channelId === channelId && (before === null || m.seq < before)).sort((a, b) => b.seq - a.seq)
+  const items = older.slice(0, PAGE_SIZE)
+  return { items: items.map((m) => withThread(data, m)), nextCursor: older.length > PAGE_SIZE ? encodeCursor(items[items.length - 1]) : null }
 }
 
 const freshState = (): ChannelMemberState => ({ lastReadSeq: 0, starred: false, muted: false, notifyLevel: 'all' })
@@ -393,14 +401,12 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
     async messages(channelId, cursor) {
       await delay()
       const data = await db.read()
-      readableChannel(data, channelId)
-      // Newest first, by seq (spec §8: ordering is per channel, by seq). The cursor is opaque to clients.
-      const before = cursor === undefined ? null : decodeCursor(cursor)
-      const older = data.messages
-        .filter((m) => m.channelId === channelId && (before === null || m.seq < before))
-        .sort((a, b) => b.seq - a.seq)
-      const items = older.slice(0, PAGE_SIZE)
-      return { items: items.map((m) => withThread(data, m)), nextCursor: older.length > PAGE_SIZE ? encodeCursor(items[items.length - 1]) : null }
+      // The cursor is opaque to clients.
+      return olderPage(data, channelId, cursor === undefined ? null : decodeCursor(cursor))
+    },
+    async messagesBefore(channelId, seq) {
+      await delay()
+      return olderPage(await db.read(), channelId, seq)
     },
     async messagesAfter(channelId, cursor) {
       await delay()

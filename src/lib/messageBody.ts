@@ -190,6 +190,12 @@ const MARKS: readonly Mark[] = ['b', 'i', 'u', 's', 'code']
 const ID = /^[\w-]{1,100}$/
 const MAX_BLOCKS = 2000
 const MAX_TEXT = 40_000
+/** Blocks, list items and inlines together: empty ones cost no text, but every viewer draws each one. */
+const MAX_NODES = 10_000
+
+/** What a body may still hold while it's checked; spending past it refuses the body. */
+type Budget = { left: number }
+const spend = (budget: Budget, n: number) => (budget.left -= n) >= 0
 
 const isText = (v: unknown, max = MAX_TEXT): v is string => typeof v === 'string' && v.length <= max
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -229,31 +235,31 @@ function validInline(n: unknown): Inline | null {
   }
 }
 
-function validInlines(list: unknown): Inline[] | null {
-  if (!Array.isArray(list)) return null
+function validInlines(list: unknown, budget: Budget): Inline[] | null {
+  if (!Array.isArray(list) || !spend(budget, list.length)) return null
   const out = list.map(validInline)
   return out.every(Boolean) ? (out as Inline[]) : null
 }
 
-function validBlock(b: unknown, inQuote: boolean): Block | null {
+function validBlock(b: unknown, inQuote: boolean, budget: Budget): Block | null {
   if (!isRecord(b)) return null
   switch (b.type) {
     case 'p': {
-      const children = validInlines(b.children)
+      const children = validInlines(b.children, budget)
       return children && { type: 'p', children }
     }
     case 'code':
       return isText(b.text) ? { type: 'code', text: b.text } : null
     case 'ul':
     case 'ol': {
-      if (!Array.isArray(b.items)) return null
-      const items = b.items.map(validInlines)
+      if (!Array.isArray(b.items) || !spend(budget, b.items.length)) return null
+      const items = b.items.map((item) => validInlines(item, budget))
       return items.every(Boolean) ? { type: b.type, items: items as Inline[][] } : null
     }
     case 'quote': {
       // Quotes don't nest (the composer can't make one inside another).
-      if (inQuote || !Array.isArray(b.children)) return null
-      const children = b.children.map((c) => validBlock(c, true))
+      if (inQuote || !Array.isArray(b.children) || !spend(budget, b.children.length)) return null
+      const children = b.children.map((c) => validBlock(c, true, budget))
       return children.every(Boolean) ? { type: 'quote', children: children as Block[] } : null
     }
     default:
@@ -263,11 +269,13 @@ function validBlock(b: unknown, inQuote: boolean): Block | null {
 
 /**
  * A body from a client, checked node by node (spec §7): only the known blocks, inlines and marks, links only to web
- * addresses, ids that look like ids; anything it doesn't know is dropped. Null when it isn't a body at all.
+ * addresses, ids that look like ids, at most 10,000 nodes; anything it doesn't know is dropped. Null when it isn't a
+ * body at all.
  */
 export function validBody(value: unknown): Body | null {
-  if (!Array.isArray(value) || value.length > MAX_BLOCKS) return null
-  const blocks = value.map((b) => validBlock(b, false))
+  const budget: Budget = { left: MAX_NODES }
+  if (!Array.isArray(value) || value.length > MAX_BLOCKS || !spend(budget, value.length)) return null
+  const blocks = value.map((b) => validBlock(b, false, budget))
   return blocks.every(Boolean) ? (blocks as Body) : null
 }
 

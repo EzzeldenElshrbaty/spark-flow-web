@@ -138,13 +138,19 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
   const [draftFailed, setDraftFailed] = useState(false)
   const typedAt = useRef(0)
   const latestBody = useRef<Body>(initialBody ?? [])
+  // A change not yet saved (waiting out the 500ms, or for a retry): leaving the channel saves it at once.
+  const unsaved = useRef(false)
+  const onDraftNow = useRef(onDraft)
+  onDraftNow.current = onDraft
 
   /** Saves the latest draft; a failure is said near the box and tried again shortly. */
   const saveDraft = useCallback(async () => {
     if (!onDraft) return
     window.clearTimeout(draftTimer.current)
+    unsaved.current = false
     const ok = await Promise.resolve(onDraft(latestBody.current)).catch(() => false)
     if (ok === false) {
+      unsaved.current = true
       setDraftFailed(true)
       draftTimer.current = window.setTimeout(() => void saveDraft(), DRAFT_RETRY_MS)
     } else setDraftFailed(false)
@@ -181,6 +187,7 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
     setBody(next)
     latestBody.current = next
     if (onDraft) {
+      unsaved.current = true
       window.clearTimeout(draftTimer.current)
       draftTimer.current = window.setTimeout(() => void saveDraft(), DRAFT_MS)
     }
@@ -189,7 +196,13 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
       onTyping()
     }
   }
-  useEffect(() => () => window.clearTimeout(draftTimer.current), [])
+  useEffect(
+    () => () => {
+      window.clearTimeout(draftTimer.current)
+      if (unsaved.current) void onDraftNow.current?.(latestBody.current)
+    },
+    [],
+  )
 
   const openLink = useCallback(() => {
     editor.getEditorState().read(() => {

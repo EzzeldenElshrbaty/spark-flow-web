@@ -69,6 +69,7 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
       channel: (id) => get(`/api/channels/${enc(id)}`),
       messages: (channelId, cursor) =>
         get(`/api/channels/${enc(channelId)}/messages${cursor ? `?cursor=${enc(cursor)}` : ''}`),
+      messagesBefore: (channelId, seq) => get(`/api/channels/${enc(channelId)}/messages?before=${seq}`),
       messagesAfter: (channelId, cursor) => get(`/api/channels/${enc(channelId)}/messages?after=${enc(cursor)}`),
       drafts: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/drafts`),
       saveDraft: (channelId, body, rootId = null) => send('PUT', `/api/channels/${enc(channelId)}/draft`, { body, rootId }),
@@ -77,7 +78,8 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
       message: (id) => get(`/api/messages/${enc(id)}`),
       replies: (messageId) => get(`/api/messages/${enc(messageId)}/replies`),
       markRead: (channelId, seq) => send('POST', `/api/channels/${enc(channelId)}/read`, seq === undefined ? undefined : { seq }),
-      send: (channelId, content, clientId) => send('POST', `/api/channels/${enc(channelId)}/messages`, clientId ? { content, clientId } : { content }),
+      send: (channelId, content, clientId, body) =>
+        send('POST', `/api/channels/${enc(channelId)}/messages`, { content, ...(clientId && { clientId }), ...(body && { body }) }),
       reply: (messageId, content) => send('POST', `/api/messages/${enc(messageId)}/replies`, { content }),
       react: (target, emoji) => send<void>('POST', `${targetPath(target)}/reactions`, { emoji }),
       edit: (target, content, body) => send('PATCH', targetPath(target), body ? { content, body } : { content }),

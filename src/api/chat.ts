@@ -1,7 +1,7 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData, type QueryKey } from '@tanstack/react-query'
+import { type QueryClient, useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData, type QueryKey } from '@tanstack/react-query'
 import { qk } from '@/api/queryKeys'
 import { retryUnlessNotFound as retry } from '@/api/retry'
-import type { ChannelPatch, ChatTarget, NewChannel, Page, Reaction } from '@/api/types'
+import type { ChannelPatch, ChatTarget, Draft, NewChannel, Page, Reaction } from '@/api/types'
 import type { Body } from '@/lib/messageBody'
 import { useCallback } from 'react'
 import { toggleReaction } from '@/lib/reactions'
@@ -29,7 +29,8 @@ export function useMessages(channelId: string | undefined) {
   })
 }
 
-type PageParam = { dir: 'before' | 'after'; cursor: string }
+// after: newer than a seq; older: older than a seq (the first page back); before: on from an older page's cursor.
+type PageParam = { dir: 'after' | 'before'; cursor: string } | { dir: 'older'; seq: number }
 
 /**
  * A channel's messages from `seq` on, for a jump (spec 6.2): pages load both ways, older at the end of `pages`
@@ -38,13 +39,18 @@ type PageParam = { dir: 'before' | 'after'; cursor: string }
 export function useMessagesFrom(channelId: string | undefined, seq: number | null) {
   return useInfiniteQuery({
     queryKey: qk.messagesFrom(channelId ?? '', seq ?? 0),
-    queryFn: ({ pageParam }) => (pageParam.dir === 'before' ? api.chat.messages(channelId!, pageParam.cursor) : api.chat.messagesAfter(channelId!, pageParam.cursor)),
+    queryFn: ({ pageParam }) =>
+      pageParam.dir === 'older'
+        ? api.chat.messagesBefore(channelId!, pageParam.seq)
+        : pageParam.dir === 'before'
+          ? api.chat.messages(channelId!, pageParam.cursor)
+          : api.chat.messagesAfter(channelId!, pageParam.cursor),
     initialPageParam: { dir: 'after', cursor: String((seq ?? 1) - 1) } as PageParam,
     getNextPageParam: (page, _pages, param): PageParam | undefined => {
-      if (param.dir === 'before') return page.nextCursor ? { dir: 'before', cursor: page.nextCursor } : undefined
+      if (param.dir !== 'after') return page.nextCursor ? { dir: 'before', cursor: page.nextCursor } : undefined
       // The first page starts at the target: anything older starts below its oldest message.
       const oldest = page.items.at(-1)
-      return oldest && oldest.seq > 1 ? { dir: 'before', cursor: String(oldest.seq) } : undefined
+      return oldest && oldest.seq > 1 ? { dir: 'older', seq: oldest.seq } : undefined
     },
     getPreviousPageParam: (page, _pages, param): PageParam | undefined =>
       param.dir === 'after' && page.nextCursor ? { dir: 'after', cursor: page.nextCursor } : undefined,
@@ -85,21 +91,39 @@ export function useDrafts(workspaceId: string | undefined) {
   return useQuery({ queryKey: qk.drafts(workspaceId ?? ''), queryFn: () => api.chat.drafts(workspaceId!), retry, enabled: Boolean(workspaceId) })
 }
 
+/** Each place's (a channel, or a thread in it) last draft write, per cache: the next one waits for it. */
+const draftWrites = new WeakMap<QueryClient, Map<string, Promise<boolean>>>()
+
 /**
  * Saves a draft as the composer changes. Not a mutation: those refresh every query, and this runs as people type.
- * Resolves to whether it saved, so the composer can say so and try again.
+ * A place's writes go one at a time, in order, so an older draft can never land after a newer one (or after the
+ * clear on send); the cached draft changes at once, so coming back to the channel starts from the latest. Resolves
+ * to whether it saved, so the composer can say so and try again.
  */
 export function useDraftSaver() {
   const queryClient = useQueryClient()
   return useCallback(
-    (channelId: string, body: Body, rootId: string | null = null) =>
-      api.chat.saveDraft(channelId, body, rootId).then(
-        () => {
-          void queryClient.invalidateQueries({ queryKey: qk.draftsAll() })
-          return true
-        },
-        () => false,
-      ),
+    (channelId: string, body: Body, rootId: string | null = null) => {
+      const same = (d: Draft) => d.channelId === channelId && d.rootId === rootId
+      queryClient.setQueriesData<Draft[]>({ queryKey: qk.draftsAll() }, (drafts) =>
+        drafts?.some(same) ? (body.length === 0 ? drafts.filter((d) => !same(d)) : drafts.map((d) => (same(d) ? { ...d, body } : d))) : drafts,
+      )
+      const writes = draftWrites.get(queryClient) ?? new Map<string, Promise<boolean>>()
+      draftWrites.set(queryClient, writes)
+      const key = `${channelId}/${rootId ?? ''}`
+      const write: Promise<boolean> = (writes.get(key) ?? Promise.resolve(true)).then(() =>
+        api.chat.saveDraft(channelId, body, rootId).then(
+          () => {
+            // A newer write is on its way: its own refresh will show it.
+            if (writes.get(key) === write) void queryClient.invalidateQueries({ queryKey: qk.draftsAll() })
+            return true
+          },
+          () => false,
+        ),
+      )
+      writes.set(key, write)
+      return write
+    },
     [queryClient],
   )
 }

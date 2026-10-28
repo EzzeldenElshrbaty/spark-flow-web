@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { Api, UploadFile } from '@/api/types'
+import { parseBody } from '@/lib/messageBody'
 import type { RealtimeEvent } from '@/lib/realtime'
 import { createDb, type MockDb } from './db'
 import { createMockApi } from './index'
@@ -109,6 +110,7 @@ describe('editing comments', () => {
     const c = await card(made.id)
     expect(c.content).toBe('Bug on MOB-104: Crashes on start @[Tarek Lotfy](u-8)')
     expect(c.mentions).toEqual([{ kind: 'user', id: 'u-8' }])
+    expect(c.body).toEqual(parseBody(c.content))
     expect(c.editedAt).toEqual(expect.any(String))
     expect(events).toContainEqual({ type: 'messageChanged', channelId: c.channelId, messageId: c.id })
     expect(events).toContainEqual({ type: 'commentAdded', taskKey: 'MOB-104', projectId: 'p-mob' })
@@ -122,7 +124,8 @@ describe('editing comments', () => {
     expect(row).toMatchObject({ body: '', attachments: [] })
     expect(row!.deletedAt).toEqual(expect.any(String))
     const c = await card(made.id)
-    expect(c).toMatchObject({ content: '', mentions: [], attachments: [] })
+    // Nothing of the deleted comment stays on its card (spec 6.3: a deleted message has an empty body).
+    expect(c).toMatchObject({ content: '', body: [], mentions: [], attachments: [] })
     expect(c.deletedAt).toEqual(expect.any(String))
     await expect(api.comments.update(made.id, 'back')).rejects.toMatchObject({ status: 400 })
   })
