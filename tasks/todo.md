@@ -624,3 +624,38 @@ Deferred minors:
 - An admin not in a public channel can "add" themselves ("added Youssef Abdelrahman").
 - An archived project's channel shows no Project card.
 
+
+## Slice 4 review minors — plan (2026-10-28)
+
+Fix all 16, test first, one commit. Not pushed.
+
+Details window (`ChannelDetails.tsx`, `Modal.tsx`, `TokenInput.tsx`)
+- [x] M1 Enter saves a name or topic; Ctrl/⌘+Enter saves the description.
+- [x] M2 One card edits at a time: About holds which card is open; opening another closes the first.
+- [x] M3 Modal focuses the first control after × (the selected tab), not the level button; on close, a gone opener falls back to the header's name button.
+- [x] M4 About stays mounted (hidden) on other tabs: drafts survive a tab switch and "Add a topic" opens the field once.
+- [x] M5 Remove asks first ("Remove Nour El-Sayed from #backend?", what it means for a private or public channel); the question holds its own pending state, so no two removes overlap.
+- [x] M6 A description keeps its line breaks (`whitespace-pre-line`).
+- [x] M7 Who can post shows the picked choice while it saves, until the channel changes; back on failure.
+- [x] M8 Star, level and mute errors show under the details header while it's open (reset on open), not behind it.
+- [x] M9 TokenInput's error is its own `role="alert"` node, so Add people's refusals are announced.
+- [x] M10 44px phone targets: Modal ×, Add people's footer buttons, chip ×, Open project, Find members; the phone test checks them.
+- [x] M15 Add people doesn't suggest me; the server answers adding myself with 400 "Join the channel instead."
+
+Page and thread
+- [x] M11 A thread whose channel answers 403 says "You're not in this channel."
+- [x] M16 An archived project's channel shows its Project card (archived projects looked up as in `useChannelRights`).
+
+Mock and contract
+- [x] M13 Migration 12 → 13 normalises bad values (`whoCanPost` not 'admins' → 'everyone', a non-string description → ''); `whoCanPost` is checked only when the patch sends it.
+- [x] M14 A retried send finds its stored `clientId` before the rights check.
+- [x] M12 Contract: `channel.updated` goes to the members and to whoever was added or removed; a private channel I'm not in answers 403 "You're not in this channel."; add myself → 400.
+
+Rulings: Remove asks first in every channel, and the question holds the pending state (no per-row set needed); opening a second card closes the first and drops its draft; About stays mounted behind other tabs and `focusables` skips `[hidden]` parts; adding myself is 400 "Join the channel instead." and the UI never suggests me; the ChannelTop wiring (header errors reset on open, focus back to the name, archived project lookup) is covered by tests of its parts plus an app check, with no ChannelTop test.
+
+## Review — slice 4 minors
+
+- All 16 fixed, each test first (watched RED, then GREEN); the phone-size fixes made before their browser test were each undone once to see it fail.
+- New tests: ChannelActions.test.tsx (`useChannelProject`), ThreadInspector.test.tsx (403 channel); more in ChannelDetails.test.tsx, layers.test.tsx, channelDetails.test.ts, migrations.test.ts, a11y.browser.test.tsx.
+- Verified: 1182 tests, tsc, lint, `build:prototype`; in the app, details open with focus on About, Remove asks "Remove Hossam Gaber from #backend?" with Cancel focused, and closing gives focus back to the channel's name.
+- Not pushed.

@@ -33,13 +33,18 @@ export function useEscapeLayer(active: boolean, onEscape: () => void) {
   }, [active])
 }
 
-/** While `active`, remembers what had focus and gives focus back to it on close. */
-export function useRestoreFocus(active: boolean) {
+/** While `active`, remembers what had focus and gives focus back to it on close, or to `fallback` when it's gone. */
+export function useRestoreFocus(active: boolean, fallback?: () => HTMLElement | null | undefined) {
+  const fallbackRef = useRef(fallback)
+  useEffect(() => {
+    fallbackRef.current = fallback
+  })
   useEffect(() => {
     if (!active) return
     const previous = document.activeElement as HTMLElement | null
     return () => {
       if (previous?.isConnected) previous.focus()
+      else fallbackRef.current?.()?.focus()
     }
   }, [active])
 }
@@ -47,8 +52,9 @@ export function useRestoreFocus(active: boolean) {
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
+/** What Tab reaches inside `container`: never a control in a hidden part (a tab panel kept mounted behind another). */
 export function focusables(container: HTMLElement): HTMLElement[] {
-  return [...container.querySelectorAll<HTMLElement>(FOCUSABLE)]
+  return [...container.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => !el.closest('[hidden]'))
 }
 
 /** Keeps Tab and Shift+Tab inside `container`. */

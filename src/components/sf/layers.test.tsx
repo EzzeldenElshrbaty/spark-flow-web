@@ -363,3 +363,64 @@ describe('Escape a field has already used (spec 10: Esc closes the top-most laye
     expect(onClose).toHaveBeenCalledOnce()
   })
 })
+
+describe('Modal focus with header actions (review)', () => {
+  it('with no field, focus goes to the first control after ×, not to an action beside the title', () => {
+    render(
+      <Modal open onClose={() => {}} title="backend" actions={<Button>Mentions and keywords</Button>}>
+        <Button>About</Button>
+      </Modal>,
+    )
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'About' }))
+  })
+
+  it('on close, focus goes to the fallback when what opened it is gone', () => {
+    function Opener() {
+      const [open, setOpen] = useState(false)
+      const [shown, setShown] = useState(true)
+      return (
+        <>
+          <Button>backend</Button>
+          {shown && <Button onClick={() => setOpen(true)}>Add a topic</Button>}
+          <Modal open={open} onClose={() => setOpen(false)} title="backend" fallbackFocus={() => screen.getByRole('button', { name: 'backend' })}>
+            <Button onClick={() => setShown(false)}>Save</Button>
+          </Modal>
+        </>
+      )
+    }
+    render(<Opener />)
+    const opener = screen.getByRole('button', { name: 'Add a topic' })
+    opener.focus()
+    fireEvent.click(opener)
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'backend' }))
+  })
+})
+
+describe('TokenInput errors (review)', () => {
+  it('says an error in an alert, so a screen reader hears it; help text stays quiet', () => {
+    const props = { label: 'Names', tokens: [], onRemove: () => {}, onAdd: () => {}, query: '', onQueryChange: () => {}, help: 'People in Spark Systems' }
+    const { rerender } = render(<TokenInput {...props} />)
+    expect(screen.queryByRole('alert')).toBeNull()
+    rerender(<TokenInput {...props} error="Everyone you picked is already in #backend." />)
+    expect(screen.getByRole('alert').textContent).toBe('Everyone you picked is already in #backend.')
+    expect(screen.getByRole('combobox').getAttribute('aria-describedby')).toBe(screen.getByRole('alert').id)
+  })
+})
+
+describe('focusables (review)', () => {
+  it('leaves out controls inside a hidden part (a tab panel kept mounted behind another)', () => {
+    render(
+      <Modal open onClose={() => {}} title="backend">
+        <div hidden>
+          <Button>Edit topic</Button>
+        </div>
+        <Button>Remove Nour El-Sayed</Button>
+      </Modal>,
+    )
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Remove Nour El-Sayed' }))
+    fireEvent.keyDown(document.activeElement!, { key: 'Tab' })
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Close' }))
+  })
+})

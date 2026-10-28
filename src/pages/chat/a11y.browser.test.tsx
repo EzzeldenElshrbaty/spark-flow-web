@@ -575,6 +575,46 @@ describe('Channel details on a phone (spec 10, 6.16)', () => {
 })
 
 
+describe('Channel details on a phone: the rest of its controls (review)', () => {
+  const more = [
+    ...users,
+    { id: 'u-3', name: 'Mariam Fathy', title: 'Designer', email: 'm@spark-sys.com', presence: 'offline', role: 'member' },
+  ] as User[]
+  /** Whether a touch 21px above and below the middle of `el` lands on it. */
+  const answers = (el: Element) => {
+    const r = el.getBoundingClientRect()
+    const x = r.left + r.width / 2
+    return [r.top + r.height / 2 - 21, r.top + r.height / 2 + 21].map((y) => el.contains(document.elementFromPoint(x, y)))
+  }
+
+  it('×, Open project, Find members, Add people’s buttons and chips, and the Remove question answer a 44px touch', async () => {
+    await page.viewport(390, 844)
+    try {
+      mount(details({ people: more, project: { name: 'Nexus Core', key: 'NEX', href: '/w/engineering/p/NEX/overview' } }), false)
+      Object.assign(document.querySelector('main')!.style, { width: '390px', padding: '0' })
+      const head = within(screen.getByRole('dialog', { name: 'backend' }))
+      expect(answers(head.getByRole('button', { name: 'Close' })), 'Close').toEqual([true, true])
+      expect(answers(screen.getByRole('link', { name: 'Open project' })), 'Open project').toEqual([true, true])
+      cleanup()
+      mount(details({ people: more, tab: 'members' }), false)
+      Object.assign(document.querySelector('main')!.style, { width: '390px', padding: '0' })
+      expect(answers(screen.getByRole('searchbox', { name: 'Find members' })), 'Find members').toEqual([true, true])
+      await userEvent.click(screen.getByRole('button', { name: 'Add people' }))
+      const add = within(screen.getByRole('dialog', { name: 'Add people to #backend' }))
+      await userEvent.click(add.getByRole('combobox', { name: 'Names' }))
+      await userEvent.keyboard('Mar{Enter}')
+      for (const name of ['Close', 'Remove Mariam Fathy', 'Cancel', 'Add 1 person']) expect(answers(add.getByRole('button', { name })), name).toEqual([true, true])
+      await userEvent.click(add.getByRole('button', { name: 'Cancel' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Remove Nour El-Sayed' }))
+      const ask = within(screen.getByRole('dialog', { name: 'Remove Nour El-Sayed from #backend?' }))
+      for (const name of ['Close', 'Cancel', 'Remove']) expect(answers(ask.getByRole('button', { name })), name).toEqual([true, true])
+    } finally {
+      await page.viewport(414, 896)
+    }
+  })
+})
+
+
 describe('Esc in Channel details, with real key presses (spec 10, review)', () => {
   const more = [
     ...users,

@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useArchiveChannel, useJoinChannel, useRestoreChannel } from '@/api/chat'
 import { useArchivedProjects, useProjectSummaries } from '@/api/projects'
-import type { Channel } from '@/api/types'
+import type { Channel, ProjectSummary } from '@/api/types'
 import { Button as SfButton } from '@/components/sf/Button'
 import { Modal } from '@/components/sf/Modal'
 import { Button } from '@/components/ui/Button'
@@ -16,15 +16,24 @@ import { useRole } from '@/lib/useRole'
  */
 export function useChannelRights(channel: Channel): { manage: boolean; leave: boolean } {
   const { persona } = useRole()
-  const projects = useProjectSummaries(channel.workspaceId)
-  // An archived project's channel is archived with it, and the list leaves that project out: look there too.
-  const archivedProjects = useArchivedProjects(channel.workspaceId, isArchived(channel))
-  const known = projects.data != null && (!isArchived(channel) || archivedProjects.data != null)
-  const own = channel.kind === 'channel' && known && ![...(projects.data ?? []), ...(archivedProjects.data ?? [])].some((p) => p.channelId === channel.id)
+  const { known, project } = useChannelProject(channel)
+  const own = channel.kind === 'channel' && known && !project
   return {
     manage: own && can('channel.manage', { userId: persona.id, role: persona.role, channel }),
     leave: own && !isArchived(channel) && channel.memberIds.includes(persona.id),
   }
+}
+
+/**
+ * The project whose channel this is, if any. An archived project's channel is archived with it, and the active list
+ * leaves that project out, so the archived ones are looked at too; `known` waits for the lists it needs.
+ */
+export function useChannelProject(channel: Channel): { known: boolean; project: ProjectSummary | undefined } {
+  const projects = useProjectSummaries(channel.workspaceId)
+  const archivedProjects = useArchivedProjects(channel.workspaceId, isArchived(channel))
+  const known = projects.data != null && (!isArchived(channel) || archivedProjects.data != null)
+  const project = [...(projects.data ?? []), ...(archivedProjects.data ?? [])].find((p) => p.channelId === channel.id)
+  return { known, project }
 }
 
 /** Whether I may change this channel (details, archive): its members and admins; not a project's channel or a DM. */

@@ -98,6 +98,8 @@ export function TokenInput({
                 icon={IconX}
                 size="xs"
                 tooltip={false}
+                // A 44px touch target on phones (spec 6.16) around the 24px ×.
+                className="relative max-md:after:absolute max-md:after:-inset-2.5"
                 onClick={(event) => {
                   event.stopPropagation()
                   onRemove(t.id)
@@ -153,14 +155,18 @@ export function TokenInput({
           ))}
         </div>
       </div>
-      {(error || help) && (
-        <p
-          id={`${id}-help`}
-          className={clsx('sf-meta m-0', error ? 'flex items-center gap-1 text-sf-accent' : 'text-sf-text-secondary')}
-        >
-          {error && <Icon icon={IconAlertCircle} size={16} />}
-          {error ?? help}
+      {/* An error is a new alert node, so a screen reader says it; help text is read with the field only. */}
+      {error ? (
+        <p key="error" id={`${id}-help`} role="alert" className="sf-meta m-0 flex items-center gap-1 text-sf-accent">
+          <Icon icon={IconAlertCircle} size={16} />
+          {error}
         </p>
+      ) : (
+        help && (
+          <p key="help" id={`${id}-help`} className="sf-meta m-0 text-sf-text-secondary">
+            {help}
+          </p>
+        )
       )}
     </div>
   )

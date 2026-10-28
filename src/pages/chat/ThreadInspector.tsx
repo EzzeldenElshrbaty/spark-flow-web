@@ -56,7 +56,8 @@ export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: st
 
   let body
   if (foreign || isNotFound(message.error)) body = <NotFound what="message" backTo={closeTo} backLabel="Close the thread" />
-  else if (isForbidden(message.error)) body = <p className="text-sm text-fg-muted">You're not in this channel.</p>
+  // Taken off the channel while the thread is open: the channel answers 403 before the message is fetched again.
+  else if (isForbidden(message.error) || isForbidden(channel.error)) body = <p className="text-sm text-fg-muted">You're not in this channel.</p>
   else if (message.isError) body = <QueryError what="Message" onRetry={() => void message.refetch()} />
   else if (channel.isError) body = <QueryError what="Channel" onRetry={() => void channel.refetch()} />
   // Names come with the channel's workspace; a channel that fails to load only leaves them unknown.

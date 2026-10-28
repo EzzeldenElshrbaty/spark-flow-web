@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useId, useMemo, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 import { useAddMembers, useChannel, useChannels, useDrafts, useDraftSaver, useJumpTarget, useLeaveChannel, useMarkRead, useMessage, useMessages, useMessagesFrom, useRemoveMember, useSetMuted, useSetNotifyLevel, useSetStarred, useUpdateChannel } from '@/api/chat'
 import { useUsers } from '@/api/users'
@@ -27,7 +27,7 @@ import { CanPostError } from '@/pages/chat/CanPostError'
 import { TypingLine } from '@/pages/chat/ChannelTyping'
 import { useCanPost, useCanWrite, useReadOnlyLine } from '@/pages/chat/useCanPost'
 import { useTaskFromMessage } from '@/pages/chat/useTaskFromMessage'
-import { ArchiveChannelModal, ArchivedChannelLine, JoinChannelLine, useChannelRights } from '@/pages/chat/ChannelActions'
+import { ArchiveChannelModal, ArchivedChannelLine, JoinChannelLine, useChannelProject, useChannelRights } from '@/pages/chat/ChannelActions'
 import { ChannelHeader } from '@/pages/chat/ChannelHeader'
 import { ChannelDetails, detailsRights, type DetailsTab } from '@/pages/chat/ChannelDetails'
 import { ChannelTabs, TabStub, tabFromParam, type ChannelTab } from '@/pages/chat/ChannelTabs'
@@ -177,23 +177,32 @@ function ChannelTop({ channel, people, workspaceSlug, tab, onTab, panelId }: { c
   const addMembers = useAddMembers()
   const removeMember = useRemoveMember()
   const navigate = useNavigate()
-  const projects = useProjectSummaries(channel.workspaceId).data
+  // An archived project's channel still names its project (review).
+  const own = useChannelProject(channel).project
   const takenNames = (useChannels(channel.workspaceId).data ?? []).filter((c) => c.kind === 'channel' && c.id !== channel.id).map((c) => c.name ?? '')
   const [details, setDetails] = useState<{ tab: DetailsTab; editTopic?: boolean } | null>(null)
   const [archiving, setArchiving] = useState(false)
-  const error = (star.error ?? mute.error ?? level.error ?? markRead.error ?? leave.error) as Error | null
+  const top = useRef<HTMLDivElement>(null)
+  // The details change the star, level and mute too: while they're open, these errors show under their header.
+  const headerError = (star.error ?? mute.error ?? level.error) as Error | null
+  const error = (headerError ?? markRead.error ?? leave.error) as Error | null
   const members = channel.memberIds.map((id) => ({ id, name: people.find((u) => u.id === id)?.name ?? 'Unknown person' }))
-  const own = projects?.find((p) => p.channelId === channel.id)
+  const openDetails = (on: DetailsTab, editTopic?: boolean) => {
+    star.reset()
+    mute.reset()
+    level.reset()
+    setDetails({ tab: on, editTopic })
+  }
   const copyLink = () => navigator.clipboard.writeText(new URL(paths.channel(workspaceSlug, channel.id), window.location.origin).href)
   const leaveChannel = () => leave.mutate(channel.id, { onSuccess: () => navigate(paths.home(workspaceSlug)) })
   return (
-    <div className="sf flex-none bg-sf-surface">
+    <div ref={top} className="sf flex-none bg-sf-surface">
       <ChannelHeader
         channel={channel}
         title={channel.kind === 'channel' ? (channel.name ?? '') : channelLabel(channel, people, persona.id)}
         members={members}
         rights={rights}
-        onDetails={(on, editTopic) => setDetails({ tab: on, editTopic })}
+        onDetails={openDetails}
         onStar={(starred) => star.mutate({ id: channel.id, starred })}
         onMute={(muted) => mute.mutate({ id: channel.id, muted })}
         onNotifyLevel={(notifyLevel) => level.mutate({ id: channel.id, level: notifyLevel })}
@@ -206,7 +215,7 @@ function ChannelTop({ channel, people, workspaceSlug, tab, onTab, panelId }: { c
         onArchive={() => setArchiving(true)}
       />
       <ChannelTabs channel={channel} tab={tab} onChange={onTab} panelId={panelId} />
-      {error && <p className="sf-small px-4 pt-2 text-sf-error">{error.message}</p>}
+      {error && !details && <p className="sf-small px-4 pt-2 text-sf-error">{error.message}</p>}
       {details && channel.kind === 'channel' && (
         <ChannelDetails
           channel={channel}
@@ -217,6 +226,9 @@ function ChannelTop({ channel, people, workspaceSlug, tab, onTab, panelId }: { c
           rights={detailsRights(channel, rights, check('channel.restrictPosting', { channel }))}
           tab={details.tab}
           editTopic={details.editTopic}
+          headerError={headerError?.message}
+          // "Add a topic" is gone once there's a topic: focus goes back to the channel's name.
+          fallbackFocus={() => top.current?.querySelector<HTMLElement>('h1 button')}
           onClose={() => setDetails(null)}
           onSave={(patch) => update.mutateAsync({ id: channel.id, patch })}
           onAdd={(userIds) => addMembers.mutateAsync({ id: channel.id, userIds })}

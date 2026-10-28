@@ -352,8 +352,9 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         checkChannel(data, { workspaceId: channel.workspaceId, id, name, topic, isPrivate: channel.isPrivate })
         const wrongDescription = descriptionError(description)
         if (wrongDescription) throw badRequest(wrongDescription)
+        // Checked when it's sent: a value stored before can't block an edit that leaves it alone.
+        if (patch.whoCanPost !== undefined && !WHO_CAN_POST.includes(patch.whoCanPost)) throw badRequest('Choose Everyone or Only admins.')
         const whoCanPost = patch.whoCanPost ?? channel.whoCanPost
-        if (!WHO_CAN_POST.includes(whoCanPost)) throw badRequest('Choose Everyone or Only admins.')
         if (whoCanPost !== channel.whoCanPost && !can('channel.restrictPosting', { userId: me.id, role: me.role, channel })) {
           throw new ApiError({ title: 'Forbidden', status: 403, detail: 'Only admins can change who can post.' })
         }
@@ -372,9 +373,11 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
     async addMembers(id, userIds) {
       await delay()
       const { channel, posted } = await db.update((data) => {
-        const { channel } = editableChannel(data, id)
+        const { channel, me } = editableChannel(data, id)
         const picked = [...new Set(userIds)]
         if (!picked.length) throw badRequest('Pick someone to add.')
+        // Joining is how I get into a channel; Add people is for others.
+        if (picked.includes(me.id) && !channel.memberIds.includes(me.id)) throw badRequest('Join the channel instead.')
         const unknown = picked.find((userId) => !data.users.some((u) => u.id === userId))
         if (unknown) throw notFound('User', unknown)
         const added = picked.filter((userId) => !channel.memberIds.includes(userId))
@@ -489,10 +492,11 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       await delay()
       const { message, repeat, mentioned } = await db.update((data) => {
         const channel = findChannel(data, channelId)
-        const me = checkCanWrite(data, channel)
-        // A retry of a send that did arrive gets the message it stored, not a second one (spec §8: writes are idempotent).
-        const stored = clientId ? data.messages.find((m) => m.channelId === channelId && m.senderId === me.id && m.clientId === clientId) : undefined
+        // A retry of a send that did arrive gets the message it stored, not a second one (spec §8: writes are idempotent),
+        // even if who may post has changed since; the rights are for a new message.
+        const stored = clientId ? data.messages.find((m) => m.channelId === channelId && m.senderId === data.currentUserId && m.clientId === clientId) : undefined
         if (stored) return { message: stored, repeat: true, mentioned: [] }
+        const me = checkCanWrite(data, channel)
         // From the rich composer the body is the message and its plain text the content; otherwise the text is parsed.
         const input = body === undefined ? { content: checkText(content) } : (({ body: b, text }) => ({ content: text, body: b }))(checkBody(body))
         const message = postMessage(data, { channelId, clientId, ...input })

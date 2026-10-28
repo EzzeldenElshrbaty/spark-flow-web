@@ -131,3 +131,30 @@ describe('an archived channel is read-only (review)', () => {
     expect((await api.chat.updateChannel(channel.id, { name: 'ops-old' })).name).toBe('ops-old')
   })
 })
+
+describe('slice 4 review minors', () => {
+  it('a retried send that did arrive gets its message back, even after the switch to Only admins (spec §8)', async () => {
+    await api.users.viewAs('u-2')
+    const sent = await api.chat.send('c-backend', 'Deploying now', 'client-1')
+    await api.users.viewAs('u-1')
+    await api.chat.updateChannel('c-backend', { whoCanPost: 'admins' })
+    await api.users.viewAs('u-2')
+    expect((await api.chat.send('c-backend', 'Deploying now', 'client-1')).id).toBe(sent.id)
+    await expect(api.chat.send('c-backend', 'Again', 'client-2')).rejects.toMatchObject({ status: 403, detail: 'Only admins can post in #backend.' })
+  })
+
+  it('adding myself to a channel I’m not in is a Join, not an Add', async () => {
+    await api.users.viewAs('u-2')
+    const channel = await ops()
+    await api.users.viewAs('u-1')
+    await expect(api.chat.addMembers(channel.id, ['u-1', 'u-3'])).rejects.toMatchObject({ status: 400, detail: 'Join the channel instead.' })
+    expect((await api.chat.channel(channel.id)).memberIds).toEqual(['u-2'])
+  })
+
+  it('a bad stored who-can-post doesn’t block an edit that leaves it alone', async () => {
+    await db.update((data) => {
+      data.channels.find((c) => c.id === 'c-backend')!.whoCanPost = 'owner' as never
+    })
+    expect((await api.chat.updateChannel('c-backend', { topic: 'Queues' })).topic).toBe('Queues')
+  })
+})

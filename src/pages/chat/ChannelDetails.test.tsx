@@ -160,7 +160,8 @@ describe('Channel details: Members (spec 6.10)', () => {
   it('a manager removes someone else, never themselves; others see no Remove', async () => {
     const { onRemove } = show({ tab: 'members' })
     expect(screen.queryByRole('button', { name: 'Remove Youssef Abdelrahman' })).toBeNull()
-    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Remove Nour El-Sayed' })))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Nour El-Sayed' }))
+    await act(async () => fireEvent.click(within(screen.getByRole('dialog', { name: /^Remove/ })).getByRole('button', { name: 'Remove' })))
     expect(onRemove).toHaveBeenCalledWith('u-2')
     cleanup()
     show({ tab: 'members', rights: { manage: false, leave: true, restrictPosting: false } })
@@ -200,7 +201,7 @@ describe('Channel details: Members (spec 6.10)', () => {
     fireEvent.change(names, { target: { value: 'om' } })
     fireEvent.keyDown(names, { key: 'Enter' })
     await act(async () => fireEvent.click(within(add).getByRole('button', { name: 'Add 1 person' })))
-    expect(within(add).getByText('Everyone you picked is already in #backend.')).toBeTruthy()
+    expect(within(add).getByRole('alert').textContent).toBe('Everyone you picked is already in #backend.')
   })
 })
 
@@ -262,3 +263,142 @@ describe('detailsRights: what the details let me do (review)', () => {
   })
 })
 
+
+describe('Channel details: editing in place (review minors)', () => {
+  it('first focus is the open tab, not the level button beside the title', () => {
+    show()
+    expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'About' }))
+  })
+
+  it('Enter saves a name or topic; the description saves with Ctrl or ⌘ + Enter, and Enter alone is a new line', async () => {
+    const { onSave } = show()
+    fireEvent.click(screen.getByRole('button', { name: 'Edit topic' }))
+    const topic = within(card('Topic')).getByRole('textbox', { name: 'Topic' })
+    fireEvent.change(topic, { target: { value: 'Queues' } })
+    await act(async () => fireEvent.keyDown(topic, { key: 'Enter' }))
+    expect(onSave).toHaveBeenLastCalledWith({ topic: 'Queues' })
+    fireEvent.click(screen.getByRole('button', { name: 'Edit description' }))
+    const description = within(card('Description')).getByRole('textbox', { name: 'Description' })
+    fireEvent.change(description, { target: { value: 'Line one' } })
+    await act(async () => fireEvent.keyDown(description, { key: 'Enter' }))
+    expect(onSave).toHaveBeenCalledOnce()
+    await act(async () => fireEvent.keyDown(description, { key: 'Enter', metaKey: true }))
+    expect(onSave).toHaveBeenLastCalledWith({ description: 'Line one' })
+    fireEvent.click(screen.getByRole('button', { name: 'Edit description' }))
+    await act(async () => fireEvent.keyDown(within(card('Description')).getByRole('textbox'), { key: 'Enter', ctrlKey: true }))
+    expect(onSave).toHaveBeenCalledTimes(3)
+  })
+
+  it('one card edits at a time, so there is one Save: opening another closes the first', () => {
+    show()
+    fireEvent.click(screen.getByRole('button', { name: 'Edit topic' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Edit description' }))
+    expect(within(card('Topic')).queryByRole('textbox')).toBeNull()
+    expect(screen.getAllByRole('button', { name: 'Save' })).toHaveLength(1)
+    expect(document.activeElement).toBe(within(card('Description')).getByRole('textbox'))
+  })
+
+  it('a draft survives a tab switch, and "Add a topic" opens the field only once', async () => {
+    show({ channel: { ...backend, topic: '' }, editTopic: true })
+    const topic = within(card('Topic')).getByRole('textbox', { name: 'Topic' })
+    fireEvent.change(topic, { target: { value: 'Queues' } })
+    await act(async () => fireEvent.keyDown(topic, { key: 'Enter' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Edit description' }))
+    fireEvent.change(within(card('Description')).getByRole('textbox'), { target: { value: 'Draft' } })
+    fireEvent.click(screen.getByRole('tab', { name: 'Members 3' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'About' }))
+    expect(within(card('Topic')).queryByRole('textbox')).toBeNull()
+    expect((within(card('Description')).getByRole('textbox') as HTMLTextAreaElement).value).toBe('Draft')
+  })
+
+  it('a description keeps its line breaks', () => {
+    show({ channel: { ...backend, description: 'Line one\nLine two' } })
+    const text = within(card('Description')).getByText(/Line one/)
+    expect(text.className).toContain('whitespace-pre-line')
+  })
+
+  it('an error from the star or the level shows under the details’ header, not behind them', () => {
+    show({ headerError: "Couldn't change your notifications. Try again." })
+    expect(within(dialog()).getByRole('alert').textContent).toBe("Couldn't change your notifications. Try again.")
+  })
+})
+
+describe('Channel details: Remove asks first (review minors)', () => {
+  it('names the person and the channel, and says what it means; Cancel keeps them', async () => {
+    const { onRemove } = show({ tab: 'members' })
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Nour El-Sayed' }))
+    const ask = screen.getByRole('dialog', { name: 'Remove Nour El-Sayed from #backend?' })
+    expect(screen.getByRole('dialog', { description: 'They can still open #backend and join again.' })).toBe(ask)
+    fireEvent.click(within(ask).getByRole('button', { name: 'Cancel' }))
+    expect(onRemove).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog', { name: /^Remove/ })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Nour El-Sayed' }))
+    await act(async () => fireEvent.click(within(screen.getByRole('dialog', { name: /^Remove/ })).getByRole('button', { name: 'Remove' })))
+    expect(onRemove).toHaveBeenCalledWith('u-2')
+    expect(screen.queryByRole('dialog', { name: /^Remove/ })).toBeNull()
+  })
+
+  it('a private channel says they lose it; a refusal shows in the question, which stays', async () => {
+    show({ tab: 'members', channel: { ...backend, isPrivate: true }, onRemove: vi.fn(async () => Promise.reject(new Error('They’re not in #backend.'))) })
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Mariam Fathy' }))
+    const ask = screen.getByRole('dialog', { name: 'Remove Mariam Fathy from #backend?' })
+    expect(screen.getByRole('dialog', { description: 'They won’t be able to read #backend until someone adds them back.' })).toBe(ask)
+    await act(async () => fireEvent.click(within(ask).getByRole('button', { name: 'Remove' })))
+    expect(within(ask).getByRole('alert').textContent).toBe('They’re not in #backend.')
+  })
+
+  it('while one removal is saving, the question says so and can’t be sent twice', async () => {
+    let finish = () => {}
+    const onRemove = vi.fn(() => new Promise<void>((resolve) => (finish = resolve)))
+    show({ tab: 'members', onRemove })
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Nour El-Sayed' }))
+    const ask = screen.getByRole('dialog', { name: /^Remove/ })
+    await act(async () => fireEvent.click(within(ask).getByRole('button', { name: 'Remove' })))
+    const pending = within(ask).getByRole('button', { name: 'Removing…' }) as HTMLButtonElement
+    expect(pending.disabled).toBe(true)
+    fireEvent.click(pending)
+    expect(onRemove).toHaveBeenCalledOnce()
+    await act(async () => finish())
+  })
+})
+
+describe('Channel details: Settings and Add people (review minors)', () => {
+  it('Who can post shows the picked choice while it saves; a refusal puts it back', async () => {
+    let fail: (error: Error) => void = () => {}
+    const onSave = vi.fn(() => new Promise<void>((_, reject) => (fail = reject)))
+    show({ tab: 'settings', onSave })
+    const admins = screen.getByRole('radio', { name: 'Only admins' }) as HTMLInputElement
+    await act(async () => fireEvent.click(admins))
+    expect(admins.checked).toBe(true)
+    await act(async () => fail(new Error('Only admins can change who can post.')))
+    expect(admins.checked).toBe(false)
+    expect((screen.getByRole('radio', { name: 'Everyone in the channel' }) as HTMLInputElement).checked).toBe(true)
+  })
+
+  it('Who can post keeps the saved choice until the channel catches up', async () => {
+    const on = { onSave: vi.fn(async () => {}) }
+    const { rerender } = render(<MemoryRouter><ChannelDetails {...base({ tab: 'settings' })} {...handlersFor(on)} /></MemoryRouter>)
+    await act(async () => fireEvent.click(screen.getByRole('radio', { name: 'Only admins' })))
+    expect((screen.getByRole('radio', { name: 'Only admins' }) as HTMLInputElement).checked).toBe(true)
+    rerender(<MemoryRouter><ChannelDetails {...base({ tab: 'settings', channel: { ...backend, whoCanPost: 'admins' } })} {...handlersFor(on)} /></MemoryRouter>)
+    expect((screen.getByRole('radio', { name: 'Only admins' }) as HTMLInputElement).checked).toBe(true)
+    rerender(<MemoryRouter><ChannelDetails {...base({ tab: 'settings', channel: { ...backend, whoCanPost: 'everyone' } })} {...handlersFor(on)} /></MemoryRouter>)
+    expect((screen.getByRole('radio', { name: 'Everyone in the channel' }) as HTMLInputElement).checked).toBe(true)
+  })
+
+  it('Add people never suggests me: Join is the way in', () => {
+    show({ tab: 'members', channel: { ...backend, memberIds: ['u-2', 'u-3'] } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add people' }))
+    const names = screen.getByRole('combobox', { name: 'Names' })
+    fireEvent.focus(names)
+    fireEvent.change(names, { target: { value: 'o' } })
+    expect(screen.getAllByRole('option').map((o) => o.querySelector('.font-medium')?.textContent)).toEqual(['Omar Hassan'])
+  })
+})
+
+function handlersFor(over: Partial<Props>) {
+  return {
+    onClose: vi.fn(), onSave: vi.fn(async () => {}), onAdd: vi.fn(async () => {}), onRemove: vi.fn(async () => {}), onStar: vi.fn(), onNotifyLevel: vi.fn(),
+    onMute: vi.fn(), onCopyLink: vi.fn(async () => {}), onLeave: vi.fn(), onArchive: vi.fn(), ...over,
+  }
+}

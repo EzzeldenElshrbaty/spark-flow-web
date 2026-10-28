@@ -14,6 +14,7 @@ export function Modal({
   description,
   actions,
   footer,
+  fallbackFocus,
   children,
 }: {
   open: boolean
@@ -24,21 +25,26 @@ export function Modal({
   actions?: ReactNode
   /** Buttons, end-aligned. One primary at most. */
   footer?: ReactNode
+  /** Where focus goes on close when what opened the dialog is gone (an "Add a topic" that a saved topic replaced). */
+  fallbackFocus?: () => HTMLElement | null | undefined
   children?: ReactNode
 }) {
   const titleId = useId()
   const descriptionId = useId()
   const panelRef = useRef<HTMLDivElement>(null)
+  const closeRef = useRef<HTMLButtonElement>(null)
 
   useEscapeLayer(open, onClose)
-  useRestoreFocus(open)
+  useRestoreFocus(open, fallbackFocus)
 
   useEffect(() => {
     if (!open || !panelRef.current) return
     const items = focusables(panelRef.current)
-    // The first field if there is one, else the first control after the close button.
+    // The first field if there is one, else the first control after the close button (actions beside the title come
+    // before it).
     const field = items.find((el) => el.matches('input, textarea, select'))
-    ;(field ?? items[1] ?? items[0])?.focus()
+    const afterClose = items[items.indexOf(closeRef.current!) + 1]
+    ;(field ?? afterClose ?? items[0])?.focus()
     const overflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     return () => {
@@ -73,7 +79,15 @@ export function Modal({
               )}
             </div>
             {actions && <div className="ms-auto flex flex-none items-center gap-1">{actions}</div>}
-            <IconButton label="Close" icon={IconX} onClick={onClose} className={actions ? undefined : 'ms-auto'} tooltip={false} />
+            {/* A 44px touch target on phones (spec 6.16) around the 32px ×. */}
+            <IconButton
+              ref={closeRef}
+              label="Close"
+              icon={IconX}
+              onClick={onClose}
+              className={`relative max-md:after:absolute max-md:after:-inset-1.5 ${actions ? '' : 'ms-auto'}`}
+              tooltip={false}
+            />
           </div>
           {children}
           {footer && <div className="mt-6 flex items-center justify-end gap-2">{footer}</div>}

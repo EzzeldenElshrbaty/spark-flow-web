@@ -99,5 +99,12 @@ describe('12 → 13', () => {
       channels: [{ id: 'c1', description: '', whoCanPost: 'everyone' }, { id: 'd1', description: 'kept', whoCanPost: 'everyone' }],
     })
   })
+
+  it('a value it can’t use becomes the default; a good one stays (review)', () => {
+    const doc = { version: 12, channels: [{ id: 'c1', description: 7, whoCanPost: 'owner' }, { id: 'c2', description: 'Ops', whoCanPost: 'admins' }] }
+    expect(migrate(doc, 13)).toMatchObject({
+      channels: [{ id: 'c1', description: '', whoCanPost: 'everyone' }, { id: 'c2', description: 'Ops', whoCanPost: 'admins' }],
+    })
+  })
 })
 
