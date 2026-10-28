@@ -238,19 +238,19 @@ describe('Toast', () => {
 })
 
 const people: Suggestion[] = [
-  { id: 'u-1', label: 'Hossam Gaber', person: true },
-  { id: 'u-2', label: 'Hala Nabil', person: true },
+  { id: 'u-1', label: 'Hossam Gaber', kind: 'person' as const },
+  { id: 'u-2', label: 'Hala Nabil', kind: 'person' as const },
 ]
 
 function Invite({ onCommit = () => {} }: { onCommit?: (t: string) => void }) {
-  const [tokens, setTokens] = useState<Token[]>([{ id: 'u-3', label: 'Sara Adel', person: true }])
+  const [tokens, setTokens] = useState<Token[]>([{ id: 'u-3', label: 'Sara Adel', kind: 'person' as const }])
   const [query, setQuery] = useState('')
   return (
     <TokenInput
       label="Names or emails"
       tokens={tokens}
       onRemove={(id) => setTokens((t) => t.filter((x) => x.id !== id))}
-      onAdd={(s) => setTokens((t) => [...t, s])}
+      onAdd={(s) => setTokens((t) => [...t, { id: s.id, label: s.label, kind: 'person' }])}
       onCommit={onCommit}
       query={query}
       onQueryChange={setQuery}
@@ -422,5 +422,35 @@ describe('focusables (review)', () => {
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Remove Nour El-Sayed' }))
     fireEvent.keyDown(document.activeElement!, { key: 'Tab' })
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Close' }))
+  })
+})
+
+describe('TokenInput chips and suggestions by kind (spec 6.10, slice 5)', () => {
+  const base = { label: 'Names or emails', onRemove: () => {}, onAdd: () => {}, onQueryChange: () => {} }
+
+  it('an email chip shows a mail icon, the email and a Guest tag; a person chip an avatar', () => {
+    render(<TokenInput {...base} query="" tokens={[{ id: 'u-1', label: 'Hossam Gaber', kind: 'person' }, { id: 'sam@client.com', label: 'sam@client.com', kind: 'email' }]} />)
+    const email = screen.getByRole('button', { name: 'Remove sam@client.com' }).parentElement!
+    expect(email.textContent).toBe('sam@client.comGuest')
+    expect(email.querySelector('svg')).toBeTruthy()
+    const person = screen.getByRole('button', { name: 'Remove Hossam Gaber' }).parentElement!
+    expect(person.querySelector('[aria-hidden="true"]')?.textContent).toBe('HG')
+  })
+
+  it('a suggestion says what it is: a team with how many people, an email to invite', () => {
+    render(
+      <TokenInput
+        {...base}
+        tokens={[]}
+        query="b"
+        suggestions={[
+          { id: 'team:t-backend', label: 'Backend', description: '2 people', kind: 'group' },
+          { id: 'email:b@client.com', label: 'b@client.com', description: 'Invite as a guest', kind: 'email' },
+        ]}
+      />,
+    )
+    fireEvent.focus(screen.getByRole('combobox'))
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Backend2 people', 'b@client.comInvite as a guest'])
+    for (const option of screen.getAllByRole('option')) expect(option.querySelector('svg')).toBeTruthy()
   })
 })

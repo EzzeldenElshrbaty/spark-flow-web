@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
-import { useAddMembers, useChannel, useChannels, useDrafts, useDraftSaver, useJumpTarget, useLeaveChannel, useMarkRead, useMessage, useMessages, useMessagesFrom, useRemoveMember, useSetMuted, useSetNotifyLevel, useSetStarred, useUpdateChannel } from '@/api/chat'
+import { useAddMembers, useChannel, useChannels, useDrafts, useDraftSaver, useInvitations, useJumpTarget, useLeaveChannel, useMarkRead, useMessage, useMessages, useMessagesFrom, useRemoveMember, useRevokeInvitation, useSetMuted, useSetNotifyLevel, useSetStarred, useUpdateChannel } from '@/api/chat'
 import { useUsers } from '@/api/users'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
@@ -32,7 +32,7 @@ import { ChannelHeader } from '@/pages/chat/ChannelHeader'
 import { ChannelDetails, detailsRights, type DetailsTab } from '@/pages/chat/ChannelDetails'
 import { ChannelTabs, TabStub, tabFromParam, type ChannelTab } from '@/pages/chat/ChannelTabs'
 import type { Channel, ChatMessage, User } from '@/api/types'
-import { useProjectSummaries } from '@/api/projects'
+import { useProjectSummaries, useTeams } from '@/api/projects'
 import { MessageSkeleton } from '@/pages/chat/MessageSkeleton'
 import { useChannelReadState, useReadHold, useReadHoldScope } from '@/pages/chat/readState'
 import { ChannelShortcuts, type ChannelNavState } from '@/pages/chat/ChannelShortcuts'
@@ -176,11 +176,20 @@ function ChannelTop({ channel, people, workspaceSlug, tab, onTab, panelId }: { c
   const update = useUpdateChannel()
   const addMembers = useAddMembers()
   const removeMember = useRemoveMember()
+  const revoke = useRevokeInvitation()
   const navigate = useNavigate()
   // An archived project's channel still names its project (review).
   const own = useChannelProject(channel).project
   const takenNames = (useChannels(channel.workspaceId).data ?? []).filter((c) => c.kind === 'channel' && c.id !== channel.id).map((c) => c.name ?? '')
   const [details, setDetails] = useState<{ tab: DetailsTab; editTopic?: boolean } | null>(null)
+  const allowed = detailsRights(channel, rights, {
+    restrictPosting: check('channel.restrictPosting', { channel }),
+    inviteByEmail: check('channel.inviteByEmail', { channel }),
+    setDefault: check('channel.setDefault', { channel }),
+  })
+  // Teams and invites only matter once the details are open.
+  const teams = useTeams(details ? channel.workspaceId : undefined).data ?? []
+  const invitations = useInvitations(channel.id, Boolean(details) && allowed.manage).data ?? []
   const [archiving, setArchiving] = useState(false)
   const top = useRef<HTMLDivElement>(null)
   // The details change the star, level and mute too: while they're open, these errors show under their header.
@@ -223,7 +232,10 @@ function ChannelTop({ channel, people, workspaceSlug, tab, onTab, panelId }: { c
           people={people}
           takenNames={takenNames}
           project={own ? { name: own.name, key: own.key, href: paths.project(workspaceSlug, own.key) } : null}
-          rights={detailsRights(channel, rights, check('channel.restrictPosting', { channel }))}
+          teams={teams}
+          invitations={invitations}
+          mayRevoke={(invitation) => check('invitation.revoke', { invitedBy: invitation.invitedBy })}
+          rights={allowed}
           tab={details.tab}
           editTopic={details.editTopic}
           headerError={headerError?.message}
@@ -231,8 +243,9 @@ function ChannelTop({ channel, people, workspaceSlug, tab, onTab, panelId }: { c
           fallbackFocus={() => top.current?.querySelector<HTMLElement>('h1 button')}
           onClose={() => setDetails(null)}
           onSave={(patch) => update.mutateAsync({ id: channel.id, patch })}
-          onAdd={(userIds) => addMembers.mutateAsync({ id: channel.id, userIds })}
+          onAdd={({ userIds, emails }) => addMembers.mutateAsync({ id: channel.id, userIds, emails })}
           onRemove={(userId) => removeMember.mutateAsync({ id: channel.id, userId })}
+          onRevoke={(invitationId) => revoke.mutateAsync(invitationId)}
           onStar={(starred) => star.mutate({ id: channel.id, starred })}
           onNotifyLevel={(notifyLevel) => level.mutate({ id: channel.id, level: notifyLevel })}
           onMute={(muted) => mute.mutate({ id: channel.id, muted })}

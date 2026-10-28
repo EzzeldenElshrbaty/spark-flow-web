@@ -58,7 +58,10 @@ const details = (over: Partial<Parameters<typeof ChannelDetails>[0]> = {}) => (
     people={users}
     takenNames={[]}
     project={null}
-    rights={{ manage: true, leave: true, restrictPosting: true }}
+    teams={[]}
+    invitations={[]}
+    mayRevoke={() => true}
+    rights={{ manage: true, leave: true, restrictPosting: true, invite: true, setDefault: true }}
     tab="about"
     onClose={vi.fn()}
     onSave={async () => {}}
@@ -70,9 +73,12 @@ const details = (over: Partial<Parameters<typeof ChannelDetails>[0]> = {}) => (
     onCopyLink={async () => {}}
     onLeave={vi.fn()}
     onArchive={vi.fn()}
+    onRevoke={async () => {}}
     {...over}
   />
 )
+const mariam = { id: 'u-3', name: 'Mariam Fathy', title: 'Designer', email: 'mariam.fathy@spark-sys.com', presence: 'offline', role: 'member' } as User
+const sentInvite = { id: 'inv-1', email: 'lina@partner.io', invitedBy: 'u-1', workspaceId: 'ws-eng', channelId: 'c-backend', role: 'guest' as const, status: 'pending' as const, createdAt: '2026-10-28T08:00:00.000Z' }
 const directory = { users, projects: [{ key: 'NEX', name: 'Nexus Core' }], tasks: [{ key: 'NEX-103', title: task.title }], channels: [{ id: 'c-backend', name: 'backend' }], memberIds: ['u-1'] }
 
 function mount(node: ReactNode, dark: boolean) {
@@ -229,6 +235,20 @@ describe.each([
     await userEvent.keyboard('{Escape}')
     await userEvent.click(screen.getByRole('tab', { name: 'Settings' }))
     expect(screen.getByRole('radiogroup', { name: 'Who can post' })).toBeTruthy()
+    expect(await violations()).toEqual([])
+  })
+
+  it('Add people with a guest chip, its suggestions and the admin switch, and the Invited list, have no axe violations (spec 6.10, slice 5)', async () => {
+    mount(details({ tab: 'members', people: [...users, mariam], teams: [{ id: 't-backend', name: 'Backend', memberIds: ['u-3'] }], invitations: [sentInvite] }), dark)
+    expect(screen.getByRole('list', { name: 'Invited' })).toBeTruthy()
+    expect(await violations()).toEqual([])
+    await userEvent.click(screen.getByRole('button', { name: 'Add people' }))
+    await userEvent.click(screen.getByRole('combobox', { name: 'Names or emails' }))
+    await userEvent.keyboard('sam@client.com{Enter}back')
+    expect(screen.getByRole('option', { name: /Backend/ })).toBeTruthy()
+    expect(screen.getByRole('switch', { name: 'When new people join Spark Systems, add them to #backend' })).toBeTruthy()
+    // "Add 1 person" has just turned on: let its 150ms colour change finish, or axe measures it half way.
+    await new Promise((r) => setTimeout(r, 250))
     expect(await violations()).toEqual([])
   })
 
@@ -601,7 +621,7 @@ describe('Channel details on a phone: the rest of its controls (review)', () => 
       expect(answers(screen.getByRole('searchbox', { name: 'Find members' })), 'Find members').toEqual([true, true])
       await userEvent.click(screen.getByRole('button', { name: 'Add people' }))
       const add = within(screen.getByRole('dialog', { name: 'Add people to #backend' }))
-      await userEvent.click(add.getByRole('combobox', { name: 'Names' }))
+      await userEvent.click(add.getByRole('combobox', { name: 'Names or emails' }))
       await userEvent.keyboard('Mar{Enter}')
       for (const name of ['Close', 'Remove Mariam Fathy', 'Cancel', 'Add 1 person']) expect(answers(add.getByRole('button', { name })), name).toEqual([true, true])
       await userEvent.click(add.getByRole('button', { name: 'Cancel' }))
@@ -626,7 +646,7 @@ describe('Esc in Channel details, with real key presses (spec 10, review)', () =
     const onClose = vi.fn()
     mount(details({ tab: 'members', people: more, onClose }), false)
     await userEvent.click(screen.getByRole('button', { name: 'Add people' }))
-    const names = screen.getByRole('combobox', { name: 'Names' })
+    const names = screen.getByRole('combobox', { name: 'Names or emails' })
     await userEvent.click(names)
     await userEvent.keyboard('Mar{Enter}Om')
     expect(names.getAttribute('aria-expanded')).toBe('true')
@@ -651,5 +671,36 @@ describe('Esc in Channel details, with real key presses (spec 10, review)', () =
     expect(onClose).not.toHaveBeenCalled()
     await userEvent.keyboard('{Escape}')
     expect(onClose).toHaveBeenCalledOnce()
+  })
+})
+
+describe('Add people with emails, with real key presses (spec 6.10, slice 5)', () => {
+  it('an email becomes a guest chip on Enter or a comma, and the footer counts it', async () => {
+    mount(details({ tab: 'members' }), false)
+    await userEvent.click(screen.getByRole('button', { name: 'Add people' }))
+    await userEvent.click(screen.getByRole('combobox', { name: 'Names or emails' }))
+    await userEvent.keyboard('sam@client.com,lina@partner.io{Enter}')
+    for (const email of ['sam@client.com', 'lina@partner.io']) expect(screen.getByRole('button', { name: `Remove ${email}` }).parentElement!.textContent).toContain('Guest')
+    expect(screen.getByText("2 people aren't in Spark Systems yet. They'll get email invites as guests who can see #backend only.")).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Add 2 people' })).toBeTruthy()
+  })
+
+  it('on a phone, Revoke and the default-channel switch answer a 44px touch (spec 6.16)', async () => {
+    await page.viewport(390, 844)
+    try {
+      mount(details({ tab: 'members', invitations: [sentInvite] }), false)
+      Object.assign(document.querySelector('main')!.style, { width: '390px', padding: '0' })
+      const answers = (el: Element, target: Element = el) => {
+        const r = el.getBoundingClientRect()
+        const x = r.left + r.width / 2
+        return [r.top + r.height / 2 - 21, r.top + r.height / 2 + 21].map((y) => target.contains(document.elementFromPoint(x, y)))
+      }
+      expect(answers(screen.getByRole('button', { name: 'Revoke the invite to lina@partner.io' })), 'Revoke').toEqual([true, true])
+      await userEvent.click(screen.getByRole('button', { name: 'Add people' }))
+      const toggle = screen.getByRole('switch')
+      expect(answers(toggle, toggle.closest('label')!), 'switch').toEqual([true, true])
+    } finally {
+      await page.viewport(414, 896)
+    }
   })
 })

@@ -1,12 +1,22 @@
-import { IconAlertCircle, IconX } from '@tabler/icons-react'
+import { IconAlertCircle, IconMail, IconUsersGroup, IconX } from '@tabler/icons-react'
 import clsx from 'clsx'
 import { useId, useRef, useState, type ReactNode } from 'react'
 import { Avatar } from './Avatar'
+import { Tag } from './Badge'
 import { IconButton } from './Button'
 import { Icon } from './Icon'
 
-export type Token = { id: string; label: string; /** Shows an avatar for people; plain chip otherwise. */ person?: boolean }
-export type Suggestion = Token & { description?: string }
+/** A chip: a person shows an avatar; an email a mail icon and the Guest tag (spec 6.10); anything else is plain. */
+export type Token = { id: string; label: string; kind?: 'person' | 'email' }
+/** A suggestion can also be a group (a team), which adds its people. */
+export type Suggestion = { id: string; label: string; kind?: 'person' | 'email' | 'group'; description?: string }
+
+function KindMark({ token }: { token: Suggestion }) {
+  if (token.kind === 'person') return <Avatar id={token.id} name={token.label} size="sm" decorative />
+  if (token.kind === 'email') return <Icon icon={IconMail} size={16} className="mx-0.5 text-sf-text-secondary" />
+  if (token.kind === 'group') return <Icon icon={IconUsersGroup} size={16} className="mx-0.5 text-sf-text-secondary" />
+  return null
+}
 
 /**
  * Chips plus a text field (spec 6.13, "Names or emails"). Enter or a comma adds the highlighted suggestion,
@@ -91,8 +101,9 @@ export function TokenInput({
               key={t.id}
               className="inline-flex h-7 items-center gap-1 rounded-sf-md border border-sf-line bg-sf-surface-hover ps-1 pe-0.5 font-sf text-[13px]/[18px] font-medium text-sf-text"
             >
-              {t.person && <Avatar id={t.id} name={t.label} size="sm" decorative />}
+              <KindMark token={t} />
               {t.label}
+              {t.kind === 'email' && <Tag tone="accent">Guest</Tag>}
               <IconButton
                 label={`Remove ${t.label}`}
                 icon={IconX}
@@ -148,7 +159,7 @@ export function TokenInput({
               onClick={() => pick(s)}
               className="sf-ui mx-2 flex min-h-9 cursor-pointer items-center gap-2 rounded-sf-md px-2 py-1 text-sf-text hover:bg-sf-surface-hover aria-selected:bg-sf-surface-hover"
             >
-              {s.person && <Avatar id={s.id} name={s.label} size="sm" decorative />}
+              <KindMark token={s} />
               <span className="font-medium">{s.label}</span>
               {s.description && <span className="text-[13px] text-sf-text-secondary">{s.description}</span>}
             </div>

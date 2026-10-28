@@ -55,12 +55,15 @@ function Column({ theme }: { theme: 'Light' | 'Dark' }) {
   const [mute, setMute] = useState(true)
   const [check, setCheck] = useState(true)
   const [sort, setSort] = useState('newest')
-  const [tokens, setTokens] = useState<Token[]>([{ id: 'u-3', label: 'Sara Adel', person: true }])
+  const [tokens, setTokens] = useState<Token[]>([
+    { id: 'u-3', label: 'Sara Adel', kind: 'person' },
+    { id: 'sam@client.com', label: 'sam@client.com', kind: 'email' },
+  ])
   const [query, setQuery] = useState('')
   const show = useToast()
   const suggestions: Suggestion[] = people
     .filter((p) => query && p.name.toLowerCase().includes(query.toLowerCase()))
-    .map((p) => ({ id: p.id, label: p.name, person: true, description: 'Member' }))
+    .map((p) => ({ id: p.id, label: p.name, kind: 'person' as const, description: 'Member' }))
 
   return (
     <div className="sf relative min-w-0 flex-1 bg-sf-surface px-6 pb-20 text-sf-text">
@@ -226,8 +229,8 @@ function Column({ theme }: { theme: 'Light' | 'Dark' }) {
             label="Names or emails"
             tokens={tokens}
             onRemove={(id) => setTokens((t) => t.filter((x) => x.id !== id))}
-            onAdd={(s) => setTokens((t) => [...t, s])}
-            onCommit={(text) => setTokens((t) => [...t, { id: text, label: text }])}
+            onAdd={(s) => setTokens((t) => [...t, { id: s.id, label: s.label, kind: 'person' }])}
+            onCommit={(text) => setTokens((t) => [...t, { id: text, label: text, kind: 'email' }])}
             query={query}
             onQueryChange={setQuery}
             suggestions={suggestions}
@@ -273,7 +276,7 @@ function Column({ theme }: { theme: 'Light' | 'Dark' }) {
             label="Names or emails"
             tokens={tokens}
             onRemove={(id) => setTokens((t) => t.filter((x) => x.id !== id))}
-            onAdd={(s) => setTokens((t) => [...t, s])}
+            onAdd={(s) => setTokens((t) => [...t, { id: s.id, label: s.label, kind: 'person' }])}
             query={query}
             onQueryChange={setQuery}
             suggestions={suggestions}

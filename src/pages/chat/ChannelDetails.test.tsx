@@ -14,18 +14,22 @@ const backend: Channel = {
   lastMessageAt: null, description: '', whoCanPost: 'everyone', isDefault: false, unreadCount: 0, lastSeq: 9, lastReadSeq: 9, starred: false, muted: false, notifyLevel: 'mentions',
 }
 const people = [
-  { id: 'u-1', name: 'Youssef Abdelrahman', title: 'Managing Director', presence: 'active', role: 'admin' },
-  { id: 'u-2', name: 'Nour El-Sayed', title: 'Backend lead', presence: 'away', role: 'pm' },
-  { id: 'u-3', name: 'Mariam Fathy', title: 'Designer', presence: 'offline', role: 'member' },
-  { id: 'u-4', name: 'Omar Hassan', title: 'QA', presence: 'active', role: 'member' },
+  { id: 'u-1', name: 'Youssef Abdelrahman', email: 'youssef.abdelrahman@spark-sys.com', title: 'Managing Director', presence: 'active', role: 'admin' },
+  { id: 'u-2', name: 'Nour El-Sayed', email: 'nour.elsayed@spark-sys.com', title: 'Backend lead', presence: 'away', role: 'pm' },
+  { id: 'u-3', name: 'Mariam Fathy', email: 'mariam.fathy@spark-sys.com', title: 'Designer', presence: 'offline', role: 'member' },
+  { id: 'u-4', name: 'Omar Hassan', email: 'omar.hassan@spark-sys.com', title: 'QA', presence: 'active', role: 'member' },
 ] as User[]
 
 type Props = ComponentProps<typeof ChannelDetails>
-const base = (props: Partial<Props>) => ({ channel: backend, meId: 'u-1', people, takenNames: ['general', 'frontend-dev'], project: null, rights: { manage: true, leave: true, restrictPosting: true }, tab: 'about' as const, ...props })
+const teams = [
+  { id: 't-qa', name: 'QA', memberIds: ['u-4'] },
+  { id: 't-backend', name: 'Backend', memberIds: ['u-2', 'u-4'] },
+]
+const base = (props: Partial<Props>) => ({ channel: backend, meId: 'u-1', people, takenNames: ['general', 'frontend-dev'], project: null, teams, invitations: [], mayRevoke: () => true, rights: { manage: true, leave: true, restrictPosting: true, invite: true, setDefault: true }, tab: 'about' as const, ...props })
 function show(props: Partial<Props> = {}) {
   const handlers = {
     onClose: vi.fn(), onSave: vi.fn(async () => {}), onAdd: vi.fn(async () => {}), onRemove: vi.fn(async () => {}), onStar: vi.fn(), onNotifyLevel: vi.fn(),
-    onMute: vi.fn(), onCopyLink: vi.fn(async () => {}), onLeave: vi.fn(), onArchive: vi.fn(),
+    onMute: vi.fn(), onCopyLink: vi.fn(async () => {}), onLeave: vi.fn(), onArchive: vi.fn(), onRevoke: vi.fn(async () => {}),
   }
   render(
     <MemoryRouter>
@@ -35,7 +39,10 @@ function show(props: Partial<Props> = {}) {
         people={people}
         takenNames={['general', 'frontend-dev']}
         project={null}
-        rights={{ manage: true, leave: true, restrictPosting: true }}
+        teams={teams}
+        invitations={[]}
+        mayRevoke={() => true}
+        rights={{ manage: true, leave: true, restrictPosting: true, invite: true, setDefault: true }}
         tab="about"
         {...handlers}
         {...props}
@@ -67,7 +74,7 @@ describe('Channel details: the header and tabs (spec 6.10)', () => {
   })
 
   it('without the right to manage it there is no Settings and nothing to edit', () => {
-    show({ rights: { manage: false, leave: true, restrictPosting: false } })
+    show({ rights: { manage: false, leave: true, restrictPosting: false, invite: false, setDefault: false } })
     expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['About', 'Members 3'])
     expect(screen.queryByRole('button', { name: /^Edit/ })).toBeNull()
   })
@@ -129,7 +136,7 @@ describe('Channel details: About (spec 6.10)', () => {
   })
 
   it('a project’s channel names its project, read-only, with a way there', () => {
-    show({ project: { name: 'Nexus Core', key: 'NEX', href: '/w/engineering/p/NEX/overview' }, rights: { manage: false, leave: false, restrictPosting: false } })
+    show({ project: { name: 'Nexus Core', key: 'NEX', href: '/w/engineering/p/NEX/overview' }, rights: { manage: false, leave: false, restrictPosting: false, invite: false, setDefault: false } })
     expect(card('Project').textContent).toContain('Nexus Core · task keys NEX-* open as cards here')
     expect(within(card('Project')).getByRole('link', { name: 'Open project' }).getAttribute('href')).toBe('/w/engineering/p/NEX/overview')
   })
@@ -142,7 +149,7 @@ describe('Channel details: About (spec 6.10)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Leave channel' }))
     expect(onLeave).toHaveBeenCalledOnce()
     cleanup()
-    show({ rights: { manage: true, leave: false, restrictPosting: true } })
+    show({ rights: { manage: true, leave: false, restrictPosting: true, invite: true, setDefault: true } })
     expect(screen.queryByRole('button', { name: 'Leave channel' })).toBeNull()
   })
 })
@@ -164,13 +171,13 @@ describe('Channel details: Members (spec 6.10)', () => {
     await act(async () => fireEvent.click(within(screen.getByRole('dialog', { name: /^Remove/ })).getByRole('button', { name: 'Remove' })))
     expect(onRemove).toHaveBeenCalledWith('u-2')
     cleanup()
-    show({ tab: 'members', rights: { manage: false, leave: true, restrictPosting: false } })
+    show({ tab: 'members', rights: { manage: false, leave: true, restrictPosting: false, invite: false, setDefault: false } })
     expect(screen.queryByRole('button', { name: /^Remove/ })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Add people' })).toBeNull()
   })
 
   it('a project’s channel says its people follow the project, with no Add or Remove', () => {
-    show({ tab: 'members', project: { name: 'Nexus Core', key: 'NEX', href: '/w/engineering/p/NEX/overview' }, rights: { manage: false, leave: false, restrictPosting: false } })
+    show({ tab: 'members', project: { name: 'Nexus Core', key: 'NEX', href: '/w/engineering/p/NEX/overview' }, rights: { manage: false, leave: false, restrictPosting: false, invite: false, setDefault: false } })
     expect(screen.getByText('People on Nexus Core are in this channel.')).toBeTruthy()
   })
 
@@ -178,26 +185,27 @@ describe('Channel details: Members (spec 6.10)', () => {
     const { onAdd } = show({ tab: 'members' })
     fireEvent.click(screen.getByRole('button', { name: 'Add people' }))
     const add = screen.getByRole('dialog', { name: 'Add people to #backend' })
-    const names = within(add).getByRole('combobox', { name: 'Names' })
+    const names = within(add).getByRole('combobox', { name: 'Names or emails' })
     expect((within(add).getByRole('button', { name: 'Add people' }) as HTMLButtonElement).disabled).toBe(true)
     fireEvent.focus(names)
     fireEvent.change(names, { target: { value: 'a' } })
-    expect(within(add).getAllByRole('option').map((o) => o.querySelector('.font-medium')?.textContent)).toEqual(['Omar Hassan'])
+    // Only people not in it (Youssef, Nour and Mariam have an "a" too), then the teams that would add someone.
+    expect(within(add).getAllByRole('option').map((o) => o.querySelector('.font-medium')?.textContent)).toEqual(['Omar Hassan', 'QA', 'Backend'])
     fireEvent.click(within(add).getByRole('option', { name: /Omar Hassan/ }))
     await act(async () => fireEvent.click(within(add).getByRole('button', { name: 'Add 1 person' })))
-    expect(onAdd).toHaveBeenCalledWith(['u-4'])
+    expect(onAdd).toHaveBeenCalledWith({ userIds: ['u-4'], emails: [] })
     expect(screen.queryByRole('dialog', { name: 'Add people to #backend' })).toBeNull()
   })
 
-  it('Add people says a refusal near the names, and that an email has to wait', async () => {
-    show({ tab: 'members', onAdd: vi.fn(async () => Promise.reject(new Error('Everyone you picked is already in #backend.'))) })
+  it('Add people says a refusal near the names, and that only Admins invite by email', async () => {
+    show({ tab: 'members', rights: { manage: true, leave: true, restrictPosting: false, invite: false, setDefault: false }, onAdd: vi.fn(async () => Promise.reject(new Error('Everyone you picked is already in #backend.'))) })
     fireEvent.click(screen.getByRole('button', { name: 'Add people' }))
     const add = screen.getByRole('dialog', { name: 'Add people to #backend' })
-    const names = within(add).getByRole('combobox', { name: 'Names' })
+    const names = within(add).getByRole('combobox', { name: 'Names or emails' })
     fireEvent.focus(names)
     fireEvent.change(names, { target: { value: 'sam@client.com' } })
     fireEvent.keyDown(names, { key: 'Enter' })
-    expect(within(add).getByText('Pick someone in Spark Systems. Inviting by email comes later.')).toBeTruthy()
+    expect(within(add).getByRole('alert').textContent).toBe('Only admins can invite people by email.')
     fireEvent.change(names, { target: { value: 'om' } })
     fireEvent.keyDown(names, { key: 'Enter' })
     await act(async () => fireEvent.click(within(add).getByRole('button', { name: 'Add 1 person' })))
@@ -215,7 +223,7 @@ describe('Channel details: Settings (spec 6.10, §9)', () => {
   })
 
   it('anyone else sees the choice but can’t change it', () => {
-    show({ tab: 'settings', rights: { manage: true, leave: true, restrictPosting: false } })
+    show({ tab: 'settings', rights: { manage: true, leave: true, restrictPosting: false, invite: false, setDefault: false } })
     for (const radio of screen.getAllByRole('radio')) expect((radio as HTMLInputElement).disabled).toBe(true)
     expect(screen.getByText('Only admins can change this.')).toBeTruthy()
   })
@@ -231,14 +239,14 @@ describe('Channel details: Settings (spec 6.10, §9)', () => {
 describe('Channel details when rights change while it is open (review)', () => {
   const handlers = () => ({
     onClose: vi.fn(), onSave: vi.fn(async () => {}), onAdd: vi.fn(async () => {}), onRemove: vi.fn(async () => {}), onStar: vi.fn(), onNotifyLevel: vi.fn(),
-    onMute: vi.fn(), onCopyLink: vi.fn(async () => {}), onLeave: vi.fn(), onArchive: vi.fn(),
+    onMute: vi.fn(), onCopyLink: vi.fn(async () => {}), onLeave: vi.fn(), onArchive: vi.fn(), onRevoke: vi.fn(async () => {}),
   })
 
   it('on Settings, losing the right to manage it goes back to About instead of failing', () => {
     const on = handlers()
     const { rerender } = render(<MemoryRouter><ChannelDetails {...base({ tab: 'settings' })} {...on} /></MemoryRouter>)
     expect(screen.getByRole('radiogroup', { name: 'Who can post' })).toBeTruthy()
-    rerender(<MemoryRouter><ChannelDetails {...base({ tab: 'settings', rights: { manage: false, leave: true, restrictPosting: false } })} {...on} /></MemoryRouter>)
+    rerender(<MemoryRouter><ChannelDetails {...base({ tab: 'settings', rights: { manage: false, leave: true, restrictPosting: false, invite: false, setDefault: false } })} {...on} /></MemoryRouter>)
     expect(screen.queryByRole('tab', { name: 'Settings' })).toBeNull()
     expect(screen.getByRole('tab', { name: 'About' }).getAttribute('aria-selected')).toBe('true')
     expect(screen.getByRole('tabpanel', { name: 'About' })).toBeTruthy()
@@ -248,7 +256,7 @@ describe('Channel details when rights change while it is open (review)', () => {
     const on = handlers()
     const { rerender } = render(<MemoryRouter><ChannelDetails {...base({ editTopic: true })} {...on} /></MemoryRouter>)
     expect(within(card('Topic')).getByRole('textbox', { name: 'Topic' })).toBeTruthy()
-    rerender(<MemoryRouter><ChannelDetails {...base({ editTopic: true, rights: { manage: false, leave: true, restrictPosting: false } })} {...on} /></MemoryRouter>)
+    rerender(<MemoryRouter><ChannelDetails {...base({ editTopic: true, rights: { manage: false, leave: true, restrictPosting: false, invite: false, setDefault: false } })} {...on} /></MemoryRouter>)
     expect(within(card('Topic')).queryByRole('textbox')).toBeNull()
     expect(within(card('Topic')).queryByRole('button', { name: 'Save' })).toBeNull()
   })
@@ -257,9 +265,16 @@ describe('Channel details when rights change while it is open (review)', () => {
 describe('detailsRights: what the details let me do (review)', () => {
   it('an archived channel is read-only: no edits, no Settings, no who can post', () => {
     const rights = { manage: true, leave: true }
-    expect(detailsRights(backend, rights, true)).toEqual({ manage: true, leave: true, restrictPosting: true })
-    expect(detailsRights({ ...backend, archivedAt: '2026-10-28T10:00:00.000Z' }, { manage: true, leave: false }, true)).toEqual({ manage: false, leave: false, restrictPosting: false })
-    expect(detailsRights(backend, { manage: false, leave: true }, true)).toEqual({ manage: false, leave: true, restrictPosting: false })
+    const admin = { restrictPosting: true, inviteByEmail: true, setDefault: true }
+    expect(detailsRights(backend, rights, admin)).toEqual({ manage: true, leave: true, restrictPosting: true, invite: true, setDefault: true })
+    expect(detailsRights({ ...backend, archivedAt: '2026-10-28T10:00:00.000Z' }, { manage: true, leave: false }, admin)).toEqual({ manage: false, leave: false, restrictPosting: false, invite: false, setDefault: false })
+    expect(detailsRights(backend, { manage: false, leave: true }, admin)).toEqual({ manage: false, leave: true, restrictPosting: false, invite: false, setDefault: false })
+  })
+
+  it('a private channel is never a default one; email invites and the default are an Admin’s (slice 5)', () => {
+    const rights = { manage: true, leave: true }
+    expect(detailsRights({ ...backend, isPrivate: true }, rights, { restrictPosting: true, inviteByEmail: true, setDefault: true })).toMatchObject({ invite: true, setDefault: false })
+    expect(detailsRights(backend, rights, { restrictPosting: false, inviteByEmail: false, setDefault: false })).toMatchObject({ invite: false, setDefault: false })
   })
 })
 
@@ -389,7 +404,7 @@ describe('Channel details: Settings and Add people (review minors)', () => {
   it('Add people never suggests me: Join is the way in', () => {
     show({ tab: 'members', channel: { ...backend, memberIds: ['u-2', 'u-3'] } })
     fireEvent.click(screen.getByRole('button', { name: 'Add people' }))
-    const names = screen.getByRole('combobox', { name: 'Names' })
+    const names = screen.getByRole('combobox', { name: 'Names or emails' })
     fireEvent.focus(names)
     fireEvent.change(names, { target: { value: 'o' } })
     expect(screen.getAllByRole('option').map((o) => o.querySelector('.font-medium')?.textContent)).toEqual(['Omar Hassan'])
@@ -399,6 +414,103 @@ describe('Channel details: Settings and Add people (review minors)', () => {
 function handlersFor(over: Partial<Props>) {
   return {
     onClose: vi.fn(), onSave: vi.fn(async () => {}), onAdd: vi.fn(async () => {}), onRemove: vi.fn(async () => {}), onStar: vi.fn(), onNotifyLevel: vi.fn(),
-    onMute: vi.fn(), onCopyLink: vi.fn(async () => {}), onLeave: vi.fn(), onArchive: vi.fn(), ...over,
+    onMute: vi.fn(), onCopyLink: vi.fn(async () => {}), onLeave: vi.fn(), onArchive: vi.fn(), onRevoke: vi.fn(async () => {}), ...over,
   }
 }
+
+describe('Add people with emails and teams (spec 6.10, slice 5)', () => {
+  const openAdd = (props: Partial<Props> = {}) => {
+    const handlers = show({ tab: 'members', ...props })
+    fireEvent.click(screen.getByRole('button', { name: 'Add people' }))
+    const add = within(screen.getByRole('dialog', { name: 'Add people to #backend' }))
+    const names = add.getByRole('combobox', { name: 'Names or emails' })
+    fireEvent.focus(names)
+    const type = (text: string) => fireEvent.change(names, { target: { value: text } })
+    const options = () => add.queryAllByRole('option').map((o) => o.textContent)
+    return { ...handlers, add, names, type, options }
+  }
+
+  it('suggests people by name or email, teams with their size, and for an Admin the typed email, as a guest', async () => {
+    const { add, names, type, options, onAdd } = openAdd()
+    type('omar.hassan@')
+    expect(options()).toEqual(['OHOmar HassanQA'])
+    type('back')
+    expect(options()).toEqual(['Backend2 people'])
+    fireEvent.keyDown(names, { key: 'Enter' })
+    expect(add.getByRole('button', { name: 'Remove Omar Hassan' })).toBeTruthy()
+    type('Sam@Client.com')
+    expect(options()).toEqual(['sam@client.comInvite as a guest'])
+    fireEvent.keyDown(names, { key: 'Enter' })
+    expect(add.getByRole('button', { name: 'Remove sam@client.com' }).parentElement!.textContent).toContain('Guest')
+    expect(add.getByText("sam@client.com isn't in Spark Systems yet. They'll get an email invite as a guest who can see #backend only.")).toBeTruthy()
+    await act(async () => fireEvent.click(add.getByRole('button', { name: 'Add 2 people' })))
+    expect(onAdd).toHaveBeenCalledWith({ userIds: ['u-4'], emails: ['sam@client.com'] })
+  })
+
+  it('says why a typed name or email can’t be added', () => {
+    const { add, names, type } = openAdd({ invitations: [invite('inv-1', 'lina@partner.io', 'u-1')] })
+    const answer = (text: string) => {
+      type(text)
+      fireEvent.keyDown(names, { key: 'Enter' })
+      return add.getByRole('alert').textContent
+    }
+    expect(answer('zed')).toBe('No one in Spark Systems matches “zed”.')
+    expect(answer('sam@client')).toBe("sam@client isn't an email address.")
+    expect(answer('lina@partner.io')).toBe('lina@partner.io is already invited to #backend.')
+    expect(answer('nour.elsayed@spark-sys.com')).toBe('Nour El-Sayed is already in #backend.')
+  })
+
+  it('the admin-only switch makes it a default channel, at once; nobody else sees it', async () => {
+    const { add, onSave } = openAdd()
+    expect(add.getByText('Only admins can see this setting')).toBeTruthy()
+    const toggle = add.getByRole('switch', { name: 'When new people join Spark Systems, add them to #backend' })
+    expect(toggle.getAttribute('aria-checked')).toBe('false')
+    await act(async () => fireEvent.click(toggle))
+    expect(onSave).toHaveBeenCalledWith({ isDefault: true })
+    expect(toggle.getAttribute('aria-checked')).toBe('true')
+    cleanup()
+    openAdd({ rights: { manage: true, leave: true, restrictPosting: false, invite: false, setDefault: false } })
+    expect(screen.queryByRole('switch')).toBeNull()
+    expect(screen.queryByText('Only admins can see this setting')).toBeNull()
+  })
+})
+
+function invite(id: string, email: string, invitedBy: string, hoursAgo = 2) {
+  return { id, email, invitedBy, workspaceId: 'ws-eng', channelId: 'c-backend', role: 'guest' as const, status: 'pending' as const, createdAt: new Date(Date.now() - hoursAgo * 3_600_000).toISOString() }
+}
+
+describe('Members: who is invited (spec 6.10, slice 5)', () => {
+  const invited = () => within(screen.getByRole('list', { name: 'Invited' })).getAllByRole('listitem')
+
+  it('lists pending invites under the members: the email, Guest, who sent it and when', () => {
+    show({ tab: 'members', invitations: [invite('inv-1', 'sam@client.com', 'u-1'), invite('inv-2', 'lina@partner.io', 'u-2', 30)] })
+    expect(screen.getByText('Invited · 2')).toBeTruthy()
+    expect(invited().map((li) => li.querySelector('[data-name]')?.textContent)).toEqual(['sam@client.com', 'lina@partner.io'])
+    expect(invited()[0].textContent).toContain('Guest')
+    expect(invited()[0].textContent).toContain('Invited by Youssef Abdelrahman · 2h ago')
+    expect(invited()[1].textContent).toContain('Invited by Nour El-Sayed · 1d ago')
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Find members' }), { target: { value: 'lina' } })
+    expect(invited()).toHaveLength(1)
+    cleanup()
+    show({ tab: 'members' })
+    expect(screen.queryByRole('list', { name: 'Invited' })).toBeNull()
+  })
+
+  it('Revoke is there for whoever may revoke it, and says so while it goes', async () => {
+    let done = () => {}
+    const onRevoke = vi.fn(() => new Promise<void>((resolve) => (done = resolve)))
+    show({ tab: 'members', invitations: [invite('inv-1', 'sam@client.com', 'u-1'), invite('inv-2', 'lina@partner.io', 'u-2')], mayRevoke: (i) => i.invitedBy === 'u-1', onRevoke })
+    expect(screen.queryByRole('button', { name: 'Revoke the invite to lina@partner.io' })).toBeNull()
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Revoke the invite to sam@client.com' })))
+    expect(onRevoke).toHaveBeenCalledWith('inv-1')
+    expect((screen.getByRole('button', { name: 'Revoke the invite to sam@client.com' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByRole('button', { name: 'Revoke the invite to sam@client.com' }).textContent).toBe('Revoking…')
+    await act(async () => done())
+  })
+
+  it('a refused revoke says why near the list', async () => {
+    show({ tab: 'members', invitations: [invite('inv-1', 'sam@client.com', 'u-1')], onRevoke: vi.fn(async () => Promise.reject(new Error('This invitation was revoked already.'))) })
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Revoke the invite to sam@client.com' })))
+    expect(screen.getByRole('alert').textContent).toBe('This invitation was revoked already.')
+  })
+})

@@ -675,12 +675,21 @@ Part A — data and routes
 - [x] `can()`: `channel.inviteByEmail`, `channel.setDefault` (Admins). Invite and revoke send `channelChanged`, which refreshes the Invited list. http, hooks, query keys; tests first.
 
 Part B — Add people (spec 6.10)
-- [ ] TokenInput chips by kind: person (avatar), email (mail icon, Guest tag), group in suggestions (team icon).
-- [ ] Suggestions: people by name or email, teams ("Backend · 4 people", adds those not in yet), and the typed email ("Invite as a guest", Admins); refusals near the field for anything else.
-- [ ] Helper text for email chips (one, or several); "Add N people" counts people and emails.
-- [ ] Admin-only block (eye icon, "Only admins can see this setting") with "When new people join Spark Systems, add them to #x", saving at once; public channels only.
+- [x] TokenInput chips by kind: person (avatar), email (mail icon, Guest tag), group in suggestions (team icon).
+- [x] Suggestions: people by name or email, teams ("Backend · 4 people", adds those not in yet), and the typed email ("Invite as a guest", Admins); refusals near the field for anything else.
+- [x] Helper text for email chips (one, or several); "Add N people" counts people and emails.
+- [x] Admin-only block (eye icon, "Only admins can see this setting") with "When new people join Spark Systems, add them to #x", saving at once; public channels only.
 
 Part C — Invited in Members
-- [ ] "Invited · N" under the members: mail icon, email, Guest tag, "Invited by X · 3h ago", Revoke (whoever invited, or an Admin); Find members narrows it too.
+- [x] "Invited · N" under the members: mail icon, email, Guest tag, "Invited by X · 3h ago", Revoke (whoever invited, or an Admin); Find members narrows it too.
 
-- [ ] Contract section for slice 5; axe in both themes, 390px and 44px checks, real key presses for Enter and comma; app check.
+- [x] Contract section for slice 5; axe in both themes, 390px and 44px checks, real key presses for Enter and comma; app check.
+
+Rulings while building: `addMembers(id, userIds, emails?)` keeps its slice 4 shape and adds emails, so one Add is one write; a team suggestion turns into a chip for each of its people not in yet (the server takes people only); a typed email matches a person from the start of their address (a shared domain would match everyone); the Members tab, Add people and the Remove question moved to `ChannelMembers.tsx` (ChannelDetails had grown past 600 lines), with `usePicked` shared by Who can post and the default switch; TokenInput chips and suggestions have a `kind` (person, email, group) instead of `person: true`; typed text no suggestion matches says why ("No one in Spark Systems matches “zed”.", "x isn't an email address.", "x is already invited to #backend.", "Nour El-Sayed is already in #backend.", "Only admins can invite people by email.").
+
+## Review
+
+- Part A (b7cbb0f): Invitation and `isDefault` (DB v14), email invites in the members route, the Invited and Revoke routes, the default-channel rule, `can()` actions, http and hooks.
+- Parts B and C: Add people with emails, teams and the admin-only switch; Invited under the members with Revoke; the contract section for slice 5.
+- Verified: 1210 tests (axe in light and dark on Add people with a guest chip, a team suggestion and the switch, and on the Invited list; 44px on a 390px phone for Revoke and the switch; Enter and comma with real key presses), tsc, lint, `build:prototype`. In the app as Youssef: invited sam@client.com and the Frontend team in one Add (2 people added, "added Mariam Fathy and Dina Mansour."), Invited · 1 shown, Revoke removed it live; #backend's members put back.
+- Not pushed.

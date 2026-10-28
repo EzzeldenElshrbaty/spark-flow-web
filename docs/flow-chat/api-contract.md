@@ -284,4 +284,42 @@ Rules:
 - Each change sends `channel.updated` (client `onChannelChanged`) to the channel's members, and for Add people and Remove someone to the people added or removed too: they aren't in the channel's group yet, or any more, and without it the removed person keeps a private channel and its messages on screen. The system message goes to the channel as `message.created`.
 - Writes stay idempotent (spec §8): a retried `POST /api/channels/:id/messages` with a `clientId` that was already stored returns that message, even if the channel changed to `"admins"` in between; the rights are checked for a new message only.
 
-Email invites, guests and "When new people join Spark Systems, add them to #channel" (the admin's default-channel switch) come with Add people in slice 5. A channel's linked project is shown only for a project's own channel; linking other channels waits.
+Email invites and "When new people join Spark Systems, add them to #channel" (the admin's default-channel switch) are slice 5, below; guests get a slice of their own. A channel's linked project is shown only for a project's own channel; linking other channels waits.
+
+
+## Phase 2 · Slice 5: Add people with email invites (spec 6.10, §7 Invitation)
+
+### Invitation
+
+| Field | Type | Rule |
+|---|---|---|
+| `id` | string | |
+| `workspaceId`, `channelId` | string | The channel it invites to. |
+| `email` | string | Trimmed and lowercased. |
+| `role` | `"guest"` | Every email invite is a guest who can see this channel only, until the workspace has a policy for member invites. |
+| `invitedBy` | string | A user id. |
+| `createdAt` | ISO time | |
+| `status` | `"pending" \| "accepted" \| "revoked"` | Pending until it's accepted from the email or revoked. |
+
+Channels also carry `isDefault` (boolean, `false` unless set): new people in the workspace join a default channel. Only public channels can be default ones. It is on every channel the API returns.
+
+### Routes
+
+| Call | Route | Body | Returns |
+|---|---|---|---|
+| Add people (changed) | `POST /api/channels/:id/members` | `{ userIds, emails? }` | The channel as I see it. |
+| Invited | `GET /api/channels/:id/invitations` | — | Its pending invitations, oldest first. |
+| Revoke | `DELETE /api/invitations/:id` | — | Nothing (`204`). |
+| Default channel (changed) | `PATCH /api/channels/:id` | `{ isDefault }` and the slice 4 fields | The channel as I see it. |
+
+Rules:
+
+- **Add people with emails:** people and emails go in one write, under the slice 4 rules (who, never a DM, a project's channel or an archived channel). Emails are trimmed and lowercased. Each must be an email (`400` "x isn't an email address."), and at most 20 go in one call (`400` "Invite up to 20 emails at a time."). The email of someone in the workspace adds that person instead. Other emails are invites, which only Admins send (`403` "Only admins can invite people by email."). People already in the channel and emails with a pending invite to it are skipped; if nothing is new: `400` "Everyone you picked is already in #name or invited." (or "…already in #name." when no emails were sent).
+- **What it posts:** people added post `{ kind: "added" }` as before. An invite posts nothing, so emails stay out of the channel; the guest's join line comes with accepting (the guests slice).
+- **The email:** the backend sends each new invite by email, with a link to accept it. The prototype only stores the invitation.
+- **Invited:** for whoever may change the channel (`channel.manage`); a private channel I'm not in answers `403` "You're not in this channel.", any other refusal `403` "Only its members can change this channel.".
+- **Revoke:** whoever sent it, or an Admin (`403` "Only whoever invited them, or an admin, can revoke this."). Revoked already: `400` "This invitation was revoked already."; accepted: `400` "They joined already.". The same email can be invited again afterwards.
+- **Default channel:** only an Admin changes `isDefault` (`403` "Only admins can choose default channels."), it must be `true` or `false` (`400` "Turn the default channel on or off."), and a private channel can't be one (`400` "A private channel can't be a default channel."). When someone joins the workspace, the backend adds them to its default channels that aren't archived; the prototype has no way to join a workspace, so it only stores the flag.
+- **Events:** an invite and a revoke send `channel.updated` (client `onChannelChanged`) to whoever may change the channel; the client refreshes the channel's Invited list on it.
+
+Accepting an invite (the link in the email, a guest account, what a guest can see, the Guest tag) comes in the guests slice.
