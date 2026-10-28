@@ -48,7 +48,29 @@ const targetPath = (target: ChatTarget) => `/api/${target.kind === 'reply' ? 're
 const mockOnly = (what: string): Promise<never> =>
   Promise.reject(new ApiError({ title: 'Not available', status: 400, detail: `${what} isn't available with the backend on.` }))
 
-export function createHttpApi(fetchFn?: typeof fetch): Api {
+/**
+ * PUTs a file's bytes to the storage address the API handed out, reporting progress (fetch can't report an upload's).
+ * A refusal is an ApiError with storage's status; a cancel rejects with an AbortError.
+ */
+function putBytes(url: string, file: Blob, makeXhr: () => XMLHttpRequest, onProgress?: (fraction: number) => void, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(new DOMException('Cancelled', 'AbortError'))
+    const xhr = makeXhr()
+    xhr.open('PUT', url)
+    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream')
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && event.total > 0) onProgress?.(event.loaded / event.total)
+    }
+    xhr.onload = () =>
+      xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new ApiError({ title: "Couldn't upload the file", status: xhr.status }))
+    xhr.onerror = () => reject(new ApiError({ title: "Couldn't reach the server", status: 0 }))
+    xhr.onabort = () => reject(new DOMException('Cancelled', 'AbortError'))
+    signal?.addEventListener('abort', () => xhr.abort(), { once: true })
+    xhr.send(file)
+  })
+}
+
+export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequest = () => new XMLHttpRequest()): Api {
   const get = <T>(path: string) => request<T>(path, undefined, fetchFn)
   /** A JSON write: POST, PATCH or PUT with a body, or DELETE without one. */
   const send = <T>(method: string, path: string, body?: unknown) =>
@@ -79,10 +101,15 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
       replies: (messageId) => get(`/api/messages/${enc(messageId)}/replies`),
       markRead: (channelId, seq) => send('POST', `/api/channels/${enc(channelId)}/read`, seq === undefined ? undefined : { seq }),
       markUnread: (channelId, seq) => send('POST', `/api/channels/${enc(channelId)}/unread`, { seq }),
-      send: (channelId, content, clientId, body) =>
-        send('POST', `/api/channels/${enc(channelId)}/messages`, { content, ...(clientId && { clientId }), ...(body && { body }) }),
-      reply: (messageId, content, body, alsoInChannel) =>
-        send('POST', `/api/messages/${enc(messageId)}/replies`, { content, ...(body && { body }), ...(alsoInChannel && { alsoInChannel: true }) }),
+      send: (channelId, content, clientId, body, fileIds) =>
+        send('POST', `/api/channels/${enc(channelId)}/messages`, { content, ...(clientId && { clientId }), ...(body && { body }), ...(fileIds?.length && { fileIds }) }),
+      reply: (messageId, content, body, alsoInChannel, fileIds) =>
+        send('POST', `/api/messages/${enc(messageId)}/replies`, {
+          content,
+          ...(body && { body }),
+          ...(alsoInChannel && { alsoInChannel: true }),
+          ...(fileIds?.length && { fileIds }),
+        }),
       setFollowing: (messageId, following) => send<void>(following ? 'PUT' : 'DELETE', `/api/messages/${enc(messageId)}/follow`),
       setNotifyLevel: (id, notifyLevel) => send('PATCH', `/api/channels/${enc(id)}/me`, { notifyLevel }),
       react: (target, emoji) => send<void>('POST', `${targetPath(target)}/reactions`, { emoji }),
@@ -195,7 +222,19 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
         form.append('file', file, file.name)
         return request(`/api/projects/${enc(projectId)}/files`, { method: 'POST', body: form, signal }, fetchFn)
       },
-      remove: (id) => send('DELETE', `/api/files/${enc(id)}`),
+      removeFromProject: (projectId, fileId) => send('DELETE', `/api/projects/${enc(projectId)}/files/${enc(fileId)}`),
+      // Three steps (spec §8): an upload link for the bytes, the bytes straight to storage, then complete (type check, scan).
+      uploadForChat: async (channelId, file, { onProgress, signal } = {}) => {
+        const json = (method: string, path: string, body?: unknown) =>
+          request<never>(path, body === undefined ? { method, signal } : { method, signal, body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } }, fetchFn)
+        const { file: created, uploadUrl } = await json('POST', '/api/files/upload-url', { channelId, name: file.name, size: file.size, mimeType: file.type || 'application/octet-stream' }) as { file: { id: string }; uploadUrl: string }
+        await putBytes(uploadUrl, file, makeXhr, onProgress, signal)
+        return json('POST', `/api/files/${enc(created.id)}/complete`)
+      },
+      details: (id) => get(`/api/files/${enc(id)}/details`),
+      update: (id, patch) => send('PATCH', `/api/files/${enc(id)}`, patch),
+      delete: (id) => send<void>('DELETE', `/api/files/${enc(id)}`),
+      share: (id, channelId, content) => send('POST', `/api/files/${enc(id)}/share`, { channelId, ...(content && { content }) }),
     },
     // The demo data lives in the browser's mock database; the real backend has none of these.
     db: {

@@ -712,3 +712,36 @@ Minors, fixed afterwards on request (test first):
 - [x] A long email chip overflowed the field on a 390px phone → chips shorten with an ellipsis (the × keeps the full address), checked in Chromium at 390px.
 
 Verified: 1222 tests, tsc, lint, `build:prototype`. Not pushed.
+
+
+# Flow chat — Phase 2 slice 6: Files (spec 6.8 Attach menu, 6.9, §7 File, §8 files) — 2026-10-29
+
+Approved with my picks: part A (files data and routes), part B (tray and upload), part C (file card, previews, menu, Share), part D (File details panel), with the contract updated. Not pushed.
+
+## Plan
+
+Part A — files data and routes
+- [x] One file record for chat, comments and project files: today's `Attachment` plus uploadedBy, title, description, scanStatus (pending | clean | blocked), thumbUrl/previewUrl (backend), deletedAt; mock DB v15.
+- [x] Upload in three steps: `POST /api/files/upload-url { channelId, name, size, mimeType }` → `{ file, uploadUrl }`; PUT the bytes (progress, cancel); `POST /api/files/:id/complete` → the file. One `api.files` call runs them; the mock simulates progress.
+- [x] send and reply take `fileIds` (≤ 10, mine, complete, clean, uploaded for this channel); idempotent by clientId.
+- [x] `GET /api/files/:id` serves chat files to whoever reads a channel they're in; `GET /api/files/:id/details`; `PATCH /api/files/:id { title?, description? }` and `DELETE /api/files/:id` (uploader or Admin; "This file was deleted." where it was); `POST /api/files/:id/share { channelId, content? }`.
+- [x] Project-file removal moves to `DELETE /api/projects/:projectId/files/:fileId`.
+- [x] Events: shared, updated, deleted refresh the messages, threads and details that show the file. http, hooks, query keys; tests first.
+
+Part B — Attach menu, tray, upload
+- [ ] + opens the Attach menu ("Upload from your computer ⌘U") and turns into ×; ⌘U; drop onto the channel or thread; paste an image ("Pasted image …").
+- [ ] Tray: 232px cards (thumbnail or type icon, name, 4px progress or "PNG · 412 KB", ×); errors on the card with Retry.
+- [ ] Send waits for uploads ("Uploading 2 files…"); text and files as one message through the send queue; the thread composer too. Any type, 10 a message, size limit a setting (25 MB in the prototype).
+
+Part C — file card, previews, menu, Share
+- [ ] Card: type label ("PDF ▾", collapses), 380px, title, "PDF · 184 KB", hover pill Download / Share / Details / More (phones: ⋯); "Checking for viruses…", "This file was blocked.", "This file was deleted.".
+- [ ] Previews: images and video inline (≤ 420px); PDF and text in the viewer (PDF frame sandboxed); office/RTF through the backend's preview, else download.
+- [ ] Menu: Copy link to file, Create task from file (project channels), Edit file details, Delete file (confirm; uploader or Admin).
+- [ ] Share: a channel or DM I can post in, an optional message.
+
+Part D — File details panel
+- [ ] Right panel (full screen on phones), `?file=<id>`: preview, title, type and size, Download / Share / Open, Uploaded by, Uploaded, Shared in, Access, Description (Edit file details).
+
+- [ ] Contract section for slice 6; axe in both themes, 390px and 44px, real key presses for ⌘U, drop and paste; app check.
+
+Waits: Save for later (Saved, Phase 3); Add to folder and Add from Flow files (Files tab, Phase 3); Text snippet and code highlighting (Phase 3); voice and video (Phase 4); "Add to section" (OPEN).

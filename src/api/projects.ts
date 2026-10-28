@@ -89,8 +89,9 @@ export function useUploadFile() {
     mutationFn: ({ projectId, file, signal }: { projectId: string; file: UploadFile; signal?: AbortSignal }) => api.files.upload(projectId, file, signal),
   })
 }
+/** Takes a file off a project (it stays wherever else it's shared). */
 export function useRemoveFile() {
-  return useMutation({ mutationFn: (id: string) => api.files.remove(id) })
+  return useMutation({ mutationFn: ({ projectId, fileId }: { projectId: string; fileId: string }) => api.files.removeFromProject(projectId, fileId) })
 }
 
 /** A blob: address for a stored file, to show it; the caller revokes it (URL.revokeObjectURL) when done. Not a query: it isn't cached. */

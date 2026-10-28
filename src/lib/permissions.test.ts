@@ -149,3 +149,11 @@ describe('email invites and default channels (spec 6.10, slice 5)', () => {
     expect(can('invitation.revoke', { ...as('admin', 'u-a'), invitedBy: 'u-m' })).toBe(true)
   })
 })
+
+describe('a file (spec §9: delete file is uploader or admin)', () => {
+  it('whoever uploaded it, or an Admin, changes or deletes it', () => {
+    expect(can('file.manage', { ...as('member', 'u-m'), uploadedBy: 'u-m' })).toBe(true)
+    expect(can('file.manage', { ...as('pm', 'u-p'), uploadedBy: 'u-m' })).toBe(false)
+    expect(can('file.manage', { ...as('admin', 'u-a'), uploadedBy: 'u-m' })).toBe(true)
+  })
+})

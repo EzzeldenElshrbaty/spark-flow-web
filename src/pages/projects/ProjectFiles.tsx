@@ -198,7 +198,7 @@ export function ProjectFiles({ projectId, people, canUpload, canManage }: { proj
         description="It's removed for everyone on the project."
         actionLabel="Remove file"
         pendingLabel="Removing…"
-        onConfirm={() => remove.mutateAsync(removing!.id)}
+        onConfirm={() => remove.mutateAsync({ projectId: removing!.projectId, fileId: removing!.attachmentId })}
         onClose={() => setRemoving(null)}
       />
     </Card>

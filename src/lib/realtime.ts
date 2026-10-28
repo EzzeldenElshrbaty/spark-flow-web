@@ -26,6 +26,8 @@ export interface RealtimeClient {
   onRatesChanged(cb: () => void): () => void
   /** A file was added to a project. */
   onFilesChanged(cb: (event: { projectId: string }) => void): () => void
+  /** A file's details changed, or it was deleted or shared (spec §8 file.updated, file.deleted, file.shared). */
+  onFileChanged(cb: (event: { fileId: string }) => void): () => void
   /**
    * Someone read a channel or mentions, or changed their own state in a channel (star, mute): their badges and bell
    * follow, in each of their tabs. `channelId` is set for a channel, `seq` for a new read marker.
@@ -52,6 +54,7 @@ export type RealtimeEvent =
   | { type: 'projectChanged'; projectId: string }
   | { type: 'ratesChanged' }
   | { type: 'filesChanged'; projectId: string }
+  | { type: 'fileChanged'; fileId: string }
   | { type: 'readChanged'; userId: string; channelId?: string; seq?: number }
   | { type: 'draftChanged'; userId: string; channelId: string }
   | { type: 'notificationCreated'; userId: string }
@@ -83,6 +86,7 @@ function createUnconnectedClient(): RealtimeClient {
     onProjectChanged: () => noop,
     onRatesChanged: () => noop,
     onFilesChanged: () => noop,
+    onFileChanged: () => noop,
     onReadChanged: () => noop,
     onDraftChanged: () => noop,
     onNotificationCreated: () => noop,

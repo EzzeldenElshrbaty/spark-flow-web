@@ -192,7 +192,10 @@ describe('sendMessage', () => {
   })
 
   it('stores the message as the current user, with no replies yet', async () => {
-    const attachment = { id: 'a1', name: 'log.txt', size: 12, mimeType: 'text/plain', createdAt: '2026-10-26T00:00:00.000Z' }
+    const attachment = {
+      id: 'a1', name: 'log.txt', size: 12, mimeType: 'text/plain', createdAt: '2026-10-26T00:00:00.000Z',
+      uploadedBy: 'u-1', title: 'log.txt', description: '', scanStatus: 'clean' as const, thumbUrl: null, previewUrl: null, deletedAt: null,
+    }
     const m = await sendMessage(db, hub, { channelId: 'c-backend', content: 'hi', attachments: [attachment] })
     expect(m).toMatchObject({ senderId: 'u-1', channelId: 'c-backend', threadCount: 0, lastReplyAt: null, editedAt: null, reactions: [] })
     expect(m.attachments).toEqual([attachment])

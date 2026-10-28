@@ -74,7 +74,7 @@ describe('archiving projects', () => {
       ['comments.update', () => api.comments.update(comment.id, 'Changed')],
       ['comments.remove', () => api.comments.remove(comment.id)],
       ['files.upload', () => api.files.upload('p-nex', pdf())],
-      ['files.remove', () => api.files.remove(file.id)],
+      ['files.removeFromProject', () => api.files.removeFromProject(file.projectId, file.attachmentId)],
       ['time.start', () => api.time.start({ projectId: 'p-nex' })],
     ]
     for (const [name, write] of writes) await expect(write(), name).rejects.toMatchObject(closed)

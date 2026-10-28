@@ -77,6 +77,7 @@ export function createMockRealtimeClient(hub: MockHub): RealtimeClient {
     onProjectChanged: (cb) => on(hub, 'projectChanged', (e) => cb({ projectId: e.projectId })),
     onRatesChanged: (cb) => on(hub, 'ratesChanged', () => cb()),
     onFilesChanged: (cb) => on(hub, 'filesChanged', (e) => cb({ projectId: e.projectId })),
+    onFileChanged: (cb) => on(hub, 'fileChanged', (e) => cb({ fileId: e.fileId })),
     onReadChanged: (cb) => on(hub, 'readChanged', (e) => cb({ userId: e.userId, channelId: e.channelId, seq: e.seq })),
     onDraftChanged: (cb) => on(hub, 'draftChanged', (e) => cb({ userId: e.userId, channelId: e.channelId })),
     onNotificationCreated: (cb) => on(hub, 'notificationCreated', (e) => cb({ userId: e.userId })),

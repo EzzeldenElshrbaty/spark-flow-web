@@ -2,6 +2,7 @@ import { can } from '@/lib/permissions'
 import type { Api, Attachment, Channel, ChannelMemberState, ChatMessage, NotifyLevel, Page, SystemEvent, ChatTarget, StoredChannel, ThreadReply, WhoCanPost } from '@/api/types'
 import { channelFormErrors, descriptionError } from '@/lib/channelForm'
 import { isEmail, MAX_INVITES, normalEmail, notAnEmailLine } from '@/lib/invites'
+import { MAX_MESSAGE_FILES } from '@/lib/fileDetails'
 import { onlyAdminsLine } from '@/lib/channels'
 import { isOneEmoji } from '@/lib/emojiText'
 import { MAX_DISTINCT_REACTIONS, toggleReaction } from '@/lib/reactions'
@@ -107,7 +108,7 @@ function withThread(data: DbData, message: ChatMessage): ChatMessage {
   return { ...message, replyUserIds: [...new Set(replies.map((r) => r.senderId))].slice(0, REPLY_FACES), following: follows(data, message, replies, data.currentUserId) }
 }
 
-function findChannel(data: DbData, id: string): StoredChannel {
+export function findChannel(data: DbData, id: string): StoredChannel {
   const channel = data.channels.find((c) => c.id === id)
   if (!channel) throw notFound('Channel', id)
   return channel
@@ -156,19 +157,37 @@ const MAX_TEXT = 40_000 // spec 6.8
 export const UNDO_MS = 10_000
 const MAX_DM_OTHERS = 8
 
-/** The text as stored: trimmed, not empty, not too long. */
-function checkText(content: string): string {
+/** The text as stored: trimmed, not too long, and not empty unless the message carries files (`optional`). */
+function checkText(content: string, optional = false): string {
   const text = content.trim()
-  if (!text) throw badRequest('Write a message first.')
+  if (!text && !optional) throw badRequest('Write a message first.')
   if (text.length > MAX_TEXT) throw badRequest(`Keep the message under ${MAX_TEXT} characters.`)
   return text
 }
 
 /** A body from the composer, checked, with its plain text (which the length rules apply to). */
-function checkBody(value: unknown): { body: Body; text: string } {
+function checkBody(value: unknown, optional = false): { body: Body; text: string } {
   const body = validBody(value)
   if (!body) throw badRequest("That message couldn't be read.")
-  return { body, text: checkText(bodyText(body)) }
+  return { body, text: checkText(bodyText(body), optional) }
+}
+
+/** A message's or reply's text and body, from the rich composer's body or else parsed from the text. */
+const textOf = (content: string, body: unknown, optional: boolean) =>
+  body === undefined ? { content: checkText(content, optional) } : (({ body: b, text }) => ({ content: text, body: b }))(checkBody(body, optional))
+
+/** The files a new message or reply carries (spec 6.9): at most 10, uploaded by me, checked clean, not deleted. */
+function attachFiles(data: DbData, ids: string[] | undefined, userId: string): Attachment[] {
+  const unique = [...new Set(ids ?? [])]
+  if (unique.length > MAX_MESSAGE_FILES) throw badRequest(`Attach up to ${MAX_MESSAGE_FILES} files to a message.`)
+  return unique.map((id) => {
+    const file = data.attachments.find((a) => a.id === id)
+    if (!file || file.deletedAt) throw notFound('File', id)
+    if (file.uploadedBy !== userId) throw new ApiError({ title: 'Forbidden', status: 403, detail: 'You can only send files you uploaded.' })
+    if (file.scanStatus === 'blocked') throw badRequest(`${file.title} was blocked.`)
+    if (file.scanStatus !== 'clean') throw badRequest(`${file.title} is still being checked.`)
+    return clone(file)
+  })
 }
 
 /**
@@ -185,7 +204,7 @@ function checkCanPost(data: DbData, channel: StoredChannel) {
 }
 
 /** checkCanPost, for a new message or reply: a channel set to Only admins (spec §9) takes them from Admins alone. */
-function checkCanWrite(data: DbData, channel: StoredChannel) {
+export function checkCanWrite(data: DbData, channel: StoredChannel) {
   const me = checkCanPost(data, channel)
   if (!can('channel.post', { userId: me.id, role: me.role, channel })) {
     throw new ApiError({ title: 'Forbidden', status: 403, detail: onlyAdminsLine(channel) })
@@ -539,7 +558,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       })
       changed(channelId, messageId)
     },
-    async send(channelId, content, clientId, body) {
+    async send(channelId, content, clientId, body, fileIds) {
       await delay()
       const { message, repeat, mentioned } = await db.update((data) => {
         const channel = findChannel(data, channelId)
@@ -548,9 +567,8 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         const stored = clientId ? data.messages.find((m) => m.channelId === channelId && m.senderId === data.currentUserId && m.clientId === clientId) : undefined
         if (stored) return { message: stored, repeat: true, mentioned: [] }
         const me = checkCanWrite(data, channel)
-        // From the rich composer the body is the message and its plain text the content; otherwise the text is parsed.
-        const input = body === undefined ? { content: checkText(content) } : (({ body: b, text }) => ({ content: text, body: b }))(checkBody(body))
-        const message = postMessage(data, { channelId, clientId, ...input })
+        const attachments = attachFiles(data, fileIds, me.id)
+        const message = postMessage(data, { channelId, clientId, attachments, ...textOf(content, body, attachments.length > 0) })
         return { message, repeat: false, mentioned: reachedBy(data, message.mentions, channelId, me.id) }
       })
       if (!repeat) hub.publish({ type: 'messageReceived', message: clone(message) })
@@ -558,13 +576,12 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       for (const userId of mentioned) hub.publish({ type: 'notificationCreated', userId })
       return clone(message)
     },
-    async reply(messageId, content, body, alsoInChannel) {
+    async reply(messageId, content, body, alsoInChannel, fileIds) {
       await delay()
       const { reply, notified } = await db.update((data) => {
-        checkCanWrite(data, findChannel(data, findMessage(data, messageId).channelId))
-        // From the rich composer the body is the reply and its plain text the content; otherwise the text is parsed.
-        const input = body === undefined ? { content: checkText(content) } : (({ body: b, text }) => ({ content: text, body: b }))(checkBody(body))
-        const reply = postReply(data, { messageId, ...input, alsoInChannel: Boolean(alsoInChannel) })
+        const me = checkCanWrite(data, findChannel(data, findMessage(data, messageId).channelId))
+        const attachments = attachFiles(data, fileIds, me.id)
+        const reply = postReply(data, { messageId, attachments, ...textOf(content, body, attachments.length > 0), alsoInChannel: Boolean(alsoInChannel) })
         // Followers with a thread item, and whoever it mentions, each once.
         const followers = data.notifications.filter((n) => n.replyId === reply.id).map((n) => n.userId)
         return { reply, notified: [...new Set([...followers, ...reachedBy(data, reply.mentions, reply.channelId, reply.senderId)])] }
@@ -708,7 +725,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
 // ── Mutations (not on Api until Phases 3–4) ───────────────────────────────
 
 export type SendMessageInput = { channelId: string; content: string; attachments?: Attachment[]; clientId?: string; body?: Body }
-export type AddReplyInput = { messageId: string; content: string; body?: Body; alsoInChannel?: boolean }
+export type AddReplyInput = { messageId: string; content: string; body?: Body; alsoInChannel?: boolean; attachments?: Attachment[] }
 
 /**
  * Adds a message from the current user inside a transaction; mentions and ticket keys come from the text. `extra`
@@ -758,7 +775,7 @@ export function postReply(data: DbData, input: AddReplyInput): ThreadReply {
     channelId: parent.channelId,
     senderId: data.currentUserId,
     content: input.content,
-    attachments: [],
+    attachments: input.attachments ?? [],
     reactions: [],
     mentions: input.body ? mentionsOf(input.body) : parseMentions(input.content),
     body: input.body ?? parseBody(input.content),

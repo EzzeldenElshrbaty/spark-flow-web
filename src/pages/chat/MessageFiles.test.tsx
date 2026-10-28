@@ -12,7 +12,10 @@ vi.mock('@/components/AttachmentView', async (original) => ({
 afterEach(cleanup)
 window.matchMedia ??= ((media: string) => ({ matches: false, media, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia
 
-const pdf: Attachment = { id: 'a1', name: 'Scope v3.pdf', mimeType: 'application/pdf', size: 188_416, createdAt: '2026-10-28T09:00:00.000Z' }
+const pdf: Attachment = {
+  id: 'a1', name: 'Scope v3.pdf', mimeType: 'application/pdf', size: 188_416, createdAt: '2026-10-28T09:00:00.000Z',
+  uploadedBy: 'u-2', title: 'Scope v3.pdf', description: '', scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null,
+}
 const link = 'http://localhost/w/engineering/c/c-backend?message=m1'
 
 describe('MessageFiles (spec 6.9 file card)', () => {

@@ -191,6 +191,13 @@ describe('createHttpApi', () => {
     await api.chat.addMembers('c1', ['u2'], ['sam@client.com'])
     await api.chat.invitations('c1')
     await api.chat.revokeInvitation('inv 1')
+    await api.chat.send('c1', 'hi', 'k2', undefined, ['a1', 'a2'])
+    await api.chat.reply('m1', 'hi', undefined, false, ['a1'])
+    await api.files.details('a 1')
+    await api.files.update('a1', { title: 'Scope' })
+    await api.files.delete('a1')
+    await api.files.share('a1', 'c2', 'Look')
+    await api.files.removeFromProject('p1', 'a1')
     expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url} ${String(c.init?.body)}`)).toEqual([
       'POST /api/channels/c1/read {"seq":7}',
       'POST /api/channels/c1/unread {"seq":5}',
@@ -219,6 +226,13 @@ describe('createHttpApi', () => {
       'POST /api/channels/c1/members {"userIds":["u2"],"emails":["sam@client.com"]}',
       'GET /api/channels/c1/invitations undefined',
       'DELETE /api/invitations/inv%201 undefined',
+      'POST /api/channels/c1/messages {"content":"hi","clientId":"k2","fileIds":["a1","a2"]}',
+      'POST /api/messages/m1/replies {"content":"hi","fileIds":["a1"]}',
+      'GET /api/files/a%201/details undefined',
+      'PATCH /api/files/a1 {"title":"Scope"}',
+      'DELETE /api/files/a1 undefined',
+      'POST /api/files/a1/share {"channelId":"c2","content":"Look"}',
+      'DELETE /api/projects/p1/files/a1 undefined',
     ])
   })
 
@@ -340,3 +354,57 @@ describe('time zone', () => {
   })
 })
 
+describe('uploading a chat file over HTTP (spec §8)', () => {
+  /** A stand-in for XMLHttpRequest that reports two progress steps, then answers `status`. */
+  function fakeXhr(status = 200) {
+    const sent: { method: string; url: string; body: unknown; headers: Record<string, string> }[] = []
+    class Fake {
+      upload = { onprogress: null as ((e: { loaded: number; total: number; lengthComputable: boolean }) => void) | null }
+      onload: (() => void) | null = null
+      onerror: (() => void) | null = null
+      onabort: (() => void) | null = null
+      status = 0
+      private call = { method: '', url: '', body: null as unknown, headers: {} as Record<string, string> }
+      open(method: string, url: string) { this.call.method = method; this.call.url = url }
+      setRequestHeader(k: string, v: string) { this.call.headers[k] = v }
+      send(body: unknown) {
+        this.call.body = body
+        sent.push(this.call)
+        this.upload.onprogress?.({ loaded: 5, total: 10, lengthComputable: true })
+        this.upload.onprogress?.({ loaded: 10, total: 10, lengthComputable: true })
+        this.status = status
+        queueMicrotask(() => this.onload?.())
+      }
+      abort() { this.onabort?.() }
+    }
+    return { sent, make: () => new Fake() as unknown as XMLHttpRequest }
+  }
+
+  it('asks for an upload link, sends the bytes there with progress, then marks it complete', async () => {
+    const calls: { url: string; init?: RequestInit }[] = []
+    const fetchFn = (async (url: string, init?: RequestInit) => {
+      calls.push({ url, init })
+      const body = url.endsWith('/upload-url') ? { file: { id: 'a1' }, uploadUrl: 'https://storage.example/put/a1' } : { id: 'a1', scanStatus: 'clean' }
+      return new Response(JSON.stringify(body), { status: 200 })
+    }) as typeof fetch
+    const xhr = fakeXhr()
+    const api = createHttpApi(fetchFn, xhr.make)
+    const progress: number[] = []
+    const blob = Object.assign(new Blob(['hello'], { type: 'text/plain' }), { name: 'log.txt' })
+    const done = await api.files.uploadForChat('c1', blob, { onProgress: (p) => progress.push(p) })
+    expect(done).toEqual({ id: 'a1', scanStatus: 'clean' })
+    expect(calls.map((c) => `${c.init?.method} ${c.url.replace(/^.*?\/api/, '/api')} ${String(c.init?.body)}`)).toEqual([
+      'POST /api/files/upload-url {"channelId":"c1","name":"log.txt","size":5,"mimeType":"text/plain"}',
+      'POST /api/files/a1/complete undefined',
+    ])
+    expect(xhr.sent.map((c) => [c.method, c.url, c.headers['Content-Type']])).toEqual([['PUT', 'https://storage.example/put/a1', 'text/plain']])
+    expect(progress).toEqual([0.5, 1])
+  })
+
+  it('a refused upload of the bytes says so', async () => {
+    const fetchFn = (async () => new Response(JSON.stringify({ file: { id: 'a1' }, uploadUrl: 'https://storage.example/put/a1' }), { status: 200 })) as typeof fetch
+    const api = createHttpApi(fetchFn, fakeXhr(403).make)
+    const blob = Object.assign(new Blob(['x']), { name: 'x.txt' })
+    await expect(api.files.uploadForChat('c1', blob)).rejects.toMatchObject({ status: 403, title: "Couldn't upload the file" })
+  })
+})

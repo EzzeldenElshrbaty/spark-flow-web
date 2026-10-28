@@ -25,6 +25,7 @@ export function RealtimeBridge(): null {
       client.onProjectChanged(({ projectId }) => invalidate({ type: 'projectChanged', projectId })),
       client.onRatesChanged(() => invalidate({ type: 'ratesChanged' })),
       client.onFilesChanged(({ projectId }) => invalidate({ type: 'filesChanged', projectId })),
+      client.onFileChanged(({ fileId }) => invalidate({ type: 'fileChanged', fileId })),
       client.onReadChanged((e) => invalidate({ type: 'readChanged', ...e })),
       client.onDraftChanged((e) => invalidate({ type: 'draftChanged', ...e })),
       client.onNotificationCreated((e) => invalidate({ type: 'notificationCreated', ...e })),

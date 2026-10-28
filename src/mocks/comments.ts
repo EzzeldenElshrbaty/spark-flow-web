@@ -1,7 +1,7 @@
 import type { Api, Attachment, Comment, CommentView, Ticket } from '@/api/types'
 import { postMessage } from './chat'
 import type { DbData, MockDb } from './db'
-import { checkUpload, withSavedBytes } from './files'
+import { checkUpload, fileRecord, withSavedBytes } from './files'
 import { delay } from './latency'
 import { openProject } from './projects'
 import type { MockHub } from './realtime'
@@ -41,7 +41,8 @@ function ownComment(data: DbData, id: string): { comment: Comment; task: Ticket 
 
 const withAttachments = (data: DbData, comment: Comment): CommentView => ({
   ...comment,
-  attachments: comment.attachmentIds.map((id) => data.attachments.find((a) => a.id === id)).filter((a): a is Attachment => Boolean(a)),
+  // A deleted file (spec 6.9 Delete file) leaves the comment.
+  attachments: comment.attachmentIds.map((id) => data.attachments.find((a) => a.id === id)).filter((a): a is Attachment => Boolean(a) && !a!.deletedAt),
 })
 
 /**
@@ -76,7 +77,7 @@ export function commentsApi(db: MockDb, hub: MockHub, now: () => Date): Api['com
       files.forEach(checkUpload)
 
       const at = now().toISOString()
-      const attachments: Attachment[] = files.map((f) => ({ id: newId('a'), name: f.name, mimeType: f.type || 'application/octet-stream', size: f.size, createdAt: at }))
+      const attachments: Attachment[] = files.map((f) => fileRecord(f, currentUser(before).id, at))
       const { comment, card } = await withSavedBytes(db, files.map((f, i) => [attachments[i]!.id, f] as [string, Blob]), () =>
         db.update((data) => {
           const project = openProject(data, findTask(data, taskKey).projectId)

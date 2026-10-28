@@ -19,6 +19,7 @@ export const qk = {
   message: (id: string) => ['chat', 'message', id],
   replies: (messageId: string) => ['chat', 'replies', messageId],
   invitations: (channelId: string) => ['chat', 'invitations', channelId],
+  fileDetails: (fileId: string) => ['chat', 'file', fileId],
   projects: (workspaceId: string) => ['tickets', 'projects', workspaceId],
   archivedProjects: (workspaceId: string) => ['tickets', 'projects', workspaceId, 'archived'],
   projectByKey: (workspaceId: string, key: string) => ['tickets', 'project', workspaceId, key],
@@ -83,6 +84,9 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
       return [qk.rates(), ['time', 'report'], ['dashboard'], qk.timeAll(), ['tickets']]
     case 'filesChanged':
       return [qk.files(event.projectId)]
+    case 'fileChanged':
+      // The messages that show it get messageChanged of their own.
+      return [qk.fileDetails(event.fileId)]
     case 'draftChanged':
       return [qk.draftsAll()]
     case 'readChanged':

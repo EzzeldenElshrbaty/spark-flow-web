@@ -92,7 +92,33 @@ export type Rate = { id: string; userId: string; hourlyCost: number; currency: '
 
 // ── Documents (MongoDB) ───────────────────────────────────────────────────
 /** A stored file's details; its bytes live in the file store and are opened through api.files.url(id). */
-export type Attachment = { id: string; name: string; mimeType: string; size: number; createdAt: string }
+/** A file's virus scan (spec §7 scan_status): it can't be opened or sent until it's clean. */
+export type ScanStatus = 'pending' | 'clean' | 'blocked'
+/**
+ * A file (spec §7 File): in a message, a task comment or a project. `name` is the uploaded file's; `title` and
+ * `description` are what Edit file details sets (spec 6.9). The bytes open through `api.files.url(id)`.
+ */
+export type Attachment = {
+  id: string; name: string; mimeType: string; size: number; createdAt: string
+  uploadedBy: string; title: string; description: string
+  scanStatus: ScanStatus
+  /** Made by the backend: a small image, and a preview it converted (office files); null when there's none. */
+  thumbUrl: string | null; previewUrl: string | null
+  /** Set once it's deleted: where it was shared says "This file was deleted." */
+  deletedAt: string | null
+}
+export type FilePatch = Partial<Pick<Attachment, 'title' | 'description'>>
+/** Where a file is shared, as I may see it (spec 6.9 File details: Shared in, Access). */
+export type FileDetails = {
+  file: Attachment
+  /** Messages and thread replies in channels I can read, oldest first. */
+  sharedIn: { channelId: string; messageId: string; replyId: string | null; at: string }[]
+  /** Tasks whose comments carry it, and projects that list it, that I'm on. */
+  taskKeys: string[]
+  projectIds: string[]
+}
+/** An upload's progress (0 to 1) as the bytes go up; `signal` cancels it. */
+export type UploadOptions = { onProgress?: (fraction: number) => void; signal?: AbortSignal }
 export type CommentKind = 'comment' | 'bug'
 export type Comment = {
   id: string; taskId: string; projectId: string; authorId: string; kind: CommentKind; body: string; attachmentIds: string[]; createdAt: string
@@ -358,14 +384,17 @@ export interface Api {
     markRead(channelId: string, seq?: number): Promise<void>
     /** Mark unread (U): moves my read marker to just before message `seq`, back or forward. */
     markUnread(channelId: string, seq: number): Promise<void>
-    /** Posts as the current user; mentions are worked out from the text. The same `clientId` again returns the first message. */
-    send(channelId: string, content: string, clientId?: string, body?: Body): Promise<ChatMessage>
+    /**
+     * Posts as the current user; mentions are worked out from the text. The same `clientId` again returns the first
+     * message. `fileIds`: files I uploaded (uploadForChat), up to 10; with files the text may be empty.
+     */
+    send(channelId: string, content: string, clientId?: string, body?: Body, fileIds?: string[]): Promise<ChatMessage>
     /** My drafts in a workspace's channels (spec 6.8): one per channel and thread root. */
     drafts(workspaceId: string): Promise<Draft[]>
     /** Saves my draft for a channel (or a thread in it); an empty body deletes it and returns null. */
     saveDraft(channelId: string, body: Body, rootId?: string | null): Promise<Draft | null>
     /** From the rich composer with its `body`; `alsoInChannel` also sends it to the channel (spec 6.7). */
-    reply(messageId: string, content: string, body?: Body, alsoInChannel?: boolean): Promise<ThreadReply>
+    reply(messageId: string, content: string, body?: Body, alsoInChannel?: boolean, fileIds?: string[]): Promise<ThreadReply>
     /** Get notified about replies, or turn it off (spec 6.7): my own choice for a thread's root message. */
     setFollowing(messageId: string, following: boolean): Promise<void>
     /** What this channel tells me about (spec 6.11): all new messages, my mentions, or nothing. Mine only. */
@@ -480,8 +509,21 @@ export interface Api {
     list(projectId: string): Promise<StoredFile[]>
     /** `signal` cancels it; a cancelled upload saves nothing and rejects with an AbortError. */
     upload(projectId: string, file: UploadFile, signal?: AbortSignal): Promise<StoredFile>
-    /** By whoever added it, the project's manager or an Admin. */
-    remove(id: string): Promise<void>
+    /** Takes a file off a project, by whoever added it, the project's manager or an Admin. */
+    removeFromProject(projectId: string, fileId: string): Promise<void>
+    /**
+     * Uploads a file for a message in `channelId` (spec §8): an upload link, the bytes, then complete, when the server
+     * checks its type and scans it. A cancelled upload saves nothing and rejects with an AbortError.
+     */
+    uploadForChat(channelId: string, file: UploadFile, options?: UploadOptions): Promise<Attachment>
+    /** Who uploaded it and where it's shared, for whoever may see it somewhere. */
+    details(id: string): Promise<FileDetails>
+    /** Edit file details: whoever uploaded it, or an Admin. */
+    update(id: string, patch: FilePatch): Promise<Attachment>
+    /** Whoever uploaded it, or an Admin: it goes from everywhere it's shared. */
+    delete(id: string): Promise<void>
+    /** Posts it in another channel or DM I can post in, with an optional message. */
+    share(id: string, channelId: string, content?: string): Promise<ChatMessage>
   }
   /** Task comments and bugs (spec §2): each also posts a card in the project's chat. */
   comments: {

@@ -6,7 +6,7 @@ import type { Project, Role } from '@/api/types'
 export type Action =
   | 'rates.view' | 'cost.view' | 'project.create' | 'project.edit' | 'phase.manage' | 'task.manage' | 'task.updateOwnStatus'
   | 'time.logOwn' | 'time.logOn' | 'collab.post' | 'dashboard.view' | 'timeCost.view' | 'database.manage' | 'project.archive' | 'channel.manage'
-  | 'channel.restrictPosting' | 'channel.post' | 'channel.inviteByEmail' | 'channel.setDefault' | 'invitation.revoke'
+  | 'channel.restrictPosting' | 'channel.post' | 'channel.inviteByEmail' | 'channel.setDefault' | 'invitation.revoke' | 'file.manage'
 
 export type ProjectRef = Pick<Project, 'managerId' | 'memberIds' | 'teamIds'> & { archivedAt?: string | null }
 
@@ -21,6 +21,8 @@ export type PermissionContext = {
   taskAssigneeId?: string | null
   /** For invitation.revoke: who sent the invitation. */
   invitedBy?: string
+  /** For file.manage: who uploaded the file. */
+  uploadedBy?: string
   /** Whether the person manages at least one project (a member can be named a project's manager). */
   managesAny?: boolean
 }
@@ -63,6 +65,9 @@ export function can(action: Action, ctx: PermissionContext): boolean {
       return false
     case 'invitation.revoke':
       return ctx.invitedBy === ctx.userId
+    // Edit file details and Delete file (spec §9: delete file is uploader or admin).
+    case 'file.manage':
+      return ctx.uploadedBy === ctx.userId
     // A channel set to Only admins takes new posts from Admins alone (who passed above).
     case 'channel.post':
       return ctx.channel?.whoCanPost !== 'admins'

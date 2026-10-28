@@ -83,7 +83,7 @@ describe('removing project files', () => {
   }
   it('the uploader removes a file; it leaves the list, its bytes and the history says so', async () => {
     const stored = await add('u-8') // Tarek, a Mobile member
-    await api.files.remove(stored.id)
+    await api.files.removeFromProject('p-mob', stored.attachment.id)
     expect((await api.files.list('p-mob')).some((f) => f.id === stored.id)).toBe(false)
     expect(await db.getFile(stored.attachment.id)).toBeNull()
     expect((await db.read()).activity.at(-1)).toMatchObject({ kind: 'file.removed', subject: 'notes.pdf', projectId: 'p-mob' })
@@ -91,9 +91,9 @@ describe('removing project files', () => {
   it("the manager can remove anyone's file; another member gets 403", async () => {
     const stored = await add('u-8')
     await api.users.viewAs('u-5') // Salma, also on Mobile
-    await expect(api.files.remove(stored.id)).rejects.toMatchObject({ status: 403, detail: 'You can only remove files you added.' })
+    await expect(api.files.removeFromProject('p-mob', stored.attachment.id)).rejects.toMatchObject({ status: 403, detail: 'You can only remove files you added.' })
     await api.users.viewAs('u-4') // Ahmed manages Mobile
-    await api.files.remove(stored.id)
+    await api.files.removeFromProject('p-mob', stored.attachment.id)
     expect((await api.files.list('p-mob')).some((f) => f.id === stored.id)).toBe(false)
   })
   it('an upload cancelled before the write saves nothing', async () => {

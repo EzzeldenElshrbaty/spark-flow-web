@@ -114,3 +114,28 @@ describe('13 → 14', () => {
     expect(migrate(doc, 14)).toMatchObject({ version: 14, invitations: [], channels: [{ id: 'c-general', isDefault: true }, { id: 'c1', isDefault: false }] })
   })
 })
+
+describe('14 → 15', () => {
+  it('every file gets its uploader, a title, no description, a clean scan; copies in messages and replies too (spec 6.9)', () => {
+    const doc = {
+      version: 14,
+      currentUserId: 'u-1',
+      attachments: [{ id: 'a1', name: 'scope.pdf' }, { id: 'a2', name: 'shot.png' }, { id: 'a3', name: 'log.txt' }],
+      projectFiles: [{ id: 'pf1', attachmentId: 'a1', uploadedBy: 'u-4' }],
+      comments: [{ id: 'cm1', authorId: 'u-2', attachmentIds: ['a2'] }],
+      messages: [{ id: 'm1', attachments: [{ id: 'a2', name: 'shot.png' }] }],
+      replies: [{ id: 'r1', attachments: [{ id: 'a9', name: 'old.txt' }] }],
+    }
+    const clean = { description: '', scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null }
+    expect(migrate(doc, 15)).toMatchObject({
+      version: 15,
+      attachments: [
+        { id: 'a1', uploadedBy: 'u-4', title: 'scope.pdf', ...clean },
+        { id: 'a2', uploadedBy: 'u-2', title: 'shot.png', ...clean },
+        { id: 'a3', uploadedBy: 'u-1', title: 'log.txt', ...clean },
+      ],
+      messages: [{ attachments: [{ id: 'a2', uploadedBy: 'u-2', title: 'shot.png', ...clean }] }],
+      replies: [{ attachments: [{ id: 'a9', uploadedBy: 'u-1', title: 'old.txt', ...clean }] }],
+    })
+  })
+})

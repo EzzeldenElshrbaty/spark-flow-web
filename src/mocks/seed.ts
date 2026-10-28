@@ -493,14 +493,16 @@ export function seed(now: Date): SeedResult {
   ].map(([userId, hourlyCost]) => ({ id: `r-${userId}`, userId: userId as string, hourlyCost: hourlyCost as number, currency: 'EGP', effectiveFrom: '1970-01-01T00:00:00.000Z' }))
 
   // ── Files, comments and bugs ────────────────────────────────────────────
-  const fileOf = (id: string, name: string, mimeType: string, base64: string, createdAt: string) => ({
-    attachment: { id, name, mimeType, size: base64Size(base64), createdAt } satisfies Attachment,
+  const fileOf = (id: string, name: string, mimeType: string, base64: string, createdAt: string, uploadedBy: string) => ({
+    attachment: {
+      id, name, mimeType, size: base64Size(base64), createdAt, uploadedBy, title: name, description: '', scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null,
+    } satisfies Attachment,
     bytes: { mimeType, base64 },
   })
   const files = [
-    fileOf('a-shot-105', 'safari-focus-ring.png', 'image/png', screenshotPng, ago(0, 5)),
-    fileOf('a-mob-scope', 'mobile-2.4.0-scope.pdf', 'application/pdf', scopePdf, ago(36)),
-    fileOf('a-mob-checklist', 'release-2.4.0-checklist.txt', 'text/plain', checklistTxt, ago(3)),
+    fileOf('a-shot-105', 'safari-focus-ring.png', 'image/png', screenshotPng, ago(0, 5), 'u-5'),
+    fileOf('a-mob-scope', 'mobile-2.4.0-scope.pdf', 'application/pdf', scopePdf, ago(36), 'u-9'),
+    fileOf('a-mob-checklist', 'release-2.4.0-checklist.txt', 'text/plain', checklistTxt, ago(3), 'u-4'),
   ]
   const attachments = files.map((f) => f.attachment)
   const projectFiles: ProjectFile[] = [

@@ -107,6 +107,26 @@ export const migrations: Record<number, (doc: Record<string, unknown>) => void> 
       channel.isDefault = channel.isDefault === true || (channel.id === 'c-general' && channel.isPrivate !== true)
     }
   },
+  // 15: a file's details (spec 6.9): who uploaded it (the project file's or comment's author, else the document's
+  // person), a title after its name, no description, a clean scan; the copies in messages and replies too.
+  14: (doc) => {
+    const list = (value: unknown) => (Array.isArray(value) ? (value as Record<string, unknown>[]).filter(Boolean) : [])
+    const uploader = new Map<unknown, unknown>()
+    for (const f of list(doc.projectFiles)) uploader.set(f.attachmentId, f.uploadedBy)
+    for (const c of list(doc.comments)) for (const id of Array.isArray(c.attachmentIds) ? c.attachmentIds : []) if (!uploader.has(id)) uploader.set(id, c.authorId)
+    const fill = (file: Record<string, unknown>) => {
+      file.uploadedBy ??= uploader.get(file.id) ?? doc.currentUserId
+      file.title ??= file.name
+      file.description ??= ''
+      file.scanStatus ??= 'clean'
+      file.thumbUrl ??= null
+      file.previewUrl ??= null
+      file.deletedAt ??= null
+    }
+    for (const file of list(doc.attachments)) fill(file)
+    for (const row of [...list(doc.messages), ...list(doc.replies)]) for (const file of list(row.attachments)) fill(file)
+    for (const entry of list(doc.trash)) for (const file of list((entry.snapshot as Record<string, unknown> | undefined)?.attachments)) fill(file)
+  },
 }
 
 /** The document brought up to `to`, or null when a step on the way is missing. */
