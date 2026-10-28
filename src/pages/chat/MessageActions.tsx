@@ -26,6 +26,7 @@ export function MessageMenu({
   extra,
   lead,
   trigger,
+  onDeleteError,
 }: {
   target: ChatTarget
   can: { edit: boolean; remove: boolean }
@@ -42,6 +43,8 @@ export function MessageMenu({
   lead?: ReactNode
   /** The More button, with its place in the toolbar. */
   trigger: (props: MenuTriggerProps) => ReactNode
+  /** Why a delete was refused (null once it isn't), for the toolbar to say outside itself, where it stays in sight. */
+  onDeleteError?: (message: string | null) => void
 }) {
   const [confirming, setConfirming] = useState(false)
   const remove = useDeleteMessage()
@@ -63,6 +66,10 @@ export function MessageMenu({
         action: { label: 'Undo', onAction: () => restore.mutate(target, { onError: (e) => toast({ message: (e as Error).message }) }) },
       })
     })
+  const failed = !confirming && remove.error ? remove.error.message : null
+  useEffect(() => {
+    onDeleteError?.(failed)
+  }, [failed, onDeleteError])
   const wrap = useRef<HTMLDivElement>(null)
   // The More button: where focus is when a delete is chosen, and where the next row's focus is looked for from.
   const more = () => wrap.current?.querySelector<HTMLElement>('button') ?? null
@@ -124,11 +131,6 @@ export function MessageMenu({
           </Fragment>
         ))}
       </Menu>
-      {!confirming && remove.error && (
-        <p role="alert" className="sf-meta absolute end-0 top-full z-10 mt-1 w-56 rounded-sf-md bg-sf-surface-raised p-2 text-sf-error shadow-sf-menu">
-          {remove.error.message}
-        </p>
-      )}
       <Modal
         open={confirming}
         onClose={() => setConfirming(false)}

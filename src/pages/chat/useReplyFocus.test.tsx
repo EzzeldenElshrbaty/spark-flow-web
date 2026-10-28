@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { useEffect, useState } from 'react'
 import { MemoryRouter, useNavigate } from 'react-router'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { replyState, useReplyFocus } from '@/pages/chat/useReplyFocus'
 
 afterEach(cleanup)
@@ -51,5 +52,23 @@ describe('useReplyFocus (Reply in thread, T: spec 6.4 and 10)', () => {
     again.focus()
     fireEvent.click(again)
     expect(document.activeElement).toBe(reply())
+  })
+
+  it('a reply box that comes after the thread has loaded (who may post is known later) still gets the caret', async () => {
+    function Loading() {
+      const box = useReplyFocus()
+      const [ready, setReady] = useState(false)
+      useEffect(() => {
+        const timer = setTimeout(() => setReady(true), 10)
+        return () => clearTimeout(timer)
+      }, [])
+      return <div ref={box}>{ready && <textarea aria-label="Reply in the thread" />}</div>
+    }
+    render(
+      <MemoryRouter initialEntries={[{ pathname: '/c', search: '?thread=m1', state: replyState }]}>
+        <Loading />
+      </MemoryRouter>,
+    )
+    await vi.waitFor(() => expect(document.activeElement).toBe(reply()))
   })
 })

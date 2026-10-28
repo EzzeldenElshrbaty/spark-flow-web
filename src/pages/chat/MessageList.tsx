@@ -12,6 +12,7 @@ import { readUpTo } from '@/pages/chat/markRead'
 import { buildRows, unreadSummary, type JumpChoice, type MessageListRow } from '@/pages/chat/messageRows'
 import { parseInspector } from '@/lib/inspector'
 import { ChannelMessage, type Selection } from '@/pages/chat/ChannelMessage'
+import { LIST_OVERLAY } from '@/pages/chat/MessageToolbar'
 import { useEditing } from '@/pages/chat/editingStore'
 import { useBodyContext, type BodyScope } from '@/pages/chat/useBodyContext'
 import { MessageSkeleton } from '@/pages/chat/MessageSkeleton'
@@ -379,7 +380,7 @@ export function MessageList({
       </div>
 
       {bar && unread.count > 0 && unread.since && (
-        <div className="sf absolute inset-x-4 top-2 z-[var(--z-sticky)] flex h-8 items-center gap-2 rounded-sf-md bg-sf-accent-fill ps-3 pe-2 font-sf text-[13px]/[18px] font-medium text-sf-on-accent">
+        <div {...{ [LIST_OVERLAY]: '' }} className="sf absolute inset-x-4 top-2 z-[var(--z-sticky)] flex h-8 items-center gap-2 rounded-sf-md bg-sf-accent-fill ps-3 pe-2 font-sf text-[13px]/[18px] font-medium text-sf-on-accent">
           <button type="button" className="sf-focus min-w-0 truncate text-start" onClick={scrollToNewLine}>
             {unread.count} new {unread.count === 1 ? 'message' : 'messages'} since {formatTime(unread.since)}
           </button>
@@ -399,7 +400,7 @@ export function MessageList({
       {stickyDay && (
         // A copy of the day's divider for the pointer; keyboard and screen reader users have the divider itself.
         <div aria-hidden className={`sf pointer-events-none absolute inset-x-0 z-[var(--z-sticky)] flex justify-center ${bar ? 'top-12' : 'top-2'}`}>
-          <span className="pointer-events-auto">
+          <span {...{ [LIST_OVERLAY]: '' }} className="pointer-events-auto">
             <DayMenu label={stickyDay} onJump={onJump} focusable={false} />
           </span>
         </div>

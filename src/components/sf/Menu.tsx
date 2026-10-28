@@ -181,21 +181,24 @@ function MenuPanel({
     else if (event.key === 'End') go(items.length - 1)
     else if (event.key === back && side) onClose()
     else if (event.key.length === 1 && /\S/.test(event.key) && !event.metaKey && !event.ctrlKey && !event.altKey) {
-      // An item's own key (Mark unread's U) picks it, as it does on the message; any other letter jumps.
-      const picked = items.find((item) => item.getAttribute('aria-keyshortcuts')?.toLowerCase() === event.key.toLowerCase())
+      const now = Date.now()
+      const key = event.key.toLowerCase()
+      const text = (now - typed.current.at < 700 ? typed.current.text : '') + key
+      // An item's own key (Mark unread's U) picks it, as it does on the message, unless I'm typing on toward an item's
+      // name ("de" for Delete, though E is Edit's key); any other letter jumps.
+      const label = (item: HTMLElement) => item.textContent?.trim().toLowerCase() ?? ''
+      const typingOn = text.length > 1 && items.some((item) => label(item).startsWith(text))
+      const picked = !typingOn && items.find((item) => item.getAttribute('aria-keyshortcuts')?.toLowerCase() === key)
       if (picked) {
+        typed.current = { text: '', at: 0 }
         event.preventDefault()
         event.stopPropagation()
         if (!event.repeat) picked.click()
         return
       }
-      const now = Date.now()
-      typed.current = { text: (now - typed.current.at < 700 ? typed.current.text : '') + event.key.toLowerCase(), at: now }
-      const text = typed.current.text
+      typed.current = { text, at: now }
       const order = [...items.slice(index + 1), ...items.slice(0, index + 1)]
-      const match =
-        order.find((item) => item.textContent?.trim().toLowerCase().startsWith(text)) ??
-        order.find((item) => item.textContent?.trim().toLowerCase().startsWith(text[0]))
+      const match = order.find((item) => label(item).startsWith(text)) ?? order.find((item) => label(item).startsWith(text[0]))
       match?.focus({ preventScroll: true })
     } else return
     event.preventDefault()

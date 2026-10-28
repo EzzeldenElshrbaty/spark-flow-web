@@ -105,6 +105,18 @@ describe('the message toolbar (spec 6.4)', () => {
   })
 })
 
+describe('a delete the server refuses (spec 6.3)', () => {
+  it('says why under the toolbar, outside it, so it stays when the toolbar hides', async () => {
+    vi.spyOn(api.chat, 'remove').mockRejectedValue(new Error("You can't delete this message."))
+    show({ can: { react: true, edit: false, remove: true } })
+    fireEvent.click(named('More actions'))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete message' }))
+    const alert = await screen.findByRole('alert')
+    expect(alert.textContent).toBe("You can't delete this message.")
+    expect(toolbar().contains(alert)).toBe(false)
+  })
+})
+
 describe('on a touch screen with no hover (a tablet, 768px and up)', () => {
   it('the ⋯ stands in for the toolbar: it shows, and its menu starts with what the toolbar carries', () => {
     window.matchMedia = ((media: string) => ({ matches: media.includes('hover: none'), media, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia
@@ -136,12 +148,17 @@ describe('on a phone (no hover: the ⋯ and its sheet)', () => {
     expect(screen.queryByRole('menu')).toBeNull()
   })
 
-  it('Add reaction in the sheet opens the picker', () => {
+  it('Add reaction in the sheet opens the picker; closing it puts focus back on the ⋯', () => {
     window.matchMedia = phone
     show()
+    // The picker's own trigger is out of sight and out of the screen reader's way: the sheet's item is the way in.
+    expect(screen.queryAllByRole('button', { name: 'Add reaction' })).toEqual([])
     fireEvent.click(screen.getByRole('button', { name: 'More actions' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Add reaction' }))
     expect(screen.queryByRole('menu')).toBeNull()
     expect(screen.getByRole('dialog', { name: 'Add reaction' })).toBeTruthy()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('dialog', { name: 'Add reaction' })).toBeNull()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'More actions' }))
   })
 })

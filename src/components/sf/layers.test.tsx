@@ -87,6 +87,23 @@ describe('Menu', () => {
     expect(screen.queryByRole('menu')).toBeNull()
   })
 
+  it('typing on toward an item ("de" for Delete) keeps jumping, though E is Edit’s key', () => {
+    const onEdit = vi.fn()
+    render(
+      <Menu label="Message actions" trigger={(props) => <IconButton label="More actions" icon={IconDots} {...props} />}>
+        <MenuItem shortcut="E" onSelect={onEdit}>
+          Edit message
+        </MenuItem>
+        <MenuItem>Delete message</MenuItem>
+      </Menu>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }))
+    fireEvent.keyDown(document.activeElement!, { key: 'd' })
+    fireEvent.keyDown(document.activeElement!, { key: 'e' })
+    expect(focused()).toBe('Delete message')
+    expect(onEdit).not.toHaveBeenCalled()
+  })
+
   it('opens a submenu with ArrowRight and closes it with ArrowLeft, then Escape closes the menu to the trigger', () => {
     render(<MessageMenu />)
     const trigger = screen.getByRole('button', { name: 'More actions' })

@@ -397,3 +397,22 @@ Range `592aaca..c6861c6`. One fresh reviewer: no Critical, 3 Important, 9 Minor.
 - In the app (1280px): in the thread panel, the root's toolbar sits under its name line (no room above) and the replies' toolbars sit fully above their rows; no name or time is covered. Esc in the picker opened from a reply's toolbar closed only the picker; the thread stayed open with focus back on Add reaction. (A script's `.focus()` fires no `focusin` while the pane isn't the focused window; the checks dispatched it or used real hovers.)
 - Not checked in the app: a real tablet without hover (covered by the unit test).
 - Deferred minors: M2 typing "de" toward Delete picks Edit (E is a shortcut letter); M3 the phone ⋯ is 32px, under 6.16's 44px (existing size); M4 on phones the picker closes onto the invisible Add reaction button, a duplicate screen-reader stop per row; M5 Reply in thread and T are offered where I can't post (the thread opens without a reply box); M6 T or Reply on the thread already open adds a history entry; M7 `useReplyFocus` can miss the caret if the reply box mounts after its wrapper on a cold load; M8 the unread bar can cover the top rows' raised toolbars; M9 the delete error sits inside the hidden toolbar and hides with it (existing).
+
+# Flow chat — the 8 deferred minors from the slice 1 review — 2026-10-28 — done
+
+Each test written first and watched fail.
+
+- [x] M2 — typing "de" toward Delete picked Edit (E is its key). In the sf Menu a shortcut letter picks its item unless it continues a typed prefix of an item's name. Test: `layers.test.tsx` "typing on toward an item".
+- [x] M3 — the phone ⋯ was a 32px target. It keeps its 32px look with a 44px touch area (`after:-inset-1.5`, spec 6.16). Test: `a11y.browser.test.tsx` "on a phone the ⋯ answers a 44px touch" (RED with the class taken out).
+- [x] M4 — on phones the picker closed onto an invisible "Add reaction" button, a duplicate screen-reader stop per row. It's `aria-hidden` now and passes focus straight on to the ⋯. Test: `MessageToolbar.test.tsx` "closing it puts focus back on the ⋯".
+- [x] M5 — Reply in thread and T were offered where I can't post (a thread with no reply box). Now only where I may post; the thread summary still opens threads to read. Test: `ChannelMessage.test.tsx` "where I may not post there is no Reply in thread".
+- [x] M6 — T or Reply on the thread already open added a history step. It replaces then; another thread is still a new step. Tests: "on the thread already open … without adding to the history", "another thread is a new step".
+- [x] M7 — the reply box could miss the caret when it came after its wrapper (cold load). `useReplyFocus` waits for it (MutationObserver). Test: `useReplyFocus.test.tsx` "a reply box that comes after the thread has loaded".
+- [x] M8 — the unread bar (and the day pill) could cover the top rows' raised toolbars. They're marked `data-list-overlay`; `placeToolbar` keeps below them. Test: `a11y.browser.test.tsx` "it keeps clear of a bar laid over the list" (RED: 20 < 56).
+- [x] M9 — a refused delete's message sat inside the hidden toolbar and hid with it. `MessageMenu` reports it (`onDeleteError`) and the toolbar shows it outside itself. Test: `MessageToolbar.test.tsx` "a delete the server refuses".
+
+## Review — minors
+
+- `npm test`: 1001/1001 (109 files). Lint and `build:prototype` (with `tsc -b`) pass.
+- Not seen in the app: the unread bar case (the pane runs as a background page, so the list never positions itself and the bar doesn't come up after a fresh load); covered by the browser test.
+- Asked along the way: several emoji per message is by design (spec 6.6: one reaction per person per emoji, up to 50 per message). After Mark unread, coming back keeps it unread until its newest message is on screen in a focused window, or Esc / Mark as read (spec 6.2); Slack's default marks a channel read on opening. Both are open for the user to change.

@@ -22,22 +22,29 @@ const GAP = 4
 
 /** Marks a row's name line (author and time): the toolbar never covers it (spec 6.4 AC). */
 export const ROW_HEADER = 'data-row-header'
+/** Marks a bar laid over the list (the unread bar, the day pill): the toolbar keeps below it. */
+export const LIST_OVERLAY = 'data-list-overlay'
 
 /**
  * Where the toolbar goes, as its top within the row: 16px above the row's top (spec 6.4) when there's room and that
- * hides neither the name nor the time; else fully above the row; else inside it, under the name line if it must.
+ * hides neither the name nor the time; else fully above the row; else inside it, below a bar laid over the list and
+ * under the name line if it must. "Room" ends at whatever clips the row, or at the bottom of such a bar.
  */
 function placeToolbar(row: HTMLElement, bar: HTMLElement): number {
   const box = row.getBoundingClientRect()
   const { left, right } = bar.getBoundingClientRect()
   const height = bar.offsetHeight
-  const room = roomAround(row).above
+  let ceiling = box.top - roomAround(row).above
+  for (const overlay of document.querySelectorAll(`[${LIST_OVERLAY}]`)) {
+    const r = overlay.getBoundingClientRect()
+    if (r.left < right && left < r.right && r.top <= box.top + height) ceiling = Math.max(ceiling, r.bottom + GAP)
+  }
   const header = row.querySelector(`[${ROW_HEADER}]`)
   const words = header ? [...header.children].map((child) => child.getBoundingClientRect()) : []
   const hides = (top: number) => words.some((r) => r.left < right && left < r.right && r.top < box.top + top + height && box.top + top < r.bottom)
-  for (const top of [-RISE, -(height + GAP)]) if (room >= -top && !hides(top)) return top
-  if (!hides(GAP)) return GAP
-  return Math.max(...words.map((r) => r.bottom)) - box.top + GAP
+  const underCeiling = ceiling - box.top
+  const underHeader = words.length > 0 ? Math.max(...words.map((r) => r.bottom)) - box.top + GAP : GAP
+  return [-RISE, -(height + GAP), GAP, underCeiling, underHeader].find((top) => box.top + top >= ceiling && !hides(top)) ?? Math.max(underCeiling, underHeader)
 }
 
 type Stop = 'more' | 'reply' | 'add' | (typeof QUICK_REACTIONS)[number]
@@ -109,10 +116,13 @@ export function MessageToolbar({
   const add = (emoji: string) => {
     if (!mine(emoji)) react.mutate({ target, emoji })
   }
-  const menu = { target, can, confirmDelete, onEdit, onMarkUnread, onCopyLink, onCopyText, extra }
-  const error = react.error && (
+  // A refused delete says why, here, outside the toolbar: shown while it hides.
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const menu = { target, can, confirmDelete, onEdit, onMarkUnread, onCopyLink, onCopyText, extra, onDeleteError: setDeleteError }
+  const message = react.error?.message ?? deleteError
+  const error = message && (
     <p role="alert" className={clsx('sf-meta absolute top-9 z-10 w-56 rounded-sf-md bg-sf-surface-raised p-2 text-sf-error shadow-sf-menu', className)}>
-      {react.error.message}
+      {message}
     </p>
   )
 
@@ -131,10 +141,31 @@ export function MessageToolbar({
       <>
         <div ref={bar} className={clsx('absolute top-1', className)}>
           {can.react && (
-            // The sheet's Add reaction opens this picker; its trigger only holds focus for when the picker closes.
-            <AddReaction onPick={add} trigger={(props) => <button type="button" {...props} data-add-reaction="" tabIndex={-1} aria-label="Add reaction" className="sr-only" />} />
+            // The sheet's Add reaction opens this picker. Its own trigger is out of sight and out of the screen
+            // reader's way; when the picker closes, focus lands on it and goes straight on to the ⋯.
+            <AddReaction
+              onPick={add}
+              trigger={(props) => (
+                <button
+                  type="button"
+                  {...props}
+                  data-add-reaction=""
+                  tabIndex={-1}
+                  aria-hidden
+                  onFocus={() => bar.current?.querySelector<HTMLElement>(`[${ROW_FOCUS}]`)?.focus()}
+                  className="sr-only"
+                />
+              )}
+            />
           )}
-          <MessageMenu {...menu} lead={lead || undefined} trigger={(props) => <IconButton label="More actions" icon={IconDotsVertical} {...props} {...{ [ROW_FOCUS]: '' }} />} />
+          {/* A 44px touch target (spec 6.16) around the 32px button. */}
+          <MessageMenu
+            {...menu}
+            lead={lead || undefined}
+            trigger={(props) => (
+              <IconButton label="More actions" icon={IconDotsVertical} {...props} {...{ [ROW_FOCUS]: '' }} className="relative after:absolute after:-inset-1.5" />
+            )}
+          />
         </div>
         {error}
       </>

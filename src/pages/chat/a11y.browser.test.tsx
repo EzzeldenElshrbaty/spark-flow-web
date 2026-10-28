@@ -197,6 +197,47 @@ describe('the message toolbar (spec 6.4) and the ⋯ on a phone (spec 10: every 
     }
   })
 
+  it('on a phone the ⋯ answers a 44px touch (spec 6.16), though it shows at 32px', async () => {
+    await page.viewport(390, 844)
+    try {
+      mount(
+        <div style={{ width: 350 }}>
+          <ChannelMessage message={message('hi')} users={users} ctx={ctx} meId="u-1" canPost continuation={false} />
+        </div>,
+        false,
+      )
+      const more = screen.getByRole('button', { name: 'More actions' })
+      const r = more.getBoundingClientRect()
+      const hit = (x: number, y: number) => document.elementFromPoint(x, y)?.closest('button') === more
+      const mid = { x: r.left + r.width / 2, y: r.top + r.height / 2 }
+      expect([hit(r.left - 5, mid.y), hit(r.right + 5, mid.y), hit(mid.x, r.top - 5), hit(mid.x, r.bottom + 5)]).toEqual([true, true, true, true])
+    } finally {
+      await page.viewport(414, 896)
+    }
+  })
+
+  it('it keeps clear of a bar laid over the list (the unread bar)', async () => {
+    await page.viewport(1280, 800)
+    try {
+      mount(
+        <div className="relative">
+          <div role="log" aria-label="Messages" style={{ height: 300, overflowY: 'auto' }}>
+            <ChannelMessage message={message('first')} users={users} ctx={ctx} meId="u-1" canPost continuation={false} />
+          </div>
+          <div data-list-overlay="" className="absolute inset-x-0 top-0 z-10 h-10 bg-sf-accent-fill" />
+        </div>,
+        false,
+      )
+      const overlay = document.querySelector('[data-list-overlay]')!.getBoundingClientRect()
+      // From the keyboard: the bar lies over where a pointer would reach the row's top.
+      await userEvent.tab()
+      expect(screen.getByRole('article').contains(document.activeElement)).toBe(true)
+      await vi.waitFor(() => expect(screen.getByRole('toolbar').getBoundingClientRect().top).toBeGreaterThanOrEqual(overlay.bottom))
+    } finally {
+      await page.viewport(414, 896)
+    }
+  })
+
   it('on a wider screen it waits for hover or focus, and stays while its menu is open', async () => {
     await page.viewport(1280, 800)
     try {

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
-import { MemoryRouter, useLocation } from 'react-router'
+import { MemoryRouter, useLocation, useNavigationType } from 'react-router'
 import { Announcer } from '@/components/sf/Announcer'
 import { ToastProvider } from '@/components/sf/Toast'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -35,23 +35,29 @@ const message = (content: string, over: Partial<ChatMessage> = {}): ChatMessage 
 /** Where the page is, and what the navigation asked for: what Reply in thread and T leave. */
 function Where() {
   const location = useLocation()
-  return <span data-testid="where">{`${location.search} ${JSON.stringify(location.state)}`}</span>
+  const how = useNavigationType()
+  return (
+    <>
+      <span data-testid="where">{`${location.search} ${JSON.stringify(location.state)}`}</span>
+      <span data-testid="how">{how}</span>
+    </>
+  )
 }
 
 function show(
   m: ChatMessage | ThreadReply,
-  opts: { continuation?: boolean; selected?: Selection; onMarkUnread?: () => Promise<unknown>; sendState?: 'sending' | 'failed' } = {},
+  opts: { continuation?: boolean; selected?: Selection; onMarkUnread?: () => Promise<unknown>; sendState?: 'sending' | 'failed'; canPost?: boolean; at?: string } = {},
 ) {
   render(
     <QueryClientProvider client={new QueryClient()}>
       <ToastProvider>
-        <MemoryRouter initialEntries={['/w/engineering/c/c1']}>
+        <MemoryRouter initialEntries={[opts.at ?? '/w/engineering/c/c1']}>
         <ChannelMessage
           message={m}
           users={users}
           ctx={ctx}
           meId="u-1"
-          canPost
+          canPost={opts.canPost ?? true}
           continuation={opts.continuation ?? false}
           selected={opts.selected}
           onMarkUnread={opts.onMarkUnread}
@@ -445,6 +451,26 @@ describe('Reply in thread and Copy text (spec 6.4, 6.5)', () => {
       expect(where()).toBe(' null')
       cleanup()
     }
+  })
+
+  it('where I may not post there is no Reply in thread, and T does nothing (the thread would have no reply box)', () => {
+    show(message('root'), { canPost: false })
+    expect(screen.queryByRole('button', { name: 'Reply in thread' })).toBeNull()
+    fireEvent.keyDown(screen.getByRole('article'), { key: 't' })
+    expect(where()).toBe(' null')
+  })
+
+  it('on the thread already open, Reply in thread asks for the reply box again without adding to the history', () => {
+    show(message('root'), { at: '/w/engineering/c/c1?thread=m1' })
+    fireEvent.click(screen.getByRole('button', { name: 'Reply in thread' }))
+    expect(where()).toBe('?thread=m1 {"focus":"reply"}')
+    expect(screen.getByTestId('how').textContent).toBe('REPLACE')
+  })
+
+  it('another thread is a new step in the history (Back closes it)', () => {
+    show(message('root'), { at: '/w/engineering/c/c1?thread=m9' })
+    fireEvent.click(screen.getByRole('button', { name: 'Reply in thread' }))
+    expect(screen.getByTestId('how').textContent).toBe('PUSH')
   })
 
   it('Copy text copies the message as plain text and says so', async () => {

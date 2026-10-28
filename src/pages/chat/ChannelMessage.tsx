@@ -10,7 +10,7 @@ import { Avatar } from '@/components/sf/Avatar'
 import { Icon } from '@/components/sf/Icon'
 import { formatDate, formatTime } from '@/lib/format'
 import { firstPreviewable } from '@/lib/linkPreview'
-import { withInspector } from '@/lib/inspector'
+import { parseInspector, withInspector } from '@/lib/inspector'
 import { paths } from '@/lib/paths'
 import { firstTask, MessageBody, TaskUnfurl, type BodyContext } from '@/pages/chat/MessageBody'
 import { ROW_FOCUS } from '@/pages/chat/MessageActions'
@@ -138,12 +138,16 @@ export function ChannelMessage({
     new Promise<void>((resolve) => resolve(navigator.clipboard.writeText(text))).then(() => say(done), () => say(failed, true))
   const copyLink = () => copy(permalink, 'Link copied', "Couldn't copy the link")
   const copyText = () => copy(bodyText(message.body), 'Text copied', "Couldn't copy the text")
-  // Reply in thread (T, spec 6.4): a top-level message outside its own thread; the thread opens to its reply box.
+  // Reply in thread (T, spec 6.4): a top-level message outside its own thread, where I may post; the thread opens to
+  // its reply box. Asked again while that thread is open, it doesn't add a step to the history.
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const openThread =
-    root && showThread && !root.deletedAt
-      ? () => navigate({ search: withInspector(params, { kind: 'thread', messageId: root.id }).toString() }, { state: replyState })
+    root && showThread && !root.deletedAt && canPost
+      ? () => {
+          const open = parseInspector(params)
+          navigate({ search: withInspector(params, { kind: 'thread', messageId: root.id }).toString() }, { state: replyState, replace: open?.kind === 'thread' && open.messageId === root.id })
+        }
       : undefined
   const full = `${formatDate(message.createdAt)}, ${formatTime(message.createdAt)}`
   const time = (
