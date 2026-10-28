@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useId, useMemo, useState, type ReactNode } from 'react'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
-import { useChannel, useDrafts, useDraftSaver, useJumpTarget, useLeaveChannel, useMarkRead, useMessage, useMessages, useMessagesFrom, useSetMuted, useSetStarred } from '@/api/chat'
+import { useChannel, useDrafts, useDraftSaver, useJumpTarget, useLeaveChannel, useMarkRead, useMessage, useMessages, useMessagesFrom, useSetMuted, useSetNotifyLevel, useSetStarred } from '@/api/chat'
 import { useUsers } from '@/api/users'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
@@ -165,12 +165,13 @@ function ChannelTop({ channel, people, workspaceSlug, tab, onTab, panelId }: { c
   const rights = useChannelRights(channel)
   const star = useSetStarred()
   const mute = useSetMuted()
+  const level = useSetNotifyLevel()
   const markRead = useMarkRead()
   const leave = useLeaveChannel()
   const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
   const [archiving, setArchiving] = useState(false)
-  const error = (star.error ?? mute.error ?? markRead.error ?? leave.error) as Error | null
+  const error = (star.error ?? mute.error ?? level.error ?? markRead.error ?? leave.error) as Error | null
   const members = channel.memberIds.map((id) => ({ id, name: people.find((u) => u.id === id)?.name ?? 'Unknown person' }))
   return (
     <div className="sf flex-none bg-sf-surface">
@@ -182,6 +183,7 @@ function ChannelTop({ channel, people, workspaceSlug, tab, onTab, panelId }: { c
         onEdit={() => setEditing(true)}
         onStar={(starred) => star.mutate({ id: channel.id, starred })}
         onMute={(muted) => mute.mutate({ id: channel.id, muted })}
+        onNotifyLevel={(notifyLevel) => level.mutate({ id: channel.id, level: notifyLevel })}
         onMarkRead={() => {
           useReadHold.getState().release(channel.id)
           markRead.mutate({ channelId: channel.id })

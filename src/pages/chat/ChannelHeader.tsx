@@ -14,7 +14,7 @@ import {
   IconStarFilled,
 } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
-import type { Channel } from '@/api/types'
+import type { Channel, NotifyLevel } from '@/api/types'
 import { Avatar } from '@/components/sf/Avatar'
 import { IconButton } from '@/components/sf/Button'
 import { Icon } from '@/components/sf/Icon'
@@ -22,6 +22,12 @@ import { Menu, MenuHeading, MenuItem, MenuSeparator } from '@/components/sf/Menu
 import { usePhone } from '@/components/sf/usePhone'
 
 const COPIED_MS = 2000
+
+const LEVELS: { level: NotifyLevel; label: string }[] = [
+  { level: 'all', label: 'All new messages' },
+  { level: 'mentions', label: 'Mentions and keywords' },
+  { level: 'none', label: 'Nothing' },
+]
 
 export type ChannelHeaderProps = {
   channel: Channel
@@ -33,6 +39,8 @@ export type ChannelHeaderProps = {
   onEdit: () => void
   onStar: (starred: boolean) => void
   onMute: (muted: boolean) => void
+  /** What the channel notifies me about (spec 6.11). */
+  onNotifyLevel: (level: NotifyLevel) => void
   onMarkRead: () => void
   onCopyLink: () => Promise<void>
   onLeave: () => void
@@ -40,11 +48,11 @@ export type ChannelHeaderProps = {
 }
 
 /**
- * The 52px channel header (spec 6.1): name, star, topic, then members and the more menu at the end. It never wraps:
- * the topic truncates first, then the members button goes (it is in Edit details too). On phones the topic moves
- * into the more menu. Call, the notifications bell and channel search come in later phases.
+ * The 52px channel header (spec 6.1): name, star, topic, then members, the notifications bell (spec 6.11) and the more
+ * menu at the end. It never wraps: the topic truncates first, then the members button goes (it is in Edit details
+ * too). On phones the topic moves into the more menu. Call and channel search come in later phases.
  */
-export function ChannelHeader({ channel, title, members, rights, onEdit, onStar, onMute, onMarkRead, onCopyLink, onLeave, onArchive }: ChannelHeaderProps) {
+export function ChannelHeader({ channel, title, members, rights, onEdit, onStar, onMute, onNotifyLevel, onMarkRead, onCopyLink, onLeave, onArchive }: ChannelHeaderProps) {
   const phone = usePhone()
   // What Copy link did, said next to the menu for a moment; there are no toasts outside Undo.
   const [copied, setCopied] = useState<'' | 'Link copied' | "Couldn't copy the link">('')
@@ -108,6 +116,27 @@ export function ChannelHeader({ channel, title, members, rights, onEdit, onStar,
         <span role="status" className="sf-meta text-sf-text-muted">
           {copied}
         </span>
+        <Menu
+          label={isChannel ? 'Channel notifications' : 'Conversation notifications'}
+          trigger={(props) => (
+            <IconButton
+              label={isChannel ? 'Channel notifications' : 'Conversation notifications'}
+              icon={channel.muted || channel.notifyLevel === 'none' ? IconBellOff : IconBell}
+              {...props}
+            />
+          )}
+        >
+          <MenuHeading>Notify me about</MenuHeading>
+          {LEVELS.map(({ level, label }) => (
+            <MenuItem key={level} checked={channel.notifyLevel === level} onSelect={() => level !== channel.notifyLevel && onNotifyLevel(level)}>
+              {label}
+            </MenuItem>
+          ))}
+          <MenuSeparator />
+          <MenuItem icon={channel.muted ? IconBell : IconBellOff} onSelect={() => onMute(!channel.muted)}>
+            {channel.muted ? `Unmute ${noun}` : `Mute ${noun}`}
+          </MenuItem>
+        </Menu>
         <Menu label="Channel actions" trigger={(props) => <IconButton label="Channel actions" icon={IconDotsVertical} {...props} />}>
           {phone && topic && <MenuHeading>{topic}</MenuHeading>}
           {rights.manage && (
@@ -128,9 +157,6 @@ export function ChannelHeader({ channel, title, members, rights, onEdit, onStar,
           </MenuItem>
           <MenuItem icon={IconChecks} disabled={channel.unreadCount === 0} onSelect={onMarkRead}>
             Mark all read
-          </MenuItem>
-          <MenuItem icon={channel.muted ? IconBell : IconBellOff} onSelect={() => onMute(!channel.muted)}>
-            {channel.muted ? `Unmute ${noun}` : `Mute ${noun}`}
           </MenuItem>
           {(rights.leave || rights.manage) && <MenuSeparator />}
           {rights.leave && (

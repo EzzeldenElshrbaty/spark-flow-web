@@ -39,7 +39,7 @@ const task: TaskRef = { key: 'NEX-103', title: 'Rate limit the search API', stat
 const ctx: BodyContext = { users, tasks: new Map([[task.key, task]]), projectKeys: new Set(['NEX']), ws: 'engineering', workspaceId: 'ws-eng' }
 const channel: Channel = {
   id: 'c-backend', workspaceId: 'ws-eng', kind: 'channel', name: 'backend', topic: 'APIs and jobs', memberIds: ['u-1', 'u-2'], isPrivate: false, lastMessageAt: null,
-  unreadCount: 0, lastSeq: 9, lastReadSeq: 9, starred: true, muted: false, notifyLevel: 'all',
+  unreadCount: 0, lastSeq: 9, lastReadSeq: 9, starred: true, muted: false, notifyLevel: 'mentions',
 }
 let n = 0
 const message = (content: string, over: Partial<ChatMessage> = {}): ChatMessage => ({
@@ -80,7 +80,7 @@ const surfaces: [string, () => ReactNode][] = [
     'channel header and tabs',
     () => (
       <>
-        <ChannelHeader channel={channel} title="backend" members={users} rights={{ manage: true, leave: true }} onEdit={vi.fn()} onStar={vi.fn()} onMute={vi.fn()} onMarkRead={vi.fn()} onCopyLink={async () => {}} onLeave={vi.fn()} onArchive={vi.fn()} />
+        <ChannelHeader channel={channel} title="backend" members={users} rights={{ manage: true, leave: true }} onEdit={vi.fn()} onStar={vi.fn()} onMute={vi.fn()} onNotifyLevel={vi.fn()} onMarkRead={vi.fn()} onCopyLink={async () => {}} onLeave={vi.fn()} onArchive={vi.fn()} />
         <ChannelTabs channel={channel} tab="messages" onChange={vi.fn()} panelId="p" />
         <div id="p" role="tabpanel" aria-label="Messages" />
       </>
@@ -125,6 +125,13 @@ describe.each([
   it('the open channel menu has no axe violations', async () => {
     mount(surfaces[0][1](), dark)
     await userEvent.click(screen.getByRole('button', { name: 'Channel actions' }))
+    expect(await violations()).toEqual([])
+  })
+
+  it('the open notifications bell menu has no axe violations (spec 6.11)', async () => {
+    mount(surfaces[0][1](), dark)
+    await userEvent.click(screen.getByRole('button', { name: 'Channel notifications' }))
+    expect(screen.getByRole('menuitemradio', { name: 'Mentions and keywords' })).toBeTruthy()
     expect(await violations()).toEqual([])
   })
 
@@ -468,6 +475,9 @@ describe('Activity on a phone (spec 10: every screen works at 390px)', () => {
       expect(header.scrollWidth).toBeLessThanOrEqual(header.clientWidth)
       for (const link of screen.getAllByRole('link')) expect(link.getBoundingClientRect().right).toBeLessThanOrEqual(390)
       expect(screen.getByRole('button', { name: 'Mark all read' }).getBoundingClientRect().right).toBeLessThanOrEqual(390)
+      // The selected tab's rule sits on the row's line without making the row scroll (a stray scrollbar).
+      const tabs = screen.getByRole('tablist', { name: 'Activity' })
+      expect(tabs.scrollHeight).toBeLessThanOrEqual(tabs.clientHeight)
     } finally {
       await page.viewport(414, 896)
     }

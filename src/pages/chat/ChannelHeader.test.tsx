@@ -9,7 +9,7 @@ afterEach(cleanup)
 
 const backend: Channel = {
   id: 'c-backend', workspaceId: 'ws-eng', kind: 'channel', name: 'backend', topic: 'APIs and jobs', memberIds: ['u-1', 'u-2', 'u-3', 'u-4'],
-  isPrivate: false, lastMessageAt: null, unreadCount: 2, lastSeq: 9, lastReadSeq: 7, starred: false, muted: false, notifyLevel: 'all',
+  isPrivate: false, lastMessageAt: null, unreadCount: 2, lastSeq: 9, lastReadSeq: 7, starred: false, muted: false, notifyLevel: 'mentions',
 }
 const people = [
   { id: 'u-1', name: 'Youssef Abdelrahman' },
@@ -20,7 +20,7 @@ const people = [
 
 function header(props: Partial<ChannelHeaderProps> = {}) {
   const handlers = {
-    onEdit: vi.fn(), onStar: vi.fn(), onMute: vi.fn(), onMarkRead: vi.fn(), onCopyLink: vi.fn(async () => {}), onLeave: vi.fn(), onArchive: vi.fn(),
+    onEdit: vi.fn(), onStar: vi.fn(), onMute: vi.fn(), onNotifyLevel: vi.fn(), onMarkRead: vi.fn(), onCopyLink: vi.fn(async () => {}), onLeave: vi.fn(), onArchive: vi.fn(),
   }
   render(<ChannelHeader channel={backend} title="backend" members={people} rights={{ manage: true, leave: true }} {...handlers} {...props} />)
   return handlers
@@ -76,13 +76,10 @@ describe('ChannelHeader (spec 6.1)', () => {
     expect(onEdit).toHaveBeenCalledOnce()
   })
 
-  it('the more menu has copy link, mark all read, mute, edit, leave and archive', () => {
+  it('the more menu has edit, copy link, mark all read, leave and archive (mute is under the bell)', () => {
     const h = header()
     openMenu()
-    for (const name of ['Edit details', 'Copy link', 'Mark all read', 'Mute channel', 'Leave channel', 'Archive channel']) expect(item(name)).toBeTruthy()
-    fireEvent.click(item('Mute channel'))
-    expect(h.onMute).toHaveBeenCalledWith(true)
-    openMenu()
+    expect(screen.getAllByRole('menuitem').map((el) => el.textContent)).toEqual(['Edit details', 'Copy link', 'Mark all read', 'Leave channel', 'Archive channel'])
     fireEvent.click(item('Mark all read'))
     expect(h.onMarkRead).toHaveBeenCalledOnce()
     openMenu()
@@ -93,10 +90,10 @@ describe('ChannelHeader (spec 6.1)', () => {
     expect(h.onArchive).toHaveBeenCalledOnce()
   })
 
-  it('without rights the menu has only copy link, mark all read and mute; read and muted channels say so', () => {
-    header({ channel: { ...backend, unreadCount: 0, muted: true }, rights: { manage: false, leave: false } })
+  it('without rights the menu has only copy link and mark all read; a read channel says so', () => {
+    header({ channel: { ...backend, unreadCount: 0 }, rights: { manage: false, leave: false } })
     openMenu()
-    expect(screen.getAllByRole('menuitem').map((el) => el.textContent)).toEqual(['Copy link', 'Mark all read', 'Unmute channel'])
+    expect(screen.getAllByRole('menuitem').map((el) => el.textContent)).toEqual(['Copy link', 'Mark all read'])
     expect(item('Mark all read').getAttribute('aria-disabled')).toBe('true')
   })
 
@@ -129,7 +126,48 @@ describe('ChannelHeader (spec 6.1)', () => {
     expect(screen.queryByRole('button', { name: /members$/ })).toBeNull()
     expect(screen.getByRole('button', { name: 'Star conversation' })).toBeTruthy()
     openMenu()
-    expect(screen.getAllByRole('menuitem').map((el) => el.textContent)).toEqual(['Copy link', 'Mark all read', 'Mute conversation'])
+    expect(screen.getAllByRole('menuitem').map((el) => el.textContent)).toEqual(['Copy link', 'Mark all read'])
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
+    fireEvent.click(screen.getByRole('button', { name: 'Conversation notifications' }))
+    expect(screen.getByRole('menuitem', { name: 'Mute conversation' })).toBeTruthy()
+  })
+})
+
+describe('the channel bell (spec 6.11)', () => {
+  const openBell = () => fireEvent.click(screen.getByRole('button', { name: 'Channel notifications' }))
+  const levels = () => screen.getAllByRole('menuitemradio').map((el) => [el.textContent, el.getAttribute('aria-checked')])
+
+  it('asks "Notify me about" with the three levels, the channel’s own checked, then Mute channel', () => {
+    header()
+    openBell()
+    const menu = screen.getByRole('menu', { name: 'Channel notifications' })
+    expect(menu.textContent).toMatch(/^Notify me about/)
+    expect(levels()).toEqual([['All new messages', 'false'], ['Mentions and keywords', 'true'], ['Nothing', 'false']])
+    expect(menu.querySelector('[role="separator"]')).toBeTruthy()
+    expect(screen.getAllByRole('menuitem').map((el) => el.textContent)).toEqual(['Mute channel'])
+  })
+
+  it('picking a level sets it and closes the menu; picking the current one changes nothing', () => {
+    const { onNotifyLevel } = header()
+    openBell()
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Nothing' }))
+    expect(onNotifyLevel).toHaveBeenCalledWith('none')
+    expect(screen.queryByRole('menu')).toBeNull()
+    openBell()
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Mentions and keywords' }))
+    expect(onNotifyLevel).toHaveBeenCalledOnce()
+  })
+
+  it('Mute channel mutes it; a muted channel offers Unmute', () => {
+    const { onMute } = header()
+    openBell()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Mute channel' }))
+    expect(onMute).toHaveBeenCalledWith(true)
+    cleanup()
+    const again = header({ channel: { ...backend, muted: true } })
+    openBell()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Unmute channel' }))
+    expect(again.onMute).toHaveBeenCalledWith(false)
   })
 })
 

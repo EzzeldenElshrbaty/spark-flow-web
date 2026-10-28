@@ -14,13 +14,23 @@ export function channelLabel(channel: Channel, users: User[], meId: string): str
   return others.map((id) => users.find((u) => u.id === id)?.name ?? 'Unknown person').join(', ')
 }
 
-/** Channels A–Z; DMs with the newest message first (a DM nobody has written in goes last). */
+/** The same list with muted channels and DMs moved to its end, each part in its order (spec 6.11). */
+export function mutedLast<T>(list: T[], isMuted: (item: T) => boolean): T[] {
+  return [...list.filter((item) => !isMuted(item)), ...list.filter(isMuted)]
+}
+
+const muted = (channel: Channel) => channel.muted
+
+/** Channels A–Z; DMs with the newest message first (a DM nobody has written in goes last); muted ones last in each. */
 export function sortChannels(channels: Channel[]): { channels: Channel[]; dms: Channel[] } {
   return {
-    channels: channels.filter((c) => c.kind === 'channel').sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')),
-    dms: channels
-      .filter((c) => c.kind === 'dm')
-      .sort((a, b) => (b.lastMessageAt ?? '').localeCompare(a.lastMessageAt ?? '')),
+    channels: mutedLast(channels.filter((c) => c.kind === 'channel').sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')), muted),
+    dms: mutedLast(
+      channels
+        .filter((c) => c.kind === 'dm')
+        .sort((a, b) => (b.lastMessageAt ?? '').localeCompare(a.lastMessageAt ?? '')),
+      muted,
+    ),
   }
 }
 
@@ -65,10 +75,12 @@ export function unreadMentions(items: MentionItem[] | undefined, workspaceId: st
 }
 
 /**
- * How a sidebar row shows a channel (spec §5.1): bold while it has unread messages, with a count of my mentions (every
- * unread message in a DM). A muted row is never bold and never has a count.
+ * How a sidebar row shows a channel (spec §5.1, 6.11): bold while it has unread messages, with a count by what it
+ * notifies me about: every unread message at All (a DM's default), my mentions at Mentions (a channel's), none at
+ * Nothing. A muted row is never bold and never has a count.
  */
 export function sidebarRowState(channel: Channel, mentions: number): { bold: boolean; count: number; muted: boolean } {
   if (channel.muted) return { bold: false, count: 0, muted: true }
-  return { bold: channel.unreadCount > 0, count: channel.kind === 'dm' ? channel.unreadCount : mentions, muted: false }
+  const count = channel.notifyLevel === 'all' ? channel.unreadCount : channel.notifyLevel === 'mentions' ? mentions : 0
+  return { bold: channel.unreadCount > 0, count, muted: false }
 }

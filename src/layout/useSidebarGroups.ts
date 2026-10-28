@@ -4,7 +4,7 @@ import { useActivity } from '@/api/inbox'
 import { useMyMentions } from '@/api/mentions'
 import { useProjects } from '@/api/tickets'
 import { useUsers } from '@/api/users'
-import { channelLabel, sidebarChannels, sortChannels, unreadMentions } from '@/lib/channels'
+import { channelLabel, mutedLast, sidebarChannels, sortChannels, unreadMentions } from '@/lib/channels'
 import { projectPeopleIds } from '@/lib/projectPeople'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { useRole } from '@/lib/useRole'
@@ -39,7 +39,7 @@ export function useSidebarGroups() {
 
   return {
     workspace,
-    starred: listed.filter((r) => r.channel.starred),
+    starred: mutedLast(listed.filter((r) => r.channel.starred), (r) => r.channel.muted),
     channels: listed.filter((r) => r.channel.kind === 'channel' && !r.channel.starred),
     dms: listed.filter((r) => r.channel.kind === 'dm' && !r.channel.starred),
     projects,

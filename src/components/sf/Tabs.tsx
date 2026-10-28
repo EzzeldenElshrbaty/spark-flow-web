@@ -21,7 +21,8 @@ export function Tabs<T extends string>({ label, tabs, tab, onChange, panelId }: 
     onChange(tabs[next].id)
   }
   return (
-    <div role="tablist" aria-label={label} className="flex h-sf-tabs flex-none items-stretch gap-1 overflow-x-auto border-b border-sf-line px-4">
+    // The row's line is an inset shadow, inside its box: the selected tab's rule covers it without the row scrolling.
+    <div role="tablist" aria-label={label} className="flex h-sf-tabs flex-none items-stretch gap-1 overflow-x-auto px-4 shadow-[inset_0_-1px_0_var(--line)]">
       {tabs.map((t, i) => {
         const selected = t.id === tab
         return (
@@ -39,8 +40,8 @@ export function Tabs<T extends string>({ label, tabs, tab, onChange, panelId }: 
             onKeyDown={(e) => onKeyDown(e, i)}
             className={clsx(
               'sf-focus sf-ui-medium relative inline-flex items-center gap-2 px-2 whitespace-nowrap hover:text-sf-text',
-              // The 2px accent rule sits on the row's bottom border (spec 6.1).
-              'after:absolute after:inset-x-2 after:-bottom-px after:h-0.5 after:rounded-t-[2px]',
+              // The 2px accent rule sits on the row's bottom line (spec 6.1).
+              'after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded-t-[2px]',
               selected ? 'text-sf-text after:bg-sf-accent-fill' : 'text-sf-text-secondary after:bg-transparent',
             )}
           >

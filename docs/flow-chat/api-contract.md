@@ -23,7 +23,7 @@ New fields on every message:
 | `lastReadSeq` | integer | My read marker. 0 for a channel I have never opened. |
 | `starred` | boolean | Mine only. |
 | `muted` | boolean | Mine only. |
-| `notifyLevel` | `"all" \| "mentions" \| "none"` | Mine only. No endpoint changes it yet (the bell's settings come later); send `"all"`. |
+| `notifyLevel` | `"all" \| "mentions" \| "none"` | Mine only. Without a row: `"mentions"` for a channel, `"all"` for a DM. Set with `PATCH /api/channels/:id/me` `{ notifyLevel }` (Phase 2 slice 3). |
 | `unreadCount` | integer | Messages with `seq > lastReadSeq`, sent by someone else, not deleted. |
 
 These map to the spec's `ChannelMember` row (`last_read_seq`, `starred`, `muted`, `notify_level`). A person with no row reads as the defaults above.
@@ -198,3 +198,59 @@ What a delete takes is kept only for the Undo window, then dropped (retention be
 - Edits, deletes, restores and reactions on it go to `/api/replies/:id`; through `/api/messages/:id` they answer `404`. `GET /api/messages/:id` returns it as the channel lists it, with no replies (`GET …/replies` is `[]`); replying to it or following it answers `400` "Threads are one level only.".
 - It counts as unread like any message from someone else, and a deleted one leaves the channel the way a deleted message without replies does.
 - `replyReceived` carries the reply with `alsoInChannel`; the channel's list refreshes on it as it does for any reply (spec §8 `message.created` and `thread.updated`).
+
+## Phase 2 · Slice 3: Activity and channel notifications (spec 6.11, 6.12)
+
+### Notification level
+
+| Call | Route | Body | Returns |
+|---|---|---|---|
+| Set the level | `PATCH /api/channels/:id/me` | `{ notifyLevel: "all" \| "mentions" \| "none" }` | The channel as I see it. |
+
+- Mine only, like star and mute, with the same read access rule. Any other value: `400` "Choose All new messages, Mentions or Nothing.".
+- The defaults (a person with no row): `"mentions"` for a channel, `"all"` for a DM. Rows written before levels could be chosen hold `"all"` for channels; read them as `"mentions"` (the mock migrates them).
+- It sends `read.marker_updated` `{ userId, channelId }` like star and mute.
+- What a level does in the sidebar (client side, spec 5.1): All counts every unread message, Mentions counts my mentions, Nothing shows no count; the row is still bold with unread. Muted wins over the level: never bold, no count, and the row goes last in its group.
+- A channel at Nothing is left out of Activity and of the bell's mentions (`GET /api/mentions/me`). Its stored items are kept, so they show again when the level changes back.
+- Keywords, desktop, mobile and email delivery, and Do Not Disturb wait for Preferences.
+
+### Activity item
+
+| Field | Type | Rule |
+|---|---|---|
+| `id` | string | For a mention, the mention's id (the bell's); else the stored item's. |
+| `kind` | `"mention" \| "reaction" \| "thread"` | |
+| `read` | boolean | A mention's read state is the bell's (`mentionReads`): marking it read in one marks it in the other. |
+| `createdAt` | ISO time | When it happened. |
+| `workspaceId` | string | |
+| `actorId`, `actorName` | string | Who mentioned me, reacted, or replied. |
+| `channelId` | string \| null | `null` only for a mention in a task comment. |
+| `messageId` | string \| null | The message, or for a reply its thread's root. |
+| `replyId` | string \| null | The reply, when it happened in a thread. |
+| `taskKey`, `projectId` | string \| null | A comment mention's task and project. |
+| `excerpt` | string | The text now, mentions as `@Name`, at most 120 characters. |
+| `emoji` | string \| null | A reaction's emoji. |
+
+### Routes
+
+| Call | Route | Body | Returns |
+|---|---|---|---|
+| My Activity | `GET /api/workspaces/:id/activity` | — | Up to 100 items in that workspace, newest first. |
+| Mark read | `POST /api/workspaces/:id/activity/read` | `{ ids? }` | `204`. Without `ids`: every item the list would return. |
+
+What the list holds, for the signed-in person:
+
+- **Mentions** of me, as `GET /api/mentions/me` has them (spec 6.12 Mentions).
+- **Reactions** to my messages and replies (spec §7 `Notification`): one item per person and emoji. Taking the reaction back removes the item; my own reactions make none.
+- **Thread replies** in threads I follow (the following rules of slice 2): one item per reply, for every follower except the replier, the people the reply mentions by name (they get the mention instead) and anyone who can't read the channel.
+- Items whose message or reply is deleted are left out, as are channels at Nothing.
+- Reading a message in its channel doesn't mark its Activity item read; opening the item (or Mark all read) does.
+
+### Real-time event
+
+| Client handler | Wire event | Payload |
+|---|---|---|
+| `onNotificationCreated` | `notification.created` | `{ userId }`, sent only to `userId`'s own connections when a reaction or thread item is stored for them. |
+
+The client refreshes Activity on it, and on `message.created`, `message.updated`, a new reply, a comment and `read.marker_updated` (mentions come and go with messages).
+

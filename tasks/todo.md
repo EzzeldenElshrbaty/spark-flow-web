@@ -519,11 +519,20 @@ Part B — the Activity page
 - [x] The sidebar's Activity link opens it, with the count of unread items in the workspace.
 
 Part C — the channel bell menu
-- [ ] Channel header bell → "Notify me about": All new messages / Mentions and keywords / Nothing (checked), — Mute channel. Mute leaves the ⋮ menu.
-- [ ] Sidebar row by level: All → unread count; Mentions → my mentions (today); Nothing → no count; muted → no bold, no count, last in its group.
-- [ ] Contract: the routes, fields and event above.
-- [ ] Tests first for each step; axe on the page and the menu.
+- [x] Channel header bell → "Notify me about": All new messages / Mentions and keywords / Nothing (checked), — Mute channel. Mute leaves the ⋮ menu.
+- [x] Sidebar row by level: All → unread count; Mentions → my mentions (today); Nothing → no count; muted → no bold, no count, last in its group.
+- [x] Contract: the routes, fields and event above.
+- [x] Tests first for each step; axe on the page and the menu.
 
 Rulings approved with the plan: one Activity route (mentions worked out, reactions and thread replies stored, in the mock); the top-bar bell stays mentions only; keywords, desktop / mobile / email and Do Not Disturb wait for Preferences; reading a message in its channel doesn't mark its Activity item read; Reminders stays hidden until Phase 3.
 
-Rulings while building: the Api namespace is `inbox`, since `api.activity` is task and project history (routes unchanged); a new message also refreshes Activity, as it can mention me; a row opens a message on it in its channel and a reply in its thread (the bell opens every mention's thread, as before); Mark all read on a tab other than All marks that tab's unread rows; a DM is "a direct message" in the kind line; the tab row became the sf `Tabs` primitive (the channel's tabs use it); the Activity error is `text-sf-accent`, since `text-sf-error` (red-600) fails contrast in dark.
+Rulings while building: the Api namespace is `inbox`, since `api.activity` is task and project history (routes unchanged); a new message also refreshes Activity, as it can mention me; a row opens a message on it in its channel and a reply in its thread (the bell opens every mention's thread, as before); Mark all read on a tab other than All marks that tab's unread rows; a DM is "a direct message" in the kind line; the tab row became the sf `Tabs` primitive (the channel's tabs use it); the Activity error is `text-sf-accent`, since `text-sf-error` (red-600) fails contrast in dark; the bell is "Channel notifications" ("Conversation notifications" in a DM), with its icon off when muted or at Nothing; picking the level already set sends nothing; at Nothing a row stays bold with unread; muted rows go last in Starred too; the tab row's line became an inset shadow, as the accent rule 1px below it made the row scroll (a stray scrollbar on phones, the channel tabs too).
+
+## Review
+
+- Part A (c96b81f): DB v12 with stored reaction and thread items, the Activity feed and routes, levels with their defaults and `PATCH …/me { notifyLevel }`, `notificationCreated`, hooks and live refresh.
+- Part B (2638101): `/w/:ws/activity` with tabs, Unread only, Mark all read, unread then Earlier, row links that mark read; the sidebar row counts unread Activity; the sf `Tabs` primitive.
+- Part C: the channel bell menu (levels and Mute; Mute left the ⋮ menu), sidebar counts by level, muted rows last, the contract section, and the tab row's stray scrollbar.
+- Verified: 1101 tests (unit and browser, axe in light and dark for the view and the bell, a 390px fit check), tsc, lint, `build:prototype`; in the app, as Nour a reaction and a thread reply reached Youssef's Activity (count 2), opening a row jumped to the message and marked it read, Nothing hid #general's mention, Mute moved #general last, Unread only and Mark all read ended at "You’re all caught up.", at 375px in light and dark.
+- Not pushed.
+
