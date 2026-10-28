@@ -227,7 +227,7 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
                 aria-label={placeholder}
                 aria-placeholder={placeholder}
                 ariaAutoComplete="list"
-                placeholder={<span className="sf-body pointer-events-none absolute start-3 top-2 text-sf-text-muted">{placeholder}</span>}
+                placeholder={<span className="sf-body pointer-events-none absolute start-3 top-2 text-sf-text-muted max-sm:text-[16px]">{placeholder}</span>}
                 className="sf-body max-h-[40vh] min-h-[38px] overflow-auto px-3 py-2 text-sf-text outline-none [&>*+*]:mt-1"
               />
             }
