@@ -394,3 +394,16 @@ describe('pasting from an office app (slice 6 review)', () => {
     expect(onAdd).not.toHaveBeenCalled()
   })
 })
+
+describe('editing a message with files (slice 6 review)', () => {
+  it('its text can be cleared and saved, as files alone can be sent', async () => {
+    const { editor, onSend } = await ready({ mode: 'edit', initialBody: parseBody('Here'), allowEmpty: true, onCancel: vi.fn() })
+    await userEvent.click(editor)
+    await userEvent.keyboard('{End}{Backspace}{Backspace}{Backspace}{Backspace}')
+    await vi.waitFor(() => expect(editor.textContent).toBe(''))
+    const save = screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement
+    expect(save.disabled).toBe(false)
+    await userEvent.click(save)
+    expect(onSend).toHaveBeenCalledOnce()
+  })
+})

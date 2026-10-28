@@ -68,12 +68,16 @@ function placesOf(data: DbData, fileId: string): Omit<FileDetails, 'file'> {
   return { sharedIn, taskKeys: [...new Set(taskKeys)], projectIds: [...new Set(projectIds)] }
 }
 
+/** Whether a file was ever sent: in a message or a reply, or in one deleted within the Undo window. */
+const everSent = (data: DbData, fileId: string) =>
+  [...data.messages, ...data.replies, ...data.trash.map((t) => t.snapshot)].some((row) => row.attachments?.some((a) => a.id === fileId))
+
 /** A file I may see somewhere (or uploaded and haven't sent yet), not deleted: anything else is not found. */
 function visibleFile(data: DbData, fileId: string): Attachment {
   const file = data.attachments.find((a) => a.id === fileId)
   if (!file || file.deletedAt) throw notFound('File', fileId)
   const places = placesOf(data, fileId)
-  const unsent = file.uploadedBy === data.currentUserId && !data.messages.some((m) => m.attachments.some((a) => a.id === fileId))
+  const unsent = file.uploadedBy === data.currentUserId && !everSent(data, fileId)
   if (!places.sharedIn.length && !places.taskKeys.length && !places.projectIds.length && !unsent) throw notFound('File', fileId)
   return file
 }
@@ -128,7 +132,7 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
       if (!blob || !file || file.deletedAt) throw notFound('File', id)
       // A chat file opens for whoever reads a channel it's in, or uploaded it and hasn't sent it yet.
       const places = placesOf(data, id)
-      const unsent = file.uploadedBy === data.currentUserId && !data.messages.some((m) => m.attachments.some((a) => a.id === id))
+      const unsent = file.uploadedBy === data.currentUserId && !everSent(data, id)
       if (!places.sharedIn.length && !unsent) {
         // Otherwise it's a project's: a project file, or a comment's attachment, for people on the project.
         const projectId = data.projectFiles.find((f) => f.attachmentId === id)?.projectId ?? data.comments.find((c) => c.attachmentIds.includes(id))?.projectId
@@ -137,6 +141,7 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
         requireCan(data, 'collab.post', { ...findProject(data, projectId), archivedAt: null })
       }
       if (file.scanStatus === 'blocked') throw badRequest('This file was blocked.')
+      if (file.scanStatus === 'pending') throw badRequest('This file is still being checked.')
       return URL.createObjectURL(blob)
     },
     async list(projectId) {

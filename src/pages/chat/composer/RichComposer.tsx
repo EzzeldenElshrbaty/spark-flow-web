@@ -102,6 +102,7 @@ export function RichComposer({
   autoFocus = false,
   showFormatting = true,
   files,
+  allowEmpty = false,
 }: {
   /** send: the channel's box; edit: a message's body being edited in place, with Cancel and Save (spec 6.3). */
   mode?: 'send' | 'edit'
@@ -123,6 +124,8 @@ export function RichComposer({
   showFormatting?: boolean
   /** Files: the tray, + Attach (⌘/Ctrl+U), paste and drop. Without it the box is text only (an edit). */
   files?: ComposerFiles
+  /** An empty box may still send or save (an edit of a message that has files). */
+  allowEmpty?: boolean
 }) {
   const config = {
     namespace: 'flow-composer',
@@ -149,12 +152,13 @@ export function RichComposer({
         autoFocus={autoFocus}
         showFormatting={showFormatting}
         files={files}
+        allowEmpty={allowEmpty}
       />
     </LexicalComposer>
   )
 }
 
-function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEditLast, onDraft, onTyping, error, directory, autoFocus, showFormatting = true, files }: Parameters<typeof RichComposer>[0]) {
+function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEditLast, onDraft, onTyping, error, directory, autoFocus, showFormatting = true, files, allowEmpty = false }: Parameters<typeof RichComposer>[0]) {
   const editing = mode === 'edit'
   const [editor] = useLexicalComposerContext()
   const boxRef = useRef<HTMLDivElement>(null)
@@ -194,7 +198,7 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
   const empty = body.length === 0
   const over = length > MAX_LENGTH
   // With files ready an empty box sends them alone; while any go up (or failed), Send waits (spec 6.9).
-  const canSend = (!empty || (files?.ready ?? 0) > 0) && !over && !pending && !files?.waiting
+  const canSend = (!empty || allowEmpty || (files?.ready ?? 0) > 0) && !over && !pending && !files?.waiting
 
   const latest = useRef({ canSend, body })
   latest.current = { canSend, body }

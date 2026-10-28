@@ -198,7 +198,7 @@ export function ChannelMessage({
     body = (
       <>
         <MessageBody body={message.body} ctx={ctx} muted={sendState === 'failed'} after={message.editedAt && <span className="sf-meta text-sf-text-muted">(edited)</span>} />
-        <MessageFiles attachments={message.attachments} link={permalink} message={message} />
+        <MessageFiles attachments={message.attachments} link={permalink} message={message} pending={Boolean(sendState)} />
         {root && <LinkedTasks message={root} ctx={ctx} />}
         {unfurl && <TaskUnfurl task={unfurl} users={users} />}
         {link && <LinkPreviewCard url={link} />}
@@ -338,6 +338,8 @@ function EditBox({ message, target, ctx, onDone }: { message: ChatMessage | Thre
           directory={directory}
           error={edit.error}
           onCancel={onDone}
+          // A message with a file may lose its text, as files alone can be sent.
+          allowEmpty={message.attachments.some((a) => !a.deletedAt)}
           onSend={(body) => edit.mutateAsync({ target, content: bodyText(body), body }).then(onDone)}
         />
       </Suspense>

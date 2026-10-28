@@ -19,6 +19,8 @@ export type FileActions = {
   remove: (file: Attachment) => void
   /** In a project's channel, for whoever manages its tasks. */
   createTask?: (file: Attachment, message: ChatMessage) => void
+  /** The channel (or its project) is archived: its files can't be edited or deleted until it's restored. */
+  frozen?: boolean
 }
 
 export const FileActionsContext = createContext<FileActions | null>(null)
@@ -39,6 +41,7 @@ export function FileActionsProvider({
   people,
   onDetails,
   onCreateTask,
+  frozen = false,
   children,
 }: {
   workspaceId: string
@@ -46,6 +49,7 @@ export function FileActionsProvider({
   people: Pick<User, 'id' | 'name'>[]
   onDetails: (file: Attachment) => void
   onCreateTask?: (file: Attachment, message: ChatMessage) => void
+  frozen?: boolean
   children: ReactNode
 }) {
   const check = usePermission()
@@ -58,6 +62,7 @@ export function FileActionsProvider({
     edit: (file) => setOpen({ kind: 'edit', file }),
     remove: (file) => setOpen({ kind: 'delete', file }),
     createTask: onCreateTask,
+    frozen,
   }
   return (
     <FileActionsContext.Provider value={value}>

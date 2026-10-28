@@ -304,7 +304,8 @@ describe.each([
     )
     await new Promise((r) => setTimeout(r, 300))
     expect(await violations()).toEqual([])
-    await userEvent.click(screen.getByRole('button', { name: 'More file actions' }))
+    // The clean file's: the one still being checked has its own (Details and Delete file only).
+    await userEvent.click(screen.getAllByRole('button', { name: 'More file actions' })[0])
     expect(screen.getByRole('menuitem', { name: 'Delete file' })).toBeTruthy()
     expect(await violations()).toEqual([])
     await userEvent.keyboard('{Escape}')

@@ -773,7 +773,24 @@ Fixed, test first:
 - [x] I5: "Delete message?" said "Its files are deleted with it." (false since files can be in several places) and asked when every file was deleted already → it asks only for files not deleted, and says "Its files go from this message but stay wherever else they're shared."; contract updated.
 - [x] M5 → Important: on a screen without hover the pill is always shown, and everywhere it stays while its menu is open.
 
-Deferred minors:
+Minors, fixed afterwards on request (test first; 8 of 13 before the spec audit paused fixing):
+- [x] Undo of a deleted message brings back the file as it is now (renamed or deleted meanwhile).
+- [x] Create task from file only where a task can come from the message (not a reply's copy); unsent rows offer only Download.
+- [x] Edit file details and Delete file aren't offered in an archived channel or project (`frozen`).
+- [x] The type label is named "PDF · <title>" and is 44px wide on a phone.
+- [x] The mock refuses to open a file still being checked (400 "This file is still being checked.").
+- [x] A file sent only in a thread reply (or in a message deleted within Undo) counts as sent, so its uploader loses it with the channel.
+- [x] A message with a file can have its text edited away (mock and the edit box's Save).
+- [x] A blocked or still-checking file keeps Details and, for whoever may, Delete file.
+
+Parked when the spec audit came in (not fixed yet):
+- After Details or a ⋯ item by keyboard, focus stays on the card and its tooltip over the panel; after Delete file, focus can be lost.
+- The thread composer drops files added while a reply is still sending.
+- The File details panel takes about 7s to say a file is gone (its query retries on 404).
+- The panel's Open ignores the office preview; the viewer fetches a preview with cookies.
+- Upload progress re-renders the whole channel page.
+
+Earlier list, for reference:
 - Undo of a deleted message brings back stale file copies (a file deleted or renamed meanwhile).
 - After Details or a ⋯ item by keyboard, focus stays on the card and its tooltip over the panel; after Delete file, focus can be lost (your observation a).
 - Create task from file is offered on a reply's copy in the channel; every file action is offered on unsent rows.

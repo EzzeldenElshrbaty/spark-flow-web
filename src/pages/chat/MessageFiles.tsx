@@ -24,6 +24,7 @@ import { useNoHover, usePhone } from '@/components/sf/usePhone'
 import { FileViewer } from '@/components/ui/FileViewer'
 import { downloadUrl, fileSubline, previewOf } from '@/lib/fileTypes'
 import { useFileActions } from '@/pages/chat/files/FileActions'
+import { canMakeTask } from '@/pages/chat/taskDraft'
 
 const COPIED_MS = 2000
 
@@ -46,14 +47,34 @@ const typeLabel = (a: Attachment) => (a.name.includes('.') ? a.name.split('.').p
  * link to file, Edit file details and Delete file, each as I may. It shows on hover and whenever focus is inside, so
  * keyboard users reach it; on a phone, where there's no hover, More is always there and holds everything.
  */
-function FileActionsPill({ attachment, url, link, message }: { attachment: Attachment; url: string | null; link?: string; message?: ChatMessage | ThreadReply }) {
-  const actions = useFileActions()
+function FileActionsPill({
+  attachment,
+  url,
+  link,
+  message,
+  pending = false,
+}: {
+  attachment: Attachment
+  url: string | null
+  link?: string
+  message?: ChatMessage | ThreadReply
+  /** The message is still on its way: only Download (nothing else has anything to act on yet). */
+  pending?: boolean
+}) {
+  const offered = useFileActions()
+  const actions = pending ? null : offered
+  // A file not checked clean keeps Details and Delete file only: nothing that opens or spreads it.
+  const clean = attachment.scanStatus === 'clean'
+  const change = Boolean(actions && !actions.frozen)
   const phone = usePhone()
   const noHover = useNoHover()
   // Where there's no hover (a phone, a tablet) the pill is always there; elsewhere on hover or focus, and while its
   // menu is open.
   const always = phone || noHover
   const manage = actions?.mayManage(attachment) ?? false
+  const share = actions && manage && clean
+  const task = actions?.createTask && clean && message && 'threadCount' in message && canMakeTask(message)
+  const copy = Boolean(link) && !pending
   const [said, setSaid] = useState<'' | 'Link copied' | "Couldn't copy the link">('')
   useEffect(() => {
     if (!said) return
@@ -74,18 +95,18 @@ function FileActionsPill({ attachment, url, link, message }: { attachment: Attac
           always ? 'opacity-100' : 'opacity-0 group-hover/file:opacity-100 focus-within:opacity-100 has-[[aria-expanded=true]]:opacity-100',
         )}
       >
-        {!phone && <IconButton label="Download" icon={IconDownload} size="sm" disabled={!url} onClick={save} />}
-        {!phone && actions && manage && <IconButton label="Share" icon={IconShare3} size="sm" onClick={() => actions.share(attachment)} />}
+        {!phone && clean && <IconButton label="Download" icon={IconDownload} size="sm" disabled={!url} onClick={save} />}
+        {!phone && share && <IconButton label="Share" icon={IconShare3} size="sm" onClick={() => actions!.share(attachment)} />}
         {!phone && actions && <IconButton label="Details" icon={IconInfoCircle} size="sm" onClick={() => actions.details(attachment)} />}
-        {(link || actions) && (
+        {(copy || actions) && (
           <Menu label="File actions" trigger={(props) => <IconButton label="More file actions" icon={IconDots} size="sm" className="max-md:relative max-md:after:absolute max-md:after:-inset-2" {...props} />}>
-            {phone && (
+            {phone && clean && (
               <MenuItem icon={IconDownload} disabled={!url} onSelect={save}>
                 Download
               </MenuItem>
             )}
-            {phone && actions && manage && (
-              <MenuItem icon={IconShare3} onSelect={() => actions.share(attachment)}>
+            {phone && share && (
+              <MenuItem icon={IconShare3} onSelect={() => actions!.share(attachment)}>
                 Share
               </MenuItem>
             )}
@@ -94,17 +115,17 @@ function FileActionsPill({ attachment, url, link, message }: { attachment: Attac
                 Details
               </MenuItem>
             )}
-            {/* A task starts from a channel message, not a thread reply. */}
-            {actions?.createTask && message && 'threadCount' in message && (
-              <MenuItem icon={IconListCheck} onSelect={() => actions.createTask!(attachment, message)}>
+            {/* A task starts from a channel message, not a thread reply or its copy in the channel. */}
+            {task && (
+              <MenuItem icon={IconListCheck} onSelect={() => actions!.createTask!(attachment, message as ChatMessage)}>
                 Create task from file
               </MenuItem>
             )}
-            {link && (
+            {copy && (
               <MenuItem
                 icon={IconLink}
                 onSelect={() => {
-                  navigator.clipboard.writeText(link).then(
+                  navigator.clipboard.writeText(link!).then(
                     () => setSaid('Link copied'),
                     () => setSaid("Couldn't copy the link"),
                   )
@@ -113,12 +134,16 @@ function FileActionsPill({ attachment, url, link, message }: { attachment: Attac
                 Copy link to file
               </MenuItem>
             )}
-            {actions && manage && (
+            {actions && manage && change && clean && (
               <>
                 <MenuSeparator />
                 <MenuItem icon={IconPencil} onSelect={() => actions.edit(attachment)}>
                   Edit file details
                 </MenuItem>
+              </>
+            )}
+            {actions && manage && change && (
+              <>
                 <MenuSeparator />
                 <MenuItem icon={IconTrash} danger onSelect={() => actions.remove(attachment)}>
                   Delete file
@@ -137,10 +162,10 @@ const cardIcon = (a: Attachment) => {
   return preview === 'pdf' ? IconFileTypePdf : preview === 'image' ? IconPhoto : IconFileText
 }
 
-/** A file not yet checked clean: its card says so, and nothing opens it. */
-function Unchecked({ attachment }: { attachment: Attachment }) {
+/** A file not yet checked clean: its card says so, and nothing opens it; Details and Delete file stay. */
+function Unchecked({ attachment, link, message, pending }: { attachment: Attachment; link?: string; message?: ChatMessage | ThreadReply; pending?: boolean }) {
   return (
-    <div className="flex w-[380px] max-w-full items-center gap-3 rounded-sf-lg border border-sf-line bg-sf-surface p-3">
+    <div className="group/file relative flex w-[380px] max-w-full items-center gap-3 rounded-sf-lg border border-sf-line bg-sf-surface p-3">
       <span aria-hidden className="grid size-10 flex-none place-items-center rounded-sf-md border border-sf-line bg-sf-surface-sunken text-sf-text-secondary">
         <Icon icon={cardIcon(attachment)} />
       </span>
@@ -150,11 +175,12 @@ function Unchecked({ attachment }: { attachment: Attachment }) {
           {attachment.scanStatus === 'blocked' ? 'This file was blocked.' : 'Checking for viruses…'}
         </span>
       </span>
+      <FileActionsPill attachment={attachment} url={null} link={link} message={message} pending={pending} />
     </div>
   )
 }
 
-function Live({ attachment, link, message }: { attachment: Attachment; link?: string; message?: ChatMessage | ThreadReply }) {
+function Live({ attachment, link, message, pending }: { attachment: Attachment; link?: string; message?: ChatMessage | ThreadReply; pending?: boolean }) {
   const clean = attachment.scanStatus === 'clean'
   const { url, failed } = useFileUrl(clean ? attachment.id : null)
   const [shown, setShown] = useState(true)
@@ -172,20 +198,21 @@ function Live({ attachment, link, message }: { attachment: Attachment; link?: st
       : url && { name: attachment.name, url }
   const viewer = viewing && viewed && <FileViewer files={[{ ...viewed, sizeKb: Math.round(attachment.size / 1024) }]} onClose={() => setViewing(false)} />
 
-  // The type label above the card folds it away and back (spec 6.9 "PDF ▾").
+  // The type label above the card folds it away and back (spec 6.9 "PDF ▾"); its name says which file.
   const label = (
     <button
       type="button"
       aria-expanded={shown}
+      aria-label={`${typeLabel(attachment)} · ${attachment.title}`}
       onClick={() => setShown((s) => !s)}
-      className="sf-focus inline-flex w-fit items-center gap-0.5 rounded-sf-sm font-sf text-[12px]/[16px] text-sf-text-muted hover:text-sf-text-secondary max-md:min-h-11"
+      className="sf-focus inline-flex w-fit items-center gap-0.5 rounded-sf-sm font-sf text-[12px]/[16px] text-sf-text-muted hover:text-sf-text-secondary max-md:min-h-11 max-md:min-w-11"
     >
       {typeLabel(attachment)}
       <Icon icon={shown ? IconChevronDown : IconChevronRight} size={14} />
     </button>
   )
   let body
-  if (!clean) body = <Unchecked attachment={attachment} />
+  if (!clean) body = <Unchecked attachment={attachment} link={link} message={message} pending={pending} />
   else if (failed) body = <p className="sf-small text-sf-error">{attachment.title} couldn't be opened.</p>
   else if (kind === 'image')
     body = (
@@ -193,14 +220,14 @@ function Live({ attachment, link, message }: { attachment: Attachment; link?: st
         <button type="button" onClick={open} className="sf-focus block overflow-hidden rounded-sf-lg border border-sf-line" aria-label={`Open ${attachment.title}`}>
           {url ? <img src={url} alt={attachment.title} className="max-h-80 max-w-[min(420px,100%)] object-contain" /> : <span className="block h-32 w-48 animate-pulse bg-sf-surface-hover" />}
         </button>
-        <FileActionsPill attachment={attachment} url={url} link={link} message={message} />
+        <FileActionsPill attachment={attachment} url={url} link={link} message={message} pending={pending} />
       </div>
     )
   else if (kind === 'video')
     body = url ? (
       <div className="group/file relative w-fit">
         <video src={url} controls preload="metadata" className="max-h-80 max-w-[min(420px,100%)] rounded-sf-lg border border-sf-line" aria-label={attachment.title} />
-        <FileActionsPill attachment={attachment} url={url} link={link} message={message} />
+        <FileActionsPill attachment={attachment} url={url} link={link} message={message} pending={pending} />
       </div>
     ) : (
       <span className="block h-32 w-56 animate-pulse rounded-sf-lg bg-sf-surface-hover" />
@@ -224,7 +251,7 @@ function Live({ attachment, link, message }: { attachment: Attachment; link?: st
             <span className="sf-small block text-sf-text-secondary">{subline(attachment)}</span>
           </span>
         </button>
-        <FileActionsPill attachment={attachment} url={url} link={link} message={message} />
+        <FileActionsPill attachment={attachment} url={url} link={link} message={message} pending={pending} />
       </div>
     )
   return (
@@ -251,11 +278,22 @@ function Deleted() {
  * as 380px cards; each with its action pill. `link` is the permalink Copy link to file gives (the message the file
  * came in); `message` is what Create task from file starts from.
  */
-export function MessageFiles({ attachments, link, message }: { attachments: Attachment[]; link?: string; message?: ChatMessage | ThreadReply }) {
+export function MessageFiles({
+  attachments,
+  link,
+  message,
+  pending = false,
+}: {
+  attachments: Attachment[]
+  link?: string
+  message?: ChatMessage | ThreadReply
+  /** The message is still on its way (or failed to send): only Download. */
+  pending?: boolean
+}) {
   if (attachments.length === 0) return null
   return (
     <div className="mt-1 flex flex-wrap items-start gap-2">
-      {attachments.map((a) => (a.deletedAt ? <Deleted key={a.id} /> : <Live key={a.id} attachment={a} link={link} message={message} />))}
+      {attachments.map((a) => (a.deletedAt ? <Deleted key={a.id} /> : <Live key={a.id} attachment={a} link={link} message={message} pending={pending} />))}
     </div>
   )
 }

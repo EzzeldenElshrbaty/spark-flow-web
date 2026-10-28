@@ -71,7 +71,7 @@ describe('the file card, its pill and menu (spec 6.9, slice 6)', () => {
 
   it('shows its title, and a type label that folds the card away and back', () => {
     render(<MessageFiles attachments={[{ ...pdf, title: 'Release scope' }]} link={link} />)
-    const label = screen.getByRole('button', { name: 'PDF' })
+    const label = screen.getByRole('button', { name: 'PDF · Release scope' })
     expect(label.getAttribute('aria-expanded')).toBe('true')
     expect(screen.getByRole('button', { name: /^Open Release scope/ }).textContent).toContain('Release scope')
     fireEvent.click(label)
@@ -156,5 +156,54 @@ describe('the file card after the slice 6 review', () => {
     cleanup()
     render(<MessageFiles attachments={[pdf]} link={link} />)
     expect(screen.getByRole('group', { name: 'Scope v3.pdf actions' }).className).toContain('has-[[aria-expanded=true]]:opacity-100')
+  })
+})
+
+describe('the file card, slice 6 review minors', () => {
+  const message = { id: 'm1', channelId: 'c-p-nex', content: 'Scope', attachments: [pdf], threadCount: 0 } as unknown as ChatMessage
+  const actions = (over: Partial<FileActions> = {}): FileActions => ({ mayManage: () => true, share: vi.fn(), details: vi.fn(), edit: vi.fn(), remove: vi.fn(), createTask: vi.fn(), ...over })
+  const show = (value: FileActions, props: Partial<Parameters<typeof MessageFiles>[0]> = {}) =>
+    render(
+      <FileActionsContext.Provider value={value}>
+        <MessageFiles attachments={[pdf]} link={link} message={message} {...props} />
+      </FileActionsContext.Provider>,
+    )
+  const menu = () => {
+    fireEvent.click(screen.getByRole('button', { name: 'More file actions' }))
+    return screen.getAllByRole('menuitem').map((i) => i.textContent)
+  }
+
+  it('Create task from file only where a task can come from the message (not a reply’s copy in the channel)', () => {
+    show(actions(), { message: { ...message, broadcast: { rootId: 'm0', rootText: '' } } as ChatMessage })
+    expect(menu()).not.toContain('Create task from file')
+  })
+
+  it('a message still on its way offers only Download for its files', () => {
+    show(actions(), { pending: true })
+    const pill = screen.getByRole('group', { name: 'Scope v3.pdf actions' })
+    expect([...pill.querySelectorAll('button')].map((b) => b.getAttribute('aria-label'))).toEqual(['Download'])
+  })
+
+  it('in an archived channel or project, Edit file details and Delete file aren’t offered; Share still is', () => {
+    show(actions({ frozen: true }))
+    expect(screen.getByRole('button', { name: 'Share' })).toBeTruthy()
+    expect(menu()).toEqual(['Create task from file', 'Copy link to file'])
+  })
+
+  it('the type label says which file, and is wide enough to tap on a phone', () => {
+    render(<MessageFiles attachments={[pdf]} link={link} />)
+    const label = screen.getByRole('button', { name: 'PDF · Scope v3.pdf' })
+    expect(label.className).toContain('max-md:min-w-11')
+  })
+
+  it('a blocked file keeps Details and, for whoever may, Delete file; nothing that opens or spreads it', () => {
+    const value = actions()
+    show(value, { attachments: [{ ...pdf, scanStatus: 'blocked' }] })
+    expect(screen.getByText('This file was blocked.')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Download' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Share' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Details' }))
+    expect(value.details).toHaveBeenCalled()
+    expect(menu()).toEqual(['Copy link to file', 'Delete file'])
   })
 })

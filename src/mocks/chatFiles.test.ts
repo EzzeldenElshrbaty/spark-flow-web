@@ -169,3 +169,45 @@ describe('security review of part A', () => {
     await expect(api.files.update(f.id, { title: 'New' })).rejects.toMatchObject({ status: 400, detail: 'This channel is archived.' })
   })
 })
+
+describe('slice 6 review minors (mock)', () => {
+  it('Undo of a deleted message brings back the file as it is now, not as it was', async () => {
+    const f = await upload('scope.pdf')
+    const a = await api.chat.send('c-backend', 'A', undefined, undefined, [f.id])
+    await api.files.share(f.id, 'c-general')
+    await api.chat.remove({ kind: 'message', id: a.id })
+    await api.files.update(f.id, { title: 'Release scope' })
+    await api.files.delete(f.id)
+    await api.chat.restore({ kind: 'message', id: a.id })
+    expect((await api.chat.message(a.id)).attachments[0]).toMatchObject({ title: 'Release scope', deletedAt: expect.any(String) })
+  })
+
+  it('a file still being checked can’t be opened', async () => {
+    const f = await upload('scope.pdf')
+    await api.chat.send('c-backend', 'A', undefined, undefined, [f.id])
+    await db.update((data) => {
+      data.attachments.find((x) => x.id === f.id)!.scanStatus = 'pending'
+    })
+    await expect(api.files.url(f.id)).rejects.toMatchObject({ status: 400, detail: 'This file is still being checked.' })
+  })
+
+  it('a file sent in a thread reply is sent: its uploader loses it with the channel', async () => {
+    await api.users.viewAs('u-2')
+    const root = await api.chat.send('c-release', 'Root')
+    const f = await upload('notes.pdf', 'c-release')
+    await api.chat.reply(root.id, 'Notes', undefined, false, [f.id])
+    await api.users.viewAs('u-1')
+    await api.chat.removeMember('c-release', 'u-2')
+    await api.users.viewAs('u-2')
+    await expect(api.files.url(f.id)).rejects.toMatchObject({ status: 404 })
+    await expect(api.files.details(f.id)).rejects.toMatchObject({ status: 404 })
+  })
+
+  it('a message with a file can have its text edited away; one without can’t', async () => {
+    const f = await upload('scope.pdf')
+    const withFile = await api.chat.send('c-backend', 'Here', undefined, undefined, [f.id])
+    expect((await api.chat.edit({ kind: 'message', id: withFile.id }, '', [])).content).toBe('')
+    const plain = await api.chat.send('c-backend', 'Plain')
+    await expect(api.chat.edit({ kind: 'message', id: plain.id }, '', [])).rejects.toMatchObject({ status: 400, detail: 'Write a message first.' })
+  })
+})

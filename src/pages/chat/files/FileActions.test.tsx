@@ -25,11 +25,12 @@ function Buttons({ file = pdf }: { file?: Attachment }) {
       <button onClick={() => actions?.remove(file)}>delete</button>
       <button onClick={() => actions?.share(file)}>share</button>
       <span data-testid="manage">{String(actions?.mayManage(file))}</span>
+      <span data-testid="frozen">{String(actions?.frozen)}</span>
     </>
   )
 }
 
-function mount() {
+function mount(frozen = false) {
   vi.spyOn(api.chat, 'channels').mockResolvedValue([
     channel('c-backend'),
     channel('c-general'),
@@ -40,7 +41,7 @@ function mount() {
   ])
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <FileActionsProvider workspaceId="ws-eng" meId="u-1" people={people} onDetails={vi.fn()}>
+      <FileActionsProvider workspaceId="ws-eng" meId="u-1" people={people} onDetails={vi.fn()} frozen={frozen}>
         <Buttons />
       </FileActionsProvider>
     </QueryClientProvider>,
@@ -98,5 +99,15 @@ describe('file actions: Edit file details, Delete file and Share (spec 6.9, slic
     await act(async () => fireEvent.click(dialog.getByRole('button', { name: 'Share' })))
     expect(share).toHaveBeenCalledWith('a1', 'c-general', 'For everyone')
     expect(screen.queryByRole('dialog')).toBeNull()
+  })
+})
+
+describe('file actions in an archived place (slice 6 review)', () => {
+  it('tells the cards the channel is archived, so they leave out Edit and Delete', () => {
+    mount(true)
+    expect(screen.getByTestId('frozen').textContent).toBe('true')
+    cleanup()
+    mount()
+    expect(screen.getByTestId('frozen').textContent).toBe('false')
   })
 })

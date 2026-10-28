@@ -117,6 +117,8 @@ export function ChannelPage() {
       // Details opens the File details panel beside the channel (spec 6.9), as a thread does.
       onDetails={(file) => setParams((p) => withInspector(p, { kind: 'file', fileId: file.id }))}
       onCreateTask={fromMessage.fromFile}
+      // An archived channel (a project's too, archived with it) is read-only: its files can't be edited or deleted.
+      frozen={isArchived(current)}
     >
     <div className="flex min-h-0 flex-1 flex-col">
       <ChannelTop channel={current} people={people} workspaceSlug={ws} tab={tab} onTab={setTab} panelId={panelId} />

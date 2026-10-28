@@ -492,13 +492,15 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
     },
     async edit(target, content, body) {
       await delay()
-      const input = body === undefined ? { text: checkText(content), body: null } : checkBody(body)
-      const text = input.text
       const result = await db.update((data) => {
         const { row, channel, messageId } = findTarget(data, target)
         const me = checkCanPost(data, channel)
         if (row.senderId !== me.id) throw forbiddenOwn()
         checkPlain(row)
+        // A message with a file may lose its text, as one can be sent with files alone.
+        const optional = row.attachments.some((a) => !a.deletedAt)
+        const input = body === undefined ? { text: checkText(content, optional), body: null } : checkBody(body, optional)
+        const text = input.text
         const nextBody = input.body ?? parseBody(text)
         if (row.content === text && JSON.stringify(row.body) === JSON.stringify(nextBody)) return { row: clone(row), channelId: channel.id, messageId, same: true }
         row.content = text
@@ -552,7 +554,9 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         const entry = data.trash.find((t) => t.id === row.id && t.kind === target.kind)
         if (!entry || Date.now() - Date.parse(entry.at) >= UNDO_MS) throw badRequest("It's too late to undo that.")
         if (entry.by !== me.id) throw new ApiError({ title: 'Forbidden', status: 403, detail: 'Only whoever deleted it can undo that.' })
-        Object.assign(row, entry.snapshot, { deletedAt: null })
+        // Its files as they are now: renamed or deleted since, the restored copy says so.
+        const files = entry.snapshot.attachments.map((a) => clone(data.attachments.find((current) => current.id === a.id) ?? a))
+        Object.assign(row, entry.snapshot, { attachments: files, deletedAt: null })
         data.trash = data.trash.filter((t) => t !== entry)
         return { channelId: channel.id, messageId }
       })

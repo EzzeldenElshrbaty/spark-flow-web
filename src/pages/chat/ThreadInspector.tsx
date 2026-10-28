@@ -6,7 +6,7 @@ import { QueryError } from '@/components/ui/QueryError'
 import { InspectorFrame, InspectorSkeleton, TitleSkeleton, type InspectorBodyProps } from '@/layout/InspectorFrame'
 import { ApiError } from '@/lib/api'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
-import { channelLabel, inWorkspace, mustJoin, onlyAdminsLine } from '@/lib/channels'
+import { channelLabel, inWorkspace, isArchived, mustJoin, onlyAdminsLine } from '@/lib/channels'
 import { useProjectSummaries } from '@/api/projects'
 import { JoinChannelLine } from '@/pages/chat/ChannelActions'
 import { firstLine } from '@/lib/inspector'
@@ -140,6 +140,7 @@ export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: st
       people={people}
       // A file's Details takes the panel over from the thread (one panel at a time).
       onDetails={(file) => setParams((p) => withInspector(p, { kind: 'file', fileId: file.id }))}
+      frozen={Boolean(channel.data && isArchived(channel.data))}
     >
       <InspectorFrame label="Thread" eyebrow={eyebrow} title={title} actions={actions} onClose={onClose}>
         {body}
