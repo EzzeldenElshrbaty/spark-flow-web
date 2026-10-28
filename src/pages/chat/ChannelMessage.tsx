@@ -23,8 +23,11 @@ import { actionsFor, deleteNeedsConfirm } from '@/pages/chat/messageRights'
 import { useComposerDirectory } from '@/pages/chat/useComposerDirectory'
 import { replyState } from '@/pages/chat/useReplyFocus'
 
-/** What the channel says about a change, after the name of whoever made it. */
-export function systemText(event: SystemEvent): string {
+/** "A", "A and B", "A, B and C". */
+const listOf = (names: string[]) => (names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`)
+
+/** What the channel says about a change, after the name of whoever made it; `nameOf` names the people it's about. */
+export function systemText(event: SystemEvent, nameOf: (userId: string) => string = () => 'Unknown person'): string {
   switch (event.kind) {
     case 'joined':
       return 'joined the channel.'
@@ -34,6 +37,10 @@ export function systemText(event: SystemEvent): string {
       return `renamed the channel to #${event.to} (was #${event.from}).`
     case 'topic':
       return event.to ? `changed the topic to “${event.to}”.` : 'cleared the topic.'
+    case 'added':
+      return `added ${listOf(event.userIds.map(nameOf))}.`
+    case 'removed':
+      return `removed ${nameOf(event.userId)} from the channel.`
   }
 }
 
@@ -182,7 +189,7 @@ export function ChannelMessage({
         This message was deleted.
       </p>
     )
-  else if (root?.system) body = <p className="sf-small leading-[22px] text-sf-text-secondary">{systemText(root.system)}</p>
+  else if (root?.system) body = <p className="sf-small leading-[22px] text-sf-text-secondary">{systemText(root.system, (id) => users.find((u) => u.id === id)?.name ?? 'Unknown person')}</p>
   else if (root?.commentId) body = <CommentCard message={root} ctx={ctx} link={permalink} />
   else if (root?.taskEvent) body = <TaskEventCard message={root} users={users} ctx={ctx} />
   else {

@@ -91,3 +91,13 @@ describe('11 → 12', () => {
   })
 })
 
+describe('12 → 13', () => {
+  it('every channel gets an empty description and Everyone posting (spec 6.10, §9)', () => {
+    const doc = { version: 12, channels: [{ id: 'c1', kind: 'channel' }, { id: 'd1', kind: 'dm', description: 'kept' }] }
+    expect(migrate(doc, 13)).toMatchObject({
+      version: 13,
+      channels: [{ id: 'c1', description: '', whoCanPost: 'everyone' }, { id: 'd1', description: 'kept', whoCanPost: 'everyone' }],
+    })
+  })
+})
+

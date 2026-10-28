@@ -234,6 +234,8 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
               id: channelId,
               workspaceId: input.workspaceId,
               kind: 'channel',
+              description: '',
+              whoCanPost: 'everyone',
               name: '',
               topic: `${name} project chat.`,
               memberIds: [],

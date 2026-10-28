@@ -455,10 +455,6 @@ describe('channels', () => {
     await expect(api.chat.updateChannel('c-dm-1', { topic: 'x' })).rejects.toMatchObject({ status: 400, detail: "Direct messages can't be edited." })
   })
 
-  it('an editor cannot remove themselves', async () => {
-    const channel = await api.chat.createChannel(input({ memberIds: ['u-3'] }))
-    await expect(api.chat.updateChannel(channel.id, { memberIds: ['u-3'] })).rejects.toMatchObject({ status: 400, detail: "You can't remove yourself." })
-  })
 
   it('channels() lists a private channel or DM only to its members', async () => {
     await api.users.viewAs('u-3') // Mariam: not in #release-v2 or c-dm-1

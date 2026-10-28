@@ -185,6 +185,9 @@ describe('createHttpApi', () => {
     await api.inbox.list('w1')
     await api.inbox.markRead('w1', ['a1'])
     await api.inbox.markRead('w1')
+    await api.chat.addMembers('c1', ['u2', 'u3'])
+    await api.chat.removeMember('c1', 'u 3')
+    await api.chat.updateChannel('c1', { description: 'About', whoCanPost: 'admins' })
     expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url} ${String(c.init?.body)}`)).toEqual([
       'POST /api/channels/c1/read {"seq":7}',
       'POST /api/channels/c1/unread {"seq":5}',
@@ -207,6 +210,9 @@ describe('createHttpApi', () => {
       'GET /api/workspaces/w1/activity undefined',
       'POST /api/workspaces/w1/activity/read {"ids":["a1"]}',
       'POST /api/workspaces/w1/activity/read undefined',
+      'POST /api/channels/c1/members {"userIds":["u2","u3"]}',
+      'DELETE /api/channels/c1/members/u%203 undefined',
+      'PATCH /api/channels/c1 {"description":"About","whoCanPost":"admins"}',
     ])
   })
 

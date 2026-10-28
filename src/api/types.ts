@@ -112,7 +112,13 @@ export type Channel = {
   archivedAt?: string | null
   /** The seq of the channel's newest message (0 when empty). */
   lastSeq: number
+  /** What it's for, at most 250 characters ('' when not set; spec 6.10 About). */
+  description: string
+  /** Who may post new messages and replies (spec §9): Admins choose it. */
+  whoCanPost: WhoCanPost
 } & ChannelMemberState
+
+export type WhoCanPost = 'everyone' | 'admins'
 
 export type NotifyLevel = 'all' | 'mentions' | 'none'
 /** The current user's own state in a channel (spec §7 ChannelMember). Everyone starts at nothing read, nothing set. */
@@ -161,7 +167,12 @@ export type Draft = { channelId: string; rootId: string | null; body: Body; upda
 export type LinkPreview = { url: string; siteName: string; title: string; description: string | null; image: string | null }
 
 /** A channel event shown in its timeline (spec 6.3 system messages). */
-export type SystemEvent = { kind: 'joined' | 'left' } | { kind: 'renamed'; from: string; to: string } | { kind: 'topic'; to: string }
+export type SystemEvent =
+  | { kind: 'joined' | 'left' }
+  | { kind: 'renamed'; from: string; to: string }
+  | { kind: 'topic'; to: string }
+  | { kind: 'added'; userIds: string[] }
+  | { kind: 'removed'; userId: string }
 
 /** What a task event card says: the task, and what happened to it. */
 /** `statusLabel` is the column's name when the card was posted (renaming or deleting it later doesn't change the card). */
@@ -214,7 +225,8 @@ export type StoredChannel = Omit<Channel, 'unreadCount' | 'lastSeq' | keyof Chan
 
 /** A new channel; you are always one of its members. */
 export type NewChannel = { workspaceId: string; name: string; topic: string; isPrivate: boolean; memberIds: string[] }
-export type ChannelPatch = Partial<Pick<Channel, 'name' | 'topic' | 'memberIds'>>
+/** A channel's details; its people change through addMembers and removeMember. */
+export type ChannelPatch = Partial<Pick<Channel, 'name' | 'topic' | 'description' | 'whoCanPost'>>
 
 export type NewTicket = Pick<
   Ticket,
@@ -365,6 +377,10 @@ export interface Api {
     join(id: string): Promise<Channel>
     /** Not a project's channel (its members follow the project) or a DM. */
     leave(id: string): Promise<Channel>
+    /** Its members and admins add people from the workspace; not a project's channel or a DM (spec 6.10). */
+    addMembers(id: string, userIds: string[]): Promise<Channel>
+    /** Its members and admins take someone else off it (I leave instead); not a project's channel or a DM. */
+    removeMember(id: string, userId: string): Promise<Channel>
     /** My own star and mute on a channel I can read. */
     setStarred(id: string, starred: boolean): Promise<Channel>
     setMuted(id: string, muted: boolean): Promise<Channel>

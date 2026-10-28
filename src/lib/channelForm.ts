@@ -1,5 +1,6 @@
 export const CHANNEL_NAME = /^[a-z0-9][a-z0-9-]{0,39}$/
 export const MAX_TOPIC = 250
+export const MAX_DESCRIPTION = 250
 
 /** A channel's name, topic and the people in it besides you. */
 export type ChannelValues = { name: string; topic: string; isPrivate: boolean; memberIds: string[] }
@@ -15,3 +16,9 @@ export function channelFormErrors(values: ChannelValues, takenNames: string[]): 
   if (values.isPrivate && values.memberIds.length === 0) errors.members = 'Add at least one person.'
   return errors
 }
+
+/** What's wrong with a channel's description (spec 6.10 About), if anything; the mock refuses with the same sentence. */
+export function descriptionError(text: string): string | undefined {
+  return text.trim().length > MAX_DESCRIPTION ? `Keep the description under ${MAX_DESCRIPTION} characters.` : undefined
+}
+

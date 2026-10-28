@@ -96,6 +96,8 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
       restoreChannel: (id) => send('POST', `/api/channels/${enc(id)}/restore`),
       join: (id) => send('POST', `/api/channels/${enc(id)}/join`),
       leave: (id) => send('POST', `/api/channels/${enc(id)}/leave`),
+      addMembers: (id, userIds) => send('POST', `/api/channels/${enc(id)}/members`, { userIds }),
+      removeMember: (id, userId) => send('DELETE', `/api/channels/${enc(id)}/members/${enc(userId)}`),
       setStarred: (id, starred) => send('PATCH', `/api/channels/${enc(id)}/me`, { starred }),
       setMuted: (id, muted) => send('PATCH', `/api/channels/${enc(id)}/me`, { muted }),
     },

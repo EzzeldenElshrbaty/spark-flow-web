@@ -120,3 +120,16 @@ describe('channel.manage', () => {
   })
 })
 
+
+describe('who can post in a channel (spec §9, 6.10 Settings)', () => {
+  it('only Admins choose it; at Only admins only they post, at Everyone everyone who may', () => {
+    const open = { isPrivate: false, memberIds: ['u-m'], whoCanPost: 'everyone' as const }
+    const closed = { ...open, whoCanPost: 'admins' as const }
+    expect(can('channel.restrictPosting', { ...as('admin'), channel: open })).toBe(true)
+    for (const role of ['pm', 'sales', 'member'] as const) expect(can('channel.restrictPosting', { ...as(role), channel: open })).toBe(false)
+    expect(can('channel.post', { ...as('member', 'u-m'), channel: open })).toBe(true)
+    expect(can('channel.post', { ...as('member', 'u-m'), channel: closed })).toBe(false)
+    expect(can('channel.post', { ...as('pm'), channel: closed })).toBe(false)
+    expect(can('channel.post', { ...as('admin'), channel: closed })).toBe(true)
+  })
+})

@@ -225,6 +225,14 @@ export function useJoinChannel() {
 export function useLeaveChannel() {
   return useMutation({ mutationFn: (id: string) => api.chat.leave(id) })
 }
+/** Adds people to a channel (spec 6.10 Add people). */
+export function useAddMembers() {
+  return useMutation({ mutationFn: ({ id, userIds }: { id: string; userIds: string[] }) => api.chat.addMembers(id, userIds) })
+}
+/** Takes someone else off a channel (spec 6.10 Members). */
+export function useRemoveMember() {
+  return useMutation({ mutationFn: ({ id, userId }: { id: string; userId: string }) => api.chat.removeMember(id, userId) })
+}
 export function useRestoreChannel() {
   return useMutation({ mutationFn: (id: string) => api.chat.restoreChannel(id) })
 }

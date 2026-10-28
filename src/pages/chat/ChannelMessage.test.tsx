@@ -165,6 +165,15 @@ describe('ChannelMessage states (spec 6.3)', () => {
     expect(systemText({ kind: 'topic', to: '' })).toBe('cleared the topic.')
     expect(systemText({ kind: 'topic', to: 'Pager' })).toBe('changed the topic to “Pager”.')
   })
+
+  it('adding and removing people names them (spec 6.10)', () => {
+    const names: Record<string, string> = { 'u-2': 'Nour El-Sayed', 'u-3': 'Mariam Fathy', 'u-4': 'Ahmed Shawky' }
+    const nameOf = (id: string) => names[id] ?? 'Unknown person'
+    expect(systemText({ kind: 'added', userIds: ['u-2'] }, nameOf)).toBe('added Nour El-Sayed.')
+    expect(systemText({ kind: 'added', userIds: ['u-2', 'u-3'] }, nameOf)).toBe('added Nour El-Sayed and Mariam Fathy.')
+    expect(systemText({ kind: 'added', userIds: ['u-2', 'u-3', 'u-4'] }, nameOf)).toBe('added Nour El-Sayed, Mariam Fathy and Ahmed Shawky.')
+    expect(systemText({ kind: 'removed', userId: 'u-9' }, nameOf)).toBe('removed Unknown person from the channel.')
+  })
 })
 
 describe('ChannelMessage parts (feature 4 follow-up)', () => {

@@ -6,6 +6,7 @@ import type { Project, Role } from '@/api/types'
 export type Action =
   | 'rates.view' | 'cost.view' | 'project.create' | 'project.edit' | 'phase.manage' | 'task.manage' | 'task.updateOwnStatus'
   | 'time.logOwn' | 'time.logOn' | 'collab.post' | 'dashboard.view' | 'timeCost.view' | 'database.manage' | 'project.archive' | 'channel.manage'
+  | 'channel.restrictPosting' | 'channel.post'
 
 export type ProjectRef = Pick<Project, 'managerId' | 'memberIds' | 'teamIds'> & { archivedAt?: string | null }
 
@@ -15,8 +16,8 @@ export type PermissionContext = {
   /** The project the action is about, when there is one. */
   project?: ProjectRef
   userTeamIds?: string[]
-  /** For channel.manage: the channel's privacy and members. */
-  channel?: { isPrivate: boolean; memberIds: string[] }
+  /** For channel.manage: the channel's privacy and members; for channel.post, who may post in it. */
+  channel?: { isPrivate: boolean; memberIds: string[]; whoCanPost?: 'everyone' | 'admins' }
   taskAssigneeId?: string | null
   /** Whether the person manages at least one project (a member can be named a project's manager). */
   managesAny?: boolean
@@ -52,7 +53,12 @@ export function can(action: Action, ctx: PermissionContext): boolean {
     case 'database.manage':
     // Archiving takes a project out of every list and freezes it: Admins only.
     case 'project.archive':
+    // Who can post in a channel (spec §9) is an Admin's choice.
+    case 'channel.restrictPosting':
       return false
+    // A channel set to Only admins takes new posts from Admins alone (who passed above).
+    case 'channel.post':
+      return ctx.channel?.whoCanPost !== 'admins'
     case 'project.create':
       return ctx.role === 'sales'
     case 'project.edit':

@@ -558,3 +558,34 @@ Deferred minors, then fixed test first:
 
 How each was fixed: Mark read with ids keeps to the route's workspace; `channelChanged` refreshes the bell and Activity; a reaction's line names who reacted and its text is my message alone; `countNoun` reads a count at All as new messages; Activity's times tick with `useNow(60_000)`; the bell is named "Channel notifications: muted" or "…: nothing"; "Unread only" is a 44px label that flips the switch and Mark all read has a 44px touch area (`Button touch`); a new message or reply sends `notificationCreated` to whoever it mentions, so Activity no longer refreshes on every message; `unreadMentions` keeps only `byChannel`, `excerptOf` lives in `shared.ts`, and the channel state rules moved to `membership.ts` (no import cycle).
 
+
+# Flow chat — Phase 2 slice 4: Channel details (spec 6.10, 6.1, §9) — 2026-10-28
+
+Approved with my picks: part A (data and routes), part B (the Channel details modal and Add people), part C (Who can post in the channel), with the contract updated.
+
+## Plan
+
+Part A — data and routes
+- [x] Channel `description` (≤ 250, '') and `whoCanPost` ('everyone' | 'admins', 'everyone'); mock DB v13 with its migration; seed and new channels get the defaults.
+- [x] `PATCH /api/channels/:id` takes `description`; `whoCanPost` admins only (403); no more `memberIds` (the members routes replace it).
+- [x] `POST /api/channels/:id/members { userIds }` and `DELETE /api/channels/:id/members/:userId`: members and admins, workspace people only, not yourself (Leave), not a project's channel or a DM; system messages "added …" and "removed … from the channel."; `channelChanged`.
+- [x] At "Only admins", a non-admin's message or reply is refused (403 "Only admins can post in #x."); reactions still work.
+- [x] http, hooks, query keys; tests first.
+
+Part B — the Channel details modal
+- [ ] One levels menu shared by the header bell and the details header.
+- [ ] Modal: `# name` (lock when private), star, level button, ×; tabs About, Members (count), Settings (managers).
+- [ ] About: Channel name, Topic, Description cards with Edit in place (Save, Cancel, errors near the field); a project's channel shows its project read-only with Open project; Copy channel link ("Link copied"); Leave channel.
+- [ ] Members: Find members, rows (avatar, presence, name, title, "you"), Remove for managers; Add people (workspace people only, "Add N people"); a project's channel says its people follow the project.
+- [ ] Settings: Who can post (admins change it), Archive channel, the private note.
+- [ ] Entry points: the name (About, for everyone who can read), the members button (Members), Add a topic (Topic open), ⋮ "Channel details". The old drawer stays for New channel only.
+- [ ] Phones: 16px gutters, content scrolls, 44px targets; light and dark; axe.
+
+Part C — Who can post in the channel
+- [ ] At "Only admins" a non-admin sees "Only admins can post in #x." instead of the composer, in the channel and the thread.
+
+- [ ] Contract section for slice 4. Tests first throughout; app check.
+
+Rulings approved with the plan: linked project read-only (no linking for other channels yet); Add people takes workspace people only (emails and guests in slice 5); "Only admins" means workspace admins and covers thread replies; no details for DMs, no Tabs or Integrations tabs, no Start a call, no system message for the description.
+
+Rulings while building: posting rules live in `can()` (`channel.restrictPosting`, `channel.post`); edits, deletes and reactions still work at Only admins (only new posts are refused); a private channel may go down to just me through Remove (the "Add at least one person" rule is for a new channel); until part B lands, the old drawer edits name and topic only.

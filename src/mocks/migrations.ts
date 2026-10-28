@@ -90,6 +90,14 @@ export const migrations: Record<number, (doc: Record<string, unknown>) => void> 
       for (const [channelId, state] of Object.entries(states ?? {})) if (kinds.get(channelId) !== 'dm' && state?.notifyLevel === 'all') state.notifyLevel = 'mentions'
     }
   },
+  // 13: a channel's description and who can post in it (spec 6.10, §9): none yet, and everyone who may.
+  12: (doc) => {
+    for (const channel of Array.isArray(doc.channels) ? (doc.channels as Record<string, unknown>[]) : []) {
+      if (!channel) continue
+      channel.description ??= ''
+      channel.whoCanPost ??= 'everyone'
+    }
+  },
 }
 
 /** The document brought up to `to`, or null when a step on the way is missing. */

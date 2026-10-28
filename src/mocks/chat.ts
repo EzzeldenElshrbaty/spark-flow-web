@@ -1,6 +1,6 @@
 import { can } from '@/lib/permissions'
-import type { Api, Attachment, Channel, ChannelMemberState, ChatMessage, NotifyLevel, Page, SystemEvent, ChatTarget, StoredChannel, ThreadReply } from '@/api/types'
-import { channelFormErrors } from '@/lib/channelForm'
+import type { Api, Attachment, Channel, ChannelMemberState, ChatMessage, NotifyLevel, Page, SystemEvent, ChatTarget, StoredChannel, ThreadReply, WhoCanPost } from '@/api/types'
+import { channelFormErrors, descriptionError } from '@/lib/channelForm'
 import { isOneEmoji } from '@/lib/emojiText'
 import { MAX_DISTINCT_REACTIONS, toggleReaction } from '@/lib/reactions'
 import type { DbData, MockDb } from './db'
@@ -136,13 +136,16 @@ function requireManage(data: DbData, channel: StoredChannel) {
   return me
 }
 
-/** The first rule a channel's values break, as the 400 the form would show; names are unique in the workspace. */
-function checkChannel(data: DbData, values: { workspaceId: string; id?: string; name: string; topic: string; isPrivate: boolean; others: string[] }) {
+/**
+ * The first rule a channel's values break, as the 400 the form would show; names are unique in the workspace. The
+ * people are checked only when given (a new channel): an existing one's change through addMembers and removeMember.
+ */
+function checkChannel(data: DbData, values: { workspaceId: string; id?: string; name: string; topic: string; isPrivate: boolean; others?: string[] }) {
   const taken = data.channels.filter((c) => c.workspaceId === values.workspaceId && c.id !== values.id && c.name).map((c) => c.name!)
-  const errors = channelFormErrors({ name: values.name, topic: values.topic, isPrivate: values.isPrivate, memberIds: values.others }, taken)
-  const first = errors.name ?? errors.topic ?? errors.members
+  const errors = channelFormErrors({ name: values.name, topic: values.topic, isPrivate: values.isPrivate, memberIds: values.others ?? [] }, taken)
+  const first = errors.name ?? errors.topic ?? (values.others ? errors.members : undefined)
   if (first) throw badRequest(first)
-  const unknown = values.others.find((id) => !data.users.some((u) => u.id === id))
+  const unknown = values.others?.find((id) => !data.users.some((u) => u.id === id))
   if (unknown) throw notFound('User', unknown)
 }
 
@@ -177,6 +180,25 @@ function checkCanPost(data: DbData, channel: StoredChannel) {
   const me = requireCan(data, 'collab.post')
   if (channel.isPrivate && !channel.memberIds.includes(me.id)) throw notInChannel()
   return me
+}
+
+/** checkCanPost, for a new message or reply: a channel set to Only admins (spec §9) takes them from Admins alone. */
+function checkCanWrite(data: DbData, channel: StoredChannel) {
+  const me = checkCanPost(data, channel)
+  if (!can('channel.post', { userId: me.id, role: me.role, channel })) {
+    throw new ApiError({ title: 'Forbidden', status: 403, detail: `Only admins can post in #${channel.name}.` })
+  }
+  return me
+}
+
+const WHO_CAN_POST: WhoCanPost[] = ['everyone', 'admins']
+
+/** A channel whose people I may change (spec 6.10): not a DM, not a project's (it follows its project). */
+function editableChannel(data: DbData, id: string) {
+  const channel = readableChannel(data, id)
+  if (channel.kind === 'dm') throw badRequest("Direct messages can't be edited.")
+  if (data.projects.some((p) => p.channelId === id)) throw badRequest('This channel follows its project.')
+  return { channel, me: requireManage(data, channel) }
 }
 
 type Row = ChatMessage | ThreadReply
@@ -292,7 +314,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
           (c) => c.workspaceId === workspaceId && c.kind === 'dm' && c.memberIds.length === members.length && [...c.memberIds].sort().every((id, i) => id === members[i]),
         )
         if (same) return { channel: withUnread(data, same), created: false }
-        const dm: StoredChannel = { id: newId('c'), workspaceId, kind: 'dm', name: null, topic: '', memberIds: [me.id, ...others], isPrivate: true, lastMessageAt: null }
+        const dm: StoredChannel = { id: newId('c'), workspaceId, kind: 'dm', name: null, topic: '', description: '', whoCanPost: 'everyone', memberIds: [me.id, ...others], isPrivate: true, lastMessageAt: null }
         data.channels.push(dm)
         return { channel: withUnread(data, dm), created: true }
       })
@@ -308,7 +330,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         const topic = input.topic.trim()
         const others = [...new Set(input.memberIds)].filter((id) => id !== me.id)
         checkChannel(data, { workspaceId: input.workspaceId, name, topic, isPrivate: input.isPrivate, others })
-        const created: StoredChannel = { id: newId('c'), workspaceId: input.workspaceId, kind: 'channel', name, topic, memberIds: [me.id, ...others], isPrivate: input.isPrivate, lastMessageAt: null }
+        const created: StoredChannel = { id: newId('c'), workspaceId: input.workspaceId, kind: 'channel', name, topic, description: '', whoCanPost: 'everyone', memberIds: [me.id, ...others], isPrivate: input.isPrivate, lastMessageAt: null }
         data.channels.push(created)
         return withUnread(data, created)
       })
@@ -318,20 +340,22 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
     async updateChannel(id, patch) {
       await delay()
       const { channel, posted } = await db.update((data) => {
-        const channel = readableChannel(data, id)
-        if (channel.kind === 'dm') throw badRequest("Direct messages can't be edited.")
-        if (data.projects.some((p) => p.channelId === id)) throw badRequest('This channel follows its project.')
-        const me = requireManage(data, channel)
-        const member = channel.memberIds.includes(me.id)
-        const memberIds = patch.memberIds ? [...new Set(patch.memberIds)] : channel.memberIds
-        if (member && !memberIds.includes(me.id)) throw badRequest("You can't remove yourself.")
+        const { channel, me } = editableChannel(data, id)
         const name = (patch.name ?? channel.name ?? '').trim()
         const topic = (patch.topic ?? channel.topic).trim()
-        checkChannel(data, { workspaceId: channel.workspaceId, id, name, topic, isPrivate: channel.isPrivate, others: memberIds.filter((m) => m !== me.id) })
+        const description = (patch.description ?? channel.description).trim()
+        checkChannel(data, { workspaceId: channel.workspaceId, id, name, topic, isPrivate: channel.isPrivate })
+        const wrongDescription = descriptionError(description)
+        if (wrongDescription) throw badRequest(wrongDescription)
+        const whoCanPost = patch.whoCanPost ?? channel.whoCanPost
+        if (!WHO_CAN_POST.includes(whoCanPost)) throw badRequest('Choose Everyone or Only admins.')
+        if (whoCanPost !== channel.whoCanPost && !can('channel.restrictPosting', { userId: me.id, role: me.role, channel })) {
+          throw new ApiError({ title: 'Forbidden', status: 403, detail: 'Only admins can change who can post.' })
+        }
         const posted: ChatMessage[] = []
         if (channel.name && name !== channel.name) posted.push(postSystem(data, id, { kind: 'renamed', from: channel.name, to: name }))
         if (topic !== channel.topic) posted.push(postSystem(data, id, { kind: 'topic', to: topic }))
-        Object.assign(channel, { name, topic, memberIds })
+        Object.assign(channel, { name, topic, description, whoCanPost })
         return { channel: withUnread(data, channel), posted }
       })
       for (const message of posted) hub.publish({ type: 'messageReceived', message: clone(message) })
@@ -340,6 +364,36 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
     },
     join: (id) => setMember(id, true),
     leave: (id) => setMember(id, false),
+    async addMembers(id, userIds) {
+      await delay()
+      const { channel, posted } = await db.update((data) => {
+        const { channel } = editableChannel(data, id)
+        const picked = [...new Set(userIds)]
+        if (!picked.length) throw badRequest('Pick someone to add.')
+        const unknown = picked.find((userId) => !data.users.some((u) => u.id === userId))
+        if (unknown) throw notFound('User', unknown)
+        const added = picked.filter((userId) => !channel.memberIds.includes(userId))
+        if (!added.length) throw badRequest(`Everyone you picked is already in #${channel.name}.`)
+        channel.memberIds = [...channel.memberIds, ...added]
+        return { channel: withUnread(data, channel), posted: postSystem(data, id, { kind: 'added', userIds: added }) }
+      })
+      hub.publish({ type: 'messageReceived', message: clone(posted) })
+      hub.publish({ type: 'channelChanged', channelId: id })
+      return clone(channel)
+    },
+    async removeMember(id, userId) {
+      await delay()
+      const { channel, posted } = await db.update((data) => {
+        const { channel, me } = editableChannel(data, id)
+        if (userId === me.id) throw badRequest('Leave the channel instead.')
+        if (!channel.memberIds.includes(userId)) throw badRequest(`They’re not in #${channel.name}.`)
+        channel.memberIds = channel.memberIds.filter((m) => m !== userId)
+        return { channel: withUnread(data, channel), posted: postSystem(data, id, { kind: 'removed', userId }) }
+      })
+      hub.publish({ type: 'messageReceived', message: clone(posted) })
+      hub.publish({ type: 'channelChanged', channelId: id })
+      return clone(channel)
+    },
     archiveChannel: (id) => setArchived(id, true),
     restoreChannel: (id) => setArchived(id, false),
     async react(target, emoji) {
@@ -430,7 +484,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       await delay()
       const { message, repeat, mentioned } = await db.update((data) => {
         const channel = findChannel(data, channelId)
-        const me = checkCanPost(data, channel)
+        const me = checkCanWrite(data, channel)
         // A retry of a send that did arrive gets the message it stored, not a second one (spec §8: writes are idempotent).
         const stored = clientId ? data.messages.find((m) => m.channelId === channelId && m.senderId === me.id && m.clientId === clientId) : undefined
         if (stored) return { message: stored, repeat: true, mentioned: [] }
@@ -447,7 +501,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
     async reply(messageId, content, body, alsoInChannel) {
       await delay()
       const { reply, notified } = await db.update((data) => {
-        checkCanPost(data, findChannel(data, findMessage(data, messageId).channelId))
+        checkCanWrite(data, findChannel(data, findMessage(data, messageId).channelId))
         // From the rich composer the body is the reply and its plain text the content; otherwise the text is parsed.
         const input = body === undefined ? { content: checkText(content) } : (({ body: b, text }) => ({ content: text, body: b }))(checkBody(body))
         const reply = postReply(data, { messageId, ...input, alsoInChannel: Boolean(alsoInChannel) })

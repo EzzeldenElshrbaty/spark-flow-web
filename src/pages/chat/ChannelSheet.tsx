@@ -37,7 +37,7 @@ export function ChannelSheet({ workspaceId, workspaceSlug, channel, onClose }: {
     setErrors(found)
     if (Object.keys(found).length) return
     const memberIds = me && (!channel || channel.memberIds.includes(me.id)) ? [me.id, ...values.memberIds] : values.memberIds
-    if (channel) update.mutate({ id: channel.id, patch: { name: values.name.trim(), topic: values.topic.trim(), memberIds } }, { onSuccess: onClose })
+    if (channel) update.mutate({ id: channel.id, patch: { name: values.name.trim(), topic: values.topic.trim() } }, { onSuccess: onClose })
     else
       create.mutate(
         { workspaceId, name: values.name.trim(), topic: values.topic.trim(), isPrivate: values.isPrivate, memberIds },

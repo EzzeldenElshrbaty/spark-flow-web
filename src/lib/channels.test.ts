@@ -9,7 +9,7 @@ const me = users.find((u) => u.id === 'u-1')!
 const other = users.find((u) => u.id === 'u-2')!
 
 const dm = (memberIds: string[]): Channel => ({
-  id: 'c-x', workspaceId: 'ws-eng', kind: 'dm', name: null, topic: '', memberIds, isPrivate: true, lastMessageAt: null, unreadCount: 0,
+  id: 'c-x', workspaceId: 'ws-eng', kind: 'dm', name: null, topic: '', memberIds, isPrivate: true, lastMessageAt: null, description: '', whoCanPost: 'everyone', unreadCount: 0,
   lastSeq: 0, lastReadSeq: 0, starred: false, muted: false, notifyLevel: 'all',
 })
 const channel = (name: string, lastMessageAt: string | null = null): Channel => ({ ...dm([]), id: `c-${name}`, kind: 'channel', name, isPrivate: false, lastMessageAt, notifyLevel: 'mentions' })

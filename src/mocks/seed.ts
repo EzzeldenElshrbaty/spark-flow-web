@@ -37,7 +37,8 @@ type RawMessage = {
   id: string; channelId: string; senderId: string; createdAt: string; content: string; reactions: Reaction[]
 }
 type RawReply = { id: string; messageId: string; senderId: string; createdAt: string; content: string; reactions: Reaction[] }
-type RawChannel = Omit<StoredChannel, 'lastMessageAt'>
+/** A seeded channel: its description and who can post default to none and everyone. */
+type RawChannel = Omit<StoredChannel, 'lastMessageAt' | 'description' | 'whoCanPost'> & Partial<Pick<StoredChannel, 'description' | 'whoCanPost'>>
 type RawTicket = {
   key: string; title: string; description: string; status: TicketStatus; priority: Priority
   points: number | null; assigneeId: string | null; reporterId: string; sprintId: string | null
@@ -83,6 +84,8 @@ function buildReplies(raw: RawReply[], messages: RawMessage[]): ThreadReply[] {
 /** lastMessageAt is the newest message or reply in the channel. */
 function buildChannels(raw: RawChannel[], messages: ChatMessage[], replies: ThreadReply[]): StoredChannel[] {
   return raw.map((c) => ({
+    description: '',
+    whoCanPost: 'everyone' as const,
     ...c,
     lastMessageAt: latestOf([
       ...messages.filter((m) => m.channelId === c.id).map((m) => m.createdAt),
