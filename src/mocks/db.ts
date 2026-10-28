@@ -26,7 +26,7 @@ import { memoryActor, type Actor } from './actor'
 import { migrate } from './migrations'
 import type { MockStore } from './store'
 
-export const DB_VERSION = 9 // 2: the company-system document (spec §3); 3: mention read state; 4: channel reads per person; 5: typed columns, history; 6: rate history; 7: message seq, channel member state; 8: message bodies; 9: drafts
+export const DB_VERSION = 10 // 2: the company-system document (spec §3); 3: mention read state; 4: channel reads per person; 5: typed columns, history; 6: rate history; 7: message seq, channel member state; 8: message bodies; 9: drafts; 10: deleted messages kept for Undo
 /** Phase 1+2 kept the mock database in localStorage under keys starting with this. */
 const LEGACY_PREFIX = 'spark-flow.mockdb.v1'
 
@@ -59,6 +59,17 @@ export type DbData = {
   activity: ActivityEntry[]
   /** Each person's unsent drafts: one per channel and thread root. */
   drafts: (Draft & { id: string; userId: string })[]
+  /** What a delete took away, kept only for the Undo window (spec 6.3), then dropped. */
+  trash: TrashEntry[]
+}
+
+/** A deleted message's or reply's content, by id, with who deleted it and when. */
+export type TrashEntry = {
+  id: string
+  kind: 'message' | 'reply'
+  by: string
+  at: string
+  snapshot: Pick<ChatMessage, 'content' | 'body' | 'attachments' | 'mentions' | 'reactions'> & { linkedTicketKeys?: string[] }
 }
 
 /** What the seed hands over: the document, plus file bytes (base64) keyed by attachment id. */
@@ -83,7 +94,7 @@ export interface MockDb {
 
 const COLLECTIONS = [
   'users', 'workspaces', 'projects', 'sprints', 'tickets', 'channels', 'messages', 'replies',
-  'teams', 'phases', 'deliverables', 'comments', 'attachments', 'projectFiles', 'timeEntries', 'checkIns', 'rates', 'activity', 'drafts',
+  'teams', 'phases', 'deliverables', 'comments', 'attachments', 'projectFiles', 'timeEntries', 'checkIns', 'rates', 'activity', 'drafts', 'trash',
 ] as const
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>

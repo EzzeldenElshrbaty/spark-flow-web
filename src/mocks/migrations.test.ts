@@ -63,3 +63,9 @@ describe('8 → 9', () => {
     expect(migrate({ version: 8 }, 9)).toMatchObject({ version: 9, drafts: [] })
   })
 })
+
+describe('9 → 10', () => {
+  it('adds an empty trash (what deletes keep for Undo)', () => {
+    expect(migrate({ version: 9 }, 10)).toMatchObject({ version: 10, trash: [] })
+  })
+})

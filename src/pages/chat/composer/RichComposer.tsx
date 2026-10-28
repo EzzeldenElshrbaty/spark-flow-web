@@ -1,4 +1,5 @@
 import { $createLinkNode, $isLinkNode, $toggleLink } from '@lexical/link'
+import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
@@ -71,17 +72,26 @@ export function linkTarget(typed: string): string | null {
  * changes to `onDraft` 500ms after typing stops.
  */
 export function RichComposer({
+  mode = 'send',
   placeholder,
   initialBody,
   onSend,
+  onCancel,
+  onEditLast,
   onDraft,
   onTyping,
   error,
   directory,
 }: {
+  /** send: the channel's box; edit: a message's body being edited in place, with Cancel and Save (spec 6.3). */
+  mode?: 'send' | 'edit'
   placeholder: string
   initialBody?: Body
   onSend: (body: Body) => Promise<unknown>
+  /** Edit mode: Cancel and Escape. */
+  onCancel?: () => void
+  /** Send mode: Up in an empty box edits my last message. */
+  onEditLast?: () => void
   /** Saves the draft; false (or a rejection) when it couldn't, which the composer says and retries. */
   onDraft?: (body: Body) => void | Promise<boolean>
   onTyping?: () => void
@@ -99,12 +109,24 @@ export function RichComposer({
   }
   return (
     <LexicalComposer initialConfig={config}>
-      <Inner placeholder={placeholder} initialBody={initialBody} onSend={onSend} onDraft={onDraft} onTyping={onTyping} error={error} directory={directory} />
+      <Inner
+        mode={mode}
+        placeholder={placeholder}
+        initialBody={initialBody}
+        onSend={onSend}
+        onCancel={onCancel}
+        onEditLast={onEditLast}
+        onDraft={onDraft}
+        onTyping={onTyping}
+        error={error}
+        directory={directory}
+      />
     </LexicalComposer>
   )
 }
 
-function Inner({ placeholder, initialBody, onSend, onDraft, onTyping, error, directory }: Parameters<typeof RichComposer>[0]) {
+function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEditLast, onDraft, onTyping, error, directory }: Parameters<typeof RichComposer>[0]) {
+  const editing = mode === 'edit'
   const [editor] = useLexicalComposerContext()
   const boxRef = useRef<HTMLDivElement>(null)
   const menuOpen = useRef(false)
@@ -142,6 +164,8 @@ function Inner({ placeholder, initialBody, onSend, onDraft, onTyping, error, dir
     setPending(true)
     onSend(now).then(
       () => {
+        // An edit is closed by its message; a sent message empties the box.
+        if (editing) return setPending(false)
         window.clearTimeout(draftTimer.current)
         editor.update(() => $editorFromBody([]))
         latestBody.current = []
@@ -150,7 +174,7 @@ function Inner({ placeholder, initialBody, onSend, onDraft, onTyping, error, dir
       },
       () => setPending(false),
     )
-  }, [editor, onSend, saveDraft])
+  }, [editor, onSend, saveDraft, editing])
 
   const onChange = (state: EditorState) => {
     const next = state.read(() => $bodyFromEditor())
@@ -201,7 +225,8 @@ function Inner({ placeholder, initialBody, onSend, onDraft, onTyping, error, dir
         <LinkPlugin validateUrl={(url) => linkTarget(url) !== null} />
         <MarkdownShortcutPlugin transformers={COMPOSER_TRANSFORMERS} />
         <OnChangePlugin onChange={onChange} ignoreSelectionChange />
-        <KeysPlugin onSend={send} menuOpen={menuOpen} onLink={openLink} />
+        <KeysPlugin onSend={send} menuOpen={menuOpen} onLink={openLink} onEscape={editing ? onCancel : undefined} onUpEmpty={editing ? undefined : onEditLast} />
+        {editing && <AutoFocusPlugin defaultSelection="rootEnd" />}
         <AutocompletePlugin directory={directory} menuOpen={menuOpen} anchor={boxRef} />
         <div className="flex items-center gap-0.5 px-1 pb-1">
           <IconButton label={formatting ? 'Hide formatting' : 'Show formatting'} icon={IconLetterCase} size="sm" tone="muted" pressed={formatting} onClick={() => setFormatting((f) => !f)} />
@@ -233,12 +258,26 @@ function Inner({ placeholder, initialBody, onSend, onDraft, onTyping, error, dir
           />
           {/* Send keeps the end corner to itself (spec 6.8: browser extensions sit there otherwise). */}
           <div className="ms-auto flex items-center gap-1">
-          {!empty && <span className="sf-meta hidden px-2 text-sf-text-muted sm:inline">Shift + Enter for a new line</span>}
+          {editing ? (
+            <span className="sf-meta hidden px-2 text-sf-text-muted sm:inline">Esc to cancel · Enter to save</span>
+          ) : (
+            !empty && <span className="sf-meta hidden px-2 text-sf-text-muted sm:inline">Shift + Enter for a new line</span>
+          )}
           {length > COUNT_FROM && (
             <span className={clsx('sf-meta px-1 tabular-nums', over ? 'font-semibold text-sf-error' : 'text-sf-text-muted')} aria-live="polite">
               {MAX_LENGTH - length}
             </span>
           )}
+          {editing ? (
+            <>
+              <Button size="sm" variant="ghost" onClick={onCancel}>
+                Cancel
+              </Button>
+              <Button size="sm" variant="primary" disabled={!canSend} onClick={send}>
+                {pending ? 'Saving…' : 'Save'}
+              </Button>
+            </>
+          ) : (
           <button
             type="button"
             aria-label="Send"
@@ -251,6 +290,7 @@ function Inner({ placeholder, initialBody, onSend, onDraft, onTyping, error, dir
           >
             <Icon icon={IconSend} size={18} flip />
           </button>
+          )}
           </div>
         </div>
       </div>

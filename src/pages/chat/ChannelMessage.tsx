@@ -1,20 +1,22 @@
-import { IconTrash } from '@tabler/icons-react'
+import { IconAlertCircle, IconTrash } from '@tabler/icons-react'
 import clsx from 'clsx'
-import { useState, type ReactNode } from 'react'
+import { lazy, Suspense, useCallback, type ReactNode } from 'react'
 import { useEditMessage } from '@/api/chat'
+import { bodyText } from '@/lib/messageBody'
 import type { ChatMessage, ChatTarget, SystemEvent, ThreadReply, User } from '@/api/types'
 import { Avatar } from '@/components/sf/Avatar'
 import { Icon } from '@/components/sf/Icon'
 import { formatDate, formatTime } from '@/lib/format'
 import { firstPreviewable } from '@/lib/linkPreview'
 import { paths } from '@/lib/paths'
-import { Composer } from '@/pages/chat/Composer'
 import { firstTask, MessageBody, TaskUnfurl, type BodyContext } from '@/pages/chat/MessageBody'
 import { MessageActions } from '@/pages/chat/MessageActions'
 import { MessageFiles } from '@/pages/chat/MessageFiles'
 import { AuthorName, CommentCard, LinkedTasks, LinkPreviewCard, Reactions, ThreadSummary } from '@/pages/chat/MessageParts'
 import { TaskEventCard } from '@/pages/chat/TaskEventCard'
-import { actionsFor } from '@/pages/chat/messageRights'
+import { useEditing } from '@/pages/chat/editingStore'
+import { actionsFor, deleteNeedsConfirm } from '@/pages/chat/messageRights'
+import { useComposerDirectory } from '@/pages/chat/useComposerDirectory'
 
 /** What the channel says about a change, after the name of whoever made it. */
 export function systemText(event: SystemEvent): string {
@@ -54,6 +56,10 @@ export function ChannelMessage({
   showThread = true,
   compact = false,
   actions,
+  sendState,
+  sendError,
+  onRetry,
+  onDiscard,
 }: {
   message: ChatMessage | ThreadReply
   users: User[]
@@ -66,11 +72,17 @@ export function ChannelMessage({
   showThread?: boolean
   compact?: boolean
   actions?: (close: () => void) => ReactNode
+  /** Mine and not confirmed yet (spec 6.2): on its way, or refused with Retry and Delete. */
+  sendState?: 'sending' | 'failed'
+  sendError?: string
+  onRetry?: () => void
+  onDiscard?: () => void
 }) {
   const reply = 'messageId' in message
   const root = reply ? null : message
-  const [editing, setEditing] = useState(false)
-  const editMessage = useEditMessage()
+  const editing = useEditing((s) => s.id === message.id)
+  const startEditing = () => useEditing.getState().start(message.id)
+  const stopEditing = () => useEditing.getState().stop()
   const author = users.find((u) => u.id === message.senderId)
   const name = author?.name ?? 'Unknown person'
   const target: ChatTarget = { kind: reply ? 'reply' : 'message', id: message.id }
@@ -79,16 +91,18 @@ export function ChannelMessage({
     reply ? `${paths.channel(ctx.ws, message.channelId)}?thread=${encodeURIComponent(message.messageId)}` : paths.message(ctx.ws, message.channelId, message.id),
     window.location.origin,
   ).href
-  const can = actionsFor(message, meId, canPost)
+  const admin = ctx.users.find((u) => u.id === meId)?.role === 'admin'
+  const can = actionsFor(message, meId, canPost, admin)
   const full = `${formatDate(message.createdAt)}, ${formatTime(message.createdAt)}`
   const time = (
     <time dateTime={message.createdAt} title={full} className="sf-meta whitespace-nowrap text-sf-text-muted tabular-nums">
-      {formatTime(message.createdAt)}
+      {sendState === 'sending' ? 'Sending…' : formatTime(message.createdAt)}
     </time>
   )
 
   let body: ReactNode
-  if (message.deletedAt)
+  if (editing) body = <EditBox message={message} target={target} ctx={ctx} onDone={stopEditing} />
+  else if (message.deletedAt)
     body = (
       <p className="sf-body flex items-center gap-1 text-sf-text-muted">
         <Icon icon={IconTrash} size={16} />
@@ -96,24 +110,6 @@ export function ChannelMessage({
       </p>
     )
   else if (root?.system) body = <p className="sf-small leading-[22px] text-sf-text-secondary">{systemText(root.system)}</p>
-  else if (editing)
-    body = (
-      <div className="mt-1">
-        <Composer
-          placeholder="Edit message"
-          submitLabel="Save"
-          pendingLabel="Saving…"
-          quiet
-          initialText={message.content}
-          onCancel={() => {
-            editMessage.reset()
-            setEditing(false)
-          }}
-          error={editMessage.error}
-          onSubmit={(text) => editMessage.mutateAsync({ target, content: text }, { onSuccess: () => setEditing(false) })}
-        />
-      </div>
-    )
   else if (root?.commentId) body = <CommentCard message={root} ctx={ctx} link={permalink} />
   else if (root?.taskEvent) body = <TaskEventCard message={root} users={users} ctx={ctx} />
   else {
@@ -121,7 +117,7 @@ export function ChannelMessage({
     const link = firstPreviewable(message.body)
     body = (
       <>
-        <MessageBody body={message.body} ctx={ctx} after={message.editedAt && <span className="sf-meta text-sf-text-muted">(edited)</span>} />
+        <MessageBody body={message.body} ctx={ctx} muted={sendState === 'failed'} after={message.editedAt && <span className="sf-meta text-sf-text-muted">(edited)</span>} />
         <MessageFiles attachments={message.attachments} link={permalink} />
         {root && <LinkedTasks message={root} ctx={ctx} />}
         {unfurl && <TaskUnfurl task={unfurl} users={users} />}
@@ -134,6 +130,14 @@ export function ChannelMessage({
     selected === 'on' ? 'bg-sf-surface-selected' : mentionsMe(message, meId) && !message.deletedAt ? 'bg-sf-surface-mention' : 'hover:bg-sf-surface-hover'
   return (
     <article
+      // E edits my message while focus is in it (its ⋯ button), as long as I'm not typing somewhere (spec 6.3).
+      onKeyDown={(e) => {
+        const typing = (e.target as HTMLElement).closest('input, textarea, [contenteditable="true"]')
+        if (e.key.toLowerCase() === 'e' && !e.metaKey && !e.ctrlKey && !e.altKey && !typing && can.edit && !editing && !sendState) {
+          e.preventDefault()
+          startEditing()
+        }
+      }}
       className={clsx(
         'sf group relative grid grid-cols-[var(--size-avatar)_minmax(0,1fr)] gap-x-3 transition-colors duration-[600ms] ease-sf',
         compact ? 'px-3' : 'px-4 md:px-6',
@@ -154,25 +158,69 @@ export function ChannelMessage({
           {time}
         </p>
         {body}
-        {!message.deletedAt && !root?.system && (
+        {sendState === 'failed' && (
+          <p title={sendError} className="sf-meta mt-0.5 flex items-center gap-1 font-medium text-sf-accent">
+            <Icon icon={IconAlertCircle} size={16} />
+            <span>Not sent.</span>
+            <button type="button" onClick={onRetry} className="sf-focus rounded-sf-sm underline">
+              Retry
+            </button>
+            ·
+            <button type="button" onClick={onDiscard} className="sf-focus rounded-sf-sm underline">
+              Delete
+            </button>
+          </p>
+        )}
+        {!sendState && !message.deletedAt && !root?.system && (
           <Reactions reactions={message.reactions} users={users} target={target} meId={meId} canReact={can.react} />
         )}
         {root && showThread && root.threadCount > 0 && <ThreadSummary message={root} users={users} />}
       </div>
-      {!editing && !root?.system && (
+      {!editing && !sendState && !root?.system && (
         // The toolbar comes in Phase 2; until then the ⋯ menu shows on hover and on keyboard focus.
         <div className={clsx('absolute top-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100', compact ? 'end-3' : 'end-4 md:end-6')}>
           <MessageActions
             target={target}
             can={can}
-            onEdit={() => {
-              editMessage.reset()
-              setEditing(true)
-            }}
+            confirmDelete={deleteNeedsConfirm(message)}
+            onEdit={startEditing}
             extra={message.deletedAt ? undefined : actions}
           />
         </div>
       )}
     </article>
+  )
+}
+
+const RichComposer = lazy(() => import('@/pages/chat/composer/RichComposer').then((m) => ({ default: m.RichComposer })))
+
+/**
+ * A message's body while I edit it in place (spec 6.3): the rich editor with its text, Cancel and Save; Enter saves,
+ * Escape cancels. It closes once the edit is saved; a refusal stays as a sentence under it.
+ */
+function EditBox({ message, target, ctx, onDone }: { message: ChatMessage | ThreadReply; target: ChatTarget; ctx: BodyContext; onDone: () => void }) {
+  const edit = useEditMessage()
+  const directory = useComposerDirectory(ctx.workspaceId)
+  // The box grows once the editor loads, and as lines are added: keep all of it (Cancel and Save) in view.
+  const keepInView = useCallback((el: HTMLDivElement | null) => {
+    if (!el) return
+    const observer = new ResizeObserver(() => el.scrollIntoView({ block: 'nearest' }))
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+  return (
+    <div ref={keepInView} className="mt-1">
+      <Suspense fallback={<MessageBody body={message.body} ctx={ctx} />}>
+        <RichComposer
+          mode="edit"
+          placeholder="Edit message"
+          initialBody={message.body}
+          directory={directory}
+          error={edit.error}
+          onCancel={onDone}
+          onSend={(body) => edit.mutateAsync({ target, content: bodyText(body), body }).then(onDone)}
+        />
+      </Suspense>
+    </div>
   )
 }

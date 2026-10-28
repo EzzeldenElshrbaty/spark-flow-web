@@ -1,13 +1,16 @@
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
 import {
+  $getRoot,
   $getSelection,
   $isRangeSelection,
   COMMAND_PRIORITY_NORMAL,
   FORMAT_TEXT_COMMAND,
   INSERT_PARAGRAPH_COMMAND,
+  KEY_ARROW_UP_COMMAND,
   KEY_DOWN_COMMAND,
   KEY_ENTER_COMMAND,
+  KEY_ESCAPE_COMMAND,
   PASTE_COMMAND,
 } from 'lexical'
 import { useEffect, type RefObject } from 'react'
@@ -19,7 +22,21 @@ import { coarsePointer } from '@/pages/chat/composerKeys'
  * ⌘/Ctrl+Shift+X strikes through and ⌘/Ctrl+K edits a link (B, I and U come with the editor). Paste keeps plain
  * structure: the text and its lines, not the source's styling; addresses become links when sent.
  */
-export function KeysPlugin({ onSend, menuOpen, onLink }: { onSend: () => void; menuOpen: RefObject<boolean>; onLink: () => void }) {
+export function KeysPlugin({
+  onSend,
+  menuOpen,
+  onLink,
+  onEscape,
+  onUpEmpty,
+}: {
+  onSend: () => void
+  menuOpen: RefObject<boolean>
+  onLink: () => void
+  /** Escape (when no list is open): cancel an edit. */
+  onEscape?: () => void
+  /** Up in an empty box: edit my last message (spec 6.8). */
+  onUpEmpty?: () => void
+}) {
   const [editor] = useLexicalComposerContext()
   useEffect(
     () =>
@@ -58,6 +75,26 @@ export function KeysPlugin({ onSend, menuOpen, onLink }: { onSend: () => void; m
           COMMAND_PRIORITY_NORMAL,
         ),
         editor.registerCommand(
+          KEY_ESCAPE_COMMAND,
+          (event) => {
+            if (menuOpen.current || !onEscape) return false
+            event.preventDefault()
+            onEscape()
+            return true
+          },
+          COMMAND_PRIORITY_NORMAL,
+        ),
+        editor.registerCommand(
+          KEY_ARROW_UP_COMMAND,
+          (event) => {
+            if (menuOpen.current || !onUpEmpty || editor.getEditorState().read(() => $getRoot().getTextContent().trim() !== '')) return false
+            event.preventDefault()
+            onUpEmpty()
+            return true
+          },
+          COMMAND_PRIORITY_NORMAL,
+        ),
+        editor.registerCommand(
           PASTE_COMMAND,
           (event) => {
             const data = 'clipboardData' in event ? event.clipboardData : null
@@ -74,7 +111,7 @@ export function KeysPlugin({ onSend, menuOpen, onLink }: { onSend: () => void; m
           COMMAND_PRIORITY_NORMAL,
         ),
       ),
-    [editor, menuOpen, onSend, onLink],
+    [editor, menuOpen, onSend, onLink, onEscape, onUpEmpty],
   )
   return null
 }

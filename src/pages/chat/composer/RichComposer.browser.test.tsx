@@ -203,3 +203,57 @@ describe('RichComposer drafts and limits (spec 6.8)', () => {
     void editor
   })
 })
+
+describe('RichComposer editing a message (spec 6.3 edit in place)', () => {
+  const body: Body = [{ type: 'p', children: [{ type: 'text', text: 'first ' }, { type: 'text', text: 'draft', marks: ['b'] }] }]
+
+  async function editing() {
+    const onSend = vi.fn(async (_b: Body) => {})
+    const onCancel = vi.fn()
+    render(
+      <div className="sf" style={{ width: 720 }}>
+        <RichComposer mode="edit" placeholder="Edit message" initialBody={body} onSend={onSend} onCancel={onCancel} directory={directory} />
+      </div>,
+    )
+    const editor = screen.getByRole('textbox', { name: 'Edit message' })
+    await vi.waitFor(() => expect(editor.getAttribute('data-lexical-editor')).toBe('true'))
+    return { onSend, onCancel, editor }
+  }
+
+  it('starts from the message, focused at the end, with Cancel, Save and the hint', async () => {
+    const { editor } = await editing()
+    expect(editor.textContent).toBe('first draft')
+    await vi.waitFor(() => expect(document.activeElement).toBe(editor))
+    expect(screen.getByText('Esc to cancel · Enter to save')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Save' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeTruthy()
+  })
+
+  it('Enter saves the edited body; the box is not cleared', async () => {
+    const { onSend, editor } = await editing()
+    await vi.waitFor(() => expect(document.activeElement).toBe(editor))
+    await userEvent.keyboard('!{Enter}')
+    expect(onSend).toHaveBeenCalledOnce()
+    expect(bodyText(onSend.mock.calls[0][0])).toBe('first draft!')
+    expect(editor.textContent).toBe('first draft!')
+  })
+
+  it('Escape cancels', async () => {
+    const { onCancel, editor } = await editing()
+    await vi.waitFor(() => expect(document.activeElement).toBe(editor))
+    await userEvent.keyboard('{Escape}')
+    expect(onCancel).toHaveBeenCalledOnce()
+  })
+})
+
+describe('RichComposer Up in an empty box (spec 6.8)', () => {
+  it('asks to edit my last message only while the box is empty', async () => {
+    const onEditLast = vi.fn()
+    const { editor } = await ready({ onEditLast })
+    await userEvent.click(editor)
+    await userEvent.keyboard('{ArrowUp}')
+    expect(onEditLast).toHaveBeenCalledOnce()
+    await userEvent.keyboard('text{ArrowUp}')
+    expect(onEditLast).toHaveBeenCalledOnce()
+  })
+})

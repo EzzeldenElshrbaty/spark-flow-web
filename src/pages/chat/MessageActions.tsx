@@ -1,9 +1,12 @@
 import clsx from 'clsx'
 import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import { useRef, useState, type ReactNode } from 'react'
-import { useDeleteMessage, useReact } from '@/api/chat'
+import { useDeleteMessage, useReact, useRestoreMessage } from '@/api/chat'
 import type { ChatTarget } from '@/api/types'
-import { ConfirmDeleteSheet } from '@/components/ConfirmDeleteSheet'
+import { IconTrash } from '@tabler/icons-react'
+import { Button as SfButton } from '@/components/sf/Button'
+import { Modal } from '@/components/sf/Modal'
+import { useToast } from '@/components/sf/Toast'
 import { MenuPanel } from '@/components/ui/Menu'
 import { REACTIONS } from '@/lib/reactions'
 import { useRole } from '@/lib/useRole'
@@ -17,11 +20,14 @@ export const menuItemClass = 'flex w-full items-center gap-2.5 rounded-lg px-3 p
 export function MessageActions({
   target,
   can,
+  confirmDelete = false,
   onEdit,
   extra,
 }: {
   target: ChatTarget
   can: { react: boolean; edit: boolean; remove: boolean }
+  /** Ask before deleting (it has replies or files); otherwise it goes at once, with Undo (spec 6.3). */
+  confirmDelete?: boolean
   onEdit: () => void
   /** More menu items; each gets the close function so it can shut the menu. */
   extra?: (close: () => void) => ReactNode
@@ -32,6 +38,17 @@ export function MessageActions({
   const { persona } = useRole()
   const react = useReact(persona.id)
   const remove = useDeleteMessage()
+  const restore = useRestoreMessage()
+  const toast = useToast()
+  /** Deletes, then offers Undo for 5s; an Undo that comes too late says so. */
+  const deleteNow = () =>
+    remove.mutateAsync(target).then(() =>
+      toast({
+        message: 'Message deleted',
+        icon: IconTrash,
+        action: { label: 'Undo', onAction: () => restore.mutate(target, { onError: (e) => toast({ message: (e as Error).message }) }) },
+      }),
+    )
   const close = () => setOpen(false)
   const more = extra?.(close)
   if (!can.react && !can.edit && !can.remove && !more) return null
@@ -92,7 +109,8 @@ export function MessageActions({
             className={clsx(menuItemClass, 'text-red-600 dark:text-red-400')}
             onClick={() => {
               close()
-              setConfirming(true)
+              if (confirmDelete) setConfirming(true)
+              else void deleteNow().catch(() => {})
             }}
           >
             <Trash2 className="size-4 shrink-0" /> Delete message
@@ -100,19 +118,27 @@ export function MessageActions({
         )}
         {more}
       </MenuPanel>
-      {react.error && (
+      {(react.error || (!confirming && remove.error)) && (
         <p role="alert" className="absolute end-0 top-full z-10 mt-1 w-56 rounded-lg bg-surface p-2 text-xs text-red-600 shadow-lg ring-1 ring-line dark:text-red-400">
-          {react.error.message}
+          {(react.error ?? remove.error)?.message}
         </p>
       )}
-      <ConfirmDeleteSheet
+      <Modal
         open={confirming}
-        title="Delete message?"
-        description="This can't be undone. Replies in its thread stay."
-        actionLabel="Delete message"
-        onConfirm={() => remove.mutateAsync(target)}
         onClose={() => setConfirming(false)}
-      />
+        title="Delete message?"
+        description="Replies in its thread stay. Its files are deleted with it."
+        footer={
+          <>
+            <SfButton onClick={() => setConfirming(false)}>Cancel</SfButton>
+            <SfButton variant="danger" disabled={remove.isPending} onClick={() => void deleteNow().then(() => setConfirming(false), () => {})}>
+              {remove.isPending ? 'Deleting…' : 'Delete message'}
+            </SfButton>
+          </>
+        }
+      >
+        {remove.error && <p className="sf-small text-sf-error">{remove.error.message}</p>}
+      </Modal>
     </div>
   )
 }

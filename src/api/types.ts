@@ -306,9 +306,12 @@ export interface Api {
     /** Adds the current user's reaction, or takes it back if it's there; only the emoji in REACTIONS. */
     react(target: ChatTarget, emoji: string): Promise<void>
     /** The author's own plain message or reply; mentions and task keys are worked out again. */
-    edit(target: ChatTarget, content: string): Promise<ChatMessage | ThreadReply>
+    /** From the rich composer with its `body` (the content is then its plain text). */
+    edit(target: ChatTarget, content: string, body?: Body): Promise<ChatMessage | ThreadReply>
     /** The author's own plain message or reply; the row stays and reads as deleted. */
     remove(target: ChatTarget): Promise<void>
+    /** Undo of a delete (spec 6.3): by whoever deleted it, within a few seconds. */
+    restore(target: ChatTarget): Promise<void>
     /** A conversation with these people (you plus 1–8 others); the same people get the existing one back. */
     openDm(workspaceId: string, userIds: string[]): Promise<Channel>
     /** Anyone can open a channel; a private one lists only its members. */

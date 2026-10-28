@@ -29,6 +29,7 @@ const emptyData = (): DbData => ({
   mentionReads: {},
   activity: [],
   drafts: [],
+  trash: [],
   counters: {},
 })
 

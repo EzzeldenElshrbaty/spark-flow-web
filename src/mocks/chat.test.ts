@@ -858,3 +858,63 @@ describe('sending a body from the composer, and drafts (spec 6.8, §7)', () => {
     await expect(api.chat.saveDraft('c-release', body('x'))).rejects.toMatchObject({ status: 403 })
   })
 })
+
+describe('delete with Undo, admin delete, edit with a body (spec 6.3, §8 restore)', () => {
+  const target = (m: { id: string }) => ({ kind: 'message' as const, id: m.id })
+
+  it('a deleted message shows nothing of itself; restore brings all of it back and says so', async () => {
+    const sent = await api.chat.send('c-backend', 'Ship *NEX-103* @[Nour](u-2)')
+    await api.chat.react(target(sent), '👍')
+    await api.chat.remove(target(sent))
+    const gone = await api.chat.message(sent.id)
+    expect(gone).toMatchObject({ content: '', body: [], mentions: [], reactions: [], linkedTicketKeys: [] })
+    expect(gone.deletedAt).toBeTruthy()
+    events.length = 0
+    await api.chat.restore(target(sent))
+    const back = await api.chat.message(sent.id)
+    expect(back).toMatchObject({ content: sent.content, body: sent.body, mentions: sent.mentions, linkedTicketKeys: ['NEX-103'], reactions: [{ emoji: '👍', userIds: ['u-1'] }] })
+    expect(back.deletedAt ?? null).toBeNull()
+    expect(events).toEqual([{ type: 'messageChanged', channelId: 'c-backend', messageId: sent.id }])
+  })
+
+  it('a reply can be restored too', async () => {
+    const root = await api.chat.send('c-backend', 'root')
+    const reply = await api.chat.reply(root.id, 'oops')
+    await api.chat.remove({ kind: 'reply', id: reply.id })
+    await api.chat.restore({ kind: 'reply', id: reply.id })
+    expect((await api.chat.replies(root.id))[0]).toMatchObject({ content: 'oops' })
+  })
+
+  it('restore is refused once the window has passed, by someone else, or for a message that is not deleted', async () => {
+    const sent = await api.chat.send('c-backend', 'gone for good')
+    await expect(api.chat.restore(target(sent))).rejects.toMatchObject({ status: 400, detail: "This message isn't deleted." })
+    await api.chat.remove(target(sent))
+    await api.users.viewAs('u-2')
+    await expect(api.chat.restore(target(sent))).rejects.toMatchObject({ status: 403 })
+    await api.users.viewAs('u-1')
+    await db.update((d) => {
+      for (const t of d.trash) t.at = new Date(Date.now() - 60_000).toISOString()
+    })
+    await expect(api.chat.restore(target(sent))).rejects.toMatchObject({ status: 400, detail: "It's too late to undo that." })
+  })
+
+  it('an admin may delete anyone’s message (not edit it); others only their own (spec §9)', async () => {
+    await api.users.viewAs('u-2')
+    const theirs = await api.chat.send('c-general', 'from Nour')
+    await api.users.viewAs('u-3')
+    await expect(api.chat.remove(target(theirs))).rejects.toMatchObject({ status: 403 })
+    await api.users.viewAs('u-1') // Admin
+    await expect(api.chat.edit(target(theirs), 'changed')).rejects.toMatchObject({ status: 403 })
+    await api.chat.remove(target(theirs))
+    expect((await api.chat.message(theirs.id)).deletedAt).toBeTruthy()
+  })
+
+  it('edit with a body stores it, with its plain text and mentions', async () => {
+    const sent = await api.chat.send('c-backend', 'first')
+    const body = parseBody('*second* @[Nour](u-2)')
+    const edited = await api.chat.edit(target(sent), 'ignored', body)
+    expect(edited).toMatchObject({ body, content: 'second @Nour', mentions: [{ kind: 'user', id: 'u-2' }] })
+    expect(edited.editedAt).toBeTruthy()
+    await expect(api.chat.edit(target(sent), '', [{ type: 'p', children: [{ type: 'link', href: 'javascript:x', text: 'x' }] }] as never)).rejects.toMatchObject({ status: 400 })
+  })
+})

@@ -2,6 +2,7 @@ import '@/index.css'
 import { QueryClient, QueryClientProvider, useInfiniteQuery } from '@tanstack/react-query'
 import { cleanup, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
+import { ToastProvider } from '@/components/sf/Toast'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ChatMessage, Page, User } from '@/api/types'
 import { parseBody } from '@/lib/messageBody'
@@ -75,9 +76,11 @@ function mount(props: Parameters<typeof Harness>[0]) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
-      <MemoryRouter>
+      <ToastProvider>
+        <MemoryRouter>
         <Harness {...props} />
       </MemoryRouter>
+        </ToastProvider>
     </QueryClientProvider>,
   )
   return client

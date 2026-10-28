@@ -73,6 +73,10 @@ export const migrations: Record<number, (doc: Record<string, unknown>) => void> 
   8: (doc) => {
     doc.drafts = []
   },
+  // 10: a delete keeps what it took for the Undo window (spec 6.3); nothing is in it yet.
+  9: (doc) => {
+    doc.trash = []
+  },
 }
 
 /** The document brought up to `to`, or null when a step on the way is missing. */

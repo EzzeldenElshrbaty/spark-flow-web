@@ -139,3 +139,22 @@ Without `body` the server parses `content` as before.
 | Save a draft | `PUT /api/channels/:id/draft` | `{ body, rootId }` | the `Draft`, or `null` when the body is empty (the draft is deleted) |
 
 One draft per (user, channel, thread root). The composer saves 500ms after typing stops and deletes the draft when the message is sent. Each save sends `draft.updated` `{ userId, channelId }` to that user's own connections (client handler `onDraftChanged`).
+
+## Phase 1 · Feature 6: optimistic send, edit in place, delete with Undo
+
+### Optimistic send
+
+The client shows a message the moment it's sent ("Sending…") with a `clientId` it made up (`crypto.randomUUID()`), and sends one message at a time per channel, in order. Send must stay idempotent by `(sender, clientId)` (feature 1): a resend after a lost response returns the stored message. While offline (`navigator.onLine` false, or a request that never reaches the server: `ApiError` status 0) messages wait and go when the connection is back; a refusal (4xx/5xx) shows "Not sent. Retry · Delete" with the server's `detail` as the reason.
+
+### Edit
+
+`PATCH /api/messages/:id` (and `/api/replies/:id`) takes `{ content, body? }` like send: with `body`, check it with `validBody` and store its plain text as `content`. Author only.
+
+### Delete and restore
+
+| Call | Route | Rule |
+|---|---|---|
+| Delete | `DELETE /api/messages/:id` (`/api/replies/:id`) | The author or an Admin (spec §9). Soft: the row stays with `deletedAt` and empty content, body, files, mentions and reactions. |
+| Undo | `POST /api/messages/:id/restore` (`/api/replies/:id/restore`) | Only whoever deleted it, within **10 seconds** (the client's Undo toast is 5s; the rest is for the request to arrive). Brings back content, body, files, mentions, reactions and task links. `400` "This message isn't deleted." / "It's too late to undo that."; `403` for anyone else. Sends `message.updated`. |
+
+What a delete takes is kept only for the Undo window, then dropped (retention beyond that is OPEN item 8). The client asks before deleting a message with replies or files, and offers Undo either way.

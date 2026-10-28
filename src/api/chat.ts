@@ -139,8 +139,13 @@ export function useReact(meId: string | undefined) {
     },
   })
 }
+/** Edits a message or reply; from the rich editor with its `body`. */
 export function useEditMessage() {
-  return useMutation({ mutationFn: ({ target, content }: { target: ChatTarget; content: string }) => api.chat.edit(target, content) })
+  return useMutation({ mutationFn: ({ target, content, body }: { target: ChatTarget; content: string; body?: Body }) => api.chat.edit(target, content, body) })
+}
+/** Undo of a delete, within its window (spec 6.3). */
+export function useRestoreMessage() {
+  return useMutation({ mutationFn: (target: ChatTarget) => api.chat.restore(target) })
 }
 export function useDeleteMessage() {
   return useMutation({ mutationFn: (target: ChatTarget) => api.chat.remove(target) })

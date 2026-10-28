@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
-import { useChannel, useChannels, useDrafts, useDraftSaver, useJumpTarget, useLeaveChannel, useMarkRead, useMessage, useMessages, useMessagesFrom, useSendMessage, useSetMuted, useSetStarred } from '@/api/chat'
+import { useChannel, useDrafts, useDraftSaver, useJumpTarget, useLeaveChannel, useMarkRead, useMessage, useMessages, useMessagesFrom, useSetMuted, useSetStarred } from '@/api/chat'
 import { useUsers } from '@/api/users'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
@@ -12,8 +12,14 @@ import { useRole } from '@/lib/useRole'
 import { useRealtime } from '@/lib/realtime'
 import { NotFound } from '@/pages/NotFound'
 import { MessageList } from '@/pages/chat/MessageList'
+import { useQueryClient, type InfiniteData } from '@tanstack/react-query'
+import { qk } from '@/api/queryKeys'
+import type { Page } from '@/api/types'
+import { useEditing } from '@/pages/chat/editingStore'
+import { lastEditable } from '@/pages/chat/messageRights'
+import { usePendingMessages, useSendQueue } from '@/api/sendQueue'
 import { bodyText, type Body } from '@/lib/messageBody'
-import { useMentionDirectory } from '@/lib/useMentionDirectory'
+import { useComposerDirectory } from '@/pages/chat/useComposerDirectory'
 import { useProjectKeys } from '@/pages/chat/useBodyContext'
 import { jumpSince, type JumpChoice } from '@/pages/chat/messageRows'
 import { CanPostError } from '@/pages/chat/CanPostError'
@@ -36,7 +42,8 @@ export function ChannelPage() {
   const channel = useChannel(channelId)
   const users = useUsers(workspace?.id)
   const canPost = useCanPost(channel.data)
-  const send = useSendMessage()
+  const queue = useSendQueue()
+  const queryClient = useQueryClient()
   const readOnly = useReadOnlyLine(channel.data)
   const fromMessage = useTaskFromMessage(channelId, workspace?.id)
   const projects = useProjectSummaries(workspace?.id)
@@ -48,8 +55,6 @@ export function ChannelPage() {
   const tab = channel.data ? tabFromParam(params.get('tab'), channel.data) : 'messages'
   const setTab = (next: ChannelTab) => setParams(next === 'messages' ? {} : { tab: next }, { replace: true })
   // An error belongs to the channel it happened in.
-  const { reset } = send
-  useEffect(() => reset(), [channelId, reset])
   // A channel id from another workspace is not a channel of this one: it reads as not found, and is never marked read.
   const foreign = Boolean(channel.data && workspace && !inWorkspace(channel.data, workspace.id))
 
@@ -122,8 +127,13 @@ export function ChannelPage() {
               channel={current}
               placeholder={`Message ${title}`}
               onTyping={() => realtime.sendTyping(current.id, persona.id)}
-              error={send.error as Error | null}
-              onSend={(body) => send.mutateAsync({ channelId: current.id, content: bodyText(body), body })}
+              // Shown at once and sent in the background (spec 6.2); a failure shows on the message, with Retry.
+              onSend={async (body) => queue.enqueue({ clientId: crypto.randomUUID(), channelId: current.id, content: bodyText(body), body })}
+              onEditLast={() => {
+                const loaded = queryClient.getQueryData<InfiniteData<Page<ChatMessage>>>(qk.messages(current.id))
+                const last = lastEditable(loaded?.pages.flatMap((p) => p.items).reverse() ?? [], persona.id)
+                if (last) useEditing.getState().start(last.id)
+              }}
             />
             <TypingLine channelId={current.id} people={people} meId={persona.id} />
             </>
@@ -205,6 +215,8 @@ function PaneFeed({
   composer: ReactNode
 }) {
   const live = useMessages(channel.id)
+  const queue = useSendQueue()
+  const pending = usePendingMessages(channel.id)
   const { ws: workspaceSlug = '' } = useParams()
   const projectKeys = useProjectKeys(channel.workspaceId)
   const scope = useMemo(() => ({ projectKeys, ws: workspaceSlug, workspaceId: channel.workspaceId }), [projectKeys, workspaceSlug, channel.workspaceId])
@@ -280,6 +292,9 @@ function PaneFeed({
           onJump={onJump}
           onLatest={() => setView((v) => ({ from: null, focus: null, nonce: v.nonce + 1, atEnd: true }))}
           scope={scope}
+          pending={pending}
+          onRetry={queue.retry}
+          onDiscard={queue.discard}
         />
       )}
       {jumpError && <p className="sf sf-small flex-none px-4 pt-2 text-sf-error md:px-6">{jumpError}</p>}
@@ -303,27 +318,18 @@ function ChannelComposer({
   onTyping,
   error,
   onSend,
+  onEditLast,
 }: {
   channel: Channel
   placeholder: string
   onTyping: () => void
-  error: Error | null
+  error?: Error | null
   onSend: (body: Body) => Promise<unknown>
+  onEditLast: () => void
 }) {
   const drafts = useDrafts(channel.workspaceId)
   const saveDraft = useDraftSaver()
-  const { users, projects, tasks } = useMentionDirectory()
-  const channels = useChannels(channel.workspaceId)
-  const directory = useMemo(
-    () => ({
-      users,
-      projects,
-      tasks,
-      channels: (channels.data ?? []).filter((c) => c.kind === 'channel' && c.name && !c.archivedAt).map((c) => ({ id: c.id, name: c.name! })),
-      memberIds: channel.memberIds,
-    }),
-    [users, projects, tasks, channels.data, channel.memberIds],
-  )
+  const directory = useComposerDirectory(channel.workspaceId, channel.memberIds)
   if (drafts.isPending) return composerSkeleton
   const draft = drafts.data?.find((d) => d.channelId === channel.id && d.rootId === null)
   return (
@@ -333,6 +339,7 @@ function ChannelComposer({
       placeholder={placeholder}
       initialBody={draft?.body}
       onSend={onSend}
+      onEditLast={onEditLast}
       onDraft={(body) => saveDraft(channel.id, body)}
       onTyping={onTyping}
       error={error}

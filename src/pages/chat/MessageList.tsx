@@ -3,6 +3,7 @@ import type { InfiniteData, UseInfiniteQueryResult } from '@tanstack/react-query
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { ChatMessage, Page, User } from '@/api/types'
+import type { PendingMessage } from '@/lib/sendQueue'
 import { Icon } from '@/components/sf/Icon'
 import { Menu, MenuItem } from '@/components/sf/Menu'
 import { QueryError } from '@/components/ui/QueryError'
@@ -11,6 +12,7 @@ import { readUpTo } from '@/pages/chat/markRead'
 import { buildRows, unreadSummary, type JumpChoice, type MessageListRow } from '@/pages/chat/messageRows'
 import { parseInspector } from '@/lib/inspector'
 import { ChannelMessage, type Selection } from '@/pages/chat/ChannelMessage'
+import { useEditing } from '@/pages/chat/editingStore'
 import { useBodyContext, type BodyScope } from '@/pages/chat/useBodyContext'
 import { MessageSkeleton } from '@/pages/chat/MessageSkeleton'
 import { useSearchParams } from 'react-router'
@@ -23,6 +25,14 @@ const CATCH_UP_PAGES = 10
 const BAR_ROOM = 48
 /** How long a message a jump landed on stays selected before it fades (spec 6.3). */
 const SELECTED_MS = 2000
+
+const pendingId = (clientId: string) => `pending:${clientId}`
+
+/** A pending message as a row of the list: mine, newest, with nothing on it yet. */
+const asMessage = (p: PendingMessage, meId: string | undefined): ChatMessage => ({
+  id: pendingId(p.clientId), channelId: p.channelId, seq: Number.MAX_SAFE_INTEGER, clientId: p.clientId, senderId: meId ?? '', content: p.content, body: p.body,
+  attachments: [], reactions: [], threadCount: 0, lastReplyAt: null, linkedTicketKeys: [], mentions: [], editedAt: null, createdAt: p.createdAt,
+})
 
 const estimate = (row: MessageListRow) => (row.kind === 'day' ? 40 : row.kind === 'new' ? 24 : row.continuation ? 24 : 72)
 
@@ -52,6 +62,9 @@ export function MessageList({
   onJump,
   onLatest,
   scope,
+  pending = [],
+  onRetry,
+  onDiscard,
 }: {
   query: MessagesQuery
   title: string
@@ -76,13 +89,27 @@ export function MessageList({
   onLatest: () => void
   /** Projects I can see and the workspace: what bodies need besides `users`. */
   scope: Omit<BodyScope, 'users'>
+  /** My messages on their way (spec 6.2), shown after the newest as "Sending…" or "Not sent". */
+  pending?: PendingMessage[]
+  onRetry?: (clientId: string) => void
+  onDiscard?: (clientId: string) => void
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const messages = useMemo(() => query.data?.pages.flatMap((page) => page.items).reverse() ?? [], [query.data])
   const hasOlder = Boolean(query.hasNextPage)
   // After a jump, newer messages may still be unloaded below: the end of the list isn't the newest yet.
   const hasNewer = Boolean(query.hasPreviousPage)
-  const rows = useMemo(() => buildRows(messages, { newAfterSeq, meId, hasOlder, now: new Date() }), [messages, newAfterSeq, meId, hasOlder])
+  // Pending messages follow the newest; one the server has confirmed is already in the list and drops out here.
+  const shownPending = useMemo(() => {
+    if (hasNewer) return []
+    const arrived = new Set(messages.map((m) => m.clientId).filter(Boolean))
+    return pending.filter((p) => !arrived.has(p.clientId))
+  }, [pending, messages, hasNewer])
+  const pendingById = useMemo(() => new Map(shownPending.map((p) => [pendingId(p.clientId), p])), [shownPending])
+  const rows = useMemo(
+    () => buildRows([...messages, ...shownPending.map((p) => asMessage(p, meId))], { newAfterSeq, meId, hasOlder, now: new Date() }),
+    [messages, shownPending, newAfterSeq, meId, hasOlder],
+  )
   // On open, older pages load until my first unread message is among them (a few at most), so the list can open there.
   const catchingUp =
     totalUnread > 0 && newAfterSeq !== null && hasOlder && messages.length > 0 && messages[0].seq > newAfterSeq && (query.data?.pages.length ?? 0) < CATCH_UP_PAGES
@@ -205,6 +232,14 @@ export function MessageList({
     scrollToFocus()
   })
 
+  // The message I start editing (Up in an empty box) comes into view.
+  const editingId = useEditing((s) => s.id)
+  useEffect(() => {
+    const i = editingId ? rows.findIndex((r) => r.kind === 'message' && r.message.id === editingId) : -1
+    if (i >= 0) virtualizer.scrollToIndex(i, { align: 'auto' })
+    // Only a new edit moves the view.
+  }, [editingId])
+
   // A new message at the end keeps me at the end when I was there (with followOnAppend as the first line of it).
   const lastKey = rows.at(-1)?.key
   useLayoutEffect(() => {
@@ -213,7 +248,7 @@ export function MessageList({
   }, [lastKey])
 
   // My own new message always brings me down to it.
-  const newestMine = newest && newest.senderId === meId ? newest.id : null
+  const newestMine = shownPending.at(-1)?.clientId ?? (newest && newest.senderId === meId ? newest.id : null)
   useEffect(() => {
     if (!newestMine || !positioned.current) return
     atBottomRef.current = true
@@ -293,6 +328,10 @@ export function MessageList({
                     continuation={row.continuation}
                     selected={selectionOf(row.message)}
                     actions={messageActions && ((close) => messageActions(row.message, close))}
+                    sendState={pendingById.get(row.message.id)?.status === 'failed' ? 'failed' : pendingById.has(row.message.id) ? 'sending' : undefined}
+                    sendError={pendingById.get(row.message.id)?.error}
+                    onRetry={() => onRetry?.(pendingById.get(row.message.id)!.clientId)}
+                    onDiscard={() => onDiscard?.(pendingById.get(row.message.id)!.clientId)}
                   />
                 )}
               </li>

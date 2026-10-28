@@ -2,7 +2,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
-import { afterEach, describe, expect, it } from 'vitest'
+import { ToastProvider } from '@/components/sf/Toast'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ChatMessage, TaskRef, ThreadReply, User } from '@/api/types'
 import { parseBody } from '@/lib/messageBody'
 import { ChannelMessage, systemText, type Selection } from '@/pages/chat/ChannelMessage'
@@ -28,9 +29,11 @@ const message = (content: string, over: Partial<ChatMessage> = {}): ChatMessage 
 function show(m: ChatMessage | ThreadReply, opts: { continuation?: boolean; selected?: Selection } = {}) {
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <MemoryRouter>
+      <ToastProvider>
+        <MemoryRouter>
         <ChannelMessage message={m} users={users} ctx={ctx} meId="u-1" canPost continuation={opts.continuation ?? false} selected={opts.selected} />
       </MemoryRouter>
+        </ToastProvider>
     </QueryClientProvider>,
   )
   return screen.getByRole('article')
@@ -166,9 +169,11 @@ describe('ChannelMessage parts (feature 4 follow-up)', () => {
   it('no add chip where I may not react', () => {
     render(
       <QueryClientProvider client={new QueryClient()}>
+        <ToastProvider>
         <MemoryRouter>
           <ChannelMessage message={message('hi', { reactions: [{ emoji: '👍', userIds: ['u-2'] }] })} users={users} ctx={ctx} meId="u-1" canPost={false} continuation={false} />
         </MemoryRouter>
+        </ToastProvider>
       </QueryClientProvider>,
     )
     expect(screen.queryByRole('button', { name: 'Add reaction' })).toBeNull()
@@ -202,5 +207,46 @@ describe('ChannelMessage parts (feature 4 follow-up)', () => {
     expect(card.textContent).toContain('spark-sys/flow/pull/42')
     expect(card.getAttribute('rel')).toBe('noopener noreferrer')
     expect(screen.queryByRole('link', { name: /example\.com.*example/ })).toBeNull()
+  })
+})
+
+describe('ChannelMessage while sending (spec 6.2)', () => {
+  function pending(state: 'sending' | 'failed', handlers = { onRetry: vi.fn(), onDiscard: vi.fn() }) {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ToastProvider>
+        <MemoryRouter>
+          <ChannelMessage
+            message={message('on its way', { senderId: 'u-1' })}
+            users={users}
+            ctx={ctx}
+            meId="u-1"
+            canPost
+            continuation={false}
+            sendState={state}
+            sendError={state === 'failed' ? 'This channel is archived.' : undefined}
+            {...handlers}
+          />
+        </MemoryRouter>
+        </ToastProvider>
+      </QueryClientProvider>,
+    )
+    return { row: screen.getByRole('article'), ...handlers }
+  }
+
+  it('sending shows "Sending…" for the time, and no menu yet', () => {
+    const { row } = pending('sending')
+    expect(row.textContent).toContain('Sending…')
+    expect(screen.queryByRole('button', { name: 'Message actions' })).toBeNull()
+  })
+
+  it('a refused send says "Not sent." with Retry and Delete, and why', () => {
+    const { onRetry, onDiscard } = pending('failed')
+    expect(screen.getByText('Not sent.')).toBeTruthy()
+    expect(screen.getByText('Not sent.').closest('p')!.getAttribute('title')).toBe('This channel is archived.')
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    expect(onRetry).toHaveBeenCalledOnce()
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    expect(onDiscard).toHaveBeenCalledOnce()
   })
 })

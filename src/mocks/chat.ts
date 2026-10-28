@@ -96,6 +96,8 @@ function checkChannel(data: DbData, values: { workspaceId: string; id?: string; 
 }
 
 const MAX_TEXT = 40_000 // spec 6.8
+/** How long a delete can be undone (spec 6.3: the toast's 5s, plus time for the request to arrive). */
+export const UNDO_MS = 10_000
 const MAX_DM_OTHERS = 8
 
 /** The text as stored: trimmed, not empty, not too long. */
@@ -285,22 +287,24 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       })
       changed(channelId, messageId)
     },
-    async edit(target, content) {
+    async edit(target, content, body) {
       await delay()
-      const text = checkText(content)
+      const input = body === undefined ? { text: checkText(content), body: null } : checkBody(body)
+      const text = input.text
       const result = await db.update((data) => {
         const { row, channel, messageId } = findTarget(data, target)
         const me = checkCanPost(data, channel)
         if (row.senderId !== me.id) throw forbiddenOwn()
         checkPlain(row)
-        if (row.content === text) return { row: clone(row), channelId: channel.id, messageId, same: true }
+        const nextBody = input.body ?? parseBody(text)
+        if (row.content === text && JSON.stringify(row.body) === JSON.stringify(nextBody)) return { row: clone(row), channelId: channel.id, messageId, same: true }
         row.content = text
-        row.body = parseBody(text)
-        row.mentions = parseMentions(text)
+        row.body = nextBody
+        row.mentions = input.body ? mentionsOf(input.body) : parseMentions(text)
         row.editedAt = new Date().toISOString()
         if (target.kind === 'message') {
           const message = row as ChatMessage
-          message.linkedTicketKeys = [...new Set([...parseTicketKeys(text), ...keysMadeFrom(data, message.id)])]
+          message.linkedTicketKeys = [...new Set([...(input.body ? bodyTaskKeys(input.body) : parseTicketKeys(text)), ...keysMadeFrom(data, message.id)])]
         }
         return { row: clone(row), channelId: channel.id, messageId, same: false }
       })
@@ -312,8 +316,19 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       const { channelId, messageId } = await db.update((data) => {
         const { row, channel, messageId } = findTarget(data, target)
         const me = checkCanPost(data, channel)
-        if (row.senderId !== me.id) throw forbiddenOwn()
+        // The author, or an Admin (spec §9: delete is author or admin).
+        if (row.senderId !== me.id && me.role !== 'admin') throw forbiddenOwn()
         checkPlain(row)
+        const now = Date.now()
+        // What the delete takes is kept for Undo, and only that long; older entries go now.
+        data.trash = data.trash.filter((t) => now - Date.parse(t.at) < UNDO_MS && t.id !== row.id)
+        data.trash.push({
+          id: row.id,
+          kind: target.kind,
+          by: me.id,
+          at: new Date(now).toISOString(),
+          snapshot: { content: row.content, body: row.body, attachments: row.attachments, mentions: row.mentions, reactions: row.reactions, ...('linkedTicketKeys' in row ? { linkedTicketKeys: row.linkedTicketKeys } : {}) },
+        })
         row.content = ''
         row.body = []
         row.attachments = []
@@ -321,6 +336,21 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         row.reactions = []
         row.deletedAt = new Date().toISOString()
         if (target.kind === 'message') (row as ChatMessage).linkedTicketKeys = []
+        return { channelId: channel.id, messageId }
+      })
+      changed(channelId, messageId)
+    },
+    async restore(target) {
+      await delay()
+      const { channelId, messageId } = await db.update((data) => {
+        const { row, channel, messageId } = findTarget(data, target)
+        const me = checkCanPost(data, channel)
+        if (!row.deletedAt) throw badRequest("This message isn't deleted.")
+        const entry = data.trash.find((t) => t.id === row.id && t.kind === target.kind)
+        if (!entry || Date.now() - Date.parse(entry.at) >= UNDO_MS) throw badRequest("It's too late to undo that.")
+        if (entry.by !== me.id) throw new ApiError({ title: 'Forbidden', status: 403, detail: 'Only whoever deleted it can undo that.' })
+        Object.assign(row, entry.snapshot, { deletedAt: null })
+        data.trash = data.trash.filter((t) => t !== entry)
         return { channelId: channel.id, messageId }
       })
       changed(channelId, messageId)

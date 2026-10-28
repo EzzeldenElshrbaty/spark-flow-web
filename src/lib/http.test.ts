@@ -156,6 +156,9 @@ describe('createHttpApi', () => {
     await api.chat.linkPreview('https://github.com/a?b=1')
     await api.chat.drafts('w1')
     await api.chat.saveDraft('c1', [], 'm1')
+    await api.chat.restore({ kind: 'message', id: 'm1' })
+    await api.chat.restore({ kind: 'reply', id: 'r1' })
+    await api.chat.edit({ kind: 'message', id: 'm1' }, 'x', [])
     expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url} ${String(c.init?.body)}`)).toEqual([
       'POST /api/channels/c1/read {"seq":7}',
       'POST /api/channels/c1/messages {"content":"hi","clientId":"k1"}',
@@ -167,6 +170,9 @@ describe('createHttpApi', () => {
       'GET /api/link-preview?url=https%3A%2F%2Fgithub.com%2Fa%3Fb%3D1 undefined',
       'GET /api/workspaces/w1/drafts undefined',
       'PUT /api/channels/c1/draft {"body":[],"rootId":"m1"}',
+      'POST /api/messages/m1/restore undefined',
+      'POST /api/replies/r1/restore undefined',
+      'PATCH /api/messages/m1 {"content":"x","body":[]}',
     ])
   })
 

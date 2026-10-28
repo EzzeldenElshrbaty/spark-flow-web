@@ -207,9 +207,9 @@ export function taskKeysOf(body: Body): string[] {
 }
 
 /** A message's body as elements (spec 6.3); emoji alone show large. */
-export function MessageBody({ body, ctx, after }: { body: Body; ctx: BodyContext; after?: ReactNode }) {
+export function MessageBody({ body, ctx, after, muted = false }: { body: Body; ctx: BodyContext; after?: ReactNode; muted?: boolean }) {
   return (
-    <div className={clsx('space-y-1 break-words text-sf-text [overflow-wrap:anywhere]', isJumbo(body) ? 'sf-emoji text-[32px]/[40px]' : 'sf-body')}>
+    <div className={clsx('space-y-1 break-words [overflow-wrap:anywhere]', muted ? 'text-sf-text-muted' : 'text-sf-text', isJumbo(body) ? 'sf-emoji text-[32px]/[40px]' : 'sf-body')}>
       <Blocks blocks={body} ctx={ctx} />
       {after}
     </div>
