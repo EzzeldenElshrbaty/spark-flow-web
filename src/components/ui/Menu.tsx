@@ -1,8 +1,24 @@
 import clsx from 'clsx'
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 
 const phoneQuery = '(max-width: 639px)'
+/** The gap between the trigger and the panel (mt-2 / mb-2). */
+const GAP = 8
+
+/** Room above and below `el` inside everything that clips it: the window and every ancestor that scrolls or clips. */
+function roomAround(el: HTMLElement) {
+  const { top, bottom } = el.getBoundingClientRect()
+  let start = 0
+  let end = window.innerHeight
+  for (let node = el.parentElement; node && node !== document.body; node = node.parentElement) {
+    if (getComputedStyle(node).overflowY === 'visible') continue
+    const box = node.getBoundingClientRect()
+    start = Math.max(start, box.top)
+    end = Math.min(end, box.bottom)
+  }
+  return { above: top - start, below: end - bottom }
+}
 
 /** True on phone widths. Phones get the menu as a bottom sheet rendered at the page level. */
 function usePhone() {
@@ -17,7 +33,8 @@ function usePhone() {
 }
 
 /**
- * A dropdown panel for top-bar menus: anchored under its trigger on desktop, a bottom sheet on phones.
+ * A dropdown panel for top-bar menus: anchored under its trigger on desktop (above it when it doesn't fit below,
+ * as on a list's last row), a bottom sheet on phones.
  * Closes on Escape (focus back to the trigger) and outside clicks, and keeps Tab inside while open.
  * Render it inside a `relative` wrapper that also contains the trigger.
  */
@@ -42,10 +59,23 @@ export function MenuPanel({
   useEffect(() => {
     onCloseRef.current = onClose
   })
+  // Opens upward (desktop) when it doesn't fit below its trigger and there's more room above. Null until placed.
+  const [above, setAbove] = useState<boolean | null>(null)
+  useLayoutEffect(() => {
+    const trigger = triggerRef.current
+    const panel = panelRef.current
+    if (!open || !trigger || !panel) return
+    const room = roomAround(trigger)
+    setAbove(!phone && panel.offsetHeight + GAP > room.below && room.above > room.below)
+    return () => setAbove(null)
+  }, [open, phone, triggerRef])
+  // Focus the first item once placed: focusing it where it was first drawn would scroll the list to it.
+  useEffect(() => {
+    if (above !== null) panelRef.current?.querySelector<HTMLElement>('button:not(:disabled)')?.focus()
+  }, [above])
 
   useEffect(() => {
     if (!open) return
-    panelRef.current?.querySelector<HTMLElement>('button:not(:disabled)')?.focus()
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target as Node
       if (!panelRef.current?.contains(target) && !triggerRef.current?.contains(target)) onCloseRef.current()
@@ -90,7 +120,8 @@ export function MenuPanel({
         className={clsx(
           'z-50 overflow-y-auto border border-line bg-surface shadow-xl',
           'max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:max-h-[85vh] max-sm:rounded-t-2xl max-sm:pb-[env(safe-area-inset-bottom)] max-sm:motion-safe:animate-fade-up',
-          'sm:absolute sm:end-0 sm:top-full sm:mt-2 sm:max-h-[80vh] sm:rounded-xl sm:motion-safe:animate-pop-in',
+          'sm:absolute sm:end-0 sm:max-h-[80vh] sm:rounded-xl sm:motion-safe:animate-pop-in',
+          above ? 'sm:bottom-full sm:mb-2' : 'sm:top-full sm:mt-2',
           className,
         )}
       >
