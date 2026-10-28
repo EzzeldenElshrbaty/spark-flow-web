@@ -53,3 +53,15 @@ describe('firstLine (M12)', () => {
     expect(firstLine('Ping @[Nour](u-2) now')).toBe('Ping @Nour now')
   })
 })
+
+describe('the File details panel in the URL (spec 6.9, slice 6)', () => {
+  it('?file= opens a file’s details; opening it closes a thread, and the other way round', () => {
+    expect(parseInspector(new URLSearchParams('file=a1'))).toEqual({ kind: 'file', fileId: 'a1' })
+    expect(parseInspector(new URLSearchParams('file=%20'))).toBeNull()
+    const thread = new URLSearchParams('tab=messages&thread=m1')
+    const file = withInspector(thread, { kind: 'file', fileId: 'a1' })
+    expect(file.toString()).toBe('tab=messages&file=a1')
+    expect(withInspector(file, { kind: 'thread', messageId: 'm1' }).toString()).toBe('tab=messages&thread=m1')
+    expect(withInspector(file, null).toString()).toBe('tab=messages')
+  })
+})

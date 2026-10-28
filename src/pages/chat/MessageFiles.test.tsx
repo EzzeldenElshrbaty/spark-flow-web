@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { Attachment } from '@/api/types'
+import type { Attachment, ChatMessage } from '@/api/types'
+import { FileActionsContext, type FileActions } from '@/pages/chat/files/FileActions'
 import { MessageFiles } from '@/pages/chat/MessageFiles'
 
 vi.mock('@/components/AttachmentView', async (original) => ({
@@ -24,10 +25,10 @@ describe('MessageFiles (spec 6.9 file card)', () => {
     expect(screen.getByRole('button', { name: 'Open Scope v3.pdf' }).textContent).toContain('PDF · 184 KB')
   })
 
-  it('has Open, Download and More, reachable from the keyboard', () => {
+  it('without the page’s file actions the pill has Download and More, reachable from the keyboard', () => {
     render(<MessageFiles attachments={[pdf]} link={link} />)
     const actions = screen.getByRole('group', { name: 'Scope v3.pdf actions' })
-    expect([...actions.querySelectorAll('button')].map((b) => b.getAttribute('aria-label'))).toEqual(['Open', 'Download', 'More file actions'])
+    expect([...actions.querySelectorAll('button')].map((b) => b.getAttribute('aria-label'))).toEqual(['Download', 'More file actions'])
   })
 
   it('Download saves the file under its name', () => {
@@ -55,5 +56,72 @@ describe('MessageFiles (spec 6.9 file card)', () => {
   it('without a link there is no More menu', () => {
     render(<MessageFiles attachments={[pdf]} />)
     expect(screen.queryByRole('button', { name: 'More file actions' })).toBeNull()
+  })
+})
+
+describe('the file card, its pill and menu (spec 6.9, slice 6)', () => {
+  const message = { id: 'm1', channelId: 'c-p-nex', content: 'Scope', attachments: [pdf], threadCount: 0 } as unknown as ChatMessage
+  const actions = (over: Partial<FileActions> = {}): FileActions => ({ mayManage: () => true, share: vi.fn(), details: vi.fn(), edit: vi.fn(), remove: vi.fn(), ...over })
+  const show = (value: FileActions, attachments: Attachment[] = [pdf]) =>
+    render(
+      <FileActionsContext.Provider value={value}>
+        <MessageFiles attachments={attachments} link={link} message={message} />
+      </FileActionsContext.Provider>,
+    )
+
+  it('shows its title, and a type label that folds the card away and back', () => {
+    render(<MessageFiles attachments={[{ ...pdf, title: 'Release scope' }]} link={link} />)
+    const label = screen.getByRole('button', { name: 'PDF' })
+    expect(label.getAttribute('aria-expanded')).toBe('true')
+    expect(screen.getByRole('button', { name: 'Open Release scope' }).textContent).toContain('Release scope')
+    fireEvent.click(label)
+    expect(label.getAttribute('aria-expanded')).toBe('false')
+    expect(screen.queryByRole('button', { name: 'Open Release scope' })).toBeNull()
+    fireEvent.click(label)
+    expect(screen.getByRole('button', { name: 'Open Release scope' })).toBeTruthy()
+  })
+
+  it('the pill has Download, Share, Details and More; Share and Details go to the page', () => {
+    const value = actions()
+    show(value)
+    const pill = screen.getByRole('group', { name: 'Scope v3.pdf actions' })
+    expect([...pill.querySelectorAll('button')].map((b) => b.getAttribute('aria-label'))).toEqual(['Download', 'Share', 'Details', 'More file actions'])
+    fireEvent.click(screen.getByRole('button', { name: 'Share' }))
+    expect(value.share).toHaveBeenCalledWith(pdf)
+    fireEvent.click(screen.getByRole('button', { name: 'Details' }))
+    expect(value.details).toHaveBeenCalledWith(pdf)
+  })
+
+  it('the menu has Create task from file, Copy link, Edit file details and Delete file, as I may', () => {
+    const value = actions({ createTask: vi.fn() })
+    show(value)
+    fireEvent.click(screen.getByRole('button', { name: 'More file actions' }))
+    expect(screen.getAllByRole('menuitem').map((i) => i.textContent)).toEqual(['Create task from file', 'Copy link to file', 'Edit file details', 'Delete file'])
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Create task from file' }))
+    expect(value.createTask).toHaveBeenCalledWith(pdf, message)
+    fireEvent.click(screen.getByRole('button', { name: 'More file actions' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete file' }))
+    expect(value.remove).toHaveBeenCalledWith(pdf)
+    cleanup()
+    show(actions({ mayManage: () => false }))
+    expect(screen.queryByRole('button', { name: 'Share' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'More file actions' }))
+    expect(screen.getAllByRole('menuitem').map((i) => i.textContent)).toEqual(['Copy link to file'])
+  })
+
+  it('a deleted file says so, with nothing to do', () => {
+    show(actions(), [{ ...pdf, deletedAt: '2026-10-29T10:00:00.000Z' }])
+    expect(screen.getByText('This file was deleted.')).toBeTruthy()
+    expect(screen.queryByRole('button')).toBeNull()
+  })
+
+  it('a file still being checked, or blocked, can’t be opened or downloaded', () => {
+    show(actions(), [{ ...pdf, scanStatus: 'pending' }])
+    expect(screen.getByText('Checking for viruses…')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Download' })).toBeNull()
+    cleanup()
+    show(actions(), [{ ...pdf, scanStatus: 'blocked' }])
+    expect(screen.getByText('This file was blocked.')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /^Open/ })).toBeNull()
   })
 })

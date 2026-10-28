@@ -198,7 +198,7 @@ export function ChannelMessage({
     body = (
       <>
         <MessageBody body={message.body} ctx={ctx} muted={sendState === 'failed'} after={message.editedAt && <span className="sf-meta text-sf-text-muted">(edited)</span>} />
-        <MessageFiles attachments={message.attachments} link={permalink} />
+        <MessageFiles attachments={message.attachments} link={permalink} message={message} />
         {root && <LinkedTasks message={root} ctx={ctx} />}
         {unfurl && <TaskUnfurl task={unfurl} users={users} />}
         {link && <LinkPreviewCard url={link} />}

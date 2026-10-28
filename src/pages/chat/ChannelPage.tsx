@@ -36,6 +36,8 @@ import { useProjectSummaries, useTeams } from '@/api/projects'
 import { MessageSkeleton } from '@/pages/chat/MessageSkeleton'
 import { useChannelReadState, useReadHold, useReadHoldScope } from '@/pages/chat/readState'
 import { ChannelShortcuts, type ChannelNavState } from '@/pages/chat/ChannelShortcuts'
+import { FileActionsProvider } from '@/pages/chat/files/FileActions'
+import { withInspector } from '@/lib/inspector'
 import { UploadTray } from '@/pages/chat/uploads/UploadTray'
 import { paneDrop, useUploads, type Uploads } from '@/pages/chat/uploads/useUploads'
 
@@ -108,6 +110,14 @@ export function ChannelPage() {
   const title = current.kind === 'channel' ? `#${current.name}` : channelLabel(current, people, persona.id)
   const writing = tab === 'messages' && !isArchived(current) && !mustJoin(current, persona.id, projects.data) && canPost === true && canWrite === true
   return (
+    <FileActionsProvider
+      workspaceId={current.workspaceId}
+      meId={persona.id}
+      people={people}
+      // Details opens the File details panel beside the channel (spec 6.9), as a thread does.
+      onDetails={(file) => setParams((p) => withInspector(p, { kind: 'file', fileId: file.id }))}
+      onCreateTask={fromMessage.fromFile}
+    >
     <div className="flex min-h-0 flex-1 flex-col">
       <ChannelTop channel={current} people={people} workspaceSlug={ws} tab={tab} onTab={setTab} panelId={panelId} />
       <div id={panelId} role="tabpanel" aria-label={tab === 'messages' ? 'Messages' : tab} className="flex min-h-0 flex-1 flex-col" {...paneDrop(writing, uploads.add)}>
@@ -164,6 +174,7 @@ export function ChannelPage() {
       {fromMessage.sheet}
       <ChannelShortcuts channel={current} workspaceSlug={ws} />
     </div>
+    </FileActionsProvider>
   )
 }
 

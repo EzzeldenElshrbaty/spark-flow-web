@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useSearchParams } from 'react-router'
 import { useChannel, useMessage, useReply, useThread } from '@/api/chat'
 import { useUsers } from '@/api/users'
 import { QueryError } from '@/components/ui/QueryError'
@@ -21,6 +22,8 @@ import { CanPostError } from '@/pages/chat/CanPostError'
 import { useReplyFocus } from '@/pages/chat/useReplyFocus'
 import { ThreadMenu } from '@/pages/chat/ThreadMenu'
 import { paths } from '@/lib/paths'
+import { withInspector } from '@/lib/inspector'
+import { FileActionsProvider } from '@/pages/chat/files/FileActions'
 
 const isNotFound = (error: Error | null) => error instanceof ApiError && error.status === 404
 const isForbidden = (error: Error | null) => error instanceof ApiError && error.status === 403
@@ -46,6 +49,7 @@ export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: st
   const ctx = useBodyContext(bodies, scope)
   // Opened with Reply in thread or T: the caret goes to the reply box.
   const replyBox = useReplyFocus()
+  const [, setParams] = useSearchParams()
 
   // A message from another workspace's channel is not found in this one.
   const foreign = Boolean(channel.data && workspace && !inWorkspace(channel.data, workspace.id))
@@ -130,8 +134,16 @@ export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: st
     />
   )
   return (
-    <InspectorFrame label="Thread" eyebrow={eyebrow} title={title} actions={actions} onClose={onClose}>
-      {body}
-    </InspectorFrame>
+    <FileActionsProvider
+      workspaceId={channel.data?.workspaceId ?? workspace?.id ?? ''}
+      meId={persona.id}
+      people={people}
+      // A file's Details takes the panel over from the thread (one panel at a time).
+      onDetails={(file) => setParams((p) => withInspector(p, { kind: 'file', fileId: file.id }))}
+    >
+      <InspectorFrame label="Thread" eyebrow={eyebrow} title={title} actions={actions} onClose={onClose}>
+        {body}
+      </InspectorFrame>
+    </FileActionsProvider>
   )
 }

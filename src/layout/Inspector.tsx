@@ -3,6 +3,7 @@ import { useLocation, useSearchParams } from 'react-router'
 import { hasOpenLayer } from '@/components/sf/layers'
 import { parseInspector, withInspector } from '@/lib/inspector'
 import { watchDialogAtKeyDown } from '@/lib/keyStart'
+import { FileInspector } from '@/pages/chat/files/FileInspector'
 import { ThreadInspector } from '@/pages/chat/ThreadInspector'
 import { TicketInspector } from '@/pages/projects/TicketInspector'
 
@@ -44,7 +45,7 @@ export function useInspectorEscape(open: boolean, close: () => void) {
   }, [open])
 }
 
-/** The right-side panel for a thread or a ticket. Opened and closed only through the URL (`?thread=` / `?ticket=`). */
+/** The right-side panel for a thread, a ticket or a file. Opened and closed only through the URL (`?thread=`, `?ticket=`, `?file=`). */
 export function Inspector() {
   const [params, setParams] = useSearchParams()
   const { pathname } = useLocation()
@@ -58,6 +59,7 @@ export function Inspector() {
   useInspectorEscape(open, () => setParams((current) => withInspector(current, null)))
 
   if (!target) return null
+  if (target.kind === 'file') return <FileInspector key={target.fileId} fileId={target.fileId} onClose={onClose} closeTo={closeTo} />
   return target.kind === 'thread' ? (
     <ThreadInspector key={target.messageId} messageId={target.messageId} onClose={onClose} closeTo={closeTo} />
   ) : (

@@ -6,11 +6,12 @@ import { FileViewer } from '@/components/ui/FileViewer'
 import { previewOf } from '@/lib/fileTypes'
 import { safeFileUrl } from '@/lib/safeFileUrl'
 
-/** A blob: address for a stored file while the component is on screen; freed when it goes. */
-export function useFileUrl(id: string) {
+/** A blob: address for a stored file while the component is on screen; freed when it goes. Null `id`: nothing to open. */
+export function useFileUrl(id: string | null) {
   const [url, setUrl] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)
   useEffect(() => {
+    if (!id) return
     let alive = true
     let made: string | null = null
     openFile(id).then(

@@ -2,11 +2,12 @@ import clsx from 'clsx'
 import { ChevronLeft, ChevronRight, Download, FileText, Minus, Plus, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { downloadUrl, previewOf } from '@/lib/fileTypes'
+import { downloadUrl, previewOf, type Preview } from '@/lib/fileTypes'
 import { isPdf } from '@/lib/pdfSignature'
 import { safeFileUrl } from '@/lib/safeFileUrl'
 
-type ViewedFile = { name: string; url: string; sizeKb?: number }
+/** `preview`: how to show it when its name doesn't say (an office file's converted PDF preview). */
+type ViewedFile = { name: string; url: string; sizeKb?: number; preview?: Preview }
 
 const sizeText = (sizeKb?: number) => (sizeKb === undefined ? '' : sizeKb >= 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${sizeKb} KB`)
 
@@ -20,7 +21,7 @@ export function FileViewer({ files, start = 0, onClose }: { files: ViewedFile[];
   // Only same-origin, https and blob: addresses are opened at all; anything else gets no preview and no link.
   const url = safeFileUrl(shown.url)
   const file = { ...shown, url: url ?? '' }
-  const preview = url ? previewOf(file.name) : 'none'
+  const preview = url ? (shown.preview ?? previewOf(file.name)) : 'none'
   const many = files.length > 1
   const step = (by: number) => setIndex((current) => (current + by + files.length) % files.length)
 
