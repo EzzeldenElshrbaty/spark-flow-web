@@ -1,0 +1,221 @@
+import { IconDotsVertical, IconMessageReply, IconMoodPlus } from '@tabler/icons-react'
+import clsx from 'clsx'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useReact } from '@/api/chat'
+import type { ChatTarget, Reaction } from '@/api/types'
+import { IconButton } from '@/components/sf/Button'
+import { isRtl } from '@/components/sf/layers'
+import { MenuItem, useCloseMenu } from '@/components/sf/Menu'
+import { Popover, type PopoverTriggerProps } from '@/components/sf/Popover'
+import { Tooltip } from '@/components/sf/Tooltip'
+import { usePhone } from '@/components/sf/usePhone'
+import { emojiInfo } from '@/lib/emoji'
+import { roomAround } from '@/lib/roomAround'
+import { EmojiPicker } from '@/pages/chat/EmojiPicker'
+import { MessageMenu, ROW_FOCUS } from '@/pages/chat/MessageActions'
+
+/** The toolbar's quick reactions (spec 6.4; later, the viewer's three most recent). */
+export const QUICK_REACTIONS = ['✅', '👀', '🙌'] as const
+/** How far the toolbar rises above its row (spec 6.4): with less room than this above the row, it sits inside it. */
+const RISE = 16
+
+type Stop = 'more' | 'reply' | 'add' | (typeof QUICK_REACTIONS)[number]
+
+/**
+ * The toolbar of a message or reply (spec 6.4): ✅ 👀 🙌, Add reaction, Reply in thread (T) and More (the ⋯ menu).
+ * Shown while its row is hovered or has focus, and while its menu or picker is open. One Tab stop per row (More,
+ * then wherever I left it); ←/→, Home and End move along it. It rises 16px above the row's top end, and sits inside
+ * the row when that would be cut off (the top row of a list or panel). Phones have no hover: the ⋯ alone, its sheet
+ * starting with what the toolbar carries.
+ */
+export function MessageToolbar({
+  target,
+  reactions,
+  meId,
+  can,
+  confirmDelete,
+  onEdit,
+  onReply,
+  onMarkUnread,
+  onCopyLink,
+  onCopyText,
+  extra,
+  className,
+}: {
+  target: ChatTarget
+  reactions: Reaction[]
+  meId?: string
+  can: { react: boolean; edit: boolean; remove: boolean }
+  confirmDelete?: boolean
+  onEdit: () => void
+  /** Reply in thread (T): a top-level message, outside its own thread. */
+  onReply?: () => void
+  onMarkUnread?: () => void
+  onCopyLink?: () => void
+  onCopyText?: () => void
+  /** More menu items from the page (Create task). */
+  extra?: ReactNode
+  /** Where it sits on the row's end side. */
+  className?: string
+}) {
+  const phone = usePhone()
+  const react = useReact(meId)
+  const bar = useRef<HTMLDivElement>(null)
+  const [active, setActive] = useState<Stop | null>(null)
+  const [inside, setInside] = useState(false)
+
+  // Placed when the row is about to show it: hovered, or focus coming in.
+  useEffect(() => {
+    const row = bar.current?.closest('article')
+    if (!row || phone) return
+    const place = () => setInside(roomAround(row).above < RISE)
+    row.addEventListener('pointerenter', place)
+    row.addEventListener('focusin', place)
+    return () => {
+      row.removeEventListener('pointerenter', place)
+      row.removeEventListener('focusin', place)
+    }
+  }, [phone])
+
+  const mine = (emoji: string) => meId != null && reactions.some((r) => r.emoji === emoji && r.userIds.includes(meId))
+  const toggle = (emoji: string) => react.mutate({ target, emoji })
+  // The picker only adds: picking one I gave already isn't a toggle off.
+  const add = (emoji: string) => {
+    if (!mine(emoji)) react.mutate({ target, emoji })
+  }
+  const menu = { target, can, confirmDelete, onEdit, onMarkUnread, onCopyLink, onCopyText, extra }
+  const error = react.error && (
+    <p role="alert" className={clsx('sf-meta absolute top-9 z-10 w-56 rounded-sf-md bg-sf-surface-raised p-2 text-sf-error shadow-sf-menu', className)}>
+      {react.error.message}
+    </p>
+  )
+
+  if (phone) {
+    const lead = (can.react || onReply) && (
+      <>
+        {can.react && <SheetReactions mine={mine} onToggle={toggle} onAdd={() => bar.current?.querySelector<HTMLElement>('[data-add-reaction]')?.click()} />}
+        {onReply && (
+          <MenuItem icon={IconMessageReply} onSelect={onReply}>
+            Reply in thread
+          </MenuItem>
+        )}
+      </>
+    )
+    return (
+      <>
+        <div ref={bar} className={clsx('absolute top-1', className)}>
+          {can.react && (
+            // The sheet's Add reaction opens this picker; its trigger only holds focus for when the picker closes.
+            <AddReaction onPick={add} trigger={(props) => <button type="button" {...props} data-add-reaction="" tabIndex={-1} aria-label="Add reaction" className="sr-only" />} />
+          )}
+          <MessageMenu {...menu} lead={lead || undefined} trigger={(props) => <IconButton label="More actions" icon={IconDotsVertical} {...props} {...{ [ROW_FOCUS]: '' }} />} />
+        </div>
+        {error}
+      </>
+    )
+  }
+
+  const offersMenu = Boolean(onMarkUnread || onCopyLink || onCopyText || can.edit || can.remove || extra)
+  const stops: Stop[] = [...(can.react ? [...QUICK_REACTIONS, 'add' as const] : []), ...(onReply ? ['reply' as const] : []), ...(offersMenu ? ['more' as const] : [])]
+  if (stops.length === 0) return null
+  const current = active && stops.includes(active) ? active : stops[stops.length - 1]
+  const stop = (key: Stop) => ({ tabIndex: key === current ? 0 : -1, onFocus: () => setActive(key), 'data-toolbar-stop': key, [ROW_FOCUS]: key === current ? '' : undefined })
+
+  const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
+    const items = [...event.currentTarget.querySelectorAll<HTMLElement>('[data-toolbar-stop]')]
+    const index = items.indexOf(document.activeElement as HTMLElement)
+    // Keys from its menu or picker (portals) come here too: only the toolbar's own buttons move along it.
+    if (index < 0) return
+    const [back, forward] = isRtl(event.currentTarget) ? ['ArrowRight', 'ArrowLeft'] : ['ArrowLeft', 'ArrowRight']
+    const to = event.key === forward ? index + 1 : event.key === back ? index - 1 : event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : null
+    if (to === null) return
+    event.preventDefault()
+    items[(to + items.length) % items.length].focus()
+  }
+
+  return (
+    <>
+      <div
+        ref={bar}
+        role="toolbar"
+        aria-label="Message actions"
+        onKeyDown={onKeyDown}
+        className={clsx(
+          'absolute z-[var(--z-toolbar)] flex items-center gap-0.5 rounded-sf-lg bg-sf-surface-raised p-0.5 shadow-sf-toolbar',
+          inside ? 'top-1' : '-top-4',
+          // Hidden, it takes no pointer: it reaches over the row above, whose own toolbar that spot belongs to.
+          'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 has-[[aria-expanded=true]]:pointer-events-auto has-[[aria-expanded=true]]:opacity-100',
+          className,
+        )}
+      >
+        {can.react &&
+          QUICK_REACTIONS.map((emoji) => (
+            <Tooltip key={emoji} label={`:${emojiInfo(emoji)?.aliases[0] ?? emoji}:`}>
+              <button
+                type="button"
+                {...stop(emoji)}
+                aria-label={`React with ${emoji}`}
+                aria-pressed={mine(emoji)}
+                onClick={() => toggle(emoji)}
+                className={clsx('sf-focus inline-grid size-sf-control place-items-center rounded-sf-md hover:bg-sf-surface-hover', mine(emoji) && 'bg-sf-surface-mention')}
+              >
+                <span className="sf-emoji text-[16px]/none">{emoji}</span>
+              </button>
+            </Tooltip>
+          ))}
+        {can.react && <AddReaction onPick={add} trigger={(props) => <IconButton label="Add reaction" icon={IconMoodPlus} {...props} {...stop('add')} />} />}
+        {can.react && (onReply || offersMenu) && <span aria-hidden className="mx-0.5 h-5 w-px bg-sf-line" />}
+        {onReply && <IconButton label="Reply in thread" icon={IconMessageReply} shortcut={['T']} onClick={onReply} {...stop('reply')} />}
+        {offersMenu && <MessageMenu {...menu} trigger={(props) => <IconButton label="More actions" icon={IconDotsVertical} {...props} {...stop('more')} />} />}
+      </div>
+      {error}
+    </>
+  )
+}
+
+function AddReaction({ onPick, trigger }: { onPick: (emoji: string) => void; trigger: (props: PopoverTriggerProps) => ReactNode }) {
+  return (
+    <Popover label="Add reaction" className="w-[352px] max-w-[calc(100vw-16px)] overflow-hidden" trigger={trigger}>
+      {(close) => (
+        <EmojiPicker
+          onPick={(emoji) => {
+            close()
+            onPick(emoji)
+          }}
+        />
+      )}
+    </Popover>
+  )
+}
+
+/** The sheet's quick reactions on a phone, then Add reaction (the picker). */
+function SheetReactions({ mine, onToggle, onAdd }: { mine: (emoji: string) => boolean; onToggle: (emoji: string) => void; onAdd: () => void }) {
+  const close = useCloseMenu()
+  return (
+    <>
+      <div role="group" aria-label="Quick reactions" className="mx-2 flex flex-none items-center gap-1 pb-1">
+        {QUICK_REACTIONS.map((emoji) => (
+          <button
+            key={emoji}
+            type="button"
+            role="menuitemcheckbox"
+            aria-checked={mine(emoji)}
+            aria-label={`React with ${emoji}`}
+            tabIndex={-1}
+            onClick={() => {
+              close()
+              onToggle(emoji)
+            }}
+            className={clsx('sf-focus inline-grid size-11 place-items-center rounded-sf-md outline-none hover:bg-sf-surface-hover focus:bg-sf-surface-hover', mine(emoji) && 'bg-sf-surface-mention')}
+          >
+            <span className="sf-emoji text-[20px]/none">{emoji}</span>
+          </button>
+        ))}
+      </div>
+      <MenuItem icon={IconMoodPlus} onSelect={onAdd}>
+        Add reaction
+      </MenuItem>
+    </>
+  )
+}

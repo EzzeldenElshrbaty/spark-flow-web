@@ -26,6 +26,11 @@ function useMenu() {
 
 const ITEM_ROLES = '[role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"]'
 
+/** Closes the whole menu (focus back to its trigger): for rows that aren't a `MenuItem`, such as a row of emoji. */
+export function useCloseMenu() {
+  return useMenu().closeAll
+}
+
 
 export type MenuTriggerProps = {
   ref: RefObject<HTMLButtonElement | null>
@@ -176,6 +181,14 @@ function MenuPanel({
     else if (event.key === 'End') go(items.length - 1)
     else if (event.key === back && side) onClose()
     else if (event.key.length === 1 && /\S/.test(event.key) && !event.metaKey && !event.ctrlKey && !event.altKey) {
+      // An item's own key (Mark unread's U) picks it, as it does on the message; any other letter jumps.
+      const picked = items.find((item) => item.getAttribute('aria-keyshortcuts')?.toLowerCase() === event.key.toLowerCase())
+      if (picked) {
+        event.preventDefault()
+        event.stopPropagation()
+        if (!event.repeat) picked.click()
+        return
+      }
       const now = Date.now()
       typed.current = { text: (now - typed.current.at < 700 ? typed.current.text : '') + event.key.toLowerCase(), at: now }
       const text = typed.current.text
@@ -233,6 +246,7 @@ function focusOnHover(event: React.PointerEvent<HTMLElement>) {
 export function MenuItem({
   icon,
   hint,
+  shortcut,
   danger = false,
   disabled = false,
   checked,
@@ -242,6 +256,8 @@ export function MenuItem({
   icon?: TablerIcon
   /** Shortcut or trailing text, e.g. "S" or "⌘ Shift A". */
   hint?: ReactNode
+  /** A one-letter key, e.g. "U": shown as the hint, announced (aria-keyshortcuts), and in the menu it picks the item. */
+  shortcut?: string
   danger?: boolean
   disabled?: boolean
   checked?: boolean
@@ -255,6 +271,7 @@ export function MenuItem({
       role={checked === undefined ? 'menuitem' : 'menuitemradio'}
       aria-checked={checked}
       aria-disabled={disabled || undefined}
+      aria-keyshortcuts={shortcut}
       tabIndex={-1}
       onPointerMove={focusOnHover}
       onClick={() => {
@@ -266,8 +283,10 @@ export function MenuItem({
     >
       {icon && <Icon icon={icon} size={18} className={danger ? 'text-sf-accent' : 'text-sf-text-secondary'} />}
       <span className="min-w-0 flex-1 truncate">{children}</span>
-      {hint && (
-        <span className="sf-meta ms-auto inline-flex items-center gap-1 ps-4 text-sf-text-muted">{hint}</span>
+      {(hint ?? shortcut) && (
+        <span aria-hidden={hint ? undefined : true} className="sf-meta ms-auto inline-flex items-center gap-1 ps-4 text-sf-text-muted">
+          {hint ?? shortcut}
+        </span>
       )}
       {checked && <Icon icon={IconCheck} size={18} className="ms-auto text-sf-accent" />}
     </button>

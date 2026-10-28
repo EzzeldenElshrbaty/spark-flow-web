@@ -1,153 +1,132 @@
-import clsx from 'clsx'
-import { CircleDot, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { useDeleteMessage, useReact, useRestoreMessage } from '@/api/chat'
+import { IconCircleDot, IconClipboardText, IconLink, IconPencil, IconTrash } from '@tabler/icons-react'
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useDeleteMessage, useRestoreMessage } from '@/api/chat'
 import type { ChatTarget } from '@/api/types'
-import { IconTrash } from '@tabler/icons-react'
 import { Button as SfButton } from '@/components/sf/Button'
+import { Menu, MenuItem, MenuSeparator, type MenuTriggerProps } from '@/components/sf/Menu'
 import { Modal } from '@/components/sf/Modal'
 import { useToast } from '@/components/sf/Toast'
-import { MenuPanel } from '@/components/ui/Menu'
-import { REACTIONS } from '@/lib/reactions'
-import { useRole } from '@/lib/useRole'
 
-export const menuItemClass = 'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start text-sm text-fg-secondary hover:bg-surface-muted'
+/** Marks the element a row's focus goes back to (after an edit or a delete): its toolbar's Tab stop. */
+export const ROW_FOCUS = 'data-row-focus'
 
 /**
- * The ⋯ on a message or reply: a row of reactions, then Edit and Delete for my own, then whatever the page adds
- * (Create task). Shown on hover or focus on desktop, always on phones.
+ * The ⋯ menu of a message or reply (spec 6.5), in its order: Mark unread · — · whatever the page adds (Create task),
+ * Copy link, Copy text · — · Edit and Delete for the author (or Delete for an Admin). On phones `lead` comes first:
+ * what the toolbar would carry there. A separator only between groups that have something.
  */
-export function MessageActions({
+export function MessageMenu({
   target,
   can,
   confirmDelete = false,
   onEdit,
   onMarkUnread,
+  onCopyLink,
+  onCopyText,
   extra,
+  lead,
+  trigger,
 }: {
   target: ChatTarget
-  can: { react: boolean; edit: boolean; remove: boolean }
+  can: { edit: boolean; remove: boolean }
   /** Ask before deleting (it has replies or files); otherwise it goes at once, with Undo (spec 6.3). */
   confirmDelete?: boolean
   onEdit: () => void
   /** Mark unread (U), on someone else's message in the channel's list. */
   onMarkUnread?: () => void
-  /** More menu items; each gets the close function so it can shut the menu. */
-  extra?: (close: () => void) => ReactNode
+  onCopyLink?: () => void
+  onCopyText?: () => void
+  /** More items from the page (Create task), as `MenuItem`s. */
+  extra?: ReactNode
+  /** Phones: the quick reactions, Add reaction and Reply in thread, first in the sheet. */
+  lead?: ReactNode
+  /** The More button, with its place in the toolbar. */
+  trigger: (props: MenuTriggerProps) => ReactNode
 }) {
-  const [open, setOpen] = useState(false)
   const [confirming, setConfirming] = useState(false)
-  const triggerRef = useRef<HTMLButtonElement>(null)
-  const { persona } = useRole()
-  const react = useReact(persona.id)
   const remove = useDeleteMessage()
   const restore = useRestoreMessage()
   const toast = useToast()
-  // Once deleted, the row goes and takes this ⋯ with it: focus moves on (after the confirm dialog has put it back).
-  const [deleted, setDeleted] = useState(0)
+  // Once deleted, the row goes and takes its toolbar with it: focus moves on (after the confirm dialog has put it back).
+  const [deleted, setDeleted] = useState<{ from: HTMLElement | null } | null>(null)
   useEffect(() => {
-    if (deleted) focusAfterDelete(triggerRef.current)
+    if (deleted) focusAfterDelete(deleted.from)
   }, [deleted])
   /** Deletes, then offers Undo for 5s; an Undo that comes too late says so. */
-  const deleteNow = () =>
+  const deleteNow = (from: HTMLElement | null) =>
     remove.mutateAsync(target).then(() => {
       setConfirming(false)
-      setDeleted((n) => n + 1)
+      setDeleted({ from })
       toast({
         message: 'Message deleted',
         icon: IconTrash,
         action: { label: 'Undo', onAction: () => restore.mutate(target, { onError: (e) => toast({ message: (e as Error).message }) }) },
       })
     })
-  const close = () => setOpen(false)
-  const more = extra?.(close)
-  if (!can.react && !can.edit && !can.remove && !onMarkUnread && !more) return null
+  const wrap = useRef<HTMLDivElement>(null)
+  // The More button: where focus is when a delete is chosen, and where the next row's focus is looked for from.
+  const more = () => wrap.current?.querySelector<HTMLElement>('button') ?? null
+
+  const groups = [
+    [lead],
+    [
+      onMarkUnread && (
+        <MenuItem icon={IconCircleDot} shortcut="U" onSelect={onMarkUnread}>
+          Mark unread
+        </MenuItem>
+      ),
+    ],
+    [
+      extra,
+      onCopyLink && (
+        <MenuItem icon={IconLink} shortcut="L" onSelect={onCopyLink}>
+          Copy link
+        </MenuItem>
+      ),
+      onCopyText && (
+        <MenuItem icon={IconClipboardText} onSelect={onCopyText}>
+          Copy text
+        </MenuItem>
+      ),
+    ],
+    [
+      can.edit && (
+        <MenuItem icon={IconPencil} shortcut="E" onSelect={onEdit}>
+          Edit message
+        </MenuItem>
+      ),
+      can.remove && (
+        <MenuItem
+          icon={IconTrash}
+          danger
+          onSelect={() => {
+            if (confirmDelete) setConfirming(true)
+            else void deleteNow(more()).catch(() => {})
+          }}
+        >
+          Delete message
+        </MenuItem>
+      ),
+    ],
+  ]
+    .map((group) => group.filter(Boolean))
+    .filter((group) => group.length > 0)
+  if (groups.length === 0) return null
   return (
-    <div className="relative">
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label="Message actions"
-        title="Message actions"
-        className={clsx(
-          'flex size-8 items-center justify-center rounded-lg text-fg-tertiary transition hover:bg-surface-muted hover:text-fg',
-          !open && 'sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100',
-        )}
-      >
-        <MoreHorizontal className="size-4" />
-      </button>
-      <MenuPanel open={open} onClose={close} triggerRef={triggerRef} label="Message actions" className="p-1.5 sm:w-60">
-        {can.react && (
-          <div className="flex flex-wrap gap-1 px-1.5 pb-1.5 pt-1" role="group" aria-label="Add reaction">
-            {REACTIONS.map((emoji) => (
-              <button
-                key={emoji}
-                type="button"
-                role="menuitem"
-                aria-label={`Add reaction ${emoji}`}
-                onClick={() => {
-                  close()
-                  react.mutate({ target, emoji })
-                }}
-                className="flex size-9 items-center justify-center rounded-lg text-lg hover:bg-surface-muted"
-              >
-                {emoji}
-              </button>
+    <div ref={wrap} className="relative">
+      <Menu label="Message actions" trigger={trigger}>
+        {groups.map((group, i) => (
+          <Fragment key={i}>
+            {i > 0 && <MenuSeparator />}
+            {group.map((row, j) => (
+              <Fragment key={j}>{row}</Fragment>
             ))}
-          </div>
-        )}
-        {onMarkUnread && (
-          <button
-            type="button"
-            role="menuitem"
-            aria-keyshortcuts="U"
-            className={menuItemClass}
-            onClick={() => {
-              close()
-              onMarkUnread()
-            }}
-          >
-            <CircleDot className="size-4 shrink-0" /> Mark unread
-            <span aria-hidden className="ms-auto text-xs text-fg-muted">
-              U
-            </span>
-          </button>
-        )}
-        {can.edit && (
-          <button
-            type="button"
-            role="menuitem"
-            className={menuItemClass}
-            onClick={() => {
-              close()
-              onEdit()
-            }}
-          >
-            <Pencil className="size-4 shrink-0" /> Edit message
-          </button>
-        )}
-        {can.remove && (
-          <button
-            type="button"
-            role="menuitem"
-            className={clsx(menuItemClass, 'text-red-600 dark:text-red-400')}
-            onClick={() => {
-              close()
-              if (confirmDelete) setConfirming(true)
-              else void deleteNow().catch(() => {})
-            }}
-          >
-            <Trash2 className="size-4 shrink-0" /> Delete message
-          </button>
-        )}
-        {more}
-      </MenuPanel>
-      {(react.error || (!confirming && remove.error)) && (
-        <p role="alert" className="absolute end-0 top-full z-10 mt-1 w-56 rounded-lg bg-surface p-2 text-xs text-red-600 shadow-lg ring-1 ring-line dark:text-red-400">
-          {(react.error ?? remove.error)?.message}
+          </Fragment>
+        ))}
+      </Menu>
+      {!confirming && remove.error && (
+        <p role="alert" className="sf-meta absolute end-0 top-full z-10 mt-1 w-56 rounded-sf-md bg-sf-surface-raised p-2 text-sf-error shadow-sf-menu">
+          {remove.error.message}
         </p>
       )}
       <Modal
@@ -158,7 +137,7 @@ export function MessageActions({
         footer={
           <>
             <SfButton onClick={() => setConfirming(false)}>Cancel</SfButton>
-            <SfButton variant="danger" disabled={remove.isPending} onClick={() => void deleteNow().catch(() => {})}>
+            <SfButton variant="danger" disabled={remove.isPending} onClick={() => void deleteNow(more()).catch(() => {})}>
               {remove.isPending ? 'Deleting…' : 'Delete message'}
             </SfButton>
           </>
@@ -171,19 +150,19 @@ export function MessageActions({
 }
 
 /**
- * Where focus goes once a message is deleted (spec 10): the next message's ⋯, else the one before, else the list.
- * Not when focus has already gone somewhere else.
+ * Where focus goes once a message is deleted (spec 10): the next message's toolbar, else the one before, else the
+ * list. Not when focus has already gone somewhere else.
  */
-function focusAfterDelete(trigger: HTMLElement | null) {
+function focusAfterDelete(from: HTMLElement | null) {
   const active = document.activeElement
-  if (!trigger || (active && active !== document.body && active !== trigger)) return
-  const item = trigger.closest('li')
+  if (!from || (active && active !== document.body && active !== from)) return
+  const item = from.closest('li')
   const siblings = (dir: 'nextElementSibling' | 'previousElementSibling') => {
     for (let li = item?.[dir] ?? null; li; li = li[dir]) {
-      const found = li.querySelector<HTMLElement>('[aria-label="Message actions"]')
+      const found = li.querySelector<HTMLElement>(`[${ROW_FOCUS}]`)
       if (found) return found
     }
     return null
   }
-  ;(siblings('nextElementSibling') ?? siblings('previousElementSibling') ?? trigger.closest<HTMLElement>('[role="log"]'))?.focus()
+  ;(siblings('nextElementSibling') ?? siblings('previousElementSibling') ?? from.closest<HTMLElement>('[role="log"]'))?.focus()
 }

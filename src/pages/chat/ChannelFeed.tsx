@@ -36,7 +36,7 @@ export function ChannelFeed({
   /** Whether I can write here: reactions, edits and deletes need it too. */
   canPost?: boolean
   /** More items for a message's ⋯ menu (a project's channel adds Create task). */
-  messageActions?: (message: ChatMessage, close: () => void) => ReactNode
+  messageActions?: (message: ChatMessage) => ReactNode
 }) {
   const messages = useMessages(channelId)
   const { mutate: markRead } = useMarkRead()
@@ -125,7 +125,7 @@ export function ChannelFeed({
                   meId={meId}
                   canPost={canPost}
                   continuation={row.continuation}
-                  actions={messageActions && ((close) => messageActions(row.message, close))}
+                  actions={messageActions?.(row.message)}
                 />
               ) : null}
             </li>

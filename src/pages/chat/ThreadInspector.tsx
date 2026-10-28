@@ -15,6 +15,7 @@ import { canContinue } from '@/pages/chat/messageRows'
 import { useBodyContext, useProjectKeys } from '@/pages/chat/useBodyContext'
 import { useCanPost, useReadOnlyLine } from '@/pages/chat/useCanPost'
 import { CanPostError } from '@/pages/chat/CanPostError'
+import { useReplyFocus } from '@/pages/chat/useReplyFocus'
 
 const isNotFound = (error: Error | null) => error instanceof ApiError && error.status === 404
 const isForbidden = (error: Error | null) => error instanceof ApiError && error.status === 403
@@ -35,6 +36,8 @@ export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: st
   const scope = useMemo(() => ({ users: people, projectKeys, ws: workspace?.slug ?? '', workspaceId: channel.data?.workspaceId ?? '' }), [people, projectKeys, workspace, channel.data])
   const bodies = useMemo(() => [message.data?.body ?? [], ...(replies.data ?? []).map((r) => r.body)], [message.data, replies.data])
   const ctx = useBodyContext(bodies, scope)
+  // Opened with Reply in thread or T: the caret goes to the reply box.
+  const replyBox = useReplyFocus()
 
   // A message from another workspace's channel is not found in this one.
   const foreign = Boolean(channel.data && workspace && !inWorkspace(channel.data, workspace.id))
@@ -85,7 +88,7 @@ export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: st
             ))}
           </ul>
         )}
-        <div className="mt-4">
+        <div ref={replyBox} className="mt-4">
           {canPost === false ? (
             <p className="text-sm text-fg-muted">{readOnly}</p>
           ) : canPost ? (

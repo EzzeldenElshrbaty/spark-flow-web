@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { MemoryRouter, useLocation } from 'react-router'
 import { Announcer } from '@/components/sf/Announcer'
 import { ToastProvider } from '@/components/sf/Toast'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -32,6 +32,12 @@ const message = (content: string, over: Partial<ChatMessage> = {}): ChatMessage 
   linkedTicketKeys: [], mentions: [], editedAt: null, createdAt: '2026-10-28T09:00:00.000Z', ...over,
 })
 
+/** Where the page is, and what the navigation asked for: what Reply in thread and T leave. */
+function Where() {
+  const location = useLocation()
+  return <span data-testid="where">{`${location.search} ${JSON.stringify(location.state)}`}</span>
+}
+
 function show(
   m: ChatMessage | ThreadReply,
   opts: { continuation?: boolean; selected?: Selection; onMarkUnread?: () => Promise<unknown>; sendState?: 'sending' | 'failed' } = {},
@@ -39,7 +45,7 @@ function show(
   render(
     <QueryClientProvider client={new QueryClient()}>
       <ToastProvider>
-        <MemoryRouter>
+        <MemoryRouter initialEntries={['/w/engineering/c/c1']}>
         <ChannelMessage
           message={m}
           users={users}
@@ -51,6 +57,7 @@ function show(
           onMarkUnread={opts.onMarkUnread}
           sendState={opts.sendState}
         />
+        <Where />
       </MemoryRouter>
         </ToastProvider>
     </QueryClientProvider>,
@@ -178,9 +185,11 @@ describe('ChannelMessage parts (feature 4 follow-up)', () => {
     expect(screen.getByRole('button', { name: '🎉 1: Nour El-Sayed' }).getAttribute('aria-pressed')).toBe('false')
   })
 
+  const addChip = () => within(screen.getByRole('list', { name: 'Reactions' })).getByRole('button', { name: 'Add reaction' })
+
   it('an add chip opens the emoji picker; picking one closes it', () => {
     show(message('hi', { reactions: [{ emoji: '👍', userIds: ['u-2'] }] }))
-    fireEvent.click(screen.getByRole('button', { name: 'Add reaction' }))
+    fireEvent.click(addChip())
     const picker = screen.getByRole('dialog', { name: 'Add reaction' })
     expect(picker.querySelector('input[type="search"]')).toBe(document.activeElement)
     fireEvent.click(screen.getAllByRole('button', { name: 'party popper' })[0])
@@ -189,7 +198,7 @@ describe('ChannelMessage parts (feature 4 follow-up)', () => {
 
   it('typing "e" in the picker searches; it does not start editing my message (keys bubble out of portals)', () => {
     show(message('mine', { senderId: 'u-1', reactions: [{ emoji: '👍', userIds: ['u-2'] }] }))
-    fireEvent.click(screen.getByRole('button', { name: 'Add reaction' }))
+    fireEvent.click(addChip())
     fireEvent.keyDown(screen.getAllByRole('button', { name: 'party popper' })[0], { key: 'e' })
     expect(useEditing.getState().id).toBeNull()
     expect(screen.getByRole('dialog', { name: 'Add reaction' })).toBeTruthy()
@@ -266,7 +275,8 @@ describe('ChannelMessage while sending (spec 6.2)', () => {
   it('sending shows "Sending…" for the time, and no menu yet', () => {
     const { row } = pending('sending')
     expect(row.textContent).toContain('Sending…')
-    expect(screen.queryByRole('button', { name: 'Message actions' })).toBeNull()
+    expect(screen.queryByRole('toolbar')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'More actions' })).toBeNull()
   })
 
   it('a refused send says "Not sent." with Retry and Delete, and why', () => {
@@ -281,7 +291,7 @@ describe('ChannelMessage while sending (spec 6.2)', () => {
 })
 
 describe('U and L on a focused message (spec 10)', () => {
-  const actions = () => screen.getByRole('button', { name: 'Message actions' })
+  const actions = () => screen.getByRole('button', { name: 'More actions' })
   const clipboard = (writeText: (text: string) => Promise<void>) => Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
 
   it('U marks it unread from here and says so next to it', async () => {
@@ -308,15 +318,16 @@ describe('U and L on a focused message (spec 10)', () => {
     expect(onMarkUnread).toHaveBeenCalledOnce()
   })
 
-  it('in the open ⋯ menu, U picks Mark unread and closes the menu; the row’s other letters do nothing there', () => {
+  it('in the open ⋯ menu, an item’s key picks it and closes the menu, once (the row doesn’t act on it too)', () => {
     const writeText = vi.fn(async () => {})
     clipboard(writeText)
     const onMarkUnread = vi.fn(async () => {})
     show(message('hi'), { onMarkUnread })
     fireEvent.click(actions())
     fireEvent.keyDown(screen.getByRole('menuitem', { name: 'Mark unread' }), { key: 'l' })
-    expect(writeText).not.toHaveBeenCalled()
-    expect(screen.getByRole('menu')).toBeTruthy()
+    expect(writeText).toHaveBeenCalledOnce()
+    expect(screen.queryByRole('menu')).toBeNull()
+    fireEvent.click(actions())
     fireEvent.keyDown(screen.getByRole('menuitem', { name: 'Mark unread' }), { key: 'u' })
     expect(onMarkUnread).toHaveBeenCalledOnce()
     expect(screen.queryByRole('menu')).toBeNull()
@@ -353,7 +364,7 @@ describe('U and L on a focused message (spec 10)', () => {
     ] as const) {
       const onMarkUnread = vi.fn(async () => {})
       show(m, { ...opts, onMarkUnread })
-      const more = screen.queryByRole('button', { name: 'Message actions' })
+      const more = screen.queryByRole('button', { name: 'More actions' })
       if (more) {
         fireEvent.keyDown(more, { key: 'u' })
         fireEvent.click(more)
@@ -402,5 +413,66 @@ describe('U and L on a focused message (spec 10)', () => {
     show(message('hi'))
     fireEvent.keyDown(actions(), { key: 'l', metaKey: true })
     expect(writeText).not.toHaveBeenCalled()
+  })
+})
+
+describe('Reply in thread and Copy text (spec 6.4, 6.5)', () => {
+  const clipboard = (writeText: (text: string) => Promise<void>) => Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+  const where = () => screen.getByTestId('where').textContent
+
+  it('Reply in thread opens its thread, asking for the reply box', () => {
+    show(message('root'))
+    fireEvent.click(screen.getByRole('button', { name: 'Reply in thread' }))
+    expect(where()).toBe('?thread=m1 {"focus":"reply"}')
+  })
+
+  it('so does T on the message', () => {
+    show(message('root'))
+    fireEvent.keyDown(screen.getByRole('button', { name: 'More actions' }), { key: 't' })
+    expect(where()).toBe('?thread=m1 {"focus":"reply"}')
+  })
+
+  it('a reply, a deleted message or one on its way has neither, and T does nothing', () => {
+    const reply: ThreadReply = { id: 'r1', messageId: 'm1', channelId: 'c1', senderId: 'u-2', content: 'ok', body: parseBody('ok'), attachments: [], reactions: [], mentions: [], createdAt: '2026-10-28T09:00:00.000Z' }
+    for (const [m, opts] of [
+      [reply, {}],
+      [message('', { deletedAt: '2026-10-28T09:01:00.000Z', threadCount: 1 }), {}],
+      [message('going'), { sendState: 'sending' as const }],
+    ] as const) {
+      show(m, opts)
+      expect(screen.queryByRole('button', { name: 'Reply in thread' })).toBeNull()
+      fireEvent.keyDown(screen.getByRole('article'), { key: 't' })
+      expect(where()).toBe(' null')
+      cleanup()
+    }
+  })
+
+  it('Copy text copies the message as plain text and says so', async () => {
+    const writeText = vi.fn(async () => {})
+    clipboard(writeText)
+    show(message('ship *it* today'))
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Copy text' }))
+    expect(writeText).toHaveBeenCalledWith('ship it today')
+    expect(await screen.findByText('Text copied')).toBeTruthy()
+  })
+
+  it('a copy the browser refuses says so', async () => {
+    clipboard(vi.fn(async () => Promise.reject(new Error('denied'))))
+    show(message('hi'))
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Copy text' }))
+    expect(await screen.findByText("Couldn't copy the text")).toBeTruthy()
+  })
+
+  it('Copy link is in the menu too, with its key', () => {
+    const writeText = vi.fn(async () => {})
+    clipboard(writeText)
+    show(message('hi'))
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }))
+    const item = screen.getByRole('menuitem', { name: 'Copy link' })
+    expect(item.getAttribute('aria-keyshortcuts')).toBe('L')
+    fireEvent.click(item)
+    expect(writeText).toHaveBeenCalledWith(new URL(paths.message('engineering', 'c1', 'm1'), window.location.origin).href)
   })
 })

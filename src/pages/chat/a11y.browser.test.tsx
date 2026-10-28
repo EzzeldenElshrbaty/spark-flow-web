@@ -1,6 +1,6 @@
 import '@/index.css'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, render, screen, within } from '@testing-library/react'
 import axe from 'axe-core'
 import type { ReactNode } from 'react'
 import { MemoryRouter } from 'react-router'
@@ -125,9 +125,24 @@ describe.each([
     expect(await violations()).toEqual([])
     cleanup()
     mount(<ChannelMessage message={message('hi')} users={users} ctx={ctx} meId="u-1" canPost continuation={false} onMarkUnread={async () => {}} />, dark)
-    await userEvent.click(screen.getByRole('button', { name: 'Message actions', hidden: true }))
+    await userEvent.click(screen.getByRole('button', { name: 'More actions' }))
     expect(screen.getByRole('menuitem', { name: 'Mark unread' })).toBeTruthy()
     expect(await violations()).toEqual([])
+  })
+
+  it('the message toolbar and its open menu have no axe violations (a wider screen)', async () => {
+    await page.viewport(1280, 800)
+    try {
+      mount(<ChannelMessage message={message('hi')} users={users} ctx={ctx} meId="u-1" canPost continuation={false} onMarkUnread={async () => {}} />, dark)
+      await userEvent.hover(screen.getByRole('article'))
+      expect(screen.getByRole('toolbar', { name: 'Message actions' })).toBeTruthy()
+      expect(await violations()).toEqual([])
+      await userEvent.click(screen.getByRole('button', { name: 'More actions' }))
+      expect(screen.getByRole('menuitem', { name: 'Copy text' })).toBeTruthy()
+      expect(await violations()).toEqual([])
+    } finally {
+      await page.viewport(414, 896)
+    }
   })
 
   it('an open profile card has no axe violations', async () => {
@@ -167,24 +182,53 @@ describe('composer autocomplete semantics (spec 10)', () => {
   })
 })
 
-describe('message actions on a phone (spec 10: every screen works at 390px)', () => {
-  const wrapperOpacity = () => getComputedStyle(screen.getByRole('button', { name: 'Message actions', hidden: true }).closest('div.absolute')!).opacity
+describe('the message toolbar (spec 6.4) and the ⋯ on a phone (spec 10: every screen works at 390px)', () => {
+  const opacity = (el: Element) => getComputedStyle(el).opacity
 
-  it('the ⋯ menu is always shown on a phone, where there is no hover', async () => {
+  it('a phone has no toolbar: the ⋯ is always shown, where there is no hover', async () => {
     await page.viewport(390, 844)
     try {
       mount(<ChannelMessage message={message('hi')} users={users} ctx={ctx} meId="u-1" canPost continuation={false} />, false)
-      expect(wrapperOpacity()).toBe('1')
+      expect(screen.queryByRole('toolbar')).toBeNull()
+      expect(opacity(screen.getByRole('button', { name: 'More actions' }).closest('div.absolute')!)).toBe('1')
     } finally {
       await page.viewport(414, 896)
     }
   })
 
-  it('on a wider screen it waits for hover or focus', async () => {
+  it('on a wider screen it waits for hover or focus, and stays while its menu is open', async () => {
     await page.viewport(1280, 800)
     try {
       mount(<ChannelMessage message={message('hi')} users={users} ctx={ctx} meId="u-1" canPost continuation={false} />, false)
-      expect(wrapperOpacity()).toBe('0')
+      const toolbar = screen.getByRole('toolbar', { name: 'Message actions' })
+      expect(opacity(toolbar)).toBe('0')
+      await userEvent.hover(screen.getByRole('article'))
+      await vi.waitFor(() => expect(opacity(toolbar)).toBe('1'))
+      await userEvent.click(screen.getByRole('button', { name: 'More actions' }))
+      await userEvent.unhover(screen.getByRole('article'))
+      expect(opacity(toolbar)).toBe('1')
+    } finally {
+      await page.viewport(414, 896)
+    }
+  })
+
+  it('it rises 16px above its row, and sits inside the top row of a list so it is never cut off', async () => {
+    await page.viewport(1280, 800)
+    try {
+      mount(
+        <div role="log" aria-label="Messages" style={{ height: 300, overflowY: 'auto' }}>
+          <ChannelMessage message={message('first')} users={users} ctx={ctx} meId="u-1" canPost continuation={false} />
+          <ChannelMessage message={message('second')} users={users} ctx={ctx} meId="u-1" canPost continuation={false} />
+        </div>,
+        false,
+      )
+      const [first, second] = screen.getAllByRole('article')
+      const [top, next] = screen.getAllByRole('toolbar', { name: 'Message actions' })
+      const log = screen.getByRole('log').getBoundingClientRect()
+      await userEvent.hover(first)
+      await vi.waitFor(() => expect(top.getBoundingClientRect().top).toBeGreaterThanOrEqual(log.top))
+      await userEvent.hover(second)
+      await vi.waitFor(() => expect(Math.round(second.getBoundingClientRect().top - next.getBoundingClientRect().top)).toBe(16))
     } finally {
       await page.viewport(414, 896)
     }
@@ -196,7 +240,7 @@ describe('focus around reactions (spec 10)', () => {
     mount(<ChannelMessage message={message('hi', { reactions: [{ emoji: '👍', userIds: ['u-2'] }] })} users={users} ctx={ctx} meId="u-1" canPost continuation={false} />, false)
     // As from the keyboard: focus in the message shows the chip.
     screen.getByRole('button', { name: '👍 1: Nour El-Sayed' }).focus()
-    const chip = await screen.findByRole('button', { name: 'Add reaction' })
+    const chip = await within(screen.getByRole('list', { name: 'Reactions' })).findByRole('button', { name: 'Add reaction' })
     chip.focus()
     await userEvent.keyboard('{Enter}')
     await screen.findByRole('dialog', { name: 'Add reaction' })
@@ -213,14 +257,14 @@ describe('focus when an edit ends (spec 10)', () => {
     return box
   }
 
-  it("Escape puts focus back on the message's actions button", async () => {
+  it("Escape puts focus back on the message's toolbar", async () => {
     const mine = message('fix this', { senderId: 'u-1' })
     mount(<ChannelMessage message={mine} users={users} ctx={ctx} meId="u-1" canPost continuation={false} />, false)
-    screen.getByRole('button', { name: 'Message actions' }).focus()
+    screen.getByRole('button', { name: 'More actions' }).focus()
     await userEvent.keyboard('e')
     await editBox()
     await userEvent.keyboard('{Escape}')
-    await vi.waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Message actions' })))
+    await vi.waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'More actions' })))
   })
 
   it('an edit started from the message box (Up) goes back to it', async () => {

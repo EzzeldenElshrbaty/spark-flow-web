@@ -1,11 +1,11 @@
-import { ListPlus } from 'lucide-react'
+import { IconListCheck } from '@tabler/icons-react'
 import { useState, type ReactNode } from 'react'
 import { usePhases, useProjectSummaries } from '@/api/projects'
 import { useSprints } from '@/api/tickets'
 import type { ChatMessage } from '@/api/types'
 import { useUsers } from '@/api/users'
+import { MenuItem } from '@/components/sf/Menu'
 import { usePermission } from '@/lib/usePermission'
-import { menuItemClass } from '@/pages/chat/MessageActions'
 import { taskDraft } from '@/pages/chat/taskDraft'
 import { TaskSheet } from '@/pages/projects/TaskSheet'
 
@@ -13,7 +13,7 @@ import { TaskSheet } from '@/pages/projects/TaskSheet'
  * "Create task" for the messages of a project's channel, offered to whoever manages that project's tasks: the ⋯ menu
  * item, and the task sheet it opens with the message as the draft. Other channels get neither.
  */
-export function useTaskFromMessage(channelId: string | undefined, workspaceId: string | undefined): { messageActions?: (m: ChatMessage, close: () => void) => ReactNode; sheet: ReactNode } {
+export function useTaskFromMessage(channelId: string | undefined, workspaceId: string | undefined): { messageActions?: (m: ChatMessage) => ReactNode; sheet: ReactNode } {
   const check = usePermission()
   const project = useProjectSummaries(workspaceId).data?.find((p) => p.channelId === channelId)
   const allowed = project ? check('task.manage', { project }) : false
@@ -23,19 +23,11 @@ export function useTaskFromMessage(channelId: string | undefined, workspaceId: s
   const [from, setFrom] = useState<ChatMessage | null>(null)
 
   if (!project || !allowed) return { sheet: null }
-  const messageActions = (message: ChatMessage, close: () => void) =>
+  const messageActions = (message: ChatMessage) =>
     message.taskEvent || message.commentId ? null : (
-      <button
-        type="button"
-        role="menuitem"
-        className={menuItemClass}
-        onClick={() => {
-          close()
-          setFrom(message)
-        }}
-      >
-        <ListPlus className="size-4 shrink-0" /> Create task
-      </button>
+      <MenuItem key="task" icon={IconListCheck} onSelect={() => setFrom(message)}>
+        Create task
+      </MenuItem>
     )
   const sheet = from && (
     <TaskSheet

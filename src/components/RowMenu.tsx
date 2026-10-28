@@ -1,7 +1,6 @@
 import { MoreHorizontal, type LucideIcon } from 'lucide-react'
 import { useRef, useState } from 'react'
-import { MenuPanel } from '@/components/ui/Menu'
-import { menuItemClass } from '@/pages/chat/MessageActions'
+import { MenuPanel, menuItemClass } from '@/components/ui/Menu'
 
 export type RowMenuItem = { label: string; icon: LucideIcon; danger?: boolean; onSelect: () => void }
 

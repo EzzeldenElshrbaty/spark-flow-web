@@ -73,7 +73,7 @@ export function MessageList({
   users: User[]
   meId?: string
   canPost: boolean
-  messageActions?: (message: ChatMessage, close: () => void) => ReactNode
+  messageActions?: (message: ChatMessage) => ReactNode
   /** My read marker when the channel opened: where the New line goes, and it stays there until I leave. */
   newAfterSeq: number | null
   /** How many messages were unread when the channel opened (the unread bar's count). */
@@ -364,7 +364,7 @@ export function MessageList({
                     canPost={canPost}
                     continuation={row.continuation}
                     selected={selectionOf(row.message)}
-                    actions={messageActions && ((close) => messageActions(row.message, close))}
+                    actions={messageActions?.(row.message)}
                     sendState={pendingById.get(row.message.id)?.status === 'failed' ? 'failed' : pendingById.has(row.message.id) ? 'sending' : undefined}
                     sendError={pendingById.get(row.message.id)?.error}
                     onRetry={() => onRetry?.(pendingById.get(row.message.id)!.clientId)}

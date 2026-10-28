@@ -7,10 +7,9 @@ import { ConfirmDeleteSheet } from '@/components/ConfirmDeleteSheet'
 import { MentionText } from '@/components/MentionText'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
-import { MenuPanel } from '@/components/ui/Menu'
+import { MenuPanel, menuItemClass } from '@/components/ui/Menu'
 import { timeAgo } from '@/lib/format'
 import { Composer } from '@/pages/chat/Composer'
-import { menuItemClass } from '@/pages/chat/MessageActions'
 
 /**
  * One comment or bug on a task. Its author (while they can post on the project) edits it in place or deletes it,

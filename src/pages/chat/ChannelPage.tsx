@@ -219,7 +219,7 @@ function PaneFeed({
   usersLoading: boolean
   meId: string
   canPost: boolean
-  messageActions?: (message: ChatMessage, close: () => void) => ReactNode
+  messageActions?: (message: ChatMessage) => ReactNode
   composer: ReactNode
 }) {
   const live = useMessages(channel.id)

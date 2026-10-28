@@ -1,6 +1,7 @@
 import { IconAlertCircle, IconTrash } from '@tabler/icons-react'
 import clsx from 'clsx'
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useNavigate, useSearchParams } from 'react-router'
 import { useEditMessage } from '@/api/chat'
 import { bodyText } from '@/lib/messageBody'
 import type { ChatMessage, ChatTarget, SystemEvent, ThreadReply, User } from '@/api/types'
@@ -9,15 +10,18 @@ import { Avatar } from '@/components/sf/Avatar'
 import { Icon } from '@/components/sf/Icon'
 import { formatDate, formatTime } from '@/lib/format'
 import { firstPreviewable } from '@/lib/linkPreview'
+import { withInspector } from '@/lib/inspector'
 import { paths } from '@/lib/paths'
 import { firstTask, MessageBody, TaskUnfurl, type BodyContext } from '@/pages/chat/MessageBody'
-import { MessageActions } from '@/pages/chat/MessageActions'
+import { ROW_FOCUS } from '@/pages/chat/MessageActions'
 import { MessageFiles } from '@/pages/chat/MessageFiles'
+import { MessageToolbar } from '@/pages/chat/MessageToolbar'
 import { AuthorName, CommentCard, LinkedTasks, LinkPreviewCard, Reactions, ThreadSummary } from '@/pages/chat/MessageParts'
 import { TaskEventCard } from '@/pages/chat/TaskEventCard'
 import { useEditing } from '@/pages/chat/editingStore'
 import { actionsFor, deleteNeedsConfirm } from '@/pages/chat/messageRights'
 import { useComposerDirectory } from '@/pages/chat/useComposerDirectory'
+import { replyState } from '@/pages/chat/useReplyFocus'
 
 /** What the channel says about a change, after the name of whoever made it. */
 export function systemText(event: SystemEvent): string {
@@ -76,7 +80,8 @@ export function ChannelMessage({
   /** The thread summary; off for the root message at the top of its own thread. */
   showThread?: boolean
   compact?: boolean
-  actions?: (close: () => void) => ReactNode
+  /** More ⋯ menu items from the page (Create task), as sf `MenuItem`s. */
+  actions?: ReactNode
   /** Mine and not confirmed yet (spec 6.2): on its way, or refused with Retry and Delete. */
   sendState?: 'sending' | 'failed'
   sendError?: string
@@ -92,7 +97,7 @@ export function ChannelMessage({
   const stopEditing = () => useEditing.getState().stop()
   const row = useRef<HTMLElement>(null)
   const wasEditing = useRef(false)
-  // The edit box took focus with it: give focus back to where the edit started, else to this message's ⋯ button
+  // The edit box took focus with it: give focus back to where the edit started, else to this message's toolbar
   // (spec 10). Not when focus is already somewhere, or another edit has begun.
   useEffect(() => {
     if (editing) wasEditing.current = true
@@ -100,7 +105,7 @@ export function ChannelMessage({
     wasEditing.current = false
     const { id, from } = useEditing.getState()
     if (id !== null || (document.activeElement && document.activeElement !== document.body)) return
-    ;(from?.isConnected ? from : row.current?.querySelector<HTMLElement>('[aria-label="Message actions"]'))?.focus()
+    ;(from?.isConnected ? from : row.current?.querySelector<HTMLElement>(`[${ROW_FOCUS}]`))?.focus()
   }, [editing])
   const author = users.find((u) => u.id === message.senderId)
   const name = author?.name ?? 'Unknown person'
@@ -129,9 +134,17 @@ export function ChannelMessage({
       ? () => onMarkUnread().then(() => say('Marked unread'), () => say("Couldn't mark it unread. Try again.", true))
       : undefined
   // Copied while the key press still counts as mine; no clipboard (an insecure page) fails the same way as a refusal.
-  const copyLink = () =>
-    new Promise<void>((resolve) => resolve(navigator.clipboard.writeText(permalink)))
-      .then(() => say('Link copied'), () => say("Couldn't copy the link", true))
+  const copy = (text: string, done: string, failed: string) =>
+    new Promise<void>((resolve) => resolve(navigator.clipboard.writeText(text))).then(() => say(done), () => say(failed, true))
+  const copyLink = () => copy(permalink, 'Link copied', "Couldn't copy the link")
+  const copyText = () => copy(bodyText(message.body), 'Text copied', "Couldn't copy the text")
+  // Reply in thread (T, spec 6.4): a top-level message outside its own thread; the thread opens to its reply box.
+  const navigate = useNavigate()
+  const [params] = useSearchParams()
+  const openThread =
+    root && showThread && !root.deletedAt
+      ? () => navigate({ search: withInspector(params, { kind: 'thread', messageId: root.id }).toString() }, { state: replyState })
+      : undefined
   const full = `${formatDate(message.createdAt)}, ${formatTime(message.createdAt)}`
   const time = (
     <time dateTime={message.createdAt} title={full} className="sf-meta whitespace-nowrap text-sf-text-muted tabular-nums">
@@ -173,8 +186,8 @@ export function ChannelMessage({
   return (
     <article
       ref={row}
-      // While focus is in it (its ⋯ button), as long as I'm not typing somewhere: E edits my message (spec 6.3), U marks
-      // it unread from here, L copies its link (spec 10).
+      // While focus is in it (its toolbar), as long as I'm not typing somewhere: E edits my message (spec 6.3), U marks
+      // it unread from here, L copies its link, T opens its thread to reply (spec 10).
       onKeyDown={(e) => {
         // Keys from this row's portals (the emoji picker, the ⋯ menu on phones) bubble here too, and so do keys from
         // its open ⋯ menu (which picks its own items by their keys): they aren't for the row. A held key acts once.
@@ -191,6 +204,9 @@ export function ChannelMessage({
         } else if (key === 'l' && !message.deletedAt && !sendState) {
           e.preventDefault()
           void copyLink()
+        } else if (key === 't' && openThread && !sendState) {
+          e.preventDefault()
+          openThread()
         }
       }}
       className={clsx(
@@ -234,18 +250,20 @@ export function ChannelMessage({
         {note && <p className={clsx('sf-meta mt-0.5', note.error ? 'text-sf-error' : 'text-sf-text-secondary')}>{note.text}</p>}
       </div>
       {!editing && !sendState && !root?.system && (
-        // The toolbar comes in Phase 2; until then the ⋯ menu shows on hover and on keyboard focus, and always on a
-        // phone, which has no hover.
-        <div className={clsx('absolute top-1 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100', compact ? 'end-3' : 'end-4 md:end-6')}>
-          <MessageActions
-            target={target}
-            can={can}
-            confirmDelete={deleteNeedsConfirm(message)}
-            onEdit={startEditing}
-            onMarkUnread={markUnread && (() => void markUnread())}
-            extra={message.deletedAt ? undefined : actions}
-          />
-        </div>
+        <MessageToolbar
+          target={target}
+          reactions={message.reactions}
+          meId={meId}
+          can={can}
+          confirmDelete={deleteNeedsConfirm(message)}
+          onEdit={startEditing}
+          onReply={openThread}
+          onMarkUnread={markUnread && (() => void markUnread())}
+          onCopyLink={message.deletedAt ? undefined : () => void copyLink()}
+          onCopyText={message.deletedAt ? undefined : () => void copyText()}
+          extra={message.deletedAt ? undefined : actions}
+          className={compact ? 'end-3' : 'end-4 md:end-6'}
+        />
       )}
     </article>
   )

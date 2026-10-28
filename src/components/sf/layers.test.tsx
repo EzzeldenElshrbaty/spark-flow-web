@@ -65,6 +65,28 @@ describe('Menu', () => {
     expect(focused()).toBe('Delete message')
   })
 
+  it('a letter that is an item’s shortcut picks that item; other letters still jump', () => {
+    const onSave = vi.fn()
+    render(
+      <Menu label="Message actions" trigger={(props) => <IconButton label="More actions" icon={IconDots} {...props} />}>
+        <MenuItem onSelect={() => {}}>Share</MenuItem>
+        <MenuItem shortcut="S" onSelect={onSave}>
+          Save
+        </MenuItem>
+        <MenuItem>Delete message</MenuItem>
+      </Menu>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }))
+    const save = screen.getByRole('menuitem', { name: 'Save' })
+    expect(save.getAttribute('aria-keyshortcuts')).toBe('S')
+    expect(save.textContent).toBe('SaveS')
+    fireEvent.keyDown(document.activeElement!, { key: 'd' })
+    expect(focused()).toBe('Delete message')
+    fireEvent.keyDown(document.activeElement!, { key: 'S' })
+    expect(onSave).toHaveBeenCalledOnce()
+    expect(screen.queryByRole('menu')).toBeNull()
+  })
+
   it('opens a submenu with ArrowRight and closes it with ArrowLeft, then Escape closes the menu to the trigger', () => {
     render(<MessageMenu />)
     const trigger = screen.getByRole('button', { name: 'More actions' })

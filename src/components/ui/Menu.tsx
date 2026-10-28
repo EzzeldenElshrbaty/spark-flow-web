@@ -1,6 +1,7 @@
 import clsx from 'clsx'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
+import { roomAround } from '@/lib/roomAround'
 
 const phoneQuery = '(max-width: 639px)'
 /** The gap between the trigger and the panel (mt-2 / mb-2), and the panel's distance from the edge of its room. */
@@ -9,19 +10,8 @@ const EDGE = 8
 /** However little room there is, a panel keeps one item's height (it scrolls inside). */
 const MIN_HEIGHT = 40
 
-/** Room above and below `el` inside everything that clips it: the window and every ancestor that scrolls or clips. */
-function roomAround(el: HTMLElement) {
-  const { top, bottom } = el.getBoundingClientRect()
-  let start = 0
-  let end = window.innerHeight
-  for (let node = el.parentElement; node && node !== document.body; node = node.parentElement) {
-    if (getComputedStyle(node).overflowY === 'visible') continue
-    const box = node.getBoundingClientRect()
-    start = Math.max(start, box.top)
-    end = Math.min(end, box.bottom)
-  }
-  return { above: top - start, below: end - bottom }
-}
+/** A row in a MenuPanel (RowMenu, comment and entry menus). */
+export const menuItemClass = 'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start text-sm text-fg-secondary hover:bg-surface-muted'
 
 /** True on phone widths. Phones get the menu as a bottom sheet rendered at the page level. */
 function usePhone() {
