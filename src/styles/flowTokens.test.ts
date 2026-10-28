@@ -73,6 +73,8 @@ describe('flow tokens', () => {
     ['text-secondary', ['surface', 'surface-hover', 'surface-sunken']],
     ['text-muted', ['surface', 'surface-hover', 'surface-sunken']],
     ['accent', ['surface', 'surface-hover', 'surface-mention']],
+    // Error text sits near the cause, on the same surfaces (spec 3.2: "Same as Spark Red").
+    ['error', ['surface', 'surface-hover', 'surface-sunken']],
     ['on-accent', ['accent-fill', 'accent-fill-hover']],
     ['sidebar-text', ['app-frame', 'sidebar-hover', 'sidebar-active']],
     ['sidebar-text-strong', ['app-frame', 'sidebar-hover', 'sidebar-active']],

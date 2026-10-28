@@ -536,3 +536,23 @@ Rulings while building: the Api namespace is `inbox`, since `api.activity` is ta
 - Verified: 1101 tests (unit and browser, axe in light and dark for the view and the bell, a 390px fit check), tsc, lint, `build:prototype`; in the app, as Nour a reaction and a thread reply reached Youssef's Activity (count 2), opening a row jumped to the message and marked it read, Nothing hid #general's mention, Mute moved #general last, Unread only and Mark all read ended at "You’re all caught up.", at 375px in light and dark.
 - Not pushed.
 
+## Fresh review (slice 3) — 0 critical, 3 important, 10 minor
+
+Fixed, test first:
+- [x] Activity listed stored items from a private channel I left (its text as edited later) and kept storing reactions there → read check when the list is read, and no reaction item without read access.
+- [x] The 50-mention window was cut before the workspace and Nothing filters, so a busy channel at Nothing (or another workspace) emptied the bell and Activity's mentions, and Mark read dropped older ids → filter first; Activity takes its own 100; Mark read accepts any of my mentions.
+- [x] Mention or thread row was chosen at post time, by name only → every reading follower gets the thread item; a reply that mentions me as it reads now (`@all`, edits) shows once, as the mention.
+- [x] The contract named `GET /api/mentions/me`; the route is `GET /api/mentions` (re-graded up: it would mislead the .NET team). Contract rules updated for the three fixes.
+- [x] `text-sf-error` failed 4.5:1 in dark (2.94:1): the `error` token is red-400 in dark, as accent ("Same as Spark Red"), in the design file, its CSS and the app tokens; error joins the contrast pairs test; Activity's error is `text-sf-error` again.
+
+Deferred minors:
+- Mark read with ids ignores the route's workspace.
+- `channelChanged` (leave, removal) doesn't refresh Activity or the bell until the poll.
+- A reaction row reads "Omar Hassan Shipped the fix", as if he wrote my message.
+- A channel at All announces its count as mentions (DMs already did).
+- Activity's "3h ago" doesn't tick while the page stays open (`useNow`).
+- The header bell's name doesn't say muted or Nothing.
+- Activity's switch (20px) and Mark all read (28px) are under 44px on phones, and tapping "Unread only" does nothing (re-graded: the header's star and bell are under 44px too).
+- Activity refetches on every new message anywhere (until the server sends `notification.created` for mentions).
+- Dead `unreadMentions().total`, a stale test comment, `excerptOf` copied twice, mentions.ts and activityFeed.ts import each other.
+

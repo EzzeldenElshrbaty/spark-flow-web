@@ -32,8 +32,9 @@ const reaches = (mentions: Mention[], userId: string, everyone: () => Set<string
 /**
  * Messages, replies and task comments by someone else that mention `userId` (by name, or @all where they are a
  * channel member or one of the project's people), newest first. A comment counts once, not again as its chat card.
+ * `keep` filters them before the newest `limit` are taken, so what's left out never uses up the window.
  */
-export function mentionsFor(data: DbData, userId: string): Omit<MentionItem, 'read'>[] {
+export function mentionsFor(data: DbData, userId: string, keep: (item: Omit<MentionItem, 'read'>) => boolean = () => true, limit = MAX_ITEMS): Omit<MentionItem, 'read'>[] {
   const members = (channelId: string) => () => new Set(data.channels.find((c) => c.id === channelId)?.memberIds ?? [])
   const closed = (channelId: string) => data.channels.find((c) => c.id === channelId)?.isPrivate ?? false
   const items: Omit<MentionItem, 'read'>[] = []
@@ -56,7 +57,7 @@ export function mentionsFor(data: DbData, userId: string): Omit<MentionItem, 're
     const taskKey = data.tickets.find((t) => t.id === c.taskId)?.key ?? null
     items.push({ id: c.id, source: 'comment', workspaceId: data.projects.find((p) => p.id === c.projectId)?.workspaceId ?? '', authorId: c.authorId, authorName: nameOf(c.authorId), excerpt: excerptOf(c.body), createdAt: c.createdAt, channelId: null, messageId: null, taskKey, projectId: c.projectId })
   }
-  return items.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)).slice(0, MAX_ITEMS)
+  return items.filter(keep).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)).slice(0, limit)
 }
 
 /** Mentions of me, for the bell and Home, with their read state (kept per person). */
@@ -69,7 +70,7 @@ export function mentionsApi(db: MockDb, hub: MockHub): Api['mentions'] {
       const read = new Set(data.mentionReads[me.id] ?? [])
       // Channels I set to Nothing (spec 6.11) stay out of the bell.
       const quiet = silenced(data, me.id)
-      return clone(mentionsFor(data, me.id).filter((item) => !quiet(item.channelId)).map((item) => ({ ...item, read: read.has(item.id) })))
+      return clone(mentionsFor(data, me.id, (item) => !quiet(item.channelId)).map((item) => ({ ...item, read: read.has(item.id) })))
     },
     async markRead(ids) {
       await delay()

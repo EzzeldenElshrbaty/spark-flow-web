@@ -64,6 +64,7 @@
   --text-secondary: var(--ink-300);
   --text-muted: var(--ink-400);
   --accent: var(--red-400);
+  --error: var(--red-400);
   --focus: var(--red-400);
   --overlay: rgba(0, 0, 0, 0.64);
   --shadow-toolbar: 0 1px 2px rgba(0, 0, 0, 0.5), 0 0 0 1px #2a2a2e;

@@ -44,7 +44,7 @@ function myState(data: DbData, channelId: string): ChannelMemberState {
 const NOTIFY_LEVELS: NotifyLevel[] = ['all', 'mentions', 'none']
 
 /** Whether this person may read a channel: a private one (or a DM) only its members. */
-const canRead = (data: DbData, channelId: string, userId: string) => {
+export const canRead = (data: DbData, channelId: string, userId: string) => {
   const channel = data.channels.find((c) => c.id === channelId)
   return Boolean(channel) && (!channel!.isPrivate || channel!.memberIds.includes(userId))
 }
@@ -219,7 +219,8 @@ function noteReaction(data: DbData, row: Row, channelId: string, messageId: stri
   const replyId = 'messageId' in row ? row.id : null
   const same = (n: DbData['notifications'][number]) => n.kind === 'reaction' && n.userId === row.senderId && n.actorId === actorId && n.emoji === emoji && n.messageId === messageId && n.replyId === replyId
   data.notifications = data.notifications.filter((n) => !same(n))
-  if (!added || row.senderId === actorId) return null
+  // Not for my own reaction, nor where I can no longer read the channel (I left it, or was taken off it).
+  if (!added || row.senderId === actorId || !canRead(data, channelId, row.senderId)) return null
   // After the latest item, so two quick reactions keep their order.
   const at = stamp(data.notifications.reduce<string | null>((latest, n) => (!latest || n.at > latest ? n.at : latest), null))
   data.notifications.push({ id: newId('n'), userId: row.senderId, kind: 'reaction', actorId, channelId, messageId, replyId, emoji, at, read: false })
@@ -665,11 +666,11 @@ export function postReply(data: DbData, input: AddReplyInput): ThreadReply {
   const named = new Set(created.mentions.flatMap((m) => (m.kind === 'user' ? [m.id] : [])))
   const again = new Set([created.senderId, ...named])
   data.threadFollows = data.threadFollows.filter((f) => f.rootId !== parent.id || !again.has(f.userId))
-  // Everyone who follows it hears of the reply in Activity (spec 6.12): not the one who wrote it, not those it names
-  // (they have the mention), not someone who can't read the channel.
+  // Everyone who follows it hears of the reply in Activity (spec 6.12): not the one who wrote it, not someone who can't
+  // read the channel. Those it mentions see the mention instead, worked out as the reply reads now (activityFor).
   const replies = data.replies.filter((r) => r.messageId === parent.id)
   for (const user of data.users) {
-    if (user.id === created.senderId || named.has(user.id) || !canRead(data, channel.id, user.id) || !follows(data, parent, replies, user.id)) continue
+    if (user.id === created.senderId || !canRead(data, channel.id, user.id) || !follows(data, parent, replies, user.id)) continue
     data.notifications.push({ id: newId('n'), userId: user.id, kind: 'thread', actorId: created.senderId, channelId: channel.id, messageId: parent.id, replyId: created.id, emoji: null, at: createdAt, read: false })
   }
   parent.threadCount += 1

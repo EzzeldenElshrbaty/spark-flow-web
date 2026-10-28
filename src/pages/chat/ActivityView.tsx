@@ -94,7 +94,7 @@ export function ActivityView({
         </Button>
       </header>
       {markError && (
-        <p role="alert" className="sf-small px-4 pb-2 text-sf-accent sm:px-6">
+        <p role="alert" className="sf-small px-4 pb-2 text-sf-error sm:px-6">
           {markError}
         </p>
       )}

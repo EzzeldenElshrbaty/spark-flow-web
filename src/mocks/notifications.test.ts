@@ -151,6 +151,70 @@ describe('notification level per channel (spec 6.11)', () => {
   })
 })
 
+describe('Activity shows only what I can still read (review)', () => {
+  it('after I leave a private channel its items go, its later text never shows, and a reaction there stores nothing', async () => {
+    const root = await api.chat.send('c-release', 'Go/no-go?')
+    await api.users.viewAs('u-2')
+    const reply = await api.chat.reply(root.id, 'Leaning go')
+    await api.users.viewAs('u-1')
+    expect((await mine()).some((i) => i.replyId === reply.id)).toBe(true)
+    await api.chat.leave('c-release')
+    await api.users.viewAs('u-2')
+    await api.chat.edit({ kind: 'reply', id: reply.id }, 'We slip to December, do not tell the client')
+    await api.chat.react({ kind: 'message', id: root.id }, '👍')
+    await api.users.viewAs('u-1')
+    expect((await mine()).filter((i) => i.channelId === 'c-release')).toEqual([])
+    expect((await db.read()).notifications.filter((n) => n.userId === 'u-1' && n.kind === 'reaction' && n.messageId === root.id)).toEqual([])
+  })
+})
+
+describe('the mention window is cut after its filters (review)', () => {
+  it('50 newer mentions in a channel at Nothing leave my other mentions in the bell and in Activity', async () => {
+    await api.users.viewAs('u-2')
+    const older = await api.chat.send('c-general', `Ping ${YOUSSEF}`)
+    for (let i = 0; i < 50; i++) await api.chat.send('c-backend', `Noise ${i} ${YOUSSEF}`)
+    await api.users.viewAs('u-1')
+    await api.chat.setNotifyLevel('c-backend', 'none')
+    expect((await api.mentions.mine()).map((m) => m.id)).toContain(older.id)
+    expect((await mine()).map((i) => i.id)).toContain(older.id)
+  })
+
+  it('50 newer mentions in another workspace leave this one’s in its Activity, where they can be marked read', async () => {
+    await api.users.viewAs('u-2')
+    const older = await api.chat.send('c-general', `Ping ${YOUSSEF}`)
+    await api.users.viewAs('u-7')
+    for (let i = 0; i < 50; i++) await api.chat.send('c-design', `Look ${i} ${YOUSSEF}`)
+    await api.users.viewAs('u-1')
+    expect((await mine()).find((i) => i.id === older.id)?.read).toBe(false)
+    await api.inbox.markRead('ws-eng', [older.id])
+    expect((await mine()).find((i) => i.id === older.id)?.read).toBe(true)
+  })
+})
+
+describe('a reply in my thread is one row, worked out as it reads now (review)', () => {
+  const rowsFor = async (replyId: string) => (await mine()).filter((i) => i.replyId === replyId || i.id === replyId).map((i) => i.kind)
+
+  it('an @all reply is the mention alone', async () => {
+    const root = await api.chat.send('c-general', 'Who owns the build?')
+    await api.users.viewAs('u-2')
+    const reply = await api.chat.reply(root.id, '@all heads up, the build is red')
+    await api.users.viewAs('u-1')
+    expect(await rowsFor(reply.id)).toEqual(['mention'])
+  })
+
+  it('editing my name out leaves the thread row; editing it in leaves the mention alone', async () => {
+    const root = await api.chat.send('c-general', 'Who owns the build?')
+    await api.users.viewAs('u-2')
+    const named = await api.chat.reply(root.id, `Asking ${YOUSSEF}`)
+    await api.chat.edit({ kind: 'reply', id: named.id }, 'Asking around')
+    const plain = await api.chat.reply(root.id, 'No one yet')
+    await api.chat.edit({ kind: 'reply', id: plain.id }, `No one yet, ${YOUSSEF}?`)
+    await api.users.viewAs('u-1')
+    expect(await rowsFor(named.id)).toEqual(['thread'])
+    expect(await rowsFor(plain.id)).toEqual(['mention'])
+  })
+})
+
 describe('mention excerpt helper', () => {
   it('names come through as people read them', async () => {
     await api.users.viewAs('u-3')

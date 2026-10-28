@@ -1,6 +1,6 @@
 import type { ActivityItem, Api, ChannelMemberState } from '@/api/types'
 import { plainText } from '@/lib/mentions'
-import { freshState } from './chat'
+import { canRead, freshState } from './chat'
 import type { DbData, MockDb } from './db'
 import { delay } from './latency'
 import { mentionsFor } from './mentions'
@@ -29,22 +29,25 @@ export function silenced(data: DbData, userId: string): (channelId: string | nul
 /**
  * This person's Activity in a workspace (spec 6.12), newest first: their mentions (as the bell has them, with its read
  * state), and the items kept for them (reactions to theirs, replies in threads they follow), whose text is read from
- * the message or reply now. Channels set to Nothing are left out.
+ * the message or reply now. Channels set to Nothing, and channels they can no longer read, are left out; a reply that
+ * mentions them is its mention alone.
  */
 export function activityFor(data: DbData, userId: string, workspaceId: string): ActivityItem[] {
   const quiet = silenced(data, userId)
   const read = new Set(data.mentionReads[userId] ?? [])
   const nameOf = (id: string) => data.users.find((u) => u.id === id)?.name ?? 'Someone'
   const workspaceOf = (channelId: string) => data.channels.find((c) => c.id === channelId)?.workspaceId
-  const mentions: ActivityItem[] = mentionsFor(data, userId)
-    .filter((m) => m.workspaceId === workspaceId && !quiet(m.channelId))
+  const mentions: ActivityItem[] = mentionsFor(data, userId, (m) => m.workspaceId === workspaceId && !quiet(m.channelId), MAX_ITEMS)
     .map((m) => ({
       id: m.id, kind: 'mention', read: read.has(m.id), createdAt: m.createdAt, workspaceId: m.workspaceId, actorId: m.authorId, actorName: m.authorName,
       channelId: m.channelId, messageId: m.messageId, replyId: m.source === 'reply' ? m.id : null, taskKey: m.taskKey, projectId: m.projectId, excerpt: m.excerpt, emoji: null,
     }))
+  // A reply's mention id is the reply's id.
+  const mentioned = new Set(mentions.map((m) => m.id))
   const kept: ActivityItem[] = []
   for (const n of data.notifications) {
-    if (n.userId !== userId || workspaceOf(n.channelId) !== workspaceId || quiet(n.channelId)) continue
+    if (n.userId !== userId || workspaceOf(n.channelId) !== workspaceId || quiet(n.channelId) || !canRead(data, n.channelId, userId)) continue
+    if (n.kind === 'thread' && n.replyId && mentioned.has(n.replyId)) continue
     const row = n.replyId ? data.replies.find((r) => r.id === n.replyId) : data.messages.find((m) => m.id === n.messageId)
     if (!row || row.deletedAt) continue
     kept.push({
@@ -68,7 +71,8 @@ export function inboxApi(db: MockDb, hub: MockHub): Api['inbox'] {
       const userId = await db.update((data) => {
         const me = currentUser(data)
         const wanted = new Set(ids ?? activityFor(data, me.id, workspaceId).map((item) => item.id))
-        const mentionIds = new Set(mentionsFor(data, me.id).map((m) => m.id))
+        // Every mention of mine, not only the newest: an older one can still be on screen.
+        const mentionIds = new Set(mentionsFor(data, me.id, undefined, Infinity).map((m) => m.id))
         data.mentionReads[me.id] = [...new Set([...(data.mentionReads[me.id] ?? []), ...[...wanted].filter((id) => mentionIds.has(id))])]
         for (const n of data.notifications) if (n.userId === me.id && wanted.has(n.id)) n.read = true
         return me.id

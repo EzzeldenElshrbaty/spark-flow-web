@@ -110,8 +110,11 @@
    },
    {
     "name": "error",
-    "value": "{red-600}",
-    "usage": "Error. Same as Spark Red; always with an alert icon and a plain-language message."
+    "value": {
+     "light": "{red-600}",
+     "dark": "{red-400}"
+    },
+    "usage": "Error. Same as Spark Red (red-400 in dark, as accent, for 4.5:1); always with an alert icon and a plain-language message."
    },
    {
     "name": "app-frame",

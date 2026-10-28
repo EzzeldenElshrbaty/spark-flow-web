@@ -211,7 +211,7 @@ What a delete takes is kept only for the Undo window, then dropped (retention be
 - The defaults (a person with no row): `"mentions"` for a channel, `"all"` for a DM. Rows written before levels could be chosen hold `"all"` for channels; read them as `"mentions"` (the mock migrates them).
 - It sends `read.marker_updated` `{ userId, channelId }` like star and mute.
 - What a level does in the sidebar (client side, spec 5.1): All counts every unread message, Mentions counts my mentions, Nothing shows no count; the row is still bold with unread. Muted wins over the level: never bold, no count, and the row goes last in its group.
-- A channel at Nothing is left out of Activity and of the bell's mentions (`GET /api/mentions/me`). Its stored items are kept, so they show again when the level changes back.
+- A channel at Nothing is left out of Activity and of the bell's mentions (`GET /api/mentions`). Both leave it out before taking their newest items (the bell's 50, Activity's 100), so a busy channel at Nothing never pushes other mentions out. Its stored items are kept, so they show again when the level changes back.
 - Keywords, desktop, mobile and email delivery, and Do Not Disturb wait for Preferences.
 
 ### Activity item
@@ -236,14 +236,14 @@ What a delete takes is kept only for the Undo window, then dropped (retention be
 | Call | Route | Body | Returns |
 |---|---|---|---|
 | My Activity | `GET /api/workspaces/:id/activity` | — | Up to 100 items in that workspace, newest first. |
-| Mark read | `POST /api/workspaces/:id/activity/read` | `{ ids? }` | `204`. Without `ids`: every item the list would return. |
+| Mark read | `POST /api/workspaces/:id/activity/read` | `{ ids? }` | `204`. Without `ids`: every item the list would return. With `ids`: any of my mentions (not only the newest) and my stored items. |
 
 What the list holds, for the signed-in person:
 
-- **Mentions** of me, as `GET /api/mentions/me` has them (spec 6.12 Mentions).
-- **Reactions** to my messages and replies (spec §7 `Notification`): one item per person and emoji. Taking the reaction back removes the item; my own reactions make none.
-- **Thread replies** in threads I follow (the following rules of slice 2): one item per reply, for every follower except the replier, the people the reply mentions by name (they get the mention instead) and anyone who can't read the channel.
-- Items whose message or reply is deleted are left out, as are channels at Nothing.
+- **Mentions** of me, as `GET /api/mentions` has them (spec 6.12 Mentions), in this workspace, worked out from each message or reply as it reads now (an edit can add or remove one; `@all` counts).
+- **Reactions** to my messages and replies (spec §7 `Notification`): one item per person and emoji. Taking the reaction back removes the item; my own reactions make none, and neither do reactions in a channel I can no longer read.
+- **Thread replies** in threads I follow (the following rules of slice 2): one item per reply, stored for every follower except the replier and anyone who can't read the channel. A reply that mentions me as it reads now is listed once, as the mention, not again as a thread item.
+- Items whose message or reply is deleted are left out, as are channels at Nothing and channels I can no longer read (I left a private channel or was taken off it): the read check runs when the list is read, not only when an item is stored, since the excerpt is the text as it is now.
 - Reading a message in its channel doesn't mark its Activity item read; opening the item (or Mark all read) does.
 
 ### Real-time event
