@@ -6,7 +6,7 @@ import type { ReactNode } from 'react'
 import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
-import type { Channel, ChatMessage, TaskRef, User } from '@/api/types'
+import type { ActivityItem, Channel, ChatMessage, TaskRef, User } from '@/api/types'
 import { ToastProvider } from '@/components/sf/Toast'
 import { api } from '@/lib/api'
 import { Logo } from '@/layout/Sidebar'
@@ -21,6 +21,7 @@ import { RichComposer } from '@/pages/chat/composer/RichComposer'
 import { EmojiPicker } from '@/pages/chat/EmojiPicker'
 import { useEditing } from '@/pages/chat/editingStore'
 import { MarkAllReadModal } from '@/pages/chat/ChannelShortcuts'
+import { ActivityView } from '@/pages/chat/ActivityView'
 import { ThreadMenu } from '@/pages/chat/ThreadMenu'
 import { ThreadComposer } from '@/pages/chat/ThreadComposer'
 import type { BodyContext } from '@/pages/chat/MessageBody'
@@ -45,6 +46,10 @@ const message = (content: string, over: Partial<ChatMessage> = {}): ChatMessage 
   id: `m${++n}`, channelId: 'c-backend', seq: n, senderId: 'u-2', content, body: parseBody(content), attachments: [], reactions: [], threadCount: 0, lastReplyAt: null,
   linkedTicketKeys: [], mentions: [], editedAt: null, createdAt: '2026-10-28T09:00:00.000Z', ...over,
 })
+const activity: ActivityItem[] = [
+  { id: 'a1', kind: 'mention', read: false, createdAt: '2026-10-28T09:00:00.000Z', workspaceId: 'ws-eng', actorId: 'u-2', actorName: 'Nour El-Sayed', channelId: 'c-backend', messageId: 'm1', replyId: null, taskKey: null, projectId: null, excerpt: 'Can you review NEX-103 today?', emoji: null },
+  { id: 'a2', kind: 'reaction', read: true, createdAt: '2026-10-28T08:00:00.000Z', workspaceId: 'ws-eng', actorId: 'u-2', actorName: 'Nour El-Sayed', channelId: 'c-backend', messageId: 'm2', replyId: null, taskKey: null, projectId: null, excerpt: 'Shipped the fix', emoji: '👍' },
+]
 const directory = { users, projects: [{ key: 'NEX', name: 'Nexus Core' }], tasks: [{ key: 'NEX-103', title: task.title }], channels: [{ id: 'c-backend', name: 'backend' }], memberIds: ['u-1'] }
 
 function mount(node: ReactNode, dark: boolean) {
@@ -169,6 +174,12 @@ describe.each([
   it('an open profile card has no axe violations', async () => {
     mount(<ChannelMessage message={message('hi')} users={users} ctx={ctx} meId="u-1" canPost continuation={false} />, dark)
     await userEvent.click(screen.getByRole('button', { name: 'Nour El-Sayed' }))
+    expect(await violations()).toEqual([])
+  })
+
+  it('Activity, its rows read and unread and its error, has no axe violations (spec 6.12)', async () => {
+    mount(<ActivityView items={activity} ws="engineering" placeOf={() => '#backend'} error={false} retrying={false} onRetry={vi.fn()} onOpen={vi.fn()} onMarkAllRead={vi.fn()} marking={false} markError="Couldn’t mark them read. Try again." />, dark)
+    expect(screen.getByRole('heading', { name: 'Earlier' })).toBeTruthy()
     expect(await violations()).toEqual([])
   })
 
@@ -443,3 +454,22 @@ describe('the shell around the chat (spec 10)', () => {
   })
 })
 
+describe('Activity on a phone (spec 10: every screen works at 390px)', () => {
+  it('its header and rows fit the width, with nothing scrolling sideways', async () => {
+    await page.viewport(390, 844)
+    try {
+      mount(<ActivityView items={activity} ws="engineering" placeOf={() => '#a-very-long-channel-name-indeed'} error={false} retrying={false} onRetry={vi.fn()} onOpen={vi.fn()} onMarkAllRead={vi.fn()} marking={false} markError={null} />, false)
+      const main = document.querySelector('main')!
+      main.style.width = '390px'
+      main.style.padding = '0'
+      const section = screen.getByRole('region', { name: 'Activity' })
+      expect(section.scrollWidth).toBeLessThanOrEqual(section.clientWidth)
+      const header = section.querySelector('header')!
+      expect(header.scrollWidth).toBeLessThanOrEqual(header.clientWidth)
+      for (const link of screen.getAllByRole('link')) expect(link.getBoundingClientRect().right).toBeLessThanOrEqual(390)
+      expect(screen.getByRole('button', { name: 'Mark all read' }).getBoundingClientRect().right).toBeLessThanOrEqual(390)
+    } finally {
+      await page.viewport(414, 896)
+    }
+  })
+})

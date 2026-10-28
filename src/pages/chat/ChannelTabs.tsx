@@ -1,12 +1,10 @@
-import { IconFileText, IconFiles, IconMessage, IconPin, type TablerIcon } from '@tabler/icons-react'
-import clsx from 'clsx'
-import { useRef, type KeyboardEvent } from 'react'
+import { IconFileText, IconFiles, IconMessage, IconPin } from '@tabler/icons-react'
 import type { Channel } from '@/api/types'
-import { Icon } from '@/components/sf/Icon'
+import { Tabs, type TabItem } from '@/components/sf/Tabs'
 
 export type ChannelTab = 'messages' | 'files' | 'pins' | 'page'
 
-const ALL: { id: ChannelTab; label: string; icon: TablerIcon }[] = [
+const ALL: TabItem<ChannelTab>[] = [
   { id: 'messages', label: 'Messages', icon: IconMessage },
   { id: 'files', label: 'Files', icon: IconFiles },
   { id: 'pins', label: 'Pins', icon: IconPin },
@@ -23,53 +21,9 @@ export function tabFromParam(value: string | null, channel: Pick<Channel, 'kind'
   return channelTabs(channel).find((t) => t.id === value)?.id ?? 'messages'
 }
 
-/**
- * The 40px tab row under the channel header. Arrow keys move to the next tab and open it (one tab stop for the
- * row); Home and End go to the ends. Bookmarks and + come in a later phase.
- */
+/** The channel's views under its header (spec 6.1). Bookmarks and + come in a later phase. */
 export function ChannelTabs({ channel, tab, onChange, panelId }: { channel: Pick<Channel, 'kind'>; tab: ChannelTab; onChange: (tab: ChannelTab) => void; panelId: string }) {
-  const tabs = channelTabs(channel)
-  const refs = useRef<(HTMLButtonElement | null)[]>([])
-  const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
-    const rtl = getComputedStyle(event.currentTarget).direction === 'rtl'
-    const step = { ArrowRight: rtl ? -1 : 1, ArrowLeft: rtl ? 1 : -1 }[event.key]
-    const next = step !== undefined ? (index + step + tabs.length) % tabs.length : event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : null
-    if (next === null) return
-    event.preventDefault()
-    refs.current[next]?.focus()
-    onChange(tabs[next].id)
-  }
-  return (
-    <div role="tablist" aria-label="Channel views" className="flex h-sf-tabs flex-none items-stretch gap-1 overflow-x-auto border-b border-sf-line px-4">
-      {tabs.map((t, i) => {
-        const selected = t.id === tab
-        return (
-          <button
-            key={t.id}
-            ref={(el) => {
-              refs.current[i] = el
-            }}
-            type="button"
-            role="tab"
-            aria-selected={selected}
-            aria-controls={panelId}
-            tabIndex={selected ? 0 : -1}
-            onClick={() => onChange(t.id)}
-            onKeyDown={(e) => onKeyDown(e, i)}
-            className={clsx(
-              'sf-focus sf-ui-medium relative inline-flex items-center gap-2 px-2 whitespace-nowrap hover:text-sf-text',
-              // The 2px accent rule sits on the row's bottom border (spec 6.1).
-              'after:absolute after:inset-x-2 after:-bottom-px after:h-0.5 after:rounded-t-[2px]',
-              selected ? 'text-sf-text after:bg-sf-accent-fill' : 'text-sf-text-secondary after:bg-transparent',
-            )}
-          >
-            <Icon icon={t.icon} size={18} />
-            {t.label}
-          </button>
-        )
-      })}
-    </div>
-  )
+  return <Tabs label="Channel views" tabs={channelTabs(channel)} tab={tab} onChange={onChange} panelId={panelId} />
 }
 
 const STUBS: Record<Exclude<ChannelTab, 'messages'>, string> = {

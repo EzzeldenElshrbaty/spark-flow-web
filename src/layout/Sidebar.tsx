@@ -45,6 +45,8 @@ type SideLinkProps = {
   icon?: TablerIcon | ReactNode
   /** Unread mentions: the red count at the end. */
   mentions?: number
+  /** What the count is read out as, one and many: mentions unless said (Activity's are unread items). */
+  noun?: [string, string]
   /** Something new to read: bold, strong text. */
   unread?: boolean
   /** Muted channels: dim, a bell-off icon, never a count. */
@@ -73,6 +75,7 @@ export function SideLink({
   label,
   icon,
   mentions = 0,
+  noun = ['mention', 'mentions'],
   unread = false,
   muted = false,
   draft = false,
@@ -86,6 +89,7 @@ export function SideLink({
   const { pathname } = useLocation()
   const inside = forced ?? (within ? pathname === within || pathname.startsWith(`${within}/`) : undefined)
   const count = muted ? 0 : mentions
+  const counted = `${count} ${count === 1 ? noun[0] : noun[1]}`
   const bold = !muted && (unread || count > 0)
   return (
     <NavLink
@@ -130,7 +134,7 @@ export function SideLink({
               </span>
             )}
             {collapsed ? (
-              (count > 0 || unread) && !muted && <span className="sr-only">{count > 0 ? `, ${count} mentions` : ', unread'}</span>
+              (count > 0 || unread) && !muted && <span className="sr-only">{count > 0 ? `, ${counted}` : ', unread'}</span>
             ) : (
               <>
                 <span className="min-w-0 flex-1 truncate">{label}</span>
@@ -138,7 +142,7 @@ export function SideLink({
                   <>
                     {/* Read as "backend, 3 mentions". */}
                     <span className="sr-only">, </span>
-                    <Count value={count} label={count === 1 ? 'mention' : 'mentions'} className="ms-auto" />
+                    <Count value={count} label={count === 1 ? noun[0] : noun[1]} className="ms-auto" />
                   </>
                 ) : muted ? (
                   <Icon icon={IconBellOff} size={16} className="ms-auto text-sf-sidebar-text-muted" />
@@ -251,7 +255,7 @@ export function SidebarContent({
 }) {
   const { role, persona } = useRole()
   const check = usePermission()
-  const { workspace, starred, channels, dms, projects, mentions, chatLoading, projectsLoading, failed } = useSidebarGroups()
+  const { workspace, starred, channels, dms, projects, mentions, activityUnread, chatLoading, projectsLoading, failed } = useSidebarGroups()
   const slug = workspace?.slug
   const [newChannel, setNewChannel] = useState(false)
   const [newMessage, setNewMessage] = useState(false)
@@ -303,8 +307,7 @@ export function SidebarContent({
               </li>
             )}
             <li className="flex-none">
-              {/* TODO(chat phase 3): the Activity view. Until then mentions are read on Home and in the bell. */}
-              <SideLink to={paths.home(slug)} label="Activity" icon={IconAt} mentions={mentions.total} active={false} {...row} />
+              <SideLink to={paths.activity(slug)} label="Activity" icon={IconAt} mentions={activityUnread} noun={['unread', 'unread']} {...row} />
             </li>
             {preview && (
               <>

@@ -1,5 +1,6 @@
 import type { Channel, Presence, Project } from '@/api/types'
 import { useChannels, useDrafts } from '@/api/chat'
+import { useActivity } from '@/api/inbox'
 import { useMyMentions } from '@/api/mentions'
 import { useProjects } from '@/api/tickets'
 import { useUsers } from '@/api/users'
@@ -21,6 +22,7 @@ export function useSidebarGroups() {
   const usersQuery = useUsers(workspace?.id)
   const projectsQuery = useProjects(workspace?.id)
   const mentionsQuery = useMyMentions(Boolean(persona.id))
+  const activityQuery = useActivity(workspace?.id)
 
   const users = usersQuery.data ?? []
   const sorted = sortChannels(channelsQuery.data ?? [])
@@ -41,8 +43,10 @@ export function useSidebarGroups() {
     channels: listed.filter((r) => r.channel.kind === 'channel' && !r.channel.starred),
     dms: listed.filter((r) => r.channel.kind === 'dm' && !r.channel.starred),
     projects,
-    /** My unread mentions here: Activity's count, and each channel row's badge. */
+    /** My unread mentions here: each channel row's badge. */
     mentions: unreadMentions(mentionsQuery.data, workspace?.id),
+    /** Unread items in my Activity here (spec 6.12): its row's count. */
+    activityUnread: (activityQuery.data ?? []).filter((item) => !item.read).length,
     // The channel list and the people behind DM names arrive separately; show rows only when both are there.
     chatLoading: workspaceLoading || (Boolean(workspace) && (channelsQuery.isPending || usersQuery.isPending)),
     projectsLoading: workspaceLoading || (Boolean(workspace) && projectsQuery.isPending),

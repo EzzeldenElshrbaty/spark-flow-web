@@ -515,8 +515,8 @@ Part A — activity data
 - [x] `PATCH /api/channels/:id/me { notifyLevel }`; http; hooks; query keys and live refresh.
 
 Part B — the Activity page
-- [ ] `/w/:ws/activity`: header "Activity", tabs All / Mentions / Reactions / Threads, Unread only, Mark all read; rows with the unread dot, avatar, kind line, text and time, an "Earlier" group; opening a row goes there and marks it read; "Nothing here yet." / "You're all caught up."; phones full screen.
-- [ ] The sidebar's Activity link opens it, with the count of unread items in the workspace.
+- [x] `/w/:ws/activity`: header "Activity", tabs All / Mentions / Reactions / Threads, Unread only, Mark all read; rows with the unread dot, avatar, kind line, text and time, an "Earlier" group; opening a row goes there and marks it read; "Nothing here yet." / "You're all caught up."; phones full screen.
+- [x] The sidebar's Activity link opens it, with the count of unread items in the workspace.
 
 Part C — the channel bell menu
 - [ ] Channel header bell → "Notify me about": All new messages / Mentions and keywords / Nothing (checked), — Mute channel. Mute leaves the ⋮ menu.
@@ -526,4 +526,4 @@ Part C — the channel bell menu
 
 Rulings approved with the plan: one Activity route (mentions worked out, reactions and thread replies stored, in the mock); the top-bar bell stays mentions only; keywords, desktop / mobile / email and Do Not Disturb wait for Preferences; reading a message in its channel doesn't mark its Activity item read; Reminders stays hidden until Phase 3.
 
-Rulings while building: the Api namespace is `inbox`, since `api.activity` is task and project history (routes unchanged); a new message also refreshes Activity, as it can mention me.
+Rulings while building: the Api namespace is `inbox`, since `api.activity` is task and project history (routes unchanged); a new message also refreshes Activity, as it can mention me; a row opens a message on it in its channel and a reply in its thread (the bell opens every mention's thread, as before); Mark all read on a tab other than All marks that tab's unread rows; a DM is "a direct message" in the kind line; the tab row became the sf `Tabs` primitive (the channel's tabs use it); the Activity error is `text-sf-accent`, since `text-sf-error` (red-600) fails contrast in dark.

@@ -21,6 +21,14 @@ describe('SideLink states (spec 5.1)', () => {
     expect(link.className).toContain('font-semibold')
   })
 
+  it('a count can name what it counts (Activity counts unread items, spec 6.12), collapsed too', () => {
+    row({ label: 'Activity', mentions: 4, noun: ['unread', 'unread'] })
+    expect(screen.getByRole('link', { name: /^Activity,\s*4\s*unread$/ })).toBeTruthy()
+    cleanup()
+    row({ label: 'Activity', mentions: 1, noun: ['unread', 'unread'], collapsed: true })
+    expect(screen.getByRole('link', { name: 'Activity' }).textContent).toBe(', 1 unread')
+  })
+
   it('a muted row is dim and never shows a count', () => {
     row({ muted: true, mentions: 3, unread: true })
     const link = screen.getByRole('link', { name: 'backend' })
