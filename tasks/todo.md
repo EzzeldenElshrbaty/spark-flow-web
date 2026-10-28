@@ -582,10 +582,19 @@ Part B — the Channel details modal
 - [x] Phones: 16px gutters, content scrolls, 44px targets; light and dark; axe.
 
 Part C — Who can post in the channel
-- [ ] At "Only admins" a non-admin sees "Only admins can post in #x." instead of the composer, in the channel and the thread.
+- [x] At "Only admins" a non-admin sees "Only admins can post in #x." instead of the composer, in the channel and the thread.
 
-- [ ] Contract section for slice 4. Tests first throughout; app check.
+- [x] Contract section for slice 4. Tests first throughout; app check.
 
 Rulings approved with the plan: linked project read-only (no linking for other channels yet); Add people takes workspace people only (emails and guests in slice 5); "Only admins" means workspace admins and covers thread replies; no details for DMs, no Tabs or Integrations tabs, no Start a call, no system message for the description.
 
-Rulings while building: posting rules live in `can()` (`channel.restrictPosting`, `channel.post`); edits, deletes and reactions still work at Only admins (only new posts are refused); a private channel may go down to just me through Remove (the "Add at least one person" rule is for a new channel); the old drawer is now New channel only; ChannelDetails is presentational and ChannelPage wires it to the API; Archive from Settings closes the details and asks its usual question; Add people answers a typed email with "Pick someone in Spark Systems. Inviting by email comes later."; every sf Modal was 508px wide on a 390px phone (its max width was a percentage of its own grid track), now `min(540px, 100vw - 32px)`; sf Tabs are 44px tall on phones and show a count ("Members 4").
+Rulings while building: posting rules live in `can()` (`channel.restrictPosting`, `channel.post`); edits, deletes and reactions still work at Only admins (only new posts are refused); a private channel may go down to just me through Remove (the "Add at least one person" rule is for a new channel); the old drawer is now New channel only; ChannelDetails is presentational and ChannelPage wires it to the API; Archive from Settings closes the details and asks its usual question; Add people answers a typed email with "Pick someone in Spark Systems. Inviting by email comes later."; every sf Modal was 508px wide on a 390px phone (its max width was a percentage of its own grid track), now `min(540px, 100vw - 32px)`; sf Tabs are 44px tall on phones and show a count ("Members 4"); `useCanWrite` gates the composer only (useCanPost still gates reactions, edits and deletes).
+
+## Review
+
+- Part A (cd7f358): `description` and `whoCanPost` on channels (DB v13), the members routes with "added" and "removed" system messages, the PATCH without members, Only admins refused for new posts; `can()` rules.
+- Part B (33b2587): Channel details with About, Members and Settings, Add people, the shared levels menu, the four entry points; sf Modal fits phones, sf Tabs counts and 44px phone height.
+- Part C: "Only admins can post in #x." in place of the channel and thread composers; the contract section for slice 4.
+- Verified: 1150 tests (axe in light and dark on every tab, the level menu and Add people; a 390px fit and 44px touch check), tsc, lint, `build:prototype`; in the app as Youssef: description saved, Mariam added then removed (both system messages shown), Only admins set; as Nour the composer line shows; set back to Everyone.
+- Not pushed.
+

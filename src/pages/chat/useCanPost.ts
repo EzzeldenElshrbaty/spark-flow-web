@@ -20,6 +20,16 @@ export function useCanPost(channel: Channel | undefined): boolean | null {
   return !channel.isPrivate || channel.memberIds.includes(me.id)
 }
 
+/**
+ * Whether the composer is mine to use (spec §9): useCanPost, and in a channel set to Only admins, being an Admin.
+ * Reactions, edits and deletes still go by useCanPost. `null` while that is still unknown.
+ */
+export function useCanWrite(channel: Channel | undefined): boolean | null {
+  const canPost = useCanPost(channel)
+  const check = usePermission()
+  return canPost === true ? check('channel.post', { channel: channel! }) : canPost
+}
+
 /** The line shown instead of the composer: who can write in this channel. */
 export function useReadOnlyLine(channel: Channel | undefined) {
   const projects = useProjectSummaries(channel?.workspaceId)

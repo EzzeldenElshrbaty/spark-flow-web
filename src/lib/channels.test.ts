@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Channel, MentionItem } from '@/api/types'
-import { channelLabel, countNoun, inWorkspace, mutedLast, mustJoin, readOnlyFor, sidebarChannels, sidebarRowState, sortChannels, unreadMentions } from '@/lib/channels'
+import { channelLabel, countNoun, onlyAdminsLine, inWorkspace, mutedLast, mustJoin, readOnlyFor, sidebarChannels, sidebarRowState, sortChannels, unreadMentions } from '@/lib/channels'
 import { seed } from '@/mocks/seed'
 
 const data = seed(new Date('2026-10-26T09:00:00Z')).data
@@ -78,6 +78,12 @@ describe('inWorkspace', () => {
   it('rejects a channel of another workspace, or when the workspace is unknown', () => {
     expect(inWorkspace(channel('general'), 'ws-design')).toBe(false)
     expect(inWorkspace(channel('general'), undefined)).toBe(false)
+  })
+})
+
+describe('onlyAdminsLine (spec §9)', () => {
+  it('says who may post instead of the composer, the way the server refuses', () => {
+    expect(onlyAdminsLine({ name: 'backend' })).toBe('Only admins can post in #backend.')
   })
 })
 

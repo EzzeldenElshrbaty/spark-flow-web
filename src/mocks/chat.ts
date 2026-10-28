@@ -1,6 +1,7 @@
 import { can } from '@/lib/permissions'
 import type { Api, Attachment, Channel, ChannelMemberState, ChatMessage, NotifyLevel, Page, SystemEvent, ChatTarget, StoredChannel, ThreadReply, WhoCanPost } from '@/api/types'
 import { channelFormErrors, descriptionError } from '@/lib/channelForm'
+import { onlyAdminsLine } from '@/lib/channels'
 import { isOneEmoji } from '@/lib/emojiText'
 import { MAX_DISTINCT_REACTIONS, toggleReaction } from '@/lib/reactions'
 import type { DbData, MockDb } from './db'
@@ -186,7 +187,7 @@ function checkCanPost(data: DbData, channel: StoredChannel) {
 function checkCanWrite(data: DbData, channel: StoredChannel) {
   const me = checkCanPost(data, channel)
   if (!can('channel.post', { userId: me.id, role: me.role, channel })) {
-    throw new ApiError({ title: 'Forbidden', status: 403, detail: `Only admins can post in #${channel.name}.` })
+    throw new ApiError({ title: 'Forbidden', status: 403, detail: onlyAdminsLine(channel) })
   }
   return me
 }

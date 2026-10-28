@@ -59,7 +59,7 @@ On reconnect the client expects missed `message.created` events replayed in `seq
 
 ## Phase 1 · Feature 2: channel header and tabs
 
-No new routes. The header uses the ones above: the star toggle and Mute in the more menu call `PATCH /api/channels/:id/me`, and Mark all read calls `POST /api/channels/:id/read` with no `seq`. Edit details, Leave and Archive use the existing channel routes. The tabs are client-side (`?tab=files|pins|page`); Files, Pins and Page get their own endpoints when they are built (Phases 3 and 4).
+No new routes. The header uses the ones above: the star toggle and Mute (under the bell since slice 3) call `PATCH /api/channels/:id/me`, and Mark all read calls `POST /api/channels/:id/read` with no `seq`. Leave and Archive use the existing channel routes; Channel details (slice 4, below) has its own. The tabs are client-side (`?tab=files|pins|page`); Files, Pins and Page get their own endpoints when they are built (Phases 3 and 4).
 
 ## Phase 1 · Feature 3: message list
 
@@ -254,3 +254,33 @@ What the list holds, for the signed-in person:
 
 The client refreshes Activity on it, and on `message.updated` (an edit can add or remove a mention), a comment, `read.marker_updated` and `channel.updated`, `member.joined` or `member.left` (client handler `onChannelChanged`: leaving, removal, archiving and privacy decide what Activity and the bell may show). It no longer refreshes Activity on every `message.created` or new reply.
 
+
+## Phase 2 · Slice 4: Channel details (spec 6.10, §9)
+
+### Channel fields
+
+| Field | Type | Rule |
+|---|---|---|
+| `description` | string | What the channel is for, trimmed, at most 250 characters; `""` when not set. A DM has `""`. |
+| `whoCanPost` | `"everyone" \| "admins"` | Who may post new messages and replies. `"everyone"` by default (and for every DM). |
+
+Both are on every channel the API returns (`GET` a channel, the workspace's channels, create, update).
+
+### Routes
+
+| Call | Route | Body | Returns |
+|---|---|---|---|
+| Edit details | `PATCH /api/channels/:id` | `{ name?, topic?, description?, whoCanPost? }` | The channel as I see it. |
+| Add people | `POST /api/channels/:id/members` | `{ userIds }` | The channel as I see it. |
+| Remove someone | `DELETE /api/channels/:id/members/:userId` | — | The channel as I see it. |
+
+Rules:
+
+- **Who:** all three need `channel.manage` (its members, or an Admin for a public channel; `403` "Only its members can change this channel."). Never a DM (`400` "Direct messages can't be edited.") or a project's channel (`400` "This channel follows its project."; its people are the project's).
+- **Edit details:** name and topic as before (a rename posts `renamed`, a topic change posts `topic`). `description` over 250 characters: `400` "Keep the description under 250 characters."; a description change posts nothing. `whoCanPost` must be `"everyone"` or `"admins"` (`400` "Choose Everyone or Only admins."), and only an Admin may change it (`403` "Only admins can change who can post."). The body no longer takes `memberIds`: people change through the members routes.
+- **Add people:** `userIds` are people in the workspace (`404` for an unknown one); duplicates and people already in the channel are skipped. None given: `400` "Pick someone to add."; nobody new: `400` "Everyone you picked is already in #name.". It posts a system message `{ kind: "added", userIds }` (the ones added, in order), read as "added Nour El-Sayed and Omar Hassan.".
+- **Remove someone:** not myself (`400` "Leave the channel instead."), and only someone in the channel (`400` "They’re not in #name."). It posts `{ kind: "removed", userId }`, read as "removed Omar Hassan from the channel.". A private channel may go down to just me this way (the "Add at least one person" rule is for a new channel). Someone taken off a private channel can no longer read it, and its messages leave their bell and Activity at once.
+- **Who can post:** at `"admins"`, `POST /api/channels/:id/messages` and `POST /api/messages/:id/replies` from anyone but an Admin answer `403` "Only admins can post in #name.". Reactions, edits and deletes of existing messages are not affected.
+- Each change sends `channel.updated` (client `onChannelChanged`), and the system message as `message.created`.
+
+Email invites, guests and "When new people join Spark Systems, add them to #channel" (the admin's default-channel switch) come with Add people in slice 5. A channel's linked project is shown only for a project's own channel; linking other channels waits.

@@ -55,6 +55,9 @@ export function mustJoin(channel: Channel, meId: string, projects: { channelId: 
   return channel.kind === 'channel' && !channel.isPrivate && !channel.memberIds.includes(meId) && projects !== undefined && !projects.some((p) => p.channelId === channel.id)
 }
 
+/** The line shown instead of the composer, and the server's refusal, in a channel set to Only admins (spec §9). */
+export const onlyAdminsLine = (channel: Pick<Channel, 'name'>) => `Only admins can post in #${channel.name}.`
+
 /** The line shown instead of the composer to someone who may read a channel but not write in it. */
 export const readOnlyFor = (isProjectChannel: boolean) =>
   isProjectChannel ? 'You can read this channel. Only its project’s people can write here.' : 'You can read this channel. Only its members can write here.'

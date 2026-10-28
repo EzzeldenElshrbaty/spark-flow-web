@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { ApiError } from '@/lib/api'
-import { channelLabel, inWorkspace, isArchived, mustJoin } from '@/lib/channels'
+import { channelLabel, inWorkspace, isArchived, mustJoin, onlyAdminsLine } from '@/lib/channels'
 import { paths } from '@/lib/paths'
 import { usePermission } from '@/lib/usePermission'
 import { useRole } from '@/lib/useRole'
@@ -25,7 +25,7 @@ import { useProjectKeys } from '@/pages/chat/useBodyContext'
 import { jumpSince, type JumpChoice } from '@/pages/chat/messageRows'
 import { CanPostError } from '@/pages/chat/CanPostError'
 import { TypingLine } from '@/pages/chat/ChannelTyping'
-import { useCanPost, useReadOnlyLine } from '@/pages/chat/useCanPost'
+import { useCanPost, useCanWrite, useReadOnlyLine } from '@/pages/chat/useCanPost'
 import { useTaskFromMessage } from '@/pages/chat/useTaskFromMessage'
 import { ArchiveChannelModal, ArchivedChannelLine, JoinChannelLine, useChannelRights } from '@/pages/chat/ChannelActions'
 import { ChannelHeader } from '@/pages/chat/ChannelHeader'
@@ -45,6 +45,7 @@ export function ChannelPage() {
   const channel = useChannel(channelId)
   const users = useUsers(workspace?.id)
   const canPost = useCanPost(channel.data)
+  const canWrite = useCanWrite(channel.data)
   const queue = useSendQueue()
   const queryClient = useQueryClient()
   const readOnly = useReadOnlyLine(channel.data)
@@ -126,6 +127,8 @@ export function ChannelPage() {
             <JoinChannelLine channel={current} />
           ) : canPost === false ? (
             <p className="text-sm text-fg-muted">{readOnly}</p>
+          ) : canPost && !canWrite ? (
+            <p className="text-sm text-fg-muted">{onlyAdminsLine(current)}</p>
           ) : canPost ? (
             <>
             <ChannelComposer

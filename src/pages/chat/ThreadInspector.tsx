@@ -5,7 +5,7 @@ import { QueryError } from '@/components/ui/QueryError'
 import { InspectorFrame, InspectorSkeleton, TitleSkeleton, type InspectorBodyProps } from '@/layout/InspectorFrame'
 import { ApiError } from '@/lib/api'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
-import { channelLabel, inWorkspace, mustJoin } from '@/lib/channels'
+import { channelLabel, inWorkspace, mustJoin, onlyAdminsLine } from '@/lib/channels'
 import { useProjectSummaries } from '@/api/projects'
 import { JoinChannelLine } from '@/pages/chat/ChannelActions'
 import { firstLine } from '@/lib/inspector'
@@ -16,7 +16,7 @@ import { bodyText } from '@/lib/messageBody'
 import { ChannelMessage } from '@/pages/chat/ChannelMessage'
 import { canContinue } from '@/pages/chat/messageRows'
 import { useBodyContext, useProjectKeys } from '@/pages/chat/useBodyContext'
-import { useCanPost, useReadOnlyLine } from '@/pages/chat/useCanPost'
+import { useCanPost, useCanWrite, useReadOnlyLine } from '@/pages/chat/useCanPost'
 import { CanPostError } from '@/pages/chat/CanPostError'
 import { useReplyFocus } from '@/pages/chat/useReplyFocus'
 import { ThreadMenu } from '@/pages/chat/ThreadMenu'
@@ -34,6 +34,7 @@ export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: st
   const users = useUsers(channel.data?.workspaceId)
   const replies = useThread(message.data ? messageId : undefined)
   const canPost = useCanPost(channel.data)
+  const canWrite = useCanWrite(channel.data)
   const readOnly = useReadOnlyLine(channel.data)
   const reply = useReply()
   // As in the channel: a public channel I'm not in asks me to join before I write, here too.
@@ -101,6 +102,8 @@ export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: st
             <JoinChannelLine channel={channel.data} />
           ) : canPost === false ? (
             <p className="text-sm text-fg-muted">{readOnly}</p>
+          ) : canPost && channel.data && !canWrite ? (
+            <p className="text-sm text-fg-muted">{onlyAdminsLine(channel.data)}</p>
           ) : canPost && channel.data ? (
             <ThreadComposer
               channel={channel.data}
