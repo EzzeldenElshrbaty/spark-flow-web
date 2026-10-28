@@ -537,6 +537,7 @@ export function seed(now: Date): SeedResult {
     counters: buildCounters(projects.map((p) => p.id), tickets),
     mentionReads: {} as Record<string, string[]>,
     // History starts with each task's creation, by whoever reported it, so the History tabs aren't empty.
+    drafts: [],
     activity: tickets
       .map((t) => ({ id: `act-${t.id}`, projectId: t.projectId, taskKey: t.key, actorId: t.reporterId, at: t.createdAt, kind: 'task.created' as const, changes: [] }))
       .sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0)),

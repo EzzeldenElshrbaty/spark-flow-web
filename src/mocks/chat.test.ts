@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { Api, ChatMessage } from '@/api/types'
+import { bodyText, parseBody } from '@/lib/messageBody'
 import type { RealtimeEvent } from '@/lib/realtime'
 import { addReply, sendMessage } from './chat'
 import { createDb, type MockDb } from './db'
@@ -270,7 +271,7 @@ describe('send and reply', () => {
 
   it('send refuses empty text, long text, a project the member is not on, and a private channel', async () => {
     await expect(api.chat.send('c-general', '  ')).rejects.toMatchObject({ status: 400, detail: 'Write a message first.' })
-    await expect(api.chat.send('c-general', 'x'.repeat(4001))).rejects.toMatchObject({ detail: 'Keep the message under 4000 characters.' })
+    await expect(api.chat.send('c-general', 'x'.repeat(40_001))).rejects.toMatchObject({ detail: 'Keep the message under 40000 characters.' })
     await api.users.viewAs('u-8') // Tarek: not on Nexus Core, not in the DM
     await expect(api.chat.send('c-p-nex', 'x')).rejects.toMatchObject({ status: 403, detail: "You don't have access to this project." })
     await expect(api.chat.send('c-dm-1', 'x')).rejects.toMatchObject({ status: 403, detail: "You're not in this channel." })
@@ -802,5 +803,58 @@ describe('thread summary (spec §7: reply_user_ids, latest 5)', () => {
   it('a message without replies has none', async () => {
     const root = await api.chat.send('c-general', 'Alone')
     expect((await api.chat.message(root.id)).replyUserIds).toEqual([])
+  })
+})
+
+describe('sending a body from the composer, and drafts (spec 6.8, §7)', () => {
+  const body = (md: string) => parseBody(md)
+
+  it('send with a body stores it; content is its plain text; mentions and keys come from it', async () => {
+    const b = body('Ping @[Nour](u-2) about __ NEX-103')
+    if (b[0].type === 'p') b[0].children.push({ type: 'text', text: ' now', marks: ['u'] })
+    const sent = await api.chat.send('c-backend', 'ignored', undefined, b)
+    expect(sent.body).toEqual(b)
+    expect(sent.content).toBe('Ping @Nour about __ NEX-103 now')
+    expect(sent.mentions).toEqual([{ kind: 'user', id: 'u-2' }, { kind: 'task', id: 'NEX-103' }])
+    expect(sent.linkedTicketKeys).toEqual(['NEX-103'])
+  })
+
+  it('a body that is not one, or is empty, is refused', async () => {
+    await expect(api.chat.send('c-backend', 'x', undefined, [{ type: 'p', children: [{ type: 'link', href: 'javascript:x', text: 'x' }] }] as never)).rejects.toMatchObject({ status: 400, detail: "That message couldn't be read." })
+    await expect(api.chat.send('c-backend', '', undefined, body('   '))).rejects.toMatchObject({ status: 400, detail: 'Write a message first.' })
+  })
+
+  it('a message can be 40,000 characters, not more (spec 6.8)', async () => {
+    await expect(api.chat.send('c-general', 'x'.repeat(40_000))).resolves.toBeTruthy()
+    await expect(api.chat.send('c-general', 'x'.repeat(40_001))).rejects.toMatchObject({ detail: 'Keep the message under 40000 characters.' })
+  })
+
+  it('saves one draft per channel and thread, lists mine, and says so to my tabs', async () => {
+    events.length = 0
+    const saved = await api.chat.saveDraft('c-backend', body('half a thought'))
+    expect(saved).toMatchObject({ channelId: 'c-backend', rootId: null, body: body('half a thought') })
+    await api.chat.saveDraft('c-backend', body('changed my mind'))
+    await api.chat.saveDraft('c-backend', body('in the thread'), 'm-b07')
+    const mine = await api.chat.drafts('ws-eng')
+    expect(mine.map((d) => [d.channelId, d.rootId, bodyText(d.body)])).toEqual([
+      ['c-backend', null, 'changed my mind'],
+      ['c-backend', 'm-b07', 'in the thread'],
+    ])
+    expect(events.filter((e) => e.type === 'draftChanged')).toHaveLength(3)
+    expect(events[0]).toEqual({ type: 'draftChanged', userId: 'u-1', channelId: 'c-backend' })
+  })
+
+  it('an empty draft is no draft; drafts are mine alone', async () => {
+    await api.chat.saveDraft('c-backend', body('x'))
+    expect(await api.chat.saveDraft('c-backend', [])).toBeNull()
+    expect(await api.chat.drafts('ws-eng')).toEqual([])
+    await api.chat.saveDraft('c-general', body('mine'))
+    await api.users.viewAs('u-2')
+    expect(await api.chat.drafts('ws-eng')).toEqual([])
+  })
+
+  it('a draft in a channel I cannot read is refused', async () => {
+    await api.users.viewAs('u-3')
+    await expect(api.chat.saveDraft('c-release', body('x'))).rejects.toMatchObject({ status: 403 })
   })
 })

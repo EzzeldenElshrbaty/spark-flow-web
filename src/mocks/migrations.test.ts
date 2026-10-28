@@ -57,3 +57,9 @@ describe('7 → 8', () => {
     expect((next.replies as { body: unknown }[])[0].body).toEqual([{ type: 'p', children: [{ type: 'task', key: 'NEX-1' }] }])
   })
 })
+
+describe('8 → 9', () => {
+  it('adds an empty list of drafts', () => {
+    expect(migrate({ version: 8 }, 9)).toMatchObject({ version: 9, drafts: [] })
+  })
+})

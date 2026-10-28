@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bodyText, isJumbo, parseBody } from './messageBody'
+import { bodyTaskKeys, bodyText, isJumbo, mentionsOf, parseBody, validBody } from './messageBody'
 
 const p = (...children: unknown[]) => ({ type: 'p', children })
 const text = (t: string, marks?: string[]) => (marks ? { type: 'text', text: t, marks } : { type: 'text', text: t })
@@ -82,5 +82,36 @@ describe('isJumbo (spec 6.3 jumbo emoji)', () => {
     expect(isJumbo(parseBody('1'))).toBe(false)
     expect(isJumbo(parseBody('🎉'.repeat(24)))).toBe(false)
     expect(isJumbo(parseBody('*🎉*'))).toBe(false)
+  })
+})
+
+describe('validBody (the server takes a body from the composer; spec §7)', () => {
+  it('keeps a well-formed body as it is', () => {
+    const body = parseBody('*Hi* @[Nour](u-2) in #[backend](c-backend), see https://spark-sys.com\n\n> q\n- a\n1. b\n```\nc\n```')
+    expect(validBody(body)).toEqual(body)
+  })
+  it('refuses what is not a body: wrong types, unknown nodes or marks, script links, odd ids', () => {
+    for (const bad of [
+      null, 'text', {}, [{ type: 'h1', children: [] }],
+      [{ type: 'p', children: [{ type: 'text', text: 1 }] }],
+      [{ type: 'p', children: [{ type: 'text', text: 'x', marks: ['blink'] }] }],
+      [{ type: 'p', children: [{ type: 'link', href: 'javascript:alert(1)', text: 'x' }] }],
+      [{ type: 'p', children: [{ type: 'user', id: '<b>', name: 'x' }] }],
+      [{ type: 'quote', children: [{ type: 'quote', children: [] }] }],
+    ])
+      expect(validBody(bad), JSON.stringify(bad)).toBeNull()
+  })
+  it('drops fields it does not know', () => {
+    expect(validBody([{ type: 'p', children: [{ type: 'text', text: 'x', style: 'color:red' }], onclick: 'x' }])).toEqual([{ type: 'p', children: [{ type: 'text', text: 'x' }] }])
+  })
+})
+
+describe('mentionsOf and bodyTaskKeys', () => {
+  it('lists people, everyone, projects and tasks a body names, each once, in order', () => {
+    const body = parseBody('@[Nour](u-2) @all @NEX NEX-1 @[Nour](u-2) MOB-2 NEX-1')
+    expect(mentionsOf(body)).toEqual([
+      { kind: 'user', id: 'u-2' }, { kind: 'all', id: 'all' }, { kind: 'project', id: 'NEX' }, { kind: 'task', id: 'NEX-1' }, { kind: 'task', id: 'MOB-2' },
+    ])
+    expect(bodyTaskKeys(body)).toEqual(['NEX-1', 'MOB-2'])
   })
 })

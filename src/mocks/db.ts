@@ -1,5 +1,6 @@
 import type {
   ChannelMemberState,
+  Draft,
   ActivityEntry,
   Attachment,
   ChatMessage,
@@ -25,7 +26,7 @@ import { memoryActor, type Actor } from './actor'
 import { migrate } from './migrations'
 import type { MockStore } from './store'
 
-export const DB_VERSION = 8 // 2: the company-system document (spec §3); 3: mention read state; 4: channel reads per person; 5: typed columns, history; 6: rate history; 7: message seq, channel member state; 8: message bodies
+export const DB_VERSION = 9 // 2: the company-system document (spec §3); 3: mention read state; 4: channel reads per person; 5: typed columns, history; 6: rate history; 7: message seq, channel member state; 8: message bodies; 9: drafts
 /** Phase 1+2 kept the mock database in localStorage under keys starting with this. */
 const LEGACY_PREFIX = 'spark-flow.mockdb.v1'
 
@@ -56,6 +57,8 @@ export type DbData = {
   counters: Record<string, number> // projectId -> next ticket number
   /** Every project's history, oldest first. */
   activity: ActivityEntry[]
+  /** Each person's unsent drafts: one per channel and thread root. */
+  drafts: (Draft & { id: string; userId: string })[]
 }
 
 /** What the seed hands over: the document, plus file bytes (base64) keyed by attachment id. */
@@ -80,7 +83,7 @@ export interface MockDb {
 
 const COLLECTIONS = [
   'users', 'workspaces', 'projects', 'sprints', 'tickets', 'channels', 'messages', 'replies',
-  'teams', 'phases', 'deliverables', 'comments', 'attachments', 'projectFiles', 'timeEntries', 'checkIns', 'rates', 'activity',
+  'teams', 'phases', 'deliverables', 'comments', 'attachments', 'projectFiles', 'timeEntries', 'checkIns', 'rates', 'activity', 'drafts',
 ] as const
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>

@@ -1,3 +1,4 @@
+import type { Mention } from '@/api/types'
 import { graphemes, isEmojiGrapheme } from '@/lib/emojiText'
 
 /**
@@ -45,8 +46,13 @@ const INLINE = new RegExp(
   'gu',
 )
 
-function pushText(out: Inline[], text: string, marks: Mark[]) {
+const MARK_ORDER: readonly Mark[] = ['b', 'i', 'u', 's', 'code']
+/** Marks in one order, so the same formatting always reads the same however it was typed. */
+const canonical = (marks: Mark[]) => MARK_ORDER.filter((m) => marks.includes(m))
+
+function pushText(out: Inline[], text: string, given: Mark[]) {
   if (!text) return
+  const marks = canonical(given)
   const last = out.at(-1)
   const same = (a?: Mark[]) => (a ?? []).join() === marks.join()
   if (last?.type === 'text' && same(last.marks)) last.text += text
@@ -78,6 +84,37 @@ function parseInline(src: string, marks: Mark[] = []): Inline[] {
   }
   pushText(out, src.slice(from), marks)
   return out
+}
+
+const AUTO = new RegExp(`(?<url>https?:\\/\\/[^\\s<>]+[^\\s<>.,;:!?)\\]'"])|(?<task>${TASK_KEY.source})`, 'gu')
+
+/**
+ * Plain text as inlines, with web addresses as links and task keys as references, the way the parser reads them
+ * (the composer sends what people typed through this). Text marked as code stays text.
+ */
+export function autoInlines(text: string, marks: Mark[] = []): Inline[] {
+  const out: Inline[] = []
+  if (marks.includes('code')) {
+    pushText(out, text, marks)
+    return out
+  }
+  let from = 0
+  for (const m of text.matchAll(AUTO)) {
+    pushText(out, text.slice(from, m.index), marks)
+    from = m.index + m[0].length
+    if (m.groups!.url) out.push({ type: 'link', href: m.groups!.url, text: m.groups!.url })
+    else out.push({ type: 'task', key: m.groups!.task })
+  }
+  pushText(out, text.slice(from), marks)
+  return out
+}
+
+/** Adds inlines to a list, joining text runs with the same marks. */
+export function appendInlines(out: Inline[], nodes: Inline[]) {
+  for (const n of nodes) {
+    if (n.type === 'text') pushText(out, n.text, n.marks ?? [])
+    else out.push(n)
+  }
 }
 
 const FENCE = /^\s*```/
@@ -148,3 +185,112 @@ export function isJumbo(body: Body): boolean {
   const all = graphemes(text)
   return all.length > 0 && all.length <= JUMBO_MAX && all.every(isEmojiGrapheme)
 }
+
+const MARKS: readonly Mark[] = ['b', 'i', 'u', 's', 'code']
+const ID = /^[\w-]{1,100}$/
+const MAX_BLOCKS = 2000
+const MAX_TEXT = 40_000
+
+const isText = (v: unknown, max = MAX_TEXT): v is string => typeof v === 'string' && v.length <= max
+const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
+const isWebAddress = (href: unknown) => {
+  if (!isText(href, 2048)) return false
+  try {
+    return ['http:', 'https:'].includes(new URL(href).protocol)
+  } catch {
+    return false
+  }
+}
+
+function validInline(n: unknown): Inline | null {
+  if (!isRecord(n)) return null
+  switch (n.type) {
+    case 'text': {
+      if (!isText(n.text)) return null
+      if (n.marks === undefined) return { type: 'text', text: n.text }
+      if (!Array.isArray(n.marks) || !n.marks.every((m) => MARKS.includes(m as Mark))) return null
+      const marks = [...new Set(n.marks as Mark[])]
+      return marks.length ? { type: 'text', text: n.text, marks } : { type: 'text', text: n.text }
+    }
+    case 'link':
+      return isWebAddress(n.href) && isText(n.text, 2048) ? { type: 'link', href: n.href as string, text: n.text } : null
+    case 'user':
+      return isText(n.id) && ID.test(n.id) && isText(n.name, 200) ? { type: 'user', id: n.id, name: n.name } : null
+    case 'all':
+      return { type: 'all' }
+    case 'channel':
+      return isText(n.id) && ID.test(n.id) && isText(n.name, 200) ? { type: 'channel', id: n.id, name: n.name } : null
+    case 'task':
+      return isText(n.key) && new RegExp(`^${TASK_KEY.source.replaceAll('\\b', '')}$`).test(n.key) ? { type: 'task', key: n.key } : null
+    case 'project':
+      return isText(n.key) && /^[A-Z]{2,5}$/.test(n.key) ? { type: 'project', key: n.key } : null
+    default:
+      return null
+  }
+}
+
+function validInlines(list: unknown): Inline[] | null {
+  if (!Array.isArray(list)) return null
+  const out = list.map(validInline)
+  return out.every(Boolean) ? (out as Inline[]) : null
+}
+
+function validBlock(b: unknown, inQuote: boolean): Block | null {
+  if (!isRecord(b)) return null
+  switch (b.type) {
+    case 'p': {
+      const children = validInlines(b.children)
+      return children && { type: 'p', children }
+    }
+    case 'code':
+      return isText(b.text) ? { type: 'code', text: b.text } : null
+    case 'ul':
+    case 'ol': {
+      if (!Array.isArray(b.items)) return null
+      const items = b.items.map(validInlines)
+      return items.every(Boolean) ? { type: b.type, items: items as Inline[][] } : null
+    }
+    case 'quote': {
+      // Quotes don't nest (the composer can't make one inside another).
+      if (inQuote || !Array.isArray(b.children)) return null
+      const children = b.children.map((c) => validBlock(c, true))
+      return children.every(Boolean) ? { type: 'quote', children: children as Block[] } : null
+    }
+    default:
+      return null
+  }
+}
+
+/**
+ * A body from a client, checked node by node (spec §7): only the known blocks, inlines and marks, links only to web
+ * addresses, ids that look like ids; anything it doesn't know is dropped. Null when it isn't a body at all.
+ */
+export function validBody(value: unknown): Body | null {
+  if (!Array.isArray(value) || value.length > MAX_BLOCKS) return null
+  const blocks = value.map((b) => validBlock(b, false))
+  return blocks.every(Boolean) ? (blocks as Body) : null
+}
+
+/** Every inline of a body, in reading order. */
+function inlinesOf(body: Body): Inline[] {
+  const of = (b: Block): Inline[] => (b.type === 'p' ? b.children : b.type === 'quote' ? b.children.flatMap(of) : b.type === 'code' ? [] : b.items.flat())
+  return body.flatMap(of)
+}
+
+/** The people, everyone, projects and tasks a body names (for notifications and the bell), each once, in order. */
+export function mentionsOf(body: Body): Mention[] {
+  const seen = new Set<string>()
+  const out: Mention[] = []
+  for (const n of inlinesOf(body)) {
+    const m: Mention | null =
+      n.type === 'user' ? { kind: 'user', id: n.id } : n.type === 'all' ? { kind: 'all', id: 'all' } : n.type === 'project' ? { kind: 'project', id: n.key } : n.type === 'task' ? { kind: 'task', id: n.key } : null
+    if (m && !seen.has(`${m.kind}:${m.id}`)) {
+      seen.add(`${m.kind}:${m.id}`)
+      out.push(m)
+    }
+  }
+  return out
+}
+
+/** The task keys a body names, each once, in order. */
+export const bodyTaskKeys = (body: Body): string[] => [...new Set(inlinesOf(body).flatMap((n) => (n.type === 'task' ? [n.key] : [])))]

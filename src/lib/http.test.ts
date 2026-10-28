@@ -154,6 +154,8 @@ describe('createHttpApi', () => {
     await api.chat.jumpTarget('c1', '2026-10-28T00:00:00.000Z')
     await api.chat.jumpTarget('c1', null)
     await api.chat.linkPreview('https://github.com/a?b=1')
+    await api.chat.drafts('w1')
+    await api.chat.saveDraft('c1', [], 'm1')
     expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url} ${String(c.init?.body)}`)).toEqual([
       'POST /api/channels/c1/read {"seq":7}',
       'POST /api/channels/c1/messages {"content":"hi","clientId":"k1"}',
@@ -163,6 +165,8 @@ describe('createHttpApi', () => {
       'GET /api/channels/c1/messages/first?since=2026-10-28T00%3A00%3A00.000Z undefined',
       'GET /api/channels/c1/messages/first undefined',
       'GET /api/link-preview?url=https%3A%2F%2Fgithub.com%2Fa%3Fb%3D1 undefined',
+      'GET /api/workspaces/w1/drafts undefined',
+      'PUT /api/channels/c1/draft {"body":[],"rootId":"m1"}',
     ])
   })
 

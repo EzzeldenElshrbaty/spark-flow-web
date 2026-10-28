@@ -141,6 +141,9 @@ export type ChatMessage = {
   deletedAt?: string | null
 }
 
+/** Text I started and haven't sent, kept on the server so it follows me between devices (spec 6.8). */
+export type Draft = { channelId: string; rootId: string | null; body: Body; updatedAt: string }
+
 /** What a link's preview card shows. `image` is an https address or null. */
 export type LinkPreview = { url: string; siteName: string; title: string; description: string | null; image: string | null }
 
@@ -294,7 +297,11 @@ export interface Api {
     /** Moves my read marker forward to `seq` (default: the newest message); it never moves back. */
     markRead(channelId: string, seq?: number): Promise<void>
     /** Posts as the current user; mentions are worked out from the text. The same `clientId` again returns the first message. */
-    send(channelId: string, content: string, clientId?: string): Promise<ChatMessage>
+    send(channelId: string, content: string, clientId?: string, body?: Body): Promise<ChatMessage>
+    /** My drafts in a workspace's channels (spec 6.8): one per channel and thread root. */
+    drafts(workspaceId: string): Promise<Draft[]>
+    /** Saves my draft for a channel (or a thread in it); an empty body deletes it and returns null. */
+    saveDraft(channelId: string, body: Body, rootId?: string | null): Promise<Draft | null>
     reply(messageId: string, content: string): Promise<ThreadReply>
     /** Adds the current user's reaction, or takes it back if it's there; only the emoji in REACTIONS. */
     react(target: ChatTarget, emoji: string): Promise<void>

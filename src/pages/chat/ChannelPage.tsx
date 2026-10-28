@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
-import { useChannel, useJumpTarget, useLeaveChannel, useMarkRead, useMessage, useMessages, useMessagesFrom, useSendMessage, useSetMuted, useSetStarred } from '@/api/chat'
+import { useChannel, useChannels, useDrafts, useDraftSaver, useJumpTarget, useLeaveChannel, useMarkRead, useMessage, useMessages, useMessagesFrom, useSendMessage, useSetMuted, useSetStarred } from '@/api/chat'
 import { useUsers } from '@/api/users'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
@@ -12,11 +12,13 @@ import { useRole } from '@/lib/useRole'
 import { useRealtime } from '@/lib/realtime'
 import { NotFound } from '@/pages/NotFound'
 import { MessageList } from '@/pages/chat/MessageList'
+import { bodyText, type Body } from '@/lib/messageBody'
+import { useMentionDirectory } from '@/lib/useMentionDirectory'
 import { useProjectKeys } from '@/pages/chat/useBodyContext'
 import { jumpSince, type JumpChoice } from '@/pages/chat/messageRows'
 import { CanPostError } from '@/pages/chat/CanPostError'
 import { TypingLine } from '@/pages/chat/ChannelTyping'
-import { Composer } from '@/pages/chat/Composer'
+import { RichComposer } from '@/pages/chat/composer/RichComposer'
 import { useCanPost, useReadOnlyLine } from '@/pages/chat/useCanPost'
 import { useTaskFromMessage } from '@/pages/chat/useTaskFromMessage'
 import { ArchiveChannelModal, ArchivedChannelLine, JoinChannelLine, useChannelRights } from '@/pages/chat/ChannelActions'
@@ -115,15 +117,14 @@ export function ChannelPage() {
             <p className="text-sm text-fg-muted">{readOnly}</p>
           ) : canPost ? (
             <>
-            <TypingLine channelId={current.id} people={people} meId={persona.id} />
-            <Composer
+            <ChannelComposer
+              channel={current}
               placeholder={`Message ${title}`}
               onTyping={() => realtime.sendTyping(current.id, persona.id)}
-              submitLabel="Send"
-              pendingLabel="Sending…"
               error={send.error as Error | null}
-              onSubmit={(content) => send.mutateAsync({ channelId: current.id, content })}
+              onSend={(body) => send.mutateAsync({ channelId: current.id, content: bodyText(body), body })}
             />
+            <TypingLine channelId={current.id} people={people} meId={persona.id} />
             </>
           ) : (
             <CanPostError channel={current} />
@@ -283,5 +284,52 @@ function PaneFeed({
       {jumpError && <p className="sf sf-small flex-none px-4 pt-2 text-sf-error md:px-6">{jumpError}</p>}
       {composer && <div className="flex-none px-4 pt-2 pb-3 md:px-6">{composer}</div>}
     </>
+  )
+}
+
+/**
+ * The channel's composer: it starts from my draft here (once my drafts have loaded, so typing never races the
+ * draft), saves changes back, and names the workspace's people, projects, tasks and channels.
+ */
+function ChannelComposer({
+  channel,
+  placeholder,
+  onTyping,
+  error,
+  onSend,
+}: {
+  channel: Channel
+  placeholder: string
+  onTyping: () => void
+  error: Error | null
+  onSend: (body: Body) => Promise<unknown>
+}) {
+  const drafts = useDrafts(channel.workspaceId)
+  const saveDraft = useDraftSaver()
+  const { users, projects, tasks } = useMentionDirectory()
+  const channels = useChannels(channel.workspaceId)
+  const directory = useMemo(
+    () => ({
+      users,
+      projects,
+      tasks,
+      channels: (channels.data ?? []).filter((c) => c.kind === 'channel' && c.name && !c.archivedAt).map((c) => ({ id: c.id, name: c.name! })),
+      memberIds: channel.memberIds,
+    }),
+    [users, projects, tasks, channels.data, channel.memberIds],
+  )
+  if (drafts.isPending) return <div aria-hidden className="h-[106px] animate-pulse rounded-lg bg-surface-muted" />
+  const draft = drafts.data?.find((d) => d.channelId === channel.id && d.rootId === null)
+  return (
+    <RichComposer
+      key={channel.id}
+      placeholder={placeholder}
+      initialBody={draft?.body}
+      onSend={onSend}
+      onDraft={(body) => void saveDraft(channel.id, body)}
+      onTyping={onTyping}
+      error={error}
+      directory={directory}
+    />
   )
 }

@@ -235,6 +235,7 @@ function ChannelLink({ slug, row: r, mentions, collapsed, onNavigate }: { slug: 
       unread={state.bold}
       mentions={state.count}
       muted={state.muted}
+      draft={r.draft}
       collapsed={Boolean(collapsed)}
       onNavigate={onNavigate}
     />

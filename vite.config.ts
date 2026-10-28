@@ -46,6 +46,8 @@ export default defineConfig(({ mode }) => {
           test: {
             name: 'browser',
             include: ['src/**/*.browser.test.tsx'],
+            // One file at a time: they share one browser tab, and focus (which editors and scrolling need) is one too.
+            fileParallelism: false,
             browser: { enabled: true, headless: true, provider: playwright(), instances: [{ browser: 'chromium' }] },
           },
         },

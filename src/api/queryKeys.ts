@@ -13,6 +13,8 @@ export const qk = {
   // Under messages(), so every live update about the channel reaches it too.
   messagesFrom: (channelId: string, seq: number) => ['chat', 'messages', channelId, 'from', seq],
   linkPreview: (url: string) => ['chat', 'link-preview', url],
+  draftsAll: () => ['chat', 'drafts'],
+  drafts: (workspaceId: string) => ['chat', 'drafts', workspaceId],
   jumpTarget: (channelId: string, since: string | null) => ['chat', 'jump', channelId, since ?? 'beginning'],
   message: (id: string) => ['chat', 'message', id],
   replies: (messageId: string) => ['chat', 'replies', messageId],
@@ -76,6 +78,8 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
       return [qk.rates(), ['time', 'report'], ['dashboard'], qk.timeAll(), ['tickets']]
     case 'filesChanged':
       return [qk.files(event.projectId)]
+    case 'draftChanged':
+      return [qk.draftsAll()]
     case 'readChanged':
       return [qk.channelsAll(), qk.mentions(), ...(event.channelId ? [qk.channel(event.channelId)] : [])]
     case 'dataReset':

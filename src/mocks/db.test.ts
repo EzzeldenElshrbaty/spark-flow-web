@@ -28,6 +28,7 @@ const emptyData = (): DbData => ({
   channelState: {},
   mentionReads: {},
   activity: [],
+  drafts: [],
   counters: {},
 })
 

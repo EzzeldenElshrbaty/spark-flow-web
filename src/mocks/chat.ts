@@ -9,7 +9,7 @@ import type { MockHub } from './realtime'
 import { ApiError } from '@/lib/apiError'
 import { badRequest, clone, currentUser, newId, notFound, requireCan, stamp } from './shared'
 import { parseMentions, parseTicketKeys } from './text'
-import { parseBody } from '@/lib/messageBody'
+import { bodyTaskKeys, bodyText, mentionsOf, parseBody, validBody, type Body } from '@/lib/messageBody'
 import { linkPreviewFor } from './linkPreviews'
 
 const PAGE_SIZE = 30
@@ -95,7 +95,7 @@ function checkChannel(data: DbData, values: { workspaceId: string; id?: string; 
   if (unknown) throw notFound('User', unknown)
 }
 
-const MAX_TEXT = 4000
+const MAX_TEXT = 40_000 // spec 6.8
 const MAX_DM_OTHERS = 8
 
 /** The text as stored: trimmed, not empty, not too long. */
@@ -104,6 +104,13 @@ function checkText(content: string): string {
   if (!text) throw badRequest('Write a message first.')
   if (text.length > MAX_TEXT) throw badRequest(`Keep the message under ${MAX_TEXT} characters.`)
   return text
+}
+
+/** A body from the composer, checked, with its plain text (which the length rules apply to). */
+function checkBody(value: unknown): { body: Body; text: string } {
+  const body = validBody(value)
+  if (!body) throw badRequest("That message couldn't be read.")
+  return { body, text: checkText(bodyText(body)) }
 }
 
 /**
@@ -318,7 +325,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       })
       changed(channelId, messageId)
     },
-    async send(channelId, content, clientId) {
+    async send(channelId, content, clientId, body) {
       await delay()
       const { message, repeat } = await db.update((data) => {
         const channel = findChannel(data, channelId)
@@ -326,7 +333,9 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         // A retry of a send that did arrive gets the message it stored, not a second one (spec §8: writes are idempotent).
         const stored = clientId ? data.messages.find((m) => m.channelId === channelId && m.senderId === me.id && m.clientId === clientId) : undefined
         if (stored) return { message: stored, repeat: true }
-        return { message: postMessage(data, { channelId, content: checkText(content), clientId }), repeat: false }
+        // From the rich composer the body is the message and its plain text the content; otherwise the text is parsed.
+        const input = body === undefined ? { content: checkText(content) } : (({ body: b, text }) => ({ content: text, body: b }))(checkBody(body))
+        return { message: postMessage(data, { channelId, clientId, ...input }), repeat: false }
       })
       if (!repeat) hub.publish({ type: 'messageReceived', message: clone(message) })
       return clone(message)
@@ -373,6 +382,35 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       // Newest first, like every page; the cursor is the newest message here, to go on from.
       return { items: [...page].reverse().map((m) => withThread(data, m)), nextCursor: newer.length > PAGE_SIZE ? encodeCursor(page[page.length - 1]) : null }
     },
+    async drafts(workspaceId) {
+      await delay()
+      const data = await db.read()
+      const here = new Set(data.channels.filter((c) => c.workspaceId === workspaceId && visible(data, c)).map((c) => c.id))
+      return data.drafts
+        .filter((d) => d.userId === data.currentUserId && here.has(d.channelId))
+        .map(({ channelId, rootId, body, updatedAt }) => ({ channelId, rootId, body, updatedAt }))
+    },
+    async saveDraft(channelId, value, rootId = null) {
+      await delay()
+      const body = validBody(value)
+      if (!body) throw badRequest("That draft couldn't be read.")
+      const result = await db.update((data) => {
+        readableChannel(data, channelId)
+        const userId = data.currentUserId
+        const at = data.drafts.findIndex((d) => d.userId === userId && d.channelId === channelId && d.rootId === rootId)
+        // Nothing written is no draft.
+        if (!bodyText(body).trim()) {
+          if (at >= 0) data.drafts.splice(at, 1)
+          return { draft: null, userId }
+        }
+        const draft = { id: at >= 0 ? data.drafts[at].id : newId('d'), userId, channelId, rootId, body, updatedAt: new Date().toISOString() }
+        if (at >= 0) data.drafts[at] = draft
+        else data.drafts.push(draft)
+        return { draft: { channelId, rootId, body, updatedAt: draft.updatedAt }, userId }
+      })
+      hub.publish({ type: 'draftChanged', userId: result.userId, channelId })
+      return result.draft
+    },
     async linkPreview(url) {
       await delay()
       return linkPreviewFor(url)
@@ -417,7 +455,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
 
 // ── Mutations (not on Api until Phases 3–4) ───────────────────────────────
 
-export type SendMessageInput = { channelId: string; content: string; attachments?: Attachment[]; clientId?: string }
+export type SendMessageInput = { channelId: string; content: string; attachments?: Attachment[]; clientId?: string; body?: Body }
 export type AddReplyInput = { messageId: string; content: string }
 
 /**
@@ -439,9 +477,9 @@ export function postMessage(data: DbData, input: SendMessageInput, extra: Partia
     reactions: [],
     threadCount: 0,
     lastReplyAt: null,
-    linkedTicketKeys: parseTicketKeys(input.content),
-    mentions: parseMentions(input.content),
-    body: parseBody(input.content),
+    linkedTicketKeys: input.body ? bodyTaskKeys(input.body) : parseTicketKeys(input.content),
+    mentions: input.body ? mentionsOf(input.body) : parseMentions(input.content),
+    body: input.body ?? parseBody(input.content),
     editedAt: null,
     createdAt,
     ...extra,

@@ -69,6 +69,10 @@ export const migrations: Record<number, (doc: Record<string, unknown>) => void> 
       doc[name] = rows
     }
   },
+  // 9: drafts are kept on the server (spec 6.8); there are none yet.
+  8: (doc) => {
+    doc.drafts = []
+  },
 }
 
 /** The document brought up to `to`, or null when a step on the way is missing. */

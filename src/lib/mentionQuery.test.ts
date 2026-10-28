@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { User } from '@/api/types'
-import { activeMention, insertMention, keepDismissed, mentionOptions } from './mentionQuery'
+import { activeMention, channelOptions, insertMention, keepDismissed, mentionOptions } from './mentionQuery'
 
 const user = (id: string, name: string, title = '') => ({ id, name, title }) as User
 const from = {
@@ -51,5 +51,19 @@ describe('keepDismissed', () => {
     expect(keepDismissed(3, null)).toBeNull() // the @word is gone (deleted, sent, or a space ended it)
     expect(keepDismissed(3, 10)).toBeNull() // a new @ elsewhere opens the list again
     expect(keepDismissed(null, 4)).toBeNull()
+  })
+})
+
+describe('channelOptions (spec 6.8: # channels)', () => {
+  const channels = [{ id: 'c1', name: 'backend' }, { id: 'c2', name: 'frontend-dev' }, { id: 'c3', name: 'general' }, { id: 'c4', name: 'release-v2' }]
+  it('names that start with the query first, then ones that contain it; all of them for an empty query', () => {
+    expect(channelOptions('end', channels).map((c) => c.name)).toEqual(['backend', 'frontend-dev'])
+    expect(channelOptions('fr', channels).map((c) => c.name)).toEqual(['frontend-dev'])
+    expect(channelOptions('dev', channels).map((c) => c.name)).toEqual(['frontend-dev'])
+    expect(channelOptions('', channels)).toHaveLength(4)
+    expect(channelOptions('BACK', channels).map((c) => c.name)).toEqual(['backend'])
+  })
+  it('offers at most 8', () => {
+    expect(channelOptions('', Array.from({ length: 12 }, (_, i) => ({ id: `c${i}`, name: `ch${i}` })))).toHaveLength(8)
   })
 })

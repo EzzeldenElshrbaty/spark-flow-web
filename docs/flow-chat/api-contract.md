@@ -118,3 +118,24 @@ Messages read from the API carry `replyUserIds`: who replied last, newest first,
 ### Permalinks
 
 `/w/:ws/c/:channelId?message=:messageId` opens the channel on that message (Copy link to file gives it); a reply's link is `?thread=:messageId`. The client looks the message up with `GET /api/messages/:id`.
+
+## Phase 1 · Feature 5: composer
+
+### Sending a body
+
+`POST /api/channels/:id/messages` takes `{ content, clientId?, body? }`. From the rich composer `body` is set (the structured message) and `content` is its plain text. The server must:
+
+- Check `body` node by node exactly like `validBody` in `src/lib/messageBody.ts` (known blocks, inlines and marks only; links http/https only; ids `[\w-]{1,100}`; quotes don't nest; unknown fields dropped) and answer `400` "That message couldn't be read." otherwise.
+- Store `content` as the body's plain text (`bodyText`), and take mentions and task keys from the body (`mentionsOf`, `bodyTaskKeys`), not from `content`.
+- Allow up to **40,000** characters of plain text (`400` "Keep the message under 40000 characters.").
+
+Without `body` the server parses `content` as before.
+
+### Drafts
+
+| Call | Route | Body | Returns |
+|---|---|---|---|
+| My drafts | `GET /api/workspaces/:id/drafts` | | `Draft[]` (`channelId, rootId, body, updatedAt`) for channels I can read |
+| Save a draft | `PUT /api/channels/:id/draft` | `{ body, rootId }` | the `Draft`, or `null` when the body is empty (the draft is deleted) |
+
+One draft per (user, channel, thread root). The composer saves 500ms after typing stops and deletes the draft when the message is sent. Each save sends `draft.updated` `{ userId, channelId }` to that user's own connections (client handler `onDraftChanged`).

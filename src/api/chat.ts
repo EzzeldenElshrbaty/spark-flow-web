@@ -2,6 +2,8 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteD
 import { qk } from '@/api/queryKeys'
 import { retryUnlessNotFound as retry } from '@/api/retry'
 import type { ChannelPatch, ChatTarget, NewChannel, Page, Reaction } from '@/api/types'
+import type { Body } from '@/lib/messageBody'
+import { useCallback } from 'react'
 import { toggleReaction } from '@/lib/reactions'
 import { api } from '@/lib/api'
 
@@ -73,8 +75,30 @@ export function useMarkRead() {
 }
 
 /** Posts in a channel as the current user. The feed refreshes from the live event and the global invalidate. */
+/** Posts in a channel; from the rich composer with its `body` (the content is then its plain text). */
 export function useSendMessage() {
-  return useMutation({ mutationFn: ({ channelId, content }: { channelId: string; content: string }) => api.chat.send(channelId, content) })
+  return useMutation({ mutationFn: ({ channelId, content, body }: { channelId: string; content: string; body?: Body }) => api.chat.send(channelId, content, undefined, body) })
+}
+
+/** My drafts in a workspace (spec 6.8): what the composer starts from, and the sidebar's pencils. */
+export function useDrafts(workspaceId: string | undefined) {
+  return useQuery({ queryKey: qk.drafts(workspaceId ?? ''), queryFn: () => api.chat.drafts(workspaceId!), retry, enabled: Boolean(workspaceId) })
+}
+
+/**
+ * Saves a draft as the composer changes. Not a mutation: those refresh every query, and this runs as people type.
+ * A save that fails is left for the next one.
+ */
+export function useDraftSaver() {
+  const queryClient = useQueryClient()
+  return useCallback(
+    (channelId: string, body: Body, rootId: string | null = null) =>
+      api.chat.saveDraft(channelId, body, rootId).then(
+        () => queryClient.invalidateQueries({ queryKey: qk.draftsAll() }),
+        () => {},
+      ),
+    [queryClient],
+  )
 }
 // Where a message or reply can be on screen: a channel's pages, one message, a thread's replies.
 const ROWS_KEYS = [['chat', 'messages'], ['chat', 'message'], ['chat', 'replies']]

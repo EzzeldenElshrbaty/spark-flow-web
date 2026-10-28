@@ -49,3 +49,11 @@ export function insertMention(text: string, at: { start: number; caret: number }
 
 /** A list closed (Escape, blur) at one @word stays closed while that @word is typed; any other @ opens it again. */
 export const keepDismissed = (dismissed: number | null, start: number | null) => (start !== null && start === dismissed ? dismissed : null)
+
+/** What the `#` popup offers (spec 6.8): channels whose name starts with the query, then ones that contain it; at most 8. */
+export function channelOptions<C extends { id: string; name: string }>(query: string, channels: C[]): C[] {
+  const q = query.toLowerCase()
+  const starts = channels.filter((c) => c.name.toLowerCase().startsWith(q))
+  const contains = channels.filter((c) => !starts.includes(c) && c.name.toLowerCase().includes(q))
+  return [...starts, ...contains].slice(0, MAX_OPTIONS)
+}
