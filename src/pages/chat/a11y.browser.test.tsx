@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import type { Channel, ChatMessage, TaskRef, User } from '@/api/types'
 import { ToastProvider } from '@/components/sf/Toast'
+import { api } from '@/lib/api'
 import { Logo } from '@/layout/Sidebar'
 import { UserMenu } from '@/layout/UserMenu'
 import { WorkspaceSwitcher } from '@/layout/WorkspaceSwitcher'
@@ -207,6 +208,77 @@ describe('the message toolbar (spec 6.4) and the ⋯ on a phone (spec 10: every 
       await userEvent.click(screen.getByRole('button', { name: 'More actions' }))
       await userEvent.unhover(screen.getByRole('article'))
       expect(opacity(toolbar)).toBe('1')
+    } finally {
+      await page.viewport(414, 896)
+    }
+  })
+
+  it('keyboard focus in the row shows it', async () => {
+    await page.viewport(1280, 800)
+    try {
+      mount(<ChannelMessage message={message('hi')} users={users} ctx={ctx} meId="u-1" canPost continuation={false} />, false)
+      const toolbar = screen.getByRole('toolbar', { name: 'Message actions' })
+      await userEvent.tab()
+      expect(screen.getByRole('article').contains(document.activeElement)).toBe(true)
+      await vi.waitFor(() => expect(opacity(toolbar)).toBe('1'))
+    } finally {
+      await page.viewport(414, 896)
+    }
+  })
+
+  it('a mouse click doesn’t keep a row’s toolbar showing once the pointer moves on', async () => {
+    await page.viewport(1280, 800)
+    vi.spyOn(api.chat, 'react').mockResolvedValue()
+    try {
+      mount(
+        <>
+          <ChannelMessage message={message('first')} users={users} ctx={ctx} meId="u-1" canPost continuation={false} />
+          <ChannelMessage message={message('second')} users={users} ctx={ctx} meId="u-1" canPost continuation={false} />
+        </>,
+        false,
+      )
+      const [first, second] = screen.getAllByRole('article')
+      const [bar] = screen.getAllByRole('toolbar', { name: 'Message actions' })
+      await userEvent.hover(first)
+      await userEvent.click(within(first).getByRole('button', { name: 'React with ✅' }))
+      await userEvent.hover(second)
+      await vi.waitFor(() => expect(opacity(bar)).toBe('0'))
+    } finally {
+      vi.restoreAllMocks()
+      await page.viewport(414, 896)
+    }
+  })
+
+  it('in the thread panel (384px) it never covers the author name or the time', async () => {
+    await page.viewport(1280, 800)
+    const people = [...users, { id: 'u-3', name: 'Abdelrahman Mostafa Elshazly', title: 'QA lead', email: 'a@spark-sys.com', presence: 'active', role: 'member' } as User]
+    const wide = { ...ctx, users: people }
+    const row = (content: string, over: Partial<ChatMessage> = {}) => (
+      <ChannelMessage message={message(content, { senderId: 'u-3', ...over })} users={people} ctx={wide} meId="u-1" canPost continuation={false} showThread={false} compact />
+    )
+    try {
+      mount(
+        // As the panel lays them out: the root at the top, its replies under the count.
+        <div role="log" aria-label="Thread" className="px-5 py-4" style={{ width: 384, height: 500, overflowY: 'auto' }}>
+          <div className="-mx-3">{row('the root message')}</div>
+          <div style={{ height: 40 }} />
+          <ul className="-mx-3">
+            <li>{row('a reply')}</li>
+            <li>{row('another reply')}</li>
+          </ul>
+        </div>,
+        false,
+      )
+      const overlaps = (a: DOMRect, b: DOMRect) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom
+      for (const article of screen.getAllByRole('article')) {
+        within(article).getByRole('button', { name: 'More actions' }).focus()
+        await vi.waitFor(() => {
+          const bar = within(article).getByRole('toolbar').getBoundingClientRect()
+          const name = within(article).getByRole('button', { name: 'Abdelrahman Mostafa Elshazly' }).getBoundingClientRect()
+          const time = article.querySelector('time')!.getBoundingClientRect()
+          expect([overlaps(bar, name), overlaps(bar, time)]).toEqual([false, false])
+        })
+      }
     } finally {
       await page.viewport(414, 896)
     }

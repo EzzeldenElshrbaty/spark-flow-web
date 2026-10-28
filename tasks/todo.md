@@ -379,3 +379,21 @@ Rulings approved with the plan: the quick reactions are fixed to ✅ 👀 🙌 (
 - 390px: no toolbar, ⋯ on every row, no sideways scroll; the sheet reads ✅ 👀 🙌, Add reaction, Reply in thread, then the menu; Add reaction opens the picker sheet with search focused.
 - Rulings: More is the row's first Tab stop (the old ⋯ was the row's focus target, and Enter on a reaction by accident is worse); the arrows wrap, like the sf Menu; in the menu an item's own letter picks it (L picks Copy link, U Mark unread, E Edit), other letters jump; on phones the picker opens from a visually hidden trigger in the row, which is where focus goes when the picker closes; `menuItemClass` moved to `components/ui/Menu` (RowMenu, CommentRow) and `roomAround` to `lib/roomAround.ts`.
 - Not verified in the app: Copy text's success (the browser pane refuses clipboard writes; tests cover it).
+
+# Flow chat — review of Phase 2 slice 1 — 2026-10-28 — done
+
+Range `592aaca..c6861c6`. One fresh reviewer: no Critical, 3 Important, 9 Minor. Verdict "with fixes". Re-graded M1 (a mouse click left that row's toolbar showing, two at once) to Important: it happens on every mouse reaction.
+
+## Fixed (each RED → GREEN)
+
+- [x] I1 — in the 384px thread panel the toolbar covered the reply's time, and long author names. `placeToolbar` keeps the spec's 16px rise when it hides neither the name nor the time (`data-row-header`), else puts it fully above the row, else inside, under the name line. Test: `a11y.browser.test.tsx` "in the thread panel (384px) it never covers the author name or the time" (RED: [true, true]).
+- [x] I2 — in the thread panel, one Esc in the emoji picker's grid closed the picker and the whole panel. The panel's Esc now yields while any sf layer (menu, picker, tooltip, dialog) is open (`hasOpenLayer`), and sees a dialog as it was when the key went down (`lib/keyStart.ts`, shared with `useChannelKeys`). It stays on the document so it still runs before the channel's keys (on window). Tests: `layout/Inspector.browser.test.tsx` with real keys: picker (RED: panel closed), image preview (guard), and "closes the panel and doesn't also mark the channel read" (RED for a window listener, which I tried first).
+- [x] I3 — on touch screens of 768px and up with no hover (tablets) no message action could be reached. `useNoHover` (`(hover: none)`) sends them to the ⋯ path like phones. Test: `MessageToolbar.test.tsx` "on a touch screen with no hover" (RED: the toolbar rendered).
+- [x] M1 — keyboard focus shows the toolbar (`group-has-[:focus-visible]`), a mouse click doesn't pin it. Tests: "a mouse click doesn't keep a row's toolbar showing" (RED: '1'), "keyboard focus in the row shows it" (guard).
+
+## Review — fix pass
+
+- `npm test`: 993/993 (109 files). Lint and `build:prototype` (with `tsc -b`) pass.
+- In the app (1280px): in the thread panel, the root's toolbar sits under its name line (no room above) and the replies' toolbars sit fully above their rows; no name or time is covered. Esc in the picker opened from a reply's toolbar closed only the picker; the thread stayed open with focus back on Add reaction. (A script's `.focus()` fires no `focusin` while the pane isn't the focused window; the checks dispatched it or used real hovers.)
+- Not checked in the app: a real tablet without hover (covered by the unit test).
+- Deferred minors: M2 typing "de" toward Delete picks Edit (E is a shortcut letter); M3 the phone ⋯ is 32px, under 6.16's 44px (existing size); M4 on phones the picker closes onto the invisible Add reaction button, a duplicate screen-reader stop per row; M5 Reply in thread and T are offered where I can't post (the thread opens without a reply box); M6 T or Reply on the thread already open adds a history entry; M7 `useReplyFocus` can miss the caret if the reply box mounts after its wrapper on a cold load; M8 the unread bar can cover the top rows' raised toolbars; M9 the delete error sits inside the hidden toolbar and hides with it (existing).

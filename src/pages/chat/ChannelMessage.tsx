@@ -15,7 +15,7 @@ import { paths } from '@/lib/paths'
 import { firstTask, MessageBody, TaskUnfurl, type BodyContext } from '@/pages/chat/MessageBody'
 import { ROW_FOCUS } from '@/pages/chat/MessageActions'
 import { MessageFiles } from '@/pages/chat/MessageFiles'
-import { MessageToolbar } from '@/pages/chat/MessageToolbar'
+import { MessageToolbar, ROW_HEADER } from '@/pages/chat/MessageToolbar'
 import { AuthorName, CommentCard, LinkedTasks, LinkPreviewCard, Reactions, ThreadSummary } from '@/pages/chat/MessageParts'
 import { TaskEventCard } from '@/pages/chat/TaskEventCard'
 import { useEditing } from '@/pages/chat/editingStore'
@@ -224,7 +224,7 @@ export function ChannelMessage({
         <Avatar id={message.senderId} name={name} decorative />
       )}
       <div className={clsx('min-w-0', tint)}>
-        <p className={clsx('flex min-w-0 items-baseline gap-2', continuation && 'sr-only')}>
+        <p {...{ [ROW_HEADER]: continuation ? undefined : '' }} className={clsx('flex min-w-0 items-baseline gap-2', continuation && 'sr-only')}>
           {/* A grouped row's name is for screen readers only: text, not a button no one can see focused. */}
           {continuation ? <span>{name}</span> : <AuthorName userId={message.senderId} name={name} ctx={ctx} />}
           {time}

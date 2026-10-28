@@ -4,6 +4,11 @@ import { createPortal } from 'react-dom'
 // Menus, submenus, modals and tooltips stack. Escape closes only the top-most open layer.
 const stack: symbol[] = []
 
+/** Whether a menu, popover, modal or tooltip is open: a layer above the page, which takes Escape first. */
+export function hasOpenLayer() {
+  return stack.length > 0
+}
+
 /** While `active`, Escape calls `onEscape` if this is the top-most layer. */
 export function useEscapeLayer(active: boolean, onEscape: () => void) {
   const onEscapeRef = useRef(onEscape)

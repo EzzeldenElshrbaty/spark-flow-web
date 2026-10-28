@@ -8,7 +8,7 @@ import { isRtl } from '@/components/sf/layers'
 import { MenuItem, useCloseMenu } from '@/components/sf/Menu'
 import { Popover, type PopoverTriggerProps } from '@/components/sf/Popover'
 import { Tooltip } from '@/components/sf/Tooltip'
-import { usePhone } from '@/components/sf/usePhone'
+import { useNoHover, usePhone } from '@/components/sf/usePhone'
 import { emojiInfo } from '@/lib/emoji'
 import { roomAround } from '@/lib/roomAround'
 import { EmojiPicker } from '@/pages/chat/EmojiPicker'
@@ -16,17 +16,38 @@ import { MessageMenu, ROW_FOCUS } from '@/pages/chat/MessageActions'
 
 /** The toolbar's quick reactions (spec 6.4; later, the viewer's three most recent). */
 export const QUICK_REACTIONS = ['✅', '👀', '🙌'] as const
-/** How far the toolbar rises above its row (spec 6.4): with less room than this above the row, it sits inside it. */
+/** How far the toolbar rises above its row (spec 6.4), and the gap it keeps from the row's edge or name line. */
 const RISE = 16
+const GAP = 4
+
+/** Marks a row's name line (author and time): the toolbar never covers it (spec 6.4 AC). */
+export const ROW_HEADER = 'data-row-header'
+
+/**
+ * Where the toolbar goes, as its top within the row: 16px above the row's top (spec 6.4) when there's room and that
+ * hides neither the name nor the time; else fully above the row; else inside it, under the name line if it must.
+ */
+function placeToolbar(row: HTMLElement, bar: HTMLElement): number {
+  const box = row.getBoundingClientRect()
+  const { left, right } = bar.getBoundingClientRect()
+  const height = bar.offsetHeight
+  const room = roomAround(row).above
+  const header = row.querySelector(`[${ROW_HEADER}]`)
+  const words = header ? [...header.children].map((child) => child.getBoundingClientRect()) : []
+  const hides = (top: number) => words.some((r) => r.left < right && left < r.right && r.top < box.top + top + height && box.top + top < r.bottom)
+  for (const top of [-RISE, -(height + GAP)]) if (room >= -top && !hides(top)) return top
+  if (!hides(GAP)) return GAP
+  return Math.max(...words.map((r) => r.bottom)) - box.top + GAP
+}
 
 type Stop = 'more' | 'reply' | 'add' | (typeof QUICK_REACTIONS)[number]
 
 /**
  * The toolbar of a message or reply (spec 6.4): ✅ 👀 🙌, Add reaction, Reply in thread (T) and More (the ⋯ menu).
- * Shown while its row is hovered or has focus, and while its menu or picker is open. One Tab stop per row (More,
- * then wherever I left it); ←/→, Home and End move along it. It rises 16px above the row's top end, and sits inside
- * the row when that would be cut off (the top row of a list or panel). Phones have no hover: the ⋯ alone, its sheet
- * starting with what the toolbar carries.
+ * Shown while its row is hovered or has keyboard focus, and while its menu or picker is open. One Tab stop per row
+ * (More, then wherever I left it); ←/→, Home and End move along it. It rises 16px above the row's top end, and moves
+ * where it hides neither the author's name nor the time and isn't cut off (the top row of a list, the narrow panel). Phones and tablets have no hover: the ⋯ alone,
+ * its menu (a sheet on phones) starting with what the toolbar carries.
  */
 export function MessageToolbar({
   target,
@@ -58,24 +79,29 @@ export function MessageToolbar({
   /** Where it sits on the row's end side. */
   className?: string
 }) {
+  // Phones, and touch screens with no hover (tablets): nothing shows on hover there, so the ⋯ stands in for it.
   const phone = usePhone()
+  const noHover = useNoHover()
+  const touch = phone || noHover
   const react = useReact(meId)
   const bar = useRef<HTMLDivElement>(null)
   const [active, setActive] = useState<Stop | null>(null)
-  const [inside, setInside] = useState(false)
+  const [top, setTop] = useState<number | null>(null)
 
   // Placed when the row is about to show it: hovered, or focus coming in.
   useEffect(() => {
     const row = bar.current?.closest('article')
-    if (!row || phone) return
-    const place = () => setInside(roomAround(row).above < RISE)
+    if (!row || touch) return
+    const place = () => {
+      if (bar.current) setTop(placeToolbar(row, bar.current))
+    }
     row.addEventListener('pointerenter', place)
     row.addEventListener('focusin', place)
     return () => {
       row.removeEventListener('pointerenter', place)
       row.removeEventListener('focusin', place)
     }
-  }, [phone])
+  }, [touch])
 
   const mine = (emoji: string) => meId != null && reactions.some((r) => r.emoji === emoji && r.userIds.includes(meId))
   const toggle = (emoji: string) => react.mutate({ target, emoji })
@@ -90,7 +116,7 @@ export function MessageToolbar({
     </p>
   )
 
-  if (phone) {
+  if (touch) {
     const lead = (can.react || onReply) && (
       <>
         {can.react && <SheetReactions mine={mine} onToggle={toggle} onAdd={() => bar.current?.querySelector<HTMLElement>('[data-add-reaction]')?.click()} />}
@@ -141,11 +167,13 @@ export function MessageToolbar({
         role="toolbar"
         aria-label="Message actions"
         onKeyDown={onKeyDown}
+        style={top === null ? undefined : { top }}
         className={clsx(
           'absolute z-[var(--z-toolbar)] flex items-center gap-0.5 rounded-sf-lg bg-sf-surface-raised p-0.5 shadow-sf-toolbar',
-          inside ? 'top-1' : '-top-4',
-          // Hidden, it takes no pointer: it reaches over the row above, whose own toolbar that spot belongs to.
-          'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 has-[[aria-expanded=true]]:pointer-events-auto has-[[aria-expanded=true]]:opacity-100',
+          top === null && '-top-4',
+          // Hidden, it takes no pointer: it reaches over the row above, whose own toolbar that spot belongs to. Keyboard
+          // focus shows it (focus-visible), not a mouse click, which would leave it showing as the pointer moves on.
+          'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 group-has-[:focus-visible]:pointer-events-auto group-has-[:focus-visible]:opacity-100 has-[[aria-expanded=true]]:pointer-events-auto has-[[aria-expanded=true]]:opacity-100',
           className,
         )}
       >

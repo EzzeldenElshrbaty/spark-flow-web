@@ -105,6 +105,18 @@ describe('the message toolbar (spec 6.4)', () => {
   })
 })
 
+describe('on a touch screen with no hover (a tablet, 768px and up)', () => {
+  it('the ⋯ stands in for the toolbar: it shows, and its menu starts with what the toolbar carries', () => {
+    window.matchMedia = ((media: string) => ({ matches: media.includes('hover: none'), media, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia
+    show()
+    expect(screen.queryByRole('toolbar')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }))
+    const menu = screen.getByRole('menu', { name: 'Message actions' })
+    expect(within(menu).getByRole('menuitemcheckbox', { name: 'React with ✅' })).toBeTruthy()
+    expect(within(menu).getByRole('menuitem', { name: 'Reply in thread' })).toBeTruthy()
+  })
+})
+
 describe('on a phone (no hover: the ⋯ and its sheet)', () => {
   it('there is no toolbar; the sheet starts with the quick reactions, Add reaction and Reply in thread', async () => {
     window.matchMedia = phone

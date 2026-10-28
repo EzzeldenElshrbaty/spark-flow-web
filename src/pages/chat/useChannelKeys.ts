@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { Channel } from '@/api/types'
+import { watchDialogAtKeyDown } from '@/lib/keyStart'
 import { channelKey, stepChannel } from '@/pages/chat/channelKeys'
 
 /** Marks the channel's own composer: the channel's keys still work there (it keeps its draft when I move on). */
@@ -26,17 +27,13 @@ export function useChannelKeys(options: { channelId: string; order: Channel[]; o
     latest.current = options
   })
   useEffect(() => {
-    // A dialog open when the key went down owns it, even one that closes on it without saying so: with a real key
-    // press the browser has already removed it by the time the listener below runs, so look first, while capturing.
-    let dialogOpen = false
-    const onKeyDownCapture = () => {
-      dialogOpen = document.querySelector('[aria-modal="true"]') !== null
-    }
+    // A dialog open when the key went down owns it, even one that closes on it without saying so.
+    const dialog = watchDialogAtKeyDown()
     // On window, so it runs after every listener on the document: by then a menu, tooltip, autocomplete or edit
     // that took the key has prevented it.
     const onKeyDown = (event: KeyboardEvent) => {
       const action = channelKey(event)
-      if (!action || event.defaultPrevented || event.isComposing || dialogOpen || typingElsewhere(event.target)) return
+      if (!action || event.defaultPrevented || event.isComposing || dialog.open() || typingElsewhere(event.target)) return
       const { channelId, order, onGo, onMarkRead, onMarkAllRead } = latest.current
       event.preventDefault()
       if (action === 'markRead') return onMarkRead()
@@ -44,10 +41,9 @@ export function useChannelKeys(options: { channelId: string; order: Channel[]; o
       const next = stepChannel(order, channelId, action === 'next' || action === 'nextUnread' ? 1 : -1, action === 'nextUnread' || action === 'previousUnread')
       if (next) onGo(next)
     }
-    window.addEventListener('keydown', onKeyDownCapture, true)
     window.addEventListener('keydown', onKeyDown)
     return () => {
-      window.removeEventListener('keydown', onKeyDownCapture, true)
+      dialog.stop()
       window.removeEventListener('keydown', onKeyDown)
     }
   }, [])
