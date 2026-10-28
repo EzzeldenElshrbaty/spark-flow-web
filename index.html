@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <!-- Behave like an app on phones: no pinch or double-tap zoom, and draw under the notch / home bar (see safe-area padding). -->
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <!-- Pinch zoom stays on (unlike Spark CRM); draw under the notch / home bar (see safe-area padding). Double-tap zoom is off in src/index.css. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <!-- Home screen: open full-screen with the Spark icon and name, on Android (manifest) and iPhone (apple-* tags). -->
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -27,8 +27,6 @@
         document.documentElement.dataset.theme = dark ? 'dark' : 'light'
         document.querySelector('meta[name=theme-color]').setAttribute('content', dark ? '#1c1c1d' : '#ffffff')
       } catch (e) {}
-      // iPhone Safari ignores user-scalable=no, so block its pinch gesture directly.
-      document.addEventListener('gesturestart', function (e) { e.preventDefault() }, { passive: false })
     </script>
     <title>Spark Flow</title>
   </head>
