@@ -1,5 +1,5 @@
 import { can } from '@/lib/permissions'
-import type { Api, Attachment, Channel, ChannelMemberState, ChatMessage, Page, SystemEvent, ChatTarget, StoredChannel, ThreadReply } from '@/api/types'
+import type { Api, Attachment, Channel, ChannelKind, ChannelMemberState, ChatMessage, NotifyLevel, Page, SystemEvent, ChatTarget, StoredChannel, ThreadReply } from '@/api/types'
 import { channelFormErrors } from '@/lib/channelForm'
 import { isOneEmoji } from '@/lib/emojiText'
 import { MAX_DISTINCT_REACTIONS, toggleReaction } from '@/lib/reactions'
@@ -32,12 +32,21 @@ function olderPage(data: DbData, channelId: string, before: number | null): Page
   return { items: items.map((m) => withThread(data, m)), nextCursor: older.length > PAGE_SIZE ? encodeCursor(items[items.length - 1]) : null }
 }
 
-const freshState = (): ChannelMemberState => ({ lastReadSeq: 0, starred: false, muted: false, notifyLevel: 'all' })
+/** A channel tells me about my mentions, a DM about every message (spec 6.11), until I choose otherwise. */
+export const freshState = (kind: ChannelKind = 'channel'): ChannelMemberState => ({ lastReadSeq: 0, starred: false, muted: false, notifyLevel: kind === 'dm' ? 'all' : 'mentions' })
 
 /** The current user's own state in a channel, created with the defaults when first needed. */
 function myState(data: DbData, channelId: string): ChannelMemberState {
   const mine = (data.channelState[data.currentUserId] ??= {})
-  return (mine[channelId] ??= freshState())
+  return (mine[channelId] ??= freshState(data.channels.find((c) => c.id === channelId)?.kind))
+}
+
+const NOTIFY_LEVELS: NotifyLevel[] = ['all', 'mentions', 'none']
+
+/** Whether this person may read a channel: a private one (or a DM) only its members. */
+const canRead = (data: DbData, channelId: string, userId: string) => {
+  const channel = data.channels.find((c) => c.id === channelId)
+  return Boolean(channel) && (!channel!.isPrivate || channel!.memberIds.includes(userId))
 }
 
 /** The seq of a channel's newest message; 0 when it has none. */
@@ -48,7 +57,7 @@ const lastSeqOf = (data: DbData, channelId: string) => data.messages.reduce((n, 
  * that someone else sent, not deleted).
  */
 function withUnread(data: DbData, channel: StoredChannel): Channel {
-  const state = data.channelState[data.currentUserId]?.[channel.id] ?? freshState()
+  const state = data.channelState[data.currentUserId]?.[channel.id] ?? freshState(channel.kind)
   const unreadCount = data.messages
     .filter((m) => m.channelId === channel.id && m.seq > state.lastReadSeq && m.senderId !== data.currentUserId)
     .map((m) => listed(data, m))
@@ -202,6 +211,21 @@ function checkPlain(row: Row) {
 /** Keys of tasks someone made from this message: an edit keeps them linked even when the text no longer says them. */
 const keysMadeFrom = (data: DbData, messageId: string) => data.tickets.filter((t) => t.linkedMessageId === messageId).map((t) => t.key)
 
+/**
+ * Keeps Activity in step with a reaction (spec 6.12): someone else's on my message or reply is an item for me, and
+ * taking it back removes it. Returns who to tell, when an item was added.
+ */
+function noteReaction(data: DbData, row: Row, channelId: string, messageId: string, emoji: string, actorId: string, added: boolean): string | null {
+  const replyId = 'messageId' in row ? row.id : null
+  const same = (n: DbData['notifications'][number]) => n.kind === 'reaction' && n.userId === row.senderId && n.actorId === actorId && n.emoji === emoji && n.messageId === messageId && n.replyId === replyId
+  data.notifications = data.notifications.filter((n) => !same(n))
+  if (!added || row.senderId === actorId) return null
+  // After the latest item, so two quick reactions keep their order.
+  const at = stamp(data.notifications.reduce<string | null>((latest, n) => (!latest || n.at > latest ? n.at : latest), null))
+  data.notifications.push({ id: newId('n'), userId: row.senderId, kind: 'reaction', actorId, channelId, messageId, replyId, emoji, at, read: false })
+  return row.senderId
+}
+
 export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
   /** Joins or leaves a channel as the current user. A project's channel follows its people; a DM keeps its own. */
   const setMember = async (id: string, join: boolean) => {
@@ -247,7 +271,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
   }
   const changed = (channelId: string, messageId: string) => hub.publish({ type: 'messageChanged', channelId, messageId })
   /** Sets one of my own flags on a channel I can read; only I am told (my other tabs follow). */
-  const setMine = async (id: string, patch: Partial<Pick<ChannelMemberState, 'starred' | 'muted'>>) => {
+  const setMine = async (id: string, patch: Partial<Pick<ChannelMemberState, 'starred' | 'muted' | 'notifyLevel'>>) => {
     await delay()
     const result = await db.update((data) => {
       const channel = readableChannel(data, id)
@@ -327,16 +351,18 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
     async react(target, emoji) {
       await delay()
       if (!isOneEmoji(emoji)) throw badRequest('Pick an emoji.')
-      const { channelId, messageId } = await db.update((data) => {
+      const { channelId, messageId, notified } = await db.update((data) => {
         const { row, channel, messageId } = findTarget(data, target)
         const me = checkCanPost(data, channel)
         if (row.deletedAt) throw badRequest("This message can't be changed.")
         const next = toggleReaction(row.reactions, emoji, me.id)
         if (!next) throw badRequest(`This message has ${MAX_DISTINCT_REACTIONS} different reactions already.`)
         row.reactions = next
-        return { channelId: channel.id, messageId }
+        const added = next.some((r) => r.emoji === emoji && r.userIds.includes(me.id))
+        return { channelId: channel.id, messageId, notified: noteReaction(data, row, channel.id, messageId, emoji, me.id, added) }
       })
       changed(channelId, messageId)
+      if (notified) hub.publish({ type: 'notificationCreated', userId: notified })
     },
     async edit(target, content, body) {
       await delay()
@@ -423,13 +449,15 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
     },
     async reply(messageId, content, body, alsoInChannel) {
       await delay()
-      const reply = await db.update((data) => {
+      const { reply, notified } = await db.update((data) => {
         checkCanPost(data, findChannel(data, findMessage(data, messageId).channelId))
         // From the rich composer the body is the reply and its plain text the content; otherwise the text is parsed.
         const input = body === undefined ? { content: checkText(content) } : (({ body: b, text }) => ({ content: text, body: b }))(checkBody(body))
-        return postReply(data, { messageId, ...input, alsoInChannel: Boolean(alsoInChannel) })
+        const reply = postReply(data, { messageId, ...input, alsoInChannel: Boolean(alsoInChannel) })
+        return { reply, notified: data.notifications.filter((n) => n.replyId === reply.id).map((n) => n.userId) }
       })
       hub.publish({ type: 'replyReceived', reply: clone(reply) })
+      for (const userId of notified) hub.publish({ type: 'notificationCreated', userId })
       return clone(reply)
     },
     async setFollowing(messageId, following) {
@@ -554,6 +582,13 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
     },
     setStarred: (id, starred) => setMine(id, { starred }),
     setMuted: (id, muted) => setMine(id, { muted }),
+    async setNotifyLevel(id, level) {
+      if (!NOTIFY_LEVELS.includes(level)) {
+        await delay()
+        throw badRequest('Choose All new messages, Mentions or Nothing.')
+      }
+      return setMine(id, { notifyLevel: level })
+    },
   }
 }
 
@@ -627,8 +662,16 @@ export function postReply(data: DbData, input: AddReplyInput): ThreadReply {
   }
   data.replies.push(created)
   // Replying, or being mentioned in a reply, follows the thread again, whatever was chosen before.
-  const again = new Set([created.senderId, ...created.mentions.flatMap((m) => (m.kind === 'user' ? [m.id] : []))])
+  const named = new Set(created.mentions.flatMap((m) => (m.kind === 'user' ? [m.id] : [])))
+  const again = new Set([created.senderId, ...named])
   data.threadFollows = data.threadFollows.filter((f) => f.rootId !== parent.id || !again.has(f.userId))
+  // Everyone who follows it hears of the reply in Activity (spec 6.12): not the one who wrote it, not those it names
+  // (they have the mention), not someone who can't read the channel.
+  const replies = data.replies.filter((r) => r.messageId === parent.id)
+  for (const user of data.users) {
+    if (user.id === created.senderId || named.has(user.id) || !canRead(data, channel.id, user.id) || !follows(data, parent, replies, user.id)) continue
+    data.notifications.push({ id: newId('n'), userId: user.id, kind: 'thread', actorId: created.senderId, channelId: channel.id, messageId: parent.id, replyId: created.id, emoji: null, at: createdAt, read: false })
+  }
   parent.threadCount += 1
   parent.lastReplyAt = createdAt
   channel.lastMessageAt = createdAt

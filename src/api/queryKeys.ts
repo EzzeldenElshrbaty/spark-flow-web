@@ -40,6 +40,8 @@ export const qk = {
   rates: () => ['rates'],
   comments: (taskKey: string) => ['comments', taskKey],
   mentions: () => ['mentions', 'me'],
+  activityAll: () => ['activity'],                       // prefix of every workspace's Activity
+  activity: (workspaceId: string) => ['activity', workspaceId],
   dashboard: (workspaceId: string) => ['dashboard', workspaceId],
   checkedIn: (workspaceId: string) => ['dashboard', 'checked-in', workspaceId],
 } as const
@@ -49,11 +51,11 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
   switch (event.type) {
     case 'messageReceived': {
       const { channelId } = event.message
-      return [qk.messages(channelId), qk.channelsAll(), qk.channel(channelId), qk.mentions()]
+      return [qk.messages(channelId), qk.channelsAll(), qk.channel(channelId), qk.mentions(), qk.activityAll()]
     }
     case 'replyReceived': {
       const { channelId, messageId } = event.reply
-      return [qk.replies(messageId), qk.message(messageId), qk.messages(channelId), qk.channelsAll(), qk.channel(channelId), qk.mentions()]
+      return [qk.replies(messageId), qk.message(messageId), qk.messages(channelId), qk.channelsAll(), qk.channel(channelId), qk.mentions(), qk.activityAll()]
     }
     case 'ticketUpdated':
       // Project summaries (progress, overdue) and the dashboard are worked out from tasks too.
@@ -65,14 +67,14 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
       // Hours change everywhere: my day, every task and project summary (under 'tickets'), and the Time tabs.
       return [qk.myDay(), ['tickets'], qk.timeAll(), ['dashboard'], ['time', 'report']]
     case 'messageChanged':
-      return [qk.messages(event.channelId), qk.message(event.messageId), qk.replies(event.messageId), qk.mentions()]
+      return [qk.messages(event.channelId), qk.message(event.messageId), qk.replies(event.messageId), qk.mentions(), qk.activityAll()]
     case 'projectChanged':
       // Summaries and task lists live under 'tickets'; phases, deliverables and project time under 'projects'.
       return [['tickets'], ['projects'], ['dashboard'], qk.projectHistory(event.projectId)]
     case 'channelChanged':
       return [qk.channelsAll(), qk.channel(event.channelId)]
     case 'commentAdded':
-      return [qk.comments(event.taskKey), qk.mentions(), qk.taskHistory(event.taskKey), qk.projectHistory(event.projectId)]
+      return [qk.comments(event.taskKey), qk.mentions(), qk.activityAll(), qk.taskHistory(event.taskKey), qk.projectHistory(event.projectId)]
     case 'ratesChanged':
       // Cost is worked out from rates on every read: the report, the dashboard and the Time tabs.
       return [qk.rates(), ['time', 'report'], ['dashboard'], qk.timeAll(), ['tickets']]
@@ -81,7 +83,9 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
     case 'draftChanged':
       return [qk.draftsAll()]
     case 'readChanged':
-      return [qk.channelsAll(), qk.mentions(), ...(event.channelId ? [qk.channel(event.channelId)] : [])]
+      return [qk.channelsAll(), qk.mentions(), qk.activityAll(), ...(event.channelId ? [qk.channel(event.channelId)] : [])]
+    case 'notificationCreated':
+      return [qk.activityAll()]
     case 'dataReset':
       // The empty key matches every query.
       return [[]]

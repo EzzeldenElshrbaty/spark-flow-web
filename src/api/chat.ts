@@ -1,7 +1,7 @@
 import { type QueryClient, useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData, type QueryKey } from '@tanstack/react-query'
 import { qk } from '@/api/queryKeys'
 import { retryUnlessNotFound as retry } from '@/api/retry'
-import type { ChannelPatch, ChatTarget, Draft, NewChannel, Page, Reaction } from '@/api/types'
+import type { ChannelPatch, ChatTarget, Draft, NewChannel, NotifyLevel, Page, Reaction } from '@/api/types'
 import type { Body } from '@/lib/messageBody'
 import { useCallback } from 'react'
 import { toggleReaction } from '@/lib/reactions'
@@ -244,6 +244,10 @@ export function useSetStarred() {
 }
 export function useSetMuted() {
   return useMutation({ mutationFn: ({ id, muted }: { id: string; muted: boolean }) => api.chat.setMuted(id, muted) })
+}
+/** What a channel notifies me about (spec 6.11): All new messages, Mentions and keywords, or Nothing. */
+export function useSetNotifyLevel() {
+  return useMutation({ mutationFn: ({ id, level }: { id: string; level: NotifyLevel }) => api.chat.setNotifyLevel(id, level) })
 }
 
 const PREVIEW_STALE_MS = 60 * 60_000

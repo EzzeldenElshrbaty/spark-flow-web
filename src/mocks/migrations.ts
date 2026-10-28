@@ -81,6 +81,15 @@ export const migrations: Record<number, (doc: Record<string, unknown>) => void> 
   10: (doc) => {
     doc.threadFollows = []
   },
+  // 12: Activity items (spec 6.12), none yet; a channel's level that was "all" becomes "mentions", its new default
+  // (nobody could choose a level before, spec 6.11). A DM stays "all".
+  11: (doc) => {
+    doc.notifications = []
+    const kinds = new Map((Array.isArray(doc.channels) ? (doc.channels as { id: string; kind: string }[]) : []).map((c) => [c.id, c.kind]))
+    for (const states of Object.values((doc.channelState ?? {}) as Record<string, Record<string, { notifyLevel?: string }>>)) {
+      for (const [channelId, state] of Object.entries(states ?? {})) if (kinds.get(channelId) !== 'dm' && state?.notifyLevel === 'all') state.notifyLevel = 'mentions'
+    }
+  },
 }
 
 /** The document brought up to `to`, or null when a step on the way is missing. */

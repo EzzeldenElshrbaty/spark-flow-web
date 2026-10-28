@@ -274,6 +274,21 @@ export type MentionItem = {
   authorName: string                                     // so a mention from another workspace still names its author
   channelId: string | null; messageId: string | null; taskKey: string | null; projectId: string | null
 }
+/** What an Activity row is about (spec 6.12): a mention of me, a reaction to mine, a reply in a thread I follow. */
+export type ActivityItemKind = 'mention' | 'reaction' | 'thread'
+/**
+ * One Activity row, newest first. `messageId` is the message (a thread's root for a reply); `replyId` the reply,
+ * when it's about one. A mention in a task comment has `taskKey` and `projectId` instead of a channel.
+ */
+export type ActivityItem = {
+  id: string; kind: ActivityItemKind; read: boolean; createdAt: string; workspaceId: string
+  actorId: string; actorName: string
+  channelId: string | null; messageId: string | null; replyId: string | null; taskKey: string | null; projectId: string | null
+  /** The text it's about, as people read it (`@Name`), cut to 120 characters. */
+  excerpt: string
+  /** A reaction's emoji; null otherwise. */
+  emoji: string | null
+}
 /** A project's time: every entry, and the hourly costs only for people who may see cost (else null). */
 export type ProjectTime = { entries: TimeEntry[]; rates: Rate[] | null }
 /** What a timer or a manual entry is for: a task (its project follows), or a project as a whole. */
@@ -326,6 +341,8 @@ export interface Api {
     reply(messageId: string, content: string, body?: Body, alsoInChannel?: boolean): Promise<ThreadReply>
     /** Get notified about replies, or turn it off (spec 6.7): my own choice for a thread's root message. */
     setFollowing(messageId: string, following: boolean): Promise<void>
+    /** What this channel tells me about (spec 6.11): all new messages, my mentions, or nothing. Mine only. */
+    setNotifyLevel(id: string, level: NotifyLevel): Promise<Channel>
     /** Adds the current user's reaction, or takes it back if it's there; only the emoji in REACTIONS. */
     react(target: ChatTarget, emoji: string): Promise<void>
     /** The author's own plain message or reply; mentions and task keys are worked out again. */
@@ -444,6 +461,12 @@ export interface Api {
   }
   /** Mentions of me (spec §5: the bell and Home), newest first, at most 50; read state is per person. */
   mentions: { mine(): Promise<MentionItem[]>; markRead(ids: string[]): Promise<void> }
+  /** My Activity in a workspace (spec 6.12): mentions, reactions to mine, replies in threads I follow. */
+  inbox: {
+    list(workspaceId: string): Promise<ActivityItem[]>
+    /** Marks these items read; without ids, all of mine in the workspace. A mention's read state is the bell's. */
+    markRead(workspaceId: string, ids?: string[]): Promise<void>
+  }
   /** The manager dashboard (spec §5): Admin and Sales see every project, a PM the ones they manage. */
   dashboard: { projects(workspaceId: string): Promise<DashboardProject[]>; checkedIn(workspaceId: string): Promise<CheckedInNow[]> }
   /** Hourly cost per person: Admin only (spec §4.3). */

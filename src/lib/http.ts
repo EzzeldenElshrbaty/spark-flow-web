@@ -84,6 +84,7 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
       reply: (messageId, content, body, alsoInChannel) =>
         send('POST', `/api/messages/${enc(messageId)}/replies`, { content, ...(body && { body }), ...(alsoInChannel && { alsoInChannel: true }) }),
       setFollowing: (messageId, following) => send<void>(following ? 'PUT' : 'DELETE', `/api/messages/${enc(messageId)}/follow`),
+      setNotifyLevel: (id, notifyLevel) => send('PATCH', `/api/channels/${enc(id)}/me`, { notifyLevel }),
       react: (target, emoji) => send<void>('POST', `${targetPath(target)}/reactions`, { emoji }),
       edit: (target, content, body) => send('PATCH', targetPath(target), body ? { content, body } : { content }),
       remove: (target) => send<void>('DELETE', targetPath(target)),
@@ -173,6 +174,10 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
     mentions: {
       mine: () => get('/api/mentions'),
       markRead: (ids) => send('POST', '/api/mentions/read', { ids }),
+    },
+    inbox: {
+      list: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/activity`),
+      markRead: (workspaceId, ids) => send<void>('POST', `/api/workspaces/${enc(workspaceId)}/activity/read`, ids ? { ids } : undefined),
     },
     rates: {
       list: () => get('/api/rates'),

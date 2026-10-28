@@ -27,9 +27,18 @@ import { memoryActor, type Actor } from './actor'
 import { migrate } from './migrations'
 import type { MockStore } from './store'
 
-export const DB_VERSION = 11 // 2: the company-system document (spec §3); 3: mention read state; 4: channel reads per person; 5: typed columns, history; 6: rate history; 7: message seq, channel member state; 8: message bodies; 9: drafts; 10: deleted messages kept for Undo; 11: thread follows
+export const DB_VERSION = 12 // 2: the company-system document (spec §3); 3: mention read state; 4: channel reads per person; 5: typed columns, history; 6: rate history; 7: message seq, channel member state; 8: message bodies; 9: drafts; 10: deleted messages kept for Undo; 11: thread follows; 12: activity items, channel levels
 /** Phase 1+2 kept the mock database in localStorage under keys starting with this. */
 const LEGACY_PREFIX = 'spark-flow.mockdb.v1'
+
+/**
+ * An Activity item kept for `userId` (spec 6.12): someone else's reaction to their message or reply, or a reply in a
+ * thread they follow. Its text is read from the message or reply each time, so an edit shows and a delete removes it.
+ */
+export type StoredNotification = {
+  id: string; userId: string; kind: 'reaction' | 'thread'; actorId: string; channelId: string; messageId: string
+  replyId: string | null; emoji: string | null; at: string; read: boolean
+}
 
 export type DbData = {
   version: number
@@ -64,6 +73,8 @@ export type DbData = {
   trash: TrashEntry[]
   /** Each person's own choices to follow a thread or not (spec 6.7); without one, the defaults decide. */
   threadFollows: ThreadFollow[]
+  /** Activity items stored for a person when they happen (spec 6.12): reactions to theirs, replies they follow. */
+  notifications: StoredNotification[]
 }
 
 /** A deleted message's or reply's content, by id, with who deleted it and when. */
@@ -97,7 +108,7 @@ export interface MockDb {
 
 const COLLECTIONS = [
   'users', 'workspaces', 'projects', 'sprints', 'tickets', 'channels', 'messages', 'replies',
-  'teams', 'phases', 'deliverables', 'comments', 'attachments', 'projectFiles', 'timeEntries', 'checkIns', 'rates', 'activity', 'drafts', 'trash', 'threadFollows',
+  'teams', 'phases', 'deliverables', 'comments', 'attachments', 'projectFiles', 'timeEntries', 'checkIns', 'rates', 'activity', 'drafts', 'trash', 'threadFollows', 'notifications',
 ] as const
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>

@@ -13,6 +13,7 @@ import { teamsApi } from './teams'
 import { commentsApi } from './comments'
 import { dashboardApi } from './dashboard'
 import { mentionsApi } from './mentions'
+import { inboxApi } from './activityFeed'
 import { ratesApi } from './rates'
 import { timeApi } from './time'
 import { createTicket, tasksApi, ticketsApi, updateTicket } from './tickets'
@@ -52,6 +53,7 @@ export function createMockApi(db: MockDb, hub: MockHub, now: () => Date = () => 
     comments: commentsApi(db, hub, now),
     activity: activityApi(db),
     mentions: mentionsApi(db, hub),
+    inbox: inboxApi(db, hub),
     dashboard: dashboardApi(db, now),
     files: filesApi(db, hub, now),
     db: dbApi(db, hub),

@@ -5,6 +5,7 @@ import { delay } from './latency'
 import { clone, currentUser } from './shared'
 import { projectPeopleIds } from '@/lib/projectPeople'
 import { plainText } from '@/lib/mentions'
+import { silenced } from './activityFeed'
 
 const MAX_ITEMS = 50
 const EXCERPT = 120
@@ -66,7 +67,9 @@ export function mentionsApi(db: MockDb, hub: MockHub): Api['mentions'] {
       const data = await db.read()
       const me = currentUser(data)
       const read = new Set(data.mentionReads[me.id] ?? [])
-      return clone(mentionsFor(data, me.id).map((item) => ({ ...item, read: read.has(item.id) })))
+      // Channels I set to Nothing (spec 6.11) stay out of the bell.
+      const quiet = silenced(data, me.id)
+      return clone(mentionsFor(data, me.id).filter((item) => !quiet(item.channelId)).map((item) => ({ ...item, read: read.has(item.id) })))
     },
     async markRead(ids) {
       await delay()

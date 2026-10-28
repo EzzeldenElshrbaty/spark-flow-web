@@ -14,26 +14,29 @@ describe('qk', () => {
     expect(qk.channels('w1')).toEqual([...qk.channelsAll(), 'w1'])
     expect(qk.messages('c1')).toEqual(['chat', 'messages', 'c1'])
     expect(qk.ticket('NEX-1')).toEqual(['tickets', 'one', 'NEX-1'])
+    expect(qk.activity('w1')).toEqual([...qk.activityAll(), 'w1'])
   })
 })
 
 describe('keysForEvent', () => {
   it('maps events to the keys to invalidate', () => {
     expect(keysForEvent({ type: 'messageReceived', message: { ...m, channelId: 'c1' } })).toEqual([
-      qk.messages('c1'), qk.channelsAll(), qk.channel('c1'), qk.mentions(),
+      qk.messages('c1'), qk.channelsAll(), qk.channel('c1'), qk.mentions(), qk.activityAll(),
     ])
     expect(keysForEvent({ type: 'replyReceived', reply: { ...r, channelId: 'c1', messageId: 'm1' } })).toEqual([
-      qk.replies('m1'), qk.message('m1'), qk.messages('c1'), qk.channelsAll(), qk.channel('c1'), qk.mentions(),
+      qk.replies('m1'), qk.message('m1'), qk.messages('c1'), qk.channelsAll(), qk.channel('c1'), qk.mentions(), qk.activityAll(),
     ])
-    expect(keysForEvent({ type: 'commentAdded', taskKey: 'NEX-1', projectId: 'p1' })).toEqual([qk.comments('NEX-1'), qk.mentions(), qk.taskHistory('NEX-1'), qk.projectHistory('p1')])
+    expect(keysForEvent({ type: 'commentAdded', taskKey: 'NEX-1', projectId: 'p1' })).toEqual([qk.comments('NEX-1'), qk.mentions(), qk.activityAll(), qk.taskHistory('NEX-1'), qk.projectHistory('p1')])
     expect(keysForEvent({ type: 'ticketUpdated', ticket: { ...t, projectId: 'p1', key: 'NEX-1' } })).toEqual([
       qk.tickets('p1'), qk.archivedTickets('p1'), qk.ticket('NEX-1'), qk.taskHistory('NEX-1'), qk.projectHistory('p1'),
       ['tickets', 'projects'], ['tickets', 'project'], ['dashboard'], qk.taskRefsAll(),
     ])
     expect(keysForEvent({ type: 'timeLogged', userId: 'u1', projectId: 'p1' })).toEqual([qk.myDay(), ['tickets'], ['projects', 'time'], ['dashboard'], ['time', 'report']])
     expect(keysForEvent({ type: 'userTyping', channelId: 'c1', userId: 'u2' })).toEqual([])
-    expect(keysForEvent({ type: 'messageChanged', channelId: 'c1', messageId: 'm1' })).toEqual([qk.messages('c1'), qk.message('m1'), qk.replies('m1'), qk.mentions()])
+    expect(keysForEvent({ type: 'messageChanged', channelId: 'c1', messageId: 'm1' })).toEqual([qk.messages('c1'), qk.message('m1'), qk.replies('m1'), qk.mentions(), qk.activityAll()])
     expect(keysForEvent({ type: 'channelChanged', channelId: 'c1' })).toEqual([qk.channelsAll(), qk.channel('c1')])
+    // Activity (spec 6.12) is worked out from messages, replies and stored notifications.
+    expect(keysForEvent({ type: 'notificationCreated', userId: 'u1' })).toEqual([qk.activityAll()])
     expect(keysForEvent({ type: 'projectChanged', projectId: 'p1' })).toEqual([['tickets'], ['projects'], ['dashboard'], qk.projectHistory('p1')])
   })
 })
@@ -47,7 +50,7 @@ describe('keysForEvent (M10)', () => {
     // Project summaries' cost (under 'tickets') too.
     expect(keysForEvent({ type: 'ratesChanged' })).toEqual([qk.rates(), ['time', 'report'], ['dashboard'], qk.timeAll(), ['tickets']])
     expect(keysForEvent({ type: 'filesChanged', projectId: 'p1' })).toEqual([qk.files('p1')])
-    expect(keysForEvent({ type: 'readChanged', userId: 'u1' })).toEqual([qk.channelsAll(), qk.mentions()])
+    expect(keysForEvent({ type: 'readChanged', userId: 'u1' })).toEqual([qk.channelsAll(), qk.mentions(), qk.activityAll()])
     // The empty key matches every query.
     expect(keysForEvent({ type: 'dataReset' })).toEqual([[]])
   })

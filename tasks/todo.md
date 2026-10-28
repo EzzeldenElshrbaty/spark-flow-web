@@ -500,3 +500,30 @@ Each test written first and watched fail (M6 is text).
 - `npm test`: 1056/1056 (111 files). Lint and `build:prototype` (with `tsc -b`) pass.
 - In the app: a thread draft "half a thought", closed and reopened with Reply in thread: the caret came back at its end (typing "!" gave "half a thought!"). The thread ⋮'s Copy link showed "Couldn't copy the link" under it (the pane refuses clipboard writes).
 - Not seen in the app: the Join channel line in a thread (needs a public channel I'm not in); covered by the rule's test and the same line as the channel page.
+
+# Flow chat — Phase 2 slice 3: Activity and channel notifications (spec 6.11, 6.12) — 2026-10-28
+
+Approved: part A (activity data and routes), part B (the Activity page), part C (the channel bell menu and the levels), with the contract updated.
+
+## Plan
+
+Part A — activity data
+- [x] Types: `ActivityItem` (kind mention | reaction | thread, actor, channel, message or reply, excerpt, emoji, time, read); Api `inbox.list(workspaceId)`, `inbox.markRead(workspaceId, ids?)` (`activity` is already the project history); `chat.setNotifyLevel(id, level)`; live `notificationCreated { userId }`.
+- [x] Mock DB version 12: `notifications` (stored reaction and thread items), with its migration; a channel's level that was "all" (nobody could choose yet) becomes "mentions"; a DM stays "all". New state starts at the kind's default.
+- [x] A reaction to my message or reply stores an item for me (taking it back removes it); a reply in a thread I follow stores one for every follower but the replier, those it mentions (they get the mention) and those who can't read the channel.
+- [x] `GET /api/workspaces/:id/activity`: my mentions (as today) and stored items in that workspace, newest first, at most 100, without channels set to Nothing; `POST /api/workspaces/:id/activity/read { ids? }` (no ids: all); a mention's read state is the bell's. The bell also leaves out channels set to Nothing.
+- [x] `PATCH /api/channels/:id/me { notifyLevel }`; http; hooks; query keys and live refresh.
+
+Part B — the Activity page
+- [ ] `/w/:ws/activity`: header "Activity", tabs All / Mentions / Reactions / Threads, Unread only, Mark all read; rows with the unread dot, avatar, kind line, text and time, an "Earlier" group; opening a row goes there and marks it read; "Nothing here yet." / "You're all caught up."; phones full screen.
+- [ ] The sidebar's Activity link opens it, with the count of unread items in the workspace.
+
+Part C — the channel bell menu
+- [ ] Channel header bell → "Notify me about": All new messages / Mentions and keywords / Nothing (checked), — Mute channel. Mute leaves the ⋮ menu.
+- [ ] Sidebar row by level: All → unread count; Mentions → my mentions (today); Nothing → no count; muted → no bold, no count, last in its group.
+- [ ] Contract: the routes, fields and event above.
+- [ ] Tests first for each step; axe on the page and the menu.
+
+Rulings approved with the plan: one Activity route (mentions worked out, reactions and thread replies stored, in the mock); the top-bar bell stays mentions only; keywords, desktop / mobile / email and Do Not Disturb wait for Preferences; reading a message in its channel doesn't mark its Activity item read; Reminders stays hidden until Phase 3.
+
+Rulings while building: the Api namespace is `inbox`, since `api.activity` is task and project history (routes unchanged); a new message also refreshes Activity, as it can mention me.

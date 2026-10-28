@@ -76,3 +76,18 @@ describe('10 → 11', () => {
   })
 })
 
+describe('11 → 12', () => {
+  it('adds no activity items yet, and a channel’s level that was All (nobody could choose) becomes Mentions; a DM stays All', () => {
+    const doc = {
+      version: 11,
+      channels: [{ id: 'c1', kind: 'channel' }, { id: 'd1', kind: 'dm' }],
+      channelState: { u1: { c1: { lastReadSeq: 3, starred: true, muted: false, notifyLevel: 'all' }, d1: { lastReadSeq: 1, starred: false, muted: false, notifyLevel: 'all' } } },
+    }
+    expect(migrate(doc, 12)).toMatchObject({
+      version: 12,
+      notifications: [],
+      channelState: { u1: { c1: { lastReadSeq: 3, starred: true, notifyLevel: 'mentions' }, d1: { notifyLevel: 'all' } } },
+    })
+  })
+})
+

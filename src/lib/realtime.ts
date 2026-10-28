@@ -31,6 +31,8 @@ export interface RealtimeClient {
    * follow, in each of their tabs. `channelId` is set for a channel, `seq` for a new read marker.
    */
   onReadChanged(cb: (event: { userId: string; channelId?: string; seq?: number }) => void): () => void
+  /** Something new for this person's Activity (spec 6.12): a reaction to theirs, a reply in a thread they follow. */
+  onNotificationCreated(cb: (event: { userId: string }) => void): () => void
   /** One of my drafts changed (in another tab or device): the sidebar's pencils follow. */
   onDraftChanged(cb: (event: { userId: string; channelId: string }) => void): () => void
   /** The demo data was reset or reloaded: everything on screen is out of date. */
@@ -52,6 +54,7 @@ export type RealtimeEvent =
   | { type: 'filesChanged'; projectId: string }
   | { type: 'readChanged'; userId: string; channelId?: string; seq?: number }
   | { type: 'draftChanged'; userId: string; channelId: string }
+  | { type: 'notificationCreated'; userId: string }
   | { type: 'dataReset' }
 
 const noop = () => {}
@@ -82,6 +85,7 @@ function createUnconnectedClient(): RealtimeClient {
     onFilesChanged: () => noop,
     onReadChanged: () => noop,
     onDraftChanged: () => noop,
+    onNotificationCreated: () => noop,
     onDataReset: () => noop,
   }
 }

@@ -139,14 +139,16 @@ function buildCounters(projectIds: string[], tickets: Ticket[]): Record<string, 
  * every other channel is read to its end. `starred` and `muted` list the channels set so.
  */
 function buildChannelState(
-  channelIds: string[],
+  channels: { id: string; kind: string }[],
   messages: ChatMessage[],
   { unread, starred, muted }: { unread: Record<string, number>; starred: string[]; muted: string[] },
 ): Record<string, ChannelMemberState> {
   return Object.fromEntries(
-    channelIds.map((id) => {
+    channels.map(({ id, kind }) => {
       const last = messages.filter((m) => m.channelId === id).length // seq runs 1..n
-      return [id, { lastReadSeq: Math.max(0, last - (unread[id] ?? 0)), starred: starred.includes(id), muted: muted.includes(id), notifyLevel: 'all' }]
+      // A channel tells me about my mentions, a DM about every message (spec 6.11).
+      const notifyLevel = kind === 'dm' ? 'all' : 'mentions'
+      return [id, { lastReadSeq: Math.max(0, last - (unread[id] ?? 0)), starred: starred.includes(id), muted: muted.includes(id), notifyLevel }]
     }),
   )
 }
@@ -532,7 +534,7 @@ export function seed(now: Date): SeedResult {
     rates,
     // Everyone starts with the same state, so each persona sees the demo's unread badges, a starred and a muted channel.
     channelState: Object.fromEntries(
-      users.map((u) => [u.id, buildChannelState(rawChannels.map((c) => c.id), messages, { unread: { 'c-frontend': 3, 'c-dm-2': 1 }, starred: ['c-backend'], muted: ['c-design'] })]),
+      users.map((u) => [u.id, buildChannelState(rawChannels, messages, { unread: { 'c-frontend': 3, 'c-dm-2': 1 }, starred: ['c-backend'], muted: ['c-design'] })]),
     ),
     counters: buildCounters(projects.map((p) => p.id), tickets),
     mentionReads: {} as Record<string, string[]>,
@@ -540,6 +542,7 @@ export function seed(now: Date): SeedResult {
     drafts: [],
     trash: [],
     threadFollows: [],
+    notifications: [],
     activity: tickets
       .map((t) => ({ id: `act-${t.id}`, projectId: t.projectId, taskKey: t.key, actorId: t.reporterId, at: t.createdAt, kind: 'task.created' as const, changes: [] }))
       .sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0)),

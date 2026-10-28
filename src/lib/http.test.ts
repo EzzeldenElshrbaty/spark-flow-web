@@ -181,6 +181,10 @@ describe('createHttpApi', () => {
     await api.chat.setFollowing('m1', true)
     await api.chat.setFollowing('m1', false)
     await api.chat.reply('m1', 'hi', [], true)
+    await api.chat.setNotifyLevel('c1', 'none')
+    await api.inbox.list('w1')
+    await api.inbox.markRead('w1', ['a1'])
+    await api.inbox.markRead('w1')
     expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url} ${String(c.init?.body)}`)).toEqual([
       'POST /api/channels/c1/read {"seq":7}',
       'POST /api/channels/c1/unread {"seq":5}',
@@ -199,6 +203,10 @@ describe('createHttpApi', () => {
       'PUT /api/messages/m1/follow undefined',
       'DELETE /api/messages/m1/follow undefined',
       'POST /api/messages/m1/replies {"content":"hi","body":[],"alsoInChannel":true}',
+      'PATCH /api/channels/c1/me {"notifyLevel":"none"}',
+      'GET /api/workspaces/w1/activity undefined',
+      'POST /api/workspaces/w1/activity/read {"ids":["a1"]}',
+      'POST /api/workspaces/w1/activity/read undefined',
     ])
   })
 
