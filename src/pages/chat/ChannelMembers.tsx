@@ -361,7 +361,11 @@ function AddPeople({
   // A pasted list ("lina@partner.io, sam@client.com", or one address with a ";" after it): each address becomes a chip;
   // what can't be added stays typed, with why.
   const changeQuery = (text: string) => {
-    if (!/[,;]/.test(text)) return setQuery(text)
+    if (!/[,;]/.test(text)) {
+      // Typing again answers a refusal: it goes (an emptied field, after a pick or a refusal, keeps it).
+      if (text) setError(null)
+      return setQuery(text)
+    }
     const added: Token[] = []
     const left: string[] = []
     let first: string | undefined
@@ -416,7 +420,11 @@ function AddPeople({
       <TokenInput
         label="Names or emails"
         tokens={tokens}
-        onRemove={(id) => setTokens((list) => list.filter((t) => t.id !== id))}
+        onRemove={(id) => {
+          // A refusal is about what's picked: taking a chip away answers it.
+          setError(null)
+          setTokens((list) => list.filter((t) => t.id !== id))
+        }}
         onAdd={pick}
         onCommit={commit}
         query={query}

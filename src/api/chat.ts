@@ -1,7 +1,7 @@
 import { type QueryClient, useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData, type QueryKey } from '@tanstack/react-query'
 import { qk } from '@/api/queryKeys'
 import { retryUnlessNotFound as retry } from '@/api/retry'
-import type { ChannelPatch, ChatTarget, Draft, NewChannel, NotifyLevel, Page, Reaction } from '@/api/types'
+import type { ChannelPatch, ChatTarget, Draft, Invitation, NewChannel, NotifyLevel, Page, Reaction } from '@/api/types'
 import type { Body } from '@/lib/messageBody'
 import { useCallback } from 'react'
 import { toggleReaction } from '@/lib/reactions'
@@ -229,9 +229,14 @@ export function useLeaveChannel() {
 export function useAddMembers() {
   return useMutation({ mutationFn: ({ id, userIds, emails }: { id: string; userIds: string[]; emails?: string[] }) => api.chat.addMembers(id, userIds, emails) })
 }
-/** A channel's pending email invites (spec 6.10 Members), for whoever may change it; `channelChanged` refreshes them. */
-export function useInvitations(channelId: string, enabled: boolean) {
-  return useQuery({ queryKey: qk.invitations(channelId), queryFn: () => api.chat.invitations(channelId), enabled })
+const NO_INVITATIONS: Invitation[] = []
+/**
+ * A channel's pending email invites (spec 6.10 Members), for whoever may change it; `channelChanged` refreshes them.
+ * While it isn't enabled (the details closed, the right gone, the channel archived) it shows none, not a cached list.
+ */
+export function useInvitations(channelId: string, enabled: boolean): Invitation[] {
+  const { data } = useQuery({ queryKey: qk.invitations(channelId), queryFn: () => api.chat.invitations(channelId), enabled })
+  return (enabled && data) || NO_INVITATIONS
 }
 export function useRevokeInvitation() {
   return useMutation({ mutationFn: (id: string) => api.chat.revokeInvitation(id) })

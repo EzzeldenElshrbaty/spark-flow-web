@@ -753,3 +753,24 @@ describe('focus stays with the control while it saves, with real key presses (sl
     expect(document.activeElement).toBe(admins)
   })
 })
+
+describe('a long email chip on a phone (spec 10, slice 5 review)', () => {
+  it('stays inside the field at 390px, with its × on screen', async () => {
+    await page.viewport(390, 844)
+    try {
+      mount(details({ tab: 'members' }), false)
+      Object.assign(document.querySelector('main')!.style, { width: '390px', padding: '0' })
+      await userEvent.click(screen.getByRole('button', { name: 'Add people' }))
+      const names = screen.getByRole('combobox', { name: 'Names or emails' })
+      await userEvent.click(names)
+      const email = 'youssef.abdelrahman.elsayed@partner-agency.com.eg'
+      await userEvent.keyboard(`${email}{Enter}`)
+      const remove = screen.getByRole('button', { name: `Remove ${email}` })
+      const field = names.parentElement!.getBoundingClientRect()
+      expect(remove.parentElement!.getBoundingClientRect().right).toBeLessThanOrEqual(field.right)
+      expect(remove.getBoundingClientRect().right).toBeLessThanOrEqual(390 - 16)
+    } finally {
+      await page.viewport(414, 896)
+    }
+  })
+})

@@ -431,6 +431,8 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         if (!can('invitation.revoke', { userId: me.id, role: me.role, invitedBy: invite.invitedBy })) {
           throw new ApiError({ title: 'Forbidden', status: 403, detail: 'Only whoever invited them, or an admin, can revoke this.' })
         }
+        // An archived channel is read-only until it's restored, its invites included.
+        if (findChannel(data, invite.channelId).archivedAt) throw badRequest('This channel is archived.')
         if (invite.status === 'revoked') throw badRequest('This invitation was revoked already.')
         if (invite.status === 'accepted') throw badRequest('They joined already.')
         invite.status = 'revoked'

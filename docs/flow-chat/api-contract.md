@@ -318,7 +318,7 @@ Rules:
 - **What it posts:** people added post `{ kind: "added" }` as before. An invite posts nothing, so emails stay out of the channel; the guest's join line comes with accepting (the guests slice).
 - **The email:** the backend sends each new invite by email, with a link to accept it. The prototype only stores the invitation.
 - **Invited:** for whoever may change the channel (`channel.manage`); a private channel I'm not in answers `403` "You're not in this channel.", any other refusal `403` "Only its members can change this channel.".
-- **Revoke:** whoever sent it, or an Admin (`403` "Only whoever invited them, or an admin, can revoke this."). Revoked already: `400` "This invitation was revoked already."; accepted: `400` "They joined already.". The same email can be invited again afterwards.
+- **Revoke:** whoever sent it, or an Admin (`403` "Only whoever invited them, or an admin, can revoke this."). Not while the channel is archived (`400` "This channel is archived."). Revoked already: `400` "This invitation was revoked already."; accepted: `400` "They joined already.". The same email can be invited again afterwards.
 - **Default channel:** only an Admin changes `isDefault` (`403` "Only admins can choose default channels."), it must be `true` or `false` (`400` "Turn the default channel on or off."), and a private channel can't be one (`400` "A private channel can't be a default channel."). When someone joins the workspace, the backend adds them to its default channels that aren't archived; the prototype has no way to join a workspace, so it only stores the flag.
 - **Events:** an invite and a revoke send `channel.updated` (client `onChannelChanged`) to whoever may change the channel; the client refreshes the channel's Invited list on it.
 

@@ -579,3 +579,39 @@ describe('Add people after the slice 5 review', () => {
     expect(alone.onAdd).not.toHaveBeenCalled()
   })
 })
+
+describe('Add people errors go with their cause (slice 5 review minors)', () => {
+  const openAdd = (props: Partial<Props> = {}) => {
+    const handlers = show({ tab: 'members', ...props })
+    fireEvent.click(screen.getByRole('button', { name: 'Add people' }))
+    const add = within(screen.getByRole('dialog', { name: /^Add people to/ }))
+    const names = add.getByRole('combobox', { name: 'Names or emails' })
+    fireEvent.focus(names)
+    const type = (text: string) => fireEvent.change(names, { target: { value: text } })
+    return { ...handlers, add, names, type }
+  }
+  const help = "sam@client.com isn't in Spark Systems yet. They'll get an email invite as a guest who can see #backend only."
+
+  it('removing the chip a refusal was about takes the refusal away', async () => {
+    const { add, names, type } = openAdd({ onAdd: vi.fn(async () => Promise.reject(new Error('Everyone you picked is already in #backend or invited.'))) })
+    type('sam@client.com')
+    fireEvent.keyDown(names, { key: 'Enter' })
+    await act(async () => fireEvent.click(add.getByRole('button', { name: 'Add 1 person' })))
+    expect(add.getByRole('alert').textContent).toBe('Everyone you picked is already in #backend or invited.')
+    fireEvent.click(add.getByRole('button', { name: 'Remove sam@client.com' }))
+    expect(add.queryByRole('alert')).toBeNull()
+  })
+
+  it('typing again takes a refusal away, and the guest notice comes back', () => {
+    const { add, names, type } = openAdd()
+    type('sam@client.com')
+    fireEvent.keyDown(names, { key: 'Enter' })
+    type('zed')
+    fireEvent.keyDown(names, { key: 'Enter' })
+    expect(add.getByRole('alert').textContent).toBe('No one in Spark Systems matches “zed”.')
+    expect(add.queryByText(help)).toBeNull()
+    type('o')
+    expect(add.queryByRole('alert')).toBeNull()
+    expect(add.getByText(help)).toBeTruthy()
+  })
+})

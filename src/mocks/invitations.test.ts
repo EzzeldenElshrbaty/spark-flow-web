@@ -131,3 +131,16 @@ describe('slice 5 review', () => {
     expect(await api.chat.invitations('c-backend')).toEqual([])
   })
 })
+
+describe('slice 5 review minors', () => {
+  it('an archived channel’s invites can’t be revoked until it’s restored, as nothing else in it changes', async () => {
+    const channel = await ops()
+    await api.chat.addMembers(channel.id, [], ['sam@client.com'])
+    const [invite] = await api.chat.invitations(channel.id)
+    await api.chat.archiveChannel(channel.id)
+    await expect(api.chat.revokeInvitation(invite.id)).rejects.toMatchObject({ status: 400, detail: 'This channel is archived.' })
+    await api.chat.restoreChannel(channel.id)
+    await api.chat.revokeInvitation(invite.id)
+    expect(await api.chat.invitations(channel.id)).toEqual([])
+  })
+})

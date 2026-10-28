@@ -189,7 +189,7 @@ function ChannelTop({ channel, people, workspaceSlug, tab, onTab, panelId }: { c
   })
   // Teams and invites only matter once the details are open.
   const teams = useTeams(details ? channel.workspaceId : undefined).data ?? []
-  const invitations = useInvitations(channel.id, Boolean(details) && allowed.manage).data ?? []
+  const invitations = useInvitations(channel.id, Boolean(details) && allowed.manage)
   const [archiving, setArchiving] = useState(false)
   const top = useRef<HTMLDivElement>(null)
   // The details change the star, level and mute too: while they're open, these errors show under their header.

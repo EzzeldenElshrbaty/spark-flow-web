@@ -704,9 +704,11 @@ Fixed, test first:
 - [x] M1 → Important: emails allow letters, digits and . _ % + ' - before the @ and letters, digits and hyphens in the domain; a pasted list (commas, semicolons) becomes a chip each, and what can't be added stays typed with why. Contract updated.
 - [x] M3 → Important: what's typed and not yet a chip goes with Add (and counts in "Add N people", with the guest helper text); text that can't be added stops the Add and says why.
 
-Deferred minors:
-- An error stays after its cause is gone (a removed chip, new typing) and hides the guest helper text.
-- An archived channel can still show a cached Invited list with a working Revoke, and the mock's revoke doesn't refuse an archived channel.
-- On a 390px phone an email chip over about 40 characters overflows the field, and its × can land past the screen edge.
+Verified: 1217 tests, tsc, lint, `build:prototype`.
 
-Verified: 1217 tests, tsc, lint, `build:prototype`. Not pushed.
+Minors, fixed afterwards on request (test first):
+- [x] An error stayed after its cause was gone and hid the guest helper text → removing a chip or typing again clears it.
+- [x] An archived channel could show a cached Invited list with a working Revoke → `useInvitations` shows none while it isn't enabled, and the mock's revoke answers 400 "This channel is archived." (contract updated).
+- [x] A long email chip overflowed the field on a 390px phone → chips shorten with an ellipsis (the × keeps the full address), checked in Chromium at 390px.
+
+Verified: 1222 tests, tsc, lint, `build:prototype`. Not pushed.

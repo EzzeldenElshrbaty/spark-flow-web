@@ -13,8 +13,8 @@ export type Suggestion = { id: string; label: string; kind?: 'person' | 'email' 
 
 function KindMark({ token }: { token: Suggestion }) {
   if (token.kind === 'person') return <Avatar id={token.id} name={token.label} size="sm" decorative />
-  if (token.kind === 'email') return <Icon icon={IconMail} size={16} className="mx-0.5 text-sf-text-secondary" />
-  if (token.kind === 'group') return <Icon icon={IconUsersGroup} size={16} className="mx-0.5 text-sf-text-secondary" />
+  if (token.kind === 'email') return <Icon icon={IconMail} size={16} className="mx-0.5 flex-none text-sf-text-secondary" />
+  if (token.kind === 'group') return <Icon icon={IconUsersGroup} size={16} className="mx-0.5 flex-none text-sf-text-secondary" />
   return null
 }
 
@@ -99,10 +99,11 @@ export function TokenInput({
           {tokens.map((t) => (
             <span
               key={t.id}
-              className="inline-flex h-7 items-center gap-1 rounded-sf-md border border-sf-line bg-sf-surface-hover ps-1 pe-0.5 font-sf text-[13px]/[18px] font-medium text-sf-text"
+              // A long address shortens with an ellipsis, so its × stays in the field on a phone; the × still names it in full.
+              className="inline-flex h-7 max-w-full min-w-0 items-center gap-1 rounded-sf-md border border-sf-line bg-sf-surface-hover ps-1 pe-0.5 font-sf text-[13px]/[18px] font-medium text-sf-text"
             >
               <KindMark token={t} />
-              {t.label}
+              <span className="min-w-0 truncate">{t.label}</span>
               {t.kind === 'email' && <Tag tone="accent">Guest</Tag>}
               <IconButton
                 label={`Remove ${t.label}`}
