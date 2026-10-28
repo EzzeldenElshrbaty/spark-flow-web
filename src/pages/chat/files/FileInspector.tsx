@@ -32,14 +32,13 @@ function accessLines(details: FileDetails, channels: Channel[], projects: Projec
   for (const channelId of new Set(details.sharedIn.map((s) => s.channelId))) {
     const channel = channels.find((c) => c.id === channelId)
     if (!channel) continue
-    const project = projects.find((p) => p.channelId === channel.id)
-    if (project) lines.push(`People on ${project.name}`)
-    else if (channel.kind === 'dm') lines.push(`You and ${channelLabel(channel, users, meId)}`)
+    // By the channel's own audience first: a project's channel is open to the workspace (only its people post there).
+    if (channel.kind === 'dm') lines.push(`You and ${channelLabel(channel, users, meId)}`)
     else if (channel.isPrivate) lines.push(`Members of #${channel.name}`)
     else lines.push(`Everyone in the workspace, through #${channel.name}`)
   }
-  const projectKeys = new Set(details.taskKeys.map((key) => key.split('-')[0]))
-  for (const project of projects) if (details.projectIds.includes(project.id) || projectKeys.has(project.key)) lines.push(`People on ${project.name}`)
+  // A project's own files are its people's; a task's file is posted as a card in its project's channel, said above.
+  for (const project of projects) if (details.projectIds.includes(project.id)) lines.push(`People on ${project.name}`)
   return [...new Set(lines)]
 }
 

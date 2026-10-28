@@ -161,7 +161,7 @@ The client shows a message the moment it's sent ("Sending…") with a `clientId`
 | Delete | `DELETE /api/messages/:id` (`/api/replies/:id`) | The author or an Admin (spec §9). Soft: the row stays with `deletedAt` and empty content, body, files, mentions and reactions. |
 | Undo | `POST /api/messages/:id/restore` (`/api/replies/:id/restore`) | Only whoever deleted it, within **10 seconds** (the client's Undo toast is 5s; the rest is for the request to arrive). Brings back content, body, files, mentions, reactions and task links. `400` "This message isn't deleted." / "It's too late to undo that."; `403` for anyone else. Sends `message.updated`. |
 
-What a delete takes is kept only for the Undo window, then dropped (retention beyond that is OPEN item 8). The client asks before deleting a message with replies or files, and offers Undo either way.
+What a delete takes is kept only for the Undo window, then dropped (retention beyond that is OPEN item 8). The client asks before deleting a message with replies or files that aren't deleted already, and offers Undo either way. Deleting a message takes its files off that message only; a file shared elsewhere stays there (slice 6), and Delete file removes it everywhere.
 
 ## Phase 1 · Keyboard shortcuts (spec 10)
 
@@ -366,6 +366,7 @@ Rules:
 - **Open and Details:** for whoever reads a channel the file is shared in, is on a project or task that has it, or uploaded it and hasn't sent it yet; anyone else gets `404`, so nobody learns it exists. Opening a blocked file: `400` "This file was blocked.".
 - **Edit file details and Delete file:** whoever uploaded it, or an Admin (`403` "Only whoever uploaded it, or an admin, can change this file."; spec §9). Not while a project or channel it's in is archived (`400` "This project is archived. Restore it first." / "This channel is archived."). Name: `400` "Give the file a name." / "Keep the name under 250 characters."; description: `400` "Keep the description under 1,000 characters.". Delete keeps the record with `deletedAt` and throws the bytes away.
 - **Share:** whoever uploaded it, or an Admin (`403` "Only whoever uploaded it, or an admin, can share this file."), so nobody else carries a file from a private channel into a wider one; into a channel I can post in (as sending); the file must be clean. It posts a new message with the file and my optional text.
+- **The client and the scan:** an upload is ready to send only once `complete` returns it `"clean"`; a `"blocked"` file's tray card says "This file was blocked." and can only be removed, and a `"pending"` one can be tried again.
 - **Events:** sharing sends `message.created` for the new message and `file.shared`; Edit file details sends `file.updated`, and Delete file `file.deleted` (client handler `onFileChanged`, `{ fileId }`), plus `message.updated` for every message and reply that shows the file, and `files.changed` for any project that lists it. The client refreshes the file's details on `onFileChanged`.
 
 Save for later, Add to folder and Add from Flow files come with the Saved view and the channel Files tab (Phase 3); Text snippet and code highlighting in Phase 3; voice and video messages in Phase 4.

@@ -52,3 +52,10 @@ describe('lastEditable (spec 6.3: Up in an empty composer)', () => {
     expect(lastEditable(list.slice(1), 'me')).toBeUndefined()
   })
 })
+
+describe('deleteNeedsConfirm after slice 6 (review)', () => {
+  it('a message whose files are all deleted already goes at once, like one with none', () => {
+    expect(deleteNeedsConfirm(m({ threadCount: 0, attachments: [{ id: 'a', deletedAt: '2026-10-29T10:00:00.000Z' }] as never }))).toBe(false)
+    expect(deleteNeedsConfirm(m({ threadCount: 0, attachments: [{ id: 'a', deletedAt: '2026-10-29T10:00:00.000Z' }, { id: 'b', deletedAt: null }] as never }))).toBe(true)
+  })
+})

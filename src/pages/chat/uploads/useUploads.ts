@@ -6,7 +6,11 @@ import { acceptFiles } from '@/lib/fileTypes'
 import { errorText } from '@/pages/chat/usePicked'
 
 /** A file in the composer's tray: going up, ready to send, or failed (with why). */
-export type Upload = { key: string; file: File; status: 'uploading' | 'ready' | 'failed'; progress: number; uploaded: Attachment | null; error: string | null }
+export type Upload = {
+  key: string; file: File; status: 'uploading' | 'ready' | 'failed'; progress: number; uploaded: Attachment | null; error: string | null
+  /** A failure Retry can help (not a file the scan blocked). */
+  retryable: boolean
+}
 
 const filesWord = (n: number) => (n === 1 ? '1 file' : `${n} files`)
 
@@ -28,10 +32,19 @@ export function useUploads(channelId: string) {
       const controller = new AbortController()
       controllers.current.set(key, controller)
       uploadChatFile(channelId, file, { signal: controller.signal, onProgress: (progress) => patch(key, { progress }) }).then(
-        (uploaded) => patch(key, { status: 'ready', progress: 1, uploaded, error: null }),
+        // Only a file the scan passed is ready to send (spec 6.9); a blocked one can only be removed.
+        (uploaded) =>
+          patch(
+            key,
+            uploaded.scanStatus === 'clean'
+              ? { status: 'ready', progress: 1, uploaded, error: null }
+              : uploaded.scanStatus === 'blocked'
+                ? { status: 'failed', progress: 1, uploaded: null, error: 'This file was blocked.', retryable: false }
+                : { status: 'failed', progress: 1, uploaded: null, error: 'Still being checked for viruses. Try again in a moment.', retryable: true },
+          ),
         (failure: unknown) => {
           if (failure instanceof DOMException && failure.name === 'AbortError') return
-          patch(key, { status: 'failed', error: errorText(failure) })
+          patch(key, { status: 'failed', error: errorText(failure), retryable: true })
         },
       )
     },
@@ -52,7 +65,7 @@ export function useUploads(channelId: string) {
     const { files, refused: why } = acceptFiles(items.map((i) => i.file), picked, MAX_MESSAGE_FILES)
     const fresh = files.filter((f) => !items.some((i) => i.file === f)).map((file) => ({ key: `u${++counter.current}`, file }))
     setRefused(why)
-    setItems((list) => [...list, ...fresh.map(({ key, file }) => ({ key, file, status: 'uploading' as const, progress: 0, uploaded: null, error: null }))])
+    setItems((list) => [...list, ...fresh.map(({ key, file }) => ({ key, file, status: 'uploading' as const, progress: 0, uploaded: null, error: null, retryable: true }))])
     for (const { key, file } of fresh) start(key, file)
   }
   const remove = (key: string) => {
@@ -74,7 +87,14 @@ export function useUploads(channelId: string) {
   }
 
   const uploading = items.filter((i) => i.status === 'uploading').length
-  const waiting = uploading ? `Uploading ${filesWord(uploading)}…` : items.some((i) => i.status === 'failed') ? "Retry or remove the files that didn't upload." : null
+  const failed = items.filter((i) => i.status === 'failed')
+  const waiting = uploading
+    ? `Uploading ${filesWord(uploading)}…`
+    : failed.some((i) => i.retryable)
+      ? "Retry or remove the files that didn't upload."
+      : failed.length
+        ? 'Remove the files that were blocked.'
+        : null
   const ready = items.flatMap((i) => (i.status === 'ready' && i.uploaded ? [i.uploaded] : []))
   return { items, refused, add, remove, retry, clear, waiting, ready }
 }

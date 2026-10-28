@@ -9,7 +9,7 @@ import { useUploads } from '@/pages/chat/uploads/useUploads'
 afterEach(() => vi.restoreAllMocks())
 
 const file = (name: string, size = 10) => new File(['x'.repeat(size)], name, { type: name.endsWith('.png') ? 'image/png' : 'application/pdf', lastModified: name.length })
-const uploaded = (name: string) => ({ id: `a-${name}`, name, title: name }) as Attachment
+const uploaded = (name: string) => ({ id: `a-${name}`, name, title: name, scanStatus: 'clean' }) as Attachment
 
 /** Stands in for the server: each upload waits until the test settles it. */
 function serve() {
@@ -74,5 +74,29 @@ describe('useUploads: the composer’s tray (spec 6.9, slice 6)', () => {
     act(() => result.current.add([file('scope.pdf')]))
     act(() => result.current.clear())
     expect(result.current.items).toEqual([])
+  })
+})
+
+describe('useUploads after the slice 6 review', () => {
+  it('a file the scan blocked is not ready: its card says so, with no Retry, and Send waits until it’s removed', async () => {
+    const calls = serve()
+    const { result } = renderHook(() => useUploads('c-backend'))
+    act(() => result.current.add([file('scope.pdf'), file('virus.pdf')]))
+    await act(async () => calls[0].resolve({ ...uploaded('scope.pdf'), scanStatus: 'clean' }))
+    await act(async () => calls[1].resolve({ ...uploaded('virus.pdf'), scanStatus: 'blocked' }))
+    expect(result.current.items[1]).toMatchObject({ status: 'failed', error: 'This file was blocked.', retryable: false })
+    expect(result.current.ready.map((f) => f.id)).toEqual(['a-scope.pdf'])
+    expect(result.current.waiting).toBe('Remove the files that were blocked.')
+    act(() => result.current.remove(result.current.items[1].key))
+    expect(result.current.waiting).toBeNull()
+  })
+
+  it('a file still being checked isn’t ready either: it can be tried again', async () => {
+    const calls = serve()
+    const { result } = renderHook(() => useUploads('c-backend'))
+    act(() => result.current.add([file('scope.pdf')]))
+    await act(async () => calls[0].resolve({ ...uploaded('scope.pdf'), scanStatus: 'pending' }))
+    expect(result.current.items[0]).toMatchObject({ status: 'failed', error: 'Still being checked for viruses. Try again in a moment.', retryable: true })
+    expect(result.current.waiting).toBe("Retry or remove the files that didn't upload.")
   })
 })

@@ -90,7 +90,7 @@ const scope: Attachment = {
 }
 const fileActions: FileActions = { mayManage: () => true, share: vi.fn(), details: vi.fn(), edit: vi.fn(), remove: vi.fn(), createTask: vi.fn() }
 const uploadOf = (name: string, over: Partial<Upload> = {}): Upload => ({
-  key: name, file: new File(['x'.repeat(4096)], name, { type: 'application/pdf' }), status: 'uploading', progress: 0.4, uploaded: null, error: null, ...over,
+  key: name, file: new File(['x'.repeat(4096)], name, { type: 'application/pdf' }), status: 'uploading', progress: 0.4, uploaded: null, error: null, retryable: true, ...over,
 })
 /** The API calls the file windows and the File details panel make, answered here. */
 function fileSpies() {

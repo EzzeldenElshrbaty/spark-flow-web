@@ -125,3 +125,36 @@ describe('the file card, its pill and menu (spec 6.9, slice 6)', () => {
     expect(screen.queryByRole('button', { name: /^Open/ })).toBeNull()
   })
 })
+
+describe('the file card after the slice 6 review', () => {
+  it('an office file previews through the backend’s PDF, but Download saves the original under its own name', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('offline'))
+    const docx = { ...pdf, id: 'a2', name: 'Q3 report.docx', title: 'Q3 report.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', previewUrl: 'https://storage.example/previews/a2.pdf' }
+    render(<MessageFiles attachments={[docx]} link={link} />)
+    fireEvent.click(screen.getByRole('button', { name: /^Open Q3 report\.docx/ }))
+    await act(async () => {})
+    const saves = [...document.querySelectorAll<HTMLAnchorElement>('a[download]')]
+    expect(saves.length).toBeGreaterThan(0)
+    for (const a of saves) {
+      expect(a.getAttribute('href')).toBe('blob:http://localhost/file-1')
+      expect(a.download).toBe('Q3 report.docx')
+    }
+    vi.restoreAllMocks()
+  })
+
+  it('on a screen without hover (a tablet) the pill is always shown, and it stays while its menu is open', () => {
+    const before = window.matchMedia
+    window.matchMedia = ((media: string) => ({ matches: media === '(hover: none)', media, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia
+    try {
+      render(<MessageFiles attachments={[pdf]} link={link} />)
+      const pill = screen.getByRole('group', { name: 'Scope v3.pdf actions' })
+      expect(pill.className.split(' ')).toContain('opacity-100')
+      expect(screen.getByRole('button', { name: 'Download' })).toBeTruthy()
+    } finally {
+      window.matchMedia = before
+    }
+    cleanup()
+    render(<MessageFiles attachments={[pdf]} link={link} />)
+    expect(screen.getByRole('group', { name: 'Scope v3.pdf actions' }).className).toContain('has-[[aria-expanded=true]]:opacity-100')
+  })
+})

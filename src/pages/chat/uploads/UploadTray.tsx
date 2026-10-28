@@ -52,9 +52,11 @@ function Card({ upload, onRemove, onRetry }: { upload: Upload; onRemove: (key: s
         {status === 'failed' && (
           <span className="flex min-w-0 items-center gap-1">
             <span className="sf-meta min-w-0 truncate text-sf-error">{error}</span>
-            <Button size="sm" variant="ghost" touch aria-label={`Retry ${file.name}`} onClick={() => onRetry(upload.key)}>
-              Retry
-            </Button>
+            {upload.retryable && (
+              <Button size="sm" variant="ghost" touch aria-label={`Retry ${file.name}`} onClick={() => onRetry(upload.key)}>
+                Retry
+              </Button>
+            )}
           </span>
         )}
       </span>

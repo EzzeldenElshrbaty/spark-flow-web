@@ -10,7 +10,7 @@ URL.createObjectURL ??= () => 'blob:x'
 URL.revokeObjectURL ??= () => {}
 
 const item = (name: string, over: Partial<Upload> = {}): Upload => ({
-  key: name, file: new File(['x'.repeat(2048)], name, { type: 'application/pdf' }), status: 'uploading', progress: 0.4, uploaded: null, error: null, ...over,
+  key: name, file: new File(['x'.repeat(2048)], name, { type: 'application/pdf' }), status: 'uploading', progress: 0.4, uploaded: null, error: null, retryable: true, ...over,
 })
 
 describe('UploadTray (spec 6.9 pending tray)', () => {
@@ -40,5 +40,15 @@ describe('UploadTray (spec 6.9 pending tray)', () => {
   it('shows nothing when there is nothing to send or say', () => {
     const { container } = render(<UploadTray uploads={[]} refused={[]} onRemove={vi.fn()} onRetry={vi.fn()} />)
     expect(container.textContent).toBe('')
+  })
+})
+
+describe('UploadTray after the slice 6 review', () => {
+  it('a blocked file’s card says so, with only ×', () => {
+    render(<UploadTray uploads={[item('virus.pdf', { status: 'failed', error: 'This file was blocked.', retryable: false })]} refused={[]} onRemove={vi.fn()} onRetry={vi.fn()} />)
+    const card = screen.getByRole('listitem')
+    expect(card.textContent).toContain('This file was blocked.')
+    expect(within(card).queryByRole('button', { name: 'Retry virus.pdf' })).toBeNull()
+    expect(within(card).getByRole('button', { name: 'Remove virus.pdf' })).toBeTruthy()
   })
 })

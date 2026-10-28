@@ -12,8 +12,8 @@ export function actionsFor(row: ChatMessage | ThreadReply, meId: string | undefi
   return { react: true, edit: own, remove: own || (admin && !card) }
 }
 
-/** Whether deleting asks first (spec 6.3): when it has replies or files; otherwise it goes at once, with Undo. */
-export const deleteNeedsConfirm = (row: ChatMessage | ThreadReply) => ('threadCount' in row && row.threadCount > 0) || row.attachments.length > 0
+/** Whether deleting asks first (spec 6.3): when it has replies or files not deleted already; otherwise it goes at once, with Undo. */
+export const deleteNeedsConfirm = (row: ChatMessage | ThreadReply) => ('threadCount' in row && row.threadCount > 0) || row.attachments.some((a) => !a.deletedAt)
 
 /** My newest message I may edit (oldest-first list): what Up in an empty composer opens (spec 6.3). */
 export function lastEditable(messages: ChatMessage[], meId: string | undefined): ChatMessage | undefined {

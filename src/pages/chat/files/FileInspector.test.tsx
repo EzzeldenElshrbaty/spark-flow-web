@@ -27,6 +27,7 @@ let me = { id: 'u-2', role: 'pm' }
 const channels = [
   { id: 'c-backend', kind: 'channel', name: 'backend', isPrivate: false, memberIds: ['u-2'] },
   { id: 'c-release', kind: 'channel', name: 'release-v2', isPrivate: true, memberIds: ['u-2'] },
+  { id: 'c-p-nex', kind: 'channel', name: 'nexus-core', isPrivate: false, memberIds: ['u-2'] },
 ] as Channel[]
 vi.mock('@/api/files', () => ({
   useFileDetails: () => ({ data: state.data, error: state.error, isError: state.error !== null, isPending: !state.data && !state.error, refetch: vi.fn() }),
@@ -87,6 +88,15 @@ describe('File details panel (spec 6.9)', () => {
     show()
     expect(screen.getByText("This file doesn't exist or was removed.")).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Close the details' })).toBeTruthy()
+    state = { data: details, error: null }
+  })
+})
+
+describe('File details Access after the slice 6 review', () => {
+  it('a project’s channel is open to the workspace, so a file there is too; a task’s file in it says the same', () => {
+    state = { data: { ...details, sharedIn: [{ channelId: 'c-p-nex', messageId: 'm3', replyId: null, at: '2026-10-28T11:00:00.000Z' }], taskKeys: ['NEX-105'], projectIds: [] }, error: null }
+    show()
+    expect([...value('Access').querySelectorAll('li')].map((li) => li.textContent)).toEqual(['Everyone in the workspace, through #nexus-core'])
     state = { data: details, error: null }
   })
 })

@@ -6,8 +6,18 @@ import { downloadUrl, previewOf, type Preview } from '@/lib/fileTypes'
 import { isPdf } from '@/lib/pdfSignature'
 import { safeFileUrl } from '@/lib/safeFileUrl'
 
-/** `preview`: how to show it when its name doesn't say (an office file's converted PDF preview). */
-type ViewedFile = { name: string; url: string; sizeKb?: number; preview?: Preview }
+/**
+ * `preview`: how to show it when its name doesn't say (an office file's converted PDF preview). `download`: what
+ * Download saves when that isn't what's shown (the office file itself, not its preview); null hides Download.
+ */
+type ViewedFile = { name: string; url: string; sizeKb?: number; preview?: Preview; download?: { url: string; name: string } | null }
+
+/** What Download saves for a shown file, through safeFileUrl, or null. */
+function savedAs(file: ViewedFile): { url: string; name: string } | null {
+  const target = file.download === undefined ? (file.url ? { url: file.url, name: file.name } : null) : file.download
+  const url = target && safeFileUrl(target.url)
+  return url ? { url, name: target.name } : null
+}
 
 const sizeText = (sizeKb?: number) => (sizeKb === undefined ? '' : sizeKb >= 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${sizeKb} KB`)
 
@@ -49,10 +59,10 @@ export function FileViewer({ files, start = 0, onClose }: { files: ViewedFile[];
             {index + 1} of {files.length}
           </span>
         )}
-        {url && (
+        {savedAs(file) && (
           <a
-            href={downloadUrl(url)}
-            download={file.name}
+            href={downloadUrl(savedAs(file)!.url)}
+            download={savedAs(file)!.name}
             className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-white ring-1 ring-white/30 hover:bg-white/10"
           >
             <Download className="size-4" /> Download
@@ -221,10 +231,10 @@ function NoPreview({ file, message = "This type of file can't be previewed. Down
         {file.sizeKb !== undefined && <p className="text-xs text-fg-muted">{sizeText(file.sizeKb)}</p>}
       </div>
       <p className="text-sm text-fg-secondary">{message}</p>
-      {file.url && (
+      {savedAs(file) && (
         <a
-          href={downloadUrl(file.url)}
-          download={file.name}
+          href={downloadUrl(savedAs(file)!.url)}
+          download={savedAs(file)!.name}
           className="inline-flex items-center gap-1.5 rounded-md bg-brand-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-600"
         >
           <Download className="size-4" /> Download

@@ -379,3 +379,18 @@ describe('files in the composer (spec 6.8 Attach menu, 6.9 tray, slice 6)', () =
     expect(screen.queryByText('Drop to add files')).toBeNull()
   })
 })
+
+describe('pasting from an office app (slice 6 review)', () => {
+  it('a paste with text and a picture of it (Word, Excel) pastes the text, and adds no file', async () => {
+    const onAdd = vi.fn()
+    const { editor } = await ready({ files: { tray: null, onAdd, ready: 0, waiting: null } })
+    await userEvent.click(editor)
+    const data = new DataTransfer()
+    data.setData('text/plain', 'Q3\t120')
+    data.setData('text/html', '<table><tr><td>Q3</td><td>120</td></tr></table>')
+    data.items.add(new File(['png'], 'image.png', { type: 'image/png' }))
+    editor.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
+    await vi.waitFor(() => expect(editor.textContent).toContain('Q3'))
+    expect(onAdd).not.toHaveBeenCalled()
+  })
+})

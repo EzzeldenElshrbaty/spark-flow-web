@@ -760,3 +760,32 @@ Waits: Save for later (Saved, Phase 3); Add to folder and Add from Flow files (F
 - Verified: 1270 tests, tsc, lint, `build:prototype`. In the app as Youssef: dropped release-scope.pdf on #backend ("Uploading 1 file…", then "PDF · 1 KB"), sent it with text, opened Details (Uploaded by, Shared in, Access), renamed it (card and panel updated live), shared it to #general (Shared in updated live), deleted it ("This file was deleted." in both); the two test messages were deleted after.
 - Seen in the app, not fixed: after Details from the card's ⋯ menu its tooltip can stay over the panel's ×; deleting a message whose file is already deleted still says "Its files are deleted with it."
 - Not pushed.
+
+## Fresh review (slice 6) — 0 critical, 5 important, 14 minor
+
+Re-graded by effect: M5 (the file pill invisible but tappable on touch tablets, so Share, Details, Edit and Delete can't be found there; the message toolbar already handles no-hover screens) up to Important.
+
+Fixed, test first:
+- [x] I1: a paste from Word or Excel (text plus a picture of it) added a "Pasted image" and dropped the text → only a paste of files alone goes to the tray, as Lexical decides; tested with a real paste in Chromium.
+- [x] I2: a file the scan blocked came back ready, so the send failed for good and the other files left the tray → only a clean file is ready; a blocked one says "This file was blocked." with only ×, and Send waits ("Remove the files that were blocked."); a still-checking one can be tried again.
+- [x] I3: an office file's viewer saved the converted PDF under the .docx name (or left the app for a storage address) → the viewer shows the preview but Download saves the file itself under its own name.
+- [x] I4: File details said "People on <project>" for a file in a project's channel, which the whole workspace can read → Access goes by the channel's own audience; "People on X" only for a project's own files.
+- [x] I5: "Delete message?" said "Its files are deleted with it." (false since files can be in several places) and asked when every file was deleted already → it asks only for files not deleted, and says "Its files go from this message but stay wherever else they're shared."; contract updated.
+- [x] M5 → Important: on a screen without hover the pill is always shown, and everywhere it stays while its menu is open.
+
+Deferred minors:
+- Undo of a deleted message brings back stale file copies (a file deleted or renamed meanwhile).
+- After Details or a ⋯ item by keyboard, focus stays on the card and its tooltip over the panel; after Delete file, focus can be lost (your observation a).
+- Create task from file is offered on a reply's copy in the channel; every file action is offered on unsent rows.
+- Edit file details and Delete file are offered in archived channels and projects, where they fail.
+- The type label is named only "PDF" (which file?) and is 39px wide on a phone.
+- The thread composer drops files added while a reply is still sending.
+- The File details panel takes about 7s to say a file is gone (its query retries on 404).
+- The mock opens files still being checked.
+- The mock's "not sent yet" ignores thread replies, so an uploader keeps access after leaving a private channel.
+- A message with files can't have its text edited away, though files alone can be sent.
+- A blocked file in a message has no Details or Delete file for its uploader or Admins.
+- The panel's Open ignores the office preview; the viewer fetches a preview with cookies (CORS on signed addresses, unverified).
+- Upload progress re-renders the whole channel page (not measured).
+
+Verified: 1278 tests, tsc, lint, `build:prototype`. Not pushed.

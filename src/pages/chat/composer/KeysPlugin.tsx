@@ -113,8 +113,11 @@ export function KeysPlugin({
           (event) => {
             const data = 'clipboardData' in event ? event.clipboardData : null
             const files = [...(data?.files ?? [])]
-            if (files.length > 0) {
-              // Files (pasted images) go to the tray, where the box takes them; otherwise the editor ignores them.
+            // Office apps put a picture of what was copied beside its text: with text, it's a text paste (as Lexical
+            // decides too). Only a paste of files alone (a screenshot, Copy image) goes to the tray.
+            const hasText = [...(data?.types ?? [])].some((type) => type === 'text/plain' || type === 'text/html')
+            if (files.length > 0 && !hasText) {
+              // Where the box takes no files, the editor ignores them.
               if (!onFiles) return false
               event.preventDefault()
               const at = new Date()

@@ -13,13 +13,14 @@ import {
   IconShare3,
   IconTrash,
 } from '@tabler/icons-react'
+import clsx from 'clsx'
 import { useEffect, useState } from 'react'
 import type { Attachment, ChatMessage, ThreadReply } from '@/api/types'
 import { useFileUrl } from '@/components/AttachmentView'
 import { IconButton } from '@/components/sf/Button'
 import { Icon } from '@/components/sf/Icon'
 import { Menu, MenuItem, MenuSeparator } from '@/components/sf/Menu'
-import { usePhone } from '@/components/sf/usePhone'
+import { useNoHover, usePhone } from '@/components/sf/usePhone'
 import { FileViewer } from '@/components/ui/FileViewer'
 import { downloadUrl, fileSubline, previewOf } from '@/lib/fileTypes'
 import { useFileActions } from '@/pages/chat/files/FileActions'
@@ -48,6 +49,10 @@ const typeLabel = (a: Attachment) => (a.name.includes('.') ? a.name.split('.').p
 function FileActionsPill({ attachment, url, link, message }: { attachment: Attachment; url: string | null; link?: string; message?: ChatMessage | ThreadReply }) {
   const actions = useFileActions()
   const phone = usePhone()
+  const noHover = useNoHover()
+  // Where there's no hover (a phone, a tablet) the pill is always there; elsewhere on hover or focus, and while its
+  // menu is open.
+  const always = phone || noHover
   const manage = actions?.mayManage(attachment) ?? false
   const [said, setSaid] = useState<'' | 'Link copied' | "Couldn't copy the link">('')
   useEffect(() => {
@@ -64,7 +69,10 @@ function FileActionsPill({ attachment, url, link, message }: { attachment: Attac
       <div
         role="group"
         aria-label={`${attachment.name} actions`}
-        className="flex gap-0.5 rounded-sf-md bg-sf-surface-raised p-0.5 opacity-0 shadow-sf-toolbar group-hover/file:opacity-100 focus-within:opacity-100 max-md:opacity-100"
+        className={clsx(
+          'flex gap-0.5 rounded-sf-md bg-sf-surface-raised p-0.5 shadow-sf-toolbar',
+          always ? 'opacity-100' : 'opacity-0 group-hover/file:opacity-100 focus-within:opacity-100 has-[[aria-expanded=true]]:opacity-100',
+        )}
       >
         {!phone && <IconButton label="Download" icon={IconDownload} size="sm" disabled={!url} onClick={save} />}
         {!phone && actions && manage && <IconButton label="Share" icon={IconShare3} size="sm" onClick={() => actions.share(attachment)} />}
@@ -157,7 +165,11 @@ function Live({ attachment, link, message }: { attachment: Attachment; link?: st
   const kind = preview === 'image' ? 'image' : playable ? 'video' : 'file'
   const open = () => setViewing(true)
   // An office file opens through the preview the backend converted it to, when there is one (spec 6.9).
-  const viewed = preview === 'none' && attachment.previewUrl ? { name: attachment.name, url: attachment.previewUrl, preview: 'pdf' as const } : url && { name: attachment.name, url }
+  // Download in the viewer still saves the file itself, under its own name, not the preview.
+  const viewed =
+    preview === 'none' && attachment.previewUrl
+      ? { name: attachment.name, url: attachment.previewUrl, preview: 'pdf' as const, download: url ? { url, name: attachment.name } : null }
+      : url && { name: attachment.name, url }
   const viewer = viewing && viewed && <FileViewer files={[{ ...viewed, sizeKb: Math.round(attachment.size / 1024) }]} onClose={() => setViewing(false)} />
 
   // The type label above the card folds it away and back (spec 6.9 "PDF ▾").
