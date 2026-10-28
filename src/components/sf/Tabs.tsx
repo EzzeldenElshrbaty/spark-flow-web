@@ -3,7 +3,8 @@ import clsx from 'clsx'
 import { useRef, type KeyboardEvent } from 'react'
 import { Icon } from './Icon'
 
-export type TabItem<T extends string> = { id: T; label: string; icon?: TablerIcon }
+/** `count` shows after the label (Members 4) and is read with it. */
+export type TabItem<T extends string> = { id: T; label: string; icon?: TablerIcon; count?: number }
 
 /**
  * The 40px tab row under a header (spec 6.1, 6.12). Arrow keys move to the next tab and open it (one tab stop for the
@@ -22,7 +23,8 @@ export function Tabs<T extends string>({ label, tabs, tab, onChange, panelId }: 
   }
   return (
     // The row's line is an inset shadow, inside its box: the selected tab's rule covers it without the row scrolling.
-    <div role="tablist" aria-label={label} className="flex h-sf-tabs flex-none items-stretch gap-1 overflow-x-auto px-4 shadow-[inset_0_-1px_0_var(--line)]">
+    // 44px tall on phones, a touch target (spec 6.16).
+    <div role="tablist" aria-label={label} className="flex h-sf-tabs flex-none items-stretch gap-1 overflow-x-auto px-4 shadow-[inset_0_-1px_0_var(--line)] max-md:h-11">
       {tabs.map((t, i) => {
         const selected = t.id === tab
         return (
@@ -47,6 +49,9 @@ export function Tabs<T extends string>({ label, tabs, tab, onChange, panelId }: 
           >
             {t.icon && <Icon icon={t.icon} size={18} />}
             {t.label}
+            {/* The space keeps the name "Members 4", the words on screen. */}
+            {t.count !== undefined && ' '}
+            {t.count !== undefined && <span className="sf-meta text-sf-text-muted tabular-nums">{t.count}</span>}
           </button>
         )
       })}

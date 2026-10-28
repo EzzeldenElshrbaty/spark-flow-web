@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
-import { useChannels, useCreateChannel, useUpdateChannel } from '@/api/chat'
-import type { Channel } from '@/api/types'
+import { useChannels, useCreateChannel } from '@/api/chat'
 import { useMe, useUsers } from '@/api/users'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
@@ -11,43 +10,36 @@ import { channelFormErrors, MAX_TOPIC, type ChannelValues } from '@/lib/channelF
 import { paths } from '@/lib/paths'
 
 /**
- * New channel, or a channel's details (name, topic, members), as a drawer. Private is chosen once, when the channel is
- * made. You are always in a channel you make or edit; the list shows everyone else in the workspace.
+ * New channel (name, topic, private, people), as a drawer. Private is chosen once, when the channel is made. You are
+ * always in a channel you make; the list shows everyone else in the workspace. An existing channel's details are in
+ * Channel details (spec 6.10).
  */
-export function ChannelSheet({ workspaceId, workspaceSlug, channel, onClose }: { workspaceId: string; workspaceSlug: string; channel?: Channel; onClose: () => void }) {
+export function ChannelSheet({ workspaceId, workspaceSlug, onClose }: { workspaceId: string; workspaceSlug: string; onClose: () => void }) {
   const navigate = useNavigate()
   const me = useMe().data
   const people = (useUsers(workspaceId).data ?? []).filter((u) => u.id !== me?.id)
-  const taken = (useChannels(workspaceId).data ?? []).filter((c) => c.kind === 'channel' && c.id !== channel?.id).map((c) => c.name ?? '')
+  const taken = (useChannels(workspaceId).data ?? []).filter((c) => c.kind === 'channel').map((c) => c.name ?? '')
   const create = useCreateChannel()
-  const update = useUpdateChannel()
-  const [values, setValues] = useState<ChannelValues>(() => ({
-    name: channel?.name ?? '',
-    topic: channel?.topic ?? '',
-    isPrivate: channel?.isPrivate ?? false,
-    memberIds: channel ? channel.memberIds.filter((id) => id !== me?.id) : [],
-  }))
+  const [values, setValues] = useState<ChannelValues>({ name: '', topic: '', isPrivate: false, memberIds: [] })
   const [errors, setErrors] = useState<ReturnType<typeof channelFormErrors>>({})
   const set = <K extends keyof ChannelValues>(k: K, v: ChannelValues[K]) => setValues((s) => ({ ...s, [k]: v }))
-  const pending = create.isPending || update.isPending
-  const failure = (create.error ?? update.error) as Error | null
+  const pending = create.isPending
+  const failure = create.error as Error | null
 
   const save = () => {
     const found = channelFormErrors(values, taken)
     setErrors(found)
     if (Object.keys(found).length) return
-    const memberIds = me && (!channel || channel.memberIds.includes(me.id)) ? [me.id, ...values.memberIds] : values.memberIds
-    if (channel) update.mutate({ id: channel.id, patch: { name: values.name.trim(), topic: values.topic.trim() } }, { onSuccess: onClose })
-    else
-      create.mutate(
-        { workspaceId, name: values.name.trim(), topic: values.topic.trim(), isPrivate: values.isPrivate, memberIds },
-        {
-          onSuccess: (made) => {
-            onClose()
-            navigate(paths.channel(workspaceSlug, made.id))
-          },
+    const memberIds = me ? [me.id, ...values.memberIds] : values.memberIds
+    create.mutate(
+      { workspaceId, name: values.name.trim(), topic: values.topic.trim(), isPrivate: values.isPrivate, memberIds },
+      {
+        onSuccess: (made) => {
+          onClose()
+          navigate(paths.channel(workspaceSlug, made.id))
         },
-      )
+      },
+    )
   }
 
   const toggle = (id: string) => set('memberIds', values.memberIds.includes(id) ? values.memberIds.filter((m) => m !== id) : [...values.memberIds, id])
@@ -57,15 +49,15 @@ export function ChannelSheet({ workspaceId, workspaceSlug, channel, onClose }: {
       open
       onClose={onClose}
       variant="drawer"
-      title={channel ? 'Edit details' : 'New channel'}
-      description={channel ? undefined : 'A place for a topic or a team. A private channel shows only to the people in it.'}
+      title="New channel"
+      description="A place for a topic or a team. A private channel shows only to the people in it."
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={pending}>
             Cancel
           </Button>
           <Button onClick={save} disabled={pending}>
-            {channel ? (pending ? 'Saving…' : 'Save') : pending ? 'Creating…' : 'Create channel'}
+            {pending ? 'Creating…' : 'Create channel'}
           </Button>
         </>
       }
@@ -82,20 +74,18 @@ export function ChannelSheet({ workspaceId, workspaceSlug, channel, onClose }: {
         <Field label="Topic" error={errors.topic} hint={`Up to ${MAX_TOPIC} characters.`}>
           <input className={inputClass} value={values.topic} aria-invalid={Boolean(errors.topic)} onChange={(e) => set('topic', e.target.value)} placeholder="What it's for" />
         </Field>
-        {!channel && (
-          <label className="flex items-start gap-2.5 text-sm text-fg-secondary">
-            <input type="checkbox" className="mt-0.5 size-4 accent-brand-500" checked={values.isPrivate} onChange={(e) => set('isPrivate', e.target.checked)} />
-            <span>
-              <span className="font-medium text-fg">Private</span>
-              <span className="block text-xs text-fg-muted">Only the people you add see it. This can't be changed later.</span>
-            </span>
-          </label>
-        )}
+        <label className="flex items-start gap-2.5 text-sm text-fg-secondary">
+          <input type="checkbox" className="mt-0.5 size-4 accent-brand-500" checked={values.isPrivate} onChange={(e) => set('isPrivate', e.target.checked)} />
+          <span>
+            <span className="font-medium text-fg">Private</span>
+            <span className="block text-xs text-fg-muted">Only the people you add see it. This can't be changed later.</span>
+          </span>
+        </label>
         <fieldset>
           <legend className="mb-1.5 text-sm font-medium text-fg-secondary">People</legend>
           <ul className="max-h-72 space-y-0.5 overflow-y-auto rounded-lg border border-line p-1">
-            {/* I'm in a new channel always; in an existing one only if I'm a member (an Admin may not be). */}
-            {me && (!channel || channel.memberIds.includes(me.id)) && (
+            {/* I'm in a channel I make. */}
+            {me && (
               <li>
                 <label className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm text-fg-muted">
                   <input type="checkbox" className="size-4 accent-brand-500" checked disabled />

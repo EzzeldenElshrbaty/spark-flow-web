@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useId, useMemo, useState, type ReactNode } from 'react'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
-import { useChannel, useDrafts, useDraftSaver, useJumpTarget, useLeaveChannel, useMarkRead, useMessage, useMessages, useMessagesFrom, useSetMuted, useSetNotifyLevel, useSetStarred } from '@/api/chat'
+import { useAddMembers, useChannel, useChannels, useDrafts, useDraftSaver, useJumpTarget, useLeaveChannel, useMarkRead, useMessage, useMessages, useMessagesFrom, useRemoveMember, useSetMuted, useSetNotifyLevel, useSetStarred, useUpdateChannel } from '@/api/chat'
 import { useUsers } from '@/api/users'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
@@ -8,6 +8,7 @@ import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { ApiError } from '@/lib/api'
 import { channelLabel, inWorkspace, isArchived, mustJoin } from '@/lib/channels'
 import { paths } from '@/lib/paths'
+import { usePermission } from '@/lib/usePermission'
 import { useRole } from '@/lib/useRole'
 import { useRealtime } from '@/lib/realtime'
 import { NotFound } from '@/pages/NotFound'
@@ -28,7 +29,7 @@ import { useCanPost, useReadOnlyLine } from '@/pages/chat/useCanPost'
 import { useTaskFromMessage } from '@/pages/chat/useTaskFromMessage'
 import { ArchiveChannelModal, ArchivedChannelLine, JoinChannelLine, useChannelRights } from '@/pages/chat/ChannelActions'
 import { ChannelHeader } from '@/pages/chat/ChannelHeader'
-import { ChannelSheet } from '@/pages/chat/ChannelSheet'
+import { ChannelDetails, type DetailsTab } from '@/pages/chat/ChannelDetails'
 import { ChannelTabs, TabStub, tabFromParam, type ChannelTab } from '@/pages/chat/ChannelTabs'
 import type { Channel, ChatMessage, User } from '@/api/types'
 import { useProjectSummaries } from '@/api/projects'
@@ -159,20 +160,29 @@ function Padded({ children }: { children: ReactNode }) {
   return <div className="px-4 pt-6 md:px-6 xl:px-8">{children}</div>
 }
 
-/** The header and tabs, with what they open: Edit details, Archive, and errors from their actions near them. */
+/** The header and tabs, with what they open: Channel details, Archive, and errors from their actions near them. */
 function ChannelTop({ channel, people, workspaceSlug, tab, onTab, panelId }: { channel: Channel; people: User[]; workspaceSlug: string; tab: ChannelTab; onTab: (tab: ChannelTab) => void; panelId: string }) {
   const { persona } = useRole()
+  const check = usePermission()
   const rights = useChannelRights(channel)
   const star = useSetStarred()
   const mute = useSetMuted()
   const level = useSetNotifyLevel()
   const markRead = useMarkRead()
   const leave = useLeaveChannel()
+  const update = useUpdateChannel()
+  const addMembers = useAddMembers()
+  const removeMember = useRemoveMember()
   const navigate = useNavigate()
-  const [editing, setEditing] = useState(false)
+  const projects = useProjectSummaries(channel.workspaceId).data
+  const takenNames = (useChannels(channel.workspaceId).data ?? []).filter((c) => c.kind === 'channel' && c.id !== channel.id).map((c) => c.name ?? '')
+  const [details, setDetails] = useState<{ tab: DetailsTab; editTopic?: boolean } | null>(null)
   const [archiving, setArchiving] = useState(false)
   const error = (star.error ?? mute.error ?? level.error ?? markRead.error ?? leave.error) as Error | null
   const members = channel.memberIds.map((id) => ({ id, name: people.find((u) => u.id === id)?.name ?? 'Unknown person' }))
+  const own = projects?.find((p) => p.channelId === channel.id)
+  const copyLink = () => navigator.clipboard.writeText(new URL(paths.channel(workspaceSlug, channel.id), window.location.origin).href)
+  const leaveChannel = () => leave.mutate(channel.id, { onSuccess: () => navigate(paths.home(workspaceSlug)) })
   return (
     <div className="sf flex-none bg-sf-surface">
       <ChannelHeader
@@ -180,7 +190,7 @@ function ChannelTop({ channel, people, workspaceSlug, tab, onTab, panelId }: { c
         title={channel.kind === 'channel' ? (channel.name ?? '') : channelLabel(channel, people, persona.id)}
         members={members}
         rights={rights}
-        onEdit={() => setEditing(true)}
+        onDetails={(on, editTopic) => setDetails({ tab: on, editTopic })}
         onStar={(starred) => star.mutate({ id: channel.id, starred })}
         onMute={(muted) => mute.mutate({ id: channel.id, muted })}
         onNotifyLevel={(notifyLevel) => level.mutate({ id: channel.id, level: notifyLevel })}
@@ -188,13 +198,41 @@ function ChannelTop({ channel, people, workspaceSlug, tab, onTab, panelId }: { c
           useReadHold.getState().release(channel.id)
           markRead.mutate({ channelId: channel.id })
         }}
-        onCopyLink={() => navigator.clipboard.writeText(new URL(paths.channel(workspaceSlug, channel.id), window.location.origin).href)}
-        onLeave={() => leave.mutate(channel.id, { onSuccess: () => navigate(paths.home(workspaceSlug)) })}
+        onCopyLink={copyLink}
+        onLeave={leaveChannel}
         onArchive={() => setArchiving(true)}
       />
       <ChannelTabs channel={channel} tab={tab} onChange={onTab} panelId={panelId} />
       {error && <p className="sf-small px-4 pt-2 text-sf-error">{error.message}</p>}
-      {editing && <ChannelSheet workspaceId={channel.workspaceId} workspaceSlug={workspaceSlug} channel={channel} onClose={() => setEditing(false)} />}
+      {details && channel.kind === 'channel' && (
+        <ChannelDetails
+          channel={channel}
+          meId={persona.id}
+          people={people}
+          takenNames={takenNames}
+          project={own ? { name: own.name, key: own.key, href: paths.project(workspaceSlug, own.key) } : null}
+          rights={{ ...rights, restrictPosting: check('channel.restrictPosting', { channel }) }}
+          tab={details.tab}
+          editTopic={details.editTopic}
+          onClose={() => setDetails(null)}
+          onSave={(patch) => update.mutateAsync({ id: channel.id, patch })}
+          onAdd={(userIds) => addMembers.mutateAsync({ id: channel.id, userIds })}
+          onRemove={(userId) => removeMember.mutateAsync({ id: channel.id, userId })}
+          onStar={(starred) => star.mutate({ id: channel.id, starred })}
+          onNotifyLevel={(notifyLevel) => level.mutate({ id: channel.id, level: notifyLevel })}
+          onMute={(muted) => mute.mutate({ id: channel.id, muted })}
+          onCopyLink={copyLink}
+          onLeave={() => {
+            setDetails(null)
+            leaveChannel()
+          }}
+          onArchive={() => {
+            // Its question takes over: once it's archived, nothing here can be changed anyway.
+            setDetails(null)
+            setArchiving(true)
+          }}
+        />
+      )}
       {channel.kind === 'channel' && <ArchiveChannelModal channel={channel} open={archiving} onClose={() => setArchiving(false)} />}
     </div>
   )

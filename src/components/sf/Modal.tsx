@@ -12,13 +12,16 @@ export function Modal({
   onClose,
   title,
   description,
+  actions,
   footer,
   children,
 }: {
   open: boolean
   onClose: () => void
-  title: string
+  title: ReactNode
   description?: ReactNode
+  /** Controls beside the title, before × (Channel details: star, notification level). */
+  actions?: ReactNode
   /** Buttons, end-aligned. One primary at most. */
   footer?: ReactNode
   children?: ReactNode
@@ -53,8 +56,10 @@ export function Modal({
           aria-modal="true"
           aria-labelledby={titleId}
           aria-describedby={description ? descriptionId : undefined}
+          // 540px, or the screen less 16px a side on a phone (spec 6.10). Against the viewport: a percentage would be of
+          // the grid track the dialog itself sizes, and leave it 508px wide.
           onKeyDown={(event) => trapTab(event, event.currentTarget)}
-          className="w-[540px] max-w-[calc(100%-32px)] rounded-sf-lg bg-sf-surface-raised p-6 text-sf-text shadow-sf-modal"
+          className="w-[min(540px,calc(100vw-32px))] rounded-sf-lg bg-sf-surface-raised p-6 text-sf-text shadow-sf-modal"
         >
           <div className="mb-4 flex items-start gap-4">
             <div className="min-w-0">
@@ -67,7 +72,8 @@ export function Modal({
                 </p>
               )}
             </div>
-            <IconButton label="Close" icon={IconX} onClick={onClose} className="ms-auto" tooltip={false} />
+            {actions && <div className="ms-auto flex flex-none items-center gap-1">{actions}</div>}
+            <IconButton label="Close" icon={IconX} onClick={onClose} className={actions ? undefined : 'ms-auto'} tooltip={false} />
           </div>
           {children}
           {footer && <div className="mt-6 flex items-center justify-end gap-2">{footer}</div>}

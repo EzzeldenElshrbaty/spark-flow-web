@@ -573,13 +573,13 @@ Part A — data and routes
 - [x] http, hooks, query keys; tests first.
 
 Part B — the Channel details modal
-- [ ] One levels menu shared by the header bell and the details header.
-- [ ] Modal: `# name` (lock when private), star, level button, ×; tabs About, Members (count), Settings (managers).
-- [ ] About: Channel name, Topic, Description cards with Edit in place (Save, Cancel, errors near the field); a project's channel shows its project read-only with Open project; Copy channel link ("Link copied"); Leave channel.
-- [ ] Members: Find members, rows (avatar, presence, name, title, "you"), Remove for managers; Add people (workspace people only, "Add N people"); a project's channel says its people follow the project.
-- [ ] Settings: Who can post (admins change it), Archive channel, the private note.
-- [ ] Entry points: the name (About, for everyone who can read), the members button (Members), Add a topic (Topic open), ⋮ "Channel details". The old drawer stays for New channel only.
-- [ ] Phones: 16px gutters, content scrolls, 44px targets; light and dark; axe.
+- [x] One levels menu shared by the header bell and the details header.
+- [x] Modal: `# name` (lock when private), star, level button, ×; tabs About, Members (count), Settings (managers).
+- [x] About: Channel name, Topic, Description cards with Edit in place (Save, Cancel, errors near the field); a project's channel shows its project read-only with Open project; Copy channel link ("Link copied"); Leave channel.
+- [x] Members: Find members, rows (avatar, presence, name, title, "you"), Remove for managers; Add people (workspace people only, "Add N people"); a project's channel says its people follow the project.
+- [x] Settings: Who can post (admins change it), Archive channel, the private note.
+- [x] Entry points: the name (About, for everyone who can read), the members button (Members), Add a topic (Topic open), ⋮ "Channel details". The old drawer stays for New channel only.
+- [x] Phones: 16px gutters, content scrolls, 44px targets; light and dark; axe.
 
 Part C — Who can post in the channel
 - [ ] At "Only admins" a non-admin sees "Only admins can post in #x." instead of the composer, in the channel and the thread.
@@ -588,4 +588,4 @@ Part C — Who can post in the channel
 
 Rulings approved with the plan: linked project read-only (no linking for other channels yet); Add people takes workspace people only (emails and guests in slice 5); "Only admins" means workspace admins and covers thread replies; no details for DMs, no Tabs or Integrations tabs, no Start a call, no system message for the description.
 
-Rulings while building: posting rules live in `can()` (`channel.restrictPosting`, `channel.post`); edits, deletes and reactions still work at Only admins (only new posts are refused); a private channel may go down to just me through Remove (the "Add at least one person" rule is for a new channel); until part B lands, the old drawer edits name and topic only.
+Rulings while building: posting rules live in `can()` (`channel.restrictPosting`, `channel.post`); edits, deletes and reactions still work at Only admins (only new posts are refused); a private channel may go down to just me through Remove (the "Add at least one person" rule is for a new channel); the old drawer is now New channel only; ChannelDetails is presentational and ChannelPage wires it to the API; Archive from Settings closes the details and asks its usual question; Add people answers a typed email with "Pick someone in Spark Systems. Inviting by email comes later."; every sf Modal was 508px wide on a 390px phone (its max width was a percentage of its own grid track), now `min(540px, 100vw - 32px)`; sf Tabs are 44px tall on phones and show a count ("Members 4").

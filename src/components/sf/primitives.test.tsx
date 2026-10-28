@@ -133,3 +133,23 @@ describe('Toggle and Checkbox', () => {
     expect(box.checked).toBe(true)
   })
 })
+
+describe('Modal header and Tabs counts (spec 6.10)', () => {
+  it('a modal can carry actions beside its title, before ×, and a title that is more than text', async () => {
+    const { Modal } = await import('./Modal')
+    render(
+      <Modal open onClose={vi.fn()} title={<span># backend</span>} actions={<button type="button">Star channel</button>}>
+        <p>Body</p>
+      </Modal>,
+    )
+    const dialog = screen.getByRole('dialog', { name: '# backend' })
+    const buttons = [...dialog.querySelectorAll('button')].map((b) => b.getAttribute('aria-label') ?? b.textContent)
+    expect(buttons).toEqual(['Star channel', 'Close'])
+  })
+
+  it('a tab can show a count, read with its name', async () => {
+    const { Tabs } = await import('./Tabs')
+    render(<Tabs label="Channel details" tabs={[{ id: 'about', label: 'About' }, { id: 'members', label: 'Members', count: 4 }]} tab="about" onChange={vi.fn()} panelId="p" />)
+    expect(screen.getByRole('tab', { name: 'Members 4' })).toBeTruthy()
+  })
+})

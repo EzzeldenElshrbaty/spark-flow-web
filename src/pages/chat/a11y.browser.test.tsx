@@ -22,6 +22,7 @@ import { EmojiPicker } from '@/pages/chat/EmojiPicker'
 import { useEditing } from '@/pages/chat/editingStore'
 import { MarkAllReadModal } from '@/pages/chat/ChannelShortcuts'
 import { ActivityView } from '@/pages/chat/ActivityView'
+import { ChannelDetails } from '@/pages/chat/ChannelDetails'
 import { ThreadMenu } from '@/pages/chat/ThreadMenu'
 import { ThreadComposer } from '@/pages/chat/ThreadComposer'
 import type { BodyContext } from '@/pages/chat/MessageBody'
@@ -50,6 +51,28 @@ const activity: ActivityItem[] = [
   { id: 'a1', kind: 'mention', read: false, createdAt: '2026-10-28T09:00:00.000Z', workspaceId: 'ws-eng', actorId: 'u-2', actorName: 'Nour El-Sayed', channelId: 'c-backend', messageId: 'm1', replyId: null, taskKey: null, projectId: null, excerpt: 'Can you review NEX-103 today?', emoji: null },
   { id: 'a2', kind: 'reaction', read: true, createdAt: '2026-10-28T08:00:00.000Z', workspaceId: 'ws-eng', actorId: 'u-2', actorName: 'Nour El-Sayed', channelId: 'c-backend', messageId: 'm2', replyId: null, taskKey: null, projectId: null, excerpt: 'Shipped the fix', emoji: '👍' },
 ]
+const details = (over: Partial<Parameters<typeof ChannelDetails>[0]> = {}) => (
+  <ChannelDetails
+    channel={channel}
+    meId="u-1"
+    people={users}
+    takenNames={[]}
+    project={null}
+    rights={{ manage: true, leave: true, restrictPosting: true }}
+    tab="about"
+    onClose={vi.fn()}
+    onSave={async () => {}}
+    onAdd={async () => {}}
+    onRemove={async () => {}}
+    onStar={vi.fn()}
+    onNotifyLevel={vi.fn()}
+    onMute={vi.fn()}
+    onCopyLink={async () => {}}
+    onLeave={vi.fn()}
+    onArchive={vi.fn()}
+    {...over}
+  />
+)
 const directory = { users, projects: [{ key: 'NEX', name: 'Nexus Core' }], tasks: [{ key: 'NEX-103', title: task.title }], channels: [{ id: 'c-backend', name: 'backend' }], memberIds: ['u-1'] }
 
 function mount(node: ReactNode, dark: boolean) {
@@ -80,7 +103,7 @@ const surfaces: [string, () => ReactNode][] = [
     'channel header and tabs',
     () => (
       <>
-        <ChannelHeader channel={channel} title="backend" members={users} rights={{ manage: true, leave: true }} onEdit={vi.fn()} onStar={vi.fn()} onMute={vi.fn()} onNotifyLevel={vi.fn()} onMarkRead={vi.fn()} onCopyLink={async () => {}} onLeave={vi.fn()} onArchive={vi.fn()} />
+        <ChannelHeader channel={channel} title="backend" members={users} rights={{ manage: true, leave: true }} onDetails={vi.fn()} onStar={vi.fn()} onMute={vi.fn()} onNotifyLevel={vi.fn()} onMarkRead={vi.fn()} onCopyLink={async () => {}} onLeave={vi.fn()} onArchive={vi.fn()} />
         <ChannelTabs channel={channel} tab="messages" onChange={vi.fn()} panelId="p" />
         <div id="p" role="tabpanel" aria-label="Messages" />
       </>
@@ -187,6 +210,25 @@ describe.each([
   it('Activity, its rows read and unread and its error, has no axe violations (spec 6.12)', async () => {
     mount(<ActivityView items={activity} ws="engineering" placeOf={() => '#backend'} error={false} retrying={false} onRetry={vi.fn()} onOpen={vi.fn()} onMarkAllRead={vi.fn()} marking={false} markError="Couldn’t mark them read. Try again." />, dark)
     expect(screen.getByRole('heading', { name: 'Earlier' })).toBeTruthy()
+    expect(await violations()).toEqual([])
+  })
+
+  it('Channel details on each tab, with a field open, its level menu and Add people, has no axe violations (spec 6.10)', async () => {
+    mount(details({ editTopic: true }), dark)
+    expect(screen.getByRole('textbox', { name: 'Topic' })).toBeTruthy()
+    expect(await violations()).toEqual([])
+    await userEvent.click(screen.getByRole('button', { name: 'Channel notifications: Mentions and keywords' }))
+    expect(screen.getByRole('menuitemradio', { name: 'Nothing' })).toBeTruthy()
+    expect(await violations()).toEqual([])
+    await userEvent.keyboard('{Escape}')
+    await userEvent.click(screen.getByRole('tab', { name: 'Members 2' }))
+    expect(await violations()).toEqual([])
+    await userEvent.click(screen.getByRole('button', { name: 'Add people' }))
+    expect(screen.getByRole('dialog', { name: 'Add people to #backend' })).toBeTruthy()
+    expect(await violations()).toEqual([])
+    await userEvent.keyboard('{Escape}')
+    await userEvent.click(screen.getByRole('tab', { name: 'Settings' }))
+    expect(screen.getByRole('radiogroup', { name: 'Who can post' })).toBeTruthy()
     expect(await violations()).toEqual([])
   })
 
@@ -507,3 +549,28 @@ describe('Activity on a phone (spec 10: every screen works at 390px)', () => {
     }
   })
 })
+
+describe('Channel details on a phone (spec 10, 6.16)', () => {
+  it('fits 390px with nothing scrolling sideways, and its tabs and buttons answer a 44px touch', async () => {
+    await page.viewport(390, 844)
+    try {
+      mount(details(), false)
+      const dialog = screen.getByRole('dialog', { name: 'backend' })
+      expect(dialog.getBoundingClientRect().right).toBeLessThanOrEqual(390 - 16)
+      expect(dialog.scrollWidth).toBeLessThanOrEqual(dialog.clientWidth)
+      expect(screen.getByRole('tab', { name: 'About' }).getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
+      /** Whether a touch 21px above and below the middle of `el` lands on it. */
+      const answers = (el: Element) => {
+        const r = el.getBoundingClientRect()
+        const x = r.left + r.width / 2
+        return [r.top + r.height / 2 - 21, r.top + r.height / 2 + 21].map((y) => el.contains(document.elementFromPoint(x, y)))
+      }
+      for (const name of ['Edit topic', 'Star channel', 'Channel notifications: Mentions and keywords', 'Copy channel link']) expect(answers(screen.getByRole('button', { name })), name).toEqual([true, true])
+      await userEvent.click(screen.getByRole('tab', { name: 'Members 2' }))
+      expect(answers(screen.getByRole('button', { name: 'Remove Nour El-Sayed' }))).toEqual([true, true])
+    } finally {
+      await page.viewport(414, 896)
+    }
+  })
+})
+

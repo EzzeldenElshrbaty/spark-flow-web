@@ -1,0 +1,227 @@
+// @vitest-environment jsdom
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import type { ComponentProps } from 'react'
+import { MemoryRouter } from 'react-router'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { Channel, User } from '@/api/types'
+import { ChannelDetails } from '@/pages/chat/ChannelDetails'
+
+afterEach(cleanup)
+window.matchMedia ??= ((media: string) => ({ matches: false, media, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia
+
+const backend: Channel = {
+  id: 'c-backend', workspaceId: 'ws-eng', kind: 'channel', name: 'backend', topic: 'APIs and jobs', memberIds: ['u-1', 'u-2', 'u-3'], isPrivate: false,
+  lastMessageAt: null, description: '', whoCanPost: 'everyone', unreadCount: 0, lastSeq: 9, lastReadSeq: 9, starred: false, muted: false, notifyLevel: 'mentions',
+}
+const people = [
+  { id: 'u-1', name: 'Youssef Abdelrahman', title: 'Managing Director', presence: 'active', role: 'admin' },
+  { id: 'u-2', name: 'Nour El-Sayed', title: 'Backend lead', presence: 'away', role: 'pm' },
+  { id: 'u-3', name: 'Mariam Fathy', title: 'Designer', presence: 'offline', role: 'member' },
+  { id: 'u-4', name: 'Omar Hassan', title: 'QA', presence: 'active', role: 'member' },
+] as User[]
+
+type Props = ComponentProps<typeof ChannelDetails>
+function show(props: Partial<Props> = {}) {
+  const handlers = {
+    onClose: vi.fn(), onSave: vi.fn(async () => {}), onAdd: vi.fn(async () => {}), onRemove: vi.fn(async () => {}), onStar: vi.fn(), onNotifyLevel: vi.fn(),
+    onMute: vi.fn(), onCopyLink: vi.fn(async () => {}), onLeave: vi.fn(), onArchive: vi.fn(),
+  }
+  render(
+    <MemoryRouter>
+      <ChannelDetails
+        channel={backend}
+        meId="u-1"
+        people={people}
+        takenNames={['general', 'frontend-dev']}
+        project={null}
+        rights={{ manage: true, leave: true, restrictPosting: true }}
+        tab="about"
+        {...handlers}
+        {...props}
+      />
+    </MemoryRouter>,
+  )
+  return handlers
+}
+const dialog = () => screen.getByRole('dialog', { name: 'backend' })
+const card = (name: string) => screen.getByRole('group', { name })
+
+describe('Channel details: the header and tabs (spec 6.10)', () => {
+  it('names the channel, with the star, the level button and ×; About, Members (count) and Settings', () => {
+    const { onStar } = show()
+    const head = within(dialog())
+    fireEvent.click(head.getByRole('button', { name: 'Star channel' }))
+    expect(onStar).toHaveBeenCalledWith(true)
+    expect(head.getByRole('button', { name: 'Channel notifications: Mentions and keywords' }).textContent).toContain('Mentions and keywords')
+    expect(head.getByRole('button', { name: 'Close' })).toBeTruthy()
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['About', 'Members 3', 'Settings'])
+    expect(screen.getByRole('tab', { name: 'About' }).getAttribute('aria-selected')).toBe('true')
+  })
+
+  it('the level button opens the bell’s menu', () => {
+    const { onNotifyLevel } = show()
+    fireEvent.click(screen.getByRole('button', { name: 'Channel notifications: Mentions and keywords' }))
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'All new messages' }))
+    expect(onNotifyLevel).toHaveBeenCalledWith('all')
+  })
+
+  it('without the right to manage it there is no Settings and nothing to edit', () => {
+    show({ rights: { manage: false, leave: true, restrictPosting: false } })
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['About', 'Members 3'])
+    expect(screen.queryByRole('button', { name: /^Edit/ })).toBeNull()
+  })
+
+  it('opens on the tab it was asked for', () => {
+    show({ tab: 'members' })
+    expect(screen.getByRole('tab', { name: 'Members 3' }).getAttribute('aria-selected')).toBe('true')
+  })
+})
+
+describe('Channel details: About (spec 6.10)', () => {
+  it('shows the name, topic and description cards, each with Edit; an empty one says what to add', () => {
+    show()
+    expect(card('Channel name').textContent).toContain('#backend')
+    expect(card('Topic').textContent).toContain('APIs and jobs')
+    expect(card('Description').textContent).toContain('Add a description')
+    expect(screen.getAllByRole('button', { name: /^Edit/ }).map((b) => b.getAttribute('aria-label'))).toEqual(['Edit channel name', 'Edit topic', 'Edit description'])
+  })
+
+  it('Edit opens the field in place; Save sends the change and closes it; Cancel leaves it as it was', async () => {
+    const { onSave } = show()
+    fireEvent.click(screen.getByRole('button', { name: 'Edit topic' }))
+    const field = within(card('Topic')).getByRole('textbox', { name: 'Topic' })
+    expect(document.activeElement).toBe(field)
+    fireEvent.change(field, { target: { value: 'Queues and the API' } })
+    await act(async () => fireEvent.click(within(card('Topic')).getByRole('button', { name: 'Save' })))
+    expect(onSave).toHaveBeenCalledWith({ topic: 'Queues and the API' })
+    expect(within(card('Topic')).queryByRole('textbox')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Edit description' }))
+    fireEvent.change(within(card('Description')).getByRole('textbox', { name: 'Description' }), { target: { value: 'Draft' } })
+    fireEvent.click(within(card('Description')).getByRole('button', { name: 'Cancel' }))
+    expect(onSave).toHaveBeenCalledOnce()
+    expect(card('Description').textContent).toContain('Add a description')
+  })
+
+  it('checks the name and description before saving, and says why near the field; a refusal shows there too', async () => {
+    const onSave = vi.fn(async () => Promise.reject(new Error('Only its members can change this channel.')))
+    show({ onSave })
+    fireEvent.click(screen.getByRole('button', { name: 'Edit channel name' }))
+    const name = within(card('Channel name')).getByRole('textbox', { name: 'Channel name' })
+    fireEvent.change(name, { target: { value: 'General' } })
+    expect((name as HTMLInputElement).value).toBe('general')
+    fireEvent.click(within(card('Channel name')).getByRole('button', { name: 'Save' }))
+    expect(within(card('Channel name')).getByRole('alert').textContent).toBe('That name is taken.')
+    expect(onSave).not.toHaveBeenCalled()
+    fireEvent.change(name, { target: { value: 'api' } })
+    await act(async () => fireEvent.click(within(card('Channel name')).getByRole('button', { name: 'Save' })))
+    expect(onSave).toHaveBeenCalledWith({ name: 'api' })
+    expect(within(card('Channel name')).getByRole('alert').textContent).toBe('Only its members can change this channel.')
+    fireEvent.click(screen.getByRole('button', { name: 'Edit description' }))
+    fireEvent.change(within(card('Description')).getByRole('textbox', { name: 'Description' }), { target: { value: 'x'.repeat(251) } })
+    fireEvent.click(within(card('Description')).getByRole('button', { name: 'Save' }))
+    expect(within(card('Description')).getByRole('alert').textContent).toBe('Keep the description under 250 characters.')
+  })
+
+  it('opened from Add a topic, the topic field is open and has the caret', () => {
+    show({ channel: { ...backend, topic: '' }, editTopic: true })
+    expect(document.activeElement).toBe(within(card('Topic')).getByRole('textbox', { name: 'Topic' }))
+  })
+
+  it('a project’s channel names its project, read-only, with a way there', () => {
+    show({ project: { name: 'Nexus Core', key: 'NEX', href: '/w/engineering/p/NEX/overview' }, rights: { manage: false, leave: false, restrictPosting: false } })
+    expect(card('Project').textContent).toContain('Nexus Core · task keys NEX-* open as cards here')
+    expect(within(card('Project')).getByRole('link', { name: 'Open project' }).getAttribute('href')).toBe('/w/engineering/p/NEX/overview')
+  })
+
+  it('Copy channel link says so; Leave channel leaves, for a member', async () => {
+    const { onCopyLink, onLeave } = show()
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Copy channel link' })))
+    expect(onCopyLink).toHaveBeenCalledOnce()
+    expect(screen.getByRole('status').textContent).toBe('Link copied')
+    fireEvent.click(screen.getByRole('button', { name: 'Leave channel' }))
+    expect(onLeave).toHaveBeenCalledOnce()
+    cleanup()
+    show({ rights: { manage: true, leave: false, restrictPosting: true } })
+    expect(screen.queryByRole('button', { name: 'Leave channel' })).toBeNull()
+  })
+})
+
+describe('Channel details: Members (spec 6.10)', () => {
+  const rows = () => within(screen.getByRole('list', { name: 'Members' })).getAllByRole('listitem').map((li) => li.querySelector('[data-name]')?.textContent)
+
+  it('lists the members, me first, and Find members narrows them', () => {
+    show({ tab: 'members' })
+    expect(rows()).toEqual(['Youssef Abdelrahman (you)', 'Mariam Fathy', 'Nour El-Sayed'])
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Find members' }), { target: { value: 'nour' } })
+    expect(rows()).toEqual(['Nour El-Sayed'])
+  })
+
+  it('a manager removes someone else, never themselves; others see no Remove', async () => {
+    const { onRemove } = show({ tab: 'members' })
+    expect(screen.queryByRole('button', { name: 'Remove Youssef Abdelrahman' })).toBeNull()
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Remove Nour El-Sayed' })))
+    expect(onRemove).toHaveBeenCalledWith('u-2')
+    cleanup()
+    show({ tab: 'members', rights: { manage: false, leave: true, restrictPosting: false } })
+    expect(screen.queryByRole('button', { name: /^Remove/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Add people' })).toBeNull()
+  })
+
+  it('a project’s channel says its people follow the project, with no Add or Remove', () => {
+    show({ tab: 'members', project: { name: 'Nexus Core', key: 'NEX', href: '/w/engineering/p/NEX/overview' }, rights: { manage: false, leave: false, restrictPosting: false } })
+    expect(screen.getByText('People on Nexus Core are in this channel.')).toBeTruthy()
+  })
+
+  it('Add people picks from the workspace people not in it, and adds them', async () => {
+    const { onAdd } = show({ tab: 'members' })
+    fireEvent.click(screen.getByRole('button', { name: 'Add people' }))
+    const add = screen.getByRole('dialog', { name: 'Add people to #backend' })
+    const names = within(add).getByRole('combobox', { name: 'Names' })
+    expect((within(add).getByRole('button', { name: 'Add people' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.focus(names)
+    fireEvent.change(names, { target: { value: 'a' } })
+    expect(within(add).getAllByRole('option').map((o) => o.querySelector('.font-medium')?.textContent)).toEqual(['Omar Hassan'])
+    fireEvent.click(within(add).getByRole('option', { name: /Omar Hassan/ }))
+    await act(async () => fireEvent.click(within(add).getByRole('button', { name: 'Add 1 person' })))
+    expect(onAdd).toHaveBeenCalledWith(['u-4'])
+    expect(screen.queryByRole('dialog', { name: 'Add people to #backend' })).toBeNull()
+  })
+
+  it('Add people says a refusal near the names, and that an email has to wait', async () => {
+    show({ tab: 'members', onAdd: vi.fn(async () => Promise.reject(new Error('Everyone you picked is already in #backend.'))) })
+    fireEvent.click(screen.getByRole('button', { name: 'Add people' }))
+    const add = screen.getByRole('dialog', { name: 'Add people to #backend' })
+    const names = within(add).getByRole('combobox', { name: 'Names' })
+    fireEvent.focus(names)
+    fireEvent.change(names, { target: { value: 'sam@client.com' } })
+    fireEvent.keyDown(names, { key: 'Enter' })
+    expect(within(add).getByText('Pick someone in Spark Systems. Inviting by email comes later.')).toBeTruthy()
+    fireEvent.change(names, { target: { value: 'om' } })
+    fireEvent.keyDown(names, { key: 'Enter' })
+    await act(async () => fireEvent.click(within(add).getByRole('button', { name: 'Add 1 person' })))
+    expect(within(add).getByText('Everyone you picked is already in #backend.')).toBeTruthy()
+  })
+})
+
+describe('Channel details: Settings (spec 6.10, §9)', () => {
+  it('an Admin chooses who can post; it saves at once', async () => {
+    const { onSave } = show({ tab: 'settings' })
+    const group = screen.getByRole('radiogroup', { name: 'Who can post' })
+    expect((within(group).getByRole('radio', { name: 'Everyone in the channel' }) as HTMLInputElement).checked).toBe(true)
+    await act(async () => fireEvent.click(within(group).getByRole('radio', { name: 'Only admins' })))
+    expect(onSave).toHaveBeenCalledWith({ whoCanPost: 'admins' })
+  })
+
+  it('anyone else sees the choice but can’t change it', () => {
+    show({ tab: 'settings', rights: { manage: true, leave: true, restrictPosting: false } })
+    for (const radio of screen.getAllByRole('radio')) expect((radio as HTMLInputElement).disabled).toBe(true)
+    expect(screen.getByText('Only admins can change this.')).toBeTruthy()
+  })
+
+  it('Archive channel asks first (the page’s question); a private channel says it stays private', () => {
+    const { onArchive } = show({ tab: 'settings', channel: { ...backend, isPrivate: true } })
+    fireEvent.click(screen.getByRole('button', { name: 'Archive channel' }))
+    expect(onArchive).toHaveBeenCalledOnce()
+    expect(screen.getByText('Private channel. Only its members can see it, and that can’t be changed.')).toBeTruthy()
+  })
+})
