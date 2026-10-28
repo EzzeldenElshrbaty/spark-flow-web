@@ -318,3 +318,64 @@ describe('RichComposer formatting row (spec 6.7, 6.8)', () => {
   })
 })
 
+
+describe('files in the composer (spec 6.8 Attach menu, 6.9 tray, slice 6)', () => {
+  const files = (over: Partial<NonNullable<Parameters<typeof RichComposer>[0]['files']>> = {}) => ({ tray: <div>The tray</div>, onAdd: vi.fn(), ready: 0, waiting: null, ...over })
+  const picker = () => vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(function (this: HTMLInputElement) {})
+
+  it('+ opens the Attach menu, whose Upload from your computer opens the file picker; ⌘U does too, not underline', async () => {
+    const click = picker()
+    const { editor } = await ready({ files: files() })
+    expect(screen.getByText('The tray')).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'Attach' }))
+    await userEvent.click(screen.getByRole('menuitem', { name: /Upload from your computer/ }))
+    expect(click).toHaveBeenCalledOnce()
+    expect((click.mock.contexts[0] as HTMLInputElement).type).toBe('file')
+    await userEvent.click(editor)
+    await userEvent.keyboard('abc{Control>}a{/Control}{Control>}u{/Control}')
+    expect(click).toHaveBeenCalledTimes(2)
+    expect(editor.innerHTML).not.toContain('underline')
+    click.mockRestore()
+  })
+
+  it('a pasted image becomes a file named after when it was pasted', async () => {
+    const onAdd = vi.fn()
+    const { editor } = await ready({ files: files({ onAdd }) })
+    await userEvent.click(editor)
+    const data = new DataTransfer()
+    data.items.add(new File(['png'], 'image.png', { type: 'image/png' }))
+    editor.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
+    await vi.waitFor(() => expect(onAdd).toHaveBeenCalledOnce())
+    const [added] = onAdd.mock.calls[0][0] as File[]
+    expect(added.name).toMatch(/^Pasted image \d{4}-\d\d-\d\d at \d\d\.\d\d\.png$/)
+    expect(editor.textContent).toBe('')
+  })
+
+  it('with files ready an empty box sends; while files go up, Send waits and says so', async () => {
+    const { onSend } = await ready({ files: files({ ready: 1 }) })
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }))
+    expect(onSend).toHaveBeenCalledOnce()
+    expect(onSend.mock.calls[0][0]).toEqual([])
+    cleanup()
+    const waiting = await ready({ files: files({ ready: 1, waiting: 'Uploading 1 file…' }) })
+    await userEvent.click(waiting.editor)
+    await userEvent.keyboard('Here it is{Enter}')
+    expect(waiting.onSend).not.toHaveBeenCalled()
+    expect((screen.getByRole('button', { name: 'Send' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByText('Uploading 1 file…')).toBeTruthy()
+  })
+
+  it('files dropped on the box are added, and the box says it takes them while they’re over it', async () => {
+    const onAdd = vi.fn()
+    const { editor } = await ready({ files: files({ onAdd }) })
+    const box = editor.closest('[data-composer]')!
+    const data = new DataTransfer()
+    data.items.add(new File(['%PDF-1.4'], 'scope.pdf', { type: 'application/pdf' }))
+    box.dispatchEvent(new DragEvent('dragenter', { dataTransfer: data, bubbles: true, cancelable: true }))
+    await vi.waitFor(() => expect(screen.getByText('Drop to add files')).toBeTruthy())
+    box.dispatchEvent(new DragEvent('drop', { dataTransfer: data, bubbles: true, cancelable: true }))
+    await vi.waitFor(() => expect(onAdd).toHaveBeenCalledOnce())
+    expect((onAdd.mock.calls[0][0] as File[]).map((f) => f.name)).toEqual(['scope.pdf'])
+    expect(screen.queryByText('Drop to add files')).toBeNull()
+  })
+})

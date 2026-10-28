@@ -159,3 +159,14 @@ describe('send queue (spec 6.2: optimistic send, retry, offline queue)', () => {
     expect(changes.at(-1)?.map((p) => p.clientId)).toEqual(['a'])
   })
 })
+
+describe('send queue with files (spec 6.9, slice 6)', () => {
+  it('keeps a message’s files while it waits, and sends them with it', async () => {
+    const { queue, send } = setup()
+    const file = { id: 'a1', name: 'scope.pdf' } as PendingMessage['attachments'] extends (infer A)[] | undefined ? A : never
+    queue.enqueue({ ...msg('k1'), content: '', fileIds: ['a1'], attachments: [file] })
+    expect(queue.items()[0]).toMatchObject({ fileIds: ['a1'], attachments: [file] })
+    await flush()
+    expect(send.mock.calls[0][0]).toMatchObject({ clientId: 'k1', fileIds: ['a1'] })
+  })
+})

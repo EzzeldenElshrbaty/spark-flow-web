@@ -32,7 +32,7 @@ const pendingId = (clientId: string) => `pending:${clientId}`
 /** A pending message as a row of the list: mine, newest, with nothing on it yet. */
 const asMessage = (p: PendingMessage, meId: string | undefined): ChatMessage => ({
   id: pendingId(p.clientId), channelId: p.channelId, seq: Number.MAX_SAFE_INTEGER, clientId: p.clientId, senderId: meId ?? '', content: p.content, body: p.body,
-  attachments: [], reactions: [], threadCount: 0, lastReplyAt: null, linkedTicketKeys: [], mentions: [], editedAt: null, createdAt: p.createdAt,
+  attachments: p.attachments ?? [], reactions: [], threadCount: 0, lastReplyAt: null, linkedTicketKeys: [], mentions: [], editedAt: null, createdAt: p.createdAt,
 })
 
 const estimate = (row: MessageListRow) => (row.kind === 'day' ? 40 : row.kind === 'new' ? 24 : row.continuation ? 24 : 72)

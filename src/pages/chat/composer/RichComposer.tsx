@@ -11,13 +11,15 @@ import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPl
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import { $findMatchingParent } from '@lexical/utils'
-import { IconAt, IconLetterCase, IconMoodSmile, IconSend } from '@tabler/icons-react'
+import { IconAt, IconLetterCase, IconMoodSmile, IconPlus, IconSend, IconUpload, IconX } from '@tabler/icons-react'
 import clsx from 'clsx'
 import { $createTextNode, $getSelection, $insertNodes, $isRangeSelection, $setSelection, type BaseSelection, type EditorState, type LexicalEditor } from 'lexical'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react'
 import { Button, IconButton } from '@/components/sf/Button'
 import { Icon } from '@/components/sf/Icon'
+import { Menu, MenuItem } from '@/components/sf/Menu'
 import { Popover } from '@/components/sf/Popover'
+import { acceptedFiles } from '@/lib/fileTypes'
 import { bodyText, type Body } from '@/lib/messageBody'
 import { EmojiPicker } from '@/pages/chat/EmojiPicker'
 import { AutocompletePlugin, type ComposerDirectory } from '@/pages/chat/composer/AutocompletePlugin'
@@ -65,6 +67,21 @@ export function linkTarget(typed: string): string | null {
   }
 }
 
+const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
+
+/** A box that takes files (spec 6.8, 6.9): its tray, where added files go, how many are ready, and why Send waits. */
+export type ComposerFiles = {
+  tray: ReactNode
+  onAdd: (files: File[]) => void
+  /** Files ready to send: with any, the box sends with no text. */
+  ready: number
+  /** Why Send waits ("Uploading 2 files…"), or null. */
+  waiting: string | null
+}
+
+/** Whether a drag carries files (not text or a link being dragged). */
+const carriesFiles = (event: DragEvent) => event.dataTransfer?.types.includes('Files') ?? false
+
 /**
  * The rich composer (spec 6.8): formatting row, the editor, and an action row with the formatting toggle, emoji,
  * @, the new-line hint, the length counter and Send. Enter sends what's written as a structured body; the box
@@ -84,6 +101,7 @@ export function RichComposer({
   directory,
   autoFocus = false,
   showFormatting = true,
+  files,
 }: {
   /** send: the channel's box; edit: a message's body being edited in place, with Cancel and Save (spec 6.3). */
   mode?: 'send' | 'edit'
@@ -103,6 +121,8 @@ export function RichComposer({
   autoFocus?: boolean
   /** Whether the formatting row starts shown: the channel's box (spec 6.8), not a thread's (spec 6.7). Aa toggles it. */
   showFormatting?: boolean
+  /** Files: the tray, + Attach (⌘/Ctrl+U), paste and drop. Without it the box is text only (an edit). */
+  files?: ComposerFiles
 }) {
   const config = {
     namespace: 'flow-composer',
@@ -128,12 +148,13 @@ export function RichComposer({
         directory={directory}
         autoFocus={autoFocus}
         showFormatting={showFormatting}
+        files={files}
       />
     </LexicalComposer>
   )
 }
 
-function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEditLast, onDraft, onTyping, error, directory, autoFocus, showFormatting = true }: Parameters<typeof RichComposer>[0]) {
+function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEditLast, onDraft, onTyping, error, directory, autoFocus, showFormatting = true, files }: Parameters<typeof RichComposer>[0]) {
   const editing = mode === 'edit'
   const [editor] = useLexicalComposerContext()
   const boxRef = useRef<HTMLDivElement>(null)
@@ -150,6 +171,11 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
   const unsaved = useRef(false)
   const onDraftNow = useRef(onDraft)
   onDraftNow.current = onDraft
+  const picker = useRef<HTMLInputElement>(null)
+  // Files dragged over the box: entering and leaving its children fire too, so it counts.
+  const [dropping, setDropping] = useState(false)
+  const dragDepth = useRef(0)
+  const openPicker = useCallback(() => picker.current?.click(), [])
 
   /** Saves the latest draft; a failure is said near the box and tried again shortly. */
   const saveDraft = useCallback(async () => {
@@ -167,7 +193,8 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
   const length = bodyText(body).length
   const empty = body.length === 0
   const over = length > MAX_LENGTH
-  const canSend = !empty && !over && !pending
+  // With files ready an empty box sends them alone; while any go up (or failed), Send waits (spec 6.9).
+  const canSend = (!empty || (files?.ready ?? 0) > 0) && !over && !pending && !files?.waiting
 
   const latest = useRef({ canSend, body })
   latest.current = { canSend, body }
@@ -224,9 +251,41 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
     <div className="sf">
       <div
         ref={boxRef}
-        className="group/composer rounded-sf-lg border border-sf-line-strong bg-sf-surface transition-colors duration-150 ease-sf focus-within:border-sf-text-secondary"
+        data-composer=""
+        onDragEnter={
+          files &&
+          ((event) => {
+            if (!carriesFiles(event)) return
+            dragDepth.current += 1
+            setDropping(true)
+          })
+        }
+        onDragOver={files && ((event) => carriesFiles(event) && event.preventDefault())}
+        onDragLeave={
+          files &&
+          ((event) => {
+            if (!carriesFiles(event)) return
+            dragDepth.current = Math.max(0, dragDepth.current - 1)
+            if (dragDepth.current === 0) setDropping(false)
+          })
+        }
+        onDrop={
+          files &&
+          ((event) => {
+            if (!carriesFiles(event)) return
+            event.preventDefault()
+            dragDepth.current = 0
+            setDropping(false)
+            files.onAdd([...event.dataTransfer.files])
+          })
+        }
+        className={clsx(
+          'group/composer rounded-sf-lg border bg-sf-surface transition-colors duration-150 ease-sf',
+          dropping ? 'border-sf-accent shadow-[0_0_0_3px_var(--surface-mention)]' : 'border-sf-line-strong focus-within:border-sf-text-secondary',
+        )}
       >
-        {formatting && <FormatBar onLink={openLink} />}
+        {files?.tray}
+        {formatting && <FormatBar onLink={openLink} uploadKey={Boolean(files)} />}
         {linking && <LinkBar editor={editor} linking={linking} onDone={() => setLinking(null)} />}
         <div className="relative">
           <RichTextPlugin
@@ -247,10 +306,40 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
         <LinkPlugin validateUrl={(url) => linkTarget(url) !== null} />
         <MarkdownShortcutPlugin transformers={COMPOSER_TRANSFORMERS} />
         <OnChangePlugin onChange={onChange} ignoreSelectionChange />
-        <KeysPlugin onSend={send} menuOpen={menuOpen} onLink={openLink} onEscape={editing ? onCancel : undefined} onUpEmpty={editing ? undefined : onEditLast} />
+        <KeysPlugin
+          onSend={send}
+          menuOpen={menuOpen}
+          onLink={openLink}
+          onEscape={editing ? onCancel : undefined}
+          onUpEmpty={editing ? undefined : onEditLast}
+          onUpload={files ? openPicker : undefined}
+          onFiles={files?.onAdd}
+        />
         {(editing || autoFocus) && <AutoFocusPlugin defaultSelection="rootEnd" />}
         <AutocompletePlugin directory={directory} menuOpen={menuOpen} anchor={boxRef} />
         <div className="flex items-center gap-0.5 px-1 pb-1">
+          {files && (
+            <>
+              {/* + Attach (spec 6.8): it turns into × while its menu is open. */}
+              <Menu label="Attach" trigger={(props) => <IconButton label="Attach" icon={props['aria-expanded'] ? IconX : IconPlus} size="sm" tone="muted" {...props} />}>
+                <MenuItem icon={IconUpload} hint={isMac ? '⌘U' : 'Ctrl+U'} onSelect={openPicker}>
+                  Upload from your computer
+                </MenuItem>
+              </Menu>
+              <input
+                ref={picker}
+                type="file"
+                multiple
+                hidden
+                accept={acceptedFiles}
+                onChange={(event) => {
+                  const picked = [...(event.target.files ?? [])]
+                  event.target.value = ''
+                  if (picked.length) files.onAdd(picked)
+                }}
+              />
+            </>
+          )}
           <IconButton label={formatting ? 'Hide formatting' : 'Show formatting'} icon={IconLetterCase} size="sm" tone="muted" pressed={formatting} onClick={() => setFormatting((f) => !f)} />
           <Popover
             label="Insert emoji"
@@ -282,6 +371,10 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
           <div className="ms-auto flex items-center gap-1">
           {editing ? (
             <span className="sf-meta hidden px-2 text-sf-text-muted sm:inline">Esc to cancel · Enter to save</span>
+          ) : dropping ? (
+            <span className="sf-meta px-2 text-sf-accent">Drop to add files</span>
+          ) : files?.waiting ? (
+            <span className="sf-meta px-2 text-sf-text-muted">{files.waiting}</span>
           ) : (
             !empty && <span className="sf-meta hidden px-2 text-sf-text-muted sm:inline">Shift + Enter for a new line</span>
           )}

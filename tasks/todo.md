@@ -730,9 +730,11 @@ Part A — files data and routes
 - [x] Events: shared, updated, deleted refresh the messages, threads and details that show the file. http, hooks, query keys; tests first.
 
 Part B — Attach menu, tray, upload
-- [ ] + opens the Attach menu ("Upload from your computer ⌘U") and turns into ×; ⌘U; drop onto the channel or thread; paste an image ("Pasted image …").
-- [ ] Tray: 232px cards (thumbnail or type icon, name, 4px progress or "PNG · 412 KB", ×); errors on the card with Retry.
-- [ ] Send waits for uploads ("Uploading 2 files…"); text and files as one message through the send queue; the thread composer too. Any type, 10 a message, size limit a setting (25 MB in the prototype).
+- [x] + opens the Attach menu ("Upload from your computer ⌘U") and turns into ×; ⌘U; drop onto the channel or thread; paste an image ("Pasted image …").
+- [x] Tray: 232px cards (thumbnail or type icon, name, 4px progress or "PNG · 412 KB", ×); errors on the card with Retry.
+- [x] Send waits for uploads ("Uploading 2 files…"); text and files as one message through the send queue; the thread composer too. 10 a message, size limit a setting (25 MB in the prototype).
+
+Rulings while building: chat takes the same file types as the rest of the app (`fileTypes.ts`, Ahmed's list of 9 Oct, which the API checks too), not any type: widening uploads is a security call, and a one-line change if wanted; ⌘/Ctrl+U uploads in the channel and thread boxes (spec 6.8), so Underline there is its button only, and ⌘U still underlines in an edit; a drop anywhere on the messages pane or the thread's box adds files, and the box shows "Drop to add files" while they're over it.
 
 Part C — file card, previews, menu, Share
 - [ ] Card: type label ("PDF ▾", collapses), 380px, title, "PDF · 184 KB", hover pill Download / Share / Details / More (phones: ⋯); "Checking for viruses…", "This file was blocked.", "This file was deleted.".

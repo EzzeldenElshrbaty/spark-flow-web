@@ -36,6 +36,8 @@ import { useProjectSummaries, useTeams } from '@/api/projects'
 import { MessageSkeleton } from '@/pages/chat/MessageSkeleton'
 import { useChannelReadState, useReadHold, useReadHoldScope } from '@/pages/chat/readState'
 import { ChannelShortcuts, type ChannelNavState } from '@/pages/chat/ChannelShortcuts'
+import { UploadTray } from '@/pages/chat/uploads/UploadTray'
+import { paneDrop, useUploads, type Uploads } from '@/pages/chat/uploads/useUploads'
 
 /** A channel or DM: its header and tabs over its messages, newest at the bottom, filling the main card (spec 5.3, 6.1). */
 export function ChannelPage() {
@@ -52,6 +54,8 @@ export function ChannelPage() {
   const fromMessage = useTaskFromMessage(channelId, workspace?.id)
   const projects = useProjectSummaries(workspace?.id)
   const realtime = useRealtime()
+  // The composer's tray (spec 6.9): its own per channel.
+  const uploads = useUploads(channelId ?? '')
   // Marked unread (U) stays unread until I leave the channel.
   useReadHoldScope(channelId)
   // Start fetching the composer with the page, not once the drafts are in.
@@ -102,10 +106,11 @@ export function ChannelPage() {
   const people = users.data ?? []
   const current = channel.data
   const title = current.kind === 'channel' ? `#${current.name}` : channelLabel(current, people, persona.id)
+  const writing = tab === 'messages' && !isArchived(current) && !mustJoin(current, persona.id, projects.data) && canPost === true && canWrite === true
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <ChannelTop channel={current} people={people} workspaceSlug={ws} tab={tab} onTab={setTab} panelId={panelId} />
-      <div id={panelId} role="tabpanel" aria-label={tab === 'messages' ? 'Messages' : tab} className="flex min-h-0 flex-1 flex-col">
+      <div id={panelId} role="tabpanel" aria-label={tab === 'messages' ? 'Messages' : tab} className="flex min-h-0 flex-1 flex-col" {...paneDrop(writing, uploads.add)}>
       {tab !== 'messages' ? (
         <div className="sf">
           <TabStub tab={tab} />
@@ -134,9 +139,13 @@ export function ChannelPage() {
             <ChannelComposer
               channel={current}
               placeholder={`Message ${title}`}
+              uploads={uploads}
               onTyping={() => realtime.sendTyping(current.id, persona.id)}
-              // Shown at once and sent in the background (spec 6.2); a failure shows on the message, with Retry.
-              onSend={async (body) => queue.enqueue({ clientId: crypto.randomUUID(), channelId: current.id, content: bodyText(body), body })}
+              // Shown at once and sent in the background (spec 6.2), with its files; a failure shows on the message, with Retry.
+              onSend={async (body) => {
+                queue.enqueue({ clientId: crypto.randomUUID(), channelId: current.id, content: bodyText(body), body, fileIds: uploads.ready.map((f) => f.id), attachments: uploads.ready })
+                uploads.clear()
+              }}
               onEditLast={() => {
                 const loaded = queryClient.getQueryData<InfiniteData<Page<ChatMessage>>>(qk.messages(current.id))
                 const last = lastEditable(loaded?.pages.flatMap((p) => p.items).reverse() ?? [], persona.id)
@@ -398,6 +407,7 @@ const composerSkeleton = <div aria-hidden className="h-[106px] animate-pulse rou
 function ChannelComposer({
   channel,
   placeholder,
+  uploads,
   onTyping,
   error,
   onSend,
@@ -405,6 +415,7 @@ function ChannelComposer({
 }: {
   channel: Channel
   placeholder: string
+  uploads: Uploads
   onTyping: () => void
   error?: Error | null
   onSend: (body: Body) => Promise<unknown>
@@ -430,6 +441,12 @@ function ChannelComposer({
       error={error}
       directory={directory}
       autoFocus={arrived}
+      files={{
+        tray: <UploadTray uploads={uploads.items} refused={uploads.refused} onRemove={uploads.remove} onRetry={uploads.retry} />,
+        onAdd: uploads.add,
+        ready: uploads.ready.length,
+        waiting: uploads.waiting,
+      }}
     />
     </Suspense>
   )

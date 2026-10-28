@@ -111,7 +111,7 @@ export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: st
               rootId={messageId}
               sendTo={where ?? 'the channel'}
               error={reply.error as Error | null}
-              onSend={(body, alsoInChannel) => reply.mutateAsync({ messageId, content: bodyText(body), body, alsoInChannel })}
+              onSend={(body, alsoInChannel, fileIds) => reply.mutateAsync({ messageId, content: bodyText(body), body, alsoInChannel, fileIds })}
             />
           ) : (
             <CanPostError channel={channel.data} />

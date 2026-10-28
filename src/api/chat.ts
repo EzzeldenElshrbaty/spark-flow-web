@@ -255,8 +255,8 @@ export function useSetFollowing() {
 /** Replies in a thread; from the rich composer with its `body`, and also to the channel with `alsoInChannel` (spec 6.7). */
 export function useReply() {
   return useMutation({
-    mutationFn: ({ messageId, content, body, alsoInChannel }: { messageId: string; content: string; body?: Body; alsoInChannel?: boolean }) =>
-      api.chat.reply(messageId, content, body, alsoInChannel),
+    mutationFn: ({ messageId, content, body, alsoInChannel, fileIds }: { messageId: string; content: string; body?: Body; alsoInChannel?: boolean; fileIds?: string[] }) =>
+      api.chat.reply(messageId, content, body, alsoInChannel, fileIds),
   })
 }
 export function useSetStarred() {

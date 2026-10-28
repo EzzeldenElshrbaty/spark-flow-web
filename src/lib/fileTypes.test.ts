@@ -28,3 +28,18 @@ describe('empty files', () => {
   })
 })
 
+describe('chat file names and sizes (spec 6.9, slice 6)', () => {
+  it('a pasted image is named after when it was pasted, with its type', async () => {
+    const { pastedName } = await import('@/lib/fileTypes')
+    expect(pastedName('image/png', new Date(2026, 9, 29, 9, 5))).toBe('Pasted image 2026-10-29 at 09.05.png')
+    expect(pastedName('image/jpeg', new Date(2026, 9, 29, 14, 42))).toBe('Pasted image 2026-10-29 at 14.42.jpg')
+    expect(pastedName('', new Date(2026, 9, 29, 14, 42))).toBe('Pasted image 2026-10-29 at 14.42.png')
+  })
+
+  it('a file’s line under its name: its type, then its size', async () => {
+    const { fileSubline } = await import('@/lib/fileTypes')
+    expect(fileSubline('safari-focus-ring.png', 421_888)).toBe('PNG · 412 KB')
+    expect(fileSubline('Scope v3.pdf', 1_258_291)).toBe('PDF · 1.2 MB')
+    expect(fileSubline('Makefile', 10)).toBe('File · 1 KB')
+  })
+})

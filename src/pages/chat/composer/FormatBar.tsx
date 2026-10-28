@@ -44,7 +44,8 @@ function $state(): State {
  * The formatting row (spec 6.8): bold, italic, underline, strikethrough | link | numbered list, bulleted list |
  * quote, code, code block. Each shows pressed while it applies at the caret; the buttons keep the caret in the editor.
  */
-export function FormatBar({ onLink }: { onLink: () => void }) {
+/** `uploadKey`: ⌘/Ctrl+U uploads in this box (spec 6.8), so Underline is the button only. */
+export function FormatBar({ onLink, uploadKey = false }: { onLink: () => void; uploadKey?: boolean }) {
   const [editor] = useLexicalComposerContext()
   const [state, setState] = useState<State>({ formats: new Set(), block: 'paragraph', link: false })
   useEffect(() => editor.registerUpdateListener(({ editorState }) => editorState.read(() => setState($state()))), [editor])
@@ -81,7 +82,7 @@ export function FormatBar({ onLink }: { onLink: () => void }) {
     <div role="toolbar" aria-label="Formatting" className="flex flex-wrap items-center gap-0.5 px-1 pt-1">
       {button('Bold', IconBold, state.formats.has('bold'), () => format('bold'), [mod, 'B'])}
       {button('Italic', IconItalic, state.formats.has('italic'), () => format('italic'), [mod, 'I'])}
-      {button('Underline', IconUnderline, state.formats.has('underline'), () => format('underline'), [mod, 'U'])}
+      {button('Underline', IconUnderline, state.formats.has('underline'), () => format('underline'), uploadKey ? undefined : [mod, 'U'])}
       {button('Strikethrough', IconStrikethrough, state.formats.has('strikethrough'), () => format('strikethrough'), [mod, 'Shift', 'X'])}
       {sep}
       {button('Link', IconLink, state.link, onLink, [mod, 'K'])}

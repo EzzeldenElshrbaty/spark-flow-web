@@ -65,7 +65,7 @@ describe('the thread composer (spec 6.7)', () => {
     const { onSend, editor } = await mount()
     await userEvent.click(editor)
     await userEvent.keyboard('Thanks{Enter}')
-    await vi.waitFor(() => expect(onSend).toHaveBeenCalledWith(expect.anything(), false))
+    await vi.waitFor(() => expect(onSend).toHaveBeenCalledWith(expect.anything(), false, []))
   })
 
   it('saves a draft per thread', async () => {

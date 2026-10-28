@@ -29,7 +29,9 @@ export function useFileUrl(id: string) {
   return { url: url ? safeFileUrl(url) : null, failed }
 }
 
-export const sizeText = (bytes: number) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`)
+import { sizeText } from '@/lib/fileTypes'
+
+export { sizeText }
 
 function One({ attachment }: { attachment: Attachment }) {
   const { url, failed } = useFileUrl(attachment.id)

@@ -29,7 +29,7 @@ export function useSendQueue() {
   let queue = queues.get(queryClient)
   if (!queue) {
     queue = createSendQueue({
-      send: async (p) => showSent(queryClient, await api.chat.send(p.channelId, p.content, p.clientId, p.body)),
+      send: async (p) => showSent(queryClient, await api.chat.send(p.channelId, p.content, p.clientId, p.body, p.fileIds)),
       online: () => navigator.onLine,
       onChange: (items) => usePendingStore.setState({ items }),
     })

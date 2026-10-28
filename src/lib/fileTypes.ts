@@ -55,3 +55,19 @@ export function acceptFiles<F extends { name: string; size: number; lastModified
   if (all.length > max) refused.push(`Add up to ${max} files at a time.`)
   return { files: all.slice(0, max), refused }
 }
+
+/** "412 KB", "1.2 MB". */
+export const sizeText = (bytes: number) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`)
+
+/** "PDF · 1.2 MB": a file's type from its extension, then its size (spec 6.9). */
+export function fileSubline(name: string, size: number) {
+  const type = name.includes('.') ? name.split('.').pop()!.toUpperCase() : 'File'
+  return `${type} · ${sizeText(size)}`
+}
+
+/** A pasted image's name: "Pasted image 2026-10-29 at 09.05.png", after the moment it was pasted and its type. */
+export function pastedName(mimeType: string, at = new Date()) {
+  const two = (n: number) => String(n).padStart(2, '0')
+  const type = { 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp' }[mimeType] ?? 'png'
+  return `Pasted image ${at.getFullYear()}-${two(at.getMonth() + 1)}-${two(at.getDate())} at ${two(at.getHours())}.${two(at.getMinutes())}.${type}`
+}

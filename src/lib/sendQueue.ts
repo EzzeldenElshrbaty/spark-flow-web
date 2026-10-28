@@ -1,4 +1,5 @@
 import { ApiError } from '@/lib/apiError'
+import type { Attachment } from '@/api/types'
 import type { Body } from '@/lib/messageBody'
 
 /** A message I sent that the server hasn't confirmed yet (spec 6.2 optimistic send). */
@@ -13,6 +14,9 @@ export type PendingMessage = {
   status: 'queued' | 'sending' | 'failed'
   /** Why it failed, as the server said. */
   error?: string
+  /** Files already uploaded for it (spec 6.9), sent with it; `attachments` shows them on the pending row. */
+  fileIds?: string[]
+  attachments?: Attachment[]
 }
 
 /** A send that didn't reach the server (as opposed to one it refused). */

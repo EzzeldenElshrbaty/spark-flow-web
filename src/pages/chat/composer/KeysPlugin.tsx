@@ -15,6 +15,7 @@ import {
 } from 'lexical'
 import { useEffect, type RefObject } from 'react'
 import { coarsePointer } from '@/pages/chat/composerKeys'
+import { pastedName } from '@/lib/fileTypes'
 
 /**
  * The composer's keys (spec 6.8): Enter sends; Shift+Enter starts a new line (a new item in a list); never while the
@@ -28,6 +29,8 @@ export function KeysPlugin({
   onLink,
   onEscape,
   onUpEmpty,
+  onUpload,
+  onFiles,
 }: {
   onSend: () => void
   menuOpen: RefObject<boolean>
@@ -36,6 +39,10 @@ export function KeysPlugin({
   onEscape?: () => void
   /** Up in an empty box: edit my last message (spec 6.8). */
   onUpEmpty?: () => void
+  /** ⌘/Ctrl+U: Upload from your computer (spec 6.8), in a box that takes files; elsewhere it underlines. */
+  onUpload?: () => void
+  /** Files pasted into a box that takes files (spec 6.9); a pasted image is named after when it was pasted. */
+  onFiles?: (files: File[]) => void
 }) {
   const [editor] = useLexicalComposerContext()
   useEffect(
@@ -70,6 +77,11 @@ export function KeysPlugin({
               onLink()
               return true
             }
+            if (mod && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'u' && onUpload) {
+              event.preventDefault()
+              onUpload()
+              return true
+            }
             return false
           },
           COMMAND_PRIORITY_NORMAL,
@@ -100,9 +112,17 @@ export function KeysPlugin({
           PASTE_COMMAND,
           (event) => {
             const data = 'clipboardData' in event ? event.clipboardData : null
+            const files = [...(data?.files ?? [])]
+            if (files.length > 0) {
+              // Files (pasted images) go to the tray, where the box takes them; otherwise the editor ignores them.
+              if (!onFiles) return false
+              event.preventDefault()
+              const at = new Date()
+              onFiles(files.map((f) => (f.type.startsWith('image/') && /^image\.\w+$/i.test(f.name) ? new File([f], pastedName(f.type, at), { type: f.type }) : f)))
+              return true
+            }
             const text = data?.getData('text/plain')
-            // Files (pasted images) are for the attachment tray, which comes with Phase 2.
-            if (!text || (data?.files.length ?? 0) > 0) return false
+            if (!text) return false
             event.preventDefault()
             editor.update(() => {
               const selection = $getSelection()
@@ -113,7 +133,7 @@ export function KeysPlugin({
           COMMAND_PRIORITY_NORMAL,
         ),
       ),
-    [editor, menuOpen, onSend, onLink, onEscape, onUpEmpty],
+    [editor, menuOpen, onSend, onLink, onEscape, onUpEmpty, onUpload, onFiles],
   )
   return null
 }

@@ -1,20 +1,16 @@
 import { IconDots, IconDownload, IconEye, IconFileText, IconFileTypePdf, IconLink, IconPhoto } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
 import type { Attachment } from '@/api/types'
-import { sizeText, useFileUrl } from '@/components/AttachmentView'
+import { useFileUrl } from '@/components/AttachmentView'
 import { IconButton } from '@/components/sf/Button'
 import { Icon } from '@/components/sf/Icon'
 import { Menu, MenuItem } from '@/components/sf/Menu'
 import { FileViewer } from '@/components/ui/FileViewer'
-import { downloadUrl, previewOf } from '@/lib/fileTypes'
+import { downloadUrl, fileSubline, previewOf } from '@/lib/fileTypes'
 
 const COPIED_MS = 2000
 
-/** "PDF · 1.2 MB": the file's type from its extension, then its size. */
-const subline = (a: Attachment) => {
-  const ext = a.name.includes('.') ? a.name.split('.').pop()!.toUpperCase() : 'File'
-  return `${ext} · ${sizeText(a.size)}`
-}
+const subline = (a: Attachment) => fileSubline(a.name, a.size)
 
 /** Saves a file under its own name. */
 function download(url: string, name: string) {
