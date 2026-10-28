@@ -2,8 +2,8 @@ import { IconFolder, IconHash, IconListCheck, IconUsers } from '@tabler/icons-re
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { LexicalTypeaheadMenuPlugin, MenuOption, type MenuTextMatch } from '@lexical/react/LexicalTypeaheadMenuPlugin'
 import clsx from 'clsx'
-import { $createTextNode, COMMAND_PRIORITY_LOW, type TextNode } from 'lexical'
-import { useMemo, useRef, useState, type RefObject } from 'react'
+import { $createTextNode, $getSelection, COMMAND_PRIORITY_LOW, type TextNode } from 'lexical'
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import type { Presence, User } from '@/api/types'
 import { Avatar } from '@/components/sf/Avatar'
@@ -37,6 +37,16 @@ class Choice extends MenuOption {
   }
 }
 
+/** What `@` or `#` followed by `q` offers. */
+function choicesFor(sign: '@' | '#', q: string, directory: ComposerDirectory) {
+  if (sign === '#') return channelOptions(q, directory.channels).map((c) => new Choice({ kind: 'channel', id: c.id, name: c.name }))
+  return mentionOptions(q, directory).map((o) => {
+    if (o.kind !== 'user') return new Choice(o)
+    const user = directory.users.find((u) => u.id === o.id)!
+    return new Choice({ kind: 'user', user, inChannel: !directory.memberIds || directory.memberIds.includes(o.id) })
+  })
+}
+
 const PRESENCE: Record<Presence, string> = { active: 'Active', away: 'Away', offline: 'Offline' }
 const MAX_QUERY = 50
 // `@` or `#` at the start or after a space or "(", then the query up to the caret.
@@ -56,21 +66,24 @@ export function AutocompletePlugin({ directory, menuOpen, anchor }: { directory:
 
   const triggerFn = (text: string): MenuTextMatch | null => {
     const m = TRIGGER.exec(text)
-    if (!m) return null
+    // Nothing matches, no list: the editor never points at an empty listbox, and Enter sends.
+    if (!m || choicesFor(m[2] as '@' | '#', m[3], directory).length === 0) return null
     trigger.current = m[2] as '@' | '#'
     return { leadOffset: m.index + m[1].length, matchingString: m[3], replaceableString: m[2] + m[3] }
   }
 
-  const options = useMemo(() => {
-    if (query === null) return []
-    if (trigger.current === '#') return channelOptions(query, directory.channels).map((c) => new Choice({ kind: 'channel', id: c.id, name: c.name }))
-    return mentionOptions(query, directory).map((o) => {
-      if (o.kind !== 'user') return new Choice(o)
-      const user = directory.users.find((u) => u.id === o.id)!
-      return new Choice({ kind: 'user', user, inChannel: !directory.memberIds || directory.memberIds.includes(o.id) })
-    })
-  }, [query, directory])
+  const options = useMemo(() => (query === null ? [] : choicesFor(trigger.current, query, directory)), [query, directory])
   menuOpen.current = open && query !== null && options.length > 0
+  // Lexical opens the list in a transition, and a key typed before it lands can't close it (the close still sees no
+  // list), which leaves an empty listbox the editor points at. Open with no match means that happened: touch the
+  // selection so the plugin looks at the text again and closes.
+  useEffect(() => {
+    if (!open || query !== null) return
+    editor.update(() => {
+      const selection = $getSelection()
+      if (selection) selection.dirty = true
+    })
+  }, [editor, open, query])
 
   const pick = (choice: Choice, nodeToReplace: TextNode | null, closeMenu: () => void) => {
     editor.update(() => {

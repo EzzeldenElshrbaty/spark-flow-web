@@ -52,11 +52,11 @@ export function WorkspaceSwitcher() {
         onClick={() => setOpen((value) => !value)}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`Workspace: ${workspace.name}`}
         title={`Workspace: ${workspace.name}`}
         className={clsx(roundButtonClass, roundButtonFill)}
       >
         <Initials workspace={workspace} className="size-6 text-[10px]" />
+        <span className="sr-only">Workspace: {workspace.name}</span>
       </button>
       <MenuPanel open={open} onClose={() => setOpen(false)} triggerRef={triggerRef} label="Workspace" className="p-1.5 sm:w-64">
         <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-fg-muted">Workspace</p>

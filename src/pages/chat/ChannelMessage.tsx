@@ -1,6 +1,6 @@
 import { IconAlertCircle, IconTrash } from '@tabler/icons-react'
 import clsx from 'clsx'
-import { lazy, Suspense, useCallback, type ReactNode } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, type ReactNode } from 'react'
 import { useEditMessage } from '@/api/chat'
 import { bodyText } from '@/lib/messageBody'
 import type { ChatMessage, ChatTarget, SystemEvent, ThreadReply, User } from '@/api/types'
@@ -83,6 +83,18 @@ export function ChannelMessage({
   const editing = useEditing((s) => s.id === message.id)
   const startEditing = () => useEditing.getState().start(message.id)
   const stopEditing = () => useEditing.getState().stop()
+  const row = useRef<HTMLElement>(null)
+  const wasEditing = useRef(false)
+  // The edit box took focus with it: give focus back to where the edit started, else to this message's ⋯ button
+  // (spec 10). Not when focus is already somewhere, or another edit has begun.
+  useEffect(() => {
+    if (editing) wasEditing.current = true
+    if (editing || !wasEditing.current) return
+    wasEditing.current = false
+    const { id, from } = useEditing.getState()
+    if (id !== null || (document.activeElement && document.activeElement !== document.body)) return
+    ;(from?.isConnected ? from : row.current?.querySelector<HTMLElement>('[aria-label="Message actions"]'))?.focus()
+  }, [editing])
   const author = users.find((u) => u.id === message.senderId)
   const name = author?.name ?? 'Unknown person'
   const target: ChatTarget = { kind: reply ? 'reply' : 'message', id: message.id }
@@ -128,8 +140,12 @@ export function ChannelMessage({
 
   const background =
     selected === 'on' ? 'bg-sf-surface-selected' : mentionsMe(message, meId) && !message.deletedAt ? 'bg-sf-surface-mention' : 'hover:bg-sf-surface-hover'
+  // Muted text on a tinted row steps up to secondary to keep 4.5:1 (spec 10). Set on the row's children: the row is
+  // `.sf`, whose token rules sit outside Tailwind's layers and would win.
+  const tint = background.startsWith('bg-') && '[--text-muted:var(--text-secondary)]'
   return (
     <article
+      ref={row}
       // E edits my message while focus is in it (its ⋯ button), as long as I'm not typing somewhere (spec 6.3).
       onKeyDown={(e) => {
         const typing = (e.target as HTMLElement).closest('input, textarea, [contenteditable="true"]')
@@ -146,13 +162,13 @@ export function ChannelMessage({
       )}
     >
       {continuation ? (
-        <span aria-hidden className="invisible pt-[3px] text-end group-hover:visible">
+        <span aria-hidden className={clsx('invisible pt-[3px] text-end group-hover:visible', tint)}>
           {time}
         </span>
       ) : (
         <Avatar id={message.senderId} name={name} decorative />
       )}
-      <div className="min-w-0">
+      <div className={clsx('min-w-0', tint)}>
         <p className={clsx('flex min-w-0 items-baseline gap-2', continuation && 'sr-only')}>
           <AuthorName userId={message.senderId} name={name} ctx={ctx} />
           {time}

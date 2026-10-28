@@ -151,7 +151,7 @@ export function ChannelHeader({ channel, title, members, rights, onEdit, onStar,
 
 /** Three 20px faces and the member count; it opens the details when there is something I may change. Hidden when the header is narrow. */
 function MembersButton({ members, onClick }: { members: { id: string; name: string }[]; onClick?: () => void }) {
-  const label = `${members.length} ${members.length === 1 ? 'member' : 'members'}`
+  // Named by its visible count plus a hidden noun ("4 members"), so the name starts with what's shown.
   const body = (
     <>
       <span className="inline-flex items-center gap-0.5">
@@ -159,18 +159,18 @@ function MembersButton({ members, onClick }: { members: { id: string; name: stri
           <Avatar key={p.id} id={p.id} name={p.name} size="sm" decorative />
         ))}
       </span>
-      <span className="tabular-nums">{members.length}</span>
+      <span className="tabular-nums">
+        {members.length} <span className="sr-only">{members.length === 1 ? 'member' : 'members'}</span>
+      </span>
     </>
   )
   const className =
     'hidden h-7 items-center gap-2 rounded-sf-md border border-sf-line-strong bg-sf-surface ps-1 pe-2 font-sf text-[13px]/[18px] font-medium text-sf-text-secondary @min-[560px]:inline-flex'
   return onClick ? (
-    <button type="button" aria-label={label} onClick={onClick} className={`sf-focus ${className} hover:bg-sf-surface-hover`}>
+    <button type="button" onClick={onClick} className={`sf-focus ${className} hover:bg-sf-surface-hover`}>
       {body}
     </button>
   ) : (
-    <span role="img" aria-label={label} className={className}>
-      {body}
-    </span>
+    <span className={className}>{body}</span>
   )
 }

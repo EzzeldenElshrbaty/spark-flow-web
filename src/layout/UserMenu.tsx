@@ -61,7 +61,6 @@ export function UserMenu() {
         onClick={() => setOpen((value) => !value)}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={loaded ? `Account menu for ${persona.name}` : 'Account menu'}
         className="sf-focus flex h-11 flex-none cursor-pointer items-center gap-2 rounded-sf-md ps-1 pe-2 hover:bg-sf-surface-hover"
       >
         {loaded ? (
@@ -69,13 +68,17 @@ export function UserMenu() {
         ) : (
           <span aria-hidden className="size-sf-avatar animate-pulse rounded-sf-md bg-sf-surface-hover" />
         )}
+        {/* Named by the name and title it shows; on a phone they're there for screen readers only. */}
         {loaded ? (
-          <span className="hidden text-start md:block">
+          <span className="sr-only text-start md:not-sr-only md:block">
             <span className="sf-ui-medium block text-sf-text">{persona.name}</span>
             <span className="sf-meta block text-sf-text-muted">{persona.title}</span>
           </span>
         ) : (
-          <span className="hidden h-8 w-28 animate-pulse rounded-sf-md bg-sf-surface-hover md:block" aria-hidden />
+          <>
+            <span className="sr-only">Account menu</span>
+            <span className="hidden h-8 w-28 animate-pulse rounded-sf-md bg-sf-surface-hover md:block" aria-hidden />
+          </>
         )}
         <Icon
           icon={IconChevronDown}

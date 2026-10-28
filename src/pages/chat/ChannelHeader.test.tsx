@@ -71,7 +71,7 @@ describe('ChannelHeader (spec 6.1)', () => {
     const { onEdit } = header()
     const members = screen.getByRole('button', { name: '4 members' })
     expect(members.querySelectorAll(':scope > span > [aria-hidden="true"]')).toHaveLength(3)
-    expect(members.textContent).toMatch(/4$/)
+    expect(members.textContent).toMatch(/4 members$/)
     fireEvent.click(members)
     expect(onEdit).toHaveBeenCalledOnce()
   })

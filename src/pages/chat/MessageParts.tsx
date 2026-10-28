@@ -184,7 +184,6 @@ export function ThreadSummary({ message, users }: { message: ChatMessage; users:
   return (
     <Link
       to={{ search: withInspector(params, { kind: 'thread', messageId: message.id }).toString() }}
-      aria-label={[count, last].filter(Boolean).join(', ')}
       className="group/thread sf-focus -ms-1 mt-1 inline-flex h-8 min-w-[min(420px,100%)] items-center gap-2 rounded-sf-md border border-transparent ps-1 pe-3 hover:border-sf-line hover:bg-sf-surface-raised"
     >
       {faces.length > 0 && (
@@ -195,7 +194,11 @@ export function ThreadSummary({ message, users }: { message: ChatMessage; users:
         </span>
       )}
       <span className="font-sf text-[13px]/[18px] font-semibold text-sf-accent tabular-nums">{count}</span>
-      {last && <span className="font-sf text-[13px]/[18px] text-sf-text-muted group-hover/thread:hidden">{last}</span>}
+      {last && (
+        <span className="font-sf text-[13px]/[18px] text-sf-text-muted group-hover/thread:hidden">
+          <span className="sr-only">,</span> {last}
+        </span>
+      )}
       <span className="ms-auto hidden items-center gap-0.5 font-sf text-[13px]/[18px] text-sf-text-secondary group-hover/thread:inline-flex">
         View thread
         <Icon icon={IconChevronRight} size={16} flip />

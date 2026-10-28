@@ -413,7 +413,7 @@ export function SidebarContent({
 /** The logo goes to Home, which opens the last place visited. Logo lockup: white Spark logo, divider, FLOW. */
 export function Logo({ collapsed = false, onClick }: { collapsed?: boolean; onClick?: () => void }) {
   return (
-    <Link to="/" onClick={onClick} className="sf-focus flex items-center gap-3 rounded-sf-md" aria-label="Home">
+    <Link to="/" onClick={onClick} className="sf-focus flex items-center gap-3 rounded-sf-md" aria-label="Spark Flow home">
       {collapsed ? (
         <img src="/spark-mark-white.png" alt="Spark Flow" className="h-4 w-auto" />
       ) : (

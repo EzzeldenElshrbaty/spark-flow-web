@@ -152,7 +152,7 @@ export function EmojiPicker({ onPick }: { onPick: (emoji: string) => void }) {
         {sections.map((s) =>
           s.emoji.length === 0 ? null : (
             <section key={s.id} data-section={s.id}>
-              <h3 className="px-1 pt-2 pb-1 font-sf text-[12px]/[16px] font-medium tracking-[0.12em] text-sf-text-muted uppercase">{s.label}</h3>
+              <h2 className="px-1 pt-2 pb-1 font-sf text-[12px]/[16px] font-medium tracking-[0.12em] text-sf-text-muted uppercase">{s.label}</h2>
               <div role="group" aria-label={s.label} className="grid grid-cols-9">
                 {s.emoji.map((e) => {
                   const i = index++
