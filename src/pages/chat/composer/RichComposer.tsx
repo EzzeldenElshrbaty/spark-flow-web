@@ -31,6 +31,8 @@ export type { ComposerDirectory }
 export const MAX_LENGTH = 40_000
 const COUNT_FROM = MAX_LENGTH - 1_000
 const DRAFT_MS = 500
+/** A draft that failed to save is tried again after this long (and with any change sooner). */
+const DRAFT_RETRY_MS = 3000
 const TYPING_EVERY_MS = 2000
 
 const THEME = {
@@ -80,7 +82,8 @@ export function RichComposer({
   placeholder: string
   initialBody?: Body
   onSend: (body: Body) => Promise<unknown>
-  onDraft?: (body: Body) => void
+  /** Saves the draft; false (or a rejection) when it couldn't, which the composer says and retries. */
+  onDraft?: (body: Body) => void | Promise<boolean>
   onTyping?: () => void
   error?: Error | null
   directory: ComposerDirectory
@@ -110,7 +113,20 @@ function Inner({ placeholder, initialBody, onSend, onDraft, onTyping, error, dir
   const [pending, setPending] = useState(false)
   const [linking, setLinking] = useState<{ url: string; selection: BaseSelection | null } | null>(null)
   const draftTimer = useRef<number | undefined>(undefined)
+  const [draftFailed, setDraftFailed] = useState(false)
   const typedAt = useRef(0)
+  const latestBody = useRef<Body>(initialBody ?? [])
+
+  /** Saves the latest draft; a failure is said near the box and tried again shortly. */
+  const saveDraft = useCallback(async () => {
+    if (!onDraft) return
+    window.clearTimeout(draftTimer.current)
+    const ok = await Promise.resolve(onDraft(latestBody.current)).catch(() => false)
+    if (ok === false) {
+      setDraftFailed(true)
+      draftTimer.current = window.setTimeout(() => void saveDraft(), DRAFT_RETRY_MS)
+    } else setDraftFailed(false)
+  }, [onDraft])
 
   const length = bodyText(body).length
   const empty = body.length === 0
@@ -128,19 +144,21 @@ function Inner({ placeholder, initialBody, onSend, onDraft, onTyping, error, dir
       () => {
         window.clearTimeout(draftTimer.current)
         editor.update(() => $editorFromBody([]))
-        onDraft?.([])
+        latestBody.current = []
+        void saveDraft()
         setPending(false)
       },
       () => setPending(false),
     )
-  }, [editor, onSend, onDraft])
+  }, [editor, onSend, saveDraft])
 
   const onChange = (state: EditorState) => {
     const next = state.read(() => $bodyFromEditor())
     setBody(next)
+    latestBody.current = next
     if (onDraft) {
       window.clearTimeout(draftTimer.current)
-      draftTimer.current = window.setTimeout(() => onDraft(next), DRAFT_MS)
+      draftTimer.current = window.setTimeout(() => void saveDraft(), DRAFT_MS)
     }
     if (onTyping && next.length > 0 && Date.now() - typedAt.current > TYPING_EVERY_MS) {
       typedAt.current = Date.now()
@@ -236,6 +254,7 @@ function Inner({ placeholder, initialBody, onSend, onDraft, onTyping, error, dir
           </div>
         </div>
       </div>
+      {draftFailed && <p className="sf-small mt-1 text-sf-text-muted">Draft not saved. Trying again…</p>}
       {over && <p className="sf-small mt-1 text-sf-error">Keep the message under 40,000 characters.</p>}
       {error && <p className="sf-small mt-1 text-sf-error">{error.message}</p>}
     </div>

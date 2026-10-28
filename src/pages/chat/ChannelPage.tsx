@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { useChannel, useChannels, useDrafts, useDraftSaver, useJumpTarget, useLeaveChannel, useMarkRead, useMessage, useMessages, useMessagesFrom, useSendMessage, useSetMuted, useSetStarred } from '@/api/chat'
 import { useUsers } from '@/api/users'
@@ -18,7 +18,6 @@ import { useProjectKeys } from '@/pages/chat/useBodyContext'
 import { jumpSince, type JumpChoice } from '@/pages/chat/messageRows'
 import { CanPostError } from '@/pages/chat/CanPostError'
 import { TypingLine } from '@/pages/chat/ChannelTyping'
-import { RichComposer } from '@/pages/chat/composer/RichComposer'
 import { useCanPost, useReadOnlyLine } from '@/pages/chat/useCanPost'
 import { useTaskFromMessage } from '@/pages/chat/useTaskFromMessage'
 import { ArchiveChannelModal, ArchivedChannelLine, JoinChannelLine, useChannelRights } from '@/pages/chat/ChannelActions'
@@ -42,6 +41,8 @@ export function ChannelPage() {
   const fromMessage = useTaskFromMessage(channelId, workspace?.id)
   const projects = useProjectSummaries(workspace?.id)
   const realtime = useRealtime()
+  // Start fetching the composer with the page, not once the drafts are in.
+  useEffect(() => void loadComposer(), [])
   const panelId = useId()
   const [params, setParams] = useSearchParams()
   const tab = channel.data ? tabFromParam(params.get('tab'), channel.data) : 'messages'
@@ -287,6 +288,11 @@ function PaneFeed({
   )
 }
 
+// The editor (Lexical) is most of a channel's code: it loads on its own, so the messages don't wait for it.
+const loadComposer = () => import('@/pages/chat/composer/RichComposer')
+const RichComposer = lazy(() => loadComposer().then((m) => ({ default: m.RichComposer })))
+const composerSkeleton = <div aria-hidden className="h-[106px] animate-pulse rounded-lg bg-surface-muted" />
+
 /**
  * The channel's composer: it starts from my draft here (once my drafts have loaded, so typing never races the
  * draft), saves changes back, and names the workspace's people, projects, tasks and channels.
@@ -318,18 +324,20 @@ function ChannelComposer({
     }),
     [users, projects, tasks, channels.data, channel.memberIds],
   )
-  if (drafts.isPending) return <div aria-hidden className="h-[106px] animate-pulse rounded-lg bg-surface-muted" />
+  if (drafts.isPending) return composerSkeleton
   const draft = drafts.data?.find((d) => d.channelId === channel.id && d.rootId === null)
   return (
+    <Suspense fallback={composerSkeleton}>
     <RichComposer
       key={channel.id}
       placeholder={placeholder}
       initialBody={draft?.body}
       onSend={onSend}
-      onDraft={(body) => void saveDraft(channel.id, body)}
+      onDraft={(body) => saveDraft(channel.id, body)}
       onTyping={onTyping}
       error={error}
       directory={directory}
     />
+    </Suspense>
   )
 }

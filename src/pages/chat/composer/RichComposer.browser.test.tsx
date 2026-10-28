@@ -177,6 +177,18 @@ describe('RichComposer drafts and limits (spec 6.8)', () => {
     expect(bodyText(onDraft.mock.calls.at(-1)![0])).toBe('half a thought!')
   })
 
+  it('a draft that fails to save says so, tries again by itself, and clears the note once saved', async () => {
+    const onDraft = vi.fn().mockResolvedValueOnce(false).mockResolvedValue(true)
+    const { editor } = await ready({ onDraft })
+    await userEvent.click(editor)
+    await userEvent.keyboard('keep me')
+    const note = await screen.findByText('Draft not saved. Trying again…', {}, { timeout: 2000 })
+    expect(note).toBeTruthy()
+    await vi.waitFor(() => expect(onDraft).toHaveBeenCalledTimes(2), { timeout: 6000 })
+    expect(bodyText(onDraft.mock.calls[1][0])).toBe('keep me')
+    await vi.waitFor(() => expect(screen.queryByText('Draft not saved. Trying again…')).toBeNull())
+  })
+
   it('counts down in the last 1,000 characters and won’t send past 40,000', async () => {
     const { onSend, editor } = await ready({ initialBody: [{ type: 'p', children: [{ type: 'text', text: 'x'.repeat(39_500) }] }] })
     expect(screen.getByText('500')).toBeTruthy()

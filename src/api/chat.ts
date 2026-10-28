@@ -87,15 +87,18 @@ export function useDrafts(workspaceId: string | undefined) {
 
 /**
  * Saves a draft as the composer changes. Not a mutation: those refresh every query, and this runs as people type.
- * A save that fails is left for the next one.
+ * Resolves to whether it saved, so the composer can say so and try again.
  */
 export function useDraftSaver() {
   const queryClient = useQueryClient()
   return useCallback(
     (channelId: string, body: Body, rootId: string | null = null) =>
       api.chat.saveDraft(channelId, body, rootId).then(
-        () => queryClient.invalidateQueries({ queryKey: qk.draftsAll() }),
-        () => {},
+        () => {
+          void queryClient.invalidateQueries({ queryKey: qk.draftsAll() })
+          return true
+        },
+        () => false,
       ),
     [queryClient],
   )
