@@ -18,6 +18,7 @@ export const qk = {
   jumpTarget: (channelId: string, since: string | null) => ['chat', 'jump', channelId, since ?? 'beginning'],
   message: (id: string) => ['chat', 'message', id],
   replies: (messageId: string) => ['chat', 'replies', messageId],
+  invitations: (channelId: string) => ['chat', 'invitations', channelId],
   projects: (workspaceId: string) => ['tickets', 'projects', workspaceId],
   archivedProjects: (workspaceId: string) => ['tickets', 'projects', workspaceId, 'archived'],
   projectByKey: (workspaceId: string, key: string) => ['tickets', 'project', workspaceId, key],
@@ -72,8 +73,9 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
       // Summaries and task lists live under 'tickets'; phases, deliverables and project time under 'projects'.
       return [['tickets'], ['projects'], ['dashboard'], qk.projectHistory(event.projectId)]
     case 'channelChanged':
-      // Leaving, removal, archiving and privacy decide what my mentions and Activity may show.
-      return [qk.channelsAll(), qk.channel(event.channelId), qk.mentions(), qk.activityAll()]
+      // Leaving, removal, archiving and privacy decide what my mentions and Activity may show; inviting and revoking
+      // change its Invited list (spec 6.10).
+      return [qk.channelsAll(), qk.channel(event.channelId), qk.mentions(), qk.activityAll(), qk.invitations(event.channelId)]
     case 'commentAdded':
       return [qk.comments(event.taskKey), qk.mentions(), qk.activityAll(), qk.taskHistory(event.taskKey), qk.projectHistory(event.projectId)]
     case 'ratesChanged':

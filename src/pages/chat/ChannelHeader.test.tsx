@@ -9,7 +9,7 @@ afterEach(cleanup)
 
 const backend: Channel = {
   id: 'c-backend', workspaceId: 'ws-eng', kind: 'channel', name: 'backend', topic: 'APIs and jobs', memberIds: ['u-1', 'u-2', 'u-3', 'u-4'],
-  isPrivate: false, lastMessageAt: null, description: '', whoCanPost: 'everyone', unreadCount: 2, lastSeq: 9, lastReadSeq: 7, starred: false, muted: false, notifyLevel: 'mentions',
+  isPrivate: false, lastMessageAt: null, description: '', whoCanPost: 'everyone', isDefault: false, unreadCount: 2, lastSeq: 9, lastReadSeq: 7, starred: false, muted: false, notifyLevel: 'mentions',
 }
 const people = [
   { id: 'u-1', name: 'Youssef Abdelrahman' },

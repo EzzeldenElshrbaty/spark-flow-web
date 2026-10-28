@@ -236,6 +236,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
               kind: 'channel',
               description: '',
               whoCanPost: 'everyone',
+              isDefault: false,
               name: '',
               topic: `${name} project chat.`,
               memberIds: [],

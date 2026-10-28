@@ -1,6 +1,7 @@
 import { can } from '@/lib/permissions'
 import type { Api, Attachment, Channel, ChannelMemberState, ChatMessage, NotifyLevel, Page, SystemEvent, ChatTarget, StoredChannel, ThreadReply, WhoCanPost } from '@/api/types'
 import { channelFormErrors, descriptionError } from '@/lib/channelForm'
+import { isEmail, MAX_INVITES, normalEmail, notAnEmailLine } from '@/lib/invites'
 import { onlyAdminsLine } from '@/lib/channels'
 import { isOneEmoji } from '@/lib/emojiText'
 import { MAX_DISTINCT_REACTIONS, toggleReaction } from '@/lib/reactions'
@@ -319,7 +320,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
           (c) => c.workspaceId === workspaceId && c.kind === 'dm' && c.memberIds.length === members.length && [...c.memberIds].sort().every((id, i) => id === members[i]),
         )
         if (same) return { channel: withUnread(data, same), created: false }
-        const dm: StoredChannel = { id: newId('c'), workspaceId, kind: 'dm', name: null, topic: '', description: '', whoCanPost: 'everyone', memberIds: [me.id, ...others], isPrivate: true, lastMessageAt: null }
+        const dm: StoredChannel = { id: newId('c'), workspaceId, kind: 'dm', name: null, topic: '', description: '', whoCanPost: 'everyone', isDefault: false, memberIds: [me.id, ...others], isPrivate: true, lastMessageAt: null }
         data.channels.push(dm)
         return { channel: withUnread(data, dm), created: true }
       })
@@ -335,7 +336,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         const topic = input.topic.trim()
         const others = [...new Set(input.memberIds)].filter((id) => id !== me.id)
         checkChannel(data, { workspaceId: input.workspaceId, name, topic, isPrivate: input.isPrivate, others })
-        const created: StoredChannel = { id: newId('c'), workspaceId: input.workspaceId, kind: 'channel', name, topic, description: '', whoCanPost: 'everyone', memberIds: [me.id, ...others], isPrivate: input.isPrivate, lastMessageAt: null }
+        const created: StoredChannel = { id: newId('c'), workspaceId: input.workspaceId, kind: 'channel', name, topic, description: '', whoCanPost: 'everyone', isDefault: false, memberIds: [me.id, ...others], isPrivate: input.isPrivate, lastMessageAt: null }
         data.channels.push(created)
         return withUnread(data, created)
       })
@@ -358,10 +359,17 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         if (whoCanPost !== channel.whoCanPost && !can('channel.restrictPosting', { userId: me.id, role: me.role, channel })) {
           throw new ApiError({ title: 'Forbidden', status: 403, detail: 'Only admins can change who can post.' })
         }
+        // A default channel is one new people join (spec 6.10): an Admin's choice, and never a private channel.
+        if (patch.isDefault !== undefined && typeof patch.isDefault !== 'boolean') throw badRequest('Turn the default channel on or off.')
+        const isDefault = patch.isDefault ?? channel.isDefault
+        if (isDefault !== channel.isDefault) {
+          if (!can('channel.setDefault', { userId: me.id, role: me.role, channel })) throw new ApiError({ title: 'Forbidden', status: 403, detail: 'Only admins can choose default channels.' })
+          if (isDefault && channel.isPrivate) throw badRequest("A private channel can't be a default channel.")
+        }
         const posted: ChatMessage[] = []
         if (channel.name && name !== channel.name) posted.push(postSystem(data, id, { kind: 'renamed', from: channel.name, to: name }))
         if (topic !== channel.topic) posted.push(postSystem(data, id, { kind: 'topic', to: topic }))
-        Object.assign(channel, { name, topic, description, whoCanPost })
+        Object.assign(channel, { name, topic, description, whoCanPost, isDefault })
         return { channel: withUnread(data, channel), posted }
       })
       for (const message of posted) hub.publish({ type: 'messageReceived', message: clone(message) })
@@ -370,24 +378,65 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
     },
     join: (id) => setMember(id, true),
     leave: (id) => setMember(id, false),
-    async addMembers(id, userIds) {
+    async addMembers(id, userIds, emails = []) {
       await delay()
       const { channel, posted } = await db.update((data) => {
         const { channel, me } = editableChannel(data, id)
-        const picked = [...new Set(userIds)]
-        if (!picked.length) throw badRequest('Pick someone to add.')
+        const typed = [...new Set(emails.map(normalEmail).filter(Boolean))]
+        if (!userIds.length && !typed.length) throw badRequest('Pick someone to add.')
+        if (typed.length > MAX_INVITES) throw badRequest(`Invite up to ${MAX_INVITES} emails at a time.`)
+        const wrong = typed.find((email) => !isEmail(email))
+        if (wrong) throw badRequest(notAnEmailLine(wrong))
+        // The email of someone in the workspace adds that person; the rest are invites, which only Admins send.
+        const userByEmail = new Map(data.users.map((u) => [u.email.toLowerCase(), u.id]))
+        const strangers = typed.filter((email) => !userByEmail.has(email))
+        if (strangers.length && !can('channel.inviteByEmail', { userId: me.id, role: me.role, channel })) {
+          throw new ApiError({ title: 'Forbidden', status: 403, detail: 'Only admins can invite people by email.' })
+        }
+        const picked = [...new Set([...userIds, ...typed.flatMap((email) => userByEmail.get(email) ?? [])])]
         // Joining is how I get into a channel; Add people is for others.
         if (picked.includes(me.id) && !channel.memberIds.includes(me.id)) throw badRequest('Join the channel instead.')
         const unknown = picked.find((userId) => !data.users.some((u) => u.id === userId))
         if (unknown) throw notFound('User', unknown)
         const added = picked.filter((userId) => !channel.memberIds.includes(userId))
-        if (!added.length) throw badRequest(`Everyone you picked is already in #${channel.name}.`)
+        const invited = strangers.filter((email) => !data.invitations.some((i) => i.channelId === id && i.email === email && i.status === 'pending'))
+        if (!added.length && !invited.length) {
+          throw badRequest(typed.length ? `Everyone you picked is already in #${channel.name} or invited.` : `Everyone you picked is already in #${channel.name}.`)
+        }
         channel.memberIds = [...channel.memberIds, ...added]
-        return { channel: withUnread(data, channel), posted: postSystem(data, id, { kind: 'added', userIds: added }) }
+        const at = new Date().toISOString()
+        for (const email of invited) {
+          data.invitations.push({ id: newId('inv'), workspaceId: channel.workspaceId, channelId: id, email, role: 'guest', invitedBy: me.id, createdAt: at, status: 'pending' })
+        }
+        // An invite posts nothing: the emails stay out of the channel until the guest joins.
+        return { channel: withUnread(data, channel), posted: added.length ? postSystem(data, id, { kind: 'added', userIds: added }) : null }
       })
-      hub.publish({ type: 'messageReceived', message: clone(posted) })
+      if (posted) hub.publish({ type: 'messageReceived', message: clone(posted) })
       hub.publish({ type: 'channelChanged', channelId: id })
       return clone(channel)
+    },
+    async invitations(channelId) {
+      await delay()
+      const data = await db.read()
+      requireManage(data, readableChannel(data, channelId))
+      return clone(data.invitations.filter((i) => i.channelId === channelId && i.status === 'pending'))
+    },
+    async revokeInvitation(invitationId) {
+      await delay()
+      const channelId = await db.update((data) => {
+        const invite = data.invitations.find((i) => i.id === invitationId)
+        if (!invite) throw notFound('Invitation', invitationId)
+        readableChannel(data, invite.channelId)
+        const me = currentUser(data)
+        if (!can('invitation.revoke', { userId: me.id, role: me.role, invitedBy: invite.invitedBy })) {
+          throw new ApiError({ title: 'Forbidden', status: 403, detail: 'Only whoever invited them, or an admin, can revoke this.' })
+        }
+        if (invite.status === 'revoked') throw badRequest('This invitation was revoked already.')
+        if (invite.status === 'accepted') throw badRequest('They joined already.')
+        invite.status = 'revoked'
+        return invite.channelId
+      })
+      hub.publish({ type: 'channelChanged', channelId })
     },
     async removeMember(id, userId) {
       await delay()

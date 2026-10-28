@@ -99,6 +99,14 @@ export const migrations: Record<number, (doc: Record<string, unknown>) => void> 
       channel.whoCanPost = channel.whoCanPost === 'admins' ? 'admins' : 'everyone'
     }
   },
+  // 14: email invites (spec 6.10, §7 Invitation), none yet; the seed's #general is the default channel new people join.
+  13: (doc) => {
+    if (!Array.isArray(doc.invitations)) doc.invitations = []
+    for (const channel of Array.isArray(doc.channels) ? (doc.channels as Record<string, unknown>[]) : []) {
+      if (!channel) continue
+      channel.isDefault = channel.isDefault === true || (channel.id === 'c-general' && channel.isPrivate !== true)
+    }
+  },
 }
 
 /** The document brought up to `to`, or null when a step on the way is missing. */

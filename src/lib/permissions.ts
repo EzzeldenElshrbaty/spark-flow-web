@@ -6,7 +6,7 @@ import type { Project, Role } from '@/api/types'
 export type Action =
   | 'rates.view' | 'cost.view' | 'project.create' | 'project.edit' | 'phase.manage' | 'task.manage' | 'task.updateOwnStatus'
   | 'time.logOwn' | 'time.logOn' | 'collab.post' | 'dashboard.view' | 'timeCost.view' | 'database.manage' | 'project.archive' | 'channel.manage'
-  | 'channel.restrictPosting' | 'channel.post'
+  | 'channel.restrictPosting' | 'channel.post' | 'channel.inviteByEmail' | 'channel.setDefault' | 'invitation.revoke'
 
 export type ProjectRef = Pick<Project, 'managerId' | 'memberIds' | 'teamIds'> & { archivedAt?: string | null }
 
@@ -19,6 +19,8 @@ export type PermissionContext = {
   /** For channel.manage: the channel's privacy and members; for channel.post, who may post in it. */
   channel?: { isPrivate: boolean; memberIds: string[]; whoCanPost?: 'everyone' | 'admins' }
   taskAssigneeId?: string | null
+  /** For invitation.revoke: who sent the invitation. */
+  invitedBy?: string
   /** Whether the person manages at least one project (a member can be named a project's manager). */
   managesAny?: boolean
 }
@@ -55,7 +57,12 @@ export function can(action: Action, ctx: PermissionContext): boolean {
     case 'project.archive':
     // Who can post in a channel (spec §9) is an Admin's choice.
     case 'channel.restrictPosting':
+    // Bringing in someone from outside the company (a guest, spec 6.10), and which channels new people join.
+    case 'channel.inviteByEmail':
+    case 'channel.setDefault':
       return false
+    case 'invitation.revoke':
+      return ctx.invitedBy === ctx.userId
     // A channel set to Only admins takes new posts from Admins alone (who passed above).
     case 'channel.post':
       return ctx.channel?.whoCanPost !== 'admins'

@@ -659,3 +659,28 @@ Rulings: Remove asks first in every channel, and the question holds the pending 
 - New tests: ChannelActions.test.tsx (`useChannelProject`), ThreadInspector.test.tsx (403 channel); more in ChannelDetails.test.tsx, layers.test.tsx, channelDetails.test.ts, migrations.test.ts, a11y.browser.test.tsx.
 - Verified: 1182 tests, tsc, lint, `build:prototype`; in the app, details open with focus on About, Remove asks "Remove Hossam Gaber from #backend?" with Cancel focused, and closing gives focus back to the channel's name.
 - Not pushed.
+
+
+# Flow chat — Phase 2 slice 5: Add people with email invites (spec 6.10, §7 Invitation, §8) — 2026-10-28
+
+Approved with my picks: part A (invitations data and routes), part B (Add people with emails, teams and the default-channel switch), part C (Invited in Members, with Revoke), with the contract updated. Guests (accepting, the guest role, what guests see) get their own slice.
+
+## Plan
+
+Part A — data and routes
+- [x] `Invitation` { id, workspaceId, channelId, email (lowercased), role 'guest', invitedBy, status pending | accepted | revoked, createdAt }; channel `isDefault` (false; #general true in the seed); mock DB v14 with its migration.
+- [x] `POST /api/channels/:id/members { userIds, emails? }`: emails trimmed and lowercased, valid ("x isn't an email address."), at most 20; an email of someone in Spark Systems adds that person; already in or already invited are skipped; nothing new → 400 "Everyone you picked is already in #x or invited."; email invites Admins only (403 "Only admins can invite people by email."); no system message for an invite.
+- [x] `GET /api/channels/:id/invitations` (pending, for whoever may manage it) and `DELETE /api/invitations/:id` (whoever invited, or an Admin).
+- [x] `PATCH /api/channels/:id { isDefault }`: Admins only, public channels only (a project's channel is refused already).
+- [x] `can()`: `channel.inviteByEmail`, `channel.setDefault` (Admins). Invite and revoke send `channelChanged`, which refreshes the Invited list. http, hooks, query keys; tests first.
+
+Part B — Add people (spec 6.10)
+- [ ] TokenInput chips by kind: person (avatar), email (mail icon, Guest tag), group in suggestions (team icon).
+- [ ] Suggestions: people by name or email, teams ("Backend · 4 people", adds those not in yet), and the typed email ("Invite as a guest", Admins); refusals near the field for anything else.
+- [ ] Helper text for email chips (one, or several); "Add N people" counts people and emails.
+- [ ] Admin-only block (eye icon, "Only admins can see this setting") with "When new people join Spark Systems, add them to #x", saving at once; public channels only.
+
+Part C — Invited in Members
+- [ ] "Invited · N" under the members: mail icon, email, Guest tag, "Invited by X · 3h ago", Revoke (whoever invited, or an Admin); Find members narrows it too.
+
+- [ ] Contract section for slice 5; axe in both themes, 390px and 44px checks, real key presses for Enter and comma; app check.

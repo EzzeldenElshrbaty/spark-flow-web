@@ -133,3 +133,19 @@ describe('who can post in a channel (spec §9, 6.10 Settings)', () => {
     expect(can('channel.post', { ...as('admin'), channel: closed })).toBe(true)
   })
 })
+
+describe('email invites and default channels (spec 6.10, slice 5)', () => {
+  it('only Admins invite by email and choose default channels', () => {
+    const channel = { isPrivate: false, memberIds: ['u-m'] }
+    for (const action of ['channel.inviteByEmail', 'channel.setDefault'] as const) {
+      expect(can(action, { ...as('admin'), channel })).toBe(true)
+      for (const role of ['pm', 'sales', 'member'] as const) expect(can(action, { ...as(role, 'u-m'), channel }), `${action} ${role}`).toBe(false)
+    }
+  })
+
+  it('whoever sent an invitation, or an Admin, revokes it', () => {
+    expect(can('invitation.revoke', { ...as('member', 'u-m'), invitedBy: 'u-m' })).toBe(true)
+    expect(can('invitation.revoke', { ...as('pm', 'u-p'), invitedBy: 'u-m' })).toBe(false)
+    expect(can('invitation.revoke', { ...as('admin', 'u-a'), invitedBy: 'u-m' })).toBe(true)
+  })
+})

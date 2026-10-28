@@ -227,7 +227,14 @@ export function useLeaveChannel() {
 }
 /** Adds people to a channel (spec 6.10 Add people). */
 export function useAddMembers() {
-  return useMutation({ mutationFn: ({ id, userIds }: { id: string; userIds: string[] }) => api.chat.addMembers(id, userIds) })
+  return useMutation({ mutationFn: ({ id, userIds, emails }: { id: string; userIds: string[]; emails?: string[] }) => api.chat.addMembers(id, userIds, emails) })
+}
+/** A channel's pending email invites (spec 6.10 Members), for whoever may change it; `channelChanged` refreshes them. */
+export function useInvitations(channelId: string, enabled: boolean) {
+  return useQuery({ queryKey: qk.invitations(channelId), queryFn: () => api.chat.invitations(channelId), enabled })
+}
+export function useRevokeInvitation() {
+  return useMutation({ mutationFn: (id: string) => api.chat.revokeInvitation(id) })
 }
 /** Takes someone else off a channel (spec 6.10 Members). */
 export function useRemoveMember() {

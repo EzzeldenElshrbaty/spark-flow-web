@@ -108,3 +108,9 @@ describe('12 → 13', () => {
   })
 })
 
+describe('13 → 14', () => {
+  it('no invitations yet, and #general is the only default channel (spec 6.10)', () => {
+    const doc = { version: 13, channels: [{ id: 'c-general', isPrivate: false }, { id: 'c1', isPrivate: false, isDefault: 'yes' }] }
+    expect(migrate(doc, 14)).toMatchObject({ version: 14, invitations: [], channels: [{ id: 'c-general', isDefault: true }, { id: 'c1', isDefault: false }] })
+  })
+})

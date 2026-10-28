@@ -32,6 +32,7 @@ const emptyData = (): DbData => ({
   trash: [],
   threadFollows: [],
   notifications: [],
+  invitations: [],
   counters: {},
 })
 

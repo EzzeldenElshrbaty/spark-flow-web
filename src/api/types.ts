@@ -116,9 +116,24 @@ export type Channel = {
   description: string
   /** Who may post new messages and replies (spec §9): Admins choose it. */
   whoCanPost: WhoCanPost
+  /** New people in the workspace join it (spec 6.10, a default channel): Admins choose it, public channels only. */
+  isDefault: boolean
 } & ChannelMemberState
 
 export type WhoCanPost = 'everyone' | 'admins'
+
+/**
+ * An email invite to a channel from Add people (spec 6.10, §7 Invitation). Every one is a guest for now (the spec's
+ * "guest or member, by workspace policy" waits for a policy); it stays pending until it's accepted from the email.
+ */
+export type Invitation = {
+  id: string; workspaceId: string; channelId: string
+  /** Trimmed and lowercased. */
+  email: string
+  role: 'guest'
+  invitedBy: string; createdAt: string
+  status: 'pending' | 'accepted' | 'revoked'
+}
 
 export type NotifyLevel = 'all' | 'mentions' | 'none'
 /** The current user's own state in a channel (spec §7 ChannelMember). Everyone starts at nothing read, nothing set. */
@@ -226,7 +241,7 @@ export type StoredChannel = Omit<Channel, 'unreadCount' | 'lastSeq' | keyof Chan
 /** A new channel; you are always one of its members. */
 export type NewChannel = { workspaceId: string; name: string; topic: string; isPrivate: boolean; memberIds: string[] }
 /** A channel's details; its people change through addMembers and removeMember. */
-export type ChannelPatch = Partial<Pick<Channel, 'name' | 'topic' | 'description' | 'whoCanPost'>>
+export type ChannelPatch = Partial<Pick<Channel, 'name' | 'topic' | 'description' | 'whoCanPost' | 'isDefault'>>
 
 export type NewTicket = Pick<
   Ticket,
@@ -377,8 +392,15 @@ export interface Api {
     join(id: string): Promise<Channel>
     /** Not a project's channel (its members follow the project) or a DM. */
     leave(id: string): Promise<Channel>
-    /** Its members and admins add people from the workspace; not a project's channel or a DM (spec 6.10). */
-    addMembers(id: string, userIds: string[]): Promise<Channel>
+    /**
+     * Its members and admins add people from the workspace, and Admins invite emails as guests, in one write; not a
+     * project's channel or a DM (spec 6.10). The email of someone in the workspace adds that person.
+     */
+    addMembers(id: string, userIds: string[], emails?: string[]): Promise<Channel>
+    /** The pending email invites to a channel, oldest first, for whoever may change it (spec 6.10 Members). */
+    invitations(channelId: string): Promise<Invitation[]>
+    /** Whoever sent it, or an Admin. */
+    revokeInvitation(id: string): Promise<void>
     /** Its members and admins take someone else off it (I leave instead); not a project's channel or a DM. */
     removeMember(id: string, userId: string): Promise<Channel>
     /** My own star and mute on a channel I can read. */

@@ -38,7 +38,7 @@ type RawMessage = {
 }
 type RawReply = { id: string; messageId: string; senderId: string; createdAt: string; content: string; reactions: Reaction[] }
 /** A seeded channel: its description and who can post default to none and everyone. */
-type RawChannel = Omit<StoredChannel, 'lastMessageAt' | 'description' | 'whoCanPost'> & Partial<Pick<StoredChannel, 'description' | 'whoCanPost'>>
+type RawChannel = Omit<StoredChannel, 'lastMessageAt' | 'description' | 'whoCanPost' | 'isDefault'> & Partial<Pick<StoredChannel, 'description' | 'whoCanPost' | 'isDefault'>>
 type RawTicket = {
   key: string; title: string; description: string; status: TicketStatus; priority: Priority
   points: number | null; assigneeId: string | null; reporterId: string; sprintId: string | null
@@ -86,6 +86,7 @@ function buildChannels(raw: RawChannel[], messages: ChatMessage[], replies: Thre
   return raw.map((c) => ({
     description: '',
     whoCanPost: 'everyone' as const,
+    isDefault: false,
     ...c,
     lastMessageAt: latestOf([
       ...messages.filter((m) => m.channelId === c.id).map((m) => m.createdAt),
@@ -311,7 +312,7 @@ export function seed(now: Date): SeedResult {
 
   // ── Channels ────────────────────────────────────────────────────────────
   const rawChannels: RawChannel[] = [
-    { id: 'c-general', workspaceId: 'ws-eng', kind: 'channel', name: 'general', topic: 'Updates for all of Spark Engineering. Ticket talk goes in the project channels.', memberIds: ['u-1', 'u-2', 'u-3', 'u-4', 'u-5', 'u-6', 'u-7', 'u-8', 'u-9'], isPrivate: false },
+    { id: 'c-general', workspaceId: 'ws-eng', kind: 'channel', name: 'general', topic: 'Updates for all of Spark Engineering. Ticket talk goes in the project channels.', memberIds: ['u-1', 'u-2', 'u-3', 'u-4', 'u-5', 'u-6', 'u-7', 'u-8', 'u-9'], isPrivate: false, isDefault: true },
     { id: 'c-frontend', workspaceId: 'ws-eng', kind: 'channel', name: 'frontend-dev', topic: 'React web client. Pull requests, design handoff and browser bugs.', memberIds: ['u-1', 'u-3', 'u-5', 'u-7'], isPrivate: false },
     { id: 'c-backend', workspaceId: 'ws-eng', kind: 'channel', name: 'backend', topic: 'API, database and queues. Post slow queries with the EXPLAIN output.', memberIds: ['u-1', 'u-2', 'u-5', 'u-6'], isPrivate: false },
     { id: 'c-release', workspaceId: 'ws-eng', kind: 'channel', name: 'release-v2', topic: 'Release 2.4.0: scope, QA status and the go/no-go call. Members only.', memberIds: ['u-1', 'u-2', 'u-4', 'u-5', 'u-6', 'u-8'], isPrivate: true },
@@ -546,6 +547,7 @@ export function seed(now: Date): SeedResult {
     trash: [],
     threadFollows: [],
     notifications: [],
+    invitations: [],
     activity: tickets
       .map((t) => ({ id: `act-${t.id}`, projectId: t.projectId, taskKey: t.key, actorId: t.reporterId, at: t.createdAt, kind: 'task.created' as const, changes: [] }))
       .sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0)),

@@ -11,7 +11,7 @@ window.matchMedia ??= ((media: string) => ({ matches: false, media, addEventList
 
 const backend: Channel = {
   id: 'c-backend', workspaceId: 'ws-eng', kind: 'channel', name: 'backend', topic: 'APIs and jobs', memberIds: ['u-1', 'u-2', 'u-3'], isPrivate: false,
-  lastMessageAt: null, description: '', whoCanPost: 'everyone', unreadCount: 0, lastSeq: 9, lastReadSeq: 9, starred: false, muted: false, notifyLevel: 'mentions',
+  lastMessageAt: null, description: '', whoCanPost: 'everyone', isDefault: false, unreadCount: 0, lastSeq: 9, lastReadSeq: 9, starred: false, muted: false, notifyLevel: 'mentions',
 }
 const people = [
   { id: 'u-1', name: 'Youssef Abdelrahman', title: 'Managing Director', presence: 'active', role: 'admin' },

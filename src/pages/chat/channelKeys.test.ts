@@ -3,7 +3,7 @@ import type { Channel } from '@/api/types'
 import { channelKey, sidebarOrder, stepChannel } from '@/pages/chat/channelKeys'
 
 const channel = (id: string, over: Partial<Channel> = {}): Channel => ({
-  id, workspaceId: 'ws-eng', kind: 'channel', name: id, topic: '', memberIds: ['u-1'], isPrivate: false, lastMessageAt: null, description: '', whoCanPost: 'everyone',
+  id, workspaceId: 'ws-eng', kind: 'channel', name: id, topic: '', memberIds: ['u-1'], isPrivate: false, lastMessageAt: null, description: '', whoCanPost: 'everyone', isDefault: false,
   unreadCount: 0, lastSeq: 5, lastReadSeq: 5, starred: false, muted: false, notifyLevel: 'all', ...over,
 })
 const row = (c: Channel) => ({ channel: c })
