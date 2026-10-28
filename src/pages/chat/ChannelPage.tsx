@@ -136,7 +136,7 @@ export function ChannelPage() {
               onEditLast={() => {
                 const loaded = queryClient.getQueryData<InfiniteData<Page<ChatMessage>>>(qk.messages(current.id))
                 const last = lastEditable(loaded?.pages.flatMap((p) => p.items).reverse() ?? [], persona.id)
-                if (last) useEditing.getState().start(last.id)
+                if (last) useEditing.getState().start(last.id, 'channel')
               }}
             />
             <TypingLine channelId={current.id} people={people} meId={persona.id} />

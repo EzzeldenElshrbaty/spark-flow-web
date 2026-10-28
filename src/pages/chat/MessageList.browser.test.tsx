@@ -1,6 +1,6 @@
 import '@/index.css'
 import { QueryClient, QueryClientProvider, useInfiniteQuery } from '@tanstack/react-query'
-import { cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { ToastProvider } from '@/components/sf/Toast'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -9,6 +9,7 @@ import type { ChatMessage, Page, User } from '@/api/types'
 import type { PendingMessage } from '@/lib/sendQueue'
 import { parseBody } from '@/lib/messageBody'
 import { MessageList } from '@/pages/chat/MessageList'
+import { useEditing } from '@/pages/chat/editingStore'
 
 // Scrolling needs real layout, so these run in Chromium (the `browser` test project), with the app's CSS.
 
@@ -211,6 +212,23 @@ describe('MessageList scrolling (spec 6.2)', () => {
     const after = topOf(anchor)
     expect(after).not.toBeNull()
     expect(Math.abs(after! - before)).toBeLessThanOrEqual(2)
+  })
+
+  it('an edit started in the thread panel doesn’t move the channel; one started here brings its message into view', async () => {
+    mount({ data: channel(60) })
+    await vi.waitFor(() => expect(topOf(60)).not.toBeNull())
+    await settle()
+    const before = list().scrollTop
+    try {
+      // Message 35 is loaded (the newest 30 are) but off screen, above.
+      act(() => useEditing.getState().start('m35', 'thread'))
+      await settle(200)
+      expect(list().scrollTop).toBe(before)
+      act(() => useEditing.getState().start('m35', 'channel'))
+      await vi.waitFor(() => expect(list().scrollTop).toBeLessThan(before))
+    } finally {
+      act(() => useEditing.getState().stop())
+    }
   })
 
   it('opens at the New line with the unread bar when the unread messages fill more than a screen', async () => {

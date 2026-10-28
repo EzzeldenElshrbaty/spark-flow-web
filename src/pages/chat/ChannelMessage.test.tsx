@@ -571,3 +571,36 @@ describe('a reply also sent to the channel (spec 6.7)', () => {
   })
 })
 
+describe('editing a message that shows in two places (spec 6.3, 6.7)', () => {
+  // The edit box keeps itself in view as it grows; jsdom has no ResizeObserver.
+  globalThis.ResizeObserver ??= class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver
+
+  it('a reply also sent to the channel is edited where I started: the channel row, not the thread panel too', () => {
+    const inChannel = message('Posted them', { id: 'r9', senderId: 'u-1', broadcast: { rootId: 'm1', rootText: 'Release notes?' } })
+    const inThread: ThreadReply = { id: 'r9', messageId: 'm1', channelId: 'c1', senderId: 'u-1', content: 'Posted them', body: parseBody('Posted them'), attachments: [], reactions: [], mentions: [], createdAt: '2026-10-28T09:00:00.000Z', alsoInChannel: true, seq: 12 }
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ToastProvider>
+          <MemoryRouter>
+            <ChannelMessage message={inChannel} users={users} ctx={ctx} meId="u-1" canPost continuation={false} />
+            <ChannelMessage message={inThread} users={users} ctx={ctx} meId="u-1" canPost continuation={false} compact />
+          </MemoryRouter>
+        </ToastProvider>
+      </QueryClientProvider>,
+    )
+    const [channelRow, threadRow] = screen.getAllByRole('article')
+    try {
+      fireEvent.keyDown(within(channelRow).getByRole('button', { name: 'More actions' }), { key: 'e' })
+      // The row being edited trades its toolbar for the edit box; the other place keeps its toolbar.
+      expect(within(channelRow).queryByRole('toolbar')).toBeNull()
+      expect(within(threadRow).getByRole('toolbar')).toBeTruthy()
+    } finally {
+      act(() => useEditing.getState().stop())
+    }
+  })
+})
+

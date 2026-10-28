@@ -215,6 +215,23 @@ describe('createDb', () => {
     expect(await db.read()).toEqual(bundle.data)
   })
 
+  it('thread follows survive an export and an import (they have no id of their own: a person and a thread)', async () => {
+    const db = createDb(createMemoryStore(), fakeSeed)
+    await db.update((d) => {
+      d.threadFollows = [{ userId: 'u1', rootId: 'm1', following: false }]
+    })
+    const bundle = await db.exportAll()
+    await db.reset()
+    await db.importAll(JSON.parse(JSON.stringify(bundle)))
+    expect((await db.read()).threadFollows).toEqual([{ userId: 'u1', rootId: 'm1', following: false }])
+  })
+
+  it('a follow without its person or thread is refused on import', async () => {
+    const db = createDb(createMemoryStore(), fakeSeed)
+    const data = { ...(await db.exportAll()).data, threadFollows: [{ userId: 'u1', following: true }] }
+    await expect(db.importAll({ app: 'spark-flow', version: DB_VERSION, exportedAt: 'T', data })).rejects.toMatchObject({ status: 400 })
+  })
+
   it('export while viewing as someone keeps the default person', async () => {
     const db = createDb(createMemoryStore(), fakeSeed)
     await db.update((d) => {

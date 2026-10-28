@@ -182,7 +182,7 @@ What a delete takes is kept only for the Undo window, then dropped (retention be
 - `:id` is the thread's root: a top-level message. A reply also sent to the channel (see below) has no thread of its own: `400` "Threads are one level only.". Read access to the channel, as for reading it; `404` / `403` as usual.
 - Each person's own choice is stored (spec §7 `ThreadFollow`: `userId`, `rootId`, `following`). Without one, the defaults decide: you follow a thread when you wrote its root, replied to it, or were mentioned by name (`@[Name](userId)`, not `@all`) in the root or a reply.
 - Replying, or being mentioned in a new reply, clears that person's choice, so they follow again.
-- Every message read (`GET` a message, a channel's pages) carries `following: boolean`, worked out for the person reading.
+- Every top-level message read (`GET` a message, a channel's pages) carries `following: boolean`, worked out for the person reading. A broadcast reply listed in the channel (below) doesn't: it has no thread of its own.
 - A change sends `messageChanged` `{ channelId, messageId }` (spec §8 `thread.updated`).
 - Delivery (the bell, Activity, the Threads view's counts) comes in later slices; they read the same state.
 
@@ -195,6 +195,6 @@ What a delete takes is kept only for the Undo window, then dropped (retention be
   - its `id` is the reply's id;
   - it carries `broadcast: { rootId, rootText }`, where `rootText` is the root's first line, worked out on read and `""` once the root is deleted;
   - its text, body, files, reactions, mentions, `editedAt` and `deletedAt` are the reply's.
-- Edits, deletes, restores and reactions on it go to `/api/replies/:id`. The `/api/messages/:id` routes answer `404` for it.
+- Edits, deletes, restores and reactions on it go to `/api/replies/:id`; through `/api/messages/:id` they answer `404`. `GET /api/messages/:id` returns it as the channel lists it, with no replies (`GET …/replies` is `[]`); replying to it or following it answers `400` "Threads are one level only.".
 - It counts as unread like any message from someone else, and a deleted one leaves the channel the way a deleted message without replies does.
 - `replyReceived` carries the reply with `alsoInChannel`; the channel's list refreshes on it as it does for any reply (spec §8 `message.created` and `thread.updated`).

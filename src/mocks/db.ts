@@ -117,13 +117,16 @@ function hasShape(value: unknown): value is DbData {
 }
 
 /**
- * Whether an imported document's records are usable, not just its top-level shape: every record has a string id
- * and the current user exists, or nobody could sign in as admin to reset it.
+ * Whether an imported document's records are usable, not just its top-level shape: every record has a string id (a
+ * thread follow is keyed by its person and thread instead) and the current user exists, or nobody could sign in as
+ * admin to reset it.
  */
 function hasUsableRecords(data: DbData): boolean {
-  const keyed = (list: unknown[]) => list.every((item) => isRecord(item) && typeof item.id === 'string')
+  const keyOf = (name: (typeof COLLECTIONS)[number], item: Record<string, unknown>) =>
+    name === 'threadFollows' ? typeof item.userId === 'string' && typeof item.rootId === 'string' : typeof item.id === 'string'
+  const keyed = (name: (typeof COLLECTIONS)[number]) => (data[name] as unknown[]).every((item) => isRecord(item) && keyOf(name, item))
   return (
-    COLLECTIONS.every((name) => keyed(data[name])) &&
+    COLLECTIONS.every(keyed) &&
     data.users.some((user) => user.id === data.currentUserId)
   )
 }

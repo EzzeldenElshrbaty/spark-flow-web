@@ -260,7 +260,7 @@ export function MessageList({
   })
 
   // The message I start editing (Up in an empty box) comes into view.
-  const editingId = useEditing((s) => s.id)
+  const editingId = useEditing((s) => (s.place === 'channel' ? s.id : null))
   useEffect(() => {
     const i = editingId ? rows.findIndex((r) => r.kind === 'message' && r.message.id === editingId) : -1
     if (i >= 0) virtualizer.scrollToIndex(i, { align: 'auto' })

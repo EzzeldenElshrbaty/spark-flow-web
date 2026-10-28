@@ -97,8 +97,10 @@ export function ChannelMessage({
   const root = reply ? null : message
   // A reply also sent to the channel (spec 6.7), as the channel lists it: it acts as the reply it is.
   const broadcast = root?.broadcast
-  const editing = useEditing((s) => s.id === message.id)
-  const startEditing = () => useEditing.getState().start(message.id)
+  // The thread panel's rows (compact) are edited apart from the channel's: a broadcast reply shows in both.
+  const place = compact ? 'thread' : 'channel'
+  const editing = useEditing((s) => s.id === message.id && s.place === place)
+  const startEditing = () => useEditing.getState().start(message.id, place)
   const stopEditing = () => useEditing.getState().stop()
   const row = useRef<HTMLElement>(null)
   const wasEditing = useRef(false)

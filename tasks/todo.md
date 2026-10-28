@@ -468,3 +468,19 @@ Rulings approved with the plan: one record for a broadcast reply; following is s
 - In the app: the database moved to version 11 on load. The thread panel's ⋮ shows Copy link, Get notified about replies, Open in a new window, and following flips its label. The thread composer has no formatting row (Aa shows it) and "Also send to #frontend-dev"; a reply sent with it showed in the channel as "replied to a thread: Bug: a long ticket title…", with a link to the thread, and in the panel with "↪ Also sent to #frontend-dev"; the box came back unchecked.
 - Fixed along the way: the "L copies the link … then clears" test could miss its timer under load (it now lets the note's effect start the timer first).
 - Not changed: the project's Chat tab still uses the old plain composer for its own messages; following doesn't notify yet (bell, Activity, Threads come later).
+
+# Flow chat — review of Phase 2 slice 2 (threads) — 2026-10-28 — done
+
+Range `1819445..52de4fc`. One fresh reviewer: no Critical, 2 Important, 6 Minor. Verdict "with fixes". Re-graded M2 (the contract contradicted the mock) to Important: the .NET team builds from it.
+
+## Fixed
+
+- [x] I1 — once anyone followed a thread, an export no longer imported ("That file isn't a Spark Flow export."), and the next DB_VERSION bump would have reseeded the mock database: the records check wanted an `id`. A thread follow is now checked by its person and thread. Tests: `db.test.ts` "thread follows survive an export and an import" (RED), "a follow without its person or thread is refused on import" (guard).
+- [x] I2 — a broadcast reply opened two edit boxes (channel row and thread panel share its id), and an edit in the panel scrolled the channel. The editing store keeps the place too (`channel` / `thread`); the list only follows the channel's. Tests: `ChannelMessage.test.tsx` "edited where I started" (RED: the panel row lost its toolbar), `MessageList.browser.test.tsx` "an edit started in the thread panel doesn't move the channel" (RED: 199 ≠ 814).
+- [x] M2 — the contract now says what the mock does: `following` on top-level messages only, and for a broadcast id `GET` returns it, its replies are `[]`, writes through `/api/messages/:id` are `404`, replying or following is `400`. (Text only.)
+
+## Review — fix pass
+
+- `npm test`: 1049/1049 (111 files). Lint and `build:prototype` (with `tsc -b`) pass.
+- In the app: with the thread open, Up in the empty channel composer opened one edit box, in the channel, with focus there (the broadcast reply "Fixed on staging too").
+- Deferred minors: M1 the thread ⋮'s "Link copied" is only read out, not shown; M3 Create task from a broadcast row links the task to its channel entry, not the reply (the chip shows only in the channel); M4 a non-member of a public channel gets "Also send to #channel" in the thread panel while the channel asks them to join first; M5 Reply in thread or T puts the caret at the start of a saved draft; M6 `CLAUDE.md` still says the old textarea Composer serves threads.
