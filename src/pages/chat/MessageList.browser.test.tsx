@@ -5,12 +5,16 @@ import { MemoryRouter } from 'react-router'
 import { ToastProvider } from '@/components/sf/Toast'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ChatMessage, Page, User } from '@/api/types'
+import type { PendingMessage } from '@/lib/sendQueue'
 import { parseBody } from '@/lib/messageBody'
 import { MessageList } from '@/pages/chat/MessageList'
 
 // Scrolling needs real layout, so these run in Chromium (the `browser` test project), with the app's CSS.
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.restoreAllMocks()
+})
 
 const users: User[] = [
   { id: 'u-1', name: 'Youssef Abdelrahman' },
@@ -45,12 +49,32 @@ function channel(count: number) {
 
 const scope = { projectKeys: new Set<string>(), ws: 'engineering', workspaceId: 'ws-eng' }
 
-function Harness({ data, newAfterSeq = null, totalUnread = 0 }: { data: ReturnType<typeof channel>; newAfterSeq?: number | null; totalUnread?: number }) {
+function Harness({
+  data,
+  newAfterSeq = null,
+  totalUnread = 0,
+  onMarkRead = vi.fn(),
+  focusSeq = null,
+  jumped = false,
+  pending = [],
+  onLatest = vi.fn(),
+}: {
+  data: ReturnType<typeof channel>
+  newAfterSeq?: number | null
+  totalUnread?: number
+  onMarkRead?: (seq?: number) => void
+  focusSeq?: number | null
+  /** A jump's window: newer messages are said to be still unloaded below. */
+  jumped?: boolean
+  pending?: PendingMessage[]
+  onLatest?: () => void
+}) {
   const query = useInfiniteQuery({
     queryKey: ['messages'],
-    queryFn: ({ pageParam }) => data.page(pageParam),
+    queryFn: ({ pageParam }) => (pageParam === 'newer' ? Promise.resolve({ items: [], nextCursor: null }) : data.page(pageParam)),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (page) => page.nextCursor ?? undefined,
+    getPreviousPageParam: (first) => (jumped && first.items.length > 0 ? 'newer' : undefined),
   })
   return (
     <div className="flex flex-col" style={{ height: 600, width: 720 }}>
@@ -63,10 +87,12 @@ function Harness({ data, newAfterSeq = null, totalUnread = 0 }: { data: ReturnTy
         newAfterSeq={newAfterSeq}
         totalUnread={totalUnread}
         markedSeq={newAfterSeq ?? 0}
-        onMarkRead={vi.fn()}
+        onMarkRead={onMarkRead}
+        focusSeq={focusSeq}
         onJump={vi.fn()}
-        onLatest={vi.fn()}
+        onLatest={onLatest}
         scope={scope}
+        pending={pending}
       />
     </div>
   )
@@ -74,16 +100,17 @@ function Harness({ data, newAfterSeq = null, totalUnread = 0 }: { data: ReturnTy
 
 function mount(props: Parameters<typeof Harness>[0]) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  render(
+  const tree = (p: Parameters<typeof Harness>[0]) => (
     <QueryClientProvider client={client}>
       <ToastProvider>
         <MemoryRouter>
-        <Harness {...props} />
-      </MemoryRouter>
-        </ToastProvider>
-    </QueryClientProvider>,
+          <Harness {...p} />
+        </MemoryRouter>
+      </ToastProvider>
+    </QueryClientProvider>
   )
-  return client
+  const { rerender } = render(tree(props))
+  return Object.assign(client, { update: (more: Partial<Parameters<typeof Harness>[0]>) => rerender(tree({ ...props, ...more })) })
 }
 
 const list = () => screen.getByRole('log') as HTMLElement
@@ -103,6 +130,24 @@ function firstOnScreen(): number {
     .sort((a, b) => a.top - b.top)
   return rows[0].seq
 }
+
+describe('MessageList announcements (spec 10)', () => {
+  const announcer = () => document.querySelector('p[aria-live="polite"]')!
+
+  it('the log itself is silent (rows mounting as I scroll are not news); one announcer reads new messages', async () => {
+    // The last of 43 is Nour's, so opening could read it out.
+    const data = channel(43)
+    const client = mount({ data })
+    await vi.waitFor(() => expect(topOf(43)).not.toBeNull())
+    await settle()
+    expect(list().getAttribute('aria-live')).toBe('off')
+    // Opening the channel reads nothing out.
+    expect(announcer().textContent).toBe('')
+    data.add()
+    await client.invalidateQueries()
+    await vi.waitFor(() => expect(announcer().textContent).toBe('Nour El-Sayed: Message 44 — a longer one that wraps onto a second line when the list is narrow enough to need it'))
+  })
+})
 
 describe('MessageList scrolling (spec 6.2)', () => {
   it('opens at the newest message', async () => {
@@ -170,5 +215,63 @@ describe('MessageList scrolling (spec 6.2)', () => {
     // Just under the bar (which takes the top 40px), not scrolled away.
     expect(top).toBeGreaterThanOrEqual(24)
     expect(top).toBeLessThan(120)
+  })
+
+  it('my own new message brings me down to it, even when scrolled up', async () => {
+    const data = channel(42)
+    const client = mount({ data })
+    await vi.waitFor(() => expect(topOf(42)).not.toBeNull())
+    await settle()
+    list().scrollTop = 200
+    await settle(100)
+    data.add('u-1')
+    await client.invalidateQueries()
+    await vi.waitFor(() => expect(topOf(43)).not.toBeNull())
+    await settle()
+    expect(distanceFromEnd()).toBeLessThan(32)
+  })
+
+  it('sending while a jump is open goes back to the live end, where the message shows', async () => {
+    const onLatest = vi.fn()
+    const view = mount({ data: channel(40), focusSeq: 15, jumped: true, onLatest })
+    await vi.waitFor(() => expect(topOf(15)).not.toBeNull())
+    await settle()
+    const sending: PendingMessage = { clientId: 'k1', channelId: 'c1', content: 'hi', body: [], createdAt: new Date().toISOString(), status: 'sending' }
+    view.update({ pending: [sending] })
+    await vi.waitFor(() => expect(onLatest).toHaveBeenCalledOnce())
+    // Retrying or deleting one already on its way isn't a new send.
+    view.update({ pending: [{ ...sending, status: 'failed' }] })
+    view.update({ pending: [] })
+    await settle(50)
+    expect(onLatest).toHaveBeenCalledOnce()
+  })
+
+  it('a jump lands on its message even when the newest message is mine', async () => {
+    const data = channel(40)
+    expect(data.messages.at(-1)!.senderId).toBe('u-1')
+    mount({ data, focusSeq: 15 })
+    await vi.waitFor(() => expect(topOf(15)).not.toBeNull())
+    await settle()
+    expect(topOf(15)).toBeGreaterThanOrEqual(0)
+    expect(topOf(15)).toBeLessThan(120)
+  })
+
+  it('opening at the New line leaves the unread messages unread (spec 6.2: read once seen at the end)', async () => {
+    // A focused, visible window: the only thing that keeps them unread is not being at the end.
+    vi.spyOn(document, 'hasFocus').mockReturnValue(true)
+    const onMarkRead = vi.fn()
+    mount({ data: channel(80), newAfterSeq: 30, totalUnread: 50, onMarkRead })
+    await vi.waitFor(() => expect(screen.getByText(/50 new messages since/)).toBeTruthy())
+    await settle()
+    expect(onMarkRead).not.toHaveBeenCalled()
+    // Nothing has come in since I opened it.
+    expect(screen.getByRole('button', { name: 'Jump to latest' })).toBeTruthy()
+  })
+
+  it('opening at the newest message marks it read', async () => {
+    vi.spyOn(document, 'hasFocus').mockReturnValue(true)
+    const onMarkRead = vi.fn()
+    mount({ data: channel(40), newAfterSeq: 38, totalUnread: 2, onMarkRead })
+    await vi.waitFor(() => expect(onMarkRead).toHaveBeenCalledWith(40))
   })
 })

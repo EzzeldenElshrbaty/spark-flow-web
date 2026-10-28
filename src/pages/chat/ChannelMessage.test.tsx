@@ -8,8 +8,12 @@ import type { ChatMessage, TaskRef, ThreadReply, User } from '@/api/types'
 import { parseBody } from '@/lib/messageBody'
 import { ChannelMessage, systemText, type Selection } from '@/pages/chat/ChannelMessage'
 import type { BodyContext } from '@/pages/chat/MessageBody'
+import { useEditing } from '@/pages/chat/editingStore'
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  useEditing.setState({ id: null, from: null })
+})
 // jsdom has no matchMedia; the ⋯ menu (components/ui/Menu) asks it whether this is a phone.
 window.matchMedia ??= ((media: string) => ({ matches: false, media, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia
 
@@ -123,6 +127,8 @@ describe('ChannelMessage states (spec 6.3)', () => {
     expect(head.className).toContain('sr-only')
     expect(head.textContent).toContain('Nour El-Sayed')
     expect(row.querySelector('[aria-hidden] time')).not.toBeNull()
+    // The hidden name is text, not a button: no Tab stop that can't be seen.
+    expect(head.querySelector('button')).toBeNull()
   })
 
   it('system texts', () => {
@@ -164,6 +170,14 @@ describe('ChannelMessage parts (feature 4 follow-up)', () => {
     expect(picker.querySelector('input[type="search"]')).toBe(document.activeElement)
     fireEvent.click(screen.getAllByRole('button', { name: 'party popper' })[0])
     expect(screen.queryByRole('dialog', { name: 'Add reaction' })).toBeNull()
+  })
+
+  it('typing "e" in the picker searches; it does not start editing my message (keys bubble out of portals)', () => {
+    show(message('mine', { senderId: 'u-1', reactions: [{ emoji: '👍', userIds: ['u-2'] }] }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add reaction' }))
+    fireEvent.keyDown(screen.getAllByRole('button', { name: 'party popper' })[0], { key: 'e' })
+    expect(useEditing.getState().id).toBeNull()
+    expect(screen.getByRole('dialog', { name: 'Add reaction' })).toBeTruthy()
   })
 
   it('no add chip where I may not react', () => {

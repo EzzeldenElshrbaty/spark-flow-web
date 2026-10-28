@@ -1,6 +1,6 @@
 import clsx from 'clsx'
 import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
-import { useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useDeleteMessage, useReact, useRestoreMessage } from '@/api/chat'
 import type { ChatTarget } from '@/api/types'
 import { IconTrash } from '@tabler/icons-react'
@@ -40,15 +40,22 @@ export function MessageActions({
   const remove = useDeleteMessage()
   const restore = useRestoreMessage()
   const toast = useToast()
+  // Once deleted, the row goes and takes this ⋯ with it: focus moves on (after the confirm dialog has put it back).
+  const [deleted, setDeleted] = useState(0)
+  useEffect(() => {
+    if (deleted) focusAfterDelete(triggerRef.current)
+  }, [deleted])
   /** Deletes, then offers Undo for 5s; an Undo that comes too late says so. */
   const deleteNow = () =>
-    remove.mutateAsync(target).then(() =>
+    remove.mutateAsync(target).then(() => {
+      setConfirming(false)
+      setDeleted((n) => n + 1)
       toast({
         message: 'Message deleted',
         icon: IconTrash,
         action: { label: 'Undo', onAction: () => restore.mutate(target, { onError: (e) => toast({ message: (e as Error).message }) }) },
-      }),
-    )
+      })
+    })
   const close = () => setOpen(false)
   const more = extra?.(close)
   if (!can.react && !can.edit && !can.remove && !more) return null
@@ -131,7 +138,7 @@ export function MessageActions({
         footer={
           <>
             <SfButton onClick={() => setConfirming(false)}>Cancel</SfButton>
-            <SfButton variant="danger" disabled={remove.isPending} onClick={() => void deleteNow().then(() => setConfirming(false), () => {})}>
+            <SfButton variant="danger" disabled={remove.isPending} onClick={() => void deleteNow().catch(() => {})}>
               {remove.isPending ? 'Deleting…' : 'Delete message'}
             </SfButton>
           </>
@@ -141,4 +148,22 @@ export function MessageActions({
       </Modal>
     </div>
   )
+}
+
+/**
+ * Where focus goes once a message is deleted (spec 10): the next message's ⋯, else the one before, else the list.
+ * Not when focus has already gone somewhere else.
+ */
+function focusAfterDelete(trigger: HTMLElement | null) {
+  const active = document.activeElement
+  if (!trigger || (active && active !== document.body && active !== trigger)) return
+  const item = trigger.closest('li')
+  const siblings = (dir: 'nextElementSibling' | 'previousElementSibling') => {
+    for (let li = item?.[dir] ?? null; li; li = li[dir]) {
+      const found = li.querySelector<HTMLElement>('[aria-label="Message actions"]')
+      if (found) return found
+    }
+    return null
+  }
+  ;(siblings('nextElementSibling') ?? siblings('previousElementSibling') ?? trigger.closest<HTMLElement>('[role="log"]'))?.focus()
 }

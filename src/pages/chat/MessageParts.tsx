@@ -139,7 +139,8 @@ export function Reactions({ reactions, users, target, meId, canReact }: { reacti
         )
       })}
       {canReact && (
-        <li className="hidden group-focus-within:block group-hover:block">
+        // Shown on hover and focus, and while its picker is open: focus comes back to it when the picker closes.
+        <li className="hidden group-focus-within:block group-hover:block has-[[aria-expanded=true]]:block">
           <Popover
             label="Add reaction"
             className="w-[352px] max-w-[calc(100vw-16px)] overflow-hidden"

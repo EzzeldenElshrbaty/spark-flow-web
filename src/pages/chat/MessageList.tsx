@@ -155,8 +155,9 @@ export function MessageList({
     scrollPaddingStart: BAR_ROOM,
   })
 
-  const [atBottom, setAtBottom] = useState(true)
-  const atBottomRef = useRef(true)
+  // Not at the end until the list has opened there: opening at the New line must not count as reading it all.
+  const [atBottom, setAtBottom] = useState(false)
+  const atBottomRef = useRef(false)
   const [far, setFar] = useState(false)
   const [bar, setBar] = useState(false)
   const newest = messages.at(-1)
@@ -175,6 +176,11 @@ export function MessageList({
   // scrollToIndex keeps correcting until the rows on the way are measured; a plain scrollTop would stop short.
   const scrollToBottom = () => {
     if (rows.length > 0) virtualizer.scrollToIndex(rows.length - 1, { align: 'end' })
+  }
+  const openAtBottom = () => {
+    atBottomRef.current = true
+    setAtBottom(true)
+    scrollToBottom()
   }
 
 
@@ -202,6 +208,19 @@ export function MessageList({
     return true
   }
 
+  // Sending while a jump is open goes back to the live end, where the message shows (spec 6.2). Only a new send:
+  // retrying or deleting one already on its way isn't.
+  const pendingSeen = useRef(new Set(pending.map((p) => p.clientId)))
+  useEffect(() => {
+    const fresh = pending.filter((p) => !pendingSeen.current.has(p.clientId))
+    for (const p of fresh) pendingSeen.current.add(p.clientId)
+    if (fresh.length > 0 && hasNewer) onLatest()
+  }, [pending, hasNewer, onLatest])
+
+  // My newest message (on its way, or in), and the last one of mine the view has already been to.
+  const newestMine = shownPending.at(-1)?.clientId ?? (newest && newest.senderId === meId ? newest.id : null)
+  const mineSeen = useRef<string | null>(null)
+
   // Open once, when the first page is there: at the newest message, or at the New line with the unread bar when
   // the unread messages don't fit on one screen.
   const positioned = useRef(false)
@@ -209,17 +228,18 @@ export function MessageList({
     const el = scrollRef.current
     if (positioned.current || !el || rows.length === 0 || catchingUp) return
     positioned.current = true
+    // Jump to latest counts what comes in after this (the unread bar counts what was there).
+    seenSeq.current = newest?.seq ?? 0
+    mineSeen.current = newestMine
     if (scrollToFocus()) return
-    if (openAtEnd) return scrollToBottom()
+    if (openAtEnd) return openAtBottom()
     const start = startOf(newIndex)
     // From the New line down is more than a screen: open there, with the bar. Otherwise open at the newest.
     if (start !== undefined && virtualizer.getTotalSize() - start > el.clientHeight) {
       scrollToNewLine()
-      atBottomRef.current = false
-      setAtBottom(false)
       setBar(true)
     } else {
-      scrollToBottom()
+      openAtBottom()
     }
   })
 
@@ -247,10 +267,11 @@ export function MessageList({
     if (positioned.current && atBottomRef.current && !hasNewer) scrollToBottom()
   }, [lastKey])
 
-  // My own new message always brings me down to it.
-  const newestMine = shownPending.at(-1)?.clientId ?? (newest && newest.senderId === meId ? newest.id : null)
+  // My own new message always brings me down to it. Mine that was already there on open isn't new: the open (at a
+  // jump's message, say) decides where the view starts.
   useEffect(() => {
-    if (!newestMine || !positioned.current) return
+    if (!newestMine || !positioned.current || newestMine === mineSeen.current) return
+    mineSeen.current = newestMine
     atBottomRef.current = true
     setAtBottom(true)
     scrollToBottom()
@@ -282,14 +303,24 @@ export function MessageList({
     onMarkRead(upTo)
   }, [upTo, onMarkRead])
 
-  // Someone else's new message is read out once; scrolling past rows is not.
+  // Someone else's new message is read out once; scrolling past rows is not (the log itself is silent). Announcing
+  // starts from the newest message once the list is live: what was there on open, and the pages loaded on the way
+  // back from a jump, aren't news.
   const [announce, setAnnounce] = useState('')
-  const lastAnnounced = useRef(newest?.id)
+  const lastAnnounced = useRef<number | null>(null)
+  const wasJumping = useRef(hasNewer)
   useEffect(() => {
-    if (!newest || newest.id === lastAnnounced.current) return
-    lastAnnounced.current = newest.id
+    const jumping = hasNewer || wasJumping.current
+    wasJumping.current = hasNewer
+    if (!newest) return
+    if (lastAnnounced.current === null || jumping) {
+      lastAnnounced.current = newest.seq
+      return
+    }
+    if (newest.seq <= lastAnnounced.current) return
+    lastAnnounced.current = newest.seq
     if (newest.senderId !== meId) setAnnounce(`${users.find((u) => u.id === newest.senderId)?.name ?? 'Someone'}: ${newest.content.slice(0, 140)}`)
-  }, [newest, meId, users])
+  }, [newest, hasNewer, meId, users])
 
   if (query.isError && !query.data) return <div className="px-4 pt-4 md:px-6"><QueryError what="Messages" onRetry={() => void query.refetch()} /></div>
   if (!query.data || (catchingUp && !positioned.current)) return <div className="min-h-0 flex-1 px-4 pt-4 md:px-6"><MessageSkeleton /></div>
@@ -308,7 +339,7 @@ export function MessageList({
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
-      <div ref={scrollRef} onScroll={onScroll} role="log" aria-label={`Messages in ${title}`} tabIndex={0} className="min-h-0 flex-1 overflow-y-auto outline-none [overflow-anchor:none]">
+      <div ref={scrollRef} onScroll={onScroll} role="log" aria-live="off" aria-label={`Messages in ${title}`} tabIndex={0} className="min-h-0 flex-1 overflow-y-auto outline-none [overflow-anchor:none]">
         <ol className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
           {items.map((v) => {
             const row = rows[v.index]

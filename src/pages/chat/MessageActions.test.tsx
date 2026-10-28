@@ -64,3 +64,52 @@ describe('delete (spec 6.3)', () => {
     expect(screen.getByRole('status').textContent).toContain('Message deleted')
   })
 })
+
+describe('focus after a delete (spec 10: the deleted row takes its ⋯ with it)', () => {
+  /** A list of rows, each with its ⋯; `ids` names them. */
+  function list(ids: string[], confirmDelete = false) {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ToastProvider>
+          <div role="log" tabIndex={0} aria-label="Messages">
+            <ol>
+              {ids.map((id) => (
+                <li key={id}>
+                  <article aria-label={id}>
+                    <MessageActions target={{ kind: 'message', id }} can={{ react: false, edit: true, remove: true }} confirmDelete={confirmDelete} onEdit={vi.fn()} />
+                  </article>
+                </li>
+              ))}
+              <li>New messages</li>
+            </ol>
+          </div>
+          <ToastRegion />
+        </ToastProvider>
+      </QueryClientProvider>,
+    )
+  }
+  const actionsOf = (id: string) => screen.getByRole('article', { name: id }).querySelector('button')!
+  const deleteRow = async (id: string, confirm = false) => {
+    fireEvent.click(actionsOf(id))
+    await act(async () => fireEvent.click(screen.getByRole('menuitem', { name: /Delete message/ })))
+    if (confirm) await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Delete message' })))
+  }
+
+  it("goes to the next message's ⋯", async () => {
+    list(['m1', 'm2', 'm3'])
+    await deleteRow('m1')
+    expect(document.activeElement).toBe(actionsOf('m2'))
+  })
+
+  it("goes to the one before when it was the last, also after confirming", async () => {
+    list(['m1', 'm2'], true)
+    await deleteRow('m2', true)
+    expect(document.activeElement).toBe(actionsOf('m1'))
+  })
+
+  it('goes to the list when it was the only one', async () => {
+    list(['m1'])
+    await deleteRow('m1')
+    expect(document.activeElement).toBe(screen.getByRole('log'))
+  })
+})

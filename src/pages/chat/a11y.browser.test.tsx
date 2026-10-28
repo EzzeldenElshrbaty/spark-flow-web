@@ -156,6 +156,44 @@ describe('composer autocomplete semantics (spec 10)', () => {
   })
 })
 
+describe('message actions on a phone (spec 10: every screen works at 390px)', () => {
+  const wrapperOpacity = () => getComputedStyle(screen.getByRole('button', { name: 'Message actions', hidden: true }).closest('div.absolute')!).opacity
+
+  it('the ⋯ menu is always shown on a phone, where there is no hover', async () => {
+    await page.viewport(390, 844)
+    try {
+      mount(<ChannelMessage message={message('hi')} users={users} ctx={ctx} meId="u-1" canPost continuation={false} />, false)
+      expect(wrapperOpacity()).toBe('1')
+    } finally {
+      await page.viewport(414, 896)
+    }
+  })
+
+  it('on a wider screen it waits for hover or focus', async () => {
+    await page.viewport(1280, 800)
+    try {
+      mount(<ChannelMessage message={message('hi')} users={users} ctx={ctx} meId="u-1" canPost continuation={false} />, false)
+      expect(wrapperOpacity()).toBe('0')
+    } finally {
+      await page.viewport(414, 896)
+    }
+  })
+})
+
+describe('focus around reactions (spec 10)', () => {
+  it('closing the add-reaction picker puts focus back on its chip', async () => {
+    mount(<ChannelMessage message={message('hi', { reactions: [{ emoji: '👍', userIds: ['u-2'] }] })} users={users} ctx={ctx} meId="u-1" canPost continuation={false} />, false)
+    // As from the keyboard: focus in the message shows the chip.
+    screen.getByRole('button', { name: '👍 1: Nour El-Sayed' }).focus()
+    const chip = await screen.findByRole('button', { name: 'Add reaction' })
+    chip.focus()
+    await userEvent.keyboard('{Enter}')
+    await screen.findByRole('dialog', { name: 'Add reaction' })
+    await userEvent.keyboard('{Escape}')
+    await vi.waitFor(() => expect(document.activeElement).toBe(chip))
+  })
+})
+
 describe('focus when an edit ends (spec 10)', () => {
   const editBox = async () => {
     const box = await screen.findByRole('textbox', { name: 'Edit message' }, { timeout: 3000 })

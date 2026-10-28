@@ -148,6 +148,8 @@ export function ChannelMessage({
       ref={row}
       // E edits my message while focus is in it (its ⋯ button), as long as I'm not typing somewhere (spec 6.3).
       onKeyDown={(e) => {
+        // Keys from this row's portals (the emoji picker, the ⋯ menu) bubble here too: they aren't for the row.
+        if (!e.currentTarget.contains(e.target as Node)) return
         const typing = (e.target as HTMLElement).closest('input, textarea, [contenteditable="true"]')
         if (e.key.toLowerCase() === 'e' && !e.metaKey && !e.ctrlKey && !e.altKey && !typing && can.edit && !editing && !sendState) {
           e.preventDefault()
@@ -170,7 +172,8 @@ export function ChannelMessage({
       )}
       <div className={clsx('min-w-0', tint)}>
         <p className={clsx('flex min-w-0 items-baseline gap-2', continuation && 'sr-only')}>
-          <AuthorName userId={message.senderId} name={name} ctx={ctx} />
+          {/* A grouped row's name is for screen readers only: text, not a button no one can see focused. */}
+          {continuation ? <span>{name}</span> : <AuthorName userId={message.senderId} name={name} ctx={ctx} />}
           {time}
         </p>
         {body}
@@ -193,8 +196,9 @@ export function ChannelMessage({
         {root && showThread && root.threadCount > 0 && <ThreadSummary message={root} users={users} />}
       </div>
       {!editing && !sendState && !root?.system && (
-        // The toolbar comes in Phase 2; until then the ⋯ menu shows on hover and on keyboard focus.
-        <div className={clsx('absolute top-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100', compact ? 'end-3' : 'end-4 md:end-6')}>
+        // The toolbar comes in Phase 2; until then the ⋯ menu shows on hover and on keyboard focus, and always on a
+        // phone, which has no hover.
+        <div className={clsx('absolute top-1 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100', compact ? 'end-3' : 'end-4 md:end-6')}>
           <MessageActions
             target={target}
             can={can}
