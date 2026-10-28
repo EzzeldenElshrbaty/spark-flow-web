@@ -87,6 +87,8 @@ export function KeysPlugin({
         editor.registerCommand(
           KEY_ARROW_UP_COMMAND,
           (event) => {
+            // With a modifier it's another key (Alt+↑ is the previous channel): the page's.
+            if (event.altKey || event.shiftKey || event.ctrlKey || event.metaKey) return false
             if (menuOpen.current || !onUpEmpty || editor.getEditorState().read(() => $getRoot().getTextContent().trim() !== '')) return false
             event.preventDefault()
             onUpEmpty()

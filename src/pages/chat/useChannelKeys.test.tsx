@@ -37,7 +37,7 @@ function field(html: string) {
   const host = document.createElement('div')
   host.innerHTML = html
   document.body.append(host)
-  return host.querySelector<HTMLElement>('input, [contenteditable]')!
+  return host.querySelector<HTMLElement>('input, textarea, [contenteditable]')!
 }
 
 describe('useChannelKeys: Alt+↑/↓ (spec 10)', () => {
@@ -63,10 +63,17 @@ describe('useChannelKeys: Alt+↑/↓ (spec 10)', () => {
     expect(onGo).not.toHaveBeenCalled()
   })
 
-  it('works while typing, in the composer or any other field', () => {
+  it('works while typing in the channel composer (its draft is kept)', () => {
     const { onGo } = setup()
-    press('ArrowDown', { altKey: true }, field('<input type="search">'))
+    press('ArrowDown', { altKey: true }, field(`<div ${CHANNEL_COMPOSER}><div contenteditable="true"></div></div>`))
     expect(onGo).toHaveBeenCalledWith('c')
+  })
+
+  it('not while typing in another field: a reply or an edit has no draft and would be lost', () => {
+    const { onGo } = setup()
+    expect(press('ArrowDown', { altKey: true }, field('<textarea aria-label="Reply"></textarea>'))).toBe(false)
+    press('ArrowUp', { altKey: true, shiftKey: true }, field('<div contenteditable="true"></div>'))
+    expect(onGo).not.toHaveBeenCalled()
   })
 })
 

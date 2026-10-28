@@ -284,4 +284,22 @@ describe('RichComposer Up in an empty box (spec 6.8)', () => {
     await userEvent.keyboard('text{ArrowUp}')
     expect(onEditLast).toHaveBeenCalledOnce()
   })
+
+  it('leaves Up with Alt, Shift, Ctrl or Meta to the page (Alt+↑ is the previous channel)', async () => {
+    const onEditLast = vi.fn()
+    const { editor } = await ready({ onEditLast })
+    const prevented: boolean[] = []
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowUp') prevented.push(event.defaultPrevented)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    try {
+      await userEvent.click(editor)
+      for (const mod of ['Alt', 'Shift', 'Control', 'Meta']) await userEvent.keyboard(`{${mod}>}{ArrowUp}{/${mod}}`)
+    } finally {
+      window.removeEventListener('keydown', onKeyDown)
+    }
+    expect(onEditLast).not.toHaveBeenCalled()
+    expect(prevented).toEqual([false, false, false, false])
+  })
 })
