@@ -503,7 +503,10 @@ describe('Members: who is invited (spec 6.10, slice 5)', () => {
     expect(screen.queryByRole('button', { name: 'Revoke the invite to lina@partner.io' })).toBeNull()
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Revoke the invite to sam@client.com' })))
     expect(onRevoke).toHaveBeenCalledWith('inv-1')
-    expect((screen.getByRole('button', { name: 'Revoke the invite to sam@client.com' }) as HTMLButtonElement).disabled).toBe(true)
+    // Busy, not disabled: a disabled button would drop keyboard focus to the page (review).
+    expect(screen.getByRole('button', { name: 'Revoke the invite to sam@client.com' }).getAttribute('aria-disabled')).toBe('true')
+    fireEvent.click(screen.getByRole('button', { name: 'Revoke the invite to sam@client.com' }))
+    expect(onRevoke).toHaveBeenCalledOnce()
     expect(screen.getByRole('button', { name: 'Revoke the invite to sam@client.com' }).textContent).toBe('Revoking…')
     await act(async () => done())
   })
@@ -512,5 +515,67 @@ describe('Members: who is invited (spec 6.10, slice 5)', () => {
     show({ tab: 'members', invitations: [invite('inv-1', 'sam@client.com', 'u-1')], onRevoke: vi.fn(async () => Promise.reject(new Error('This invitation was revoked already.'))) })
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Revoke the invite to sam@client.com' })))
     expect(screen.getByRole('alert').textContent).toBe('This invitation was revoked already.')
+  })
+})
+
+describe('Add people after the slice 5 review', () => {
+  const openAdd = (props: Partial<Props> = {}) => {
+    const handlers = show({ tab: 'members', ...props })
+    fireEvent.click(screen.getByRole('button', { name: 'Add people' }))
+    const add = within(screen.getByRole('dialog', { name: /^Add people to/ }))
+    const names = add.getByRole('combobox', { name: 'Names or emails' })
+    fireEvent.focus(names)
+    const type = (text: string) => fireEvent.change(names, { target: { value: text } })
+    const answer = (text: string) => {
+      type(text)
+      fireEvent.keyDown(names, { key: 'Enter' })
+      return add.queryByRole('alert')?.textContent
+    }
+    const chips = () => add.queryAllByRole('button', { name: /^Remove / }).map((b) => b.getAttribute('aria-label'))
+    return { ...handlers, add, names, type, answer, chips }
+  }
+  const everyone = { ...backend, memberIds: ['u-1', 'u-2', 'u-3', 'u-4'] }
+
+  it('a name already in the channel, mine, or a team that is all in says so, not that nobody matches', () => {
+    const { answer } = openAdd({ channel: everyone })
+    expect(answer('Nour')).toBe('Nour El-Sayed is already in #backend.')
+    expect(answer('youssef')).toBe('Youssef Abdelrahman is already in #backend.')
+    expect(answer('Backend')).toBe('Everyone in Backend is already in #backend.')
+    expect(answer('a')).toBe('Everyone matching “a” is already in #backend.')
+    expect(answer('zed')).toBe('No one in Spark Systems matches “zed”.')
+    cleanup()
+    const away = openAdd({ channel: { ...backend, memberIds: ['u-2', 'u-3'] } })
+    expect(away.answer('Youssef')).toBe('Join the channel instead.')
+  })
+
+  it('a pasted list of addresses becomes a chip each; trailing punctuation goes; what can’t be added stays typed, with why', () => {
+    const { type, chips, names, add } = openAdd()
+    type('lina@partner.io, Omar@Client.com;')
+    expect(chips()).toEqual(['Remove lina@partner.io', 'Remove omar@client.com'])
+    expect((names as HTMLInputElement).value).toBe('')
+    type('sam@client.com;')
+    expect(chips()).toEqual(['Remove lina@partner.io', 'Remove omar@client.com', 'Remove sam@client.com'])
+    type('zed@; nour.elsayed@spark-sys.com, mariam@client.com')
+    expect(chips()).toContain('Remove mariam@client.com')
+    expect((names as HTMLInputElement).value).toBe('zed@, nour.elsayed@spark-sys.com')
+    expect(add.getByRole('alert').textContent).toBe("zed@ isn't an email address.")
+  })
+
+  it('what is typed and not yet a chip goes with Add, and counts; text that can’t be added stops the Add and says why', async () => {
+    const { type, add, onAdd, names } = openAdd()
+    type('om')
+    fireEvent.keyDown(names, { key: 'Enter' })
+    type('sam@client.com')
+    expect(add.getByText("sam@client.com isn't in Spark Systems yet. They'll get an email invite as a guest who can see #backend only.")).toBeTruthy()
+    await act(async () => fireEvent.click(add.getByRole('button', { name: 'Add 2 people' })))
+    expect(onAdd).toHaveBeenCalledWith({ userIds: ['u-4'], emails: ['sam@client.com'] })
+    cleanup()
+    const alone = openAdd()
+    alone.type('sam@client.com')
+    expect((alone.add.getByRole('button', { name: 'Add 1 person' }) as HTMLButtonElement).disabled).toBe(false)
+    alone.type('zed')
+    await act(async () => fireEvent.click(alone.add.getByRole('button', { name: 'Add people' })))
+    expect(alone.add.getByRole('alert').textContent).toBe('No one in Spark Systems matches “zed”.')
+    expect(alone.onAdd).not.toHaveBeenCalled()
   })
 })

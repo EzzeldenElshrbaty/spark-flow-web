@@ -15,3 +15,10 @@ describe('emails for invites (spec 6.10)', () => {
     expect(inviteHelp([], 'backend')).toBeUndefined()
   })
 })
+
+describe('emails, after the slice 5 review', () => {
+  it('refuses punctuation a paste brings along, and characters no address has', () => {
+    for (const bad of ['sam@client.com;', 'sam@client.com,', '<sam@client.com>', 'sam@client.com"', 'sam,lina@client.com']) expect(isEmail(bad), bad).toBe(false)
+    for (const ok of ['o_hassan@spark-sys.com', 'lina.m+flow@partner.co.uk', "o'neil@client.ie"]) expect(isEmail(ok), ok).toBe(true)
+  })
+})

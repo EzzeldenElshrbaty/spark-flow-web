@@ -2,7 +2,7 @@ import '@/index.css'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, render, screen, within } from '@testing-library/react'
 import axe from 'axe-core'
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
@@ -702,5 +702,54 @@ describe('Add people with emails, with real key presses (spec 6.10, slice 5)', (
     } finally {
       await page.viewport(414, 896)
     }
+  })
+})
+
+describe('focus stays with the control while it saves, with real key presses (slice 5 review)', () => {
+  const later = () => new Promise<void>((r) => setTimeout(r, 150))
+  const two = [sentInvite, { ...sentInvite, id: 'inv-2', email: 'sam@client.com' }]
+
+  function Invites() {
+    const [list, setList] = useState(two)
+    return details({
+      tab: 'members',
+      invitations: list,
+      onRevoke: async (id: string) => {
+        await later()
+        setList((l) => l.filter((i) => i.id !== id))
+      },
+    })
+  }
+
+  it('Revoke keeps focus while it goes, then hands it to the next Revoke, then to Find members', async () => {
+    mount(<Invites />, false)
+    const first = screen.getByRole('button', { name: 'Revoke the invite to lina@partner.io' })
+    first.focus()
+    await userEvent.keyboard('{Enter}')
+    expect(document.activeElement).toBe(first)
+    await vi.waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Revoke the invite to sam@client.com' })))
+    await userEvent.keyboard('{Enter}')
+    await vi.waitFor(() => expect(document.activeElement).toBe(screen.getByRole('searchbox', { name: 'Find members' })))
+  })
+
+  it('the default-channel switch and Who can post keep focus while they save, so a screen reader hears the new state', async () => {
+    mount(details({ tab: 'members', onSave: later }), false)
+    await userEvent.click(screen.getByRole('button', { name: 'Add people' }))
+    const toggle = screen.getByRole('switch')
+    toggle.focus()
+    await userEvent.keyboard(' ')
+    expect(document.activeElement).toBe(toggle)
+    expect(toggle.getAttribute('aria-checked')).toBe('true')
+    await later()
+    expect(document.activeElement).toBe(toggle)
+    cleanup()
+    mount(details({ tab: 'settings', onSave: later }), false)
+    screen.getByRole('radio', { name: 'Everyone in the channel' }).focus()
+    await userEvent.keyboard('{ArrowDown}')
+    const admins = screen.getByRole('radio', { name: 'Only admins' })
+    expect(document.activeElement).toBe(admins)
+    expect((admins as HTMLInputElement).checked).toBe(true)
+    await later()
+    expect(document.activeElement).toBe(admins)
   })
 })

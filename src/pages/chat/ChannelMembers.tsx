@@ -1,5 +1,5 @@
 import { IconEye, IconMail, IconUserPlus } from '@tabler/icons-react'
-import { useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import type { Channel, ChannelPatch, Invitation, Team, User } from '@/api/types'
 import { Avatar } from '@/components/sf/Avatar'
 import { Tag } from '@/components/sf/Badge'
@@ -9,7 +9,7 @@ import { Modal } from '@/components/sf/Modal'
 import { Toggle } from '@/components/sf/Toggle'
 import { TokenInput, type Suggestion, type Token } from '@/components/sf/TokenInput'
 import { timeAgo } from '@/lib/format'
-import { inviteHelp, isEmail, normalEmail, notAnEmailLine } from '@/lib/invites'
+import { inviteHelp, isEmail, normalEmail, notAnEmailLine, splitAddresses } from '@/lib/invites'
 import { errorText, usePicked } from '@/pages/chat/usePicked'
 
 export type Person = Pick<User, 'id' | 'name' | 'email' | 'title' | 'presence'>
@@ -54,6 +54,7 @@ export function Members({
   const [query, setQuery] = useState('')
   const [adding, setAdding] = useState(false)
   const [removing, setRemoving] = useState<Person | null>(null)
+  const find = useRef<HTMLInputElement>(null)
   const changeable = rights.manage && !project
   const needle = query.trim().toLowerCase()
   const members = channel.memberIds
@@ -66,6 +67,7 @@ export function Members({
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
         <input
+          ref={find}
           type="search"
           aria-label="Find members"
           placeholder="Find members"
@@ -100,7 +102,7 @@ export function Members({
         ))}
         {shown.length === 0 && invited.length === 0 && <li className="sf-small py-2 text-sf-text-muted">No one by that name.</li>}
       </ul>
-      {invited.length > 0 && <Invited invitations={invited} people={people} mayRevoke={mayRevoke} onRevoke={onRevoke} />}
+      <Invited invitations={invited} people={people} mayRevoke={mayRevoke} onRevoke={onRevoke} onEmpty={() => find.current?.focus()} />
       {adding && (
         <AddPeople
           channel={channel}
@@ -120,22 +122,50 @@ export function Members({
 }
 
 /** Email invites that haven't been accepted yet, with Revoke for whoever sent one, or an Admin. */
-function Invited({ invitations, people, mayRevoke, onRevoke }: { invitations: Invitation[]; people: Person[]; mayRevoke: (invitation: Invitation) => boolean; onRevoke: (invitationId: string) => Promise<unknown> }) {
+function Invited({
+  invitations,
+  people,
+  mayRevoke,
+  onRevoke,
+  onEmpty,
+}: {
+  invitations: Invitation[]
+  people: Person[]
+  mayRevoke: (invitation: Invitation) => boolean
+  onRevoke: (invitationId: string) => Promise<unknown>
+  /** Where focus goes when the last Revoke has gone (Find members). */
+  onEmpty: () => void
+}) {
   const headingId = useId()
+  const list = useRef<HTMLUListElement>(null)
   const [revoking, setRevoking] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
+  // A revoked row goes: the focus it had moves to the Revoke that takes its place, or the one before, or Find members.
+  const [refocus, setRefocus] = useState<{ id: string; index: number } | null>(null)
+  useEffect(() => {
+    if (!refocus || invitations.some((i) => i.id === refocus.id)) return
+    const buttons = [...(list.current?.querySelectorAll('button') ?? [])]
+    const next = buttons[Math.min(refocus.index, buttons.length - 1)]
+    if (next) next.focus()
+    else onEmpty()
+    setRefocus(null)
+  }, [refocus, invitations, onEmpty])
   const nameOf = (id: string) => people.find((p) => p.id === id)?.name ?? 'Unknown person'
   const revoke = async (invitation: Invitation) => {
+    if (revoking.includes(invitation.id)) return
+    const index = [...(list.current?.querySelectorAll('button') ?? [])].indexOf(document.activeElement as HTMLButtonElement)
     setRevoking((ids) => [...ids, invitation.id])
     setError(null)
     try {
       await onRevoke(invitation.id)
+      if (index >= 0) setRefocus({ id: invitation.id, index })
     } catch (failure) {
       setError(errorText(failure))
     } finally {
       setRevoking((ids) => ids.filter((id) => id !== invitation.id))
     }
   }
+  if (invitations.length === 0) return null
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-1">
       <h3 id={headingId} className="sf-ui-medium m-0 text-sf-text">
@@ -146,7 +176,7 @@ function Invited({ invitations, people, mayRevoke, onRevoke }: { invitations: In
           {error}
         </p>
       )}
-      <ul aria-label="Invited" className="m-0 flex list-none flex-col p-0">
+      <ul ref={list} aria-label="Invited" className="m-0 flex list-none flex-col p-0">
         {invitations.map((invitation) => {
           const pending = revoking.includes(invitation.id)
           return (
@@ -164,7 +194,8 @@ function Invited({ invitations, people, mayRevoke, onRevoke }: { invitations: In
                 <span className="sf-small block truncate text-sf-text-secondary">{`Invited by ${nameOf(invitation.invitedBy)} · ${timeAgo(invitation.createdAt)}`}</span>
               </span>
               {mayRevoke(invitation) && (
-                <Button size="sm" touch aria-label={`Revoke the invite to ${invitation.email}`} disabled={pending} onClick={() => void revoke(invitation)}>
+                // Busy, not disabled: a disabled button would drop keyboard focus to the page.
+                <Button size="sm" touch aria-label={`Revoke the invite to ${invitation.email}`} aria-disabled={pending || undefined} onClick={() => void revoke(invitation)}>
                   {pending ? 'Revoking…' : 'Revoke'}
                 </Button>
               )}
@@ -249,11 +280,11 @@ function AddPeople({
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   const needle = normalEmail(query)
-  const picked = (id: string) => tokens.some((t) => t.id === id)
+  const inChannel = (id: string) => channel.memberIds.includes(id)
   // Never me: Join is the way into a channel I'm not in.
-  const free = (id: string) => id !== meId && !channel.memberIds.includes(id) && !picked(id)
+  const free = (id: string, chosen = tokens) => id !== meId && !inChannel(id) && !chosen.some((t) => t.id === id)
   const owner = (email: string) => people.find((p) => p.email.toLowerCase() === email)
-  const invitable = rights.invite && isEmail(needle) && !owner(needle) && !picked(needle) && !invitedEmails.includes(needle)
+  const invitable = rights.invite && isEmail(needle) && !owner(needle) && !tokens.some((t) => t.id === needle) && !invitedEmails.includes(needle)
   const suggestions: Suggestion[] = needle
     ? [
         ...people
@@ -261,44 +292,103 @@ function AddPeople({
           .filter((p) => free(p.id) && (p.name.toLowerCase().includes(needle) || p.email.toLowerCase().startsWith(needle)))
           .map((p) => ({ id: p.id, label: p.name, description: p.title || undefined, kind: 'person' as const })),
         ...teams
-          .filter((t) => t.name.toLowerCase().includes(needle) && t.memberIds.some(free))
+          .filter((t) => t.name.toLowerCase().includes(needle) && t.memberIds.some((id) => free(id)))
           .map((t) => ({ id: `team:${t.id}`, label: t.name, description: countPeople(t.memberIds.length), kind: 'group' as const })),
         ...(invitable ? [{ id: `email:${needle}`, label: needle, description: 'Invite as a guest', kind: 'email' as const }] : []),
       ].slice(0, 8)
     : []
-  const emails = tokens.filter((t) => t.kind === 'email').map((t) => t.label)
-  const count = tokens.length
+
+  const personChip = (p: Person): Token => ({ id: p.id, label: p.name, kind: 'person' })
+  /** The chips a suggestion adds: a team adds those of its people who aren't in yet, each as their own chip. */
+  const chipsFor = (s: Suggestion): Token[] => {
+    if (s.kind === 'group') {
+      const team = teams.find((t) => `team:${t.id}` === s.id)
+      return people.filter((p) => team?.memberIds.includes(p.id) && free(p.id)).map(personChip)
+    }
+    if (s.kind === 'email') return [{ id: s.label, label: s.label, kind: 'email' }]
+    return [{ id: s.id, label: s.label, kind: 'person' }]
+  }
+  /**
+   * What typed text adds, as Enter would, beside the chips `chosen` so far: chips, or the sentence that says why it
+   * can't be added. Nothing and no sentence when it's picked already.
+   */
+  const resolve = (text: string, chosen: Token[]): { chips: Token[]; why?: string } => {
+    const blocked = (p: Person) => (inChannel(p.id) ? `${p.name} is already in #${channel.name}.` : p.id === meId ? 'Join the channel instead.' : undefined)
+    const email = normalEmail(text)
+    if (isEmail(email)) {
+      const person = owner(email)
+      if (person) {
+        const why = blocked(person)
+        return why ? { chips: [], why } : { chips: free(person.id, chosen) ? [personChip(person)] : [] }
+      }
+      if (invitedEmails.includes(email)) return { chips: [], why: `${email} is already invited to #${channel.name}.` }
+      if (chosen.some((t) => t.id === email)) return { chips: [] }
+      if (!rights.invite) return { chips: [], why: 'Only admins can invite people by email.' }
+      return { chips: [{ id: email, label: email, kind: 'email' }] }
+    }
+    if (text.includes('@')) return { chips: [], why: notAnEmailLine(text) }
+    const lower = text.toLowerCase()
+    const named = people.filter((p) => p.name.toLowerCase().includes(lower))
+    const open = named.filter((p) => free(p.id, chosen))
+    if (open.length === 1) return { chips: [personChip(open[0])] }
+    if (open.length > 1) return { chips: [], why: 'Pick who you mean from the list.' }
+    if (named.length === 1) {
+      const why = blocked(named[0])
+      return why ? { chips: [], why } : { chips: [] }
+    }
+    if (named.length > 1) {
+      return { chips: [], why: named.every((p) => inChannel(p.id)) ? `Everyone matching “${text}” is already in #${channel.name}.` : `No one matching “${text}” can be added.` }
+    }
+    const team = teams.find((t) => t.name.toLowerCase().includes(lower))
+    if (team) {
+      const joining = people.filter((p) => team.memberIds.includes(p.id) && free(p.id, chosen))
+      if (joining.length) return { chips: joining.map(personChip) }
+      return { chips: [], why: team.memberIds.every(inChannel) ? `Everyone in ${team.name} is already in #${channel.name}.` : `No one in ${team.name} can be added.` }
+    }
+    return { chips: [], why: `No one in Spark Systems matches “${text}”.` }
+  }
 
   const pick = (s: Suggestion) => {
     setError(null)
-    if (s.kind === 'group') {
-      // A team adds those of its people who aren't in yet, each as their own chip.
-      const team = teams.find((t) => `team:${t.id}` === s.id)
-      const joining = people.filter((p) => team?.memberIds.includes(p.id) && free(p.id))
-      setTokens((list) => [...list, ...joining.map((p) => ({ id: p.id, label: p.name, kind: 'person' as const }))])
-    } else if (s.kind === 'email') {
-      setTokens((list) => [...list, { id: s.label, label: s.label, kind: 'email' }])
-    } else {
-      setTokens((list) => [...list, { id: s.id, label: s.label, kind: 'person' }])
-    }
+    setTokens((list) => [...list, ...chipsFor(s)])
   }
-  /** Typed text no suggestion matched: why it can't be added. */
+  /** Typed text no suggestion matched (Enter or a comma): its chips, or why it can't be added. */
   const commit = (text: string) => {
-    const email = normalEmail(text)
-    const person = owner(email)
-    if (person && channel.memberIds.includes(person.id)) return setError(`${person.name} is already in #${channel.name}.`)
-    if (person?.id === meId) return setError('Join the channel instead.')
-    if (invitedEmails.includes(email)) return setError(`${email} is already invited to #${channel.name}.`)
-    if (person || picked(email)) return
-    if (isEmail(email)) return setError('Only admins can invite people by email.')
-    if (text.includes('@')) return setError(notAnEmailLine(text))
-    setError(`No one in Spark Systems matches “${text}”.`)
+    const { chips, why } = resolve(text, tokens)
+    if (why) return setError(why)
+    setTokens((list) => [...list, ...chips])
   }
+  // A pasted list ("lina@partner.io, sam@client.com", or one address with a ";" after it): each address becomes a chip;
+  // what can't be added stays typed, with why.
+  const changeQuery = (text: string) => {
+    if (!/[,;]/.test(text)) return setQuery(text)
+    const added: Token[] = []
+    const left: string[] = []
+    let first: string | undefined
+    for (const part of splitAddresses(text)) {
+      const { chips, why } = resolve(part, [...tokens, ...added])
+      if (why) {
+        left.push(part)
+        first ??= why
+      } else added.push(...chips)
+    }
+    setTokens((list) => [...list, ...added])
+    setQuery(left.join(', '))
+    setError(first ?? null)
+  }
+  // What's typed but not a chip yet goes with Add too, as Enter would add it (and counts); text that can't be added
+  // stops the Add and says why.
+  const typed = query.trim() ? resolve(query.trim(), tokens) : { chips: [] }
+  const sending = [...tokens, ...typed.chips]
+  const emails = sending.filter((t) => t.kind === 'email').map((t) => t.label)
+  const count = sending.length
+
   const add = async () => {
+    if (typed.why) return setError(typed.why)
     setPending(true)
     setError(null)
     try {
-      await onAdd({ userIds: tokens.filter((t) => t.kind !== 'email').map((t) => t.id), emails })
+      await onAdd({ userIds: sending.filter((t) => t.kind !== 'email').map((t) => t.id), emails })
       onClose()
     } catch (failure) {
       setError(errorText(failure))
@@ -317,7 +407,7 @@ function AddPeople({
           <Button touch onClick={onClose} disabled={pending}>
             Cancel
           </Button>
-          <Button touch variant="primary" disabled={count === 0 || pending} onClick={() => void add()}>
+          <Button touch variant="primary" disabled={(count === 0 && !query.trim()) || pending} onClick={() => void add()}>
             {pending ? 'Adding…' : count === 0 ? 'Add people' : `Add ${countPeople(count)}`}
           </Button>
         </>
@@ -330,7 +420,7 @@ function AddPeople({
         onAdd={pick}
         onCommit={commit}
         query={query}
-        onQueryChange={setQuery}
+        onQueryChange={changeQuery}
         suggestions={suggestions}
         placeholder="Type a name, team or email"
         help={inviteHelp(emails, channel.name ?? '')}
@@ -348,6 +438,8 @@ function DefaultChannel({ channel, onSave }: { channel: Channel; onSave: (patch:
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const turn = async (on: boolean) => {
+    // It stays enabled (and focused) while it saves, so a screen reader hears the new state; a second press waits.
+    if (pending) return
     pick(on)
     setPending(true)
     setError(null)
@@ -368,7 +460,7 @@ function DefaultChannel({ channel, onSave }: { channel: Channel; onSave: (patch:
       </p>
       <label className="sf-ui flex cursor-pointer items-center gap-4 text-sf-text max-md:min-h-11">
         <span id={labelId} className="flex-1">{`When new people join Spark Systems, add them to #${channel.name}`}</span>
-        <Toggle checked={shown} onChange={(on) => void turn(on)} labelledBy={labelId} disabled={pending} />
+        <Toggle checked={shown} onChange={(on) => void turn(on)} labelledBy={labelId} />
       </label>
       {error && (
         <p role="alert" className="sf-small m-0 text-sf-error">

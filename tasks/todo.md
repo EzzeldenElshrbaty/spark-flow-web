@@ -693,3 +693,20 @@ Rulings while building: `addMembers(id, userIds, emails?)` keeps its slice 4 sha
 - Parts B and C: Add people with emails, teams and the admin-only switch; Invited under the members with Revoke; the contract section for slice 5.
 - Verified: 1210 tests (axe in light and dark on Add people with a guest chip, a team suggestion and the switch, and on the Invited list; 44px on a 390px phone for Revoke and the switch; Enter and comma with real key presses), tsc, lint, `build:prototype`. In the app as Youssef: invited sam@client.com and the Frontend team in one Add (2 people added, "added Mariam Fathy and Dina Mansour."), Invited · 1 shown, Revoke removed it live; #backend's members put back.
 - Not pushed.
+
+## Fresh review (slice 5) — 0 critical, 2 important, 5 minor
+
+Re-graded by effect: M1 (a pasted "sam@client.com;" stored as an undeliverable invite beside the real one; a pasted list refused) and M3 (an email typed and not yet a chip silently dropped by Add, the slice's main path) up to Important.
+
+Fixed, test first:
+- [x] I1: a name already in the channel, mine, or a team all in said "No one in Spark Systems matches" → typed text is resolved by email, name and team: "Nour El-Sayed is already in #backend.", "Join the channel instead.", "Everyone in Backend is already in #backend.", "Everyone matching “a” is already in #backend.".
+- [x] I2: Revoke, the default switch and Who can post dropped keyboard focus to the page while saving (a disabled control loses focus) → they stay enabled and focused while saving (Revoke is aria-disabled, a second press waits); after a revoke, focus goes to the next Revoke, else the one before, else Find members. Tested with real key presses in Chromium.
+- [x] M1 → Important: emails allow letters, digits and . _ % + ' - before the @ and letters, digits and hyphens in the domain; a pasted list (commas, semicolons) becomes a chip each, and what can't be added stays typed with why. Contract updated.
+- [x] M3 → Important: what's typed and not yet a chip goes with Add (and counts in "Add N people", with the guest helper text); text that can't be added stops the Add and says why.
+
+Deferred minors:
+- An error stays after its cause is gone (a removed chip, new typing) and hides the guest helper text.
+- An archived channel can still show a cached Invited list with a working Revoke, and the mock's revoke doesn't refuse an archived channel.
+- On a 390px phone an email chip over about 40 characters overflows the field, and its × can land past the screen edge.
+
+Verified: 1217 tests, tsc, lint, `build:prototype`. Not pushed.

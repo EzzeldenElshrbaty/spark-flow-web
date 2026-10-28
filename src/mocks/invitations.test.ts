@@ -124,3 +124,10 @@ describe('default channels (spec 6.10, admin only)', () => {
     expect((await api.chat.updateChannel('c-backend', { topic: 'Queues' })).isDefault).toBe(true)
   })
 })
+
+describe('slice 5 review', () => {
+  it('an address with a pasted semicolon is refused, not stored beside the real one', async () => {
+    await expect(api.chat.addMembers('c-backend', [], ['sam@client.com;'])).rejects.toMatchObject({ status: 400, detail: "sam@client.com; isn't an email address." })
+    expect(await api.chat.invitations('c-backend')).toEqual([])
+  })
+})

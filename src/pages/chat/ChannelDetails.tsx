@@ -437,6 +437,8 @@ function Settings({ channel, restrictPosting, onSave, onArchive }: { channel: Ch
   const [pending, setPending] = useState(false)
   const [shown, pick, unpick] = usePicked(channel.whoCanPost)
   const choose = async (whoCanPost: WhoCanPost) => {
+    // The radios stay enabled (and focused) while it saves; another pick waits.
+    if (pending) return
     pick(whoCanPost)
     setPending(true)
     setError(null)
@@ -462,7 +464,7 @@ function Settings({ channel, restrictPosting, onSave, onArchive }: { channel: Ch
               name={labelId}
               className="size-4 accent-[var(--accent-fill)]"
               checked={shown === option.value}
-              disabled={!restrictPosting || pending}
+              disabled={!restrictPosting}
               onChange={() => void choose(option.value)}
             />
             {option.label}
