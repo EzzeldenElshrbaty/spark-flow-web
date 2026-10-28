@@ -18,10 +18,10 @@ const channel = (id: string, unreadCount: number): Channel => ({
   unreadCount, lastSeq: 5, lastReadSeq: 5 - unreadCount, starred: false, muted: false, notifyLevel: 'all',
 })
 
-function show(channels: Channel[] | null) {
+function show(channels: Channel[] | null, client = new QueryClient({ defaultOptions: { mutations: { retry: false } } })) {
   const onClose = vi.fn()
   render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { mutations: { retry: false } } })}>
+    <QueryClientProvider client={client}>
       <MarkAllReadModal channels={channels} onClose={onClose} />
     </QueryClientProvider>,
   )
@@ -61,6 +61,27 @@ describe('Shift+Esc: Mark everything read (spec 10)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Mark all read' }))
     expect(await screen.findByText("Couldn't mark 1 of them read. Try again.")).toBeTruthy()
     expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('when some fail, the ones that went through end their hold, and everything refreshes', async () => {
+    vi.spyOn(api.chat, 'markRead').mockImplementation(async (id) => (id === 'd' ? Promise.reject(new Error('no')) : undefined))
+    const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
+    const refresh = vi.spyOn(client, 'invalidateQueries')
+    useReadHold.getState().hold('a')
+    show([channel('a', 2), channel('d', 1)], client)
+    fireEvent.click(screen.getByRole('button', { name: 'Mark all read' }))
+    await screen.findByText("Couldn't mark 1 of them read. Try again.")
+    expect(useReadHold.getState().channelId).toBeNull()
+    expect(refresh).toHaveBeenCalled()
+  })
+
+  it('a channel that failed keeps its hold', async () => {
+    vi.spyOn(api.chat, 'markRead').mockImplementation(async (id) => (id === 'd' ? Promise.reject(new Error('no')) : undefined))
+    useReadHold.getState().hold('d')
+    show([channel('a', 2), channel('d', 1)])
+    fireEvent.click(screen.getByRole('button', { name: 'Mark all read' }))
+    await screen.findByText("Couldn't mark 1 of them read. Try again.")
+    expect(useReadHold.getState().channelId).toBe('d')
   })
 
   it('is closed with nothing to ask about', () => {

@@ -7,7 +7,7 @@ import { Modal } from '@/components/sf/Modal'
 import { useSidebarGroups } from '@/layout/useSidebarGroups'
 import { paths } from '@/lib/paths'
 import { sidebarOrder } from '@/pages/chat/channelKeys'
-import { useReadHold } from '@/pages/chat/readState'
+import { markOpenChannelRead, useReadHold } from '@/pages/chat/readState'
 import { useChannelKeys } from '@/pages/chat/useChannelKeys'
 
 /** Navigation state Alt+↑/↓ leave: the channel they open puts the caret in its composer. */
@@ -26,11 +26,7 @@ export function ChannelShortcuts({ channel, workspaceSlug }: { channel: Channel;
     channelId: channel.id,
     order,
     onGo: (id) => navigate(paths.channel(workspaceSlug, id), { state: { focus: 'composer' } satisfies ChannelNavState }),
-    onMarkRead: () => {
-      if (channel.unreadCount === 0) return
-      useReadHold.getState().release(channel.id)
-      markRead({ channelId: channel.id })
-    },
+    onMarkRead: () => markOpenChannelRead(channel, (channelId) => markRead({ channelId })),
     onMarkAllRead: () => {
       const unread = order.filter((c) => c.unreadCount > 0)
       if (unread.length > 0) setConfirming(unread)
@@ -63,10 +59,12 @@ export function MarkAllReadModal({ channels, onClose }: { channels: Channel[] | 
             onClick={() => {
               const ids = (channels ?? []).map((c) => c.id)
               markAll.mutate(ids, {
-                onSuccess: () => {
-                  for (const id of ids) useReadHold.getState().release(id)
-                  onClose()
+                // The ones that went through end their hold, even when others didn't.
+                onSettled: (_data, error) => {
+                  const failed = new Set(error?.failedIds)
+                  for (const id of ids) if (!failed.has(id)) useReadHold.getState().release(id)
                 },
+                onSuccess: onClose,
               })
             }}
           >

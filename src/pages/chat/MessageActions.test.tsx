@@ -35,6 +35,22 @@ const deleteFromMenu = async () => {
   await act(async () => fireEvent.click(screen.getByRole('menuitem', { name: /Delete message/ })))
 }
 
+describe('Mark unread (spec 10)', () => {
+  it('is offered even where I can do nothing else to the message (a read-only or archived channel)', () => {
+    const onMarkUnread = vi.fn()
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ToastProvider>
+          <MessageActions target={{ kind: 'message', id: 'm1' }} can={{ react: false, edit: false, remove: false }} onEdit={vi.fn()} onMarkUnread={onMarkUnread} />
+        </ToastProvider>
+      </QueryClientProvider>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Message actions' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Mark unread' }))
+    expect(onMarkUnread).toHaveBeenCalledOnce()
+  })
+})
+
 describe('delete (spec 6.3)', () => {
   it('a plain message goes at once, with "Message deleted · Undo" that restores it', async () => {
     show(false)

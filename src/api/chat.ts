@@ -80,15 +80,31 @@ export function useMarkRead() {
   return useMutation({ mutationFn: ({ channelId, seq }: { channelId: string; seq?: number }) => api.chat.markRead(channelId, seq) })
 }
 
-/** Shift+Esc: marks each channel read, all together; when some fail, says how many. */
+/** A Mark all read where some channels failed: which ones, so the rest can be treated as read. */
+export class MarkAllReadError extends Error {
+  failedIds: string[]
+  constructor(message: string, failedIds: string[]) {
+    super(message)
+    this.failedIds = failedIds
+  }
+}
+
+/**
+ * Shift+Esc: marks each channel read, all together; when some fail, says how many (and which, on the error). The
+ * ones that went through are read either way, so it refreshes on failure too.
+ */
 export function useMarkAllRead() {
-  return useMutation({
-    mutationFn: async (channelIds: string[]) => {
-      const failed = (await Promise.allSettled(channelIds.map((id) => api.chat.markRead(id)))).filter((r) => r.status === 'rejected').length
+  const queryClient = useQueryClient()
+  return useMutation<void, MarkAllReadError, string[]>({
+    mutationFn: async (channelIds) => {
+      const results = await Promise.allSettled(channelIds.map((id) => api.chat.markRead(id)))
+      const failedIds = channelIds.filter((_, i) => results[i].status === 'rejected')
+      const failed = failedIds.length
       if (!failed) return
-      if (failed < channelIds.length) throw new Error(`Couldn't mark ${failed} of them read. Try again.`)
-      throw new Error(failed === 1 ? "Couldn't mark it read. Try again." : "Couldn't mark them read. Try again.")
+      if (failed < channelIds.length) throw new MarkAllReadError(`Couldn't mark ${failed} of them read. Try again.`, failedIds)
+      throw new MarkAllReadError(failed === 1 ? "Couldn't mark it read. Try again." : "Couldn't mark them read. Try again.", failedIds)
     },
+    onError: () => queryClient.invalidateQueries(),
   })
 }
 

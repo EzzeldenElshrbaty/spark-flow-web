@@ -4,6 +4,7 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNod
 import { useEditMessage } from '@/api/chat'
 import { bodyText } from '@/lib/messageBody'
 import type { ChatMessage, ChatTarget, SystemEvent, ThreadReply, User } from '@/api/types'
+import { announce } from '@/components/sf/Announcer'
 import { Avatar } from '@/components/sf/Avatar'
 import { Icon } from '@/components/sf/Icon'
 import { formatDate, formatTime } from '@/lib/format'
@@ -111,8 +112,12 @@ export function ChannelMessage({
   ).href
   const admin = ctx.users.find((u) => u.id === meId)?.role === 'admin'
   const can = actionsFor(message, meId, canPost, admin)
-  // What U or L did, said under the message (no toasts outside Undo).
+  // What U or L did, said under the message (no toasts outside Undo) and read out through the app's live region.
   const [note, setNote] = useState<{ text: string; error: boolean } | null>(null)
+  const say = (text: string, error = false) => {
+    setNote({ text, error })
+    announce(text)
+  }
   useEffect(() => {
     if (!note || note.error) return
     const timer = setTimeout(() => setNote(null), NOTE_MS)
@@ -121,12 +126,12 @@ export function ChannelMessage({
   // Someone else's message, there and settled: my own never count as unread.
   const markUnread =
     onMarkUnread && !reply && message.senderId !== meId && !message.deletedAt && !sendState && !root?.system
-      ? () => onMarkUnread().then(() => setNote({ text: 'Marked unread', error: false }), () => setNote({ text: "Couldn't mark it unread. Try again.", error: true }))
+      ? () => onMarkUnread().then(() => say('Marked unread'), () => say("Couldn't mark it unread. Try again.", true))
       : undefined
   // Copied while the key press still counts as mine; no clipboard (an insecure page) fails the same way as a refusal.
   const copyLink = () =>
     new Promise<void>((resolve) => resolve(navigator.clipboard.writeText(permalink)))
-      .then(() => setNote({ text: 'Link copied', error: false }), () => setNote({ text: "Couldn't copy the link", error: true }))
+      .then(() => say('Link copied'), () => say("Couldn't copy the link", true))
   const full = `${formatDate(message.createdAt)}, ${formatTime(message.createdAt)}`
   const time = (
     <time dateTime={message.createdAt} title={full} className="sf-meta whitespace-nowrap text-sf-text-muted tabular-nums">
@@ -171,10 +176,11 @@ export function ChannelMessage({
       // While focus is in it (its ⋯ button), as long as I'm not typing somewhere: E edits my message (spec 6.3), U marks
       // it unread from here, L copies its link (spec 10).
       onKeyDown={(e) => {
-        // Keys from this row's portals (the emoji picker, the ⋯ menu) bubble here too: they aren't for the row.
-        if (!e.currentTarget.contains(e.target as Node)) return
+        // Keys from this row's portals (the emoji picker, the ⋯ menu on phones) bubble here too, and so do keys from
+        // its open ⋯ menu (which picks its own items by their keys): they aren't for the row. A held key acts once.
+        if (!e.currentTarget.contains(e.target as Node) || (e.target as HTMLElement).closest('[role="menu"]')) return
         const typing = (e.target as HTMLElement).closest('input, textarea, [contenteditable="true"]')
-        if (e.metaKey || e.ctrlKey || e.altKey || typing) return
+        if (e.metaKey || e.ctrlKey || e.altKey || e.repeat || typing) return
         const key = e.key.toLowerCase()
         if (key === 'e' && can.edit && !editing && !sendState) {
           e.preventDefault()
@@ -225,9 +231,7 @@ export function ChannelMessage({
           <Reactions reactions={message.reactions} users={users} target={target} meId={meId} canReact={can.react} />
         )}
         {root && showThread && root.threadCount > 0 && <ThreadSummary message={root} users={users} />}
-        <p role="status" className={clsx('sf-meta', !note ? 'sr-only' : note.error ? 'mt-0.5 text-sf-error' : 'mt-0.5 text-sf-text-secondary')}>
-          {note?.text}
-        </p>
+        {note && <p className={clsx('sf-meta mt-0.5', note.error ? 'text-sf-error' : 'text-sf-text-secondary')}>{note.text}</p>}
       </div>
       {!editing && !sendState && !root?.system && (
         // The toolbar comes in Phase 2; until then the ⋯ menu shows on hover and on keyboard focus, and always on a

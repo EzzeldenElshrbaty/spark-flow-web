@@ -3,8 +3,11 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefO
 import { createPortal } from 'react-dom'
 
 const phoneQuery = '(max-width: 639px)'
-/** The gap between the trigger and the panel (mt-2 / mb-2). */
+/** The gap between the trigger and the panel (mt-2 / mb-2), and the panel's distance from the edge of its room. */
 const GAP = 8
+const EDGE = 8
+/** However little room there is, a panel keeps one item's height (it scrolls inside). */
+const MIN_HEIGHT = 40
 
 /** Room above and below `el` inside everything that clips it: the window and every ancestor that scrolls or clips. */
 function roomAround(el: HTMLElement) {
@@ -34,8 +37,9 @@ function usePhone() {
 
 /**
  * A dropdown panel for top-bar menus: anchored under its trigger on desktop (above it when it doesn't fit below,
- * as on a list's last row), a bottom sheet on phones.
- * Closes on Escape (focus back to the trigger) and outside clicks, and keeps Tab inside while open.
+ * as on a list's last row, and never past the room on that side), a bottom sheet on phones.
+ * Closes on Escape (focus back to the trigger) and outside clicks, and keeps Tab inside while open. A plain letter
+ * picks the item that names it as its key (`aria-keyshortcuts`).
  * Render it inside a `relative` wrapper that also contains the trigger.
  */
 export function MenuPanel({
@@ -59,20 +63,22 @@ export function MenuPanel({
   useEffect(() => {
     onCloseRef.current = onClose
   })
-  // Opens upward (desktop) when it doesn't fit below its trigger and there's more room above. Null until placed.
-  const [above, setAbove] = useState<boolean | null>(null)
+  // Desktop: opens upward when it doesn't fit below its trigger and there's more room above, and is no taller than
+  // the room on the side it opens to. Null until placed.
+  const [place, setPlace] = useState<{ above: boolean; maxHeight: number } | null>(null)
   useLayoutEffect(() => {
     const trigger = triggerRef.current
     const panel = panelRef.current
     if (!open || !trigger || !panel) return
     const room = roomAround(trigger)
-    setAbove(!phone && panel.offsetHeight + GAP > room.below && room.above > room.below)
-    return () => setAbove(null)
+    const above = !phone && panel.offsetHeight + GAP + EDGE > room.below && room.above > room.below
+    setPlace({ above, maxHeight: Math.max(MIN_HEIGHT, (above ? room.above : room.below) - GAP - EDGE) })
+    return () => setPlace(null)
   }, [open, phone, triggerRef])
   // Focus the first item once placed: focusing it where it was first drawn would scroll the list to it.
   useEffect(() => {
-    if (above !== null) panelRef.current?.querySelector<HTMLElement>('button:not(:disabled)')?.focus()
-  }, [above])
+    if (place) panelRef.current?.querySelector<HTMLElement>('button:not(:disabled)')?.focus()
+  }, [place])
 
   useEffect(() => {
     if (!open) return
@@ -121,9 +127,18 @@ export function MenuPanel({
           'z-50 overflow-y-auto border border-line bg-surface shadow-xl',
           'max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:max-h-[85vh] max-sm:rounded-t-2xl max-sm:pb-[env(safe-area-inset-bottom)] max-sm:motion-safe:animate-fade-up',
           'sm:absolute sm:end-0 sm:max-h-[80vh] sm:rounded-xl sm:motion-safe:animate-pop-in',
-          above ? 'sm:bottom-full sm:mb-2' : 'sm:top-full sm:mt-2',
+          place?.above ? 'sm:bottom-full sm:mb-2' : 'sm:top-full sm:mt-2',
           className,
         )}
+        style={place && !phone ? { maxHeight: `min(80vh, ${place.maxHeight}px)` } : undefined}
+        onKeyDown={(event) => {
+          if (event.altKey || event.ctrlKey || event.metaKey || event.repeat || event.key.length !== 1) return
+          const key = event.key.toLowerCase()
+          const item = [...event.currentTarget.querySelectorAll<HTMLElement>('[aria-keyshortcuts]')].find((el) => el.getAttribute('aria-keyshortcuts')?.toLowerCase() === key)
+          if (!item) return
+          event.preventDefault()
+          item.click()
+        }}
       >
         {children}
       </div>

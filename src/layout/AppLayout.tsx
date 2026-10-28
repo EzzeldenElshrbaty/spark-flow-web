@@ -1,5 +1,6 @@
 import clsx from 'clsx'
 import { Suspense, useState } from 'react'
+import { Announcer } from '@/components/sf/Announcer'
 import { ToastProvider, ToastRegion } from '@/components/sf/Toast'
 import { Outlet, useMatches } from 'react-router'
 import { Inspector } from '@/layout/Inspector'
@@ -32,6 +33,7 @@ export function AppLayout() {
         {/* The dark frame behind the sidebar and the card. Its own .sf element, so the chat tokens don't reach the pages. */}
         <div aria-hidden className="sf fixed inset-0 -z-10 hidden bg-sf-app-frame lg:block" />
         <RealtimeBridge />
+        <Announcer />
         <Sidebar collapsed={collapsed} />
         {/* The main card (spec 5.3): inset 8px from the top, end and bottom, radius-lg (12px), clips its content; the
             top bar stays put and the page scrolls under it. */}

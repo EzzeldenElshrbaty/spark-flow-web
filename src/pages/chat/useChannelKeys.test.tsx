@@ -151,6 +151,15 @@ describe('useChannelKeys: what already has the key', () => {
     expect(onMarkRead).not.toHaveBeenCalled()
   })
 
+  it('Esc with a ⋯ menu open in the thread panel is the menu’s: the panel stays', () => {
+    const close = vi.fn()
+    field('<div role="menu" aria-label="Message actions"><button role="menuitem">Edit message</button></div>')
+    const event = new KeyboardEvent('keydown', { key: 'Escape', cancelable: true })
+    onInspectorEscape(event, close)
+    expect(close).not.toHaveBeenCalled()
+    expect(event.defaultPrevented).toBe(false)
+  })
+
   it('Esc that closes the thread or task panel closes only the panel', () => {
     const close = vi.fn()
     const event = new KeyboardEvent('keydown', { key: 'Escape', cancelable: true })

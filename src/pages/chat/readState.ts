@@ -22,6 +22,17 @@ export function useReadHoldScope(channelId: string | undefined) {
 }
 
 /**
+ * Esc (spec 10): marks the open channel read and ends its hold. A held channel is marked read even while its unread
+ * count still says 0 (right after U, before the refresh); with nothing unread and nothing held, nothing is sent.
+ */
+export function markOpenChannelRead(channel: Channel, markRead: (channelId: string) => void) {
+  const held = useReadHold.getState().channelId === channel.id
+  if (channel.unreadCount === 0 && !held) return
+  useReadHold.getState().release(channel.id)
+  markRead(channel.id)
+}
+
+/**
  * The open channel's read state for its list: where the New line goes (my marker when I opened it, or where U put
  * it), whether the read is held, and the two ways to move the marker. Marking read myself ends the hold.
  */
@@ -43,12 +54,14 @@ export function useChannelReadState(channel: Channel) {
     /** U on message `seq`: it and what follows are unread again, and stay so while I'm here. */
     markUnread: useCallback(
       async (seq: number) => {
+        // A refused U leaves an earlier one that went through as it was.
+        const wasHeld = useReadHold.getState().channelId === channel.id
         useReadHold.getState().hold(channel.id)
         try {
           await markUnread({ channelId: channel.id, seq })
           setNewAfterSeq(seq - 1)
         } catch (error) {
-          useReadHold.getState().release(channel.id)
+          if (!wasHeld) useReadHold.getState().release(channel.id)
           throw error
         }
       },

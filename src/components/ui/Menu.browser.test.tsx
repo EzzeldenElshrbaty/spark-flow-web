@@ -60,6 +60,14 @@ describe('MenuPanel: where it opens', () => {
     expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Mark unread' }))
   })
 
+  it('with little room either way (a short panel), it keeps to the room it has', () => {
+    render(<Open fromTop={70} height={160} scrolls />)
+    const { box, trigger, menu } = rects()
+    expect(menu.top).toBeGreaterThanOrEqual(box.top)
+    expect(menu.bottom).toBeLessThanOrEqual(trigger.top)
+    expect(screen.getByTestId('box').scrollTop).toBe(0)
+  })
+
   it('near the bottom of the window, it opens upward', () => {
     render(<Open fromTop={window.innerHeight - 40} height={window.innerHeight} scrolls={false} />)
     const { trigger, menu } = rects()

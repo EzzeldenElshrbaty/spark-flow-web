@@ -4,11 +4,11 @@ import { parseInspector, withInspector } from '@/lib/inspector'
 import { ThreadInspector } from '@/pages/chat/ThreadInspector'
 import { TicketInspector } from '@/pages/projects/TicketInspector'
 
-/** Typing in a field (a message, search) owns Escape; so does an open dialog. */
+/** Typing in a field (a message, search) owns Escape; so does an open dialog or menu (it's above the panel). */
 function escapeBelongsElsewhere(): boolean {
   const active = document.activeElement
   const typing = active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement || active instanceof HTMLSelectElement || (active instanceof HTMLElement && active.isContentEditable)
-  return typing || Boolean(document.querySelector('[aria-modal="true"]'))
+  return typing || Boolean(document.querySelector('[aria-modal="true"], [role="menu"]'))
 }
 
 /** Esc closes the panel unless a field or a dialog has it; the panel then owns it, so the channel doesn't also mark read. */

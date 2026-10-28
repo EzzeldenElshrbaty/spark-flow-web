@@ -61,7 +61,7 @@ export function MessageActions({
     })
   const close = () => setOpen(false)
   const more = extra?.(close)
-  if (!can.react && !can.edit && !can.remove && !more) return null
+  if (!can.react && !can.edit && !can.remove && !onMarkUnread && !more) return null
   return (
     <div className="relative">
       <button

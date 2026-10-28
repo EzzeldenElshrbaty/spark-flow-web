@@ -2,6 +2,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
+import { Announcer } from '@/components/sf/Announcer'
 import { ToastProvider } from '@/components/sf/Toast'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ChatMessage, TaskRef, ThreadReply, User } from '@/api/types'
@@ -288,7 +289,37 @@ describe('U and L on a focused message (spec 10)', () => {
     show(message('hi', { seq: 7 }), { onMarkUnread })
     fireEvent.keyDown(actions(), { key: 'u' })
     expect(onMarkUnread).toHaveBeenCalledOnce()
-    expect((await screen.findByText('Marked unread')).getAttribute('role')).toBe('status')
+    expect(await screen.findByText('Marked unread')).toBeTruthy()
+  })
+
+  it('a row has no live region of its own: what U and L say is read out through the shared one', async () => {
+    show(message('hi'), { onMarkUnread: vi.fn(async () => {}) })
+    expect(screen.queryByRole('status')).toBeNull()
+    render(<Announcer />)
+    fireEvent.keyDown(actions(), { key: 'u' })
+    await vi.waitFor(() => expect(screen.getByRole('status').textContent).toBe('Marked unread'))
+  })
+
+  it('holding U down marks it unread once', () => {
+    const onMarkUnread = vi.fn(async () => {})
+    show(message('hi'), { onMarkUnread })
+    fireEvent.keyDown(actions(), { key: 'u' })
+    fireEvent.keyDown(actions(), { key: 'u', repeat: true })
+    expect(onMarkUnread).toHaveBeenCalledOnce()
+  })
+
+  it('in the open ⋯ menu, U picks Mark unread and closes the menu; the row’s other letters do nothing there', () => {
+    const writeText = vi.fn(async () => {})
+    clipboard(writeText)
+    const onMarkUnread = vi.fn(async () => {})
+    show(message('hi'), { onMarkUnread })
+    fireEvent.click(actions())
+    fireEvent.keyDown(screen.getByRole('menuitem', { name: 'Mark unread' }), { key: 'l' })
+    expect(writeText).not.toHaveBeenCalled()
+    expect(screen.getByRole('menu')).toBeTruthy()
+    fireEvent.keyDown(screen.getByRole('menuitem', { name: 'Mark unread' }), { key: 'u' })
+    expect(onMarkUnread).toHaveBeenCalledOnce()
+    expect(screen.queryByRole('menu')).toBeNull()
   })
 
   it('a U the server refuses says so, and the words stay', async () => {

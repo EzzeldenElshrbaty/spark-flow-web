@@ -5,7 +5,7 @@ import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Channel } from '@/api/types'
 import { api } from '@/lib/api'
-import { useChannelReadState, useReadHold, useReadHoldScope } from '@/pages/chat/readState'
+import { markOpenChannelRead, useChannelReadState, useReadHold, useReadHoldScope } from '@/pages/chat/readState'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -40,6 +40,14 @@ describe('useChannelReadState (U, spec 6.5 and 10)', () => {
     expect(result.current).toMatchObject({ newAfterSeq: 9, held: false })
   })
 
+  it('a refused U after one that went through keeps the first hold and its New line', async () => {
+    vi.spyOn(api.chat, 'markUnread').mockResolvedValueOnce().mockRejectedValueOnce(new Error('no'))
+    const { result } = setup()
+    await act(() => result.current.markUnread(5))
+    await act(() => expect(result.current.markUnread(8)).rejects.toThrow('no'))
+    expect(result.current).toMatchObject({ newAfterSeq: 4, held: true })
+  })
+
   it('marking it read myself ends the hold', async () => {
     vi.spyOn(api.chat, 'markUnread').mockResolvedValue()
     const markRead = vi.spyOn(api.chat, 'markRead').mockResolvedValue()
@@ -55,6 +63,28 @@ describe('useChannelReadState (U, spec 6.5 and 10)', () => {
     const first = setup(channel('c1'))
     await act(() => first.result.current.markUnread(5))
     expect(setup(channel('c2')).result.current.held).toBe(false)
+  })
+})
+
+describe('Esc: markOpenChannelRead (spec 10)', () => {
+  it('marks an unread channel read', () => {
+    const markRead = vi.fn()
+    markOpenChannelRead({ ...channel('c1'), unreadCount: 2 }, markRead)
+    expect(markRead).toHaveBeenCalledWith('c1')
+  })
+
+  it('right after U, before the unread count has caught up, it still marks read and ends the hold', () => {
+    const markRead = vi.fn()
+    useReadHold.getState().hold('c1')
+    markOpenChannelRead(channel('c1'), markRead)
+    expect(markRead).toHaveBeenCalledWith('c1')
+    expect(useReadHold.getState().channelId).toBeNull()
+  })
+
+  it('with nothing unread and nothing held, it sends nothing', () => {
+    const markRead = vi.fn()
+    markOpenChannelRead(channel('c1'), markRead)
+    expect(markRead).not.toHaveBeenCalled()
   })
 })
 
