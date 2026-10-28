@@ -677,6 +677,29 @@ describe('read state by seq (spec §7 ChannelMember, §8 read marker)', () => {
     expect((await api.chat.channel('c-frontend')).lastReadSeq).toBe(lastSeq - 1)
   })
 
+  it('markUnread moves my marker to just before that message, either way, and publishes it', async () => {
+    const { lastSeq } = await api.chat.channel('c-frontend')
+    await api.chat.markRead('c-frontend')
+    events.length = 0
+    await api.chat.markUnread('c-frontend', lastSeq - 1)
+    expect(await api.chat.channel('c-frontend')).toMatchObject({ lastReadSeq: lastSeq - 2, unreadCount: 2 })
+    expect(events).toEqual([{ type: 'readChanged', userId: 'u-1', channelId: 'c-frontend', seq: lastSeq - 2 }])
+    // Forward too: what came before that message counts as read now.
+    await api.chat.markUnread('c-frontend', lastSeq)
+    expect(await api.chat.channel('c-frontend')).toMatchObject({ lastReadSeq: lastSeq - 1, unreadCount: 1 })
+  })
+
+  it('markUnread refuses a seq that is no message of the channel, and a channel I may not read', async () => {
+    const { lastSeq } = await api.chat.channel('c-frontend')
+    for (const seq of [0, lastSeq + 1, 1.5]) {
+      await expect(api.chat.markUnread('c-frontend', seq)).rejects.toMatchObject({ status: 400, detail: "That message isn't in this channel." })
+    }
+    await expect(api.chat.markUnread('nope', 1)).rejects.toMatchObject({ status: 404 })
+    await api.chat.send('c-release', 'the secret')
+    await api.users.viewAs('u-3') // Mariam: not in #release-v2
+    await expect(api.chat.markUnread('c-release', 1)).rejects.toMatchObject({ status: 403 })
+  })
+
   it('markRead without a seq, or past the end, reads to the last message', async () => {
     const { lastSeq } = await api.chat.channel('c-frontend')
     await api.chat.markRead('c-frontend', lastSeq + 50)

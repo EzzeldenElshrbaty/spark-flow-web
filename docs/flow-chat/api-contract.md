@@ -34,12 +34,14 @@ These map to the spec's `ChannelMember` row (`last_read_seq`, `starred`, `muted`
 |---|---|---|---|
 | Send | `POST /api/channels/:id/messages` | `{ content, clientId? }` | The stored message, `201`. |
 | Mark read | `POST /api/channels/:id/read` | `{ seq? }` | `204`. |
+| Mark unread | `POST /api/channels/:id/unread` | `{ seq }` | `204`. |
 | Star / mute | `PATCH /api/channels/:id/me` | `{ starred }` or `{ muted }` | The channel as I see it. |
 
 Rules:
 
 - **Send is idempotent by `clientId`.** If the same sender already stored a message with this `clientId` in this channel, return that message (`200` or `201`) and publish nothing. A different sender with the same `clientId` is a different message.
 - **Mark read only moves forward.** The new marker is `max(current, min(seq, lastSeq))`. Without `seq`, read to `lastSeq`. The client sends the seq of the newest message on screen, so one that arrives meanwhile stays unread.
+- **Mark unread is the one way back.** It sets the marker to `seq - 1`, back or forward, so that message and everything after it count as unread again, and what came before it as read. `seq` must be a whole number from 1 to `lastSeq`, else `400` "That message isn't in this channel."; read access as for star and mute. It publishes `read.marker_updated` with the new `seq`, like Mark read.
 - **Star and mute** need read access to the channel (`403` "You're not in this channel." for someone else's private channel, `404` for an unknown one).
 
 ### Real-time events
@@ -159,3 +161,10 @@ The client shows a message the moment it's sent ("Sending…") with a `clientId`
 | Undo | `POST /api/messages/:id/restore` (`/api/replies/:id/restore`) | Only whoever deleted it, within **10 seconds** (the client's Undo toast is 5s; the rest is for the request to arrive). Brings back content, body, files, mentions, reactions and task links. `400` "This message isn't deleted." / "It's too late to undo that."; `403` for anyone else. Sends `message.updated`. |
 
 What a delete takes is kept only for the Undo window, then dropped (retention beyond that is OPEN item 8). The client asks before deleting a message with replies or files, and offers Undo either way.
+
+## Phase 1 · Keyboard shortcuts (spec 10)
+
+- **U** (or Mark unread in a message's ⋯ menu) calls Mark unread with that message's `seq`. The channel stays unread while it's open: being on screen doesn't mark it read again until the person leaves it or marks it read themselves (Esc, the header's Mark all read, the unread bar).
+- **Esc** marks the open channel read: `POST /api/channels/:id/read` with no `seq`, as the header does.
+- **Shift+Esc** marks everything read after a confirm: one `POST /api/channels/:id/read` (no `seq`) per channel or DM in the sidebar with `unreadCount > 0`, sent together. A bulk route (for example `POST /api/workspaces/:id/read`) can replace this later without the person noticing.
+- **Alt+↑/↓** and **L** need nothing from the server.

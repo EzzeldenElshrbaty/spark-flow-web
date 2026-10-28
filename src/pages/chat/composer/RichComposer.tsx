@@ -82,6 +82,7 @@ export function RichComposer({
   onTyping,
   error,
   directory,
+  autoFocus = false,
 }: {
   /** send: the channel's box; edit: a message's body being edited in place, with Cancel and Save (spec 6.3). */
   mode?: 'send' | 'edit'
@@ -97,6 +98,8 @@ export function RichComposer({
   onTyping?: () => void
   error?: Error | null
   directory: ComposerDirectory
+  /** Take focus on open, caret at the end (edit mode always does): after Alt+↑/↓ to this channel. */
+  autoFocus?: boolean
 }) {
   const config = {
     namespace: 'flow-composer',
@@ -120,12 +123,13 @@ export function RichComposer({
         onTyping={onTyping}
         error={error}
         directory={directory}
+        autoFocus={autoFocus}
       />
     </LexicalComposer>
   )
 }
 
-function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEditLast, onDraft, onTyping, error, directory }: Parameters<typeof RichComposer>[0]) {
+function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEditLast, onDraft, onTyping, error, directory, autoFocus }: Parameters<typeof RichComposer>[0]) {
   const editing = mode === 'edit'
   const [editor] = useLexicalComposerContext()
   const boxRef = useRef<HTMLDivElement>(null)
@@ -240,7 +244,7 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
         <MarkdownShortcutPlugin transformers={COMPOSER_TRANSFORMERS} />
         <OnChangePlugin onChange={onChange} ignoreSelectionChange />
         <KeysPlugin onSend={send} menuOpen={menuOpen} onLink={openLink} onEscape={editing ? onCancel : undefined} onUpEmpty={editing ? undefined : onEditLast} />
-        {editing && <AutoFocusPlugin defaultSelection="rootEnd" />}
+        {(editing || autoFocus) && <AutoFocusPlugin defaultSelection="rootEnd" />}
         <AutocompletePlugin directory={directory} menuOpen={menuOpen} anchor={boxRef} />
         <div className="flex items-center gap-0.5 px-1 pb-1">
           <IconButton label={formatting ? 'Hide formatting' : 'Show formatting'} icon={IconLetterCase} size="sm" tone="muted" pressed={formatting} onClick={() => setFormatting((f) => !f)} />

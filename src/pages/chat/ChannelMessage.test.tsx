@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { ToastProvider } from '@/components/sf/Toast'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ChatMessage, TaskRef, ThreadReply, User } from '@/api/types'
 import { parseBody } from '@/lib/messageBody'
+import { paths } from '@/lib/paths'
 import { ChannelMessage, systemText, type Selection } from '@/pages/chat/ChannelMessage'
 import type { BodyContext } from '@/pages/chat/MessageBody'
 import { useEditing } from '@/pages/chat/editingStore'
@@ -30,12 +31,25 @@ const message = (content: string, over: Partial<ChatMessage> = {}): ChatMessage 
   linkedTicketKeys: [], mentions: [], editedAt: null, createdAt: '2026-10-28T09:00:00.000Z', ...over,
 })
 
-function show(m: ChatMessage | ThreadReply, opts: { continuation?: boolean; selected?: Selection } = {}) {
+function show(
+  m: ChatMessage | ThreadReply,
+  opts: { continuation?: boolean; selected?: Selection; onMarkUnread?: () => Promise<unknown>; sendState?: 'sending' | 'failed' } = {},
+) {
   render(
     <QueryClientProvider client={new QueryClient()}>
       <ToastProvider>
         <MemoryRouter>
-        <ChannelMessage message={m} users={users} ctx={ctx} meId="u-1" canPost continuation={opts.continuation ?? false} selected={opts.selected} />
+        <ChannelMessage
+          message={m}
+          users={users}
+          ctx={ctx}
+          meId="u-1"
+          canPost
+          continuation={opts.continuation ?? false}
+          selected={opts.selected}
+          onMarkUnread={opts.onMarkUnread}
+          sendState={opts.sendState}
+        />
       </MemoryRouter>
         </ToastProvider>
     </QueryClientProvider>,
@@ -262,5 +276,100 @@ describe('ChannelMessage while sending (spec 6.2)', () => {
     expect(onRetry).toHaveBeenCalledOnce()
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
     expect(onDiscard).toHaveBeenCalledOnce()
+  })
+})
+
+describe('U and L on a focused message (spec 10)', () => {
+  const actions = () => screen.getByRole('button', { name: 'Message actions' })
+  const clipboard = (writeText: (text: string) => Promise<void>) => Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+
+  it('U marks it unread from here and says so next to it', async () => {
+    const onMarkUnread = vi.fn(async () => {})
+    show(message('hi', { seq: 7 }), { onMarkUnread })
+    fireEvent.keyDown(actions(), { key: 'u' })
+    expect(onMarkUnread).toHaveBeenCalledOnce()
+    expect((await screen.findByText('Marked unread')).getAttribute('role')).toBe('status')
+  })
+
+  it('a U the server refuses says so, and the words stay', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      show(message('hi'), { onMarkUnread: vi.fn(async () => Promise.reject(new Error('no'))) })
+      fireEvent.keyDown(actions(), { key: 'U' })
+      expect(await screen.findByText("Couldn't mark it unread. Try again.")).toBeTruthy()
+      await act(async () => vi.advanceTimersByTime(3000))
+      expect(screen.getByText("Couldn't mark it unread. Try again.")).toBeTruthy()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('Mark unread is in the ⋯ menu, with its key', () => {
+    const onMarkUnread = vi.fn(async () => {})
+    show(message('hi'), { onMarkUnread })
+    fireEvent.click(actions())
+    const item = screen.getByRole('menuitem', { name: 'Mark unread' })
+    expect(item.getAttribute('aria-keyshortcuts')).toBe('U')
+    fireEvent.click(item)
+    expect(onMarkUnread).toHaveBeenCalledOnce()
+  })
+
+  it('my own message, a deleted one, one on its way, or a page without U: no Mark unread, and U does nothing', () => {
+    for (const [m, opts] of [
+      [message('mine', { senderId: 'u-1' }), {}],
+      [message('', { deletedAt: '2026-10-28T09:01:00.000Z', threadCount: 1 }), {}],
+      [message('going'), { sendState: 'sending' as const }],
+    ] as const) {
+      const onMarkUnread = vi.fn(async () => {})
+      show(m, { ...opts, onMarkUnread })
+      const more = screen.queryByRole('button', { name: 'Message actions' })
+      if (more) {
+        fireEvent.keyDown(more, { key: 'u' })
+        fireEvent.click(more)
+        expect(screen.queryByRole('menuitem', { name: 'Mark unread' })).toBeNull()
+      } else fireEvent.keyDown(screen.getByRole('article'), { key: 'u' })
+      expect(onMarkUnread).not.toHaveBeenCalled()
+      cleanup()
+    }
+    show(message('hi'))
+    fireEvent.click(actions())
+    expect(screen.queryByRole('menuitem', { name: 'Mark unread' })).toBeNull()
+  })
+
+  it('L copies the link to the message and says so, then clears', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      const writeText = vi.fn(async () => {})
+      clipboard(writeText)
+      show(message('hi'))
+      fireEvent.keyDown(actions(), { key: 'l' })
+      expect(writeText).toHaveBeenCalledWith(new URL(paths.message('engineering', 'c1', 'm1'), window.location.origin).href)
+      expect(await screen.findByText('Link copied')).toBeTruthy()
+      await act(async () => vi.advanceTimersByTime(2000))
+      expect(screen.queryByText('Link copied')).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('a copy the browser refuses says so', async () => {
+    clipboard(vi.fn(async () => Promise.reject(new Error('denied'))))
+    show(message('hi'))
+    fireEvent.keyDown(actions(), { key: 'l' })
+    expect(await screen.findByText("Couldn't copy the link")).toBeTruthy()
+  })
+
+  it('L does nothing on a deleted message or one still on its way, or with a modifier', () => {
+    const writeText = vi.fn(async () => {})
+    clipboard(writeText)
+    show(message('', { deletedAt: '2026-10-28T09:01:00.000Z', threadCount: 1 }))
+    fireEvent.keyDown(screen.getByRole('article'), { key: 'l' })
+    cleanup()
+    show(message('going'), { sendState: 'sending' })
+    fireEvent.keyDown(screen.getByRole('article'), { key: 'l' })
+    cleanup()
+    show(message('hi'))
+    fireEvent.keyDown(actions(), { key: 'l', metaKey: true })
+    expect(writeText).not.toHaveBeenCalled()
   })
 })

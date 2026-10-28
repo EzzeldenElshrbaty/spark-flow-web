@@ -58,6 +58,7 @@ function Harness({
   jumped = false,
   pending = [],
   onLatest = vi.fn(),
+  holdRead = false,
 }: {
   data: ReturnType<typeof channel>
   newAfterSeq?: number | null
@@ -68,6 +69,7 @@ function Harness({
   jumped?: boolean
   pending?: PendingMessage[]
   onLatest?: () => void
+  holdRead?: boolean
 }) {
   const query = useInfiniteQuery({
     queryKey: ['messages'],
@@ -88,6 +90,7 @@ function Harness({
         totalUnread={totalUnread}
         markedSeq={newAfterSeq ?? 0}
         onMarkRead={onMarkRead}
+        holdRead={holdRead}
         focusSeq={focusSeq}
         onJump={vi.fn()}
         onLatest={onLatest}
@@ -272,6 +275,17 @@ describe('MessageList scrolling (spec 6.2)', () => {
     vi.spyOn(document, 'hasFocus').mockReturnValue(true)
     const onMarkRead = vi.fn()
     mount({ data: channel(40), newAfterSeq: 38, totalUnread: 2, onMarkRead })
+    await vi.waitFor(() => expect(onMarkRead).toHaveBeenCalledWith(40))
+  })
+
+  it('while the read is held (after U), being at the end marks nothing read; once the hold ends it does', async () => {
+    vi.spyOn(document, 'hasFocus').mockReturnValue(true)
+    const onMarkRead = vi.fn()
+    const view = mount({ data: channel(40), newAfterSeq: 36, totalUnread: 3, onMarkRead, holdRead: true })
+    await vi.waitFor(() => expect(screen.getByText(/^Message 40/)).toBeTruthy())
+    await settle()
+    expect(onMarkRead).not.toHaveBeenCalled()
+    view.update({ holdRead: false })
     await vi.waitFor(() => expect(onMarkRead).toHaveBeenCalledWith(40))
   })
 })

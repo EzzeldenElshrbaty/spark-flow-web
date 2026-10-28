@@ -1,6 +1,6 @@
 import { IconAlertCircle, IconTrash } from '@tabler/icons-react'
 import clsx from 'clsx'
-import { lazy, Suspense, useCallback, useEffect, useRef, type ReactNode } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useEditMessage } from '@/api/chat'
 import { bodyText } from '@/lib/messageBody'
 import type { ChatMessage, ChatTarget, SystemEvent, ThreadReply, User } from '@/api/types'
@@ -38,6 +38,9 @@ export type Selection = 'on' | 'fading' | null
 /** Whether the message mentions me, or everyone. */
 const mentionsMe = (message: ChatMessage | ThreadReply, meId?: string) => message.mentions.some((m) => m.kind === 'all' || (m.kind === 'user' && m.id === meId))
 
+/** How long "Link copied" and "Marked unread" stay; a failure stays until the next one. */
+const NOTE_MS = 2000
+
 /**
  * One message or thread reply (spec 6.3): 36px avatar, author (opens their profile card) and time, then the body as
  * rich text with mention pills, task chips, the first task's and the first allowed link's cards, files, reactions
@@ -60,6 +63,7 @@ export function ChannelMessage({
   sendError,
   onRetry,
   onDiscard,
+  onMarkUnread,
 }: {
   message: ChatMessage | ThreadReply
   users: User[]
@@ -77,6 +81,8 @@ export function ChannelMessage({
   sendError?: string
   onRetry?: () => void
   onDiscard?: () => void
+  /** Mark unread (U) from this message, where the page offers it (the channel's list). */
+  onMarkUnread?: () => Promise<unknown>
 }) {
   const reply = 'messageId' in message
   const root = reply ? null : message
@@ -105,6 +111,22 @@ export function ChannelMessage({
   ).href
   const admin = ctx.users.find((u) => u.id === meId)?.role === 'admin'
   const can = actionsFor(message, meId, canPost, admin)
+  // What U or L did, said under the message (no toasts outside Undo).
+  const [note, setNote] = useState<{ text: string; error: boolean } | null>(null)
+  useEffect(() => {
+    if (!note || note.error) return
+    const timer = setTimeout(() => setNote(null), NOTE_MS)
+    return () => clearTimeout(timer)
+  }, [note])
+  // Someone else's message, there and settled: my own never count as unread.
+  const markUnread =
+    onMarkUnread && !reply && message.senderId !== meId && !message.deletedAt && !sendState && !root?.system
+      ? () => onMarkUnread().then(() => setNote({ text: 'Marked unread', error: false }), () => setNote({ text: "Couldn't mark it unread. Try again.", error: true }))
+      : undefined
+  // Copied while the key press still counts as mine; no clipboard (an insecure page) fails the same way as a refusal.
+  const copyLink = () =>
+    new Promise<void>((resolve) => resolve(navigator.clipboard.writeText(permalink)))
+      .then(() => setNote({ text: 'Link copied', error: false }), () => setNote({ text: "Couldn't copy the link", error: true }))
   const full = `${formatDate(message.createdAt)}, ${formatTime(message.createdAt)}`
   const time = (
     <time dateTime={message.createdAt} title={full} className="sf-meta whitespace-nowrap text-sf-text-muted tabular-nums">
@@ -146,14 +168,23 @@ export function ChannelMessage({
   return (
     <article
       ref={row}
-      // E edits my message while focus is in it (its ⋯ button), as long as I'm not typing somewhere (spec 6.3).
+      // While focus is in it (its ⋯ button), as long as I'm not typing somewhere: E edits my message (spec 6.3), U marks
+      // it unread from here, L copies its link (spec 10).
       onKeyDown={(e) => {
         // Keys from this row's portals (the emoji picker, the ⋯ menu) bubble here too: they aren't for the row.
         if (!e.currentTarget.contains(e.target as Node)) return
         const typing = (e.target as HTMLElement).closest('input, textarea, [contenteditable="true"]')
-        if (e.key.toLowerCase() === 'e' && !e.metaKey && !e.ctrlKey && !e.altKey && !typing && can.edit && !editing && !sendState) {
+        if (e.metaKey || e.ctrlKey || e.altKey || typing) return
+        const key = e.key.toLowerCase()
+        if (key === 'e' && can.edit && !editing && !sendState) {
           e.preventDefault()
           startEditing()
+        } else if (key === 'u' && markUnread) {
+          e.preventDefault()
+          void markUnread()
+        } else if (key === 'l' && !message.deletedAt && !sendState) {
+          e.preventDefault()
+          void copyLink()
         }
       }}
       className={clsx(
@@ -194,6 +225,9 @@ export function ChannelMessage({
           <Reactions reactions={message.reactions} users={users} target={target} meId={meId} canReact={can.react} />
         )}
         {root && showThread && root.threadCount > 0 && <ThreadSummary message={root} users={users} />}
+        <p role="status" className={clsx('sf-meta', !note ? 'sr-only' : note.error ? 'mt-0.5 text-sf-error' : 'mt-0.5 text-sf-text-secondary')}>
+          {note?.text}
+        </p>
       </div>
       {!editing && !sendState && !root?.system && (
         // The toolbar comes in Phase 2; until then the ⋯ menu shows on hover and on keyboard focus, and always on a
@@ -204,6 +238,7 @@ export function ChannelMessage({
             can={can}
             confirmDelete={deleteNeedsConfirm(message)}
             onEdit={startEditing}
+            onMarkUnread={markUnread && (() => void markUnread())}
             extra={message.deletedAt ? undefined : actions}
           />
         </div>

@@ -165,6 +165,7 @@ describe('createHttpApi', () => {
     const { calls, fetchFn } = recordingFetch()
     const api = createHttpApi(fetchFn)
     await api.chat.markRead('c1', 7)
+    await api.chat.markUnread('c1', 5)
     await api.chat.send('c1', 'hi', 'k1')
     await api.chat.setStarred('c1', true)
     await api.chat.setMuted('c1', false)
@@ -179,6 +180,7 @@ describe('createHttpApi', () => {
     await api.chat.edit({ kind: 'message', id: 'm1' }, 'x', [])
     expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url} ${String(c.init?.body)}`)).toEqual([
       'POST /api/channels/c1/read {"seq":7}',
+      'POST /api/channels/c1/unread {"seq":5}',
       'POST /api/channels/c1/messages {"content":"hi","clientId":"k1"}',
       'PATCH /api/channels/c1/me {"starred":true}',
       'PATCH /api/channels/c1/me {"muted":false}',

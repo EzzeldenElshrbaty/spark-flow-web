@@ -484,6 +484,17 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       })
       hub.publish({ type: 'readChanged', userId: result.userId, channelId, seq: result.seq })
     },
+    async markUnread(channelId, seq) {
+      await delay()
+      const result = await db.update((data) => {
+        readableChannel(data, channelId)
+        if (!Number.isInteger(seq) || seq < 1 || seq > lastSeqOf(data, channelId)) throw badRequest("That message isn't in this channel.")
+        const state = myState(data, channelId)
+        state.lastReadSeq = seq - 1
+        return { userId: data.currentUserId, seq: state.lastReadSeq }
+      })
+      hub.publish({ type: 'readChanged', userId: result.userId, channelId, seq: result.seq })
+    },
     setStarred: (id, starred) => setMine(id, { starred }),
     setMuted: (id, muted) => setMine(id, { muted }),
   }

@@ -11,6 +11,13 @@ function escapeBelongsElsewhere(): boolean {
   return typing || Boolean(document.querySelector('[aria-modal="true"]'))
 }
 
+/** Esc closes the panel unless a field or a dialog has it; the panel then owns it, so the channel doesn't also mark read. */
+export function onInspectorEscape(event: KeyboardEvent, close: () => void) {
+  if (event.key !== 'Escape' || event.defaultPrevented || escapeBelongsElsewhere()) return
+  event.preventDefault()
+  close()
+}
+
 /** The right-side panel for a thread or a ticket. Opened and closed only through the URL (`?thread=` / `?ticket=`). */
 export function Inspector() {
   const [params, setParams] = useSearchParams()
@@ -24,9 +31,7 @@ export function Inspector() {
 
   useEffect(() => {
     if (!open) return
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !escapeBelongsElsewhere()) setParams((current) => withInspector(current, null))
-    }
+    const onKeyDown = (event: KeyboardEvent) => onInspectorEscape(event, () => setParams((current) => withInspector(current, null)))
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [open, setParams])

@@ -52,6 +52,8 @@ export function MenuPanel({
     }
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        // Used: a page key on Escape (the channel's mark read) leaves it alone.
+        event.preventDefault()
         onCloseRef.current()
         triggerRef.current?.focus()
       }

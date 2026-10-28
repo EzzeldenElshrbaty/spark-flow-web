@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import { CircleDot, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useDeleteMessage, useReact, useRestoreMessage } from '@/api/chat'
 import type { ChatTarget } from '@/api/types'
@@ -22,6 +22,7 @@ export function MessageActions({
   can,
   confirmDelete = false,
   onEdit,
+  onMarkUnread,
   extra,
 }: {
   target: ChatTarget
@@ -29,6 +30,8 @@ export function MessageActions({
   /** Ask before deleting (it has replies or files); otherwise it goes at once, with Undo (spec 6.3). */
   confirmDelete?: boolean
   onEdit: () => void
+  /** Mark unread (U), on someone else's message in the channel's list. */
+  onMarkUnread?: () => void
   /** More menu items; each gets the close function so it can shut the menu. */
   extra?: (close: () => void) => ReactNode
 }) {
@@ -95,6 +98,23 @@ export function MessageActions({
               </button>
             ))}
           </div>
+        )}
+        {onMarkUnread && (
+          <button
+            type="button"
+            role="menuitem"
+            aria-keyshortcuts="U"
+            className={menuItemClass}
+            onClick={() => {
+              close()
+              onMarkUnread()
+            }}
+          >
+            <CircleDot className="size-4 shrink-0" /> Mark unread
+            <span aria-hidden className="ms-auto text-xs text-fg-muted">
+              U
+            </span>
+          </button>
         )}
         {can.edit && (
           <button

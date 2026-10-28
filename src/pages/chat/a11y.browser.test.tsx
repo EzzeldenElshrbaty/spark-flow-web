@@ -19,6 +19,7 @@ import { ChannelTabs } from '@/pages/chat/ChannelTabs'
 import { RichComposer } from '@/pages/chat/composer/RichComposer'
 import { EmojiPicker } from '@/pages/chat/EmojiPicker'
 import { useEditing } from '@/pages/chat/editingStore'
+import { MarkAllReadModal } from '@/pages/chat/ChannelShortcuts'
 import type { BodyContext } from '@/pages/chat/MessageBody'
 
 // Spec 10: every text and control pair meets the 3.2 contrast, checked automatically in CI. These render the chat's
@@ -116,6 +117,16 @@ describe.each([
   it('the open channel menu has no axe violations', async () => {
     mount(surfaces[0][1](), dark)
     await userEvent.click(screen.getByRole('button', { name: 'Channel actions' }))
+    expect(await violations()).toEqual([])
+  })
+
+  it('the Mark everything read question (Shift+Esc) and a message menu with Mark unread have no axe violations', async () => {
+    mount(<MarkAllReadModal channels={[channel, { ...channel, id: 'c-2' }]} onClose={vi.fn()} />, dark)
+    expect(await violations()).toEqual([])
+    cleanup()
+    mount(<ChannelMessage message={message('hi')} users={users} ctx={ctx} meId="u-1" canPost continuation={false} onMarkUnread={async () => {}} />, dark)
+    await userEvent.click(screen.getByRole('button', { name: 'Message actions', hidden: true }))
+    expect(screen.getByRole('menuitem', { name: 'Mark unread' })).toBeTruthy()
     expect(await violations()).toEqual([])
   })
 

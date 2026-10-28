@@ -56,6 +56,8 @@ export function MessageList({
   totalUnread,
   markedSeq,
   onMarkRead,
+  holdRead = false,
+  onMarkUnread,
   focusSeq = null,
   focusNonce = 0,
   openAtEnd = false,
@@ -79,6 +81,10 @@ export function MessageList({
   /** My read marker now. */
   markedSeq: number
   onMarkRead: (seq?: number) => void
+  /** Marked unread (U): being at the end doesn't mark it read until the hold ends. */
+  holdRead?: boolean
+  /** Mark unread (U) from a message: it and what follows are unread again. */
+  onMarkUnread?: (message: ChatMessage) => Promise<unknown>
   /** A message to bring to the top (a jump); a new nonce brings it there again. */
   focusSeq?: number | null
   focusNonce?: number
@@ -298,10 +304,10 @@ export function MessageList({
     markedSeq: Math.max(markedSeq, sent.current),
   })
   useEffect(() => {
-    if (upTo === null) return
+    if (upTo === null || holdRead) return
     sent.current = upTo
     onMarkRead(upTo)
-  }, [upTo, onMarkRead])
+  }, [upTo, onMarkRead, holdRead])
 
   // Someone else's new message is read out once; scrolling past rows is not (the log itself is silent). Announcing
   // starts from the newest message once the list is live: what was there on open, and the pages loaded on the way
@@ -363,6 +369,7 @@ export function MessageList({
                     sendError={pendingById.get(row.message.id)?.error}
                     onRetry={() => onRetry?.(pendingById.get(row.message.id)!.clientId)}
                     onDiscard={() => onDiscard?.(pendingById.get(row.message.id)!.clientId)}
+                    onMarkUnread={onMarkUnread && (() => onMarkUnread(row.message))}
                   />
                 )}
               </li>

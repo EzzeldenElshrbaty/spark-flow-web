@@ -80,6 +80,23 @@ export function useMarkRead() {
   return useMutation({ mutationFn: ({ channelId, seq }: { channelId: string; seq?: number }) => api.chat.markRead(channelId, seq) })
 }
 
+/** Shift+Esc: marks each channel read, all together; when some fail, says how many. */
+export function useMarkAllRead() {
+  return useMutation({
+    mutationFn: async (channelIds: string[]) => {
+      const failed = (await Promise.allSettled(channelIds.map((id) => api.chat.markRead(id)))).filter((r) => r.status === 'rejected').length
+      if (!failed) return
+      if (failed < channelIds.length) throw new Error(`Couldn't mark ${failed} of them read. Try again.`)
+      throw new Error(failed === 1 ? "Couldn't mark it read. Try again." : "Couldn't mark them read. Try again.")
+    },
+  })
+}
+
+/** Mark unread (U): my read marker goes to just before message `seq`, so it and what follows are unread again. */
+export function useMarkUnread() {
+  return useMutation({ mutationFn: ({ channelId, seq }: { channelId: string; seq: number }) => api.chat.markUnread(channelId, seq) })
+}
+
 /** Posts in a channel as the current user. The feed refreshes from the live event and the global invalidate. */
 /** Posts in a channel; from the rich composer with its `body` (the content is then its plain text). */
 export function useSendMessage() {

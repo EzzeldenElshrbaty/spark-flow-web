@@ -3,7 +3,7 @@ import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import type { User } from '@/api/types'
-import { bodyText, type Body } from '@/lib/messageBody'
+import { bodyText, parseBody, type Body } from '@/lib/messageBody'
 import { RichComposer, type ComposerDirectory } from '@/pages/chat/composer/RichComposer'
 
 // A real browser: the editor needs real keyboard events, selection and layout.
@@ -49,6 +49,19 @@ async function ready(props: Partial<Parameters<typeof RichComposer>[0]> = {}) {
 const sentText = (spy: ReturnType<typeof vi.fn>) => bodyText(spy.mock.calls.at(-1)![0] as Body)
 
 describe('RichComposer keys (spec 6.8)', () => {
+  it('autoFocus puts the caret in the box, after the draft (Alt+↑/↓ land here)', async () => {
+    const { editor } = await ready({ autoFocus: true, initialBody: parseBody('hello') })
+    await vi.waitFor(() => expect(document.activeElement).toBe(editor))
+    await userEvent.keyboard('!')
+    expect(editor.textContent).toBe('hello!')
+  })
+
+  it('without it the box waits to be clicked', async () => {
+    const { editor } = await ready()
+    await new Promise((r) => setTimeout(r, 100))
+    expect(document.activeElement).not.toBe(editor)
+  })
+
   it('Enter sends and the box clears; Shift+Enter makes a new line', async () => {
     const { onSend, editor } = await ready()
     await userEvent.click(editor)

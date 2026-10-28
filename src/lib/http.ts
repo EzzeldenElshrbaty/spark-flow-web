@@ -78,6 +78,7 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
       message: (id) => get(`/api/messages/${enc(id)}`),
       replies: (messageId) => get(`/api/messages/${enc(messageId)}/replies`),
       markRead: (channelId, seq) => send('POST', `/api/channels/${enc(channelId)}/read`, seq === undefined ? undefined : { seq }),
+      markUnread: (channelId, seq) => send('POST', `/api/channels/${enc(channelId)}/unread`, { seq }),
       send: (channelId, content, clientId, body) =>
         send('POST', `/api/channels/${enc(channelId)}/messages`, { content, ...(clientId && { clientId }), ...(body && { body }) }),
       reply: (messageId, content) => send('POST', `/api/messages/${enc(messageId)}/replies`, { content }),

@@ -1,5 +1,5 @@
-import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router'
+import { lazy, Suspense, useEffect, useId, useMemo, useState, type ReactNode } from 'react'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 import { useChannel, useDrafts, useDraftSaver, useJumpTarget, useLeaveChannel, useMarkRead, useMessage, useMessages, useMessagesFrom, useSetMuted, useSetStarred } from '@/api/chat'
 import { useUsers } from '@/api/users'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -33,6 +33,8 @@ import { ChannelTabs, TabStub, tabFromParam, type ChannelTab } from '@/pages/cha
 import type { Channel, ChatMessage, User } from '@/api/types'
 import { useProjectSummaries } from '@/api/projects'
 import { MessageSkeleton } from '@/pages/chat/MessageSkeleton'
+import { useChannelReadState, useReadHold, useReadHoldScope } from '@/pages/chat/readState'
+import { ChannelShortcuts, type ChannelNavState } from '@/pages/chat/ChannelShortcuts'
 
 /** A channel or DM: its header and tabs over its messages, newest at the bottom, filling the main card (spec 5.3, 6.1). */
 export function ChannelPage() {
@@ -48,6 +50,8 @@ export function ChannelPage() {
   const fromMessage = useTaskFromMessage(channelId, workspace?.id)
   const projects = useProjectSummaries(workspace?.id)
   const realtime = useRealtime()
+  // Marked unread (U) stays unread until I leave the channel.
+  useReadHoldScope(channelId)
   // Start fetching the composer with the page, not once the drafts are in.
   useEffect(() => void loadComposer(), [])
   const panelId = useId()
@@ -145,6 +149,7 @@ export function ChannelPage() {
       )}
       </div>
       {fromMessage.sheet}
+      <ChannelShortcuts channel={current} workspaceSlug={ws} />
     </div>
   )
 }
@@ -177,7 +182,10 @@ function ChannelTop({ channel, people, workspaceSlug, tab, onTab, panelId }: { c
         onEdit={() => setEditing(true)}
         onStar={(starred) => star.mutate({ id: channel.id, starred })}
         onMute={(muted) => mute.mutate({ id: channel.id, muted })}
-        onMarkRead={() => markRead.mutate({ channelId: channel.id })}
+        onMarkRead={() => {
+          useReadHold.getState().release(channel.id)
+          markRead.mutate({ channelId: channel.id })
+        }}
         onCopyLink={() => navigator.clipboard.writeText(new URL(paths.channel(workspaceSlug, channel.id), window.location.origin).href)}
         onLeave={() => leave.mutate(channel.id, { onSuccess: () => navigate(paths.home(workspaceSlug)) })}
         onArchive={() => setArchiving(true)}
@@ -258,13 +266,12 @@ function PaneFeed({
     // Runs when the linked message arrives (goTo reads the latest lists through setView).
   }, [linked, linkedMessage.data, linkedMessage.isError])
   const realtime = useRealtime()
-  const { mutate: markRead } = useMarkRead()
   useEffect(() => {
     realtime.joinChannel(channel.id)
     return () => realtime.leaveChannel(channel.id)
   }, [realtime, channel.id])
-  const [{ newAfterSeq, totalUnread }] = useState({ newAfterSeq: channel.lastReadSeq, totalUnread: channel.unreadCount })
-  const onMarkRead = useCallback((seq?: number) => markRead({ channelId: channel.id, seq }), [markRead, channel.id])
+  const [totalUnread] = useState(channel.unreadCount)
+  const read = useChannelReadState(channel)
   return (
     <>
       {usersLoading ? (
@@ -281,11 +288,13 @@ function PaneFeed({
           meId={meId}
           canPost={canPost}
           messageActions={messageActions}
-          newAfterSeq={newAfterSeq}
+          newAfterSeq={read.newAfterSeq}
           // After a jump the list starts where I asked, not at my first unread message.
           totalUnread={view.from === null ? totalUnread : 0}
           markedSeq={channel.lastReadSeq}
-          onMarkRead={onMarkRead}
+          onMarkRead={read.markRead}
+          holdRead={read.held}
+          onMarkUnread={(message) => read.markUnread(message.seq)}
           focusSeq={view.focus}
           focusNonce={view.nonce}
           openAtEnd={view.atEnd}
@@ -298,7 +307,12 @@ function PaneFeed({
         />
       )}
       {jumpError && <p className="sf sf-small flex-none px-4 pt-2 text-sf-error md:px-6">{jumpError}</p>}
-      {composer && <div className="flex-none px-4 pt-2 pb-3 md:px-6">{composer}</div>}
+      {/* CHANNEL_COMPOSER (useChannelKeys): Esc in here still marks the channel read. */}
+      {composer && (
+        <div data-channel-composer="" className="flex-none px-4 pt-2 pb-3 md:px-6">
+          {composer}
+        </div>
+      )}
     </>
   )
 }
@@ -329,6 +343,8 @@ function ChannelComposer({
 }) {
   const drafts = useDrafts(channel.workspaceId)
   const saveDraft = useDraftSaver()
+  // Alt+↑/↓ brought me here: carry on typing.
+  const arrived = (useLocation().state as ChannelNavState)?.focus === 'composer'
   const directory = useComposerDirectory(channel.workspaceId, channel.memberIds)
   if (drafts.isPending) return composerSkeleton
   const draft = drafts.data?.find((d) => d.channelId === channel.id && d.rootId === null)
@@ -344,6 +360,7 @@ function ChannelComposer({
       onTyping={onTyping}
       error={error}
       directory={directory}
+      autoFocus={arrived}
     />
     </Suspense>
   )

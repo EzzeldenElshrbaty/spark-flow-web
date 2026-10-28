@@ -298,6 +298,8 @@ export interface Api {
     replies(messageId: string): Promise<ThreadReply[]>
     /** Moves my read marker forward to `seq` (default: the newest message); it never moves back. */
     markRead(channelId: string, seq?: number): Promise<void>
+    /** Mark unread (U): moves my read marker to just before message `seq`, back or forward. */
+    markUnread(channelId: string, seq: number): Promise<void>
     /** Posts as the current user; mentions are worked out from the text. The same `clientId` again returns the first message. */
     send(channelId: string, content: string, clientId?: string, body?: Body): Promise<ChatMessage>
     /** My drafts in a workspace's channels (spec 6.8): one per channel and thread root. */
