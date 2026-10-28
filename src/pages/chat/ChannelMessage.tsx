@@ -2,7 +2,7 @@ import { IconAlertCircle, IconTrash } from '@tabler/icons-react'
 import clsx from 'clsx'
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
-import { useEditMessage } from '@/api/chat'
+import { useEditMessage, useSetFollowing } from '@/api/chat'
 import { bodyText } from '@/lib/messageBody'
 import type { ChatMessage, ChatTarget, SystemEvent, ThreadReply, User } from '@/api/types'
 import { announce } from '@/components/sf/Announcer'
@@ -138,6 +138,12 @@ export function ChannelMessage({
     new Promise<void>((resolve) => resolve(navigator.clipboard.writeText(text))).then(() => say(done), () => say(failed, true))
   const copyLink = () => copy(permalink, 'Link copied', "Couldn't copy the link")
   const copyText = () => copy(bodyText(message.body), 'Text copied', "Couldn't copy the text")
+  // Following its thread (spec 6.7): a top-level message's, from its ⋯ menu.
+  const setFollowing = useSetFollowing()
+  const follow =
+    root && !root.system
+      ? { following: Boolean(root.following), onToggle: () => setFollowing.mutate({ messageId: root.id, following: !root.following }, { onError: () => say("Couldn't change that. Try again.", true) }) }
+      : undefined
   // Reply in thread (T, spec 6.4): a top-level message outside its own thread, where I may post; the thread opens to
   // its reply box. Asked again while that thread is open, it doesn't add a step to the history.
   const navigate = useNavigate()
@@ -265,6 +271,7 @@ export function ChannelMessage({
           onMarkUnread={markUnread && (() => void markUnread())}
           onCopyLink={message.deletedAt ? undefined : () => void copyLink()}
           onCopyText={message.deletedAt ? undefined : () => void copyText()}
+          follow={follow}
           extra={message.deletedAt ? undefined : actions}
           className={compact ? 'end-3' : 'end-4 md:end-6'}
         />

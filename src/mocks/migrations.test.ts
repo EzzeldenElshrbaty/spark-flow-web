@@ -69,3 +69,10 @@ describe('9 → 10', () => {
     expect(migrate({ version: 9 }, 10)).toMatchObject({ version: 10, trash: [] })
   })
 })
+
+describe('10 → 11', () => {
+  it('adds no thread follows yet: everyone follows by the defaults (spec 6.7)', () => {
+    expect(migrate({ version: 10 }, 11)).toMatchObject({ version: 11, threadFollows: [] })
+  })
+})
+

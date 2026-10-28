@@ -196,7 +196,7 @@ describe('sendMessage', () => {
     const m = await sendMessage(db, hub, { channelId: 'c-backend', content: 'hi', attachments: [attachment] })
     expect(m).toMatchObject({ senderId: 'u-1', channelId: 'c-backend', threadCount: 0, lastReplyAt: null, editedAt: null, reactions: [] })
     expect(m.attachments).toEqual([attachment])
-    expect(await api.chat.message(m.id)).toEqual({ ...m, replyUserIds: [] }) // who replied is worked out on read
+    expect(await api.chat.message(m.id)).toEqual({ ...m, replyUserIds: [], following: true }) // who replied, and following, are worked out on read
     expect((await api.chat.messages('c-backend')).items[0].id).toBe(m.id)
   })
 
@@ -953,3 +953,68 @@ describe('delete with Undo, admin delete, edit with a body (spec 6.3, §8 restor
     await expect(api.chat.edit(target(sent), '', [{ type: 'p', children: [{ type: 'link', href: 'javascript:x', text: 'x' }] }] as never)).rejects.toMatchObject({ status: 400 })
   })
 })
+
+describe('following a thread (spec 6.7)', () => {
+  const following = async (id: string) => (await api.chat.message(id)).following
+
+  it('the author follows their message; someone else doesn’t, until they reply', async () => {
+    const root = await api.chat.send('c-general', 'Release notes for 2.4?')
+    expect(await following(root.id)).toBe(true)
+    await api.users.viewAs('u-2')
+    expect(await following(root.id)).toBe(false)
+    await api.chat.reply(root.id, 'On it')
+    expect(await following(root.id)).toBe(true)
+  })
+
+  it('a mention by name, in the message or a reply, follows; @all doesn’t', async () => {
+    const named = await api.chat.send('c-general', 'Can you check this, @[Nour El-Sayed](u-2)?')
+    const everyone = await api.chat.send('c-general', '@all standup moved to 10:00')
+    const later = await api.chat.send('c-general', 'Who owns the build?')
+    await api.chat.reply(later.id, 'Asking @[Mariam Fathy](u-3)')
+    await api.users.viewAs('u-2')
+    expect(await following(named.id)).toBe(true)
+    expect(await following(everyone.id)).toBe(false)
+    await api.users.viewAs('u-3')
+    expect(await following(later.id)).toBe(true)
+  })
+
+  it('my choice wins over the default, both ways', async () => {
+    const root = await api.chat.send('c-general', 'Mine')
+    await api.chat.setFollowing(root.id, false)
+    expect(await following(root.id)).toBe(false)
+    await api.chat.setFollowing(root.id, true)
+    expect(await following(root.id)).toBe(true)
+    await api.users.viewAs('u-2')
+    await api.chat.setFollowing(root.id, true)
+    expect(await following(root.id)).toBe(true)
+  })
+
+  it('replying, or a new mention, follows again after I turned it off', async () => {
+    const root = await api.chat.send('c-general', 'Mine')
+    await api.chat.setFollowing(root.id, false)
+    await api.chat.reply(root.id, 'One more thing')
+    expect(await following(root.id)).toBe(true)
+    await api.users.viewAs('u-2')
+    await api.chat.setFollowing(root.id, false)
+    await api.users.viewAs('u-1')
+    await api.chat.reply(root.id, 'Thoughts, @[Nour El-Sayed](u-2)?')
+    await api.users.viewAs('u-2')
+    expect(await following(root.id)).toBe(true)
+  })
+
+  it('the list and the thread’s replies say so too, and the change is published', async () => {
+    const root = await api.chat.send('c-general', 'Mine')
+    events = []
+    await api.chat.setFollowing(root.id, false)
+    const page = await api.chat.messages('c-general')
+    expect(page.items.find((m) => m.id === root.id)?.following).toBe(false)
+    expect(events).toContainEqual({ type: 'messageChanged', channelId: 'c-general', messageId: root.id })
+  })
+
+  it('only a message that exists, in a channel I can read', async () => {
+    await expect(api.chat.setFollowing('m-nope', true)).rejects.toMatchObject({ status: 404 })
+    await api.users.viewAs('u-3') // Mariam: not in #release-v2
+    await expect(api.chat.setFollowing('m-r01', true)).rejects.toMatchObject({ status: 403 })
+  })
+})
+

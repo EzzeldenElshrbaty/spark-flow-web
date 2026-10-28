@@ -12,7 +12,22 @@ export type InspectorBodyProps = {
  * The inspector's frame, after the Spark CRM page help panel: beside the content on wide screens (xl), sliding over
  * from the end side on tablets and laptops (no dimming), a bottom sheet on phones. The body scrolls on its own.
  */
-export function InspectorFrame({ label, eyebrow, title, onClose, children }: { label: string; eyebrow: ReactNode; title: ReactNode; onClose: () => void; children: ReactNode }) {
+export function InspectorFrame({
+  label,
+  eyebrow,
+  title,
+  actions,
+  onClose,
+  children,
+}: {
+  label: string
+  eyebrow: ReactNode
+  title: ReactNode
+  /** Controls before Close (the thread's ⋮). */
+  actions?: ReactNode
+  onClose: () => void
+  children: ReactNode
+}) {
   return (
     <aside
       aria-label={label}
@@ -23,6 +38,7 @@ export function InspectorFrame({ label, eyebrow, title, onClose, children }: { l
           <p className="truncate text-xs font-semibold uppercase tracking-wider text-accent">{eyebrow}</p>
           <h2 className="mt-0.5 text-base font-semibold text-fg">{title}</h2>
         </div>
+        {actions}
         <button type="button" onClick={onClose} className="-me-1 rounded-md p-1 text-fg-muted hover:bg-surface-muted hover:text-fg" aria-label={`Close ${label.toLowerCase()}`}>
           <X className="size-5" />
         </button>

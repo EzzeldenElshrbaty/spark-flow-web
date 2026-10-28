@@ -438,3 +438,25 @@ Rulings approved with the plan: a permalink or a date jump opens the channel too
 - In the app: #frontend-dev, unread at 11: opening it marked it read (17), its sidebar row stopped being bold, and the New line still showed. Mark unread on a message (marker 0), Files tab and back: still 0 (held). Leaving and coming back: 17.
 - Not seen in the app: the bar's Mark as unread (the pane runs as a background page and the bar doesn't come up there; covered by the browser test).
 - Seen, not changed: the project's Chat tab (`ChannelFeed`) has its own read handling and isn't part of this change.
+
+# Flow chat — Phase 2 slice 2: threads (spec 6.7) — 2026-10-28
+
+Approved: part A (following and the panel header menu), then part B (the rich thread composer, Also send to #channel, broadcast replies), with the contract updated.
+
+## Plan
+
+Part A — following
+- [x] Data: `threadFollows` (person, root, following: my explicit choice), DB_VERSION 11 with its migration; `following` on every message read, worked out per person: my choice, else the author, anyone who replied, anyone mentioned (by name) in the root or a reply. Replying, or a new mention, clears my choice (I follow again).
+- [x] Routes: `PUT` / `DELETE /api/messages/:id/follow` → 204 (the thread's root only; read access); `messageChanged` live. Api `setFollowing(messageId, following)`, http, `useSetFollowing`.
+- [x] ⋯ menu, first item on top-level messages: "Get notified about replies" / "Turn off notifications for replies" while following.
+- [x] Thread panel header ⋮ (sf Menu): Copy link, the same follow item, Open in a new window. `InspectorFrame` gets an `actions` slot.
+
+Part B — replies
+- [ ] Reply route `POST /api/messages/:id/replies { content, body?, alsoInChannel? }`: rich text; with `alsoInChannel` it also takes the channel's next seq (one record: the reply). Channel pages list it as a message with `broadcast: { rootId, rootText }`, its id the reply's; its edits, deletes and reactions go to `/api/replies/:id`. Counts as unread like any message. `replyReceived` carries `alsoInChannel`.
+- [ ] Thread composer: the rich composer with its formatting row hidden until Aa, a draft per thread, and "Also send to #channel" (a DM: "Also send to <name>"), unchecked each time.
+- [ ] Channel: a broadcast reply reads "replied to a thread: <first line>" (a link to the thread), stands alone (no grouping); its toolbar acts on the reply, Reply in thread opens its root's thread.
+- [ ] Panel: a broadcast reply shows "↪ Also sent to #channel".
+- [ ] Contract (`docs/flow-chat/api-contract.md`): the routes, fields and events above.
+- [ ] Tests first: mock (follow rules, broadcast seq / unread / one record), http, migration; menus, header menu, composer checkbox, the broadcast row and label; axe on the header menu and the thread composer.
+
+Rulings approved with the plan: one record for a broadcast reply; following is stored and shown, not yet delivered (bell, Activity, Threads come later); no Mute in the header menu; the panel stays 384px; the same wording for following everywhere.

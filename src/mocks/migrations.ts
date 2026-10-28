@@ -77,6 +77,10 @@ export const migrations: Record<number, (doc: Record<string, unknown>) => void> 
   9: (doc) => {
     doc.trash = []
   },
+  // 11: thread follows (spec 6.7). None are chosen yet: everyone follows by the defaults.
+  10: (doc) => {
+    doc.threadFollows = []
+  },
 }
 
 /** The document brought up to `to`, or null when a step on the way is missing. */

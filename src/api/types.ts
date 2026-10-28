@@ -139,7 +139,15 @@ export type ChatMessage = {
   taskEvent?: TaskEvent
   /** Set once the author deletes it: the row stays (its thread too) with its text, files, mentions and reactions gone. */
   deletedAt?: string | null
+  /**
+   * Whether I follow its thread (spec 6.7), worked out per person on read: my own choice, else whether I wrote it,
+   * replied to it, or was mentioned by name in it or a reply.
+   */
+  following?: boolean
 }
+
+/** A person's own choice to follow a thread or not (spec §7 ThreadFollow); without one, the defaults decide. */
+export type ThreadFollow = { userId: string; rootId: string; following: boolean }
 
 /** Text I started and haven't sent, kept on the server so it follows me between devices (spec 6.8). */
 export type Draft = { channelId: string; rootId: string | null; body: Body; updatedAt: string }
@@ -307,6 +315,8 @@ export interface Api {
     /** Saves my draft for a channel (or a thread in it); an empty body deletes it and returns null. */
     saveDraft(channelId: string, body: Body, rootId?: string | null): Promise<Draft | null>
     reply(messageId: string, content: string): Promise<ThreadReply>
+    /** Get notified about replies, or turn it off (spec 6.7): my own choice for a thread's root message. */
+    setFollowing(messageId: string, following: boolean): Promise<void>
     /** Adds the current user's reaction, or takes it back if it's there; only the emoji in REACTIONS. */
     react(target: ChatTarget, emoji: string): Promise<void>
     /** The author's own plain message or reply; mentions and task keys are worked out again. */

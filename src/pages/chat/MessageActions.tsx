@@ -1,4 +1,4 @@
-import { IconCircleDot, IconClipboardText, IconLink, IconPencil, IconTrash } from '@tabler/icons-react'
+import { IconBell, IconBellOff, IconCircleDot, IconClipboardText, IconLink, IconPencil, IconTrash } from '@tabler/icons-react'
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useDeleteMessage, useRestoreMessage } from '@/api/chat'
 import type { ChatTarget } from '@/api/types'
@@ -10,8 +10,18 @@ import { useToast } from '@/components/sf/Toast'
 /** Marks the element a row's focus goes back to (after an edit or a delete): its toolbar's Tab stop. */
 export const ROW_FOCUS = 'data-row-focus'
 
+/** Whether I follow a thread, and the item that turns it on or off (spec 6.7): the same in every menu. */
+export type Follow = { following: boolean; onToggle: () => void }
+export function FollowItem({ following, onToggle }: Follow) {
+  return (
+    <MenuItem icon={following ? IconBellOff : IconBell} onSelect={onToggle}>
+      {following ? 'Turn off notifications for replies' : 'Get notified about replies'}
+    </MenuItem>
+  )
+}
+
 /**
- * The ⋯ menu of a message or reply (spec 6.5), in its order: Mark unread · — · whatever the page adds (Create task),
+ * The ⋯ menu of a message or reply (spec 6.5), in its order: Get notified about replies (a thread's root) and Mark unread · — · whatever the page adds (Create task),
  * Copy link, Copy text · — · Edit and Delete for the author (or Delete for an Admin). On phones `lead` comes first:
  * what the toolbar would carry there. A separator only between groups that have something.
  */
@@ -23,6 +33,7 @@ export function MessageMenu({
   onMarkUnread,
   onCopyLink,
   onCopyText,
+  follow,
   extra,
   lead,
   trigger,
@@ -37,6 +48,8 @@ export function MessageMenu({
   onMarkUnread?: () => void
   onCopyLink?: () => void
   onCopyText?: () => void
+  /** Following its thread: a top-level message's. */
+  follow?: Follow
   /** More items from the page (Create task), as `MenuItem`s. */
   extra?: ReactNode
   /** Phones: the quick reactions, Add reaction and Reply in thread, first in the sheet. */
@@ -77,6 +90,7 @@ export function MessageMenu({
   const groups = [
     [lead],
     [
+      follow && <FollowItem {...follow} />,
       onMarkUnread && (
         <MenuItem icon={IconCircleDot} shortcut="U" onSelect={onMarkUnread}>
           Mark unread

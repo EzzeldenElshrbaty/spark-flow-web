@@ -30,6 +30,7 @@ const emptyData = (): DbData => ({
   activity: [],
   drafts: [],
   trash: [],
+  threadFollows: [],
   counters: {},
 })
 

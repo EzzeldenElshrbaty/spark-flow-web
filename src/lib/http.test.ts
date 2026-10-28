@@ -178,6 +178,8 @@ describe('createHttpApi', () => {
     await api.chat.restore({ kind: 'message', id: 'm1' })
     await api.chat.restore({ kind: 'reply', id: 'r1' })
     await api.chat.edit({ kind: 'message', id: 'm1' }, 'x', [])
+    await api.chat.setFollowing('m1', true)
+    await api.chat.setFollowing('m1', false)
     expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url} ${String(c.init?.body)}`)).toEqual([
       'POST /api/channels/c1/read {"seq":7}',
       'POST /api/channels/c1/unread {"seq":5}',
@@ -193,6 +195,8 @@ describe('createHttpApi', () => {
       'POST /api/messages/m1/restore undefined',
       'POST /api/replies/r1/restore undefined',
       'PATCH /api/messages/m1 {"content":"x","body":[]}',
+      'PUT /api/messages/m1/follow undefined',
+      'DELETE /api/messages/m1/follow undefined',
     ])
   })
 

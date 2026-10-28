@@ -21,6 +21,7 @@ import { RichComposer } from '@/pages/chat/composer/RichComposer'
 import { EmojiPicker } from '@/pages/chat/EmojiPicker'
 import { useEditing } from '@/pages/chat/editingStore'
 import { MarkAllReadModal } from '@/pages/chat/ChannelShortcuts'
+import { ThreadMenu } from '@/pages/chat/ThreadMenu'
 import type { BodyContext } from '@/pages/chat/MessageBody'
 
 // Spec 10: every text and control pair meets the 3.2 contrast, checked automatically in CI. These render the chat's
@@ -144,6 +145,13 @@ describe.each([
     } finally {
       await page.viewport(414, 896)
     }
+  })
+
+  it('the thread panel’s open ⋮ menu has no axe violations', async () => {
+    mount(<ThreadMenu messageId="m1" following={false} link="https://flow.example/w/engineering/c/c-backend?thread=m1" />, dark)
+    await userEvent.click(screen.getByRole('button', { name: 'Thread actions' }))
+    expect(screen.getByRole('menuitem', { name: 'Get notified about replies' })).toBeTruthy()
+    expect(await violations()).toEqual([])
   })
 
   it('an open profile card has no axe violations', async () => {

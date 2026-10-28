@@ -228,6 +228,10 @@ export function useLeaveChannel() {
 export function useRestoreChannel() {
   return useMutation({ mutationFn: (id: string) => api.chat.restoreChannel(id) })
 }
+/** Get notified about replies, or turn it off (spec 6.7), for a thread's root message. */
+export function useSetFollowing() {
+  return useMutation({ mutationFn: ({ messageId, following }: { messageId: string; following: boolean }) => api.chat.setFollowing(messageId, following) })
+}
 export function useReply() {
   return useMutation({ mutationFn: ({ messageId, content }: { messageId: string; content: string }) => api.chat.reply(messageId, content) })
 }

@@ -16,6 +16,8 @@ import { useBodyContext, useProjectKeys } from '@/pages/chat/useBodyContext'
 import { useCanPost, useReadOnlyLine } from '@/pages/chat/useCanPost'
 import { CanPostError } from '@/pages/chat/CanPostError'
 import { useReplyFocus } from '@/pages/chat/useReplyFocus'
+import { ThreadMenu } from '@/pages/chat/ThreadMenu'
+import { paths } from '@/lib/paths'
 
 const isNotFound = (error: Error | null) => error instanceof ApiError && error.status === 404
 const isForbidden = (error: Error | null) => error instanceof ApiError && error.status === 403
@@ -101,8 +103,16 @@ export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: st
     )
   }
 
+  // The thread's ⋮ once it's there, in a channel of this workspace: its link opens the channel with the thread.
+  const actions = message.data && channel.data && workspace && !foreign && (
+    <ThreadMenu
+      messageId={message.data.id}
+      following={Boolean(message.data.following)}
+      link={new URL(`${paths.channel(workspace.slug, channel.data.id)}?thread=${encodeURIComponent(message.data.id)}`, window.location.origin).href}
+    />
+  )
   return (
-    <InspectorFrame label="Thread" eyebrow={eyebrow} title={title} onClose={onClose}>
+    <InspectorFrame label="Thread" eyebrow={eyebrow} title={title} actions={actions} onClose={onClose}>
       {body}
     </InspectorFrame>
   )

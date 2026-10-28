@@ -6,6 +6,7 @@ import { Announcer } from '@/components/sf/Announcer'
 import { ToastProvider } from '@/components/sf/Toast'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ChatMessage, TaskRef, ThreadReply, User } from '@/api/types'
+import { api } from '@/lib/api'
 import { parseBody } from '@/lib/messageBody'
 import { paths } from '@/lib/paths'
 import { ChannelMessage, systemText, type Selection } from '@/pages/chat/ChannelMessage'
@@ -393,6 +394,8 @@ describe('U and L on a focused message (spec 10)', () => {
       fireEvent.keyDown(actions(), { key: 'l' })
       expect(writeText).toHaveBeenCalledWith(new URL(paths.message('engineering', 'c1', 'm1'), window.location.origin).href)
       expect(await screen.findByText('Link copied')).toBeTruthy()
+      // Let the note's effect start its timer before the clock moves on.
+      await act(async () => {})
       await act(async () => vi.advanceTimersByTime(2000))
       expect(screen.queryByText('Link copied')).toBeNull()
     } finally {
@@ -502,3 +505,29 @@ describe('Reply in thread and Copy text (spec 6.4, 6.5)', () => {
     expect(writeText).toHaveBeenCalledWith(new URL(paths.message('engineering', 'c1', 'm1'), window.location.origin).href)
   })
 })
+
+describe('following from the ⋯ menu (spec 6.7)', () => {
+  it('a message I don’t follow offers Get notified about replies, and follows on it', async () => {
+    const setFollowing = vi.spyOn(api.chat, 'setFollowing').mockResolvedValue()
+    show(message('root', { following: false }))
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Get notified about replies' }))
+    await vi.waitFor(() => expect(setFollowing).toHaveBeenCalledWith('m1', true))
+  })
+
+  it('one I follow turns it off', async () => {
+    const setFollowing = vi.spyOn(api.chat, 'setFollowing').mockResolvedValue()
+    show(message('root', { following: true }))
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Turn off notifications for replies' }))
+    await vi.waitFor(() => expect(setFollowing).toHaveBeenCalledWith('m1', false))
+  })
+
+  it('a reply has no thread of its own to follow', () => {
+    const reply: ThreadReply = { id: 'r1', messageId: 'm1', channelId: 'c1', senderId: 'u-2', content: 'ok', body: parseBody('ok'), attachments: [], reactions: [], mentions: [], createdAt: '2026-10-28T09:00:00.000Z' }
+    show(reply)
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }))
+    expect(screen.queryByRole('menuitem', { name: /notified|notifications/ })).toBeNull()
+  })
+})
+

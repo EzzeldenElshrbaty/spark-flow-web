@@ -82,6 +82,7 @@ export function createHttpApi(fetchFn?: typeof fetch): Api {
       send: (channelId, content, clientId, body) =>
         send('POST', `/api/channels/${enc(channelId)}/messages`, { content, ...(clientId && { clientId }), ...(body && { body }) }),
       reply: (messageId, content) => send('POST', `/api/messages/${enc(messageId)}/replies`, { content }),
+      setFollowing: (messageId, following) => send<void>(following ? 'PUT' : 'DELETE', `/api/messages/${enc(messageId)}/follow`),
       react: (target, emoji) => send<void>('POST', `${targetPath(target)}/reactions`, { emoji }),
       edit: (target, content, body) => send('PATCH', targetPath(target), body ? { content, body } : { content }),
       remove: (target) => send<void>('DELETE', targetPath(target)),

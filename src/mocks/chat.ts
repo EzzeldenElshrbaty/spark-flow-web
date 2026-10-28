@@ -56,10 +56,26 @@ function withUnread(data: DbData, channel: StoredChannel): Channel {
 
 const REPLY_FACES = 5
 
-/** A message with who last replied to it (spec §7 reply_user_ids): the latest 5 people, newest first, each once. */
+/** Whether a message or reply mentions this person by name (`@all` doesn't make anyone follow). */
+const namesUser = (row: ChatMessage | ThreadReply, userId: string) => row.mentions.some((m) => m.kind === 'user' && m.id === userId)
+
+/**
+ * Whether this person follows the thread (spec 6.7): their own choice, else the defaults: they wrote the message,
+ * replied to it, or were mentioned by name in it or a reply.
+ */
+function follows(data: DbData, message: ChatMessage, replies: ThreadReply[], userId: string): boolean {
+  const choice = data.threadFollows.find((f) => f.userId === userId && f.rootId === message.id)
+  if (choice) return choice.following
+  return message.senderId === userId || namesUser(message, userId) || replies.some((r) => r.senderId === userId || namesUser(r, userId))
+}
+
+/**
+ * A message with who last replied to it (spec §7 reply_user_ids): the latest 5 people, newest first, each once; and
+ * whether the current user follows its thread.
+ */
 function withThread(data: DbData, message: ChatMessage): ChatMessage {
   const replies = data.replies.filter((r) => r.messageId === message.id).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
-  return { ...message, replyUserIds: [...new Set(replies.map((r) => r.senderId))].slice(0, REPLY_FACES) }
+  return { ...message, replyUserIds: [...new Set(replies.map((r) => r.senderId))].slice(0, REPLY_FACES), following: follows(data, message, replies, data.currentUserId) }
 }
 
 function findChannel(data: DbData, id: string): StoredChannel {
@@ -387,6 +403,17 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       hub.publish({ type: 'replyReceived', reply: clone(reply) })
       return clone(reply)
     },
+    async setFollowing(messageId, following) {
+      await delay()
+      const message = await db.update((data) => {
+        const root = findMessage(data, messageId)
+        readableChannel(data, root.channelId)
+        const userId = data.currentUserId
+        data.threadFollows = [...data.threadFollows.filter((f) => !(f.userId === userId && f.rootId === root.id)), { userId, rootId: root.id, following }]
+        return root
+      })
+      hub.publish({ type: 'messageChanged', channelId: message.channelId, messageId: message.id })
+    },
     async channels(workspaceId) {
       await delay()
       const data = await db.read()
@@ -559,6 +586,9 @@ export function postReply(data: DbData, input: AddReplyInput): ThreadReply {
     createdAt,
   }
   data.replies.push(created)
+  // Replying, or being mentioned in a reply, follows the thread again, whatever was chosen before.
+  const again = new Set([created.senderId, ...created.mentions.flatMap((m) => (m.kind === 'user' ? [m.id] : []))])
+  data.threadFollows = data.threadFollows.filter((f) => f.rootId !== parent.id || !again.has(f.userId))
   parent.threadCount += 1
   parent.lastReplyAt = createdAt
   channel.lastMessageAt = createdAt

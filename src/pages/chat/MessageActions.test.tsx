@@ -66,6 +66,19 @@ describe('the ⋯ menu (spec 6.5)', () => {
     expect([key('Mark unread'), key('Copy link'), key('Edit message')]).toEqual(['U', 'L', 'E'])
   })
 
+  it('Get notified about replies comes first, with Mark unread; while following it turns it off (spec 6.5, 6.7)', () => {
+    const onToggle = vi.fn()
+    show({ follow: { following: false, onToggle }, onMarkUnread: vi.fn(), onCopyLink: vi.fn() })
+    fireEvent.click(more())
+    expect(rows()).toEqual(['Get notified about replies', 'Mark unread', '—', 'Copy link', '—', 'Edit message', 'Delete message'])
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Get notified about replies' }))
+    expect(onToggle).toHaveBeenCalledOnce()
+    cleanup()
+    show({ follow: { following: true, onToggle } })
+    fireEvent.click(more())
+    expect(screen.getByRole('menuitem', { name: 'Turn off notifications for replies' })).toBeTruthy()
+  })
+
   it('separates only groups that have items, and has no row of emoji (the toolbar carries them)', () => {
     show({ can: { edit: false, remove: false }, onCopyLink: vi.fn(), onCopyText: vi.fn() })
     fireEvent.click(more())

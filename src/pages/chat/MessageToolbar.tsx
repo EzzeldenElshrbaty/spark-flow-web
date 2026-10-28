@@ -12,7 +12,7 @@ import { useNoHover, usePhone } from '@/components/sf/usePhone'
 import { emojiInfo } from '@/lib/emoji'
 import { roomAround } from '@/lib/roomAround'
 import { EmojiPicker } from '@/pages/chat/EmojiPicker'
-import { MessageMenu, ROW_FOCUS } from '@/pages/chat/MessageActions'
+import { MessageMenu, ROW_FOCUS, type Follow } from '@/pages/chat/MessageActions'
 
 /** The toolbar's quick reactions (spec 6.4; later, the viewer's three most recent). */
 export const QUICK_REACTIONS = ['✅', '👀', '🙌'] as const
@@ -67,6 +67,7 @@ export function MessageToolbar({
   onMarkUnread,
   onCopyLink,
   onCopyText,
+  follow,
   extra,
   className,
 }: {
@@ -81,6 +82,8 @@ export function MessageToolbar({
   onMarkUnread?: () => void
   onCopyLink?: () => void
   onCopyText?: () => void
+  /** Following its thread: a top-level message's. */
+  follow?: Follow
   /** More menu items from the page (Create task). */
   extra?: ReactNode
   /** Where it sits on the row's end side. */
@@ -118,7 +121,7 @@ export function MessageToolbar({
   }
   // A refused delete says why, here, outside the toolbar: shown while it hides.
   const [deleteError, setDeleteError] = useState<string | null>(null)
-  const menu = { target, can, confirmDelete, onEdit, onMarkUnread, onCopyLink, onCopyText, extra, onDeleteError: setDeleteError }
+  const menu = { target, can, confirmDelete, onEdit, onMarkUnread, onCopyLink, onCopyText, follow, extra, onDeleteError: setDeleteError }
   const message = react.error?.message ?? deleteError
   const error = message && (
     <p role="alert" className={clsx('sf-meta absolute top-9 z-10 w-56 rounded-sf-md bg-sf-surface-raised p-2 text-sf-error shadow-sf-menu', className)}>
@@ -172,7 +175,7 @@ export function MessageToolbar({
     )
   }
 
-  const offersMenu = Boolean(onMarkUnread || onCopyLink || onCopyText || can.edit || can.remove || extra)
+  const offersMenu = Boolean(follow || onMarkUnread || onCopyLink || onCopyText || can.edit || can.remove || extra)
   const stops: Stop[] = [...(can.react ? [...QUICK_REACTIONS, 'add' as const] : []), ...(onReply ? ['reply' as const] : []), ...(offersMenu ? ['more' as const] : [])]
   if (stops.length === 0) return null
   const current = active && stops.includes(active) ? active : stops[stops.length - 1]
