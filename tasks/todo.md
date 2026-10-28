@@ -416,3 +416,25 @@ Each test written first and watched fail.
 - `npm test`: 1001/1001 (109 files). Lint and `build:prototype` (with `tsc -b`) pass.
 - Not seen in the app: the unread bar case (the pane runs as a background page, so the list never positions itself and the bar doesn't come up after a fresh load); covered by the browser test.
 - Asked along the way: several emoji per message is by design (spec 6.6: one reaction per person per emoji, up to 50 per message). After Mark unread, coming back keeps it unread until its newest message is on screen in a focused window, or Esc / Mark as read (spec 6.2); Slack's default marks a channel read on opening. Both are open for the user to change.
+
+# Flow chat — opening a channel marks it read (spec 6.2 change) — 2026-10-28 — done
+
+Approved: opening a channel marks it read at once, like Slack, while still starting at the New line. No new route.
+
+## Plan
+
+- [x] `readState.ts` `useChannelReadState`: when the Messages tab opens, mark the channel read up to its newest message at opening (`POST /api/channels/:id/read { seq: lastSeq }`), once per visit; not when the channel is held by U (a tab switch inside it) or has nothing unread; a page opened in the background waits until it's shown. Returns `readOnOpen` (that seq, or null).
+- [x] `ChannelPage` PaneFeed: the New line (`newAfterSeq`) and the unread count stay as they were at opening; the list is told about the mark (`markedSeq` = the larger of the marker and `readOnOpen`) so it doesn't send it again.
+- [x] `MessageList` unread bar: "N new messages since 9:03 PM · Mark as unread" (was Mark as read): the first message after the New line goes back to unread through Mark unread, held until I leave; the bar goes.
+- [x] Spec 6.2 and the API contract say so.
+- [x] Tests first: readState (marks once up to lastSeq, the New line stays; nothing unread; held; hidden page waits), MessageList (the bar's Mark as unread, on the first new message).
+
+Rulings approved with the plan: a permalink or a date jump opens the channel too, so it's marked read; opening straight onto Files or Pins waits for the Messages tab; muted channels follow the same rule; messages that come in while I'm in the channel keep the old rule (read once the newest is on screen in a focused window).
+
+## Review — mark read on open
+
+- `npm test`: 1006/1006 (109 files). Lint and `build:prototype` (with `tsc -b`) pass.
+- Watched RED first: readState (no call to `markRead('c1', 9)`; `readOnOpen` undefined), MessageList (the bar still said Mark as read).
+- In the app: #frontend-dev, unread at 11: opening it marked it read (17), its sidebar row stopped being bold, and the New line still showed. Mark unread on a message (marker 0), Files tab and back: still 0 (held). Leaving and coming back: 17.
+- Not seen in the app: the bar's Mark as unread (the pane runs as a background page and the bar doesn't come up there; covered by the browser test).
+- Seen, not changed: the project's Chat tab (`ChannelFeed`) has its own read handling and isn't part of this change.

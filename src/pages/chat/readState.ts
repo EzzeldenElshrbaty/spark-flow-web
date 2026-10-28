@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { create } from 'zustand'
 import { useMarkRead, useMarkUnread } from '@/api/chat'
 import type { Channel } from '@/api/types'
@@ -35,15 +35,36 @@ export function markOpenChannelRead(channel: Channel, markRead: (channelId: stri
 /**
  * The open channel's read state for its list: where the New line goes (my marker when I opened it, or where U put
  * it), whether the read is held, and the two ways to move the marker. Marking read myself ends the hold.
+ *
+ * Opening the channel marks it read (spec 6.2), like Slack: up to its newest message at opening (`readOnOpen`), once
+ * per visit, while the New line and the unread bar still show where I left off. Not when it's held (U, then another
+ * tab of the channel and back) or has nothing unread; a page opened in the background waits until it's shown.
  */
 export function useChannelReadState(channel: Channel) {
   const [newAfterSeq, setNewAfterSeq] = useState(channel.lastReadSeq)
   const held = useReadHold((s) => s.channelId === channel.id)
   const { mutate: markRead } = useMarkRead()
   const { mutateAsync: markUnread } = useMarkUnread()
+  const [readOnOpen] = useState(() =>
+    channel.unreadCount > 0 && channel.lastSeq > channel.lastReadSeq && useReadHold.getState().channelId !== channel.id ? channel.lastSeq : null,
+  )
+  const sentOnOpen = useRef(false)
+  useEffect(() => {
+    if (readOnOpen === null) return
+    const mark = () => {
+      // Held since (U while the page waited in the background): it stays unread.
+      if (sentOnOpen.current || document.visibilityState !== 'visible' || useReadHold.getState().channelId === channel.id) return
+      sentOnOpen.current = true
+      markRead({ channelId: channel.id, seq: readOnOpen })
+    }
+    mark()
+    document.addEventListener('visibilitychange', mark)
+    return () => document.removeEventListener('visibilitychange', mark)
+  }, [readOnOpen, channel.id, markRead])
   return {
     newAfterSeq,
     held,
+    readOnOpen,
     markRead: useCallback(
       (seq?: number) => {
         useReadHold.getState().release(channel.id)

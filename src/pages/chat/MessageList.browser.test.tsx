@@ -4,6 +4,7 @@ import { cleanup, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { ToastProvider } from '@/components/sf/Toast'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { userEvent } from 'vitest/browser'
 import type { ChatMessage, Page, User } from '@/api/types'
 import type { PendingMessage } from '@/lib/sendQueue'
 import { parseBody } from '@/lib/messageBody'
@@ -59,6 +60,7 @@ function Harness({
   pending = [],
   onLatest = vi.fn(),
   holdRead = false,
+  onMarkUnread,
 }: {
   data: ReturnType<typeof channel>
   newAfterSeq?: number | null
@@ -70,6 +72,7 @@ function Harness({
   pending?: PendingMessage[]
   onLatest?: () => void
   holdRead?: boolean
+  onMarkUnread?: (message: ChatMessage) => Promise<unknown>
 }) {
   const query = useInfiniteQuery({
     queryKey: ['messages'],
@@ -91,6 +94,7 @@ function Harness({
         markedSeq={newAfterSeq ?? 0}
         onMarkRead={onMarkRead}
         holdRead={holdRead}
+        onMarkUnread={onMarkUnread}
         focusSeq={focusSeq}
         onJump={vi.fn()}
         onLatest={onLatest}
@@ -259,7 +263,18 @@ describe('MessageList scrolling (spec 6.2)', () => {
     expect(topOf(15)).toBeLessThan(120)
   })
 
-  it('opening at the New line leaves the unread messages unread (spec 6.2: read once seen at the end)', async () => {
+  it('the unread bar offers Mark as unread (opening the channel marked it read, spec 6.2): it puts back the first new message', async () => {
+    const onMarkUnread = vi.fn(async (_message: ChatMessage) => {})
+    mount({ data: channel(80), newAfterSeq: 30, totalUnread: 50, onMarkUnread })
+    await vi.waitFor(() => expect(screen.getByText(/50 new messages since/)).toBeTruthy())
+    expect(screen.queryByRole('button', { name: 'Mark as read' })).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: 'Mark as unread' }))
+    expect(onMarkUnread).toHaveBeenCalledOnce()
+    expect(onMarkUnread.mock.calls[0][0]).toMatchObject({ seq: 31 })
+    expect(screen.queryByText(/50 new messages since/)).toBeNull()
+  })
+
+  it('opening at the New line, the list itself marks nothing read (opening the channel did)', async () => {
     // A focused, visible window: the only thing that keeps them unread is not being at the end.
     vi.spyOn(document, 'hasFocus').mockReturnValue(true)
     const onMarkRead = vi.fn()

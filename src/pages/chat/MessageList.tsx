@@ -341,6 +341,8 @@ export function MessageList({
   const stickyDay = top && !dividerAtTop ? dayOf[top.index] : null
   const summary = unreadSummary(messages, newAfterSeq, meId)
   const unread = { count: Math.max(summary.count, totalUnread), since: summary.since }
+  // The first message after the New line: where the bar's Mark as unread puts my marker back.
+  const firstNew = newIndex >= 0 ? rows.slice(newIndex + 1).find((r) => r.kind === 'message')?.message : undefined
   // After a jump the newest messages aren't loaded, so there is no count to give.
   const newer = hasNewer ? 0 : messages.filter((m) => m.seq > seenSeq.current && m.senderId !== meId).length
 
@@ -384,17 +386,19 @@ export function MessageList({
           <button type="button" className="sf-focus min-w-0 truncate text-start" onClick={scrollToNewLine}>
             {unread.count} new {unread.count === 1 ? 'message' : 'messages'} since {formatTime(unread.since)}
           </button>
-          <button
-            type="button"
-            className="sf-focus ms-auto flex-none underline"
-            onClick={() => {
-              setBar(false)
-              sent.current = newest?.seq ?? sent.current
-              onMarkRead()
-            }}
-          >
-            Mark as read
-          </button>
+          {/* Opening the channel marked it read (spec 6.2): the bar offers it back, from the first new message on. */}
+          {onMarkUnread && firstNew && (
+            <button
+              type="button"
+              className="sf-focus ms-auto flex-none underline"
+              onClick={() => {
+                setBar(false)
+                void onMarkUnread(firstNew).catch(() => {})
+              }}
+            >
+              Mark as unread
+            </button>
+          )}
         </div>
       )}
       {stickyDay && (

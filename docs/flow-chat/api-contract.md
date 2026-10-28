@@ -41,6 +41,7 @@ Rules:
 
 - **Send is idempotent by `clientId`.** If the same sender already stored a message with this `clientId` in this channel, return that message (`200` or `201`) and publish nothing. A different sender with the same `clientId` is a different message.
 - **Mark read only moves forward.** The new marker is `max(current, min(seq, lastSeq))`. Without `seq`, read to `lastSeq`. The client sends the seq of the newest message on screen, so one that arrives meanwhile stays unread.
+- **Opening a channel marks it read** (spec 6.2): once per visit, the client sends `POST /api/channels/:id/read` with the channel's `lastSeq` as it was when the channel opened, unless the channel has nothing unread or is held by Mark unread. The New line comes from the marker before that call. The unread bar's Mark as unread calls Mark unread with the first new message's `seq`.
 - **Mark unread is the one way back.** It sets the marker to `seq - 1`, back or forward, so that message and everything after it count as unread again, and what came before it as read. `seq` must be a whole number from 1 to `lastSeq`, else `400` "That message isn't in this channel."; read access as for star and mute. It publishes `read.marker_updated` with the new `seq`, like Mark read.
 - **Star and mute** need read access to the channel (`403` "You're not in this channel." for someone else's private channel, `404` for an unknown one).
 

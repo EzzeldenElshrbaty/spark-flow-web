@@ -291,7 +291,8 @@ function PaneFeed({
           newAfterSeq={read.newAfterSeq}
           // After a jump the list starts where I asked, not at my first unread message.
           totalUnread={view.from === null ? totalUnread : 0}
-          markedSeq={channel.lastReadSeq}
+          // Marked read on opening (spec 6.2): the list needn't send it again.
+          markedSeq={Math.max(channel.lastReadSeq, read.readOnOpen ?? 0)}
           onMarkRead={read.markRead}
           holdRead={read.held}
           onMarkUnread={(message) => read.markUnread(message.seq)}

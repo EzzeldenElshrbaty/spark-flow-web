@@ -66,6 +66,47 @@ describe('useChannelReadState (U, spec 6.5 and 10)', () => {
   })
 })
 
+describe('opening the channel marks it read (spec 6.2)', () => {
+  const unread = (over: Partial<Channel> = {}): Channel => ({ ...channel('c1'), unreadCount: 3, lastSeq: 9, lastReadSeq: 6, ...over })
+
+  it('up to its newest message at opening, once; the New line stays where I left off', async () => {
+    const markRead = vi.spyOn(api.chat, 'markRead').mockResolvedValue()
+    const { result, rerender } = setup(unread())
+    await vi.waitFor(() => expect(markRead).toHaveBeenCalledWith('c1', 9))
+    rerender()
+    expect(markRead).toHaveBeenCalledOnce()
+    expect(result.current).toMatchObject({ newAfterSeq: 6, readOnOpen: 9 })
+  })
+
+  it('with nothing unread it sends nothing', async () => {
+    const markRead = vi.spyOn(api.chat, 'markRead').mockResolvedValue()
+    const { result } = setup()
+    await new Promise((r) => setTimeout(r, 20))
+    expect(markRead).not.toHaveBeenCalled()
+    expect(result.current.readOnOpen).toBeNull()
+  })
+
+  it('held by Mark unread (back from another tab of the channel), it stays unread', async () => {
+    const markRead = vi.spyOn(api.chat, 'markRead').mockResolvedValue()
+    useReadHold.getState().hold('c1')
+    const { result } = setup(unread())
+    await new Promise((r) => setTimeout(r, 20))
+    expect(markRead).not.toHaveBeenCalled()
+    expect(result.current.readOnOpen).toBeNull()
+  })
+
+  it('a page opened in the background waits until it is shown', async () => {
+    const markRead = vi.spyOn(api.chat, 'markRead').mockResolvedValue()
+    const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+    setup(unread())
+    await new Promise((r) => setTimeout(r, 20))
+    expect(markRead).not.toHaveBeenCalled()
+    visibility.mockReturnValue('visible')
+    act(() => void document.dispatchEvent(new Event('visibilitychange')))
+    await vi.waitFor(() => expect(markRead).toHaveBeenCalledWith('c1', 9))
+  })
+})
+
 describe('Esc: markOpenChannelRead (spec 10)', () => {
   it('marks an unread channel read', () => {
     const markRead = vi.fn()

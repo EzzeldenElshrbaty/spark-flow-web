@@ -244,8 +244,8 @@ Each item lists anatomy, states, behaviour and acceptance criteria (AC). Class n
 - **Unread:**
   - Insert a "New" line (1px `accent-fill` rule with "New" in `accent`, 12/600) before the first message whose `seq` is greater than the viewer's `last_read_seq` at the moment the channel opened.
   - The line stays until the viewer leaves the channel.
-  - Mark read when the newest message is visible and the window is focused.
-  - When the viewer opens a channel with more than one screen of unread messages, show a bar: "N new messages since 9:03 PM · Mark as read".
+  - Opening the channel marks it read (like Slack), up to its newest message at that moment; the New line and the bar still show where the viewer left off. Not while it is held by Mark unread (U). Messages that arrive while the channel is open are marked read when the newest one is visible and the window is focused.
+  - When the viewer opens a channel with more than one screen of unread messages, show a bar: "N new messages since 9:03 PM · Mark as unread" (it puts the first new message back to unread, held until the viewer leaves).
 - **Jump to latest:** a centred `accent-fill` pill, 12px above the composer, when the viewer is more than one screen up. Include the count when new messages arrived meanwhile.
 - **Optimistic send:**
   - Render immediately with "Sending…" as the time.
