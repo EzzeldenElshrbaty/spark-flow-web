@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import type { ComponentProps } from 'react'
 import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -52,7 +52,8 @@ describe('Activity (spec 6.12)', () => {
       'Unread, Replied in a thread you follow in #backendNour El-Sayed Merged it3h ago',
     ])
     expect(screen.getByRole('heading', { level: 2, name: 'Earlier' })).toBeTruthy()
-    expect(rowNames('Earlier')).toEqual(['Reacted 👍 to your message in #backendOmar Hassan Shipped the fix3h ago'])
+    // A reaction's text is my message: the line says who reacted, and no name sits in front of my words.
+    expect(rowNames('Earlier')).toEqual(['Omar Hassan reacted 👍 to your message in #backendShipped the fix3h ago'])
   })
 
   it('opening a row goes to it and tells the page, to mark it read', () => {
@@ -110,6 +111,19 @@ describe('Activity (spec 6.12)', () => {
     const row = screen.getByRole('link', { name: /Review please/ })
     expect(row.textContent).toContain('Mentioned you on NEX-12')
     expect(row.getAttribute('href')).toBe('/w/engineering/p/NEX/tasks?ticket=NEX-12')
+  })
+
+  it('its times move on while the page stays open', () => {
+    vi.useFakeTimers({ now: new Date('2026-10-28T12:00:00.000Z') })
+    try {
+      show({ items: [item({ createdAt: '2026-10-28T12:00:00.000Z', excerpt: 'Fresh' })] })
+      const row = () => screen.getByRole('link', { name: /Fresh/ }).textContent
+      expect(row()).toContain('just now')
+      act(() => vi.advanceTimersByTime(3 * 60_000))
+      expect(row()).toContain('3 min ago')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('pulses while it loads, and offers Try again when it fails', () => {

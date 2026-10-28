@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Channel, MentionItem } from '@/api/types'
-import { channelLabel, inWorkspace, mutedLast, mustJoin, readOnlyFor, sidebarChannels, sidebarRowState, sortChannels, unreadMentions } from '@/lib/channels'
+import { channelLabel, countNoun, inWorkspace, mutedLast, mustJoin, readOnlyFor, sidebarChannels, sidebarRowState, sortChannels, unreadMentions } from '@/lib/channels'
 import { seed } from '@/mocks/seed'
 
 const data = seed(new Date('2026-10-26T09:00:00Z')).data
@@ -118,12 +118,12 @@ describe('unreadMentions', () => {
     expect(counts.byChannel.get('c-general')).toBe(2)
     expect(counts.byChannel.get('c-backend')).toBe(1)
     expect(counts.byChannel.has('c-design')).toBe(false)
-    // Activity counts every unread mention in the workspace, task comments included.
-    expect(counts.total).toBe(4)
+    // Activity has its own count (its unread items, spec 6.12): only the channel badges are worked out here.
+    expect(Object.keys(counts)).toEqual(['byChannel'])
   })
 
   it('is empty before the mentions load', () => {
-    expect(unreadMentions(undefined, 'ws-eng')).toEqual({ total: 0, byChannel: new Map() })
+    expect(unreadMentions(undefined, 'ws-eng')).toEqual({ byChannel: new Map() })
   })
 })
 
@@ -150,6 +150,15 @@ describe('sidebarRowState (spec §5.1 row rules, 6.11 levels)', () => {
   it('a muted row is never bold and never has a count', () => {
     expect(sidebarRowState({ ...channel('a'), ...state, muted: true, unreadCount: 3 }, 2)).toEqual({ bold: false, count: 0, muted: true })
     expect(sidebarRowState({ ...dm([me.id, other.id]), ...state, muted: true, unreadCount: 3 }, 0)).toEqual({ bold: false, count: 0, muted: true })
+  })
+})
+
+describe('countNoun: what a row’s count is read out as', () => {
+  it('at All it counts new messages (a DM’s default), else my mentions', () => {
+    expect(countNoun({ ...channel('a'), notifyLevel: 'all' })).toEqual(['new message', 'new messages'])
+    expect(countNoun(dm([me.id, other.id]))).toEqual(['new message', 'new messages'])
+    expect(countNoun(channel('a'))).toEqual(['mention', 'mentions'])
+    expect(countNoun({ ...dm([me.id, other.id]), notifyLevel: 'mentions' })).toEqual(['mention', 'mentions'])
   })
 })
 

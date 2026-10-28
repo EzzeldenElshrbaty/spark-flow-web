@@ -482,4 +482,28 @@ describe('Activity on a phone (spec 10: every screen works at 390px)', () => {
       await page.viewport(414, 896)
     }
   })
+
+  it('Unread only and Mark all read answer a 44px touch (spec 6.16), and tapping the words flips the switch', async () => {
+    await page.viewport(390, 844)
+    try {
+      mount(<ActivityView items={activity} ws="engineering" placeOf={() => '#backend'} error={false} retrying={false} onRetry={vi.fn()} onOpen={vi.fn()} onMarkAllRead={vi.fn()} marking={false} markError={null} />, false)
+      Object.assign(document.querySelector('main')!.style, { width: '390px', padding: '0' })
+      /** Whether a touch this far above and below the middle of `el` lands on `target`. */
+      const answers = (el: Element, target: Element, reach: number) => {
+        const r = el.getBoundingClientRect()
+        const x = r.left + r.width / 2
+        const y = r.top + r.height / 2
+        return [y - reach, y + reach].map((at) => target.contains(document.elementFromPoint(x, at)))
+      }
+      const toggle = screen.getByRole('switch', { name: 'Unread only' })
+      const words = screen.getByText('Unread only')
+      expect(answers(toggle, toggle.closest('label') ?? toggle, 21)).toEqual([true, true])
+      const mark = screen.getByRole('button', { name: 'Mark all read' })
+      expect(answers(mark, mark, 21)).toEqual([true, true])
+      await userEvent.click(words)
+      expect(toggle.getAttribute('aria-checked')).toBe('true')
+    } finally {
+      await page.viewport(414, 896)
+    }
+  })
 })

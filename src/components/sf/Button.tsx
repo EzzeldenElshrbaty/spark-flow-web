@@ -18,12 +18,14 @@ type ButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'className'> & 
   variant?: keyof typeof variants
   size?: 'md' | 'sm'
   icon?: TablerIcon
+  /** A 44px touch target on phones (spec 6.16) around a smaller button. */
+  touch?: boolean
   ref?: Ref<HTMLButtonElement>
   children: ReactNode
 }
 
 /** Labelled button. One primary (red) per view. */
-export function Button({ variant = 'default', size = 'md', icon, type = 'button', children, ...props }: ButtonProps) {
+export function Button({ variant = 'default', size = 'md', icon, touch = false, type = 'button', children, ...props }: ButtonProps) {
   return (
     <button
       type={type}
@@ -32,6 +34,8 @@ export function Button({ variant = 'default', size = 'md', icon, type = 'button'
         'disabled:cursor-not-allowed disabled:border-sf-line disabled:bg-sf-surface-hover disabled:text-sf-text-muted',
         size === 'md' ? 'sf-ui-medium h-sf-input px-4' : 'h-7 px-3 font-sf text-[13px]/[18px] font-medium',
         variants[variant],
+        // From the padding box, inside the 1px border: 26 + 2 × 10 = 46px.
+        touch && 'relative max-md:after:absolute max-md:after:-inset-x-1 max-md:after:-inset-y-2.5',
       )}
       {...props}
     >

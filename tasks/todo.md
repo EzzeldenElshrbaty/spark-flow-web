@@ -545,14 +545,16 @@ Fixed, test first:
 - [x] The contract named `GET /api/mentions/me`; the route is `GET /api/mentions` (re-graded up: it would mislead the .NET team). Contract rules updated for the three fixes.
 - [x] `text-sf-error` failed 4.5:1 in dark (2.94:1): the `error` token is red-400 in dark, as accent ("Same as Spark Red"), in the design file, its CSS and the app tokens; error joins the contrast pairs test; Activity's error is `text-sf-error` again.
 
-Deferred minors:
-- Mark read with ids ignores the route's workspace.
-- `channelChanged` (leave, removal) doesn't refresh Activity or the bell until the poll.
-- A reaction row reads "Omar Hassan Shipped the fix", as if he wrote my message.
-- A channel at All announces its count as mentions (DMs already did).
-- Activity's "3h ago" doesn't tick while the page stays open (`useNow`).
-- The header bell's name doesn't say muted or Nothing.
-- Activity's switch (20px) and Mark all read (28px) are under 44px on phones, and tapping "Unread only" does nothing (re-graded: the header's star and bell are under 44px too).
-- Activity refetches on every new message anywhere (until the server sends `notification.created` for mentions).
-- Dead `unreadMentions().total`, a stale test comment, `excerptOf` copied twice, mentions.ts and activityFeed.ts import each other.
+Deferred minors, then fixed test first:
+- [x] Mark read with ids ignores the route's workspace.
+- [x] `channelChanged` (leave, removal) doesn't refresh Activity or the bell until the poll.
+- [x] A reaction row reads "Omar Hassan Shipped the fix", as if he wrote my message.
+- [x] A channel at All announces its count as mentions (DMs already did).
+- [x] Activity's "3h ago" doesn't tick while the page stays open (`useNow`).
+- [x] The header bell's name doesn't say muted or Nothing.
+- [x] Activity's switch (20px) and Mark all read (28px) are under 44px on phones, and tapping "Unread only" does nothing (re-graded: the header's star and bell are under 44px too).
+- [x] Activity refetches on every new message anywhere (until the server sends `notification.created` for mentions).
+- [x] Dead `unreadMentions().total`, a stale test comment, `excerptOf` copied twice, mentions.ts and activityFeed.ts import each other.
+
+How each was fixed: Mark read with ids keeps to the route's workspace; `channelChanged` refreshes the bell and Activity; a reaction's line names who reacted and its text is my message alone; `countNoun` reads a count at All as new messages; Activity's times tick with `useNow(60_000)`; the bell is named "Channel notifications: muted" or "…: nothing"; "Unread only" is a 44px label that flips the switch and Mark all read has a 44px touch area (`Button touch`); a new message or reply sends `notificationCreated` to whoever it mentions, so Activity no longer refreshes on every message; `unreadMentions` keeps only `byChannel`, `excerptOf` lives in `shared.ts`, and the channel state rules moved to `membership.ts` (no import cycle).
 

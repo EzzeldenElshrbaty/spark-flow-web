@@ -1,6 +1,7 @@
 import type { User } from '@/api/types'
 import { can, type Action, type ProjectRef, type ProjectScoped } from '@/lib/permissions'
 import { ApiError } from '@/lib/apiError'
+import { plainText } from '@/lib/mentions'
 
 export type Thing = 'Workspace' | 'User' | 'Channel' | 'Message' | 'Reply' | 'Comment' | 'Time entry' | 'Project' | 'Ticket' | 'File' | 'Phase' | 'Deliverable'
 
@@ -80,4 +81,12 @@ export function requireCan(
   })
   if (!ok) throw forbidden(project || action.startsWith('project.') ? 'this project' : action === 'rates.view' ? 'hourly costs' : action === 'dashboard.view' ? 'the dashboard' : action === 'timeCost.view' ? 'time and cost' : 'this')
   return me
+}
+
+const EXCERPT = 120
+
+/** The text people read in the bell and Activity: `@[Name](id)` shown as `@Name`, cut to 120 characters. */
+export function excerptOf(text: string) {
+  const plain = plainText(text).replace(/\s+/g, ' ').trim()
+  return plain.length > EXCERPT ? `${plain.slice(0, EXCERPT - 1)}…` : plain
 }

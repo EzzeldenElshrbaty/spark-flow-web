@@ -8,6 +8,7 @@ import { Icon } from '@/components/sf/Icon'
 import { Tabs } from '@/components/sf/Tabs'
 import { Toggle } from '@/components/sf/Toggle'
 import { timeAgo } from '@/lib/format'
+import { useNow } from '@/lib/useNow'
 import { ACTIVITY_TABS, activityKind, activityLink, shownActivity, type ActivityTab } from '@/pages/chat/activityRows'
 
 const KIND_ICONS: Record<ActivityItemKind, TablerIcon> = { mention: IconAt, reaction: IconMoodSmile, thread: IconMessages }
@@ -42,6 +43,8 @@ export function ActivityView({
   marking: boolean
   markError: string | null
 }) {
+  // A page people leave open: "3 min ago" moves on by itself.
+  const now = useNow(60_000).getTime()
   const [tab, setTab] = useState<ActivityTab>('all')
   const [unreadOnly, setUnreadOnly] = useState(false)
   const panelId = useId()
@@ -69,11 +72,16 @@ export function ActivityView({
             <Icon icon={KIND_ICONS[item.kind]} size={16} className="flex-none" />
             <span className="truncate">{activityKind(item, placeOf(item))}</span>
           </span>
-          <span className="sf-body mt-0.5 line-clamp-2 block text-sf-text">
-            <span className="font-medium">{item.actorName}</span> {item.excerpt}
-          </span>
+          {item.kind === 'reaction' ? (
+            // My own words, under the line that says who reacted.
+            <span className="sf-body mt-0.5 line-clamp-2 block text-sf-text-secondary">{item.excerpt}</span>
+          ) : (
+            <span className="sf-body mt-0.5 line-clamp-2 block text-sf-text">
+              <span className="font-medium">{item.actorName}</span> {item.excerpt}
+            </span>
+          )}
         </span>
-        <span className="sf-meta whitespace-nowrap text-sf-text-muted tabular-nums">{timeAgo(item.createdAt)}</span>
+        <span className="sf-meta whitespace-nowrap text-sf-text-muted tabular-nums">{timeAgo(item.createdAt, now)}</span>
       </Link>
     </li>
   )
@@ -85,11 +93,12 @@ export function ActivityView({
         <h1 id={`${panelId}-title`} className="sf-title min-w-0 flex-1 truncate text-sf-text">
           Activity
         </h1>
-        <span className="sf-small inline-flex items-center gap-2 text-sf-text-secondary">
+        {/* The words flip the switch too, and the pair is a 44px touch target on phones (spec 6.16). */}
+        <label className="sf-small inline-flex cursor-pointer items-center gap-2 text-sf-text-secondary max-md:min-h-11">
           <span id={switchId}>Unread only</span>
           <Toggle checked={unreadOnly} onChange={setUnreadOnly} labelledBy={switchId} />
-        </span>
-        <Button size="sm" disabled={marking || unreadInTab.length === 0} onClick={() => onMarkAllRead(tab === 'all' ? undefined : unreadInTab.map((item) => item.id))}>
+        </label>
+        <Button size="sm" touch disabled={marking || unreadInTab.length === 0} onClick={() => onMarkAllRead(tab === 'all' ? undefined : unreadInTab.map((item) => item.id))}>
           {marking ? 'Marking…' : 'Mark all read'}
         </Button>
       </header>

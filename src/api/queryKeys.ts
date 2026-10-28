@@ -51,11 +51,11 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
   switch (event.type) {
     case 'messageReceived': {
       const { channelId } = event.message
-      return [qk.messages(channelId), qk.channelsAll(), qk.channel(channelId), qk.mentions(), qk.activityAll()]
+      return [qk.messages(channelId), qk.channelsAll(), qk.channel(channelId), qk.mentions()]
     }
     case 'replyReceived': {
       const { channelId, messageId } = event.reply
-      return [qk.replies(messageId), qk.message(messageId), qk.messages(channelId), qk.channelsAll(), qk.channel(channelId), qk.mentions(), qk.activityAll()]
+      return [qk.replies(messageId), qk.message(messageId), qk.messages(channelId), qk.channelsAll(), qk.channel(channelId), qk.mentions()]
     }
     case 'ticketUpdated':
       // Project summaries (progress, overdue) and the dashboard are worked out from tasks too.
@@ -72,7 +72,8 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
       // Summaries and task lists live under 'tickets'; phases, deliverables and project time under 'projects'.
       return [['tickets'], ['projects'], ['dashboard'], qk.projectHistory(event.projectId)]
     case 'channelChanged':
-      return [qk.channelsAll(), qk.channel(event.channelId)]
+      // Leaving, removal, archiving and privacy decide what my mentions and Activity may show.
+      return [qk.channelsAll(), qk.channel(event.channelId), qk.mentions(), qk.activityAll()]
     case 'commentAdded':
       return [qk.comments(event.taskKey), qk.mentions(), qk.activityAll(), qk.taskHistory(event.taskKey), qk.projectHistory(event.projectId)]
     case 'ratesChanged':
@@ -85,6 +86,7 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
     case 'readChanged':
       return [qk.channelsAll(), qk.mentions(), qk.activityAll(), ...(event.channelId ? [qk.channel(event.channelId)] : [])]
     case 'notificationCreated':
+      // Something was stored for me, or a new message or reply mentions me (spec 6.12).
       return [qk.activityAll()]
     case 'dataReset':
       // The empty key matches every query.

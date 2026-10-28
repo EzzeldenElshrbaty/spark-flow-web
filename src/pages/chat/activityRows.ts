@@ -17,10 +17,13 @@ export function shownActivity(items: ActivityItem[], tab: ActivityTab, unreadOnl
   return { unread: inTab.filter((item) => !item.read), earlier: unreadOnly ? [] : inTab.filter((item) => item.read) }
 }
 
-/** The line above a row's text: what happened, and where (`#backend`, a direct message; null when it can't be found). */
+/**
+ * The line above a row's text: what happened, and where (`#backend`, a direct message; null when it can't be found).
+ * A reaction's text is my own message, so its line also says who reacted.
+ */
 export function activityKind(item: ActivityItem, place: string | null): string {
   const where = item.taskKey && !item.channelId ? ` on ${item.taskKey}` : place ? ` in ${place}` : ''
-  if (item.kind === 'reaction') return `Reacted ${item.emoji ?? ''} to your ${item.replyId ? 'reply' : 'message'}${where}`
+  if (item.kind === 'reaction') return `${item.actorName} reacted ${item.emoji ?? ''} to your ${item.replyId ? 'reply' : 'message'}${where}`
   if (item.kind === 'thread') return `Replied in a thread you follow${where}`
   return `Mentioned you${where}`
 }

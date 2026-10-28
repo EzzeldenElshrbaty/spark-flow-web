@@ -1,5 +1,5 @@
 import { can } from '@/lib/permissions'
-import type { Api, Attachment, Channel, ChannelKind, ChannelMemberState, ChatMessage, NotifyLevel, Page, SystemEvent, ChatTarget, StoredChannel, ThreadReply } from '@/api/types'
+import type { Api, Attachment, Channel, ChannelMemberState, ChatMessage, NotifyLevel, Page, SystemEvent, ChatTarget, StoredChannel, ThreadReply } from '@/api/types'
 import { channelFormErrors } from '@/lib/channelForm'
 import { isOneEmoji } from '@/lib/emojiText'
 import { MAX_DISTINCT_REACTIONS, toggleReaction } from '@/lib/reactions'
@@ -12,6 +12,8 @@ import { parseMentions, parseTicketKeys } from './text'
 import { bodyTaskKeys, bodyText, mentionsOf, parseBody, validBody, type Body } from '@/lib/messageBody'
 import { linkPreviewFor } from './linkPreviews'
 import { firstLine } from '@/lib/inspector'
+import { canRead, freshState } from './membership'
+import { reachedBy } from './mentions'
 
 const PAGE_SIZE = 30
 
@@ -32,9 +34,6 @@ function olderPage(data: DbData, channelId: string, before: number | null): Page
   return { items: items.map((m) => withThread(data, m)), nextCursor: older.length > PAGE_SIZE ? encodeCursor(items[items.length - 1]) : null }
 }
 
-/** A channel tells me about my mentions, a DM about every message (spec 6.11), until I choose otherwise. */
-export const freshState = (kind: ChannelKind = 'channel'): ChannelMemberState => ({ lastReadSeq: 0, starred: false, muted: false, notifyLevel: kind === 'dm' ? 'all' : 'mentions' })
-
 /** The current user's own state in a channel, created with the defaults when first needed. */
 function myState(data: DbData, channelId: string): ChannelMemberState {
   const mine = (data.channelState[data.currentUserId] ??= {})
@@ -42,12 +41,6 @@ function myState(data: DbData, channelId: string): ChannelMemberState {
 }
 
 const NOTIFY_LEVELS: NotifyLevel[] = ['all', 'mentions', 'none']
-
-/** Whether this person may read a channel: a private one (or a DM) only its members. */
-export const canRead = (data: DbData, channelId: string, userId: string) => {
-  const channel = data.channels.find((c) => c.id === channelId)
-  return Boolean(channel) && (!channel!.isPrivate || channel!.memberIds.includes(userId))
-}
 
 /** The seq of a channel's newest message; 0 when it has none. */
 const lastSeqOf = (data: DbData, channelId: string) => data.messages.reduce((n, m) => (m.channelId === channelId && m.seq > n ? m.seq : n), 0)
@@ -435,17 +428,20 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
     },
     async send(channelId, content, clientId, body) {
       await delay()
-      const { message, repeat } = await db.update((data) => {
+      const { message, repeat, mentioned } = await db.update((data) => {
         const channel = findChannel(data, channelId)
         const me = checkCanPost(data, channel)
         // A retry of a send that did arrive gets the message it stored, not a second one (spec §8: writes are idempotent).
         const stored = clientId ? data.messages.find((m) => m.channelId === channelId && m.senderId === me.id && m.clientId === clientId) : undefined
-        if (stored) return { message: stored, repeat: true }
+        if (stored) return { message: stored, repeat: true, mentioned: [] }
         // From the rich composer the body is the message and its plain text the content; otherwise the text is parsed.
         const input = body === undefined ? { content: checkText(content) } : (({ body: b, text }) => ({ content: text, body: b }))(checkBody(body))
-        return { message: postMessage(data, { channelId, clientId, ...input }), repeat: false }
+        const message = postMessage(data, { channelId, clientId, ...input })
+        return { message, repeat: false, mentioned: reachedBy(data, message.mentions, channelId, me.id) }
       })
       if (!repeat) hub.publish({ type: 'messageReceived', message: clone(message) })
+      // Who it mentions has something new in Activity (spec 6.12); nobody else's needs to refresh.
+      for (const userId of mentioned) hub.publish({ type: 'notificationCreated', userId })
       return clone(message)
     },
     async reply(messageId, content, body, alsoInChannel) {
@@ -455,7 +451,9 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         // From the rich composer the body is the reply and its plain text the content; otherwise the text is parsed.
         const input = body === undefined ? { content: checkText(content) } : (({ body: b, text }) => ({ content: text, body: b }))(checkBody(body))
         const reply = postReply(data, { messageId, ...input, alsoInChannel: Boolean(alsoInChannel) })
-        return { reply, notified: data.notifications.filter((n) => n.replyId === reply.id).map((n) => n.userId) }
+        // Followers with a thread item, and whoever it mentions, each once.
+        const followers = data.notifications.filter((n) => n.replyId === reply.id).map((n) => n.userId)
+        return { reply, notified: [...new Set([...followers, ...reachedBy(data, reply.mentions, reply.channelId, reply.senderId)])] }
       })
       hub.publish({ type: 'replyReceived', reply: clone(reply) })
       for (const userId of notified) hub.publish({ type: 'notificationCreated', userId })

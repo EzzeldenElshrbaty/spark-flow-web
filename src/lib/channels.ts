@@ -59,19 +59,14 @@ export function mustJoin(channel: Channel, meId: string, projects: { channelId: 
 export const readOnlyFor = (isProjectChannel: boolean) =>
   isProjectChannel ? 'You can read this channel. Only its project’s people can write here.' : 'You can read this channel. Only its members can write here.'
 
-/**
- * My unread mentions in a workspace: the total (the sidebar's Activity count) and per channel (the red badge on
- * its row; a channel's other unread messages only make the row bold).
- */
+/** My unread mentions in a workspace, per channel: the red badge on its row (Activity has its own count). */
 export function unreadMentions(items: MentionItem[] | undefined, workspaceId: string | undefined) {
   const byChannel = new Map<string, number>()
-  let total = 0
   for (const item of items ?? []) {
-    if (item.read || item.workspaceId !== workspaceId) continue
-    total++
-    if (item.channelId) byChannel.set(item.channelId, (byChannel.get(item.channelId) ?? 0) + 1)
+    if (item.read || item.workspaceId !== workspaceId || !item.channelId) continue
+    byChannel.set(item.channelId, (byChannel.get(item.channelId) ?? 0) + 1)
   }
-  return { total, byChannel }
+  return { byChannel }
 }
 
 /**
@@ -83,4 +78,9 @@ export function sidebarRowState(channel: Channel, mentions: number): { bold: boo
   if (channel.muted) return { bold: false, count: 0, muted: true }
   const count = channel.notifyLevel === 'all' ? channel.unreadCount : channel.notifyLevel === 'mentions' ? mentions : 0
   return { bold: channel.unreadCount > 0, count, muted: false }
+}
+
+/** What a row's count is read out as, one and many (sidebarRowState): new messages at All, else my mentions. */
+export function countNoun(channel: Pick<Channel, 'notifyLevel'>): [string, string] {
+  return channel.notifyLevel === 'all' ? ['new message', 'new messages'] : ['mention', 'mentions']
 }

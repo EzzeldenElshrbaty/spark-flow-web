@@ -165,7 +165,7 @@ describe('the channel bell (spec 6.11)', () => {
     expect(onMute).toHaveBeenCalledWith(true)
     cleanup()
     const again = header({ channel: { ...backend, muted: true } })
-    openBell()
+    fireEvent.click(screen.getByRole('button', { name: 'Channel notifications: muted' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Unmute channel' }))
     expect(again.onMute).toHaveBeenCalledWith(false)
   })
@@ -199,5 +199,18 @@ describe('channel tabs (spec 6.1)', () => {
     expect(onChange).toHaveBeenLastCalledWith('page')
     fireEvent.click(tabs[2])
     expect(onChange).toHaveBeenLastCalledWith('pins')
+  })
+
+  it('its name says when the channel is muted or set to Nothing, as its crossed-out bell shows', () => {
+    header({ channel: { ...backend, notifyLevel: 'none' } })
+    expect(screen.getByRole('button', { name: 'Channel notifications: nothing' })).toBeTruthy()
+    cleanup()
+    header({ channel: { ...backend, notifyLevel: 'none', muted: true } })
+    expect(screen.getByRole('button', { name: 'Channel notifications: muted' })).toBeTruthy()
+    cleanup()
+    const dm: Channel = { ...backend, id: 'c-dm-1', kind: 'dm', name: null, topic: '', isPrivate: true, memberIds: ['u-1', 'u-2'], muted: true }
+    header({ channel: dm, title: 'Nour El-Sayed', members: people.slice(0, 2), rights: { manage: false, leave: false } })
+    fireEvent.click(screen.getByRole('button', { name: 'Conversation notifications: muted' }))
+    expect(screen.getByRole('menu', { name: 'Conversation notifications' })).toBeTruthy()
   })
 })

@@ -2,19 +2,11 @@ import type { Api, MentionItem, Mention } from '@/api/types'
 import type { DbData, MockDb } from './db'
 import type { MockHub } from './realtime'
 import { delay } from './latency'
-import { clone, currentUser } from './shared'
+import { clone, currentUser, excerptOf } from './shared'
 import { projectPeopleIds } from '@/lib/projectPeople'
-import { plainText } from '@/lib/mentions'
-import { silenced } from './activityFeed'
+import { silenced } from './membership'
 
 const MAX_ITEMS = 50
-const EXCERPT = 120
-
-/** The text people read: `@[Name](id)` shown as `@Name`, cut to 120 characters. */
-function excerptOf(text: string) {
-  const plain = plainText(text).replace(/\s+/g, ' ').trim()
-  return plain.length > EXCERPT ? `${plain.slice(0, EXCERPT - 1)}…` : plain
-}
 
 /** The people of a project (see projectPeople), or nobody when it's gone. */
 function projectPeople(data: DbData, projectId: string): Set<string> {
@@ -28,6 +20,13 @@ function projectPeople(data: DbData, projectId: string): Set<string> {
  */
 const reaches = (mentions: Mention[], userId: string, everyone: () => Set<string>, closed = false) =>
   (!closed || everyone().has(userId)) && mentions.some((m) => (m.kind === 'user' && m.id === userId) || (m.kind === 'all' && everyone().has(userId)))
+
+/** Who a new message or reply by `senderId` in a channel mentions (by name, or @all for its members): they hear of it live. */
+export function reachedBy(data: DbData, mentions: Mention[], channelId: string, senderId: string): string[] {
+  const channel = data.channels.find((c) => c.id === channelId)
+  const everyone = () => new Set(channel?.memberIds ?? [])
+  return data.users.filter((u) => u.id !== senderId && reaches(mentions, u.id, everyone, channel?.isPrivate ?? false)).map((u) => u.id)
+}
 
 /**
  * Messages, replies and task comments by someone else that mention `userId` (by name, or @all where they are a

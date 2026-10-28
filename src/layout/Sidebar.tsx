@@ -28,7 +28,7 @@ import { Count } from '@/components/sf/Badge'
 import { IconButton } from '@/components/sf/Button'
 import { Icon } from '@/components/sf/Icon'
 import { useSidebarGroups, type ChannelRow } from '@/layout/useSidebarGroups'
-import { sidebarRowState } from '@/lib/channels'
+import { countNoun, sidebarRowState } from '@/lib/channels'
 import { hasFeature } from '@/lib/features'
 import { paths } from '@/lib/paths'
 import { SIDEBAR_WIDTH, useUiStore } from '@/lib/uiStore'
@@ -238,6 +238,7 @@ function ChannelLink({ slug, row: r, mentions, collapsed, onNavigate }: { slug: 
       icon={icon}
       unread={state.bold}
       mentions={state.count}
+      noun={countNoun(channel)}
       muted={state.muted}
       draft={r.draft}
       collapsed={Boolean(collapsed)}

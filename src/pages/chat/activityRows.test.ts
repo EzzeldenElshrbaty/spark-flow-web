@@ -32,8 +32,9 @@ describe('shownActivity (spec 6.12)', () => {
 describe('activityKind: the line above the text', () => {
   it('names what happened and where', () => {
     expect(activityKind(item(), '#backend')).toBe('Mentioned you in #backend')
-    expect(activityKind(item({ kind: 'reaction', emoji: '👍' }), '#backend')).toBe('Reacted 👍 to your message in #backend')
-    expect(activityKind(item({ kind: 'reaction', emoji: '🎉', replyId: 'r1' }), '#backend')).toBe('Reacted 🎉 to your reply in #backend')
+    // The text under a reaction is mine, so the line names who reacted.
+    expect(activityKind(item({ kind: 'reaction', emoji: '👍' }), '#backend')).toBe('Nour El-Sayed reacted 👍 to your message in #backend')
+    expect(activityKind(item({ kind: 'reaction', emoji: '🎉', replyId: 'r1' }), '#backend')).toBe('Nour El-Sayed reacted 🎉 to your reply in #backend')
     expect(activityKind(item({ kind: 'thread', replyId: 'r1' }), '#backend')).toBe('Replied in a thread you follow in #backend')
   })
 

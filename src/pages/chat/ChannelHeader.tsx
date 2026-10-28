@@ -64,6 +64,7 @@ export function ChannelHeader({ channel, title, members, rights, onEdit, onStar,
 
   const isChannel = channel.kind === 'channel'
   const noun = isChannel ? 'channel' : 'conversation'
+  const bell = isChannel ? 'Channel notifications' : 'Conversation notifications'
   const topic = channel.topic.trim()
   const icon = isChannel && <Icon icon={channel.isPrivate ? IconLock : IconHash} size={18} className="text-sf-text-secondary" />
 
@@ -117,10 +118,11 @@ export function ChannelHeader({ channel, title, members, rights, onEdit, onStar,
           {copied}
         </span>
         <Menu
-          label={isChannel ? 'Channel notifications' : 'Conversation notifications'}
+          label={bell}
           trigger={(props) => (
             <IconButton
-              label={isChannel ? 'Channel notifications' : 'Conversation notifications'}
+              // Says what the crossed-out bell shows: muted (which wins) or Nothing.
+              label={channel.muted ? `${bell}: muted` : channel.notifyLevel === 'none' ? `${bell}: nothing` : bell}
               icon={channel.muted || channel.notifyLevel === 'none' ? IconBellOff : IconBell}
               {...props}
             />

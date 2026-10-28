@@ -1,30 +1,15 @@
-import type { ActivityItem, Api, ChannelMemberState } from '@/api/types'
-import { plainText } from '@/lib/mentions'
-import { canRead, freshState } from './chat'
+import type { ActivityItem, Api } from '@/api/types'
+import { canRead, silenced } from './membership'
 import type { DbData, MockDb } from './db'
 import { delay } from './latency'
 import { mentionsFor } from './mentions'
 import type { MockHub } from './realtime'
-import { clone, currentUser } from './shared'
+import { clone, currentUser, excerptOf } from './shared'
 
 const MAX_ITEMS = 100
-const EXCERPT = 120
 
-/** The text people read: `@[Name](id)` shown as `@Name`, cut to 120 characters. */
-function excerptOf(text: string) {
-  const plain = plainText(text).replace(/\s+/g, ' ').trim()
-  return plain.length > EXCERPT ? `${plain.slice(0, EXCERPT - 1)}…` : plain
-}
-
-/** This person's state in a channel, or its defaults (a channel: mentions; a DM: all). */
-function stateOf(data: DbData, userId: string, channelId: string): ChannelMemberState {
-  return data.channelState[userId]?.[channelId] ?? freshState(data.channels.find((c) => c.id === channelId)?.kind)
-}
-
-/** Channels this person set to Nothing (spec 6.11): they stay out of Activity and the bell. */
-export function silenced(data: DbData, userId: string): (channelId: string | null) => boolean {
-  return (channelId) => Boolean(channelId) && stateOf(data, userId, channelId!).notifyLevel === 'none'
-}
+/** The workspace a channel is in. */
+const workspaceOf = (data: DbData, channelId: string) => data.channels.find((c) => c.id === channelId)?.workspaceId
 
 /**
  * This person's Activity in a workspace (spec 6.12), newest first: their mentions (as the bell has them, with its read
@@ -36,7 +21,6 @@ export function activityFor(data: DbData, userId: string, workspaceId: string): 
   const quiet = silenced(data, userId)
   const read = new Set(data.mentionReads[userId] ?? [])
   const nameOf = (id: string) => data.users.find((u) => u.id === id)?.name ?? 'Someone'
-  const workspaceOf = (channelId: string) => data.channels.find((c) => c.id === channelId)?.workspaceId
   const mentions: ActivityItem[] = mentionsFor(data, userId, (m) => m.workspaceId === workspaceId && !quiet(m.channelId), MAX_ITEMS)
     .map((m) => ({
       id: m.id, kind: 'mention', read: read.has(m.id), createdAt: m.createdAt, workspaceId: m.workspaceId, actorId: m.authorId, actorName: m.authorName,
@@ -46,7 +30,7 @@ export function activityFor(data: DbData, userId: string, workspaceId: string): 
   const mentioned = new Set(mentions.map((m) => m.id))
   const kept: ActivityItem[] = []
   for (const n of data.notifications) {
-    if (n.userId !== userId || workspaceOf(n.channelId) !== workspaceId || quiet(n.channelId) || !canRead(data, n.channelId, userId)) continue
+    if (n.userId !== userId || workspaceOf(data, n.channelId) !== workspaceId || quiet(n.channelId) || !canRead(data, n.channelId, userId)) continue
     if (n.kind === 'thread' && n.replyId && mentioned.has(n.replyId)) continue
     const row = n.replyId ? data.replies.find((r) => r.id === n.replyId) : data.messages.find((m) => m.id === n.messageId)
     if (!row || row.deletedAt) continue
@@ -71,10 +55,12 @@ export function inboxApi(db: MockDb, hub: MockHub): Api['inbox'] {
       const userId = await db.update((data) => {
         const me = currentUser(data)
         const wanted = new Set(ids ?? activityFor(data, me.id, workspaceId).map((item) => item.id))
-        // Every mention of mine, not only the newest: an older one can still be on screen.
-        const mentionIds = new Set(mentionsFor(data, me.id, undefined, Infinity).map((m) => m.id))
+        // Any mention of mine in this workspace, not only the newest (an older one can still be on screen); and only
+        // this workspace's items, as the route says.
+        const here = (m: { workspaceId: string }) => m.workspaceId === workspaceId
+        const mentionIds = new Set(mentionsFor(data, me.id, here, Infinity).map((m) => m.id))
         data.mentionReads[me.id] = [...new Set([...(data.mentionReads[me.id] ?? []), ...[...wanted].filter((id) => mentionIds.has(id))])]
-        for (const n of data.notifications) if (n.userId === me.id && wanted.has(n.id)) n.read = true
+        for (const n of data.notifications) if (n.userId === me.id && wanted.has(n.id) && workspaceOf(data, n.channelId) === workspaceId) n.read = true
         return me.id
       })
       hub.publish({ type: 'readChanged', userId })

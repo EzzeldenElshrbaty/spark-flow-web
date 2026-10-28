@@ -250,7 +250,7 @@ What the list holds, for the signed-in person:
 
 | Client handler | Wire event | Payload |
 |---|---|---|
-| `onNotificationCreated` | `notification.created` | `{ userId }`, sent only to `userId`'s own connections when a reaction or thread item is stored for them. |
+| `onNotificationCreated` | `notification.created` | `{ userId }`, sent only to `userId`'s own connections: when a reaction or thread item is stored for them, and when a new message or reply mentions them (by name, or `@all` as a member), once per person per message. |
 
-The client refreshes Activity on it, and on `message.created`, `message.updated`, a new reply, a comment and `read.marker_updated` (mentions come and go with messages).
+The client refreshes Activity on it, and on `message.updated` (an edit can add or remove a mention), a comment, `read.marker_updated` and `channel.updated`, `member.joined` or `member.left` (client handler `onChannelChanged`: leaving, removal, archiving and privacy decide what Activity and the bell may show). It no longer refreshes Activity on every `message.created` or new reply.
 

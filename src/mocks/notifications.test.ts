@@ -100,6 +100,25 @@ describe('Activity: replies in threads I follow (spec 6.7, 6.12)', () => {
     await api.chat.reply(root.id, 'I do')
     expect(events).toContainEqual({ type: 'notificationCreated', userId: 'u-1' })
   })
+
+  it('a new message or reply that mentions someone tells them live, once each, and nobody else', async () => {
+    const created = () => events.filter((e) => e.type === 'notificationCreated').map((e) => (e as { userId: string }).userId).sort()
+    await api.users.viewAs('u-2')
+    events = []
+    await api.chat.send('c-general', `Ping ${YOUSSEF}`)
+    expect(created()).toEqual(['u-1'])
+    events = []
+    await api.chat.send('c-general', 'Nobody named')
+    expect(created()).toEqual([])
+    const root = await api.chat.send('c-backend', 'Slow query on /search')
+    await api.users.viewAs('u-1')
+    await api.chat.reply(root.id, 'Looking')
+    await api.users.viewAs('u-5')
+    events = []
+    // u-1 follows (replied) and is mentioned; u-2 wrote the root; u-6 is a member reached by @all.
+    await api.chat.reply(root.id, '@all the index is missing')
+    expect(created()).toEqual(['u-1', 'u-2', 'u-6'])
+  })
 })
 
 describe('Activity: the feed (spec 6.12)', () => {
@@ -125,6 +144,17 @@ describe('Activity: the feed (spec 6.12)', () => {
     expect(items.every((i) => i.workspaceId === 'ws-eng')).toBe(true)
     await api.inbox.markRead('ws-eng')
     expect((await mine()).every((i) => i.read)).toBe(true)
+  })
+
+  it('marking ids read through one workspace leaves another workspace’s items as they were', async () => {
+    const m = await api.chat.send('c-general', 'Release is out')
+    await api.users.viewAs('u-2')
+    await api.chat.react({ kind: 'message', id: m.id }, '👍')
+    const mention = await api.chat.send('c-general', `Ping ${YOUSSEF}`)
+    await api.users.viewAs('u-1')
+    const reaction = (await mine()).find((i) => i.kind === 'reaction' && i.messageId === m.id)!
+    await api.inbox.markRead('ws-design', [reaction.id, mention.id])
+    expect((await mine()).filter((i) => i.id === reaction.id || i.id === mention.id).map((i) => i.read)).toEqual([false, false])
   })
 
   it('a channel set to Nothing stays out of Activity and the bell', async () => {
