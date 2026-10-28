@@ -16,11 +16,12 @@ const extension = (name: string) => {
 /** For a file picker's `accept`. */
 export const acceptedFiles = [...previewTypes, ...videoTypes, ...downloadTypes].join(',')
 
-export const maxFileMb = 25
+/** The size limit, in MB: the server's setting (spec 6.9), mirrored here by VITE_MAX_FILE_MB; 25 by default. */
+export const maxFileMb = Number(import.meta.env.VITE_MAX_FILE_MB) || 25
 
 export const isAcceptedFile = (name: string) => [...previewTypes, ...videoTypes, ...downloadTypes].includes(extension(name))
 
-export const allowedFilesHint = 'PDF, images, video (MP4, WebM, MOV), Word, Excel, PowerPoint, CSV, text, ZIP/RAR, AI, PSD or HEIC, up to 25 MB'
+export const allowedFilesHint = `PDF, images, video (MP4, WebM, MOV), Word, Excel, PowerPoint, CSV, text, ZIP/RAR, AI, PSD or HEIC, up to ${maxFileMb} MB`
 
 export type Preview = 'image' | 'pdf' | 'text' | 'csv' | 'none'
 

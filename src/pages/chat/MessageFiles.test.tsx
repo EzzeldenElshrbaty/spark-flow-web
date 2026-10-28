@@ -22,7 +22,7 @@ const link = 'http://localhost/w/engineering/c/c-backend?message=m1'
 describe('MessageFiles (spec 6.9 file card)', () => {
   it('a file card names the file, its type and size', () => {
     render(<MessageFiles attachments={[pdf]} link={link} />)
-    expect(screen.getByRole('button', { name: 'Open Scope v3.pdf' }).textContent).toContain('PDF · 184 KB')
+    expect(screen.getByRole('button', { name: /^Open Scope v3\.pdf/ }).textContent).toContain('PDF · 184 KB')
   })
 
   it('without the page’s file actions the pill has Download and More, reachable from the keyboard', () => {
@@ -73,12 +73,12 @@ describe('the file card, its pill and menu (spec 6.9, slice 6)', () => {
     render(<MessageFiles attachments={[{ ...pdf, title: 'Release scope' }]} link={link} />)
     const label = screen.getByRole('button', { name: 'PDF' })
     expect(label.getAttribute('aria-expanded')).toBe('true')
-    expect(screen.getByRole('button', { name: 'Open Release scope' }).textContent).toContain('Release scope')
+    expect(screen.getByRole('button', { name: /^Open Release scope/ }).textContent).toContain('Release scope')
     fireEvent.click(label)
     expect(label.getAttribute('aria-expanded')).toBe('false')
-    expect(screen.queryByRole('button', { name: 'Open Release scope' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Open Release scope/ })).toBeNull()
     fireEvent.click(label)
-    expect(screen.getByRole('button', { name: 'Open Release scope' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Open Release scope/ })).toBeTruthy()
   })
 
   it('the pill has Download, Share, Details and More; Share and Details go to the page', () => {

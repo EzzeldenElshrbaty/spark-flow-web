@@ -6,7 +6,7 @@ import { useState, type ReactNode } from 'react'
 import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
-import type { ActivityItem, Channel, ChatMessage, TaskRef, User } from '@/api/types'
+import type { ActivityItem, Attachment, Channel, ChatMessage, TaskRef, User } from '@/api/types'
 import { ToastProvider } from '@/components/sf/Toast'
 import { api } from '@/lib/api'
 import { Logo } from '@/layout/Sidebar'
@@ -25,6 +25,11 @@ import { ActivityView } from '@/pages/chat/ActivityView'
 import { ChannelDetails } from '@/pages/chat/ChannelDetails'
 import { ThreadMenu } from '@/pages/chat/ThreadMenu'
 import { ThreadComposer } from '@/pages/chat/ThreadComposer'
+import { FileActionsContext, FileActionsProvider, useFileActions, type FileActions } from '@/pages/chat/files/FileActions'
+import { FileInspector } from '@/pages/chat/files/FileInspector'
+import { MessageFiles } from '@/pages/chat/MessageFiles'
+import { UploadTray } from '@/pages/chat/uploads/UploadTray'
+import type { Upload } from '@/pages/chat/uploads/useUploads'
 import type { BodyContext } from '@/pages/chat/MessageBody'
 
 // Spec 10: every text and control pair meets the 3.2 contrast, checked automatically in CI. These render the chat's
@@ -79,6 +84,34 @@ const details = (over: Partial<Parameters<typeof ChannelDetails>[0]> = {}) => (
 )
 const mariam = { id: 'u-3', name: 'Mariam Fathy', title: 'Designer', email: 'mariam.fathy@spark-sys.com', presence: 'offline', role: 'member' } as User
 const sentInvite = { id: 'inv-1', email: 'lina@partner.io', invitedBy: 'u-1', workspaceId: 'ws-eng', channelId: 'c-backend', role: 'guest' as const, status: 'pending' as const, createdAt: '2026-10-28T08:00:00.000Z' }
+const scope: Attachment = {
+  id: 'a-scope', name: 'scope.pdf', title: 'Release scope', description: 'What ships in 2.4.', mimeType: 'application/pdf', size: 188_416, createdAt: '2026-10-28T09:00:00.000Z',
+  uploadedBy: 'u-1', scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null,
+}
+const fileActions: FileActions = { mayManage: () => true, share: vi.fn(), details: vi.fn(), edit: vi.fn(), remove: vi.fn(), createTask: vi.fn() }
+const uploadOf = (name: string, over: Partial<Upload> = {}): Upload => ({
+  key: name, file: new File(['x'.repeat(4096)], name, { type: 'application/pdf' }), status: 'uploading', progress: 0.4, uploaded: null, error: null, ...over,
+})
+/** The API calls the file windows and the File details panel make, answered here. */
+function fileSpies() {
+  vi.spyOn(api.users, 'me').mockResolvedValue(users[0])
+  vi.spyOn(api.users, 'list').mockResolvedValue(users)
+  vi.spyOn(api.workspaces, 'list').mockResolvedValue([{ id: 'ws-eng', slug: 'engineering', name: 'Spark Engineering' }])
+  vi.spyOn(api.chat, 'channels').mockResolvedValue([channel, { ...channel, id: 'c-general', name: 'general' }])
+  vi.spyOn(api.projects, 'list').mockResolvedValue([])
+  vi.spyOn(api.files, 'url').mockResolvedValue('blob:http://localhost/scope')
+  vi.spyOn(api.files, 'details').mockResolvedValue({ file: scope, sharedIn: [{ channelId: 'c-backend', messageId: 'm1', replyId: null, at: scope.createdAt }], taskKeys: [], projectIds: [] })
+}
+function FileButtons() {
+  const actions = useFileActions()
+  return (
+    <>
+      <button onClick={() => actions?.edit(scope)}>Open edit</button>
+      <button onClick={() => actions?.remove(scope)}>Open delete</button>
+      <button onClick={() => actions?.share(scope)}>Open share</button>
+    </>
+  )
+}
 const directory = { users, projects: [{ key: 'NEX', name: 'Nexus Core' }], tasks: [{ key: 'NEX-103', title: task.title }], channels: [{ id: 'c-backend', name: 'backend' }], memberIds: ['u-1'] }
 
 function mount(node: ReactNode, dark: boolean) {
@@ -248,6 +281,46 @@ describe.each([
     expect(screen.getByRole('option', { name: /Backend/ })).toBeTruthy()
     expect(screen.getByRole('switch', { name: 'When new people join Spark Systems, add them to #backend' })).toBeTruthy()
     // "Add 1 person" has just turned on: let its 150ms colour change finish, or axe measures it half way.
+    await new Promise((r) => setTimeout(r, 250))
+    expect(await violations()).toEqual([])
+  })
+
+  it('the upload tray, a file card with its open menu, and the file windows have no axe violations (spec 6.9, slice 6)', async () => {
+    fileSpies()
+    mount(
+      <FileActionsProvider workspaceId="ws-eng" meId="u-1" people={users} onDetails={vi.fn()}>
+        <UploadTray
+          uploads={[uploadOf('notes.pdf'), uploadOf('scope.pdf', { status: 'ready', progress: 1, uploaded: scope }), uploadOf('log.pdf', { status: 'failed', error: "Couldn't reach the server" })]}
+          refused={["run.exe: this type of file can't be added."]}
+          onRemove={vi.fn()}
+          onRetry={vi.fn()}
+        />
+        <FileActionsContext.Provider value={fileActions}>
+          <MessageFiles attachments={[scope, { ...scope, id: 'a-check', scanStatus: 'pending' }, { ...scope, id: 'a-gone', deletedAt: scope.createdAt }]} link="http://localhost/m1" message={message('Scope')} />
+        </FileActionsContext.Provider>
+        <FileButtons />
+      </FileActionsProvider>,
+      dark,
+    )
+    await new Promise((r) => setTimeout(r, 300))
+    expect(await violations()).toEqual([])
+    await userEvent.click(screen.getByRole('button', { name: 'More file actions' }))
+    expect(screen.getByRole('menuitem', { name: 'Delete file' })).toBeTruthy()
+    expect(await violations()).toEqual([])
+    await userEvent.keyboard('{Escape}')
+    for (const [open, name] of [['Open edit', 'Edit file details'], ['Open delete', 'Delete Release scope?'], ['Open share', 'Share Release scope']] as const) {
+      await userEvent.click(screen.getByRole('button', { name: open }))
+      expect(screen.getByRole('dialog', { name })).toBeTruthy()
+      await new Promise((r) => setTimeout(r, 250))
+      expect(await violations(), name).toEqual([])
+      await userEvent.keyboard('{Escape}')
+    }
+  })
+
+  it('the File details panel has no axe violations (spec 6.9, slice 6)', async () => {
+    fileSpies()
+    mount(<FileInspector fileId="a-scope" onClose={vi.fn()} closeTo="/w/engineering/c/c-backend" />, dark)
+    await screen.findByText('Uploaded by', undefined, { timeout: 3000 })
     await new Promise((r) => setTimeout(r, 250))
     expect(await violations()).toEqual([])
   })
@@ -769,6 +842,48 @@ describe('a long email chip on a phone (spec 10, slice 5 review)', () => {
       const field = names.parentElement!.getBoundingClientRect()
       expect(remove.parentElement!.getBoundingClientRect().right).toBeLessThanOrEqual(field.right)
       expect(remove.getBoundingClientRect().right).toBeLessThanOrEqual(390 - 16)
+    } finally {
+      await page.viewport(414, 896)
+    }
+  })
+})
+
+describe('files on a phone (spec 10, 6.16, slice 6)', () => {
+  /** Whether a touch 21px above and below the middle of `el` lands on it. */
+  const answers = (el: Element) => {
+    const r = el.getBoundingClientRect()
+    const x = r.left + r.width / 2
+    return [r.top + r.height / 2 - 21, r.top + r.height / 2 + 21].map((y) => el.contains(document.elementFromPoint(x, y)))
+  }
+
+  it('the tray’s × and a card’s ⋯ answer a 44px touch, and the ⋯ shows without hover; the File details panel fits', async () => {
+    fileSpies()
+    await page.viewport(390, 844)
+    try {
+      mount(
+        <>
+          <UploadTray uploads={[uploadOf('scope.pdf')]} refused={[]} onRemove={vi.fn()} onRetry={vi.fn()} />
+          <div style={{ paddingTop: 40 }}>
+            <FileActionsContext.Provider value={fileActions}>
+              <MessageFiles attachments={[scope]} link="http://localhost/m1" message={message('Scope')} />
+            </FileActionsContext.Provider>
+          </div>
+        </>,
+        false,
+      )
+      Object.assign(document.querySelector('main')!.style, { width: '390px', padding: '0' })
+      expect(answers(screen.getByRole('button', { name: 'Remove scope.pdf' })), 'tray ×').toEqual([true, true])
+      const more = screen.getByRole('button', { name: 'More file actions' })
+      expect(getComputedStyle(more.parentElement!).opacity).toBe('1')
+      expect(answers(more), 'card ⋯').toEqual([true, true])
+      expect(screen.queryByRole('button', { name: 'Download' })).toBeNull()
+      cleanup()
+      mount(<FileInspector fileId="a-scope" onClose={vi.fn()} closeTo="/w/engineering/c/c-backend" />, false)
+      await screen.findByText('Uploaded by', undefined, { timeout: 3000 })
+      const panel = screen.getByRole('complementary', { name: 'File details' })
+      expect(panel.getBoundingClientRect().right).toBeLessThanOrEqual(390)
+      expect(panel.scrollWidth).toBeLessThanOrEqual(panel.clientWidth)
+      for (const name of ['Download', 'Share', 'Open', 'Edit file details']) expect(answers(screen.getByRole('button', { name })), name).toEqual([true, true])
     } finally {
       await page.viewport(414, 896)
     }

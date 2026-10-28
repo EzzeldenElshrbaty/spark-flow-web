@@ -747,6 +747,16 @@ Part D — File details panel
 
 Rulings while building (C, D): the PDF preview frame stays unsandboxed: Chrome blocks PDFs in sandboxed frames, and the risk is covered by the `%PDF-` check, the application/pdf blob, the browser's own isolated viewer, and HTML/SVG not being uploadable at all; Share (and so its button) is for whoever uploaded the file or an Admin, after the security review; Create task from file is for channel messages, not thread replies; on a phone the card's ⋯ is always shown and holds Download, Share and Details too; the panel's address `?file=` closes a thread or ticket panel, one panel at a time.
 
-- [ ] Contract section for slice 6; axe in both themes, 390px and 44px, real key presses for ⌘U, drop and paste; app check.
+- [x] Contract section for slice 6; axe in both themes, 390px and 44px, real key presses for ⌘U, drop and paste; app check.
 
 Waits: Save for later (Saved, Phase 3); Add to folder and Add from Flow files (Files tab, Phase 3); Text snippet and code highlighting (Phase 3); voice and video (Phase 4); "Add to section" (OPEN).
+
+## Review
+
+- Part A (e06915e, then 3847cec after the security review): one file record (DB v15), the three-step upload, send and reply with files, details, Edit file details, Delete file, Share, project-file removal moved; Share is uploader or Admin, and files in an archived project or channel can't be edited or deleted.
+- Part B (99af28f): + Attach menu, Cmd/Ctrl+U, paste, drop, the tray, Send waiting for uploads, the send queue and thread replies with files.
+- Parts C and D (d1c6ec2): the file card, its pill and menu, the scan and deleted states, Edit file details, Delete file and Share windows, Create task from file, the File details panel.
+- Checks: axe in light and dark on the tray, a card with its open menu, the three windows and the panel (it caught the card's open-button name, now "Open" + what it shows); on a 390px phone the tray's ×, the card's ⋯ (always shown) and the panel's buttons answer a 44px touch (it caught the tray clipping the ×'s touch area); the size limit reads VITE_MAX_FILE_MB.
+- Verified: 1270 tests, tsc, lint, `build:prototype`. In the app as Youssef: dropped release-scope.pdf on #backend ("Uploading 1 file…", then "PDF · 1 KB"), sent it with text, opened Details (Uploaded by, Shared in, Access), renamed it (card and panel updated live), shared it to #general (Shared in updated live), deleted it ("This file was deleted." in both); the two test messages were deleted after.
+- Seen in the app, not fixed: after Details from the card's ⋯ menu its tooltip can stay over the panel's ×; deleting a message whose file is already deleted still says "Its files are deleted with it."
+- Not pushed.

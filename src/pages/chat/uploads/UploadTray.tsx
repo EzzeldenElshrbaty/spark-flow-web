@@ -86,7 +86,8 @@ export function UploadTray({ uploads, refused, onRemove, onRetry }: { uploads: U
         </p>
       )}
       {uploads.length > 0 && (
-        <ul aria-label="Files to send" className="m-0 -mx-3 flex list-none gap-2 overflow-x-auto px-3 pt-2 pb-1">
+        // The strip scrolls sideways, which clips; the room above the cards keeps each ×'s 44px phone target whole.
+        <ul aria-label="Files to send" className="m-0 -mx-3 flex list-none gap-2 overflow-x-auto px-3 pt-2 pb-1 max-md:pt-6">
           {uploads.map((upload) => (
             <Card key={upload.key} upload={upload} onRemove={onRemove} onRetry={onRetry} />
           ))}

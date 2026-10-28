@@ -323,3 +323,49 @@ Rules:
 - **Events:** an invite and a revoke send `channel.updated` (client `onChannelChanged`) to whoever may change the channel; the client refreshes the channel's Invited list on it.
 
 Accepting an invite (the link in the email, a guest account, what a guest can see, the Guest tag) comes in the guests slice.
+
+
+## Phase 2 · Slice 6: Files (spec 6.8 Attach menu, 6.9, §7 File, §8 files)
+
+### The file record
+
+One record for chat files, task comment files and project files (spec §7 File; MessageFile is the server's join of messages and files):
+
+| Field | Type | Rule |
+|---|---|---|
+| `id`, `name`, `mimeType`, `size`, `createdAt` | as before | `name` is the uploaded file's own; `mimeType` is the server's sniffed type, not the browser's. |
+| `uploadedBy` | string | A user id. |
+| `title` | string | What the card shows; the file's name until Edit file details changes it. Trimmed, 1–250 characters. |
+| `description` | string | `""` until set; at most 1,000 characters. |
+| `scanStatus` | `"pending" \| "clean" \| "blocked"` | A file can't be opened, sent or shared until it's `"clean"`. |
+| `thumbUrl`, `previewUrl` | string \| null | Made by the server: a small image, and for office and RTF files a converted PDF preview. |
+| `deletedAt` | ISO time \| null | Set by Delete file; the record stays so where it was shared can say "This file was deleted." |
+
+Messages and replies carry the full records in `attachments`, as they always have.
+
+### Routes
+
+| Call | Route | Body | Returns |
+|---|---|---|---|
+| Ask to upload | `POST /api/files/upload-url` | `{ channelId, name, size, mimeType }` | `{ file, uploadUrl }`: the record (`scanStatus: "pending"`) and a short-lived address for the bytes. |
+| The bytes | `PUT <uploadUrl>` | The file's bytes, `Content-Type` its type | To object storage, not the API. The browser reports progress from this request. |
+| Upload complete | `POST /api/files/:id/complete` | — | The file, once the server has sniffed its type, scanned it and made any thumbnail. |
+| Send (changed) | `POST /api/channels/:id/messages` | `{ content, clientId?, body?, fileIds? }` | The message. |
+| Reply (changed) | `POST /api/messages/:id/replies` | `{ content, body?, alsoInChannel?, fileIds? }` | The reply. |
+| Open | `GET /api/files/:id` | — | The bytes, or a redirect to a short-lived signed address. |
+| Details | `GET /api/files/:id/details` | — | `{ file, sharedIn: [{ channelId, messageId, replyId, at }], taskKeys, projectIds }`, as I may see them. |
+| Edit file details | `PATCH /api/files/:id` | `{ title?, description? }` | The file. |
+| Delete file | `DELETE /api/files/:id` | — | Nothing (`204`). |
+| Share | `POST /api/files/:id/share` | `{ channelId, content? }` | The new message. |
+| Remove from a project (moved) | `DELETE /api/projects/:projectId/files/:fileId` | — | Nothing. It was `DELETE /api/files/:id` with the project-file link's id; that path now means the file itself. |
+
+Rules:
+
+- **Upload:** whoever may post in the channel (`checkCanWrite`: a private channel's members, not while archived, and only Admins in an Only admins channel). The same file types as everywhere else (`fileTypes.ts`: PDF, images, video, office files, CSV, text, ZIP/RAR, AI, PSD, HEIC); others `400` "That type of file can't be added.". Empty: `400` "That file is empty.". The size limit is a server setting (1 GB suggested by the spec; the prototype keeps 25 MB), mirrored in the client by `VITE_MAX_FILE_MB` so the browser refuses the same files before uploading: `400` "Files can be up to N MB.". A file never sent is the uploader's only, and the server removes it after 24 hours.
+- **Send and reply with files:** at most 10 (`400` "Attach up to 10 files to a message."); each must exist and not be deleted (`404`), be mine (`403` "You can only send files you uploaded."), and be clean (`400` "x is still being checked." / "x was blocked."). With files the text may be empty. A retried send with the same `clientId` still returns the first message.
+- **Open and Details:** for whoever reads a channel the file is shared in, is on a project or task that has it, or uploaded it and hasn't sent it yet; anyone else gets `404`, so nobody learns it exists. Opening a blocked file: `400` "This file was blocked.".
+- **Edit file details and Delete file:** whoever uploaded it, or an Admin (`403` "Only whoever uploaded it, or an admin, can change this file."; spec §9). Not while a project or channel it's in is archived (`400` "This project is archived. Restore it first." / "This channel is archived."). Name: `400` "Give the file a name." / "Keep the name under 250 characters."; description: `400` "Keep the description under 1,000 characters.". Delete keeps the record with `deletedAt` and throws the bytes away.
+- **Share:** whoever uploaded it, or an Admin (`403` "Only whoever uploaded it, or an admin, can share this file."), so nobody else carries a file from a private channel into a wider one; into a channel I can post in (as sending); the file must be clean. It posts a new message with the file and my optional text.
+- **Events:** sharing sends `message.created` for the new message and `file.shared`; Edit file details sends `file.updated`, and Delete file `file.deleted` (client handler `onFileChanged`, `{ fileId }`), plus `message.updated` for every message and reply that shows the file, and `files.changed` for any project that lists it. The client refreshes the file's details on `onFileChanged`.
+
+Save for later, Add to folder and Add from Flow files come with the Saved view and the channel Files tab (Phase 3); Text snippet and code highlighting in Phase 3; voice and video messages in Phase 4.

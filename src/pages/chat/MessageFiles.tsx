@@ -200,9 +200,10 @@ function Live({ attachment, link, message }: { attachment: Attachment; link?: st
           type="button"
           onClick={open}
           disabled={!url}
-          aria-label={`Open ${attachment.title}`}
           className="sf-focus flex w-full items-center gap-3 rounded-sf-lg p-3 text-start disabled:text-sf-text-muted"
         >
+          {/* Named by what it shows, after "Open", so the name and the visible text agree. */}
+          <span className="sr-only">Open</span>{' '}
           <span aria-hidden className="grid size-10 flex-none place-items-center rounded-sf-md border border-sf-line bg-sf-surface-sunken text-sf-text-secondary">
             <Icon icon={cardIcon(attachment)} />
           </span>
