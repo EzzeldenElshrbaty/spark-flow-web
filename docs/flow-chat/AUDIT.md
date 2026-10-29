@@ -154,6 +154,8 @@ Each batch is test first, then a report. Nothing is pushed until you say so. The
 
 ## Decisions needed from you
 
+**Decided 29 Oct 2026** (approved as recommended; recorded in `tasks/todo.md`): 1 → Phase 3; 2 → keep Enter as a new line on touch; 3 → guest tag and member invites in the guests slice, External left until defined; 4 → Phase 3 with Preferences; 5 → keep the rows hidden until their views exist; 6 → ask the backend team for the hub contract now.
+
 These items can't be fixed without a call from you:
 
 1. **Forward, Save for later, Pin to channel, the Custom emoji tab and skin tone.** §12 puts them in Phase 2 ("all items except Remind"), but Save and Pin need Phase 3 data (Saved, Pins tab), and Forward has no flow in the spec. Should they move to Phase 3, or get a short design now?

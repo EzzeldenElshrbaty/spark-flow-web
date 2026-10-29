@@ -854,3 +854,12 @@ Fresh review of 274a62f..e14f886. Fixed test first; not pushed.
 - Ruling (minor 9): the confirm counts the channel's members, sender included ("all 26 people in this channel") — it describes the channel, and the spec's rule is "more than 25 members". Cost if wrong: one person off in the sentence.
 
 Review: 136 files / 1352 tests pass; tsc, lint and the prototype build are clean.
+
+## Decisions on the audit's open items (29 Oct 2026, approved as recommended)
+
+- Ruling: Forward, Save for later, Pin to channel, the emoji picker's Custom tab and skin tone move to Phase 3 — Save and Pin need Phase 3 data (Saved, Pins tab) and Forward has no flow in the spec — cost if wrong: they slip one phase.
+- Ruling: Enter on a touch screen makes a new line (Send is the button), as Slack does on phones — the spec's key table names no touch case — cost if wrong: one key on phones.
+- Ruling: the Guest tag and member invites (by workspace policy) go into the guests slice; External stays undefined until the spec defines it; channel member roles and linking a project to any channel wait for that slice's design — cost if wrong: those rows stay Different/Missing until then.
+- Ruling: notification delivery (desktop, push, email digest), Do Not Disturb and the global default level move to Phase 3 with Preferences — §12 gives them no phase — cost if wrong: the popover's Phase 2 rows stay open.
+- Ruling: the chatRedesign sidebar rows (Threads, Drafts & sent, Saved) stay hidden until their views exist (Phase 3) — the flag is already off in production — cost if wrong: none for users.
+- Action: ask the .NET team for the realtime hub contract (events, client frames, auth, resume and replay by seq) now; the SignalR client behind RealtimeClient (audit 8-81) waits for it.
