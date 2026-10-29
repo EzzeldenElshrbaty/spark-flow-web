@@ -124,7 +124,7 @@ export function Reactions({ reactions, users, target, meId, canReact }: { reacti
                 aria-pressed={mine}
                 aria-label={`${reaction.emoji} ${reaction.userIds.length}: ${who}`}
                 disabled={react.isPending}
-                onClick={() => react.mutate({ target, emoji: reaction.emoji })}
+                onClick={() => react.mutate({ target, emoji: reaction.emoji, on: !(meId && reaction.userIds.includes(meId)) })}
                 className={clsx('sf-focus', pill, !mine && 'hover:border-sf-line-strong')}
               >
                 {content}
@@ -160,7 +160,7 @@ export function Reactions({ reactions, users, target, meId, canReact }: { reacti
                 onPick={(emoji) => {
                   close()
                   // Picking one I already gave isn't a toggle off: the picker only adds.
-                  if (!reactions.some((r) => r.emoji === emoji && meId && r.userIds.includes(meId))) react.mutate({ target, emoji })
+                  if (!reactions.some((r) => r.emoji === emoji && meId && r.userIds.includes(meId))) react.mutate({ target, emoji, on: true })
                 }}
               />
             )}

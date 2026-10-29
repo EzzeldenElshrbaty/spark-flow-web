@@ -161,6 +161,19 @@ describe('createHttpApi', () => {
     expect(calls[17].init?.body).toBeInstanceOf(FormData)
   })
 
+  it('reactions are a set (PUT) and an unset (DELETE) by emoji, and a reply carries its client id (spec §8)', async () => {
+    const { calls, fetchFn } = recordingFetch()
+    const api = createHttpApi(fetchFn)
+    await api.chat.react({ kind: 'message', id: 'm1' }, '👍', true)
+    await api.chat.react({ kind: 'reply', id: 'r1' }, '👍🏽', false)
+    await api.chat.reply('m1', 'hi', undefined, false, undefined, 'k9')
+    expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url} ${String(c.init?.body)}`)).toEqual([
+      `PUT /api/messages/m1/reactions/${encodeURIComponent('👍')} undefined`,
+      `DELETE /api/replies/r1/reactions/${encodeURIComponent('👍🏽')} undefined`,
+      'POST /api/messages/m1/replies {"content":"hi","clientId":"k9"}',
+    ])
+  })
+
   it('sends the read seq, the client id, and my channel flags (spec §8)', async () => {
     const { calls, fetchFn } = recordingFetch()
     const api = createHttpApi(fetchFn)

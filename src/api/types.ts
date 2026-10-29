@@ -250,6 +250,8 @@ export type ThreadReply = {
   /** Also sent to the channel (spec 6.7): then it has a `seq` there too, and shows in the channel's list. */
   alsoInChannel?: boolean
   seq?: number
+  /** The sender's id for the write (spec §8): a retry with it returns this reply instead of storing another. */
+  clientId?: string
 }
 
 // ── Transport ─────────────────────────────────────────────────────────────
@@ -394,13 +396,14 @@ export interface Api {
     /** Saves my draft for a channel (or a thread in it); an empty body deletes it and returns null. */
     saveDraft(channelId: string, body: Body, rootId?: string | null): Promise<Draft | null>
     /** From the rich composer with its `body`; `alsoInChannel` also sends it to the channel (spec 6.7). */
-    reply(messageId: string, content: string, body?: Body, alsoInChannel?: boolean, fileIds?: string[]): Promise<ThreadReply>
+    reply(messageId: string, content: string, body?: Body, alsoInChannel?: boolean, fileIds?: string[], clientId?: string): Promise<ThreadReply>
     /** Get notified about replies, or turn it off (spec 6.7): my own choice for a thread's root message. */
     setFollowing(messageId: string, following: boolean): Promise<void>
     /** What this channel tells me about (spec 6.11): all new messages, my mentions, or nothing. Mine only. */
     setNotifyLevel(id: string, level: NotifyLevel): Promise<Channel>
     /** Adds the current user's reaction, or takes it back if it's there; only the emoji in REACTIONS. */
-    react(target: ChatTarget, emoji: string): Promise<void>
+    /** Puts my reaction on (`on`) or takes it off: a set, so a retry changes nothing (spec §8). */
+    react(target: ChatTarget, emoji: string, on: boolean): Promise<void>
     /** The author's own plain message or reply; mentions and task keys are worked out again. */
     /** From the rich composer with its `body` (the content is then its plain text). */
     edit(target: ChatTarget, content: string, body?: Body): Promise<ChatMessage | ThreadReply>

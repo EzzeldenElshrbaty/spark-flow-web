@@ -5,7 +5,7 @@ import { isEmail, MAX_INVITES, normalEmail, notAnEmailLine } from '@/lib/invites
 import { MAX_MESSAGE_FILES } from '@/lib/fileDetails'
 import { onlyAdminsLine } from '@/lib/channels'
 import { isOneEmoji } from '@/lib/emojiText'
-import { MAX_DISTINCT_REACTIONS, toggleReaction } from '@/lib/reactions'
+import { MAX_DISTINCT_REACTIONS, setReaction } from '@/lib/reactions'
 import type { DbData, MockDb } from './db'
 import { delay } from './latency'
 import type { MockHub } from './realtime'
@@ -474,19 +474,21 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
     },
     archiveChannel: (id) => setArchived(id, true),
     restoreChannel: (id) => setArchived(id, false),
-    async react(target, emoji) {
+    async react(target, emoji, on) {
       await delay()
       if (!isOneEmoji(emoji)) throw badRequest('Pick an emoji.')
-      const { channelId, messageId, notified } = await db.update((data) => {
+      const { channelId, messageId, notified, same } = await db.update((data) => {
         const { row, channel, messageId } = findTarget(data, target)
         const me = checkCanPost(data, channel)
         if (row.deletedAt) throw badRequest("This message can't be changed.")
-        const next = toggleReaction(row.reactions, emoji, me.id)
+        const next = setReaction(row.reactions, emoji, me.id, on)
         if (!next) throw badRequest(`This message has ${MAX_DISTINCT_REACTIONS} different reactions already.`)
+        // Already so (a retry): nothing changes, nothing is sent.
+        if (next === row.reactions) return { channelId: channel.id, messageId, notified: null, same: true }
         row.reactions = next
-        const added = next.some((r) => r.emoji === emoji && r.userIds.includes(me.id))
-        return { channelId: channel.id, messageId, notified: noteReaction(data, row, channel.id, messageId, emoji, me.id, added) }
+        return { channelId: channel.id, messageId, notified: noteReaction(data, row, channel.id, messageId, emoji, me.id, on), same: false }
       })
+      if (same) return
       changed(channelId, messageId)
       if (notified) hub.publish({ type: 'notificationCreated', userId: notified })
     },
@@ -580,16 +582,20 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       for (const userId of mentioned) hub.publish({ type: 'notificationCreated', userId })
       return clone(message)
     },
-    async reply(messageId, content, body, alsoInChannel, fileIds) {
+    async reply(messageId, content, body, alsoInChannel, fileIds, clientId) {
       await delay()
-      const { reply, notified } = await db.update((data) => {
+      const { reply, notified, repeat } = await db.update((data) => {
+        // A retry of a reply that did arrive gets the reply it stored (spec §8), as a send does.
+        const stored = clientId ? data.replies.find((r) => r.messageId === messageId && r.senderId === data.currentUserId && r.clientId === clientId) : undefined
+        if (stored) return { reply: stored, notified: [] as string[], repeat: true }
         const me = checkCanWrite(data, findChannel(data, findMessage(data, messageId).channelId))
         const attachments = attachFiles(data, fileIds, me.id)
-        const reply = postReply(data, { messageId, attachments, ...textOf(content, body, attachments.length > 0), alsoInChannel: Boolean(alsoInChannel) })
+        const reply = postReply(data, { messageId, clientId, attachments, ...textOf(content, body, attachments.length > 0), alsoInChannel: Boolean(alsoInChannel) })
         // Followers with a thread item, and whoever it mentions, each once.
         const followers = data.notifications.filter((n) => n.replyId === reply.id).map((n) => n.userId)
-        return { reply, notified: [...new Set([...followers, ...reachedBy(data, reply.mentions, reply.channelId, reply.senderId)])] }
+        return { reply, notified: [...new Set([...followers, ...reachedBy(data, reply.mentions, reply.channelId, reply.senderId)])], repeat: false }
       })
+      if (repeat) return clone(reply)
       hub.publish({ type: 'replyReceived', reply: clone(reply) })
       for (const userId of notified) hub.publish({ type: 'notificationCreated', userId })
       return clone(reply)
@@ -729,7 +735,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
 // ── Mutations (not on Api until Phases 3–4) ───────────────────────────────
 
 export type SendMessageInput = { channelId: string; content: string; attachments?: Attachment[]; clientId?: string; body?: Body }
-export type AddReplyInput = { messageId: string; content: string; body?: Body; alsoInChannel?: boolean; attachments?: Attachment[] }
+export type AddReplyInput = { messageId: string; content: string; body?: Body; alsoInChannel?: boolean; attachments?: Attachment[]; clientId?: string }
 
 /**
  * Adds a message from the current user inside a transaction; mentions and ticket keys come from the text. `extra`
@@ -784,6 +790,7 @@ export function postReply(data: DbData, input: AddReplyInput): ThreadReply {
     mentions: input.body ? mentionsOf(input.body) : parseMentions(input.content),
     body: input.body ?? parseBody(input.content),
     createdAt,
+    ...(input.clientId ? { clientId: input.clientId } : {}),
   }
   if (input.alsoInChannel) {
     // Also sent to the channel (spec 6.7): it takes the channel's next seq; the channel keeps only its place there.

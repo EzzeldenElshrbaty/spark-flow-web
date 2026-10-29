@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_DISTINCT_REACTIONS, reactorsText, toggleReaction } from './reactions'
+import { MAX_DISTINCT_REACTIONS, reactorsText, setReaction, toggleReaction } from './reactions'
 
 const names = (id: string) => ({ 'u-1': 'Youssef Abdelrahman', 'u-2': 'Hossam Gaber', 'u-3': 'Nour El-Sayed', 'u-4': 'Mariam Fathy' })[id] ?? 'Unknown person'
 
@@ -26,5 +26,21 @@ describe('reactorsText (spec 6.6 tooltip)', () => {
     expect(reactorsText(['u-2', 'u-3', 'u-1'], 'u-1', names)).toBe('You, Hossam Gaber and Nour El-Sayed')
     expect(reactorsText(['u-2', 'u-3', 'u-4', 'u-1'], 'u-1', names)).toBe('You, Hossam Gaber and 2 others')
     expect(reactorsText(['u-2'], 'u-1', names)).toBe('Hossam Gaber')
+  })
+})
+
+describe('setReaction (spec §8: PUT and DELETE are sets, so a retry changes nothing)', () => {
+  it('adds me once, however often it is asked; removing is the same', () => {
+    const on = setReaction([], '👍', 'u-1', true)!
+    expect(setReaction(on, '👍', 'u-1', true)).toEqual([{ emoji: '👍', userIds: ['u-1'] }])
+    const off = setReaction(on, '👍', 'u-1', false)!
+    expect(off).toEqual([])
+    expect(setReaction(off, '👍', 'u-1', false)).toEqual([])
+  })
+
+  it('a new emoji past the limit is refused; removing never is', () => {
+    const full = Array.from({ length: MAX_DISTINCT_REACTIONS }, (_, i) => ({ emoji: String.fromCodePoint(0x1f600 + i), userIds: ['u-2'] }))
+    expect(setReaction(full, '🐍', 'u-1', true)).toBeNull()
+    expect(setReaction(full, '🐍', 'u-1', false)).toEqual(full)
   })
 })

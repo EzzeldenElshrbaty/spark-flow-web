@@ -293,26 +293,36 @@ describe('send and reply', () => {
 describe('message actions', () => {
   const msg = (message: { id: string }) => ({ kind: 'message' as const, id: message.id })
 
-  it('react toggles me on and off; an empty emoji goes away', async () => {
+  it('react puts me on and takes me off; an empty emoji goes away', async () => {
     const sent = await api.chat.send('c-general', 'Ship it')
-    await api.chat.react(msg(sent), '👍')
+    await api.chat.react(msg(sent), '👍', true)
     expect((await api.chat.message(sent.id)).reactions).toEqual([{ emoji: '👍', userIds: ['u-1'] }])
     await api.users.viewAs('u-2')
-    await api.chat.react(msg(sent), '👍')
+    await api.chat.react(msg(sent), '👍', true)
     expect((await api.chat.message(sent.id)).reactions).toEqual([{ emoji: '👍', userIds: ['u-1', 'u-2'] }])
-    await api.chat.react(msg(sent), '👍')
+    await api.chat.react(msg(sent), '👍', false)
     await api.users.viewAs('u-1')
-    await api.chat.react(msg(sent), '👍')
+    await api.chat.react(msg(sent), '👍', false)
+    expect((await api.chat.message(sent.id)).reactions).toEqual([])
+  })
+
+  it('a retried reaction changes nothing (spec §8: writes are idempotent)', async () => {
+    const sent = await api.chat.send('c-general', 'Ship it')
+    await api.chat.react(msg(sent), '👍', true)
+    await api.chat.react(msg(sent), '👍', true)
+    expect((await api.chat.message(sent.id)).reactions).toEqual([{ emoji: '👍', userIds: ['u-1'] }])
+    await api.chat.react(msg(sent), '👍', false)
+    await api.chat.react(msg(sent), '👍', false)
     expect((await api.chat.message(sent.id)).reactions).toEqual([])
   })
 
   it('react takes any one emoji (spec 6.6), and refuses text or several emoji', async () => {
     const sent = await api.chat.send('c-general', 'Ship it')
-    await api.chat.react(msg(sent), '🐍')
-    await api.chat.react(msg(sent), '👍🏽')
+    await api.chat.react(msg(sent), '🐍', true)
+    await api.chat.react(msg(sent), '👍🏽', true)
     expect((await api.chat.message(sent.id)).reactions.map((r) => r.emoji)).toEqual(['🐍', '👍🏽'])
     for (const bad of ['ok', '🐍🐍', '', '1'])
-      await expect(api.chat.react(msg(sent), bad)).rejects.toMatchObject({ status: 400, detail: 'Pick an emoji.' })
+      await expect(api.chat.react(msg(sent), bad, true)).rejects.toMatchObject({ status: 400, detail: 'Pick an emoji.' })
   })
 
   it('a message takes at most 50 different emoji; adding to one already there still works', async () => {
@@ -322,15 +332,15 @@ describe('message actions', () => {
     await db.update((d) => {
       d.messages.find((m) => m.id === sent.id)!.reactions = fifty.map((emoji) => ({ emoji, userIds: ['u-2'] }))
     })
-    await expect(api.chat.react(msg(sent), '🐍')).rejects.toMatchObject({ status: 400, detail: 'This message has 50 different reactions already.' })
-    await api.chat.react(msg(sent), '😀')
+    await expect(api.chat.react(msg(sent), '🐍', true)).rejects.toMatchObject({ status: 400, detail: 'This message has 50 different reactions already.' })
+    await api.chat.react(msg(sent), '😀', true)
     expect((await api.chat.message(sent.id)).reactions[0].userIds).toEqual(['u-2', 'u-1'])
   })
 
   it('react on a private channel I am not in is refused', async () => {
     const sent = await api.chat.send('c-release', 'Go/no-go at 4')
     await api.users.viewAs('u-3') // Mariam: not in #release-v2
-    await expect(api.chat.react(msg(sent), '👍')).rejects.toMatchObject({ status: 403, detail: "You're not in this channel." })
+    await expect(api.chat.react(msg(sent), '👍', true)).rejects.toMatchObject({ status: 403, detail: "You're not in this channel." })
   })
 
   it('edit re-parses mentions and keys, sets editedAt, keeps keys of tasks made from it', async () => {
@@ -371,7 +381,7 @@ describe('message actions', () => {
 
   it('remove keeps the row and its replies, clears content, files, mentions and reactions, sets deletedAt', async () => {
     const sent = await api.chat.send('c-general', 'Oops @[Nour](u-2) NEX-101')
-    await api.chat.react(msg(sent), '👀')
+    await api.chat.react(msg(sent), '👀', true)
     await api.chat.reply(sent.id, 'seen')
     await api.chat.remove(msg(sent))
     const row = await api.chat.message(sent.id)
@@ -379,14 +389,14 @@ describe('message actions', () => {
     expect(row.deletedAt).toEqual(expect.any(String))
     expect(await api.chat.replies(sent.id)).toHaveLength(1)
     await expect(api.chat.edit(msg(sent), 'back')).rejects.toMatchObject({ status: 400 })
-    await expect(api.chat.react(msg(sent), '👍')).rejects.toMatchObject({ status: 400 })
+    await expect(api.chat.react(msg(sent), '👍', true)).rejects.toMatchObject({ status: 400 })
   })
 
   it('a reply can be reacted to, edited and removed by its author', async () => {
     const parent = await api.chat.send('c-general', 'Thread')
     const reply = await api.chat.reply(parent.id, 'first')
     const target = { kind: 'reply' as const, id: reply.id }
-    await api.chat.react(target, '🎉')
+    await api.chat.react(target, '🎉', true)
     const edited = await api.chat.edit(target, 'first, edited')
     expect(edited).toMatchObject({ content: 'first, edited', reactions: [{ emoji: '🎉', userIds: ['u-1'] }] })
     expect((edited as { editedAt?: string | null }).editedAt).toEqual(expect.any(String))
@@ -400,7 +410,7 @@ describe('message actions', () => {
     const parent = await api.chat.send('c-general', 'Thread')
     const reply = await api.chat.reply(parent.id, 'first')
     events.length = 0
-    await api.chat.react({ kind: 'message', id: parent.id }, '👍')
+    await api.chat.react({ kind: 'message', id: parent.id }, '👍', true)
     await api.chat.edit({ kind: 'reply', id: reply.id }, 'second')
     await api.chat.remove({ kind: 'reply', id: reply.id })
     expect(events).toEqual([
@@ -416,7 +426,7 @@ describe('message actions', () => {
     expect(row.deletedAt ?? null).toBeNull()
     expect(row.taskEvent ?? null).toBeNull()
     await api.users.viewAs('u-2')
-    await api.chat.react({ kind: 'message', id: row.id }, '✅')
+    await api.chat.react({ kind: 'message', id: row.id }, '✅', true)
     expect(await api.chat.edit({ kind: 'message', id: row.id }, 'extra 0, edited')).toMatchObject({ content: 'extra 0, edited' })
   })
 })
@@ -554,7 +564,7 @@ describe('archiving channels', () => {
     const target = { kind: 'message' as const, id: mine.id }
     await expect(api.chat.send('c-frontend', 'After')).rejects.toMatchObject(archived)
     await expect(api.chat.reply(mine.id, 'After')).rejects.toMatchObject(archived)
-    await expect(api.chat.react(target, '👍')).rejects.toMatchObject(archived)
+    await expect(api.chat.react(target, '👍', true)).rejects.toMatchObject(archived)
     await expect(api.chat.edit(target, 'Changed')).rejects.toMatchObject(archived)
     await expect(api.chat.remove(target)).rejects.toMatchObject(archived)
   })
@@ -650,6 +660,17 @@ describe('read state by seq (spec §7 ChannelMember, §8 read marker)', () => {
     expect(again).toEqual(first)
     expect(first.clientId).toBe('client-1')
     expect((await db.read()).messages.filter((m) => m.clientId === 'client-1')).toHaveLength(1)
+    expect(events).toEqual([])
+  })
+
+  it('a reply retried with the same client id is stored once (spec §8)', async () => {
+    const root = await api.chat.send('c-general', 'Question')
+    const first = await api.chat.reply(root.id, 'Answer', undefined, false, undefined, 'reply-1')
+    events.length = 0
+    const again = await api.chat.reply(root.id, 'Answer', undefined, false, undefined, 'reply-1')
+    expect(again.id).toBe(first.id)
+    expect((await api.chat.replies(root.id)).filter((r) => r.content === 'Answer')).toHaveLength(1)
+    expect((await api.chat.message(root.id)).threadCount).toBe(1)
     expect(events).toEqual([])
   })
 
@@ -898,7 +919,7 @@ describe('delete with Undo, admin delete, edit with a body (spec 6.3, §8 restor
 
   it('a deleted message shows nothing of itself; restore brings all of it back and says so', async () => {
     const sent = await api.chat.send('c-backend', 'Ship *NEX-103* @[Nour](u-2)')
-    await api.chat.react(target(sent), '👍')
+    await api.chat.react(target(sent), '👍', true)
     await api.chat.remove(target(sent))
     const gone = await api.chat.message(sent.id)
     expect(gone).toMatchObject({ content: '', body: [], mentions: [], reactions: [], linkedTicketKeys: [] })
@@ -1050,7 +1071,7 @@ describe('Also send to #channel: a broadcast reply (spec 6.7)', () => {
     const root = await api.chat.send('c-general', 'Question')
     const reply = await api.chat.reply(root.id, 'Answer', undefined, true)
     await api.chat.edit({ kind: 'reply', id: reply.id }, 'Better answer')
-    await api.chat.react({ kind: 'reply', id: reply.id }, '👍')
+    await api.chat.react({ kind: 'reply', id: reply.id }, '👍', true)
     expect(await listed('c-general', reply.id)).toMatchObject({ content: 'Better answer', reactions: [{ emoji: '👍', userIds: ['u-1'] }] })
     expect((await listed('c-general', reply.id))?.editedAt).toBeTruthy()
     await api.chat.remove({ kind: 'reply', id: reply.id })

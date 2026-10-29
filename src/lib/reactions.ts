@@ -18,6 +18,18 @@ export function toggleReaction(reactions: Reaction[], emoji: string, userId: str
   return reactions.map((r) => (r.emoji === emoji ? { ...r, userIds } : r)).filter((r) => r.userIds.length > 0)
 }
 
+/**
+ * Puts me on (`on`) or takes me off an emoji (spec §8: PUT and DELETE are sets, so a retry changes nothing). An empty
+ * emoji goes away; a new one past MAX_DISTINCT_REACTIONS is refused (null); taking one off never is.
+ */
+export function setReaction(reactions: Reaction[], emoji: string, userId: string, on: boolean): Reaction[] | null {
+  const existing = reactions.find((r) => r.emoji === emoji)
+  if (on && !existing) return reactions.length >= MAX_DISTINCT_REACTIONS ? null : [...reactions, { emoji, userIds: [userId] }]
+  if (!existing || existing.userIds.includes(userId) === on) return reactions
+  const userIds = on ? [...existing.userIds, userId] : existing.userIds.filter((id) => id !== userId)
+  return reactions.map((r) => (r.emoji === emoji ? { ...r, userIds } : r)).filter((r) => r.userIds.length > 0)
+}
+
 /** At most this many people are named in a reaction's tooltip; the rest are counted. */
 const NAMED = 2
 

@@ -103,16 +103,17 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
       markUnread: (channelId, seq) => send('POST', `/api/channels/${enc(channelId)}/unread`, { seq }),
       send: (channelId, content, clientId, body, fileIds) =>
         send('POST', `/api/channels/${enc(channelId)}/messages`, { content, ...(clientId && { clientId }), ...(body && { body }), ...(fileIds?.length && { fileIds }) }),
-      reply: (messageId, content, body, alsoInChannel, fileIds) =>
+      reply: (messageId, content, body, alsoInChannel, fileIds, clientId) =>
         send('POST', `/api/messages/${enc(messageId)}/replies`, {
           content,
           ...(body && { body }),
           ...(alsoInChannel && { alsoInChannel: true }),
           ...(fileIds?.length && { fileIds }),
+          ...(clientId && { clientId }),
         }),
       setFollowing: (messageId, following) => send<void>(following ? 'PUT' : 'DELETE', `/api/messages/${enc(messageId)}/follow`),
       setNotifyLevel: (id, notifyLevel) => send('PATCH', `/api/channels/${enc(id)}/me`, { notifyLevel }),
-      react: (target, emoji) => send<void>('POST', `${targetPath(target)}/reactions`, { emoji }),
+      react: (target, emoji, on) => send<void>(on ? 'PUT' : 'DELETE', `${targetPath(target)}/reactions/${enc(emoji)}`),
       edit: (target, content, body) => send('PATCH', targetPath(target), body ? { content, body } : { content }),
       remove: (target) => send<void>('DELETE', targetPath(target)),
       restore: (target) => send<void>('POST', `${targetPath(target)}/restore`),

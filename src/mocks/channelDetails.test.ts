@@ -112,7 +112,7 @@ describe('who can post, in the channel (spec §9)', () => {
     const refused = { status: 403, detail: 'Only admins can post in #backend.' }
     await expect(api.chat.send('c-backend', 'Can I?')).rejects.toMatchObject(refused)
     await expect(api.chat.reply(root.id, 'Can I?')).rejects.toMatchObject(refused)
-    await api.chat.react({ kind: 'message', id: root.id }, '👍')
+    await api.chat.react({ kind: 'message', id: root.id }, '👍', true)
     expect((await api.chat.message(root.id)).reactions).toContainEqual({ emoji: '👍', userIds: ['u-2'] })
   })
 })

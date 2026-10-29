@@ -26,10 +26,10 @@ function setup(id: string) {
   return { hook, reactionsIn }
 }
 
-describe('useReact (spec 6.6: optimistic toggle)', () => {
+describe('useReact (spec 6.6: optimistic, spec §8: a set)', () => {
   it('shows my reaction at once, before the server answers', async () => {
     const { hook, reactionsIn } = setup('m-b07')
-    act(() => hook.result.current.mutate({ target: { kind: 'message', id: 'm-b07' }, emoji: '👍' }))
+    act(() => hook.result.current.mutate({ target: { kind: 'message', id: 'm-b07' }, emoji: '👍', on: true }))
     await waitFor(() => expect(reactionsIn().list).toEqual([{ emoji: '👍', userIds: ['u-2', 'u-1'] }]))
     expect(reactionsIn().one).toEqual([{ emoji: '👍', userIds: ['u-2', 'u-1'] }])
     expect(hook.result.current.isPending).toBe(true)
@@ -37,7 +37,7 @@ describe('useReact (spec 6.6: optimistic toggle)', () => {
 
   it('puts things back when the server refuses', async () => {
     const { hook, reactionsIn } = setup('m-nope')
-    act(() => hook.result.current.mutate({ target: { kind: 'message', id: 'm-nope' }, emoji: '🎉' }))
+    act(() => hook.result.current.mutate({ target: { kind: 'message', id: 'm-nope' }, emoji: '🎉', on: true }))
     await waitFor(() => expect(hook.result.current.isError).toBe(true))
     expect(reactionsIn().list).toEqual([{ emoji: '👍', userIds: ['u-2'] }])
     expect(reactionsIn().one).toEqual([{ emoji: '👍', userIds: ['u-2'] }])

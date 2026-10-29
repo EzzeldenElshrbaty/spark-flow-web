@@ -74,7 +74,10 @@ describe('the message toolbar (spec 6.4)', () => {
     expect(named('React with ✅').getAttribute('aria-pressed')).toBe('true')
     expect(named('React with 👀').getAttribute('aria-pressed')).toBe('false')
     fireEvent.click(named('React with 👀'))
-    await vi.waitFor(() => expect(react).toHaveBeenCalledWith({ kind: 'message', id: 'm1' }, '👀'))
+    await vi.waitFor(() => expect(react).toHaveBeenCalledWith({ kind: 'message', id: 'm1' }, '👀', true))
+    // Mine already: pressing it takes it off (a DELETE), never a toggle the server has to guess.
+    fireEvent.click(named('React with ✅'))
+    await vi.waitFor(() => expect(react).toHaveBeenCalledWith({ kind: 'message', id: 'm1' }, '✅', false))
   })
 
   it('Reply in thread says its key (T) and opens the thread', () => {
@@ -100,7 +103,7 @@ describe('the message toolbar (spec 6.4)', () => {
     pick('✅')
     expect(screen.queryByRole('dialog', { name: 'Add reaction' })).toBeNull()
     pick('👀')
-    await vi.waitFor(() => expect(react).toHaveBeenCalledWith({ kind: 'message', id: 'm1' }, '👀'))
+    await vi.waitFor(() => expect(react).toHaveBeenCalledWith({ kind: 'message', id: 'm1' }, '👀', true))
     expect(react).toHaveBeenCalledOnce()
   })
 })
@@ -144,7 +147,7 @@ describe('on a phone (no hover: the ⋯ and its sheet)', () => {
     const items = [...menu.querySelectorAll('[role="menuitem"], [role="menuitemcheckbox"]')].map((el) => el.getAttribute('aria-label') ?? el.textContent)
     expect(items.slice(0, 5)).toEqual(['React with ✅', 'React with 👀', 'React with 🙌', 'Add reaction', 'Reply in thread'])
     fireEvent.click(within(menu).getByRole('menuitemcheckbox', { name: 'React with 🙌' }))
-    await vi.waitFor(() => expect(react).toHaveBeenCalledWith({ kind: 'message', id: 'm1' }, '🙌'))
+    await vi.waitFor(() => expect(react).toHaveBeenCalledWith({ kind: 'message', id: 'm1' }, '🙌', true))
     expect(screen.queryByRole('menu')).toBeNull()
   })
 

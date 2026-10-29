@@ -580,7 +580,7 @@ describe('a reply also sent to the channel (spec 6.7)', () => {
     const react = vi.spyOn(api.chat, 'react').mockResolvedValue()
     show(sent())
     fireEvent.click(screen.getByRole('button', { name: 'React with 👀' }))
-    await vi.waitFor(() => expect(react).toHaveBeenCalledWith({ kind: 'reply', id: 'r9' }, '👀'))
+    await vi.waitFor(() => expect(react).toHaveBeenCalledWith({ kind: 'reply', id: 'r9' }, '👀', true))
     fireEvent.click(screen.getByRole('button', { name: 'Reply in thread' }))
     expect(screen.getByTestId('where').textContent).toBe('?thread=m1 {"focus":"reply"}')
   })

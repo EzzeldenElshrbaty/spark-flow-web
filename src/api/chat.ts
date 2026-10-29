@@ -4,7 +4,8 @@ import { retryUnlessNotFound as retry } from '@/api/retry'
 import type { ChannelPatch, ChatTarget, Draft, Invitation, NewChannel, NotifyLevel, Page, Reaction } from '@/api/types'
 import type { Body } from '@/lib/messageBody'
 import { useCallback } from 'react'
-import { toggleReaction } from '@/lib/reactions'
+import { ApiError } from '@/lib/apiError'
+import { setReaction } from '@/lib/reactions'
 import { api } from '@/lib/api'
 
 // Every hook below takes an id that may still be unknown (a route param, a lookup in progress): without one it
@@ -165,8 +166,8 @@ const ROWS_KEYS = [['chat', 'messages'], ['chat', 'message'], ['chat', 'replies'
 
 type Row = { id: string; reactions: Reaction[] }
 /** The cached data with `id`'s reactions toggled, whichever shape it is (pages, one message, a list of replies). */
-function toggledIn(data: unknown, id: string, emoji: string, meId: string): unknown {
-  const fix = <T extends Row>(row: T): T => (row.id === id ? { ...row, reactions: toggleReaction(row.reactions, emoji, meId) ?? row.reactions } : row)
+function reactedIn(data: unknown, id: string, emoji: string, meId: string, on: boolean): unknown {
+  const fix = <T extends Row>(row: T): T => (row.id === id ? { ...row, reactions: setReaction(row.reactions, emoji, meId, on) ?? row.reactions } : row)
   if (Array.isArray(data)) return data.map(fix)
   if (data && typeof data === 'object' && 'pages' in data) {
     const pages = (data as InfiniteData<Page<Row>>).pages
@@ -177,18 +178,18 @@ function toggledIn(data: unknown, id: string, emoji: string, meId: string): unkn
 }
 
 /**
- * Toggles my reaction (spec 6.6): on screen at once, put back if the server refuses; the live event and the refresh
- * after it bring everyone else's view in line.
+ * Puts my reaction on (`on`) or takes it off (spec 6.6): on screen at once, put back if the server refuses; the live
+ * event and the refresh after it bring everyone else's view in line. A set, so a retry changes nothing (spec §8).
  */
 export function useReact(meId: string | undefined) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ target, emoji }: { target: ChatTarget; emoji: string }) => api.chat.react(target, emoji),
-    onMutate: async ({ target, emoji }) => {
+    mutationFn: ({ target, emoji, on }: { target: ChatTarget; emoji: string; on: boolean }) => api.chat.react(target, emoji, on),
+    onMutate: async ({ target, emoji, on }) => {
       if (!meId) return { before: [] as [QueryKey, unknown][] }
       await Promise.all(ROWS_KEYS.map((queryKey) => queryClient.cancelQueries({ queryKey })))
       const before = ROWS_KEYS.flatMap((queryKey) => queryClient.getQueriesData({ queryKey }))
-      for (const [key, data] of before) queryClient.setQueryData(key, toggledIn(data, target.id, emoji, meId))
+      for (const [key, data] of before) queryClient.setQueryData(key, reactedIn(data, target.id, emoji, meId, on))
       return { before }
     },
     onError: (_error, _vars, context) => {
@@ -253,10 +254,15 @@ export function useSetFollowing() {
   return useMutation({ mutationFn: ({ messageId, following }: { messageId: string; following: boolean }) => api.chat.setFollowing(messageId, following) })
 }
 /** Replies in a thread; from the rich composer with its `body`, and also to the channel with `alsoInChannel` (spec 6.7). */
+/**
+ * Replies in a thread. Each reply goes with its own client id, so when the connection drops before the answer, the
+ * retries (twice, network failures only) can't store it twice (spec §8).
+ */
 export function useReply() {
   return useMutation({
-    mutationFn: ({ messageId, content, body, alsoInChannel, fileIds }: { messageId: string; content: string; body?: Body; alsoInChannel?: boolean; fileIds?: string[] }) =>
-      api.chat.reply(messageId, content, body, alsoInChannel, fileIds),
+    mutationFn: ({ messageId, content, body, alsoInChannel, fileIds, clientId }: { messageId: string; content: string; body?: Body; alsoInChannel?: boolean; fileIds?: string[]; clientId: string }) =>
+      api.chat.reply(messageId, content, body, alsoInChannel, fileIds, clientId),
+    retry: (failureCount, error) => !(error instanceof ApiError) && failureCount < 2,
   })
 }
 export function useSetStarred() {

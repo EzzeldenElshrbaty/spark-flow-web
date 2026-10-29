@@ -117,7 +117,7 @@ Messages read from the API carry `replyUserIds`: who replied last, newest first,
 
 ### Reactions
 
-`POST /api/messages/:id/reactions` (and the reply equivalent) toggles the person's reaction with any single emoji (one grapheme, e.g. 👍🏽 or 🇪🇬) of at most 16 code points, made only of pictographs, flag letters, skin tones, U+FE0F, U+200D and the tag letters U+E0020–E007F (`isOneEmoji` in `src/lib/emojiText.ts`); anything else, such as an emoji stretched with combining marks, is `400` "Pick an emoji.". A message holds at most 50 different emoji: a new one past that is `400` "This message has 50 different reactions already." The client toggles optimistically and rolls back on an error, so the rule must match `toggleReaction` in `src/lib/reactions.ts`.
+`PUT /api/messages/:id/reactions/:emoji` puts the person's reaction on and `DELETE` on the same path takes it off (and the reply equivalents under `/api/replies/:id`); `:emoji` is URL-encoded. Both are sets (spec §8): asking again changes nothing, answers `204` and sends no event, so a retry after a lost response is safe. The emoji is any single emoji (one grapheme, e.g. 👍🏽 or 🇪🇬) of at most 16 code points, made only of pictographs, flag letters, skin tones, U+FE0F, U+200D and the tag letters U+E0020–E007F (`isOneEmoji` in `src/lib/emojiText.ts`); anything else, such as an emoji stretched with combining marks, is `400` "Pick an emoji.". A message holds at most 50 different emoji: a new one past that is `400` "This message has 50 different reactions already." Taking one off is never refused for that limit. The client sets it optimistically and rolls back on an error, so the rule must match `setReaction` in `src/lib/reactions.ts`.
 
 ### Permalinks
 
@@ -188,7 +188,7 @@ What a delete takes is kept only for the Undo window, then dropped (retention be
 
 ### Replies, and Also send to #channel
 
-`POST /api/messages/:id/replies` takes `{ content, body?, alsoInChannel? }`.
+`POST /api/messages/:id/replies` takes `{ content, body?, alsoInChannel?, fileIds?, clientId? }`. As with send, a `clientId` the same person already used on this thread returns the reply it stored, with no second reply, count or event (spec §8); the client sends one with every reply and retries network failures with it.
 - From the rich composer, `body` is the reply (checked with `validBody`, its plain text stored as `content`), as for sending a message.
 - With `alsoInChannel: true` the reply is also sent to the channel (spec 6.7 broadcast). It stays one record, the reply, and also takes the channel's next `seq`. It returns `alsoInChannel: true` and `seq`; without the flag a reply has neither.
 - A channel's pages (`GET /api/channels/:id/messages`, `?after=`, `/messages/first`) list it at its `seq` as a message:
