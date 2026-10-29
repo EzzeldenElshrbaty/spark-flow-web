@@ -64,21 +64,26 @@ export function MessageMenu({
   const restore = useRestoreMessage()
   const toast = useToast()
   // Once deleted, the row goes and takes its toolbar with it: focus moves on (after the confirm dialog has put it back).
-  const [deleted, setDeleted] = useState<{ from: HTMLElement | null } | null>(null)
+  const [deleted, setDeleted] = useState<{ from: HTMLElement | null; to: HTMLElement[] } | null>(null)
   useEffect(() => {
-    if (deleted) focusAfterDelete(deleted.from)
+    if (deleted) focusAfterDelete(deleted.from, deleted.to)
   }, [deleted])
   /** Deletes, then offers Undo for 5s; an Undo that comes too late says so. */
-  const deleteNow = (from: HTMLElement | null) =>
-    remove.mutateAsync(target).then(() => {
+  const deleteNow = (from: HTMLElement | null) => {
+    // Where focus may go, found while the row is still in the list: in the channel the row leaves (and this menu
+    // with it) as soon as the delete lands, before any effect here could run, so a timeout moves focus then.
+    const to = landingAfter(from)
+    return remove.mutateAsync(target).then(() => {
       setConfirming(false)
-      setDeleted({ from })
+      setDeleted({ from, to })
+      window.setTimeout(() => focusAfterDelete(from, to))
       toast({
         message: 'Message deleted',
         icon: IconTrash,
         action: { label: 'Undo', onAction: () => restore.mutate(target, { onError: (e) => toast({ message: (e as Error).message }) }) },
       })
     })
+  }
   const failed = !confirming && remove.error ? remove.error.message : null
   useEffect(() => {
     onDeleteError?.(failed)
@@ -165,20 +170,22 @@ export function MessageMenu({
   )
 }
 
-/**
- * Where focus goes once a message is deleted (spec 10): the next message's toolbar, else the one before, else the
- * list. Not when focus has already gone somewhere else.
- */
-function focusAfterDelete(from: HTMLElement | null) {
-  const active = document.activeElement
-  if (!from || (active && active !== document.body && active !== from)) return
-  const item = from.closest('li')
-  const siblings = (dir: 'nextElementSibling' | 'previousElementSibling') => {
+/** Where focus may go once a message is deleted (spec 10), best first: the next message's toolbar, the one before, the list. */
+function landingAfter(from: HTMLElement | null): HTMLElement[] {
+  const item = from?.closest('li')
+  const sibling = (dir: 'nextElementSibling' | 'previousElementSibling') => {
     for (let li = item?.[dir] ?? null; li; li = li[dir]) {
       const found = li.querySelector<HTMLElement>(`[${ROW_FOCUS}]`)
       if (found) return found
     }
     return null
   }
-  ;(siblings('nextElementSibling') ?? siblings('previousElementSibling') ?? from.closest<HTMLElement>('[role="log"]'))?.focus()
+  return [sibling('nextElementSibling'), sibling('previousElementSibling'), from?.closest<HTMLElement>('[role="log"]') ?? null].filter((el): el is HTMLElement => el !== null)
+}
+
+/** After a delete: the next message's focus stop, else the one before, else the list; unless focus has moved on. */
+function focusAfterDelete(from: HTMLElement | null, to: HTMLElement[]) {
+  const active = document.activeElement
+  if (!from || (active && active !== document.body && active !== from && active.isConnected)) return
+  to.find((el) => el.isConnected)?.focus()
 }

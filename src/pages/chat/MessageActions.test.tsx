@@ -2,7 +2,7 @@
 import { IconDotsVertical, IconListCheck } from '@tabler/icons-react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
-import type { ComponentProps } from 'react'
+import { useState, type ComponentProps } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { IconButton } from '@/components/sf/Button'
 import { MenuItem } from '@/components/sf/Menu'
@@ -197,6 +197,43 @@ describe('focus after a delete (spec 10: the deleted row takes its toolbar with 
     list(['m1', 'm2'], true)
     await deleteRow('m2', true)
     expect(document.activeElement).toBe(actionsOf('m1'))
+  })
+
+  it('still lands on the next message when the deleted row leaves the list at once, toolbar and all (as in the channel)', async () => {
+    let drop: (id: string) => void = () => {}
+    function Live() {
+      const [ids, setIds] = useState(['m1', 'm2', 'm3'])
+      drop = (id) => setIds((all) => all.filter((x) => x !== id))
+      return (
+        <div role="log" tabIndex={0} aria-label="Messages">
+          <ol>
+            {ids.map((id) => (
+              <li key={id}>
+                <article aria-label={id}>
+                  <MessageMenu target={{ kind: 'message', id }} can={{ edit: true, remove: true }} confirmDelete onEdit={vi.fn()} trigger={trigger} />
+                </article>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )
+    }
+    removed.mockImplementationOnce(async () => {
+      await Promise.resolve()
+      act(() => drop('m2'))
+    })
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ToastProvider>
+          <Live />
+          <ToastRegion />
+        </ToastProvider>
+      </QueryClientProvider>,
+    )
+    await deleteRow('m2', true)
+    await act(() => new Promise((r) => setTimeout(r, 50)))
+    expect(screen.queryByRole('article', { name: 'm2' })).toBeNull()
+    expect(document.activeElement).toBe(actionsOf('m3'))
   })
 
   it('goes to the list when it was the only one', async () => {

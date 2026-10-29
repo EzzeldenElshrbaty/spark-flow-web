@@ -55,9 +55,15 @@ export function Modal({
   if (!open) return null
   return (
     <SfPortal>
-      <div className="fixed inset-0 z-[var(--z-modal)] grid place-items-center overflow-auto bg-sf-overlay py-4">
+      {/* A press on the scrim is held: it neither closes the dialog nor sends focus to the page's body (spec 10). */}
+      <div
+        className="fixed inset-0 z-[var(--z-modal)] grid place-items-center overflow-auto bg-sf-overlay py-4"
+        onMouseDown={(event) => event.target === event.currentTarget && event.preventDefault()}
+      >
         <div
           ref={panelRef}
+          // A press on the dialog's own padding focuses the dialog, so focus stays inside.
+          tabIndex={-1}
           role="dialog"
           aria-modal="true"
           aria-labelledby={titleId}
@@ -65,7 +71,7 @@ export function Modal({
           // 540px, or the screen less 16px a side on a phone (spec 6.10). Against the viewport: a percentage would be of
           // the grid track the dialog itself sizes, and leave it 508px wide.
           onKeyDown={(event) => trapTab(event, event.currentTarget)}
-          className="w-[min(540px,calc(100vw-32px))] rounded-sf-lg bg-sf-surface-raised p-6 text-sf-text shadow-sf-modal"
+          className="w-[min(540px,calc(100vw-32px))] rounded-sf-lg bg-sf-surface-raised p-6 text-sf-text shadow-sf-modal outline-none"
         >
           <div className="mb-4 flex items-start gap-4">
             <div className="min-w-0">

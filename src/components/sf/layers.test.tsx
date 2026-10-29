@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { IconBell, IconBookmark, IconClock, IconDots, IconTrash } from '@tabler/icons-react'
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, createEvent, fireEvent, render, screen } from '@testing-library/react'
 import { useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Button, IconButton } from './Button'
@@ -194,6 +194,18 @@ describe('Modal', () => {
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(document.activeElement).toBe(opener)
+  })
+
+  it('a press on the scrim or a bare part of the dialog keeps focus inside it (spec 10)', () => {
+    render(<InviteModal />)
+    fireEvent.click(screen.getByRole('button', { name: 'Add people' }))
+    const dialog = screen.getByRole('dialog')
+    const press = createEvent.mouseDown(dialog.parentElement!)
+    fireEvent(dialog.parentElement!, press)
+    // Held, so the browser doesn't move focus to the page's body.
+    expect(press.defaultPrevented).toBe(true)
+    // The dialog itself can take focus, so a press on its padding lands on it, not on the body.
+    expect(dialog.tabIndex).toBe(-1)
   })
 })
 
