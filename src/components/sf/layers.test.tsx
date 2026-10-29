@@ -206,6 +206,13 @@ describe('Modal', () => {
     expect(press.defaultPrevented).toBe(true)
     // The dialog itself can take focus, so a press on its padding lands on it, not on the body.
     expect(dialog.tabIndex).toBe(-1)
+    // From there, Tab and Shift+Tab still stay inside.
+    dialog.focus()
+    fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true })
+    expect(dialog.contains(document.activeElement) && document.activeElement !== dialog).toBe(true)
+    dialog.focus()
+    fireEvent.keyDown(dialog, { key: 'Tab' })
+    expect(dialog.contains(document.activeElement) && document.activeElement !== dialog).toBe(true)
   })
 })
 

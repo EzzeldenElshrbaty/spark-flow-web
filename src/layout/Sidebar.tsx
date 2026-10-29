@@ -419,7 +419,6 @@ export function SidebarContent({
   )
 }
 
-/** The logo goes to Home, which opens the last place visited. Logo lockup: white Spark logo, divider, FLOW. */
 /** The last row of Channels (spec 5.1, .sf-side-add): muted, with a +; it opens New channel. */
 export function AddChannelsRow({ collapsed, onAdd }: { collapsed: boolean; onAdd: () => void }) {
   return (
@@ -437,6 +436,7 @@ export function AddChannelsRow({ collapsed, onAdd }: { collapsed: boolean; onAdd
   )
 }
 
+/** The logo goes to Home, which opens the last place visited. Logo lockup: white Spark logo, divider, FLOW. */
 export function Logo({ collapsed = false, onClick }: { collapsed?: boolean; onClick?: () => void }) {
   return (
     <Link to="/" onClick={onClick} className="sf-focus flex items-center gap-3 rounded-sf-md" aria-label="Spark Flow home">

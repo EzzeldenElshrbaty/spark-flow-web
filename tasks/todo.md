@@ -840,3 +840,17 @@ From `docs/flow-chat/AUDIT.md` "Fix first" 11–15. Test first; not pushed.
 - [x] M. "Add channels" row at the end of Channels (opens New channel); ⌘/Ctrl+Shift+A opens Activity anywhere in a workspace. Ruling: no Channels options button, the spec names no options. Tests: `SideLink.test.tsx`, `useAppShortcuts.test.tsx` (2). 4232efc
 
 Review: 135 files / 1344 tests pass; tsc, lint and the prototype build are clean. Checked in the app at 1440×900: account menu (headings, checks, Soon items), bell panel in the chat tokens, "Add channels" row, ⌘⇧A → Activity.
+
+## Review of audit batches A–M: fixes (29 Oct 2026)
+
+Fresh review of 274a62f..e14f886. Fixed test first; not pushed.
+
+- [x] Important 1. The visit and the U hold were ended by StrictMode's remount in the dev app (opening a channel from another page, then Files and back, lost the New line). The scope's end now waits a microtask and is dropped when the channel's page is back. Test: `readState.test.tsx` under `reactStrictMode` (RTL's option; a `<StrictMode>` wrapper doesn't double effects there). Checked in the dev app. 6550db0
+- [x] Important 2. View as keeps the account menu open until the switch lands, so a failure shows there (`MenuItem keepOpen`, closed with `useCloseMenu` on success). Test: `shellMenus.test.tsx`. 2f7fb85
+- [x] Important 3. `@here` keeps who it reached (`hereIds`, set when @here first appears, dropped when an edit takes it out); the live notice and Activity read it. Contract updated. Tests: `mentions.test.ts` (2). d185130
+- [x] Important 4. The textarea Composer: task comments don't offer @here; the project Chat tab asks before @channel/@here to more than 25 members. Tests: `mentionQuery.test.ts`, `Composer.test.tsx` (2). edc70de
+- [x] Minor 5. ⌘/Ctrl+Shift+A matches `code` (any layout), ignores repeats and open dialogs. Minor 6. `trapTab` handles focus on the container. Minor 7. The toolbar sends one reaction at a time. Minor 10. Logo's doc comment back on Logo. Tests: `useAppShortcuts.test.tsx`, `layers.test.tsx`, `MessageToolbar.test.tsx`.
+- Ruling (minor 8): `@here` highlights the row for every member, away ones included — the row says what the message is (a group mention), not whether it notified me; the notice and Activity are the per-person part. Cost if wrong: a highlight an away person didn't get a ping for.
+- Ruling (minor 9): the confirm counts the channel's members, sender included ("all 26 people in this channel") — it describes the channel, and the spec's rule is "more than 25 members". Cost if wrong: one person off in the sentence.
+
+Review: 136 files / 1352 tests pass; tsc, lint and the prototype build are clean.

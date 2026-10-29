@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import type { ComponentProps } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ToastProvider } from '@/components/sf/Toast'
@@ -78,6 +78,18 @@ describe('the message toolbar (spec 6.4)', () => {
     // Mine already: pressing it takes it off (a DELETE), never a toggle the server has to guess.
     fireEvent.click(named('React with ✅'))
     await vi.waitFor(() => expect(react).toHaveBeenCalledWith({ kind: 'message', id: 'm1' }, '✅', false))
+  })
+
+  it('a quick reaction waits for the one in flight: a fast double press sends once (spec §8)', async () => {
+    let land: () => void = () => {}
+    const react = vi.spyOn(api.chat, 'react').mockImplementation(() => new Promise<void>((r) => (land = r)))
+    show()
+    fireEvent.click(named('React with 👀'))
+    await vi.waitFor(() => expect(react).toHaveBeenCalledOnce())
+    fireEvent.click(named('React with 👀'))
+    await act(() => new Promise((r) => setTimeout(r, 30)))
+    expect(react).toHaveBeenCalledOnce()
+    await act(async () => land())
   })
 
   it('Reply in thread says its key (T) and opens the thread', () => {

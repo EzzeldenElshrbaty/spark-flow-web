@@ -114,10 +114,11 @@ export function MessageToolbar({
   }, [touch])
 
   const mine = (emoji: string) => meId != null && reactions.some((r) => r.emoji === emoji && r.userIds.includes(meId))
-  const toggle = (emoji: string) => react.mutate({ target, emoji, on: !mine(emoji) })
+  // One reaction at a time from here: a fast second press while one is in flight could land first and undo it.
+  const toggle = (emoji: string) => !react.isPending && react.mutate({ target, emoji, on: !mine(emoji) })
   // The picker only adds: picking one I gave already isn't a toggle off.
   const add = (emoji: string) => {
-    if (!mine(emoji)) react.mutate({ target, emoji, on: true })
+    if (!react.isPending && !mine(emoji)) react.mutate({ target, emoji, on: true })
   }
   // A refused delete says why, here, outside the toolbar: shown while it hides.
   const [deleteError, setDeleteError] = useState<string | null>(null)

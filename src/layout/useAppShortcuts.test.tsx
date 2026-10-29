@@ -20,13 +20,27 @@ const press = (init: KeyboardEventInit, target: EventTarget = document.body) => 
 }
 
 describe('useAppShortcuts (spec 10)', () => {
+  it('goes by the key, not the letter (an Arabic layout), and holds off on repeats and while a dialog is open', () => {
+    renderHook(() => useAppShortcuts('engineering'), { wrapper })
+    press({ key: 'ش', code: 'KeyA', metaKey: true, shiftKey: true })
+    expect(navigate).toHaveBeenCalledTimes(1)
+    press({ key: 'A', code: 'KeyA', metaKey: true, shiftKey: true, repeat: true })
+    const dialog = document.createElement('div')
+    dialog.setAttribute('role', 'dialog')
+    dialog.setAttribute('aria-modal', 'true')
+    document.body.appendChild(dialog)
+    press({ key: 'A', code: 'KeyA', metaKey: true, shiftKey: true })
+    dialog.remove()
+    expect(navigate).toHaveBeenCalledTimes(1)
+  })
+
   it('⌘/Ctrl+Shift+A opens Activity, from anywhere in the app, also while typing', () => {
     renderHook(() => useAppShortcuts('engineering'), { wrapper })
-    expect(press({ key: 'A', metaKey: true, shiftKey: true }).defaultPrevented).toBe(true)
+    expect(press({ key: 'A', code: 'KeyA', metaKey: true, shiftKey: true }).defaultPrevented).toBe(true)
     expect(navigate).toHaveBeenLastCalledWith('/w/engineering/activity')
     const box = document.createElement('textarea')
     document.body.appendChild(box)
-    press({ key: 'a', ctrlKey: true, shiftKey: true }, box)
+    press({ key: 'a', code: 'KeyA', ctrlKey: true, shiftKey: true }, box)
     expect(navigate).toHaveBeenCalledTimes(2)
     box.remove()
   })

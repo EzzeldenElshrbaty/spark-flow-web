@@ -67,7 +67,11 @@ export function trapTab(event: KeyboardEvent | React.KeyboardEvent, container: H
   }
   const first = items[0]
   const last = items[items.length - 1]
-  if (event.shiftKey && document.activeElement === first) {
+  // Focus on the container itself (a press on a dialog's padding): Tab goes to its first control, Shift+Tab its last.
+  if (document.activeElement === container) {
+    event.preventDefault()
+    ;(event.shiftKey ? last : first).focus()
+  } else if (event.shiftKey && document.activeElement === first) {
     event.preventDefault()
     last.focus()
   } else if (!event.shiftKey && document.activeElement === last) {
