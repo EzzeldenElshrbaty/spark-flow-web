@@ -96,9 +96,9 @@ Until the rich composer lands (feature 5), the server works `body` out from `con
 
 | Call | Route | Returns |
 |---|---|---|
-| Resolve keys | `GET /api/tasks/resolve?keys=NEX-103,NEX-104` | `TaskRef[]` for the keys that are tasks the person may see: `key, title, status, statusLabel, category, projectKey, projectName, assigneeId`. |
+| Resolve keys | `GET /api/tasks/resolve?keys=NEX-103,NEX-104` | `TaskRef[]` for the keys that are tasks the person may see: `key, title, status, statusLabel, category, projectKey, projectName, assigneeId`. The server filters by the caller's access to each task's project and leaves out any key it can't show; it never says why a key is missing. |
 
-The client refreshes resolved tasks on `ticketUpdated`, so chip status is live.
+The client refreshes resolved tasks on `ticketUpdated`, so chip status is live. It also keeps a chip only when the task's project is one the viewer can see in the open workspace (`useBodyContext`); anything else stays plain text. The mock has no private projects (everyone in a workspace sees all its projects), so its `resolve` returns every task that exists: the per-project check is the backend's.
 
 ### Thread summary
 
