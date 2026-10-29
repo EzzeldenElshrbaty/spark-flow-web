@@ -158,16 +158,43 @@ describe('Esc: markOpenChannelRead (spec 10)', () => {
 })
 
 describe('useReadHoldScope', () => {
-  it('ends the hold when I leave the channel, for another one or another page', () => {
+  it('ends the hold when I leave the channel, for another one or another page', async () => {
     useReadHold.getState().hold('c1')
     const { rerender, unmount } = renderHook(({ id }) => useReadHoldScope(id), { initialProps: { id: 'c1' } })
     rerender({ id: 'c1' })
     expect(useReadHold.getState().channelId).toBe('c1')
     rerender({ id: 'c2' })
+    await act(async () => {})
     expect(useReadHold.getState().channelId).toBeNull()
     useReadHold.getState().hold('c2')
     unmount()
+    await act(async () => {})
     expect(useReadHold.getState().channelId).toBeNull()
+  })
+
+  it('under StrictMode (the dev app) the visit and the hold outlive the double mount, and still end when I leave', async () => {
+    vi.spyOn(api.chat, 'markRead').mockResolvedValue()
+    vi.spyOn(api.chat, 'markUnread').mockResolvedValue()
+    const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
+    const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    // The page and its Messages tab mount together, as when a channel opens from another page.
+    const page = renderHook(
+      ({ c }) => {
+        useReadHoldScope(c.id)
+        return useChannelReadState(c)
+      },
+      { wrapper, reactStrictMode: true, initialProps: { c: { ...channel('c1'), unreadCount: 3, lastReadSeq: 6 } } },
+    )
+    await act(async () => {})
+    expect(useChannelVisit.getState().visit).toMatchObject({ channelId: 'c1', newAfterSeq: 6 })
+    await act(() => page.result.current.markUnread(5))
+    await act(async () => {})
+    expect(useReadHold.getState().channelId).toBe('c1')
+    // Leaving for another channel ends both.
+    page.rerender({ c: channel('c2') })
+    await act(async () => {})
+    expect(useReadHold.getState().channelId).toBeNull()
+    expect(useChannelVisit.getState().visit?.channelId).not.toBe('c1')
   })
 
   it('ends the visit when I leave, so coming back reads the marker afresh', async () => {
@@ -176,6 +203,7 @@ describe('useReadHoldScope', () => {
     setup({ ...channel('c1'), unreadCount: 3, lastReadSeq: 6 }).unmount()
     expect(useChannelVisit.getState().visit?.channelId).toBe('c1')
     scope.rerender({ id: 'c2' })
+    await act(async () => {})
     expect(useChannelVisit.getState().visit).toBeNull()
     expect(setup(channel('c1')).result.current).toMatchObject({ newAfterSeq: 9, unreadOnOpen: 0 })
   })

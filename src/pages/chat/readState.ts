@@ -25,13 +25,25 @@ function updateVisit(channelId: string, patch: Partial<Visit>) {
   useChannelVisit.setState((s) => (s.visit?.channelId === channelId ? { visit: { ...s.visit, ...patch } } : s))
 }
 
-/** Ends the hold and the visit when I leave the channel: for another one, or another page. Switching tabs inside it isn't leaving. */
+/** How many channel pages are on screen for each channel, so a remount isn't taken for leaving. */
+const scopes = new Map<string, number>()
+
+/**
+ * Ends the hold and the visit when I leave the channel: for another one, or another page. Switching tabs inside it
+ * isn't leaving, and neither is a remount (StrictMode's in the dev app): the end waits a microtask and is dropped when
+ * the channel's page is back by then.
+ */
 export function useReadHoldScope(channelId: string | undefined) {
   useEffect(() => {
     if (!channelId) return
+    scopes.set(channelId, (scopes.get(channelId) ?? 0) + 1)
     return () => {
-      useReadHold.getState().release(channelId)
-      useChannelVisit.setState((s) => (s.visit?.channelId === channelId ? { visit: null } : s))
+      scopes.set(channelId, (scopes.get(channelId) ?? 1) - 1)
+      queueMicrotask(() => {
+        if ((scopes.get(channelId) ?? 0) > 0) return
+        useReadHold.getState().release(channelId)
+        useChannelVisit.setState((s) => (s.visit?.channelId === channelId ? { visit: null } : s))
+      })
     }
   }, [channelId])
 }
