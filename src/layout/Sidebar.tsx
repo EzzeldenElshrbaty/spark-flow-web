@@ -345,11 +345,16 @@ export function SidebarContent({
             {chatLoading ? (
               <GroupSkeleton />
             ) : (
-              channels.map((r) => (
-                <li key={r.channel.id} className="flex-none">
-                  <ChannelLink slug={slug} row={r} mentions={mentions.byChannel.get(r.channel.id) ?? 0} {...row} />
+              <>
+                {channels.map((r) => (
+                  <li key={r.channel.id} className="flex-none">
+                    <ChannelLink slug={slug} row={r} mentions={mentions.byChannel.get(r.channel.id) ?? 0} {...row} />
+                  </li>
+                ))}
+                <li className="flex-none">
+                  <AddChannelsRow collapsed={collapsed} onAdd={() => setNewChannel(true)} />
                 </li>
-              ))
+              </>
             )}
           </SideSection>
         )}
@@ -415,6 +420,23 @@ export function SidebarContent({
 }
 
 /** The logo goes to Home, which opens the last place visited. Logo lockup: white Spark logo, divider, FLOW. */
+/** The last row of Channels (spec 5.1, .sf-side-add): muted, with a +; it opens New channel. */
+export function AddChannelsRow({ collapsed, onAdd }: { collapsed: boolean; onAdd: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onAdd}
+      className={clsx(
+        'sf-focus flex h-11 w-full flex-none cursor-pointer items-center gap-2 rounded-sf-md px-2 font-sf text-[14px]/[20px] whitespace-nowrap text-sf-sidebar-text-muted transition-colors duration-150 ease-sf hover:bg-sf-sidebar-hover hover:text-sf-sidebar-text lg:h-7',
+        collapsed && 'justify-center',
+      )}
+    >
+      <Icon icon={IconPlus} size={18} className="flex-none" />
+      <span className={collapsed ? 'sr-only' : 'truncate'}>Add channels</span>
+    </button>
+  )
+}
+
 export function Logo({ collapsed = false, onClick }: { collapsed?: boolean; onClick?: () => void }) {
   return (
     <Link to="/" onClick={onClick} className="sf-focus flex items-center gap-3 rounded-sf-md" aria-label="Spark Flow home">

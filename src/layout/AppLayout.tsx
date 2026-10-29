@@ -11,6 +11,8 @@ import { mainCardClass } from '@/layout/mainCard'
 import { Sidebar } from '@/layout/Sidebar'
 import { PhoneTimerBar, TimerAnnouncer } from '@/layout/TimerBar'
 import { TopBar } from '@/layout/TopBar'
+import { useAppShortcuts } from '@/layout/useAppShortcuts'
+import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { useUiStore } from '@/lib/uiStore'
 import { useRole } from '@/lib/useRole'
 import { AccountState } from '@/layout/AccountState'
@@ -21,6 +23,8 @@ export function AppLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   // The phone search screen opens from the top bar; its state lives here with the other overlays.
   const [searchOpen, setSearchOpen] = useState(false)
+  // ⌘/Ctrl+Shift+A for Activity, anywhere in the workspace (spec 10).
+  useAppShortcuts(useCurrentWorkspace().workspace?.slug)
   // Without an account nothing below can be decided: say why instead of refusing every page.
   const account = useRole()
   // A pane page (a channel) fills the card instead of scrolling inside the padded page column.

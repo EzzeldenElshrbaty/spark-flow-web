@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { IconHash } from '@tabler/icons-react'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SideLink } from '@/layout/Sidebar'
 
 afterEach(cleanup)
@@ -47,5 +47,21 @@ describe('SideLink states (spec 5.1)', () => {
   it('a row can opt out of lighting up on its route', () => {
     row({ active: false }, '/c/backend')
     expect(screen.getByRole('link', { name: 'backend' }).className).not.toContain('bg-sf-sidebar-active')
+  })
+})
+
+describe('AddChannelsRow (spec 5.1: "Add channels" at the end of Channels)', () => {
+  it('is a muted row with a + that opens New channel; collapsed, the label is for screen readers', async () => {
+    const { AddChannelsRow } = await import('@/layout/Sidebar')
+    const onAdd = vi.fn()
+    render(<AddChannelsRow collapsed={false} onAdd={onAdd} />)
+    const button = screen.getByRole('button', { name: 'Add channels' })
+    expect(button.className).toContain('text-sf-sidebar-text-muted')
+    fireEvent.click(button)
+    expect(onAdd).toHaveBeenCalledOnce()
+    cleanup()
+    render(<AddChannelsRow collapsed onAdd={onAdd} />)
+    expect(screen.getByRole('button', { name: 'Add channels' }).textContent).toBe('Add channels')
+    expect(screen.getByText('Add channels').className).toContain('sr-only')
   })
 })
