@@ -8,7 +8,8 @@ import type { ChatMessage, ChatTarget, SystemEvent, ThreadReply, User } from '@/
 import { announce } from '@/components/sf/Announcer'
 import { Avatar } from '@/components/sf/Avatar'
 import { Icon } from '@/components/sf/Icon'
-import { formatDate, formatTime } from '@/lib/format'
+import { Tooltip } from '@/components/sf/Tooltip'
+import { formatTime } from '@/lib/format'
 import { firstPreviewable } from '@/lib/linkPreview'
 import { parseInspector, withInspector } from '@/lib/inspector'
 import { paths } from '@/lib/paths'
@@ -173,11 +174,14 @@ export function ChannelMessage({
           navigate({ search: withInspector(params, { kind: 'thread', messageId: threadId }).toString() }, { state: replyState, replace: open?.kind === 'thread' && open.messageId === threadId })
         }
       : undefined
-  const full = `${formatDate(message.createdAt)}, ${formatTime(message.createdAt)}`
+  // The full date, with its weekday, in the chat tooltip (spec 6.3, 6.15); the time itself carries it as `datetime`.
+  const full = `${new Date(message.createdAt).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })}, ${formatTime(message.createdAt)}`
   const time = (
-    <time dateTime={message.createdAt} title={full} className="sf-meta whitespace-nowrap text-sf-text-muted tabular-nums">
-      {sendState === 'sending' ? 'Sending…' : formatTime(message.createdAt)}
-    </time>
+    <Tooltip label={full}>
+      <time dateTime={message.createdAt} className="sf-meta whitespace-nowrap text-sf-text-muted tabular-nums">
+        {sendState === 'sending' ? 'Sending…' : formatTime(message.createdAt)}
+      </time>
+    </Tooltip>
   )
 
   let body: ReactNode
@@ -197,7 +201,7 @@ export function ChannelMessage({
     const link = firstPreviewable(message.body)
     body = (
       <>
-        <MessageBody body={message.body} ctx={ctx} muted={sendState === 'failed'} after={message.editedAt && <span className="sf-meta text-sf-text-muted">(edited)</span>} />
+        <MessageBody body={message.body} ctx={ctx} muted={sendState === 'failed'} after={message.editedAt && <span className="sf-meta ms-1 text-sf-text-muted">(edited)</span>} />
         <MessageFiles attachments={message.attachments} link={permalink} message={message} pending={Boolean(sendState)} />
         {root && <LinkedTasks message={root} ctx={ctx} />}
         {unfurl && <TaskUnfurl task={unfurl} users={users} />}

@@ -1,3 +1,4 @@
+import clsx from 'clsx'
 import {
   IconApple,
   IconBallFootball,
@@ -143,7 +144,17 @@ export function EmojiPicker({ onPick }: { onPick: (emoji: string) => void }) {
       {!query.trim() && (
         <div role="group" aria-label="Emoji categories" className="flex flex-none gap-0.5 border-b border-sf-line px-2">
           {sections.map((s) => (
-            <IconButton key={s.id} label={s.label} icon={ICONS[s.id]} size="sm" tone="muted" pressed={tab === s.id} onClick={() => goTo(s.id)} />
+            <IconButton
+              key={s.id}
+              label={s.label}
+              icon={ICONS[s.id]}
+              size="sm"
+              tone="muted"
+              pressed={tab === s.id}
+              onClick={() => goTo(s.id)}
+              // The active one has a 2px accent bar on the row's line, rounded at the top only (spec 6.6).
+              className={clsx('relative after:absolute after:inset-x-1 after:-bottom-px after:h-0.5 after:rounded-t-[2px]', tab === s.id && 'after:bg-sf-accent-fill')}
+            />
           ))}
         </div>
       )}

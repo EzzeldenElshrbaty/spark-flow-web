@@ -137,6 +137,22 @@ describe('ChannelMessage states (spec 6.3)', () => {
     expect(screen.getByText('(edited)')).toBeTruthy()
   })
 
+  it('"(edited)" sits on the last line of the text, not a line of its own (.sf-edited)', () => {
+    show(message('first line\n\nfixed', { editedAt: '2026-10-28T09:05:00.000Z' }))
+    const edited = screen.getByText('(edited)')
+    expect(edited.closest('p')?.textContent).toBe('fixed (edited)')
+    expect(edited.className).toContain('ms-1')
+  })
+
+  it('the time shows its full date with the weekday in the chat tooltip, not a native title (spec 6.3, 6.15)', async () => {
+    show(message('hi'))
+    const time = document.querySelector('time')!
+    expect(time.getAttribute('title')).toBeNull()
+    fireEvent.pointerEnter(time)
+    const tip = await screen.findByRole('tooltip', { hidden: true }, { timeout: 2000 })
+    expect(tip.textContent).toBe('Wednesday, 28 Oct 2026, ' + time.textContent)
+  })
+
   it('a deleted message with replies says it was deleted, with its thread', () => {
     const row = show(message('', { deletedAt: 'T', body: [], threadCount: 2 }))
     expect(row.textContent).toContain('This message was deleted.')

@@ -66,3 +66,14 @@ describe('EmojiPicker (spec 6.6)', () => {
     expect(document.activeElement).toBe(screen.getByRole('searchbox', { name: 'Search emoji' }))
   })
 })
+
+describe('EmojiPicker category tabs (spec 6.6)', () => {
+  it('the active category has the 2px accent bar under it; the others none', () => {
+    render(<EmojiPicker onPick={vi.fn()} />)
+    const tabs = [...screen.getByRole('group', { name: 'Emoji categories' }).querySelectorAll('button')]
+    const active = tabs.filter((b) => b.getAttribute('aria-pressed') === 'true')
+    expect(active).toHaveLength(1)
+    expect(active[0].className.split(' ')).toEqual(expect.arrayContaining(['after:h-0.5', 'after:bg-sf-accent-fill', 'after:rounded-t-[2px]']))
+    for (const b of tabs.filter((t) => t !== active[0])) expect(b.className).not.toContain('after:bg-sf-accent-fill')
+  })
+})

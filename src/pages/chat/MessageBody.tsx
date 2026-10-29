@@ -150,7 +150,9 @@ function Inlines({ nodes, ctx }: { nodes: Inline[]; ctx: BodyContext }) {
   )
 }
 
-function Blocks({ blocks, ctx }: { blocks: Block[]; ctx: BodyContext }) {
+/** `tail` ("(edited)") ends the last paragraph's line; after any other last block it takes its own line. */
+function Blocks({ blocks, ctx, tail }: { blocks: Block[]; ctx: BodyContext; tail?: ReactNode }) {
+  const last = blocks.length - 1
   return (
     <>
       {blocks.map((b, i) => {
@@ -158,6 +160,7 @@ function Blocks({ blocks, ctx }: { blocks: Block[]; ctx: BodyContext }) {
           return (
             <p key={i} dir="auto" className="whitespace-pre-wrap">
               <Inlines nodes={b.children} ctx={ctx} />
+              {i === last && tail && <> {tail}</>}
             </p>
           )
         if (b.type === 'code')
@@ -210,8 +213,8 @@ export function taskKeysOf(body: Body): string[] {
 export function MessageBody({ body, ctx, after, muted = false }: { body: Body; ctx: BodyContext; after?: ReactNode; muted?: boolean }) {
   return (
     <div className={clsx('space-y-1 break-words [overflow-wrap:anywhere]', muted ? 'text-sf-text-muted' : 'text-sf-text', isJumbo(body) ? 'sf-emoji text-[32px]/[40px]' : 'sf-body')}>
-      <Blocks blocks={body} ctx={ctx} />
-      {after}
+      <Blocks blocks={body} ctx={ctx} tail={after} />
+      {body[body.length - 1]?.type !== 'p' && after}
     </div>
   )
 }
