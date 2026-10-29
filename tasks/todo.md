@@ -817,3 +817,14 @@ From `docs/flow-chat/AUDIT.md` "Fix first" 1–4. Test first; not pushed.
 - [x] D. Image and video frames hug the media, at most 420px (cap moved from the img to the wrapper). Tests: `MessageFiles.browser.test.tsx` (1600×900, 2000×300, 400×1600, 100×100). 8358442
 
 Review: full suite 128 files / 1303 tests pass; tsc, lint and the prototype build are clean. Checked in the app: ⌘K in the #backend composer keeps focus in Link address; in #general the unread bar and New line are still there after Files → Messages. Video frame: same fix as images, not covered by a test (headless Chromium can't play a generated clip).
+
+## Audit fixes, batches E–H (29 Oct 2026)
+
+From `docs/flow-chat/AUDIT.md` "Fix first" 5–10. Test first; not pushed.
+
+- [x] E. Task chip privacy. Ruling: no leak in this model. Every workspace member sees all its projects, keys are unique across workspaces, and `useBodyContext` already drops a resolved task whose project isn't in the viewer's set; the per-project check is the backend's. Pinned with `useBodyContext.test.tsx`; contract says the server filters by project access and omits keys silently. Cost if wrong: once projects can be private, the mock's `resolve` needs the same rule as `projects.list`. 2093f8e
+- [x] F. Main card of a chat pane on the chat surface (`layout/mainCard.ts`); Send 28×36 with a 16px icon; + as the round pill that inverts when open; action row 0 8 8 4; editor 50vh; formatting icons text-secondary on focus (pressed ones stay text); typing line text-secondary with names in text. Tests: `mainCard.test.ts`, `RichComposer.browser.test.tsx` "metrics" (4, computed against the tokens), `ChannelTyping.test.tsx`. 5734570
+- [x] G. Thread panel header: "Thread" + "#channel" subline in a 52px sf header (InspectorFrame `sub`), sf "N replies" divider; summary shows up to 5 faces and "today at 9:41 AM" / "yesterday at …" / "5 days ago" (`lastReplyWhen`). Place and 384px width stay as ruled; task and file panels keep the old frame. Tests: `ThreadInspector.test.tsx` (2), `format.test.ts`, `ChannelMessage.test.tsx` (5 faces). f9c4853
+- [x] H. "(edited)" inline at the end of the last paragraph; the time's full date with weekday in the sf Tooltip; emoji picker active-tab accent bar. Ruling: the channel tab rule stays at bottom 0 (the row's line is an inset shadow inside it, so 0 covers the same pixels as the reference's -1px over a border). Tests: `ChannelMessage.test.tsx` (2), `EmojiPicker.test.tsx`. 3e47fd4
+
+Review: 131 files / 1317 tests pass (one browser file timed out starting its iframe in the full run and passed on a rerun of the browser project, 9/9 files); tsc, lint and the prototype build are clean. Checked in the app at 1440×900: thread panel header, last-reply copy, main card on white.
