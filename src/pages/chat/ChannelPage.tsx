@@ -37,6 +37,7 @@ import { MessageSkeleton } from '@/pages/chat/MessageSkeleton'
 import { useChannelReadState, useReadHold, useReadHoldScope } from '@/pages/chat/readState'
 import { ChannelShortcuts, type ChannelNavState } from '@/pages/chat/ChannelShortcuts'
 import { useGroupConfirm } from '@/pages/chat/composer/useGroupConfirm'
+import { useChannelInvite } from '@/pages/chat/composer/useChannelInvite'
 import { FileActionsProvider } from '@/pages/chat/files/FileActions'
 import { withInspector } from '@/lib/inspector'
 import { UploadTray } from '@/pages/chat/uploads/UploadTray'
@@ -441,16 +442,19 @@ function ChannelComposer({
   const directory = useComposerDirectory(channel.workspaceId, channel.memberIds)
   // @channel or @here to more than 25 members asks first (spec 6.8).
   const loud = useGroupConfirm(channel.kind === 'channel' ? `#${channel.name}` : 'this conversation', channel.memberIds.length)
+  // Someone mentioned who isn't in the channel: add them, or send without them (spec 6.8).
+  const invite = useChannelInvite(channel, directory.users)
   if (drafts.isPending) return composerSkeleton
   const draft = drafts.data?.find((d) => d.channelId === channel.id && d.rootId === null)
   return (
     <Suspense fallback={composerSkeleton}>
     {loud.dialog}
+    {invite.dialog}
     <RichComposer
       key={channel.id}
       placeholder={placeholder}
       initialBody={draft?.body}
-      onSend={(body) => loud.confirm(body).then(() => onSend(body))}
+      onSend={(body) => loud.confirm(body).then(() => invite.confirm(body)).then(() => onSend(body))}
       onEditLast={onEditLast}
       onDraft={(body) => saveDraft(channel.id, body)}
       onTyping={onTyping}

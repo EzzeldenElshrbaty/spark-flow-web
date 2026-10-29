@@ -3,6 +3,7 @@ import { useDraftSaver, useDrafts } from '@/api/chat'
 import type { Channel } from '@/api/types'
 import { Checkbox } from '@/components/sf/Toggle'
 import type { Body } from '@/lib/messageBody'
+import { useChannelInvite } from '@/pages/chat/composer/useChannelInvite'
 import { useGroupConfirm } from '@/pages/chat/composer/useGroupConfirm'
 import { useComposerDirectory } from '@/pages/chat/useComposerDirectory'
 import { UploadTray } from '@/pages/chat/uploads/UploadTray'
@@ -39,11 +40,14 @@ export function ThreadComposer({
   const uploads = useUploads(channel.id)
   // @channel or @here to more than 25 members asks first (spec 6.8).
   const loud = useGroupConfirm(channel.kind === 'channel' ? `#${channel.name}` : 'this conversation', channel.memberIds.length)
+  // Someone mentioned who isn't in the channel: add them, or send without them (spec 6.8).
+  const invite = useChannelInvite(channel, directory.users)
   if (drafts.isPending) return skeleton
   const draft = drafts.data?.find((d) => d.channelId === channel.id && d.rootId === rootId)
   return (
     <div className="sf flex flex-col gap-2" {...paneDrop(true, uploads.add)}>
       {loud.dialog}
+      {invite.dialog}
       <Suspense fallback={skeleton}>
         <RichComposer
           key={rootId}
@@ -51,7 +55,11 @@ export function ThreadComposer({
           initialBody={draft?.body}
           showFormatting={false}
           onSend={(body) =>
-            loud.confirm(body).then(() => onSend(body, also, uploads.ready.map((f) => f.id))).then(() => {
+            loud
+              .confirm(body)
+              .then(() => invite.confirm(body))
+              .then(() => onSend(body, also, uploads.ready.map((f) => f.id)))
+              .then(() => {
               setAlso(false)
               uploads.clear()
             })
