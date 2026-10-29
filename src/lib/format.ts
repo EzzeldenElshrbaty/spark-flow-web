@@ -48,6 +48,15 @@ export function formatWhen(iso: string, now = new Date()) {
   return `${date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}, ${time}`
 }
 
+/** When a thread's last reply came (spec 6.7): "today at 9:41 AM", "yesterday at 11:05 PM", or "5 days ago". */
+export function lastReplyWhen(iso: string, now = new Date()) {
+  const date = new Date(iso)
+  const days = Math.round((new Date(now).setHours(0, 0, 0, 0) - new Date(date).setHours(0, 0, 0, 0)) / (24 * HOUR))
+  if (days <= 0) return `today at ${formatTime(date)}`
+  if (days === 1) return `yesterday at ${formatTime(date)}`
+  return `${days} days ago`
+}
+
 export function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }

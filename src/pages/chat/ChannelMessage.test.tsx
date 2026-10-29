@@ -241,6 +241,16 @@ describe('ChannelMessage parts (feature 4 follow-up)', () => {
     expect(row.textContent).toContain('View thread')
   })
 
+  it('the thread summary shows up to 5 who replied, and says when the last reply came in words (spec 6.7)', () => {
+    const at = new Date()
+    at.setHours(9, 41, 0, 0)
+    show(message('root', { threadCount: 9, lastReplyAt: at.toISOString(), replyUserIds: ['u-1', 'u-2', 'u-3', 'u-4', 'u-5', 'u-6'] }))
+    const link = screen.getByRole('link', { name: /^9 replies/ })
+    // The faces come first, one avatar each.
+    expect(link.firstElementChild!.children.length).toBe(5)
+    expect(link.textContent).toContain('Last reply today at 9:41 AM')
+  })
+
   it('a reply has no thread summary and acts as a reply', () => {
     const reply: ThreadReply = { id: 'r1', messageId: 'm1', channelId: 'c1', senderId: 'u-2', content: 'ok', body: parseBody('ok'), attachments: [], reactions: [], mentions: [], createdAt: '2026-10-28T09:00:00.000Z' }
     const row = show(reply)

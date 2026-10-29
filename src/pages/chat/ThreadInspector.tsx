@@ -9,7 +9,6 @@ import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { channelLabel, inWorkspace, isArchived, mustJoin, onlyAdminsLine } from '@/lib/channels'
 import { useProjectSummaries } from '@/api/projects'
 import { JoinChannelLine } from '@/pages/chat/ChannelActions'
-import { firstLine } from '@/lib/inspector'
 import { useRole } from '@/lib/useRole'
 import { NotFound } from '@/pages/NotFound'
 import { ThreadComposer } from '@/pages/chat/ThreadComposer'
@@ -54,9 +53,9 @@ export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: st
   // A message from another workspace's channel is not found in this one.
   const foreign = Boolean(channel.data && workspace && !inWorkspace(channel.data, workspace.id))
   const where = channel.data && !foreign ? (channel.data.kind === 'channel' ? `#${channel.data.name}` : channelLabel(channel.data, users.data ?? [], persona.id)) : null
-  const eyebrow = where ? `Thread · ${where}` : 'Thread'
-  // The title waits for the channel too, so a message from another workspace never shows even briefly.
-  const title = foreign ? 'Thread' : message.data && channel.data ? firstLine(message.data.content) || 'Thread' : message.isPending || channel.isLoading ? <TitleSkeleton /> : 'Thread'
+  // The panel is "Thread", with where it is as a muted subline (spec 6.7); the place waits for the channel, so a
+  // message from another workspace never shows it even briefly.
+  const sub = where ?? (message.isPending || channel.isLoading ? <TitleSkeleton /> : null)
 
   let body
   if (foreign || isNotFound(message.error)) body = <NotFound what="message" backTo={closeTo} backLabel="Close the thread" />
@@ -72,18 +71,18 @@ export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: st
         <div className="-mx-3">
           <ChannelMessage message={message.data} users={people} ctx={ctx} meId={persona.id} canPost={canPost === true} continuation={false} showThread={false} compact />
         </div>
-        <div className="my-3 flex items-center gap-3 text-xs text-fg-muted">
+        <div className="sf-meta my-3 flex items-center gap-3 text-sf-text-muted">
           <span className="tabular-nums">
             {message.data.threadCount} {message.data.threadCount === 1 ? 'reply' : 'replies'}
           </span>
-          <span className="h-px flex-1 bg-line-subtle" />
+          <span className="h-px flex-1 bg-sf-line" />
         </div>
         {replies.isError ? (
           <QueryError what="Replies" onRetry={() => void replies.refetch()} />
         ) : replies.isPending ? (
           <InspectorSkeleton rows={3} />
         ) : replies.data.length === 0 ? (
-          <p className="text-sm text-fg-muted">No replies yet.</p>
+          <p className="sf-small text-sf-text-muted">No replies yet.</p>
         ) : (
           <ul className="-mx-3">
             {replies.data.map((reply, i) => (
@@ -142,7 +141,7 @@ export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: st
       onDetails={(file) => setParams((p) => withInspector(p, { kind: 'file', fileId: file.id }))}
       frozen={Boolean(channel.data && isArchived(channel.data))}
     >
-      <InspectorFrame label="Thread" eyebrow={eyebrow} title={title} actions={actions} onClose={onClose}>
+      <InspectorFrame label="Thread" title="Thread" sub={sub} actions={actions} onClose={onClose}>
         {body}
       </InspectorFrame>
     </FileActionsProvider>

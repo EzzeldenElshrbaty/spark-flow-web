@@ -12,7 +12,7 @@ import { Tooltip } from '@/components/sf/Tooltip'
 import { emojiInfo } from '@/lib/emoji'
 import { reactorsText } from '@/lib/reactions'
 import { EmojiPicker } from '@/pages/chat/EmojiPicker'
-import { timeAgo } from '@/lib/format'
+import { lastReplyWhen } from '@/lib/format'
 import { withInspector } from '@/lib/inspector'
 import { parseBody } from '@/lib/messageBody'
 import { unnamedKeys } from '@/lib/mentions'
@@ -176,12 +176,12 @@ export function Reactions({ reactions, users, target, meId, canReact }: { reacti
   )
 }
 
-/** The thread summary (spec 6.7): who replied, "3 replies", when the last came; hovering says View thread. */
+/** The thread summary (spec 6.7): up to 5 who replied, "3 replies", when the last came; hovering says View thread. */
 export function ThreadSummary({ message, users }: { message: ChatMessage; users: User[] }) {
   const [params] = useSearchParams()
   const count = `${message.threadCount} ${message.threadCount === 1 ? 'reply' : 'replies'}`
-  const last = message.lastReplyAt ? `Last reply ${timeAgo(message.lastReplyAt)}` : ''
-  const faces = (message.replyUserIds ?? []).slice(0, 3).map((id) => ({ id, name: users.find((u) => u.id === id)?.name ?? 'Unknown person' }))
+  const last = message.lastReplyAt ? `Last reply ${lastReplyWhen(message.lastReplyAt)}` : ''
+  const faces = (message.replyUserIds ?? []).slice(0, 5).map((id) => ({ id, name: users.find((u) => u.id === id)?.name ?? 'Unknown person' }))
   return (
     <Link
       to={{ search: withInspector(params, { kind: 'thread', messageId: message.id }).toString() }}
