@@ -54,16 +54,18 @@ export function ThreadComposer({
           placeholder="Reply in the thread"
           initialBody={draft?.body}
           showFormatting={false}
-          onSend={(body) =>
-            loud
+          onSend={(body) => {
+            // The cards that go with this reply; any added while it sends stay in the tray.
+            const sent = uploads.items.filter((i) => i.status === 'ready').map((i) => i.key)
+            return loud
               .confirm(body)
               .then(() => invite.confirm(body))
               .then(() => onSend(body, also, uploads.ready.map((f) => f.id)))
               .then(() => {
-              setAlso(false)
-              uploads.clear()
-            })
-          }
+                setAlso(false)
+                uploads.clear(sent)
+              })
+          }}
           onDraft={(body) => saveDraft(channel.id, body, rootId)}
           error={error}
           directory={directory}

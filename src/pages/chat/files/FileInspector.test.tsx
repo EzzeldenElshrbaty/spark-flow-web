@@ -100,3 +100,10 @@ describe('File details Access after the slice 6 review', () => {
     state = { data: details, error: null }
   })
 })
+
+describe('File details panel focus (slice 6 review)', () => {
+  it('opening it puts focus on its heading, so the keyboard carries on there', () => {
+    show()
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Release scope' }))
+  })
+})

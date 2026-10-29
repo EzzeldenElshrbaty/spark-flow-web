@@ -4,6 +4,7 @@ import { useDeleteFile, useShareFile, useUpdateFile } from '@/api/files'
 import type { Attachment, ChatMessage, User } from '@/api/types'
 import { Button } from '@/components/sf/Button'
 import { Modal } from '@/components/sf/Modal'
+import { ROW_FOCUS } from '@/pages/chat/MessageActions'
 import { channelLabel } from '@/lib/channels'
 import { fileDescriptionError, fileTitleError, MAX_FILE_DESCRIPTION } from '@/lib/fileDetails'
 import { usePermission } from '@/lib/usePermission'
@@ -136,11 +137,24 @@ function EditFile({ file, onClose }: { file: Attachment; onClose: () => void }) 
 function DeleteFile({ file, onClose }: { file: Attachment; onClose: () => void }) {
   const remove = useDeleteFile()
   const [error, setError] = useState<string | null>(null)
+  // Where focus goes once the file is gone, found now while what opened this is still there: its message's focus
+  // stop, else the panel's title or the list. The card leaves with the file, before this dialog could give focus back.
+  const [landing] = useState(() => {
+    const from = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    return [from?.closest('article')?.querySelector<HTMLElement>(`[${ROW_FOCUS}]`), from?.closest('aside')?.querySelector<HTMLElement>('h2'), from?.closest<HTMLElement>('[role="log"]')].filter(
+      (el): el is HTMLElement => Boolean(el),
+    )
+  })
   const go = async () => {
     setError(null)
     try {
       await remove.mutateAsync(file.id)
       onClose()
+      window.setTimeout(() => {
+        const active = document.activeElement
+        if (active && active !== document.body && active.isConnected) return
+        landing.find((el) => el.isConnected)?.focus()
+      })
     } catch (failure) {
       setError(errorText(failure))
     }

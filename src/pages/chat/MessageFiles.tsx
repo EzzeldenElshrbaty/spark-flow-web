@@ -22,6 +22,7 @@ import { Icon } from '@/components/sf/Icon'
 import { Menu, MenuItem, MenuSeparator } from '@/components/sf/Menu'
 import { useNoHover, usePhone } from '@/components/sf/usePhone'
 import { FileViewer } from '@/components/ui/FileViewer'
+import { viewedFile } from '@/lib/fileView'
 import { downloadUrl, fileSubline, previewOf } from '@/lib/fileTypes'
 import { useFileActions } from '@/pages/chat/files/FileActions'
 import { canMakeTask } from '@/pages/chat/taskDraft'
@@ -190,13 +191,9 @@ function Live({ attachment, link, message, pending }: { attachment: Attachment; 
   const preview = previewOf(attachment.name)
   const kind = preview === 'image' ? 'image' : playable ? 'video' : 'file'
   const open = () => setViewing(true)
-  // An office file opens through the preview the backend converted it to, when there is one (spec 6.9).
-  // Download in the viewer still saves the file itself, under its own name, not the preview.
-  const viewed =
-    preview === 'none' && attachment.previewUrl
-      ? { name: attachment.name, url: attachment.previewUrl, preview: 'pdf' as const, download: url ? { url, name: attachment.name } : null }
-      : url && { name: attachment.name, url }
-  const viewer = viewing && viewed && <FileViewer files={[{ ...viewed, sizeKb: Math.round(attachment.size / 1024) }]} onClose={() => setViewing(false)} />
+  // An office file opens through the preview the backend converted it to (spec 6.9); Download still saves the file.
+  const viewed = viewedFile(attachment, url)
+  const viewer = viewing && viewed && <FileViewer files={[viewed]} onClose={() => setViewing(false)} />
 
   // The type label above the card folds it away and back (spec 6.9 "PDF ▾"); its name says which file.
   const label = (

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { uploadChatFile } from '@/api/files'
+import { uploadProgress } from '@/pages/chat/uploads/uploadProgress'
 import type { Attachment } from '@/api/types'
 import { MAX_MESSAGE_FILES } from '@/lib/fileDetails'
 import { acceptFiles } from '@/lib/fileTypes'
@@ -19,11 +20,13 @@ const filesWord = (n: number) => (n === 1 ? '1 file' : `${n} files`)
  * channel; Send waits until all are ready. What can't be added is said; another channel starts with an empty tray and
  * cancels what was still going up. Files that were never sent aren't kept: the server drops them.
  */
+/** Keys unique across every tray, as the progress store is shared. */
+let uploadKeys = 0
+
 export function useUploads(channelId: string) {
   const [items, setItems] = useState<Upload[]>([])
   const [refused, setRefused] = useState<string[]>([])
   const controllers = useRef(new Map<string, AbortController>())
-  const counter = useRef(0)
 
   const patch = (key: string, change: Partial<Upload>) => setItems((list) => list.map((i) => (i.key === key ? { ...i, ...change } : i)))
 
@@ -31,7 +34,7 @@ export function useUploads(channelId: string) {
     (key: string, file: File) => {
       const controller = new AbortController()
       controllers.current.set(key, controller)
-      uploadChatFile(channelId, file, { signal: controller.signal, onProgress: (progress) => patch(key, { progress }) }).then(
+      uploadChatFile(channelId, file, { signal: controller.signal, onProgress: (progress) => uploadProgress.set(key, progress) }).then(
         // Only a file the scan passed is ready to send (spec 6.9); a blocked one can only be removed.
         (uploaded) =>
           patch(
@@ -63,7 +66,7 @@ export function useUploads(channelId: string) {
 
   const add = (picked: File[]) => {
     const { files, refused: why } = acceptFiles(items.map((i) => i.file), picked, MAX_MESSAGE_FILES)
-    const fresh = files.filter((f) => !items.some((i) => i.file === f)).map((file) => ({ key: `u${++counter.current}`, file }))
+    const fresh = files.filter((f) => !items.some((i) => i.file === f)).map((file) => ({ key: `u${++uploadKeys}`, file }))
     setRefused(why)
     setItems((list) => [...list, ...fresh.map(({ key, file }) => ({ key, file, status: 'uploading' as const, progress: 0, uploaded: null, error: null, retryable: true }))])
     for (const { key, file } of fresh) start(key, file)
@@ -79,8 +82,13 @@ export function useUploads(channelId: string) {
     patch(key, { status: 'uploading', progress: 0, error: null })
     start(key, item.file)
   }
-  /** After a send: the tray empties. */
-  const clear = () => {
+  /** After a send: the tray empties, or (with `keys`) loses just the cards that went, keeping any added meanwhile. */
+  const clear = (keys?: string[]) => {
+    if (keys) {
+      for (const key of keys) controllers.current.delete(key)
+      setItems((list) => list.filter((i) => !keys.includes(i.key)))
+      return
+    }
     controllers.current.clear()
     setItems([])
     setRefused([])

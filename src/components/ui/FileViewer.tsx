@@ -2,15 +2,13 @@ import clsx from 'clsx'
 import { ChevronLeft, ChevronRight, Download, FileText, Minus, Plus, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { downloadUrl, previewOf, type Preview } from '@/lib/fileTypes'
+import { downloadUrl, previewOf } from '@/lib/fileTypes'
+import { fetchCredentials, type ViewedFile } from '@/lib/fileView'
 import { isPdf } from '@/lib/pdfSignature'
 import { safeFileUrl } from '@/lib/safeFileUrl'
 
-/**
- * `preview`: how to show it when its name doesn't say (an office file's converted PDF preview). `download`: what
- * Download saves when that isn't what's shown (the office file itself, not its preview); null hides Download.
- */
-type ViewedFile = { name: string; url: string; sizeKb?: number; preview?: Preview; download?: { url: string; name: string } | null }
+// ViewedFile (lib/fileView): `preview` is how to show it when its name doesn't say (an office file's converted PDF
+// preview); `download` is what Download saves when that isn't what's shown (the file itself); null hides Download.
 
 /** What Download saves for a shown file, through safeFileUrl, or null. */
 function savedAs(file: ViewedFile): { url: string; name: string } | null {
@@ -130,7 +128,7 @@ function PdfView({ file }: { file: ViewedFile }) {
   useEffect(() => {
     let current = true
     let made: string | null = null
-    fetch(file.url, { credentials: 'include' })
+    fetch(file.url, { credentials: fetchCredentials(file.url) })
       .then((response) => (response.ok ? response.arrayBuffer() : Promise.reject(new Error(String(response.status)))))
       .then((buffer) => {
         if (!current) return
@@ -187,7 +185,7 @@ function TextView({ file, csv }: { file: ViewedFile; csv: boolean }) {
   const [failed, setFailed] = useState(false)
   useEffect(() => {
     let current = true
-    fetch(file.url, { credentials: 'include' })
+    fetch(file.url, { credentials: fetchCredentials(file.url) })
       .then((response) => (response.ok ? response.text() : Promise.reject(new Error(String(response.status)))))
       .then((body) => current && setText(body))
       .catch(() => current && setFailed(true))

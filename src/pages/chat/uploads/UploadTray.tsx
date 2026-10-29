@@ -4,6 +4,7 @@ import { Button } from '@/components/sf/Button'
 import { Icon } from '@/components/sf/Icon'
 import { Tooltip } from '@/components/sf/Tooltip'
 import { fileSubline, previewOf } from '@/lib/fileTypes'
+import { useUploadProgress } from '@/pages/chat/uploads/uploadProgress'
 import type { Upload } from '@/pages/chat/uploads/useUploads'
 
 /** A local picture of an image being uploaded, freed when the card goes. */
@@ -27,7 +28,10 @@ const typeIcon = (name: string) => {
 }
 
 function Card({ upload, onRemove, onRetry }: { upload: Upload; onRemove: (key: string) => void; onRetry: (key: string) => void }) {
-  const { file, status, progress, error } = upload
+  const { file, status, error } = upload
+  // Live while it goes up (uploadProgress); the card's own value once it's done.
+  const live = useUploadProgress(upload.key)
+  const progress = status === 'uploading' ? (live ?? upload.progress) : upload.progress
   const preview = useLocalPreview(file)
   const percent = Math.round(progress * 100)
   return (

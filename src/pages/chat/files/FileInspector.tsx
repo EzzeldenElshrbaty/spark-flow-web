@@ -10,6 +10,7 @@ import { useFileUrl } from '@/components/AttachmentView'
 import { Button } from '@/components/sf/Button'
 import { Icon } from '@/components/sf/Icon'
 import { FileViewer } from '@/components/ui/FileViewer'
+import { viewedFile } from '@/lib/fileView'
 import { QueryError } from '@/components/ui/QueryError'
 import { InspectorFrame, InspectorSkeleton, TitleSkeleton, type InspectorBodyProps } from '@/layout/InspectorFrame'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
@@ -58,6 +59,8 @@ function Details({ details, ws, users, channels, projects, meId }: { details: Fi
   const manage = actions?.mayManage(file) ?? false
   const { url } = useFileUrl(file.scanStatus === 'clean' ? file.id : null)
   const [viewing, setViewing] = useState(false)
+  // An office file opens as its converted preview, as from its card (spec 6.9).
+  const viewed = viewedFile(file, url)
   const [params] = useSearchParams()
   const preview = previewOf(file.name)
   const uploader = users.find((u) => u.id === file.uploadedBy)?.name ?? 'Unknown person'
@@ -84,7 +87,7 @@ function Details({ details, ws, users, channels, projects, meId }: { details: Fi
             Share
           </Button>
         )}
-        <Button size="sm" touch icon={IconEye} disabled={!url} onClick={() => setViewing(true)}>
+        <Button size="sm" touch icon={IconEye} disabled={!viewed} onClick={() => setViewing(true)}>
           Open
         </Button>
       </div>
@@ -141,7 +144,7 @@ function Details({ details, ws, users, channels, projects, meId }: { details: Fi
           </Button>
         </div>
       )}
-      {viewing && url && <FileViewer files={[{ name: file.name, url, sizeKb: Math.round(file.size / 1024) }]} onClose={() => setViewing(false)} />}
+      {viewing && viewed && <FileViewer files={[viewed]} onClose={() => setViewing(false)} />}
     </div>
   )
 }
@@ -168,7 +171,7 @@ export function FileInspector({ fileId, onClose, closeTo }: { fileId: string } &
 
   return (
     <FileActionsProvider workspaceId={workspace?.id ?? ''} meId={persona.id} people={users} onDetails={(file) => setParams((p) => withInspector(p, { kind: 'file', fileId: file.id }))}>
-      <InspectorFrame label="File details" eyebrow="File details" title={details.data ? details.data.file.title : notFound ? 'File' : <TitleSkeleton />} onClose={onClose}>
+      <InspectorFrame label="File details" eyebrow="File details" title={details.data ? details.data.file.title : notFound ? 'File' : <TitleSkeleton />} onClose={onClose} focusTitle>
         {body}
       </InspectorFrame>
     </FileActionsProvider>

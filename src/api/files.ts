@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { qk } from '@/api/queryKeys'
+import { retryUnlessNotFound as retry } from '@/api/retry'
 import type { FilePatch, UploadFile, UploadOptions } from '@/api/types'
 import { api } from '@/lib/api'
 
@@ -7,8 +8,9 @@ import { api } from '@/lib/api'
 export const uploadChatFile = (channelId: string, file: UploadFile, options?: UploadOptions) => api.files.uploadForChat(channelId, file, options)
 
 /** A file's details (spec 6.9 File details panel): who uploaded it and where it's shared; `fileChanged` refreshes them. */
+/** A file's details for the panel; a file that's gone (404) says so at once instead of retrying. */
 export function useFileDetails(fileId: string | undefined) {
-  return useQuery({ queryKey: qk.fileDetails(fileId ?? ''), queryFn: () => api.files.details(fileId!), enabled: Boolean(fileId) })
+  return useQuery({ queryKey: qk.fileDetails(fileId ?? ''), queryFn: () => api.files.details(fileId!), enabled: Boolean(fileId), retry })
 }
 /** Edit file details: its name and description. */
 export function useUpdateFile() {

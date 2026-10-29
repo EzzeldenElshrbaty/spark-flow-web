@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Attachment, Channel, ChatMessage } from '@/api/types'
 import { api } from '@/lib/api'
@@ -109,5 +110,37 @@ describe('file actions in an archived place (slice 6 review)', () => {
     cleanup()
     mount()
     expect(screen.getByTestId('frozen').textContent).toBe('false')
+  })
+})
+
+describe('Delete file: where focus goes (slice 6 review)', () => {
+  it('when the card that opened it is gone, focus goes to its message’s focus stop', async () => {
+    let gone: () => void = () => {}
+    vi.spyOn(api.files, 'delete').mockImplementation(async () => gone())
+    function Row() {
+      const actions = useFileActions()
+      const [shown, setShown] = useState(true)
+      gone = () => setShown(false)
+      return (
+        <div role="log" tabIndex={0}>
+          <article>
+            <button data-row-focus="">More actions</button>
+            {shown && <button onClick={() => actions?.remove(pdf)}>delete</button>}
+          </article>
+        </div>
+      )
+    }
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <FileActionsProvider workspaceId="ws-eng" meId="u-1" people={people} onDetails={vi.fn()}>
+          <Row />
+        </FileActionsProvider>
+      </QueryClientProvider>,
+    )
+    screen.getByText('delete').focus()
+    fireEvent.click(screen.getByText('delete'))
+    await act(async () => fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' })))
+    await act(() => new Promise((r) => setTimeout(r, 20)))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'More actions' }))
   })
 })

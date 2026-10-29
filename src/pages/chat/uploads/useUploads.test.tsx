@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Attachment, UploadOptions } from '@/api/types'
 import { ApiError } from '@/lib/apiError'
 import { api } from '@/lib/api'
+import { uploadProgress } from '@/pages/chat/uploads/uploadProgress'
 import { useUploads } from '@/pages/chat/uploads/useUploads'
 
 afterEach(() => vi.restoreAllMocks())
@@ -28,8 +29,11 @@ describe('useUploads: the composer’s tray (spec 6.9, slice 6)', () => {
     expect(calls.map((c) => [c.channelId, c.name])).toEqual([['c-backend', 'scope.pdf'], ['c-backend', 'shot.png']])
     expect(result.current.items.map((i) => i.status)).toEqual(['uploading', 'uploading'])
     expect(result.current.waiting).toBe('Uploading 2 files…')
+    // Progress goes to the card alone (uploadProgress): the page's list of uploads doesn't change on every tick.
+    const before = result.current.items
     act(() => calls[0].options.onProgress?.(0.5))
-    expect(result.current.items[0].progress).toBe(0.5)
+    expect(result.current.items).toBe(before)
+    expect(uploadProgress.get(result.current.items[0].key)).toBe(0.5)
     await act(async () => calls[0].resolve(uploaded('scope.pdf')))
     expect(result.current.items[0]).toMatchObject({ status: 'ready', progress: 1 })
     expect(result.current.waiting).toBe('Uploading 1 file…')
@@ -98,5 +102,18 @@ describe('useUploads after the slice 6 review', () => {
     await act(async () => calls[0].resolve({ ...uploaded('scope.pdf'), scanStatus: 'pending' }))
     expect(result.current.items[0]).toMatchObject({ status: 'failed', error: 'Still being checked for viruses. Try again in a moment.', retryable: true })
     expect(result.current.waiting).toBe("Retry or remove the files that didn't upload.")
+  })
+})
+
+describe('useUploads: clearing what was sent (slice 6 review)', () => {
+  it('clear(keys) takes only those cards away: files added while a reply was sending stay', async () => {
+    const calls = serve()
+    const { result } = renderHook(() => useUploads('c-backend'))
+    act(() => result.current.add([file('scope.pdf')]))
+    await act(async () => calls[0].resolve(uploaded('scope.pdf')))
+    const sent = result.current.items.map((i) => i.key)
+    act(() => result.current.add([file('late.png')]))
+    act(() => result.current.clear(sent))
+    expect(result.current.items.map((i) => i.file.name)).toEqual(['late.png'])
   })
 })

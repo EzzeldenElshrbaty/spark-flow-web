@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Attachment } from '@/api/types'
+import { uploadProgress } from '@/pages/chat/uploads/uploadProgress'
 import { UploadTray } from '@/pages/chat/uploads/UploadTray'
 import type { Upload } from '@/pages/chat/uploads/useUploads'
 
@@ -58,5 +59,13 @@ describe('UploadTray tooltips (spec 10)', () => {
     render(<UploadTray uploads={[item('scope.pdf')]} refused={[]} onRemove={vi.fn()} onRetry={vi.fn()} />)
     fireEvent.pointerEnter(screen.getByRole('button', { name: 'Remove scope.pdf' }))
     expect((await screen.findByRole('tooltip', { hidden: true }, { timeout: 2000 })).textContent).toBe('Remove scope.pdf')
+  })
+})
+
+describe('UploadTray live progress (slice 6 review)', () => {
+  it('a card follows its upload’s progress on its own', () => {
+    render(<UploadTray uploads={[item('live.pdf', { key: 'k-live', progress: 0 })]} refused={[]} onRemove={vi.fn()} onRetry={vi.fn()} />)
+    act(() => uploadProgress.set('k-live', 0.7))
+    expect(screen.getByRole('progressbar', { name: 'Uploading live.pdf' }).getAttribute('aria-valuenow')).toBe('70')
   })
 })

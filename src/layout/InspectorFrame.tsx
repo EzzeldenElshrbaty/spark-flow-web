@@ -1,6 +1,6 @@
 import { IconX } from '@tabler/icons-react'
 import { X } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { IconButton } from '@/components/sf/Button'
 
 export type InspectorBodyProps = {
@@ -26,6 +26,7 @@ export function InspectorFrame({
   sub,
   actions,
   onClose,
+  focusTitle = false,
   children,
 }: {
   label: string
@@ -36,8 +37,14 @@ export function InspectorFrame({
   /** Controls before Close (the thread's ⋮). */
   actions?: ReactNode
   onClose: () => void
+  /** Puts focus on the title when it opens (File details, opened from a card), so the keyboard carries on here. */
+  focusTitle?: boolean
   children: ReactNode
 }) {
+  const titleRef = useRef<HTMLHeadingElement>(null)
+  useEffect(() => {
+    if (focusTitle) titleRef.current?.focus({ preventScroll: true })
+  }, [focusTitle])
   if (sub !== undefined)
     return (
       <aside aria-label={label} className={`sf ${PLACE} border-sf-line bg-sf-surface`}>
@@ -57,7 +64,9 @@ export function InspectorFrame({
       <div className="flex shrink-0 items-start gap-3 border-b border-line-subtle px-5 py-4">
         <div className="min-w-0 flex-1">
           <p className="truncate text-xs font-semibold uppercase tracking-wider text-accent">{eyebrow}</p>
-          <h2 className="mt-0.5 text-base font-semibold text-fg">{title}</h2>
+          <h2 ref={titleRef} tabIndex={-1} className="mt-0.5 text-base font-semibold text-fg outline-none">
+            {title}
+          </h2>
         </div>
         {actions}
         <button type="button" onClick={onClose} className="-me-1 rounded-md p-1 text-fg-muted hover:bg-surface-muted hover:text-fg" aria-label={`Close ${label.toLowerCase()}`}>
