@@ -216,17 +216,19 @@ function Live({ attachment, link, message, pending }: { attachment: Attachment; 
   else if (failed) body = <p className="sf-small text-sf-error">{attachment.title} couldn't be opened.</p>
   else if (kind === 'image')
     body = (
-      <div className="group/file relative w-fit">
-        <button type="button" onClick={open} className="sf-focus block overflow-hidden rounded-sf-lg border border-sf-line" aria-label={`Open ${attachment.title}`}>
-          {url ? <img src={url} alt={attachment.title} className="max-h-80 max-w-[min(420px,100%)] object-contain" /> : <span className="block h-32 w-48 animate-pulse bg-sf-surface-hover" />}
+      // The 420px cap is on the frame, not the image: a percentage cap on the image doesn't count while the frame
+      // shrinks to fit, so a wide image left the frame at its full width (spec 6.9: the frame hugs the image).
+      <div className="group/file relative w-fit max-w-[min(420px,100%)]">
+        <button type="button" onClick={open} className="sf-focus block max-w-full overflow-hidden rounded-sf-lg border border-sf-line" aria-label={`Open ${attachment.title}`}>
+          {url ? <img src={url} alt={attachment.title} className="block h-auto max-h-80 max-w-full object-contain" /> : <span className="block h-32 w-48 animate-pulse bg-sf-surface-hover" />}
         </button>
         <FileActionsPill attachment={attachment} url={url} link={link} message={message} pending={pending} />
       </div>
     )
   else if (kind === 'video')
     body = url ? (
-      <div className="group/file relative w-fit">
-        <video src={url} controls preload="metadata" className="max-h-80 max-w-[min(420px,100%)] rounded-sf-lg border border-sf-line" aria-label={attachment.title} />
+      <div className="group/file relative w-fit max-w-[min(420px,100%)]">
+        <video src={url} controls preload="metadata" className="block max-h-80 max-w-full rounded-sf-lg border border-sf-line" aria-label={attachment.title} />
         <FileActionsPill attachment={attachment} url={url} link={link} message={message} pending={pending} />
       </div>
     ) : (
