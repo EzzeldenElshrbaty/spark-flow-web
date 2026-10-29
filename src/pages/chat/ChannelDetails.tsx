@@ -19,7 +19,7 @@ const COPIED_MS = 2000
 const TOUCH = 'relative max-md:after:absolute max-md:after:-inset-1.5'
 
 
-export type DetailsRights = { manage: boolean; leave: boolean; restrictPosting: boolean; invite: boolean; setDefault: boolean }
+export type DetailsRights = { manage: boolean; leave: boolean; restrictPosting: boolean; invite: boolean; setDefault: boolean; archive: boolean }
 
 /**
  * What Channel details lets me do: manage and Leave as the channel allows; who can post, email invites and the default
@@ -28,7 +28,7 @@ export type DetailsRights = { manage: boolean; leave: boolean; restrictPosting: 
  */
 export function detailsRights(
   channel: Pick<Channel, 'archivedAt' | 'isPrivate'>,
-  rights: { manage: boolean; leave: boolean },
+  rights: { manage: boolean; leave: boolean; archive: boolean },
   admin: { restrictPosting: boolean; inviteByEmail: boolean; setDefault: boolean },
 ): DetailsRights {
   const manage = rights.manage && !channel.archivedAt
@@ -38,6 +38,7 @@ export function detailsRights(
     restrictPosting: admin.restrictPosting && manage,
     invite: admin.inviteByEmail && manage,
     setDefault: admin.setDefault && manage && !channel.isPrivate,
+    archive: rights.archive && manage,
   }
 }
 
@@ -182,7 +183,7 @@ export function ChannelDetails({
             onSave={onSave}
           />
         )}
-        {tab === 'settings' && rights.manage && <Settings channel={channel} restrictPosting={rights.restrictPosting} onSave={onSave} onArchive={onArchive} />}
+        {tab === 'settings' && rights.manage && <Settings channel={channel} restrictPosting={rights.restrictPosting} onSave={onSave} onArchive={rights.archive ? onArchive : undefined} />}
       </div>
     </Modal>
   )
@@ -431,7 +432,7 @@ const POSTERS: { value: WhoCanPost; label: string }[] = [
   { value: 'admins', label: 'Only admins' },
 ]
 
-function Settings({ channel, restrictPosting, onSave, onArchive }: { channel: Channel; restrictPosting: boolean; onSave: (patch: ChannelPatch) => Promise<unknown>; onArchive: () => void }) {
+function Settings({ channel, restrictPosting, onSave, onArchive }: { channel: Channel; restrictPosting: boolean; onSave: (patch: ChannelPatch) => Promise<unknown>; onArchive?: () => void }) {
   const labelId = useId()
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
@@ -478,11 +479,13 @@ function Settings({ channel, restrictPosting, onSave, onArchive }: { channel: Ch
         )}
       </div>
       {channel.isPrivate && <p className="sf-small m-0 text-sf-text-secondary">Private channel. Only its members can see it, and that can’t be changed.</p>}
-      <div>
-        <Button size="sm" touch onClick={onArchive}>
-          Archive channel
-        </Button>
-      </div>
+      {onArchive && (
+        <div>
+          <Button size="sm" touch onClick={onArchive}>
+            Archive channel
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

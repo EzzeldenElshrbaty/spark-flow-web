@@ -1,4 +1,5 @@
 import type { ChatMessage, ThreadReply } from '@/api/types'
+import { can } from '@/lib/permissions'
 
 /**
  * What I may do to a message or reply (spec §9): react where I can post; edit my own plain ones; delete my own, or
@@ -8,8 +9,9 @@ export function actionsFor(row: ChatMessage | ThreadReply, meId: string | undefi
   const system = 'system' in row && Boolean(row.system)
   if (!canPost || row.deletedAt || system) return { react: false, edit: false, remove: false }
   const card = ('commentId' in row && Boolean(row.commentId)) || ('taskEvent' in row && Boolean(row.taskEvent))
-  const own = !card && meId != null && row.senderId === meId
-  return { react: true, edit: own, remove: own || (admin && !card) }
+  // The rules are can()'s (spec §9); only who it is matters here, so the role is all an Admin needs.
+  const ctx = { userId: meId ?? '', role: admin ? ('admin' as const) : ('member' as const), authorId: row.senderId }
+  return { react: true, edit: !card && meId != null && can('message.edit', ctx), remove: !card && meId != null && can('message.delete', ctx) }
 }
 
 /** Whether deleting asks first (spec 6.3): when it has replies or files not deleted already; otherwise it goes at once, with Undo. */

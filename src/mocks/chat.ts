@@ -292,14 +292,16 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
     hub.publish({ type: 'channelChanged', channelId: id })
     return clone(channel)
   }
-  /** Archives or restores a channel: its members and admins; a project's channel follows its project, a DM never is. */
+  /** Archives or restores a channel: Admins who may manage it (spec 6.1); a project's channel follows its project, a DM never is. */
   const setArchived = async (id: string, archive: boolean) => {
     await delay()
     const result = await db.update((data) => {
       const channel = readableChannel(data, id)
       if (channel.kind === 'dm') throw badRequest("Conversations can't be archived.")
       if (data.projects.some((p) => p.channelId === id)) throw badRequest('This channel follows its project.')
-      requireManage(data, channel)
+      const me = requireManage(data, channel)
+      // Archiving (and restoring) is for Admins (spec 6.1).
+      if (!can('channel.archive', { userId: me.id, role: me.role, channel })) throw new ApiError({ title: 'Forbidden', status: 403, detail: 'Only admins can archive channels.' })
       // Already so: nothing changes and nothing is sent.
       if (Boolean(channel.archivedAt) === archive) return { channel: withUnread(data, channel), same: true }
       channel.archivedAt = archive ? new Date().toISOString() : null
@@ -497,7 +499,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       const result = await db.update((data) => {
         const { row, channel, messageId } = findTarget(data, target)
         const me = checkCanPost(data, channel)
-        if (row.senderId !== me.id) throw forbiddenOwn()
+        if (!can('message.edit', { userId: me.id, role: me.role, authorId: row.senderId })) throw forbiddenOwn()
         checkPlain(row)
         // A message with a file may lose its text, as one can be sent with files alone.
         const optional = row.attachments.some((a) => !a.deletedAt)
@@ -525,7 +527,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         const { row, channel, messageId } = findTarget(data, target)
         const me = checkCanPost(data, channel)
         // The author, or an Admin (spec §9: delete is author or admin).
-        if (row.senderId !== me.id && me.role !== 'admin') throw forbiddenOwn()
+        if (!can('message.delete', { userId: me.id, role: me.role, authorId: row.senderId })) throw forbiddenOwn()
         checkPlain(row)
         const now = Date.now()
         // What the delete takes is kept for Undo, and only that long; older entries go now.

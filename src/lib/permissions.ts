@@ -7,6 +7,7 @@ export type Action =
   | 'rates.view' | 'cost.view' | 'project.create' | 'project.edit' | 'phase.manage' | 'task.manage' | 'task.updateOwnStatus'
   | 'time.logOwn' | 'time.logOn' | 'collab.post' | 'dashboard.view' | 'timeCost.view' | 'database.manage' | 'project.archive' | 'channel.manage'
   | 'channel.restrictPosting' | 'channel.post' | 'channel.inviteByEmail' | 'channel.setDefault' | 'invitation.revoke' | 'file.manage'
+  | 'channel.archive' | 'message.edit' | 'message.delete'
 
 export type ProjectRef = Pick<Project, 'managerId' | 'memberIds' | 'teamIds'> & { archivedAt?: string | null }
 
@@ -23,6 +24,8 @@ export type PermissionContext = {
   invitedBy?: string
   /** For file.manage: who uploaded the file. */
   uploadedBy?: string
+  /** For message.edit and message.delete: who wrote the message or reply. */
+  authorId?: string
   /** Whether the person manages at least one project (a member can be named a project's manager). */
   managesAny?: boolean
 }
@@ -49,6 +52,10 @@ export function can(action: Action, ctx: PermissionContext): boolean {
   if (ctx.project?.archivedAt && FROZEN.has(action)) return false
   // A channel's members manage it; Admins too, but only public ones: a private channel stays its members'.
   if (action === 'channel.manage') return Boolean(ctx.channel && (ctx.channel.memberIds.includes(ctx.userId) || (ctx.role === 'admin' && !ctx.channel.isPrivate)))
+  // Archiving a channel (spec 6.1): Admins, where they may manage it (a private channel stays its members').
+  if (action === 'channel.archive') return ctx.role === 'admin' && can('channel.manage', ctx)
+  // Editing a message is its author's alone (spec §9), Admins included.
+  if (action === 'message.edit') return ctx.authorId === ctx.userId
   if (ctx.role === 'admin') return true
   switch (action) {
     case 'rates.view':
@@ -68,6 +75,9 @@ export function can(action: Action, ctx: PermissionContext): boolean {
     // Edit file details and Delete file (spec §9: delete file is uploader or admin).
     case 'file.manage':
       return ctx.uploadedBy === ctx.userId
+    // Deleting a message: its author, or any Admin (who passed above; spec §9).
+    case 'message.delete':
+      return ctx.authorId === ctx.userId
     // A channel set to Only admins takes new posts from Admins alone (who passed above).
     case 'channel.post':
       return ctx.channel?.whoCanPost !== 'admins'

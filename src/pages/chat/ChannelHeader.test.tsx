@@ -22,7 +22,7 @@ function header(props: Partial<ChannelHeaderProps> = {}) {
   const handlers = {
     onDetails: vi.fn(), onStar: vi.fn(), onMute: vi.fn(), onNotifyLevel: vi.fn(), onMarkRead: vi.fn(), onCopyLink: vi.fn(async () => {}), onLeave: vi.fn(), onArchive: vi.fn(),
   }
-  render(<ChannelHeader channel={backend} title="backend" members={people} rights={{ manage: true, leave: true }} {...handlers} {...props} />)
+  render(<ChannelHeader channel={backend} title="backend" members={people} rights={{ manage: true, leave: true, archive: true }} {...handlers} {...props} />)
   return handlers
 }
 
@@ -36,7 +36,7 @@ describe('ChannelHeader (spec 6.1)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'backend' }))
     expect(onDetails).toHaveBeenCalledWith('about')
     cleanup()
-    const reader = header({ rights: { manage: false, leave: true } })
+    const reader = header({ rights: { manage: false, leave: true, archive: false } })
     fireEvent.click(screen.getByRole('button', { name: 'backend' }))
     expect(reader.onDetails).toHaveBeenCalledWith('about')
   })
@@ -49,7 +49,7 @@ describe('ChannelHeader (spec 6.1)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add a topic' }))
     expect(onDetails).toHaveBeenCalledWith('about', true)
     cleanup()
-    header({ channel: { ...backend, topic: '' }, rights: { manage: false, leave: false } })
+    header({ channel: { ...backend, topic: '' }, rights: { manage: false, leave: false, archive: false } })
     expect(screen.queryByText('Add a topic')).toBeNull()
   })
 
@@ -66,7 +66,7 @@ describe('ChannelHeader (spec 6.1)', () => {
   })
 
   it('the members button shows three faces and the count, and opens Members, for everyone', () => {
-    const { onDetails } = header({ rights: { manage: false, leave: true } })
+    const { onDetails } = header({ rights: { manage: false, leave: true, archive: false } })
     const members = screen.getByRole('button', { name: '4 members' })
     expect(members.querySelectorAll(':scope > span > [aria-hidden="true"]')).toHaveLength(3)
     expect(members.textContent).toMatch(/4 members$/)
@@ -77,7 +77,7 @@ describe('ChannelHeader (spec 6.1)', () => {
   it('the more menu has channel details, copy link, mark all read, leave and archive (mute is under the bell)', () => {
     const h = header()
     openMenu()
-    expect(screen.getAllByRole('menuitem').map((el) => el.textContent)).toEqual(['Channel details', 'Copy link', 'Mark all read', 'Leave channel', 'Archive channel'])
+    expect(screen.getAllByRole('menuitem').map((el) => el.textContent)).toEqual(['Channel details', 'Notification settings', 'Copy link', 'Mark all read', 'Leave channel', 'Archive channel'])
     fireEvent.click(item('Channel details'))
     expect(h.onDetails).toHaveBeenCalledWith('about')
     openMenu()
@@ -91,10 +91,24 @@ describe('ChannelHeader (spec 6.1)', () => {
     expect(h.onArchive).toHaveBeenCalledOnce()
   })
 
-  it('without rights the menu has channel details, copy link and mark all read; a read channel says so', () => {
-    header({ channel: { ...backend, unreadCount: 0 }, rights: { manage: false, leave: false } })
+  it('Archive is for Admins: someone who may manage the channel but isn’t one doesn’t see it (spec 6.1)', () => {
+    header({ rights: { manage: true, leave: true, archive: false } })
     openMenu()
-    expect(screen.getAllByRole('menuitem').map((el) => el.textContent)).toEqual(['Channel details', 'Copy link', 'Mark all read'])
+    expect(screen.queryByRole('menuitem', { name: 'Archive channel' })).toBeNull()
+  })
+
+  it('Notification settings in the more menu offers the bell’s levels and Mute (spec 6.1)', () => {
+    const h = header()
+    openMenu()
+    fireEvent.click(item('Notification settings'))
+    fireEvent.click(screen.getByRole('menuitemradio', { name: /Nothing/ }))
+    expect(h.onNotifyLevel).toHaveBeenCalledWith('none')
+  })
+
+  it('without rights the menu has channel details, copy link and mark all read; a read channel says so', () => {
+    header({ channel: { ...backend, unreadCount: 0 }, rights: { manage: false, leave: false, archive: false } })
+    openMenu()
+    expect(screen.getAllByRole('menuitem').map((el) => el.textContent)).toEqual(['Channel details', 'Notification settings', 'Copy link', 'Mark all read'])
     expect(item('Mark all read').getAttribute('aria-disabled')).toBe('true')
   })
 
@@ -122,14 +136,14 @@ describe('ChannelHeader (spec 6.1)', () => {
 
   it('a DM is named after the person, with no members button, edit, leave or archive', () => {
     const dm: Channel = { ...backend, id: 'c-dm-1', kind: 'dm', name: null, topic: '', isPrivate: true, memberIds: ['u-1', 'u-2'] }
-    header({ channel: dm, title: 'Nour El-Sayed', members: people.slice(0, 2), rights: { manage: false, leave: false } })
+    header({ channel: dm, title: 'Nour El-Sayed', members: people.slice(0, 2), rights: { manage: false, leave: false, archive: false } })
     expect(screen.getByRole('heading', { level: 1, name: 'Nour El-Sayed' })).toBeTruthy()
     // No details for a DM yet: its name is plain text.
     expect(screen.queryByRole('button', { name: 'Nour El-Sayed' })).toBeNull()
     expect(screen.queryByRole('button', { name: /members$/ })).toBeNull()
     expect(screen.getByRole('button', { name: 'Star conversation' })).toBeTruthy()
     openMenu()
-    expect(screen.getAllByRole('menuitem').map((el) => el.textContent)).toEqual(['Copy link', 'Mark all read'])
+    expect(screen.getAllByRole('menuitem').map((el) => el.textContent)).toEqual(['Notification settings', 'Copy link', 'Mark all read'])
     fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
     fireEvent.click(screen.getByRole('button', { name: 'Conversation notifications' }))
     expect(screen.getByRole('menuitem', { name: 'Mute conversation' })).toBeTruthy()
@@ -212,7 +226,7 @@ describe('channel tabs (spec 6.1)', () => {
     expect(screen.getByRole('button', { name: 'Channel notifications: muted' })).toBeTruthy()
     cleanup()
     const dm: Channel = { ...backend, id: 'c-dm-1', kind: 'dm', name: null, topic: '', isPrivate: true, memberIds: ['u-1', 'u-2'], muted: true }
-    header({ channel: dm, title: 'Nour El-Sayed', members: people.slice(0, 2), rights: { manage: false, leave: false } })
+    header({ channel: dm, title: 'Nour El-Sayed', members: people.slice(0, 2), rights: { manage: false, leave: false, archive: false } })
     fireEvent.click(screen.getByRole('button', { name: 'Conversation notifications: muted' }))
     expect(screen.getByRole('menu', { name: 'Conversation notifications' })).toBeTruthy()
   })

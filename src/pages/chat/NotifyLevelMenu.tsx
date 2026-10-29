@@ -30,9 +30,26 @@ export function NotifyLevelMenu({
   onNotifyLevel: (level: NotifyLevel) => void
   onMute: (muted: boolean) => void
 }) {
-  const noun = channel.kind === 'channel' ? 'channel' : 'conversation'
   return (
     <Menu label={label} trigger={trigger}>
+      <NotifyLevelItems channel={channel} onNotifyLevel={onNotifyLevel} onMute={onMute} />
+    </Menu>
+  )
+}
+
+/** The levels and Mute, for the bell's menu and for Notification settings in the channel's more menu. */
+export function NotifyLevelItems({
+  channel,
+  onNotifyLevel,
+  onMute,
+}: {
+  channel: Pick<Channel, 'kind' | 'notifyLevel' | 'muted'>
+  onNotifyLevel: (level: NotifyLevel) => void
+  onMute: (muted: boolean) => void
+}) {
+  const noun = channel.kind === 'channel' ? 'channel' : 'conversation'
+  return (
+    <>
       <MenuHeading>Notify me about</MenuHeading>
       {NOTIFY_LEVELS.map(({ level, label: name }) => (
         <MenuItem key={level} checked={channel.notifyLevel === level} onSelect={() => level !== channel.notifyLevel && onNotifyLevel(level)}>
@@ -43,6 +60,6 @@ export function NotifyLevelMenu({
       <MenuItem icon={channel.muted ? IconBell : IconBellOff} onSelect={() => onMute(!channel.muted)}>
         {channel.muted ? `Unmute ${noun}` : `Mute ${noun}`}
       </MenuItem>
-    </Menu>
+    </>
   )
 }

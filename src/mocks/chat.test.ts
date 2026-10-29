@@ -556,8 +556,11 @@ describe('direct messages', () => {
 
 describe('archiving channels', () => {
   const archived = { status: 400, detail: 'This channel is archived.' }
-  it('a member archives a channel; sending, replying, reacting, editing and deleting are then refused', async () => {
+  it('archiving is for Admins (spec 6.1): a member is refused', async () => {
     await api.users.viewAs('u-3') // Mariam, in #frontend-dev
+    await expect(api.chat.archiveChannel('c-frontend')).rejects.toMatchObject({ status: 403, detail: 'Only admins can archive channels.' })
+  })
+  it('an Admin archives a channel; sending, replying, reacting, editing and deleting are then refused', async () => {
     const mine = await api.chat.send('c-frontend', 'Before')
     const channel = await api.chat.archiveChannel('c-frontend')
     expect(channel.archivedAt).toEqual(expect.any(String))

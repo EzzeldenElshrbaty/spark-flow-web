@@ -66,7 +66,7 @@ const details = (over: Partial<Parameters<typeof ChannelDetails>[0]> = {}) => (
     teams={[]}
     invitations={[]}
     mayRevoke={() => true}
-    rights={{ manage: true, leave: true, restrictPosting: true, invite: true, setDefault: true }}
+    rights={{ manage: true, leave: true, restrictPosting: true, invite: true, setDefault: true, archive: true }}
     tab="about"
     onClose={vi.fn()}
     onSave={async () => {}}
@@ -142,7 +142,7 @@ const surfaces: [string, () => ReactNode][] = [
     'channel header and tabs',
     () => (
       <>
-        <ChannelHeader channel={channel} title="backend" members={users} rights={{ manage: true, leave: true }} onDetails={vi.fn()} onStar={vi.fn()} onMute={vi.fn()} onNotifyLevel={vi.fn()} onMarkRead={vi.fn()} onCopyLink={async () => {}} onLeave={vi.fn()} onArchive={vi.fn()} />
+        <ChannelHeader channel={channel} title="backend" members={users} rights={{ manage: true, leave: true, archive: true }} onDetails={vi.fn()} onStar={vi.fn()} onMute={vi.fn()} onNotifyLevel={vi.fn()} onMarkRead={vi.fn()} onCopyLink={async () => {}} onLeave={vi.fn()} onArchive={vi.fn()} />
         <ChannelTabs channel={channel} tab="messages" onChange={vi.fn()} panelId="p" />
         <div id="p" role="tabpanel" aria-label="Messages" />
       </>

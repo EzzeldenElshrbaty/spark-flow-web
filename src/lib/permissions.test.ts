@@ -157,3 +157,24 @@ describe('a file (spec §9: delete file is uploader or admin)', () => {
     expect(can('file.manage', { ...as('admin', 'u-a'), uploadedBy: 'u-m' })).toBe(true)
   })
 })
+
+describe('messages and channel archive (spec §9, 6.1)', () => {
+  const admin = { userId: 'u-1', role: 'admin' as const }
+  const member = { userId: 'u-3', role: 'member' as const }
+  it('message.edit is the author’s only, an Admin’s included', () => {
+    expect(can('message.edit', { ...member, authorId: 'u-3' })).toBe(true)
+    expect(can('message.edit', { ...member, authorId: 'u-2' })).toBe(false)
+    expect(can('message.edit', { ...admin, authorId: 'u-2' })).toBe(false)
+  })
+  it('message.delete is the author’s, or any Admin’s', () => {
+    expect(can('message.delete', { ...member, authorId: 'u-3' })).toBe(true)
+    expect(can('message.delete', { ...member, authorId: 'u-2' })).toBe(false)
+    expect(can('message.delete', { ...admin, authorId: 'u-2' })).toBe(true)
+  })
+  it('channel.archive is for Admins who may manage the channel', () => {
+    const open = { isPrivate: false, memberIds: ['u-3'] }
+    expect(can('channel.archive', { ...member, channel: open })).toBe(false)
+    expect(can('channel.archive', { ...admin, channel: open })).toBe(true)
+    expect(can('channel.archive', { ...admin, channel: { isPrivate: true, memberIds: ['u-3'] } })).toBe(false)
+  })
+})

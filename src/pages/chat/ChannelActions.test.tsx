@@ -28,7 +28,7 @@ describe('useChannelProject: the project a channel follows (review)', () => {
     expect(renderHook(() => useChannelProject(gone)).result.current).toEqual({ known: false, project: undefined })
     archived = [nexus]
     expect(renderHook(() => useChannelProject(gone)).result.current).toEqual({ known: true, project: nexus })
-    expect(renderHook(() => useChannelRights(gone)).result.current).toEqual({ manage: false, leave: false })
+    expect(renderHook(() => useChannelRights(gone)).result.current).toEqual({ manage: false, leave: false, archive: false })
   })
 
   it('a channel no project names has none', () => {

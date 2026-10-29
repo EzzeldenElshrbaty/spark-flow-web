@@ -18,10 +18,10 @@ import type { Channel, NotifyLevel } from '@/api/types'
 import { Avatar } from '@/components/sf/Avatar'
 import { IconButton } from '@/components/sf/Button'
 import { Icon } from '@/components/sf/Icon'
-import { Menu, MenuHeading, MenuItem, MenuSeparator } from '@/components/sf/Menu'
+import { Menu, MenuHeading, MenuItem, MenuSeparator, Submenu } from '@/components/sf/Menu'
 import { usePhone } from '@/components/sf/usePhone'
 import type { DetailsTab } from '@/pages/chat/ChannelDetails'
-import { NotifyLevelMenu } from '@/pages/chat/NotifyLevelMenu'
+import { NotifyLevelItems, NotifyLevelMenu } from '@/pages/chat/NotifyLevelMenu'
 
 const COPIED_MS = 2000
 
@@ -30,8 +30,8 @@ export type ChannelHeaderProps = {
   /** The channel's name without `#`, or the conversation's people. */
   title: string
   members: { id: string; name: string }[]
-  /** manage: change details and archive; leave: leave the channel. */
-  rights: { manage: boolean; leave: boolean }
+  /** manage: change details; leave: leave the channel; archive: Admins (spec 6.1). */
+  rights: { manage: boolean; leave: boolean; archive: boolean }
   /** Opens Channel details (spec 6.10) on a tab; `editTopic` opens the topic field. */
   onDetails: (tab: DetailsTab, editTopic?: boolean) => void
   onStar: (starred: boolean) => void
@@ -136,6 +136,10 @@ export function ChannelHeader({ channel, title, members, rights, onDetails, onSt
               Channel details
             </MenuItem>
           )}
+          {/* The bell's levels, here too (spec 6.1). */}
+          <Submenu icon={IconBell} label="Notification settings">
+            <NotifyLevelItems channel={channel} onNotifyLevel={onNotifyLevel} onMute={onMute} />
+          </Submenu>
           <MenuItem
             icon={IconLink}
             onSelect={() => {
@@ -150,13 +154,13 @@ export function ChannelHeader({ channel, title, members, rights, onDetails, onSt
           <MenuItem icon={IconChecks} disabled={channel.unreadCount === 0} onSelect={onMarkRead}>
             Mark all read
           </MenuItem>
-          {(rights.leave || rights.manage) && <MenuSeparator />}
+          {(rights.leave || rights.archive) && <MenuSeparator />}
           {rights.leave && (
             <MenuItem icon={IconLogout} onSelect={onLeave}>
               Leave channel
             </MenuItem>
           )}
-          {rights.manage && (
+          {rights.archive && (
             <MenuItem icon={IconArchive} onSelect={onArchive}>
               Archive channel
             </MenuItem>

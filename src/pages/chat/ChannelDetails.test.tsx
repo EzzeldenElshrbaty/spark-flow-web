@@ -25,7 +25,7 @@ const teams = [
   { id: 't-qa', name: 'QA', memberIds: ['u-4'] },
   { id: 't-backend', name: 'Backend', memberIds: ['u-2', 'u-4'] },
 ]
-const base = (props: Partial<Props>) => ({ channel: backend, meId: 'u-1', people, takenNames: ['general', 'frontend-dev'], project: null, teams, invitations: [], mayRevoke: () => true, rights: { manage: true, leave: true, restrictPosting: true, invite: true, setDefault: true }, tab: 'about' as const, ...props })
+const base = (props: Partial<Props>) => ({ channel: backend, meId: 'u-1', people, takenNames: ['general', 'frontend-dev'], project: null, teams, invitations: [], mayRevoke: () => true, rights: { manage: true, leave: true, restrictPosting: true, invite: true, setDefault: true, archive: true }, tab: 'about' as const, ...props })
 function show(props: Partial<Props> = {}) {
   const handlers = {
     onClose: vi.fn(), onSave: vi.fn(async () => {}), onAdd: vi.fn(async () => {}), onRemove: vi.fn(async () => {}), onStar: vi.fn(), onNotifyLevel: vi.fn(),
@@ -42,7 +42,7 @@ function show(props: Partial<Props> = {}) {
         teams={teams}
         invitations={[]}
         mayRevoke={() => true}
-        rights={{ manage: true, leave: true, restrictPosting: true, invite: true, setDefault: true }}
+        rights={{ manage: true, leave: true, restrictPosting: true, invite: true, setDefault: true, archive: true }}
         tab="about"
         {...handlers}
         {...props}
@@ -74,7 +74,7 @@ describe('Channel details: the header and tabs (spec 6.10)', () => {
   })
 
   it('without the right to manage it there is no Settings and nothing to edit', () => {
-    show({ rights: { manage: false, leave: true, restrictPosting: false, invite: false, setDefault: false } })
+    show({ rights: { manage: false, leave: true, restrictPosting: false, invite: false, setDefault: false, archive: false } })
     expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['About', 'Members 3'])
     expect(screen.queryByRole('button', { name: /^Edit/ })).toBeNull()
   })
@@ -136,7 +136,7 @@ describe('Channel details: About (spec 6.10)', () => {
   })
 
   it('a project’s channel names its project, read-only, with a way there', () => {
-    show({ project: { name: 'Nexus Core', key: 'NEX', href: '/w/engineering/p/NEX/overview' }, rights: { manage: false, leave: false, restrictPosting: false, invite: false, setDefault: false } })
+    show({ project: { name: 'Nexus Core', key: 'NEX', href: '/w/engineering/p/NEX/overview' }, rights: { manage: false, leave: false, restrictPosting: false, invite: false, setDefault: false, archive: false } })
     expect(card('Project').textContent).toContain('Nexus Core · task keys NEX-* open as cards here')
     expect(within(card('Project')).getByRole('link', { name: 'Open project' }).getAttribute('href')).toBe('/w/engineering/p/NEX/overview')
   })
@@ -149,7 +149,7 @@ describe('Channel details: About (spec 6.10)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Leave channel' }))
     expect(onLeave).toHaveBeenCalledOnce()
     cleanup()
-    show({ rights: { manage: true, leave: false, restrictPosting: true, invite: true, setDefault: true } })
+    show({ rights: { manage: true, leave: false, restrictPosting: true, invite: true, setDefault: true, archive: true } })
     expect(screen.queryByRole('button', { name: 'Leave channel' })).toBeNull()
   })
 })
@@ -171,13 +171,13 @@ describe('Channel details: Members (spec 6.10)', () => {
     await act(async () => fireEvent.click(within(screen.getByRole('dialog', { name: /^Remove/ })).getByRole('button', { name: 'Remove' })))
     expect(onRemove).toHaveBeenCalledWith('u-2')
     cleanup()
-    show({ tab: 'members', rights: { manage: false, leave: true, restrictPosting: false, invite: false, setDefault: false } })
+    show({ tab: 'members', rights: { manage: false, leave: true, restrictPosting: false, invite: false, setDefault: false, archive: false } })
     expect(screen.queryByRole('button', { name: /^Remove/ })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Add people' })).toBeNull()
   })
 
   it('a project’s channel says its people follow the project, with no Add or Remove', () => {
-    show({ tab: 'members', project: { name: 'Nexus Core', key: 'NEX', href: '/w/engineering/p/NEX/overview' }, rights: { manage: false, leave: false, restrictPosting: false, invite: false, setDefault: false } })
+    show({ tab: 'members', project: { name: 'Nexus Core', key: 'NEX', href: '/w/engineering/p/NEX/overview' }, rights: { manage: false, leave: false, restrictPosting: false, invite: false, setDefault: false, archive: false } })
     expect(screen.getByText('People on Nexus Core are in this channel.')).toBeTruthy()
   })
 
@@ -198,7 +198,7 @@ describe('Channel details: Members (spec 6.10)', () => {
   })
 
   it('Add people says a refusal near the names, and that only Admins invite by email', async () => {
-    show({ tab: 'members', rights: { manage: true, leave: true, restrictPosting: false, invite: false, setDefault: false }, onAdd: vi.fn(async () => Promise.reject(new Error('Everyone you picked is already in #backend.'))) })
+    show({ tab: 'members', rights: { manage: true, leave: true, restrictPosting: false, invite: false, setDefault: false, archive: true }, onAdd: vi.fn(async () => Promise.reject(new Error('Everyone you picked is already in #backend.'))) })
     fireEvent.click(screen.getByRole('button', { name: 'Add people' }))
     const add = screen.getByRole('dialog', { name: 'Add people to #backend' })
     const names = within(add).getByRole('combobox', { name: 'Names or emails' })
@@ -223,7 +223,7 @@ describe('Channel details: Settings (spec 6.10, §9)', () => {
   })
 
   it('anyone else sees the choice but can’t change it', () => {
-    show({ tab: 'settings', rights: { manage: true, leave: true, restrictPosting: false, invite: false, setDefault: false } })
+    show({ tab: 'settings', rights: { manage: true, leave: true, restrictPosting: false, invite: false, setDefault: false, archive: true } })
     for (const radio of screen.getAllByRole('radio')) expect((radio as HTMLInputElement).disabled).toBe(true)
     expect(screen.getByText('Only admins can change this.')).toBeTruthy()
   })
@@ -246,7 +246,7 @@ describe('Channel details when rights change while it is open (review)', () => {
     const on = handlers()
     const { rerender } = render(<MemoryRouter><ChannelDetails {...base({ tab: 'settings' })} {...on} /></MemoryRouter>)
     expect(screen.getByRole('radiogroup', { name: 'Who can post' })).toBeTruthy()
-    rerender(<MemoryRouter><ChannelDetails {...base({ tab: 'settings', rights: { manage: false, leave: true, restrictPosting: false, invite: false, setDefault: false } })} {...on} /></MemoryRouter>)
+    rerender(<MemoryRouter><ChannelDetails {...base({ tab: 'settings', rights: { manage: false, leave: true, restrictPosting: false, invite: false, setDefault: false, archive: false } })} {...on} /></MemoryRouter>)
     expect(screen.queryByRole('tab', { name: 'Settings' })).toBeNull()
     expect(screen.getByRole('tab', { name: 'About' }).getAttribute('aria-selected')).toBe('true')
     expect(screen.getByRole('tabpanel', { name: 'About' })).toBeTruthy()
@@ -256,23 +256,30 @@ describe('Channel details when rights change while it is open (review)', () => {
     const on = handlers()
     const { rerender } = render(<MemoryRouter><ChannelDetails {...base({ editTopic: true })} {...on} /></MemoryRouter>)
     expect(within(card('Topic')).getByRole('textbox', { name: 'Topic' })).toBeTruthy()
-    rerender(<MemoryRouter><ChannelDetails {...base({ editTopic: true, rights: { manage: false, leave: true, restrictPosting: false, invite: false, setDefault: false } })} {...on} /></MemoryRouter>)
+    rerender(<MemoryRouter><ChannelDetails {...base({ editTopic: true, rights: { manage: false, leave: true, restrictPosting: false, invite: false, setDefault: false, archive: false } })} {...on} /></MemoryRouter>)
     expect(within(card('Topic')).queryByRole('textbox')).toBeNull()
     expect(within(card('Topic')).queryByRole('button', { name: 'Save' })).toBeNull()
   })
 })
 
+describe('Settings: Archive is an Admin’s (spec 6.1)', () => {
+  it('someone who may manage the channel but isn’t an Admin has Settings without Archive', () => {
+    show({ tab: 'settings', rights: { manage: true, leave: true, restrictPosting: false, invite: false, setDefault: false, archive: false } })
+    expect(screen.queryByRole('button', { name: 'Archive channel' })).toBeNull()
+  })
+})
+
 describe('detailsRights: what the details let me do (review)', () => {
   it('an archived channel is read-only: no edits, no Settings, no who can post', () => {
-    const rights = { manage: true, leave: true }
+    const rights = { manage: true, leave: true, archive: true }
     const admin = { restrictPosting: true, inviteByEmail: true, setDefault: true }
-    expect(detailsRights(backend, rights, admin)).toEqual({ manage: true, leave: true, restrictPosting: true, invite: true, setDefault: true })
-    expect(detailsRights({ ...backend, archivedAt: '2026-10-28T10:00:00.000Z' }, { manage: true, leave: false }, admin)).toEqual({ manage: false, leave: false, restrictPosting: false, invite: false, setDefault: false })
-    expect(detailsRights(backend, { manage: false, leave: true }, admin)).toEqual({ manage: false, leave: true, restrictPosting: false, invite: false, setDefault: false })
+    expect(detailsRights(backend, rights, admin)).toEqual({ manage: true, leave: true, restrictPosting: true, invite: true, setDefault: true, archive: true })
+    expect(detailsRights({ ...backend, archivedAt: '2026-10-28T10:00:00.000Z' }, { manage: true, leave: false, archive: true }, admin)).toEqual({ manage: false, leave: false, restrictPosting: false, invite: false, setDefault: false, archive: false })
+    expect(detailsRights(backend, { manage: false, leave: true, archive: false }, admin)).toEqual({ manage: false, leave: true, restrictPosting: false, invite: false, setDefault: false, archive: false })
   })
 
   it('a private channel is never a default one; email invites and the default are an Admin’s (slice 5)', () => {
-    const rights = { manage: true, leave: true }
+    const rights = { manage: true, leave: true, archive: true }
     expect(detailsRights({ ...backend, isPrivate: true }, rights, { restrictPosting: true, inviteByEmail: true, setDefault: true })).toMatchObject({ invite: true, setDefault: false })
     expect(detailsRights(backend, rights, { restrictPosting: false, inviteByEmail: false, setDefault: false })).toMatchObject({ invite: false, setDefault: false })
   })
@@ -469,7 +476,7 @@ describe('Add people with emails and teams (spec 6.10, slice 5)', () => {
     expect(onSave).toHaveBeenCalledWith({ isDefault: true })
     expect(toggle.getAttribute('aria-checked')).toBe('true')
     cleanup()
-    openAdd({ rights: { manage: true, leave: true, restrictPosting: false, invite: false, setDefault: false } })
+    openAdd({ rights: { manage: true, leave: true, restrictPosting: false, invite: false, setDefault: false, archive: true } })
     expect(screen.queryByRole('switch')).toBeNull()
     expect(screen.queryByText('Only admins can see this setting')).toBeNull()
   })

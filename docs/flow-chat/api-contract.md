@@ -59,7 +59,7 @@ On reconnect the client expects missed `message.created` events replayed in `seq
 
 ## Phase 1 · Feature 2: channel header and tabs
 
-No new routes. The header uses the ones above: the star toggle and Mute (under the bell since slice 3) call `PATCH /api/channels/:id/me`, and Mark all read calls `POST /api/channels/:id/read` with no `seq`. Leave and Archive use the existing channel routes; Channel details (slice 4, below) has its own. The tabs are client-side (`?tab=files|pins|page`); Files, Pins and Page get their own endpoints when they are built (Phases 3 and 4).
+No new routes. The header uses the ones above: the star toggle and Mute (under the bell since slice 3) call `PATCH /api/channels/:id/me`, and Mark all read calls `POST /api/channels/:id/read` with no `seq`. Leave and Archive use the existing channel routes (archive and restore: Admins who may manage the channel, spec 6.1; anyone else `403` "Only admins can archive channels."); message edit is the author's alone and delete the author's or an Admin's (`can()` `message.edit` / `message.delete`; `403` "You can only change your own messages."); Channel details (slice 4, below) has its own. The tabs are client-side (`?tab=files|pins|page`); Files, Pins and Page get their own endpoints when they are built (Phases 3 and 4).
 
 ## Phase 1 · Feature 3: message list
 

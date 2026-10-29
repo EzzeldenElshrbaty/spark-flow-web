@@ -10,16 +10,17 @@ import { can } from '@/lib/permissions'
 import { useRole } from '@/lib/useRole'
 
 /**
- * What I may do to this channel beyond reading it: manage (details, archive) for its members and admins, and leave
- * for a member. Neither for a project's channel (it follows its project) or a DM, and both stay false until the
- * project lists have loaded.
+ * What I may do to this channel beyond reading it: manage (details) for its members and admins, archive for admins
+ * (spec 6.1), and leave for a member. None for a project's channel (it follows its project) or a DM, and all stay
+ * false until the project lists have loaded.
  */
-export function useChannelRights(channel: Channel): { manage: boolean; leave: boolean } {
+export function useChannelRights(channel: Channel): { manage: boolean; leave: boolean; archive: boolean } {
   const { persona } = useRole()
   const { known, project } = useChannelProject(channel)
   const own = channel.kind === 'channel' && known && !project
   return {
     manage: own && can('channel.manage', { userId: persona.id, role: persona.role, channel }),
+    archive: own && can('channel.archive', { userId: persona.id, role: persona.role, channel }),
     leave: own && !isArchived(channel) && channel.memberIds.includes(persona.id),
   }
 }
