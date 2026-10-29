@@ -360,7 +360,6 @@ function PaneFeed({
     realtime.joinChannel(channel.id)
     return () => realtime.leaveChannel(channel.id)
   }, [realtime, channel.id])
-  const [totalUnread] = useState(channel.unreadCount)
   const read = useChannelReadState(channel)
   return (
     <>
@@ -380,7 +379,7 @@ function PaneFeed({
           messageActions={messageActions}
           newAfterSeq={read.newAfterSeq}
           // After a jump the list starts where I asked, not at my first unread message.
-          totalUnread={view.from === null ? totalUnread : 0}
+          totalUnread={view.from === null ? read.unreadOnOpen : 0}
           // Marked read on opening (spec 6.2): the list needn't send it again.
           markedSeq={Math.max(channel.lastReadSeq, read.readOnOpen ?? 0)}
           onMarkRead={read.markRead}

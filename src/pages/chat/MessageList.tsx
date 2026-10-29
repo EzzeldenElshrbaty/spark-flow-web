@@ -505,7 +505,7 @@ export function DayDivider({ label, onJump }: { label: string; onJump?: (choice:
 /** Where my unread messages start (spec 6.2): a 1px accent rule with "New". */
 function NewLine() {
   return (
-    <div className="sf flex h-6 items-center gap-2 px-4 font-sf text-[12px]/[16px] font-semibold text-sf-accent" role="separator" aria-label="New messages">
+    <div className="sf flex h-6 items-center gap-2 px-4 font-sf text-[12px]/[16px] font-semibold text-sf-accent md:px-6" role="separator" aria-label="New messages">
       <span aria-hidden className="h-px flex-1 bg-sf-accent-fill" />
       <span aria-hidden>New</span>
     </div>

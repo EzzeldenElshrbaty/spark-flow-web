@@ -13,11 +13,26 @@ export const useReadHold = create<{ channelId: string | null; hold: (channelId: 
   release: (channelId) => set((s) => (s.channelId === channelId ? { channelId: null } : s)),
 }))
 
-/** Ends the hold when I leave the channel: for another one, or another page. Switching tabs inside it isn't leaving. */
+/**
+ * What one visit to the open channel fixed when it began (spec 6.2): where the New line goes, how many were unread,
+ * and the read sent on opening. The Messages tab mounts again after another tab of the channel, and reads it back
+ * instead of the marker that opening already moved. It ends when I leave the channel.
+ */
+type Visit = { channelId: string; newAfterSeq: number; unreadOnOpen: number; readOnOpen: number | null; sent: boolean }
+export const useChannelVisit = create<{ visit: Visit | null }>(() => ({ visit: null }))
+
+function updateVisit(channelId: string, patch: Partial<Visit>) {
+  useChannelVisit.setState((s) => (s.visit?.channelId === channelId ? { visit: { ...s.visit, ...patch } } : s))
+}
+
+/** Ends the hold and the visit when I leave the channel: for another one, or another page. Switching tabs inside it isn't leaving. */
 export function useReadHoldScope(channelId: string | undefined) {
   useEffect(() => {
     if (!channelId) return
-    return () => useReadHold.getState().release(channelId)
+    return () => {
+      useReadHold.getState().release(channelId)
+      useChannelVisit.setState((s) => (s.visit?.channelId === channelId ? { visit: null } : s))
+    }
   }, [channelId])
 }
 
@@ -41,20 +56,34 @@ export function markOpenChannelRead(channel: Channel, markRead: (channelId: stri
  * tab of the channel and back) or has nothing unread; a page opened in the background waits until it's shown.
  */
 export function useChannelReadState(channel: Channel) {
-  const [newAfterSeq, setNewAfterSeq] = useState(channel.lastReadSeq)
+  // The visit's start, or (back from another tab of the channel) the one already under way.
+  const [visit] = useState<Visit>(() => {
+    const kept = useChannelVisit.getState().visit
+    if (kept?.channelId === channel.id) return kept
+    const begun: Visit = {
+      channelId: channel.id,
+      newAfterSeq: channel.lastReadSeq,
+      unreadOnOpen: channel.unreadCount,
+      readOnOpen:
+        channel.unreadCount > 0 && channel.lastSeq > channel.lastReadSeq && useReadHold.getState().channelId !== channel.id ? channel.lastSeq : null,
+      sent: false,
+    }
+    useChannelVisit.setState({ visit: begun })
+    return begun
+  })
+  const [newAfterSeq, setNewAfterSeq] = useState(visit.newAfterSeq)
   const held = useReadHold((s) => s.channelId === channel.id)
   const { mutate: markRead } = useMarkRead()
   const { mutateAsync: markUnread } = useMarkUnread()
-  const [readOnOpen] = useState(() =>
-    channel.unreadCount > 0 && channel.lastSeq > channel.lastReadSeq && useReadHold.getState().channelId !== channel.id ? channel.lastSeq : null,
-  )
-  const sentOnOpen = useRef(false)
+  const { readOnOpen, unreadOnOpen } = visit
+  const sentOnOpen = useRef(visit.sent)
   useEffect(() => {
     if (readOnOpen === null) return
     const mark = () => {
       // Held since (U while the page waited in the background): it stays unread.
       if (sentOnOpen.current || document.visibilityState !== 'visible' || useReadHold.getState().channelId === channel.id) return
       sentOnOpen.current = true
+      updateVisit(channel.id, { sent: true })
       markRead({ channelId: channel.id, seq: readOnOpen })
     }
     mark()
@@ -65,6 +94,7 @@ export function useChannelReadState(channel: Channel) {
     newAfterSeq,
     held,
     readOnOpen,
+    unreadOnOpen,
     markRead: useCallback(
       (seq?: number) => {
         useReadHold.getState().release(channel.id)
@@ -81,6 +111,7 @@ export function useChannelReadState(channel: Channel) {
         try {
           await markUnread({ channelId: channel.id, seq })
           setNewAfterSeq(seq - 1)
+          updateVisit(channel.id, { newAfterSeq: seq - 1 })
         } catch (error) {
           if (!wasHeld) useReadHold.getState().release(channel.id)
           throw error

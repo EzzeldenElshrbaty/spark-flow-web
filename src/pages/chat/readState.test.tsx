@@ -5,11 +5,12 @@ import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Channel } from '@/api/types'
 import { api } from '@/lib/api'
-import { markOpenChannelRead, useChannelReadState, useReadHold, useReadHoldScope } from '@/pages/chat/readState'
+import { markOpenChannelRead, useChannelReadState, useChannelVisit, useReadHold, useReadHoldScope } from '@/pages/chat/readState'
 
 afterEach(() => {
   vi.restoreAllMocks()
   useReadHold.setState({ channelId: null })
+  useChannelVisit.setState({ visit: null })
 })
 
 const channel = (id: string): Channel => ({
@@ -95,6 +96,33 @@ describe('opening the channel marks it read (spec 6.2)', () => {
     expect(result.current.readOnOpen).toBeNull()
   })
 
+  it('back from another tab of the channel (the feed mounts again), the New line and the unread count stay where I left off', async () => {
+    const markRead = vi.spyOn(api.chat, 'markRead').mockResolvedValue()
+    const first = setup(unread())
+    await vi.waitFor(() => expect(markRead).toHaveBeenCalledWith('c1', 9))
+    expect(first.result.current).toMatchObject({ newAfterSeq: 6, unreadOnOpen: 3 })
+    first.unmount()
+    // By now the channel reads as read: the marker moved when I opened it.
+    const again = setup(unread({ unreadCount: 0, lastReadSeq: 9 }))
+    await new Promise((r) => setTimeout(r, 20))
+    expect(again.result.current).toMatchObject({ newAfterSeq: 6, unreadOnOpen: 3, readOnOpen: 9 })
+    expect(markRead).toHaveBeenCalledOnce()
+  })
+
+  it('a U made before going to another tab still places the New line when I come back', async () => {
+    vi.spyOn(api.chat, 'markUnread').mockResolvedValue()
+    const first = setup()
+    await act(() => first.result.current.markUnread(5))
+    first.unmount()
+    expect(setup(channel('c1')).result.current).toMatchObject({ newAfterSeq: 4, held: true })
+  })
+
+  it('another channel starts its own visit', async () => {
+    vi.spyOn(api.chat, 'markRead').mockResolvedValue()
+    setup(unread()).unmount()
+    expect(setup(channel('c2')).result.current).toMatchObject({ newAfterSeq: 9, unreadOnOpen: 0 })
+  })
+
   it('a page opened in the background waits until it is shown', async () => {
     const markRead = vi.spyOn(api.chat, 'markRead').mockResolvedValue()
     const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
@@ -140,5 +168,15 @@ describe('useReadHoldScope', () => {
     useReadHold.getState().hold('c2')
     unmount()
     expect(useReadHold.getState().channelId).toBeNull()
+  })
+
+  it('ends the visit when I leave, so coming back reads the marker afresh', async () => {
+    vi.spyOn(api.chat, 'markRead').mockResolvedValue()
+    const scope = renderHook(({ id }) => useReadHoldScope(id), { initialProps: { id: 'c1' } })
+    setup({ ...channel('c1'), unreadCount: 3, lastReadSeq: 6 }).unmount()
+    expect(useChannelVisit.getState().visit?.channelId).toBe('c1')
+    scope.rerender({ id: 'c2' })
+    expect(useChannelVisit.getState().visit).toBeNull()
+    expect(setup(channel('c1')).result.current).toMatchObject({ newAfterSeq: 9, unreadOnOpen: 0 })
   })
 })

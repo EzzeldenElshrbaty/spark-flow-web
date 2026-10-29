@@ -4,7 +4,7 @@ import { act, cleanup, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { ToastProvider } from '@/components/sf/Toast'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { userEvent } from 'vitest/browser'
+import { page, userEvent } from 'vitest/browser'
 import type { ChatMessage, Page, User } from '@/api/types'
 import type { PendingMessage } from '@/lib/sendQueue'
 import { parseBody } from '@/lib/messageBody'
@@ -240,6 +240,19 @@ describe('MessageList scrolling (spec 6.2)', () => {
     // Just under the bar (which takes the top 40px), not scrolled away.
     expect(top).toBeGreaterThanOrEqual(24)
     expect(top).toBeLessThan(120)
+  })
+
+  it('on desktop the New line is inset 24px, like the rows (.sf-newdiv)', async () => {
+    await page.viewport(1280, 800)
+    try {
+      mount({ data: channel(80), newAfterSeq: 30, totalUnread: 50 })
+      await vi.waitFor(() => expect(screen.getByRole('separator', { name: 'New messages' })).toBeTruthy())
+      const line = screen.getByRole('separator', { name: 'New messages' })
+      expect(getComputedStyle(line).paddingLeft).toBe('24px')
+      expect(getComputedStyle(line).paddingRight).toBe('24px')
+    } finally {
+      await page.viewport(414, 896)
+    }
   })
 
   it('my own new message brings me down to it, even when scrolled up', async () => {
