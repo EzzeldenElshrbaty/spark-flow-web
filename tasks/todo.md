@@ -828,3 +828,15 @@ From `docs/flow-chat/AUDIT.md` "Fix first" 5–10. Test first; not pushed.
 - [x] H. "(edited)" inline at the end of the last paragraph; the time's full date with weekday in the sf Tooltip; emoji picker active-tab accent bar. Ruling: the channel tab rule stays at bottom 0 (the row's line is an inset shadow inside it, so 0 covers the same pixels as the reference's -1px over a border). Tests: `ChannelMessage.test.tsx` (2), `EmojiPicker.test.tsx`. 3e47fd4
 
 Review: 131 files / 1317 tests pass (one browser file timed out starting its iframe in the full run and passed on a rerun of the browser project, 9/9 files); tsc, lint and the prototype build are clean. Checked in the app at 1440×900: thread panel header, last-reply copy, main card on white.
+
+## Audit fixes, batches I–M (29 Oct 2026)
+
+From `docs/flow-chat/AUDIT.md` "Fix first" 11–15. Test first; not pushed.
+
+- [x] I. Focus after a delete: the landing spot (next row, the one before, the list) is found before the delete and focus moves there from a timeout too, since in the channel the row and its menu leave as soon as the delete lands. A press on a modal's scrim is held; the dialog takes focus itself on a press on its padding. Tests: `MessageActions.test.tsx` "the deleted row leaves the list at once", `layers.test.tsx` scrim press. 6014db8
+- [x] J. Reactions are sets: `PUT`/`DELETE /…/reactions/:emoji`, `react(target, emoji, on)`, `setReaction`; a repeat changes nothing and sends no event. Replies carry a client id; a repeat returns the stored reply; the reply mutation retries network failures. Tests: `reactions.test.ts`, `chat.test.ts` (2), `http.test.ts`, `MessageToolbar.test.tsx` (mine → off). 194f63f, 9fa251b (`toggleReaction` removed)
+- [x] K. `@channel` (stored as `all`; `@all` still parses) and `@here` (active members), in the parser, body, @ list, chips and notify; a confirm ("Notify everyone in #general?", Send and notify) before either goes to more than 25 members, in channel and thread boxes; Cancel keeps the text. Tests: `mentions.test.ts`, `messageBody.test.ts`, `mentionQuery.test.ts`, `chat.test.ts` (@here reach), `useGroupConfirm.test.tsx` (3). 43b5d62
+- [x] L. Account and workspace menus on sf `Menu`, the bell on sf `Popover`, search results, phone search and bottom bar on sf tokens, nav and search icons Tabler. Tests: `shellMenus.test.tsx` (behaviour + style), `shellTokens.test.ts` (source scan: no lucide or CRM classes in the shell files). Ruling: the task inspector's frame keeps the projects module's style — it is not chat. 18760f1
+- [x] M. "Add channels" row at the end of Channels (opens New channel); ⌘/Ctrl+Shift+A opens Activity anywhere in a workspace. Ruling: no Channels options button, the spec names no options. Tests: `SideLink.test.tsx`, `useAppShortcuts.test.tsx` (2). 4232efc
+
+Review: 135 files / 1344 tests pass; tsc, lint and the prototype build are clean. Checked in the app at 1440×900: account menu (headings, checks, Soon items), bell panel in the chat tokens, "Add channels" row, ⌘⇧A → Activity.
