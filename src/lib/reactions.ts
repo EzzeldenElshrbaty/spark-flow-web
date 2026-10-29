@@ -7,19 +7,8 @@ export const REACTIONS = ['👍', '❤️', '😂', '🎉', '👀', '✅'] as co
 export const MAX_DISTINCT_REACTIONS = 50
 
 /**
- * Reactions after `userId` toggles `emoji`: added (as a new emoji, or to one already there) or taken back; an emoji
- * nobody reacts with any more goes. Null when adding it would pass the cap. The server and the optimistic update
- * both use it, so the screen shows what the server will store.
- */
-export function toggleReaction(reactions: Reaction[], emoji: string, userId: string): Reaction[] | null {
-  const existing = reactions.find((r) => r.emoji === emoji)
-  if (!existing) return reactions.length >= MAX_DISTINCT_REACTIONS ? null : [...reactions, { emoji, userIds: [userId] }]
-  const userIds = existing.userIds.includes(userId) ? existing.userIds.filter((id) => id !== userId) : [...existing.userIds, userId]
-  return reactions.map((r) => (r.emoji === emoji ? { ...r, userIds } : r)).filter((r) => r.userIds.length > 0)
-}
-
-/**
- * Puts me on (`on`) or takes me off an emoji (spec §8: PUT and DELETE are sets, so a retry changes nothing). An empty
+ * Puts me on (`on`) or takes me off an emoji (spec §8: PUT and DELETE are sets, so a retry changes nothing). The server
+ * and the optimistic update both use it, so the screen shows what the server will store. An empty
  * emoji goes away; a new one past MAX_DISTINCT_REACTIONS is refused (null); taking one off never is.
  */
 export function setReaction(reactions: Reaction[], emoji: string, userId: string, on: boolean): Reaction[] | null {
