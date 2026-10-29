@@ -49,7 +49,7 @@ export function systemText(event: SystemEvent, nameOf: (userId: string) => strin
 export type Selection = 'on' | 'fading' | null
 
 /** Whether the message mentions me, or everyone. */
-const mentionsMe = (message: ChatMessage | ThreadReply, meId?: string) => message.mentions.some((m) => m.kind === 'all' || (m.kind === 'user' && m.id === meId))
+const mentionsMe = (message: ChatMessage | ThreadReply, meId?: string) => message.mentions.some((m) => m.kind === 'all' || m.kind === 'here' || (m.kind === 'user' && m.id === meId))
 
 /** How long "Link copied" and "Marked unread" stay; a failure stays until the next one. */
 const NOTE_MS = 2000

@@ -86,7 +86,7 @@ Every message and thread reply carries `body`: the text as structured rich text 
 - Blocks: `p` (inlines), `quote` (blocks), `ul` / `ol` (items of inlines), `code` (text).
 - Inlines: `text` with optional `marks` (`b`, `i`, `u`, `s`, `code`), `link` (`href`, `text`; http and https only), `user` (`id`, `name` when written), `all`, `channel` (`id`, `name`), `task` (`key`), `project` (`key`).
 
-Until the rich composer lands (feature 5), the server works `body` out from `content` on send, reply and edit, with the same rules as `parseBody` in that file (the composer's markdown: `*bold*`, `_italic_`, `~strike~`, `` `code` ``, ```` ``` ```` blocks, `> ` quotes, `- ` and `1. ` lists; mentions `@[Name](id)`, `@all`, `@KEY`, `@KEY-1`; channels `#[name](id)`; bare task keys matching `[A-Z][A-Z0-9]+-\d+`). A deleted message has `body: []`.
+Until the rich composer lands (feature 5), the server works `body` out from `content` on send, reply and edit, with the same rules as `parseBody` in that file (the composer's markdown: `*bold*`, `_italic_`, `~strike~`, `` `code` ``, ```` ``` ```` blocks, `> ` quotes, `- ` and `1. ` lists; mentions `@[Name](id)`, `@channel` (stored as `{ type: 'all' }`; `@all`, its first spelling, reads the same), `@here` (`{ type: 'here' }`, mention kind `here`), `@KEY`, `@KEY-1`; channels `#[name](id)`; bare task keys matching `[A-Z][A-Z0-9]+-\d+`). A deleted message has `body: []`.
 
 ### System messages
 
@@ -240,7 +240,7 @@ What a delete takes is kept only for the Undo window, then dropped (retention be
 
 What the list holds, for the signed-in person:
 
-- **Mentions** of me, as `GET /api/mentions` has them (spec 6.12 Mentions), in this workspace, worked out from each message or reply as it reads now (an edit can add or remove one; `@all` counts).
+- **Mentions** of me, as `GET /api/mentions` has them (spec 6.12 Mentions), in this workspace, worked out from each message or reply as it reads now (an edit can add or remove one; `@channel` counts, and `@here` for whoever is active).
 - **Reactions** to my messages and replies (spec §7 `Notification`): one item per person and emoji. Taking the reaction back removes the item; my own reactions make none, and neither do reactions in a channel I can no longer read.
 - **Thread replies** in threads I follow (the following rules of slice 2): one item per reply, stored for every follower except the replier and anyone who can't read the channel. A reply that mentions me as it reads now is listed once, as the mention, not again as a thread item.
 - Items whose message or reply is deleted are left out, as are channels at Nothing and channels I can no longer read (I left a private channel or was taken off it): the read check runs when the list is read, not only when an item is stored, since the excerpt is the text as it is now.
@@ -250,7 +250,7 @@ What the list holds, for the signed-in person:
 
 | Client handler | Wire event | Payload |
 |---|---|---|
-| `onNotificationCreated` | `notification.created` | `{ userId }`, sent only to `userId`'s own connections: when a reaction or thread item is stored for them, and when a new message or reply mentions them (by name, or `@all` as a member), once per person per message. |
+| `onNotificationCreated` | `notification.created` | `{ userId }`, sent only to `userId`'s own connections: when a reaction or thread item is stored for them, and when a new message or reply mentions them (by name, `@channel` as a member, or `@here` as a member who is active), once per person per message. The client asks before sending `@channel` or `@here` to a channel of more than 25 members (spec 6.8); the server needs no rule for that. |
 
 The client refreshes Activity on it, and on `message.updated` (an edit can add or remove a mention), a comment, `read.marker_updated` and `channel.updated`, `member.joined` or `member.left` (client handler `onChannelChanged`: leaving, removal, archiving and privacy decide what Activity and the bell may show). It no longer refreshes Activity on every `message.created` or new reply.
 

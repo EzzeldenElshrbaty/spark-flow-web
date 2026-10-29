@@ -7,18 +7,21 @@ export function parseTicketKeys(content: string): string[] {
   return [...new Set(content.match(TICKET_KEY) ?? [])]
 }
 
-// @all, @[Display Name](userId) from the composer, @NEX-104 (a task) or @NEX (a project). Not part of an e-mail address.
+// @channel (or @all, as it was first written), @[Display Name](userId) from the composer, @NEX-104 (a task), @NEX (a
+// project) or @here (spec 6.8). Not part of an e-mail address.
 /** The mention syntax (spec §3): global, so use matchAll or reset lastIndex. */
-export const MENTION = /(?<![\w.@])@(?:(all)\b|\[[^\]]+\]\(([\w-]+)\)|([A-Z]{2,5}-\d+)\b|([A-Z]{2,5})\b(?!-))/g
+export const MENTION = /(?<![\w.@])@(?:(all|channel)\b|\[[^\]]+\]\(([\w-]+)\)|([A-Z]{2,5}-\d+)\b|([A-Z]{2,5})\b(?!-)|(here)\b)/g
 
 /** The mentions in a message, as the server works them out: each once, in order of first appearance. */
 export function parseMentions(content: string): Mention[] {
   const seen = new Set<string>()
   const found: Mention[] = []
-  for (const [, all, userId, taskKey, projectKey] of content.matchAll(MENTION)) {
+  for (const [, all, userId, taskKey, projectKey, here] of content.matchAll(MENTION)) {
     const mention: Mention = all
       ? { kind: 'all', id: 'all' }
-      : userId
+      : here
+        ? { kind: 'here', id: 'here' }
+        : userId
         ? { kind: 'user', id: userId }
         : taskKey
           ? { kind: 'task', id: taskKey }
@@ -38,6 +41,7 @@ export type Segment =
   | { kind: 'task'; key: string }
   | { kind: 'project'; key: string }
   | { kind: 'all' }
+  | { kind: 'here' }
 
 export type KnownIds = { userIds: Set<string>; taskKeys: Set<string>; projectKeys: Set<string>; nameOf: (id: string) => string }
 
@@ -55,10 +59,11 @@ export function segments(content: string, known: KnownIds): Segment[] {
   }
   let from = 0
   for (const match of content.matchAll(MENTION)) {
-    const [whole, all, userId, taskKey, projectKey] = match
+    const [whole, all, userId, taskKey, projectKey, here] = match
     text(content.slice(from, match.index))
     from = match.index + whole.length
     if (all) out.push({ kind: 'all' })
+    else if (here) out.push({ kind: 'here' })
     else if (userId) {
       if (known.userIds.has(userId)) out.push({ kind: 'user', userId, name: known.nameOf(userId) })
       else text(`@${whole.slice(2, whole.indexOf(']'))}`)

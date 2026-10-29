@@ -11,7 +11,8 @@ export type Inline =
   | { type: 'text'; text: string; marks?: Mark[] }
   | { type: 'link'; href: string; text: string }
   | { type: 'user'; id: string; name: string }
-  | { type: 'all' }
+  | { type: 'all' } // @channel (spec 6.8)
+  | { type: 'here' }
   | { type: 'channel'; id: string; name: string }
   | { type: 'task'; key: string }
   | { type: 'project'; key: string }
@@ -33,7 +34,8 @@ const INLINE = new RegExp(
     '`(?<code>[^`\\n]+)`',
     '(?<![\\w.@])@\\[(?<userName>[^\\]]+)\\]\\((?<userId>[\\w-]+)\\)',
     '(?<![\\w#])#\\[(?<channelName>[^\\]]+)\\]\\((?<channelId>[\\w-]+)\\)',
-    '(?<![\\w.@])@(?<all>all)\\b',
+    '(?<![\\w.@])@(?<all>all|channel)\\b',
+    '(?<![\\w.@])@(?<here>here)\\b',
     '(?<![\\w.@])@(?<atTask>[A-Z][A-Z0-9]+-\\d+)\\b',
     '(?<![\\w.@])@(?<project>[A-Z]{2,5})\\b(?!-)',
     '(?<url>https?:\\/\\/[^\\s<>]+[^\\s<>.,;:!?)\\]\'"])',
@@ -70,6 +72,7 @@ function parseInline(src: string, marks: Mark[] = []): Inline[] {
     else if (g.userId) out.push({ type: 'user', id: g.userId, name: g.userName })
     else if (g.channelId) out.push({ type: 'channel', id: g.channelId, name: g.channelName })
     else if (g.all) out.push({ type: 'all' })
+    else if (g.here) out.push({ type: 'here' })
     else if (g.atTask) out.push({ type: 'task', key: g.atTask })
     else if (g.project) out.push({ type: 'project', key: g.project })
     else if (g.url) out.push({ type: 'link', href: g.url, text: g.url })
@@ -162,7 +165,7 @@ export function parseBody(content: string): Body {
 function inlineText(nodes: Inline[]): string {
   return nodes
     .map((n) =>
-      n.type === 'text' || n.type === 'link' ? n.text : n.type === 'user' ? `@${n.name}` : n.type === 'all' ? '@all' : n.type === 'channel' ? `#${n.name}` : n.type === 'task' ? n.key : `@${n.key}`,
+      n.type === 'text' || n.type === 'link' ? n.text : n.type === 'user' ? `@${n.name}` : n.type === 'all' ? '@channel' : n.type === 'here' ? '@here' : n.type === 'channel' ? `#${n.name}` : n.type === 'task' ? n.key : `@${n.key}`,
     )
     .join('')
 }
@@ -224,6 +227,8 @@ function validInline(n: unknown): Inline | null {
       return isText(n.id) && ID.test(n.id) && isText(n.name, 200) ? { type: 'user', id: n.id, name: n.name } : null
     case 'all':
       return { type: 'all' }
+    case 'here':
+      return { type: 'here' }
     case 'channel':
       return isText(n.id) && ID.test(n.id) && isText(n.name, 200) ? { type: 'channel', id: n.id, name: n.name } : null
     case 'task':
@@ -291,7 +296,7 @@ export function mentionsOf(body: Body): Mention[] {
   const out: Mention[] = []
   for (const n of inlinesOf(body)) {
     const m: Mention | null =
-      n.type === 'user' ? { kind: 'user', id: n.id } : n.type === 'all' ? { kind: 'all', id: 'all' } : n.type === 'project' ? { kind: 'project', id: n.key } : n.type === 'task' ? { kind: 'task', id: n.key } : null
+      n.type === 'user' ? { kind: 'user', id: n.id } : n.type === 'all' ? { kind: 'all', id: 'all' } : n.type === 'here' ? { kind: 'here', id: 'here' } : n.type === 'project' ? { kind: 'project', id: n.key } : n.type === 'task' ? { kind: 'task', id: n.key } : null
     if (m && !seen.has(`${m.kind}:${m.id}`)) {
       seen.add(`${m.kind}:${m.id}`)
       out.push(m)

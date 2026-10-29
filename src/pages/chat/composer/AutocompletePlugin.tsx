@@ -23,7 +23,8 @@ export type ComposerDirectory = {
 }
 
 type Item =
-  | { kind: 'all' }
+  | { kind: 'all' } // @channel
+  | { kind: 'here' }
   | { kind: 'user'; user: User; inChannel: boolean }
   | { kind: 'project'; key: string; name: string }
   | { kind: 'task'; key: string; title: string }
@@ -32,7 +33,7 @@ type Item =
 class Choice extends MenuOption {
   item: Item
   constructor(item: Item) {
-    super(item.kind === 'user' ? item.user.id : item.kind === 'all' ? 'all' : item.kind === 'channel' ? item.id : item.key)
+    super(item.kind === 'user' ? item.user.id : item.kind === 'all' || item.kind === 'here' ? item.kind : item.kind === 'channel' ? item.id : item.key)
     this.item = item
   }
 }
@@ -89,7 +90,7 @@ export function AutocompletePlugin({ directory, menuOpen, anchor }: { directory:
     editor.update(() => {
       const item = choice.item
       const entity: Entity | null =
-        item.kind === 'user' ? { type: 'user', id: item.user.id, name: item.user.name } : item.kind === 'all' ? { type: 'all' } : item.kind === 'channel' ? { type: 'channel', id: item.id, name: item.name } : item.kind === 'project' ? { type: 'project', key: item.key } : null
+        item.kind === 'user' ? { type: 'user', id: item.user.id, name: item.user.name } : item.kind === 'all' ? { type: 'all' } : item.kind === 'here' ? { type: 'here' } : item.kind === 'channel' ? { type: 'channel', id: item.id, name: item.name } : item.kind === 'project' ? { type: 'project', key: item.key } : null
       const node = entity ? $createEntityNode(entity) : $createTextNode(item.kind === 'task' ? item.key : '')
       if (nodeToReplace) nodeToReplace.replace(node)
       const space = $createTextNode(' ')
@@ -166,8 +167,10 @@ function Row({ item }: { item: Item }) {
     )
   const [icon, main, sub] =
     item.kind === 'all'
-      ? [IconUsers, '@all', 'Everyone in this channel']
-      : item.kind === 'channel'
+      ? [IconUsers, '@channel', 'Everyone in this channel']
+      : item.kind === 'here'
+        ? [IconUsers, '@here', 'Everyone active in this channel']
+        : item.kind === 'channel'
         ? [IconHash, item.name, '']
         : item.kind === 'project'
           ? [IconFolder, item.key, item.name]

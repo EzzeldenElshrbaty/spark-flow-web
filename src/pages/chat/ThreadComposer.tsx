@@ -3,9 +3,11 @@ import { useDraftSaver, useDrafts } from '@/api/chat'
 import type { Channel } from '@/api/types'
 import { Checkbox } from '@/components/sf/Toggle'
 import type { Body } from '@/lib/messageBody'
+import { useGroupConfirm } from '@/pages/chat/composer/useGroupConfirm'
 import { useComposerDirectory } from '@/pages/chat/useComposerDirectory'
 import { UploadTray } from '@/pages/chat/uploads/UploadTray'
 import { paneDrop, useUploads } from '@/pages/chat/uploads/useUploads'
+
 
 const RichComposer = lazy(() => import('@/pages/chat/composer/RichComposer').then((m) => ({ default: m.RichComposer })))
 
@@ -35,10 +37,13 @@ export function ThreadComposer({
   const [also, setAlso] = useState(false)
   // A thread's own tray (spec 6.9): its files go with the reply.
   const uploads = useUploads(channel.id)
+  // @channel or @here to more than 25 members asks first (spec 6.8).
+  const loud = useGroupConfirm(channel.kind === 'channel' ? `#${channel.name}` : 'this conversation', channel.memberIds.length)
   if (drafts.isPending) return skeleton
   const draft = drafts.data?.find((d) => d.channelId === channel.id && d.rootId === rootId)
   return (
     <div className="sf flex flex-col gap-2" {...paneDrop(true, uploads.add)}>
+      {loud.dialog}
       <Suspense fallback={skeleton}>
         <RichComposer
           key={rootId}
@@ -46,7 +51,7 @@ export function ThreadComposer({
           initialBody={draft?.body}
           showFormatting={false}
           onSend={(body) =>
-            onSend(body, also, uploads.ready.map((f) => f.id)).then(() => {
+            loud.confirm(body).then(() => onSend(body, also, uploads.ready.map((f) => f.id))).then(() => {
               setAlso(false)
               uploads.clear()
             })

@@ -68,6 +68,16 @@ describe('parseBody (spec 6.3 body, §7 structured rich text)', () => {
   })
 })
 
+describe('@channel and @here (spec 6.8)', () => {
+  it('parse as the all and here groups, read back as @channel and @here, and are valid stored nodes', () => {
+    const body = parseBody('@channel and @here, also @all')
+    expect(body).toEqual([{ type: 'p', children: [{ type: 'all' }, { type: 'text', text: ' and ' }, { type: 'here' }, { type: 'text', text: ', also ' }, { type: 'all' }] }])
+    expect(bodyText(body)).toBe('@channel and @here, also @channel')
+    expect(mentionsOf(body)).toEqual([{ kind: 'all', id: 'all' }, { kind: 'here', id: 'here' }])
+    expect(validBody([{ type: 'p', children: [{ type: 'here' }] }])).toEqual([{ type: 'p', children: [{ type: 'here' }] }])
+  })
+})
+
 describe('bodyText', () => {
   it('is the body as plain text, one block a line, for search and notifications', () => {
     expect(bodyText(parseBody('*Hi* @[Nour](u-2)\n\n> in #[backend](c-backend)\n- NEX-1\n- two'))).toBe('Hi @Nour\nin #backend\nNEX-1\ntwo')

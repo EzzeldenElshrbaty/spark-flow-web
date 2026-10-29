@@ -1,7 +1,8 @@
 import type { User } from '@/api/types'
 
 export type MentionOption =
-  | { kind: 'all' }
+  | { kind: 'all' } // @channel
+  | { kind: 'here' }
   | { kind: 'user'; id: string; name: string; title: string }
   | { kind: 'project'; key: string; name: string }
   | { kind: 'task'; key: string; title: string }
@@ -26,10 +27,13 @@ const matches = (query: string, ...texts: string[]) => {
   return texts.some((t) => t.toLowerCase().startsWith(q) || t.toLowerCase().split(/[\s·-]+/).some((w) => w.startsWith(q)))
 }
 
-/** What the `@` popup offers: @all, then people, projects and tasks that match; at most 8. */
+/** What the `@` popup offers: @channel and @here, then people, projects and tasks that match; at most 8. */
 export function mentionOptions(query: string, from: { users: User[]; projects: { key: string; name: string }[]; tasks: { key: string; title: string }[] }): MentionOption[] {
   const options: MentionOption[] = []
-  if ('all'.startsWith(query.toLowerCase())) options.push({ kind: 'all' })
+  const q = query.toLowerCase()
+  // "al" still finds @channel: it was @all before (spec 6.8 names it @channel).
+  if ('channel'.startsWith(q) || 'all'.startsWith(q)) options.push({ kind: 'all' })
+  if ('here'.startsWith(q)) options.push({ kind: 'here' })
   for (const u of from.users) if (matches(query, u.name)) options.push({ kind: 'user', id: u.id, name: u.name, title: u.title })
   for (const p of from.projects) if (matches(query, p.key, p.name)) options.push({ kind: 'project', key: p.key, name: p.name })
   for (const t of from.tasks) if (matches(query, t.key, t.title)) options.push({ kind: 'task', key: t.key, title: t.title })
@@ -37,7 +41,7 @@ export function mentionOptions(query: string, from: { users: User[]; projects: {
 }
 
 const tokenOf = (option: MentionOption) =>
-  option.kind === 'all' ? '@all' : option.kind === 'user' ? `@[${option.name}](${option.id})` : `@${option.key}`
+  option.kind === 'all' ? '@channel' : option.kind === 'here' ? '@here' : option.kind === 'user' ? `@[${option.name}](${option.id})` : `@${option.key}`
 
 /** Puts the chosen mention in place of the `@query`, followed by one space, with the caret after it. */
 export function insertMention(text: string, at: { start: number; caret: number }, option: MentionOption): { text: string; caret: number } {

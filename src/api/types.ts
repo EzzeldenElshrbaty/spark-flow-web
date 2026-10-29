@@ -125,7 +125,8 @@ export type Comment = {
   editedAt?: string | null; deletedAt?: string | null
 }
 export type ProjectFile = { id: string; projectId: string; attachmentId: string; uploadedBy: string; createdAt: string }
-export type Mention = { kind: 'user' | 'project' | 'task' | 'all'; id: string } // userId | project key | task key | 'all'
+// userId | project key | task key | 'all' (@channel, spec 6.8; `@all` reads the same) | 'here' (the channel's active members)
+export type Mention = { kind: 'user' | 'project' | 'task' | 'all' | 'here'; id: string }
 export type Reaction = { emoji: string; userIds: string[] }
 
 export type ChannelKind = 'channel' | 'dm'

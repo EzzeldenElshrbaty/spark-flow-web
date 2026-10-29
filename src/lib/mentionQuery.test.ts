@@ -36,11 +36,20 @@ describe('mentionOptions', () => {
   })
 })
 
+describe('mentionOptions: groups (spec 6.8)', () => {
+  it('offers @channel and @here first; "al" still finds @channel', () => {
+    expect(mentionOptions('', from).slice(0, 2)).toEqual([{ kind: 'all' }, { kind: 'here' }])
+    expect(mentionOptions('ch', from)[0]).toEqual({ kind: 'all' })
+    expect(mentionOptions('he', from)[0]).toEqual({ kind: 'here' })
+    expect(mentionOptions('al', from)[0]).toEqual({ kind: 'all' })
+  })
+})
+
 describe('insertMention', () => {
   it('replaces just the @query and puts the caret after the mention', () => {
     expect(insertMention('hi @no', { start: 3, caret: 6 }, { kind: 'user', id: 'u-2', name: 'Nour El-Sayed', title: '' })).toEqual({ text: 'hi @[Nour El-Sayed](u-2) ', caret: 25 })
     expect(insertMention('see @NE then', { start: 4, caret: 7 }, { kind: 'task', key: 'NEX-101', title: '' })).toEqual({ text: 'see @NEX-101 then', caret: 13 }) // the space already there is kept, not doubled
-    expect(insertMention('@a', { start: 0, caret: 2 }, { kind: 'all' })).toEqual({ text: '@all ', caret: 5 })
+    expect(insertMention('@a', { start: 0, caret: 2 }, { kind: 'all' })).toEqual({ text: '@channel ', caret: 9 })
     expect(insertMention('@n', { start: 0, caret: 2 }, { kind: 'project', key: 'NEX', name: 'Nexus Core' })).toEqual({ text: '@NEX ', caret: 5 })
   })
 })

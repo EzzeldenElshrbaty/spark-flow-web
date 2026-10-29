@@ -653,6 +653,16 @@ describe('read state by seq (spec §7 ChannelMember, §8 read marker)', () => {
     expect((await api.chat.channel('c-backend')).lastSeq).toBe(sent.seq)
   })
 
+  it('@here reaches the channel’s active members, not away or offline ones; @channel reaches all of them (spec 6.8)', async () => {
+    const reached = async (text: string) => {
+      events.length = 0
+      await api.chat.send('c-general', text)
+      return events.filter((e) => e.type === 'notificationCreated').map((e) => (e as { userId: string }).userId).sort()
+    }
+    expect(await reached('Standup in 5 @here')).toEqual(['u-2', 'u-3', 'u-5', 'u-9'])
+    expect(await reached('Release notes @channel')).toEqual(['u-2', 'u-3', 'u-4', 'u-5', 'u-6', 'u-7', 'u-8', 'u-9'])
+  })
+
   it('sending the same client id twice stores one message and publishes once', async () => {
     const first = await api.chat.send('c-backend', 'once', 'client-1')
     events.length = 0

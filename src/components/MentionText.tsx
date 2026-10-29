@@ -20,7 +20,8 @@ export function MentionText({ text, className = 'text-sm text-fg' }: { text: str
     <p dir="auto" className={`whitespace-pre-wrap break-words ${className}`}>
       {segments(text, known).map((s, i) => {
         if (s.kind === 'user') return <span key={i} className={chip}>@{s.name}</span>
-        if (s.kind === 'all') return <span key={i} className={chip}>@all</span>
+        if (s.kind === 'all') return <span key={i} className={chip}>@channel</span>
+        if (s.kind === 'here') return <span key={i} className={chip}>@here</span>
         if (s.kind === 'task')
           return (
             <Link key={i} to={{ search: withInspector(params, { kind: 'ticket', key: s.key }).toString() }} className={`${chip} hover:underline`}>

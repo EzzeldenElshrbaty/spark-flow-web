@@ -24,10 +24,11 @@ import {
 } from 'lexical'
 import { appendInlines, autoInlines, type Block, type Body, type Inline, type Mark } from '@/lib/messageBody'
 
-/** What a pill in the composer stands for: a person, everyone, a channel or a project. */
-export type Entity = Extract<Inline, { type: 'user' | 'all' | 'channel' | 'project' }>
+/** What a pill in the composer stands for: a person, everyone (@channel), whoever is active (@here), a channel or a project. */
+export type Entity = Extract<Inline, { type: 'user' | 'all' | 'here' | 'channel' | 'project' }>
 
-const label = (e: Entity) => (e.type === 'user' ? `@${e.name}` : e.type === 'all' ? '@all' : e.type === 'channel' ? `#${e.name}` : `@${e.key}`)
+const label = (e: Entity) =>
+  e.type === 'user' ? `@${e.name}` : e.type === 'all' ? '@channel' : e.type === 'here' ? '@here' : e.type === 'channel' ? `#${e.name}` : `@${e.key}`
 
 type SerializedEntityNode = Spread<{ entity: Entity }, SerializedTextNode>
 

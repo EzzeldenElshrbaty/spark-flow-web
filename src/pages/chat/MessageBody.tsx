@@ -123,7 +123,13 @@ function Inlines({ nodes, ctx }: { nodes: Inline[]; ctx: BodyContext }) {
           case 'all':
             return (
               <span key={i} className={pill}>
-                @all
+                @channel
+              </span>
+            )
+          case 'here':
+            return (
+              <span key={i} className={pill}>
+                @here
               </span>
             )
           case 'channel':

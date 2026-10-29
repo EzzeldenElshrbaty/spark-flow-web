@@ -25,6 +25,14 @@ describe('parseMentions', () => {
     ])
   })
 
+  it('reads @channel (spec 6.8; @all is the same, kept for what was written before) and @here', () => {
+    expect(parseMentions('@channel and @here, then @all')).toEqual([
+      { kind: 'all', id: 'all' },
+      { kind: 'here', id: 'here' },
+    ])
+    expect(parseMentions('mail here@spark-sys.com or @channels')).toEqual([])
+  })
+
   it('ignores e-mail addresses, lowercase keys and bare words', () => {
     expect(parseMentions('mail ops@spark-sys.com about @mob-1 and @everyone')).toEqual([])
   })

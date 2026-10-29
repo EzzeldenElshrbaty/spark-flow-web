@@ -36,6 +36,7 @@ import { useProjectSummaries, useTeams } from '@/api/projects'
 import { MessageSkeleton } from '@/pages/chat/MessageSkeleton'
 import { useChannelReadState, useReadHold, useReadHoldScope } from '@/pages/chat/readState'
 import { ChannelShortcuts, type ChannelNavState } from '@/pages/chat/ChannelShortcuts'
+import { useGroupConfirm } from '@/pages/chat/composer/useGroupConfirm'
 import { FileActionsProvider } from '@/pages/chat/files/FileActions'
 import { withInspector } from '@/lib/inspector'
 import { UploadTray } from '@/pages/chat/uploads/UploadTray'
@@ -438,15 +439,18 @@ function ChannelComposer({
   // Alt+↑/↓ brought me here: carry on typing.
   const arrived = (useLocation().state as ChannelNavState)?.focus === 'composer'
   const directory = useComposerDirectory(channel.workspaceId, channel.memberIds)
+  // @channel or @here to more than 25 members asks first (spec 6.8).
+  const loud = useGroupConfirm(channel.kind === 'channel' ? `#${channel.name}` : 'this conversation', channel.memberIds.length)
   if (drafts.isPending) return composerSkeleton
   const draft = drafts.data?.find((d) => d.channelId === channel.id && d.rootId === null)
   return (
     <Suspense fallback={composerSkeleton}>
+    {loud.dialog}
     <RichComposer
       key={channel.id}
       placeholder={placeholder}
       initialBody={draft?.body}
-      onSend={onSend}
+      onSend={(body) => loud.confirm(body).then(() => onSend(body))}
       onEditLast={onEditLast}
       onDraft={(body) => saveDraft(channel.id, body)}
       onTyping={onTyping}

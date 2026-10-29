@@ -13,7 +13,8 @@ const MAX_ROWS = 8
 const LIST_HEIGHT = 288 // max-h-72
 
 function optionLabel(o: MentionOption) {
-  if (o.kind === 'all') return { icon: <Users className="size-4" />, main: '@all', sub: 'Everyone here' }
+  if (o.kind === 'all') return { icon: <Users className="size-4" />, main: '@channel', sub: 'Everyone here' }
+  if (o.kind === 'here') return { icon: <Users className="size-4" />, main: '@here', sub: 'Everyone active here' }
   if (o.kind === 'user') return { icon: <Avatar name={o.name} size="sm" />, main: o.name, sub: o.title }
   if (o.kind === 'project') return { icon: <Folder className="size-4" />, main: o.key, sub: o.name }
   return { icon: <ListChecks className="size-4" />, main: o.key, sub: o.title }
