@@ -89,7 +89,7 @@ export function ActivityView({
   const unreadInTab = shown?.unread ?? []
   return (
     <section aria-labelledby={`${panelId}-title`} className="flex min-h-0 min-w-0 flex-1 flex-col bg-sf-surface">
-      <header className="flex h-sf-header flex-none items-center gap-3 ps-4 pe-3 sm:ps-6">
+      <header className="flex h-sf-header flex-none items-center gap-3 ps-4 pe-4 sm:ps-6">
         <h1 id={`${panelId}-title`} className="sf-title min-w-0 flex-1 truncate text-sf-text">
           Activity
         </h1>

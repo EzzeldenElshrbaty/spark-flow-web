@@ -116,11 +116,34 @@ describe('RichComposer formatting (spec 6.8)', () => {
     ])
   })
 
-  it('autoformats "- " into a list and "> " into a quote', async () => {
+  it('autoformats "- " into a list', async () => {
     const { onSend, editor } = await ready()
     await userEvent.click(editor)
     await userEvent.keyboard('- one{Shift>}{Enter}{/Shift}two{Enter}')
     expect(onSend.mock.calls[0][0]).toEqual([{ type: 'ul', items: [[{ type: 'text', text: 'one' }], [{ type: 'text', text: 'two' }]] }])
+  })
+
+  it('autoformats "1. " into a numbered list', async () => {
+    const { onSend, editor } = await ready()
+    await userEvent.click(editor)
+    await userEvent.keyboard('1. first{Shift>}{Enter}{/Shift}second{Enter}')
+    expect(onSend.mock.calls[0][0]).toEqual([{ type: 'ol', items: [[{ type: 'text', text: 'first' }], [{ type: 'text', text: 'second' }]] }])
+  })
+
+  it('autoformats "> " into a quote', async () => {
+    const { onSend, editor } = await ready()
+    await userEvent.click(editor)
+    await userEvent.keyboard('> said so{Enter}')
+    expect(onSend.mock.calls[0][0]).toEqual([{ type: 'quote', children: [{ type: 'p', children: [{ type: 'text', text: 'said so' }] }] }])
+  })
+
+  it('autoformats a ``` fence into a code block', async () => {
+    const { onSend, editor } = await ready()
+    await userEvent.click(editor)
+    await userEvent.keyboard('``` x = 1')
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }))
+    await vi.waitFor(() => expect(onSend).toHaveBeenCalled())
+    expect(onSend.mock.calls[0][0]).toEqual([{ type: 'code', text: 'x = 1' }])
   })
 
   it('the formatting row applies bold and shows it pressed', async () => {
@@ -406,6 +429,16 @@ describe('editing a message with files (slice 6 review)', () => {
     expect(save.disabled).toBe(false)
     await userEvent.click(save)
     expect(onSend).toHaveBeenCalledOnce()
+  })
+})
+
+describe('RichComposer tooltips (spec 10: every icon-only button has one)', () => {
+  it('Send says what it does, with its key', async () => {
+    const { editor } = mount()
+    await userEvent.click(editor)
+    await userEvent.keyboard('hi')
+    await userEvent.hover(screen.getByRole('button', { name: 'Send' }))
+    await vi.waitFor(() => expect(document.querySelector('[role="tooltip"]:not([hidden])')?.textContent).toContain('Send'), { timeout: 2000 })
   })
 })
 

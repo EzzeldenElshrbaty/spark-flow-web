@@ -136,3 +136,12 @@ describe('Activity (spec 6.12)', () => {
     expect(onRetry).toHaveBeenCalledOnce()
   })
 })
+
+describe('Activity header (spec 6.12, .sf-view-head)', () => {
+  it('is padded 16px at the end, like the start on phones', () => {
+    show()
+    const head = document.querySelector('header')!
+    expect(head.className.split(' ')).toContain('pe-4')
+    expect(head.className.split(' ')).not.toContain('pe-3')
+  })
+})

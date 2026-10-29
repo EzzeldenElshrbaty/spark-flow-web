@@ -196,6 +196,13 @@ describe('Modal', () => {
     expect(document.activeElement).toBe(opener)
   })
 
+  it('its × has a tooltip like every icon-only button (spec 10)', async () => {
+    render(<InviteModal />)
+    fireEvent.click(screen.getByRole('button', { name: 'Add people' }))
+    fireEvent.pointerEnter(screen.getByRole('button', { name: 'Close' }))
+    expect((await screen.findByRole('tooltip', { hidden: true }, { timeout: 2000 })).textContent).toBe('Close')
+  })
+
   it('a press on the scrim or a bare part of the dialog keeps focus inside it (spec 10)', () => {
     render(<InviteModal />)
     fireEvent.click(screen.getByRole('button', { name: 'Add people' }))

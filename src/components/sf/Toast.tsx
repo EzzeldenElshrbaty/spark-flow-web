@@ -85,7 +85,7 @@ function Toast({ toast, onDismiss }: { toast: ToastInput; onDismiss: () => void 
           {toast.action.label}
         </button>
       )}
-      <IconButton label="Dismiss" icon={IconX} size="sm" tone="ink" tooltip={false} onClick={onDismiss} />
+      <IconButton label="Dismiss" icon={IconX} size="sm" tone="ink" onClick={onDismiss} />
     </div>
   )
 }

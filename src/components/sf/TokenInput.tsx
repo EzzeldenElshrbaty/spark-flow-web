@@ -109,7 +109,6 @@ export function TokenInput({
                 label={`Remove ${t.label}`}
                 icon={IconX}
                 size="xs"
-                tooltip={false}
                 // A 44px touch target on phones (spec 6.16) around the 24px ×.
                 className="relative max-md:after:absolute max-md:after:-inset-2.5"
                 onClick={(event) => {

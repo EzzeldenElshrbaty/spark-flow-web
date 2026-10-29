@@ -415,18 +415,20 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
               </Button>
             </>
           ) : (
-          <button
-            type="button"
-            aria-label="Send"
-            disabled={!canSend}
-            onClick={send}
-            className={clsx(
-              'sf-focus inline-grid h-7 w-9 flex-none place-items-center rounded-sf-md',
-              canSend ? 'cursor-pointer bg-sf-accent-fill text-sf-on-accent hover:bg-sf-accent-fill-hover' : 'cursor-not-allowed bg-transparent text-sf-text-muted',
-            )}
-          >
-            <Icon icon={IconSend} size={16} flip />
-          </button>
+          <Tooltip label="Send" shortcut={['Enter']}>
+            <button
+              type="button"
+              aria-label="Send"
+              disabled={!canSend}
+              onClick={send}
+              className={clsx(
+                'sf-focus inline-grid h-7 w-9 flex-none place-items-center rounded-sf-md',
+                canSend ? 'cursor-pointer bg-sf-accent-fill text-sf-on-accent hover:bg-sf-accent-fill-hover' : 'cursor-not-allowed bg-transparent text-sf-text-muted',
+              )}
+            >
+              <Icon icon={IconSend} size={16} flip />
+            </button>
+          </Tooltip>
           )}
           </div>
         </div>

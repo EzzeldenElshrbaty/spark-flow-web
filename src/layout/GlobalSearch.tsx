@@ -254,7 +254,6 @@ export function DesktopSearch() {
             label="Clear search"
             icon={IconX}
             size="xs"
-            tooltip={false}
             onClick={() => {
               setTerm('')
               keys.reset()
@@ -338,7 +337,7 @@ function SearchScreen({ onClose }: { onClose: () => void }) {
           />
           {term && (
             <span className="absolute end-0 top-1/2 -translate-y-1/2">
-              <IconButton label="Clear search" icon={IconX} size="sm" tone="muted" tooltip={false} className="size-11" onClick={() => setTerm('')} />
+              <IconButton label="Clear search" icon={IconX} size="sm" tone="muted" className="size-11" onClick={() => setTerm('')} />
             </span>
           )}
         </div>

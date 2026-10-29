@@ -92,7 +92,6 @@ export function Modal({
               icon={IconX}
               onClick={onClose}
               className={`relative max-md:after:absolute max-md:after:-inset-1.5 ${actions ? '' : 'ms-auto'}`}
-              tooltip={false}
             />
           </div>
           {children}

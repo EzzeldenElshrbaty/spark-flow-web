@@ -2,6 +2,7 @@ import { IconFileText, IconFileTypePdf, IconPhoto, IconVideo, IconX } from '@tab
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/sf/Button'
 import { Icon } from '@/components/sf/Icon'
+import { Tooltip } from '@/components/sf/Tooltip'
 import { fileSubline, previewOf } from '@/lib/fileTypes'
 import type { Upload } from '@/pages/chat/uploads/useUploads'
 
@@ -61,6 +62,7 @@ function Card({ upload, onRemove, onRetry }: { upload: Upload; onRemove: (key: s
         )}
       </span>
       {/* A 20px round × on the card's corner (spec 6.9), with a 44px touch target on phones. */}
+      <Tooltip label={`Remove ${file.name}`}>
       <button
         type="button"
         aria-label={`Remove ${file.name}`}
@@ -69,6 +71,7 @@ function Card({ upload, onRemove, onRetry }: { upload: Upload; onRemove: (key: s
       >
         <Icon icon={IconX} size={14} />
       </button>
+      </Tooltip>
     </li>
   )
 }

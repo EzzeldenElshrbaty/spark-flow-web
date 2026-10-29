@@ -52,3 +52,11 @@ describe('UploadTray after the slice 6 review', () => {
     expect(within(card).getByRole('button', { name: 'Remove virus.pdf' })).toBeTruthy()
   })
 })
+
+describe('UploadTray tooltips (spec 10)', () => {
+  it('the × says what it removes when pointed at', async () => {
+    render(<UploadTray uploads={[item('scope.pdf')]} refused={[]} onRemove={vi.fn()} onRetry={vi.fn()} />)
+    fireEvent.pointerEnter(screen.getByRole('button', { name: 'Remove scope.pdf' }))
+    expect((await screen.findByRole('tooltip', { hidden: true }, { timeout: 2000 })).textContent).toBe('Remove scope.pdf')
+  })
+})

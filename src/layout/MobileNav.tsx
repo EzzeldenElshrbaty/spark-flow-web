@@ -86,7 +86,7 @@ export function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => 
       <div tabIndex={-1} className="absolute inset-y-0 start-0 flex w-sf-sidebar max-w-[85vw] flex-col bg-sf-app-frame shadow-sf-modal outline-none">
         <div className="flex h-14 flex-none items-center justify-between ps-2 pe-3">
           <Logo onClick={onClose} />
-          <IconButton label="Close menu" icon={IconX} tone="sidebar" tooltip={false} onClick={onClose} data-autofocus />
+          <IconButton label="Close menu" icon={IconX} tone="sidebar" onClick={onClose} data-autofocus />
         </div>
         <div className="min-h-0 flex-1">
           <SidebarContent onNavigate={onClose} />
