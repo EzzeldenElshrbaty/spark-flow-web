@@ -806,3 +806,14 @@ Earlier list, for reference:
 - Upload progress re-renders the whole channel page (not measured).
 
 Verified: 1278 tests, tsc, lint, `build:prototype`. Not pushed.
+
+## Audit fixes, batches A–D (29 Oct 2026)
+
+From `docs/flow-chat/AUDIT.md` "Fix first" 1–4. Test first; not pushed.
+
+- [x] A. The New line and unread bar stay after Files/Pins/Page and back (`readState.ts` visit store, scoped like the U hold); the New line takes the 24px desktop gutter. Tests: `readState.test.tsx` (4 new), `MessageList.browser.test.tsx` "on desktop the New line is inset 24px". 274a62f
+- [x] B. One sticky date at a time; the next day's pill pushes it out, clipped at its slot so it never covers the unread bar. Tests: `MessageList.browser.test.tsx` "sticky date" (2, scroll 6px at a time across four days, with and without the bar). 6be349a
+- [x] C. ⌘K in the composer opens Link only; the top-bar search leaves a key a control already took (`opensSearch` in `searchShortcuts.ts`). Tests: `searchShortcuts.test.ts`, `RichComposer.browser.test.tsx` "⌘K in the composer". 6636d35
+- [x] D. Image and video frames hug the media, at most 420px (cap moved from the img to the wrapper). Tests: `MessageFiles.browser.test.tsx` (1600×900, 2000×300, 400×1600, 100×100). 8358442
+
+Review: full suite 128 files / 1303 tests pass; tsc, lint and the prototype build are clean. Checked in the app: ⌘K in the #backend composer keeps focus in Link address; in #general the unread bar and New line are still there after Files → Messages. Video frame: same fix as images, not covered by a test (headless Chromium can't play a generated clip).
