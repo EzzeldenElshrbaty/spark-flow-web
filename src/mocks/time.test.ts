@@ -351,7 +351,9 @@ describe('a forgotten timer', () => {
     const day = await api.time.checkIn({ plan: 'New day' })
     expect(day.running).toBeNull()
     const entry = (await db.read()).timeEntries.find((e) => e.userId === 'u-1' && e.taskId === 't-nex-101' && e.startedAt === at(16, 0, -1).toISOString())!
-    expect(entry.endedAt).toBe(at(4).toISOString()) // stopped at the 12-hour limit, not at this morning's check-in
+    // Stopped at the 12-hour limit, not at this morning's check-in: 12 hours of time, whatever a clock change overnight
+    // does to the wall clock.
+    expect(entry.endedAt).toBe(new Date(at(16, 0, -1).getTime() + 12 * 3_600_000).toISOString())
   })
 })
 
