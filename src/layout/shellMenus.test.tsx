@@ -69,11 +69,15 @@ describe('UserMenu (spec 5.2: the account menu)', () => {
     expect(setTheme).toHaveBeenCalledWith('dark')
   })
 
-  it('View as someone else switches to them', async () => {
+  it('View as someone else keeps the menu open until the switch lands (a failure says so there), then goes home', async () => {
     show(<UserMenu />)
     await open(/Youssef Abdelrahman/)
     await act(async () => fireEvent.click(screen.getByRole('menuitemradio', { name: /Nour El-Sayed/ })))
     expect(viewAs).toHaveBeenCalledWith('u-2', expect.anything())
+    expect(screen.getByRole('menu', { name: 'Account' })).toBeTruthy()
+    await act(async () => (viewAs.mock.calls[0][1] as { onSuccess: () => void }).onSuccess())
+    expect(screen.queryByRole('menu', { name: 'Account' })).toBeNull()
+    expect(navigate).toHaveBeenCalledWith('/w/engineering')
   })
 })
 

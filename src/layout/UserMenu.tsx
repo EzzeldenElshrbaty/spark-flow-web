@@ -2,10 +2,11 @@ import clsx from 'clsx'
 import { useQueryClient } from '@tanstack/react-query'
 import { IconChevronDown, IconKey, IconLogout, IconMoon, IconSun } from '@tabler/icons-react'
 import { useNavigate } from 'react-router'
+import type { User } from '@/api/types'
 import { useUsers, useViewAs } from '@/api/users'
 import { Avatar } from '@/components/sf/Avatar'
 import { Icon } from '@/components/sf/Icon'
-import { Menu, MenuHeading, MenuItem, MenuSeparator } from '@/components/sf/Menu'
+import { Menu, MenuHeading, MenuItem, MenuSeparator, useCloseMenu } from '@/components/sf/Menu'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { backendOn } from '@/lib/api'
 import { roleLabels } from '@/lib/roles'
@@ -26,12 +27,12 @@ export function UserMenu() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
 
-  // Demo only: become someone else, then start fresh on that workspace's home, since what they may see differs.
-  // A failure shows its sentence in the menu (viewAs.isError) instead of being thrown.
-  const switchTo = (userId: string) => {
-    if (userId === persona.id) return
+  // Demo only: become someone else, then start fresh on that workspace's home, since what they may see differs. The
+  // menu stays open until the switch lands, so a failure shows its sentence there (viewAs.isError).
+  const switchTo = (userId: string, close: () => void) => {
     viewAs.mutate(userId, {
       onSuccess: () => {
+        close()
         queryClient.clear()
         navigate(workspace ? `/w/${workspace.slug}` : '/')
       },
@@ -101,9 +102,7 @@ export function UserMenu() {
             </p>
           )}
           {people.data.map((person) => (
-            <MenuItem key={person.id} checked={person.id === persona.id} disabled={viewAs.isPending} onSelect={() => switchTo(person.id)}>
-              {person.name} <span className="text-sf-text-muted">· {roleLabels[person.role]}</span>
-            </MenuItem>
+            <ViewAsItem key={person.id} person={person} current={person.id === persona.id} pending={viewAs.isPending} onPick={switchTo} />
           ))}
         </>
       )}
@@ -115,5 +114,15 @@ export function UserMenu() {
         Log out
       </MenuItem>
     </Menu>
+  )
+}
+
+/** A View as row: picking someone else keeps the menu open until the switch lands; picking myself just closes it. */
+function ViewAsItem({ person, current, pending, onPick }: { person: User; current: boolean; pending: boolean; onPick: (userId: string, close: () => void) => void }) {
+  const close = useCloseMenu()
+  return (
+    <MenuItem checked={current} disabled={pending} keepOpen={!current} onSelect={() => !current && onPick(person.id, close)}>
+      {person.name} <span className="text-sf-text-muted">· {roleLabels[person.role]}</span>
+    </MenuItem>
   )
 }

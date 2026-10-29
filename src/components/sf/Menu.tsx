@@ -254,6 +254,7 @@ export function MenuItem({
   disabled = false,
   checked,
   onSelect,
+  keepOpen = false,
   children,
 }: {
   icon?: TablerIcon
@@ -265,6 +266,8 @@ export function MenuItem({
   disabled?: boolean
   checked?: boolean
   onSelect?: () => void
+  /** The menu stays open after it: the item closes it itself when its work lands (useCloseMenu), or shows why not. */
+  keepOpen?: boolean
   children: ReactNode
 }) {
   const { closeAll, phone } = useMenu()
@@ -280,7 +283,7 @@ export function MenuItem({
       onClick={() => {
         if (disabled) return
         onSelect?.()
-        closeAll()
+        if (!keepOpen) closeAll()
       }}
       className={itemClass(phone, danger)}
     >
