@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Channel, TaskView } from '@/api/types'
-import { peopleShortcuts, shortcutsFor, taskShortcuts, workspaceShortcuts } from '@/layout/searchShortcuts'
+import { opensSearch, peopleShortcuts, shortcutsFor, taskShortcuts, workspaceShortcuts } from '@/layout/searchShortcuts'
 import { seed } from '@/mocks/seed'
 
 const data = seed(new Date('2026-10-26T09:00:00Z')).data
@@ -57,5 +57,21 @@ describe('pages, tasks and people', () => {
     expect(found.some((p) => p.userId === 'u-1')).toBe(false)
     expect(peopleShortcuts(data.users, 'u-1', 'nour').map((p) => p.userId)).toEqual(['u-2'])
     expect(peopleShortcuts(data.users, 'u-1', 'nour')[0]!.link).toBe('dm:u-2')
+  })
+})
+
+describe('opensSearch (spec 10: ⌘/Ctrl+K)', () => {
+  const key = (init: { key: string; metaKey?: boolean; ctrlKey?: boolean }, target: EventTarget | null = null, handled = false) =>
+    ({ metaKey: false, ctrlKey: false, ...init, target, defaultPrevented: handled }) as unknown as KeyboardEvent
+
+  it('opens on ⌘K and Ctrl+K, and on / when not typing', () => {
+    expect(opensSearch(key({ key: 'k', metaKey: true }))).toBe(true)
+    expect(opensSearch(key({ key: 'k', ctrlKey: true }))).toBe(true)
+    expect(opensSearch(key({ key: '/' }))).toBe(true)
+    expect(opensSearch(key({ key: 'k' }))).toBe(false)
+  })
+
+  it('leaves a key that a control already took, like ⌘K for Link in the composer (spec 6.8)', () => {
+    expect(opensSearch(key({ key: 'k', metaKey: true }, null, true))).toBe(false)
   })
 })

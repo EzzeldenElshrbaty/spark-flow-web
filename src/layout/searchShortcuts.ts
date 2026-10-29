@@ -135,3 +135,14 @@ export function findShortcuts(all: { pages: Shortcut[]; actions: Shortcut[] }, r
   if (!typed.length) return { pages: [], actions: [] }
   return { pages: best(all.pages, term, typed, 8, true), actions: best(all.actions, term, typed, 10, false) }
 }
+
+/**
+ * Whether a key opens the top-bar search (spec 10): ⌘/Ctrl+K anywhere, or / when not typing. Not a key a control has
+ * already taken: in the composer ⌘K is Link (spec 6.8).
+ */
+export function opensSearch(event: KeyboardEvent): boolean {
+  if (event.defaultPrevented) return false
+  const target = event.target as HTMLElement | null
+  const typing = Boolean(target && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)))
+  return (event.key === 'k' && (event.metaKey || event.ctrlKey)) || (event.key === '/' && !typing)
+}

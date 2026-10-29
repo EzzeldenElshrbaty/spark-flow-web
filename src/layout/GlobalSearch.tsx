@@ -12,7 +12,7 @@ import { useProjects, useTasksOf } from '@/api/tickets'
 import { useUsers } from '@/api/users'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { useRole } from '@/lib/useRole'
-import { findShortcuts, peopleShortcuts, shortcutsFor, taskShortcuts, workspaceShortcuts } from '@/layout/searchShortcuts'
+import { findShortcuts, opensSearch, peopleShortcuts, shortcutsFor, taskShortcuts, workspaceShortcuts } from '@/layout/searchShortcuts'
 import { paths } from '@/lib/paths'
 
 // TODO(api): search messages on the server too, as Spark CRM's GlobalSearch does for its records
@@ -211,8 +211,7 @@ export function DesktopSearch() {
 
   useEffect(() => {
     const onKey = (event: globalThis.KeyboardEvent) => {
-      const typing = event.target instanceof HTMLElement && (event.target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName))
-      if ((event.key === 'k' && (event.metaKey || event.ctrlKey)) || (event.key === '/' && !typing)) {
+      if (opensSearch(event)) {
         event.preventDefault()
         inputRef.current?.focus()
       }

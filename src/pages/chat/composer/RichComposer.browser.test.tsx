@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import type { User } from '@/api/types'
 import { bodyText, parseBody, type Body } from '@/lib/messageBody'
+import { opensSearch } from '@/layout/searchShortcuts'
 import { RichComposer, type ComposerDirectory } from '@/pages/chat/composer/RichComposer'
 
 // A real browser: the editor needs real keyboard events, selection and layout.
@@ -405,5 +406,24 @@ describe('editing a message with files (slice 6 review)', () => {
     expect(save.disabled).toBe(false)
     await userEvent.click(save)
     expect(onSend).toHaveBeenCalledOnce()
+  })
+})
+
+describe('RichComposer ⌘K (spec 6.8 and 10)', () => {
+  it('⌘K in the composer opens the link row only: the page\'s search leaves it alone', async () => {
+    const searched = vi.fn()
+    const onKey = (e: KeyboardEvent) => opensSearch(e) && searched()
+    document.addEventListener('keydown', onKey)
+    try {
+      const { editor } = mount()
+      await userEvent.click(editor)
+      await userEvent.keyboard('abc{Shift>}{ArrowLeft}{ArrowLeft}{ArrowLeft}{/Shift}')
+      await userEvent.keyboard('{ControlOrMeta>}k{/ControlOrMeta}')
+      const field = await screen.findByRole('textbox', { name: 'Link address' })
+      expect(document.activeElement).toBe(field)
+      expect(searched).not.toHaveBeenCalled()
+    } finally {
+      document.removeEventListener('keydown', onKey)
+    }
   })
 })
