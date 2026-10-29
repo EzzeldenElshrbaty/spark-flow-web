@@ -240,7 +240,7 @@ What a delete takes is kept only for the Undo window, then dropped (retention be
 
 What the list holds, for the signed-in person:
 
-- **Mentions** of me, as `GET /api/mentions` has them (spec 6.12 Mentions), in this workspace, worked out from each message or reply as it reads now (an edit can add or remove one; `@channel` counts, and `@here` for whoever is active).
+- **Mentions** of me, as `GET /api/mentions` has them (spec 6.12 Mentions), in this workspace, worked out from each message or reply as it reads now (an edit can add or remove one; `@channel` counts, and `@here` for whoever it reached: the server records, when `@here` first appears in a message or reply, which of the channel's other members were active, as `hereIds` on the row, and Activity reads that, so a later change of presence changes nothing; an edit that takes `@here` out drops it).
 - **Reactions** to my messages and replies (spec §7 `Notification`): one item per person and emoji. Taking the reaction back removes the item; my own reactions make none, and neither do reactions in a channel I can no longer read.
 - **Thread replies** in threads I follow (the following rules of slice 2): one item per reply, stored for every follower except the replier and anyone who can't read the channel. A reply that mentions me as it reads now is listed once, as the mention, not again as a thread item.
 - Items whose message or reply is deleted are left out, as are channels at Nothing and channels I can no longer read (I left a private channel or was taken off it): the read check runs when the list is read, not only when an item is stored, since the excerpt is the text as it is now.

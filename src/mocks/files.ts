@@ -272,7 +272,7 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
         if (file.scanStatus !== 'clean') throw badRequest(file.scanStatus === 'blocked' ? 'This file was blocked.' : 'This file is still being checked.')
         checkCanWrite(data, findChannel(data, channelId))
         const message: ChatMessage = postMessage(data, { channelId, content: content.trim(), attachments: [clone(file)] })
-        return { message, mentioned: reachedBy(data, message.mentions, channelId, me.id) }
+        return { message, mentioned: reachedBy(data, message, channelId, me.id) }
       })
       hub.publish({ type: 'messageReceived', message: clone(message) })
       hub.publish({ type: 'fileChanged', fileId: id })

@@ -1,5 +1,5 @@
 import { can } from '@/lib/permissions'
-import type { Api, Attachment, Channel, ChannelMemberState, ChatMessage, NotifyLevel, Page, SystemEvent, ChatTarget, StoredChannel, ThreadReply, WhoCanPost } from '@/api/types'
+import type { Api, Attachment, Channel, ChannelMemberState, ChatMessage, Mention, NotifyLevel, Page, SystemEvent, ChatTarget, StoredChannel, ThreadReply, WhoCanPost } from '@/api/types'
 import { channelFormErrors, descriptionError } from '@/lib/channelForm'
 import { isEmail, MAX_INVITES, normalEmail, notAnEmailLine } from '@/lib/invites'
 import { MAX_MESSAGE_FILES } from '@/lib/fileDetails'
@@ -16,7 +16,7 @@ import { bodyTaskKeys, bodyText, mentionsOf, parseBody, validBody, type Body } f
 import { linkPreviewFor } from './linkPreviews'
 import { firstLine } from '@/lib/inspector'
 import { canRead, freshState } from './membership'
-import { reachedBy } from './mentions'
+import { hereReached, reachedBy } from './mentions'
 
 const PAGE_SIZE = 30
 
@@ -508,6 +508,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         row.content = text
         row.body = nextBody
         row.mentions = input.body ? mentionsOf(input.body) : parseMentions(text)
+        keepHere(data, row, channel.id)
         row.editedAt = new Date().toISOString()
         if (target.kind === 'message') {
           const message = row as ChatMessage
@@ -575,7 +576,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         const me = checkCanWrite(data, channel)
         const attachments = attachFiles(data, fileIds, me.id)
         const message = postMessage(data, { channelId, clientId, attachments, ...textOf(content, body, attachments.length > 0) })
-        return { message, repeat: false, mentioned: reachedBy(data, message.mentions, channelId, me.id) }
+        return { message, repeat: false, mentioned: reachedBy(data, message, channelId, me.id) }
       })
       if (!repeat) hub.publish({ type: 'messageReceived', message: clone(message) })
       // Who it mentions has something new in Activity (spec 6.12); nobody else's needs to refresh.
@@ -593,7 +594,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         const reply = postReply(data, { messageId, clientId, attachments, ...textOf(content, body, attachments.length > 0), alsoInChannel: Boolean(alsoInChannel) })
         // Followers with a thread item, and whoever it mentions, each once.
         const followers = data.notifications.filter((n) => n.replyId === reply.id).map((n) => n.userId)
-        return { reply, notified: [...new Set([...followers, ...reachedBy(data, reply.mentions, reply.channelId, reply.senderId)])], repeat: false }
+        return { reply, notified: [...new Set([...followers, ...reachedBy(data, reply, reply.channelId, reply.senderId)])], repeat: false }
       })
       if (repeat) return clone(reply)
       hub.publish({ type: 'replyReceived', reply: clone(reply) })
@@ -763,9 +764,20 @@ export function postMessage(data: DbData, input: SendMessageInput, extra: Partia
     createdAt,
     ...extra,
   }
+  keepHere(data, created, channel.id)
   data.messages.push(created)
   channel.lastMessageAt = createdAt
   return created
+}
+
+/**
+ * Keeps who a row's @here reaches (spec 6.8): worked out once, when @here first appears in it (sent, or added by an
+ * edit), and dropped when an edit takes it out. Activity reads it, so a later change of presence changes nothing.
+ */
+function keepHere(data: DbData, row: { mentions: Mention[]; hereIds?: string[]; senderId: string }, channelId: string) {
+  const has = row.mentions.some((m) => m.kind === 'here')
+  if (has && !row.hereIds) row.hereIds = hereReached(data, channelId, row.senderId)
+  if (!has) delete row.hereIds
 }
 
 /** What the channel says about a change the current user made (joined, left, renamed, topic changed). */
@@ -792,6 +804,7 @@ export function postReply(data: DbData, input: AddReplyInput): ThreadReply {
     createdAt,
     ...(input.clientId ? { clientId: input.clientId } : {}),
   }
+  keepHere(data, created, channel.id)
   if (input.alsoInChannel) {
     // Also sent to the channel (spec 6.7): it takes the channel's next seq; the channel keeps only its place there.
     created.alsoInChannel = true

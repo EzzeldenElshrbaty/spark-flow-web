@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { Api } from '@/api/types'
-import { createDb } from './db'
+import { createDb, type MockDb } from './db'
 import { createMockApi } from './index'
 import { latency } from './latency'
 import { createMockHub, type MockHub } from './realtime'
@@ -9,11 +9,13 @@ import { createMemoryStore } from './store'
 
 let api: Api
 let hub: MockHub
+let db: MockDb
 
 beforeEach(() => {
   latency.min = latency.max = 0
   hub = createMockHub(`test-mentions-${Math.random()}`, null)
-  api = createMockApi(createDb(createMemoryStore(), seed), hub)
+  db = createDb(createMemoryStore(), seed)
+  api = createMockApi(db, hub)
 })
 afterEach(() => hub.close())
 
@@ -187,5 +189,31 @@ describe('mention author names', () => {
     await api.chat.send('c-general', 'Ping @[Nour](u-2)')
     await as('u-2')
     expect((await api.mentions.mine())[0]).toMatchObject({ authorName: 'Youssef Abdelrahman' })
+  })
+})
+
+describe('@here in Activity (spec 6.8, §7)', () => {
+  const presence = (userId: string, value: 'active' | 'away' | 'offline') =>
+    db.update((d) => {
+      d.users.find((u) => u.id === userId)!.presence = value
+    })
+
+  it('is an item for whoever was active when it was sent, however their presence changes after', async () => {
+    // u-2 active, u-4 away when it goes out.
+    const sent = await api.chat.send('c-general', 'Standup now @here')
+    await presence('u-2', 'offline')
+    await presence('u-4', 'active')
+    await as('u-2')
+    expect((await api.mentions.mine()).some((m) => m.id === sent.id)).toBe(true)
+    await as('u-4')
+    expect((await api.mentions.mine()).some((m) => m.id === sent.id)).toBe(false)
+  })
+
+  it('a reply with @here keeps who it reached too', async () => {
+    const root = await api.chat.send('c-general', 'Question')
+    const reply = await api.chat.reply(root.id, 'Anyone around? @here')
+    await presence('u-3', 'away')
+    await as('u-3')
+    expect((await api.mentions.mine()).some((m) => m.id === reply.id)).toBe(true)
   })
 })

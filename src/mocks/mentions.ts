@@ -16,19 +16,25 @@ function projectPeople(data: DbData, projectId: string): Set<string> {
 
 /**
  * Whether these mentions reach `userId`: by name, by @channel when they are among `everyone`, or by @here when they
- * are also active (spec 6.8). In a private channel or a DM only its members can be reached, so its text never shows
- * in anyone else's bell.
+ * were active (`active`: who the message's @here reached, spec 6.8). In a private channel or a DM only its members
+ * can be reached, so its text never shows in anyone else's bell.
  */
 const reaches = (mentions: Mention[], userId: string, everyone: () => Set<string>, closed = false, active: (id: string) => boolean = () => false) =>
   (!closed || everyone().has(userId)) &&
   mentions.some((m) => (m.kind === 'user' && m.id === userId) || (m.kind === 'all' && everyone().has(userId)) || (m.kind === 'here' && everyone().has(userId) && active(userId)))
 
-/** Who a new message or reply by `senderId` in a channel mentions (by name, or @all for its members): they hear of it live. */
-export function reachedBy(data: DbData, mentions: Mention[], channelId: string, senderId: string): string[] {
+/** Who @here reaches in a channel now: its members other than `senderId` who are active (spec 6.8). Kept on the row. */
+export function hereReached(data: DbData, channelId: string, senderId: string): string[] {
+  const members = data.channels.find((c) => c.id === channelId)?.memberIds ?? []
+  return members.filter((id) => id !== senderId && data.users.find((u) => u.id === id)?.presence === 'active')
+}
+
+/** Who a new message or reply by `senderId` in a channel mentions (by name, @channel, or the @here it kept): they hear of it live. */
+export function reachedBy(data: DbData, row: { mentions: Mention[]; hereIds?: string[] }, channelId: string, senderId: string): string[] {
   const channel = data.channels.find((c) => c.id === channelId)
   const everyone = () => new Set(channel?.memberIds ?? [])
-  const active = (id: string) => data.users.find((u) => u.id === id)?.presence === 'active'
-  return data.users.filter((u) => u.id !== senderId && reaches(mentions, u.id, everyone, channel?.isPrivate ?? false, active)).map((u) => u.id)
+  const here = (id: string) => row.hereIds?.includes(id) ?? false
+  return data.users.filter((u) => u.id !== senderId && reaches(row.mentions, u.id, everyone, channel?.isPrivate ?? false, here)).map((u) => u.id)
 }
 
 /**
@@ -39,17 +45,15 @@ export function reachedBy(data: DbData, mentions: Mention[], channelId: string, 
 export function mentionsFor(data: DbData, userId: string, keep: (item: Omit<MentionItem, 'read'>) => boolean = () => true, limit = MAX_ITEMS): Omit<MentionItem, 'read'>[] {
   const members = (channelId: string) => () => new Set(data.channels.find((c) => c.id === channelId)?.memberIds ?? [])
   const closed = (channelId: string) => data.channels.find((c) => c.id === channelId)?.isPrivate ?? false
-  // @here reached whoever was active; the mock keeps only presence now, so that stands in for then.
-  const active = (id: string) => data.users.find((u) => u.id === id)?.presence === 'active'
   const items: Omit<MentionItem, 'read'>[] = []
   const nameOf = (id: string) => data.users.find((u) => u.id === id)?.name ?? 'Someone'
   const wsOfChannel = (channelId: string) => data.channels.find((c) => c.id === channelId)?.workspaceId ?? ''
   for (const m of data.messages) {
-    if (m.commentId || m.deletedAt || m.senderId === userId || !reaches(m.mentions, userId, members(m.channelId), closed(m.channelId), active)) continue
+    if (m.commentId || m.deletedAt || m.senderId === userId || !reaches(m.mentions, userId, members(m.channelId), closed(m.channelId), (id) => m.hereIds?.includes(id) ?? false)) continue
     items.push({ id: m.id, source: 'message', workspaceId: wsOfChannel(m.channelId), authorId: m.senderId, authorName: nameOf(m.senderId), excerpt: excerptOf(m.content), createdAt: m.createdAt, channelId: m.channelId, messageId: m.id, taskKey: null, projectId: null })
   }
   for (const r of data.replies) {
-    if (r.deletedAt || r.senderId === userId || !reaches(r.mentions, userId, members(r.channelId), closed(r.channelId), active)) continue
+    if (r.deletedAt || r.senderId === userId || !reaches(r.mentions, userId, members(r.channelId), closed(r.channelId), (id) => r.hereIds?.includes(id) ?? false)) continue
     items.push({ id: r.id, source: 'reply', workspaceId: wsOfChannel(r.channelId), authorId: r.senderId, authorName: nameOf(r.senderId), excerpt: excerptOf(r.content), createdAt: r.createdAt, channelId: r.channelId, messageId: r.messageId, taskKey: null, projectId: null })
   }
   for (const c of data.comments) {

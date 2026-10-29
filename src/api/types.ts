@@ -171,6 +171,8 @@ export type ChatMessage = {
   /** Its place in the channel: 1, 2, 3… in the order the server stored them. Ordering and read state go by it. */
   seq: number
   /** The id the sender's client made up for it, so a retried send stores it once. */
+  /** Who its @here reached: the channel's other members who were active when it was sent (spec 6.8). */
+  hereIds?: string[]
   clientId?: string
   /** The text as structured rich text (spec §7); `content` is the text as written, for search and editing. */
   body: Body
@@ -251,6 +253,8 @@ export type ThreadReply = {
   /** Also sent to the channel (spec 6.7): then it has a `seq` there too, and shows in the channel's list. */
   alsoInChannel?: boolean
   seq?: number
+  /** Who its @here reached: the channel's other members who were active when it was sent (spec 6.8). */
+  hereIds?: string[]
   /** The sender's id for the write (spec §8): a retry with it returns this reply instead of storing another. */
   clientId?: string
 }
