@@ -863,3 +863,14 @@ Review: 136 files / 1352 tests pass; tsc, lint and the prototype build are clean
 - Ruling: notification delivery (desktop, push, email digest), Do Not Disturb and the global default level move to Phase 3 with Preferences — §12 gives them no phase — cost if wrong: the popover's Phase 2 rows stay open.
 - Ruling: the chatRedesign sidebar rows (Threads, Drafts & sent, Saved) stay hidden until their views exist (Phase 3) — the flag is already off in production — cost if wrong: none for users.
 - Action: ask the .NET team for the realtime hub contract (events, client frames, auth, resume and replay by seq) now; the SignalR client behind RealtimeClient (audit 8-81) waits for it.
+
+## Clean-up slice, batches N–Q (29 Oct 2026)
+
+Test first; not pushed.
+
+- [x] N. `can()` gains `message.edit` (author only, Admins included), `message.delete` (author or Admin) and `channel.archive` (Admins who may manage the channel); `messageRights` and the mock use them. Archive in ⋮ and Settings is an Admin's. ⋮ has Notification settings (the bell's levels and Mute, shared `NotifyLevelItems`). Tests: `permissions.test.ts`, `chat.test.ts`, `ChannelHeader.test.tsx`, `ChannelDetails.test.tsx`. 3a694d5
+- [x] O. Invite on send: a message that mentions someone not in the channel asks "Add Nour El-Sayed to #backend?" (Add and send / Leave them out; without the right: Send anyway / Cancel), in channel and thread boxes. Tests: `useInviteOnSend.test.tsx` (4). Checked in the app. 914fb76
+- [x] P. Tooltips on Send, the tray ×, dialog ×, token ×, toast dismiss, search clears and the phone menu buttons; autoformat tests for `1. `, `> ` and the fence; Activity header `pe-4`. Tests: `RichComposer.browser.test.tsx`, `UploadTray.test.tsx`, `layers.test.tsx`, `ActivityView.test.tsx`. 5f6ee04
+- [x] Q. The five parked slice 6 items: focus into File details and after Delete file; thread tray keeps files added while a reply sends (`clear(keys)`); no retry on a 404 in File details; Open in the panel shows the office preview (`viewedFile`), and the viewer sends cookies only to our API (`fetchCredentials`); upload progress in `uploadProgress` (a card redraws, not the page). Tests: `FileInspector.test.tsx`, `FileActions.test.tsx`, `useUploads.test.tsx`, `UploadTray.test.tsx`, `fileView.test.ts`, `api/files.test.tsx`. ac037b0
+
+Review: 139 files / 1378 tests pass; tsc, lint and the prototype build are clean. In the app: the invite prompt on @Mariam in #backend (Esc keeps the text), ⋮ with Notification settings.
