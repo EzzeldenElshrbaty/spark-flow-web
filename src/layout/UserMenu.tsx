@@ -1,13 +1,11 @@
 import clsx from 'clsx'
 import { useQueryClient } from '@tanstack/react-query'
-import { IconChevronDown } from '@tabler/icons-react'
-import { Check, KeyRound, LogOut, Moon, Sun } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { IconChevronDown, IconKey, IconLogout, IconMoon, IconSun } from '@tabler/icons-react'
 import { useNavigate } from 'react-router'
 import { useUsers, useViewAs } from '@/api/users'
 import { Avatar } from '@/components/sf/Avatar'
 import { Icon } from '@/components/sf/Icon'
-import { MenuPanel } from '@/components/ui/Menu'
+import { Menu, MenuHeading, MenuItem, MenuSeparator } from '@/components/sf/Menu'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { backendOn } from '@/lib/api'
 import { roleLabels } from '@/lib/roles'
@@ -16,14 +14,12 @@ import { useTheme } from '@/lib/useTheme'
 
 /**
  * The account menu behind the avatar: who you are, Preferences, and Change password / Log out (once sign-in exists).
- * A dropdown on desktop, a bottom sheet on phones.
+ * The redesign's menu (spec 5.2): a dropdown on desktop, a bottom sheet on phones.
  */
 export function UserMenu() {
   const { persona } = useRole()
   // TODO(auth): signed in, also save the theme on the account so it follows the user to every device (as Spark CRM does).
   const { theme, setTheme } = useTheme()
-  const [open, setOpen] = useState(false)
-  const triggerRef = useRef<HTMLButtonElement>(null)
   const { workspace } = useCurrentWorkspace()
   const people = useUsers(backendOn ? undefined : workspace?.id)
   const viewAs = useViewAs()
@@ -36,7 +32,6 @@ export function UserMenu() {
     if (userId === persona.id) return
     viewAs.mutate(userId, {
       onSuccess: () => {
-        setOpen(false)
         queryClient.clear()
         navigate(workspace ? `/w/${workspace.slug}` : '/')
       },
@@ -45,126 +40,80 @@ export function UserMenu() {
 
   // The account loads after the shell: until the name is known, the avatar is a pulse placeholder.
   const loaded = Boolean(persona.name)
-  const initials = persona.name
-    .split(' ')
-    .map((part) => part[0])
-    .join('')
-    .slice(0, 2)
-
-  const sectionLabel = 'px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-fg-muted'
-
   return (
-    <div className="relative shrink-0">
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        className="sf-focus flex h-11 flex-none cursor-pointer items-center gap-2 rounded-sf-md ps-1 pe-2 hover:bg-sf-surface-hover"
-      >
-        {loaded ? (
-          <Avatar id={persona.id} name={persona.name} presence={people.data?.find((u) => u.id === persona.id)?.presence} decorative />
-        ) : (
-          <span aria-hidden className="size-sf-avatar animate-pulse rounded-sf-md bg-sf-surface-hover" />
-        )}
-        {/* Named by the name and title it shows; on a phone they're there for screen readers only. */}
-        {loaded ? (
-          <span className="sr-only text-start md:not-sr-only md:block">
-            <span className="sf-ui-medium block text-sf-text">{persona.name}</span>
-            <span className="sf-meta block text-sf-text-muted">{persona.title}</span>
-          </span>
-        ) : (
-          <>
-            <span className="sr-only">Account menu</span>
-            <span className="hidden h-8 w-28 animate-pulse rounded-sf-md bg-sf-surface-hover md:block" aria-hidden />
-          </>
-        )}
-        <Icon
-          icon={IconChevronDown}
-          size={16}
-          className={clsx('hidden text-sf-text-secondary transition-transform duration-150 ease-sf sm:block', open && 'rotate-180')}
-        />
-      </button>
-
-      <MenuPanel open={open} onClose={() => setOpen(false)} triggerRef={triggerRef} label="Account" className="sm:w-80">
-            <div className="flex items-center gap-3 border-b border-line-subtle px-4 py-4">
-              <span className="flex size-10 items-center justify-center rounded-full bg-ink-800 text-sm font-semibold text-white dark:bg-surface-strong">{initials}</span>
-              <div className="min-w-0">
-                <p className="truncate font-medium text-fg">{persona.name}</p>
-                <p className="truncate text-xs text-fg-muted">{roleLabels[persona.role]} · {persona.title}</p>
-              </div>
-            </div>
-
-            <div className="p-1.5">
-              <p className={sectionLabel}>Preferences</p>
-              <div className="flex items-center justify-between gap-3 px-3 py-2">
-                <span className="text-sm text-fg-secondary">Theme</span>
-                <div className="inline-flex rounded-lg border border-line p-0.5" role="group" aria-label="Theme">
-                  {(
-                    [
-                      ['light', 'Light', Sun],
-                      ['dark', 'Dark', Moon],
-                    ] as const
-                  ).map(([value, label, Icon]) => (
-                    <button
-                      key={value}
-                      type="button"
-                      role="menuitemradio"
-                      aria-checked={theme === value}
-                      onClick={() => setTheme(value)}
-                      className={clsx(
-                        'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs transition-colors',
-                        theme === value ? 'bg-surface-muted font-medium text-fg' : 'text-fg-muted hover:text-fg',
-                      )}
-                    >
-                      <Icon className="size-3.5" /> {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {!backendOn && people.data && (
-              <div className="border-t border-line-subtle p-1.5">
-                <p className={sectionLabel}>View as</p>
-                <div className="max-h-64 overflow-y-auto">
-                  {people.data.map((person) => (
-                    <button
-                      key={person.id}
-                      type="button"
-                      role="menuitemradio"
-                      aria-checked={person.id === persona.id}
-                      disabled={viewAs.isPending}
-                      onClick={() => void switchTo(person.id)}
-                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start text-sm text-fg-secondary hover:bg-surface-muted disabled:opacity-60"
-                    >
-                      <span className="min-w-0 flex-1 truncate">
-                        {person.name} <span className="text-fg-muted">· {roleLabels[person.role]}</span>
-                      </span>
-                      {person.id === persona.id && <Check className="size-4 shrink-0 text-accent" />}
-                    </button>
-                  ))}
-                </div>
-                {viewAs.isError && <p className="px-3 py-1 text-xs text-red-600 dark:text-red-400">Switching didn't work. Try again.</p>}
-              </div>
-            )}
-
-            <div className="border-t border-line-subtle p-1.5">
-              {(
-                [
-                  ['Change password', KeyRound],
-                  ['Log out', LogOut],
-                ] as const
-              ).map(([label, Icon]) => (
-                <button key={label} type="button" role="menuitem" disabled className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start text-sm text-fg-muted">
-                  <Icon className="size-4" />
-                  <span className="flex-1">{label}</span>
-                  <span className="rounded bg-surface-muted px-1.5 py-0.5 text-[10px] font-medium">Soon</span>
-                </button>
-              ))}
-            </div>
-      </MenuPanel>
-    </div>
+    <Menu
+      label="Account"
+      trigger={(props) => (
+        <button
+          type="button"
+          {...props}
+          className="sf-focus flex h-11 flex-none cursor-pointer items-center gap-2 rounded-sf-md ps-1 pe-2 hover:bg-sf-surface-hover"
+        >
+          {loaded ? (
+            <Avatar id={persona.id} name={persona.name} presence={people.data?.find((u) => u.id === persona.id)?.presence} decorative />
+          ) : (
+            <span aria-hidden className="size-sf-avatar animate-pulse rounded-sf-md bg-sf-surface-hover" />
+          )}
+          {/* Named by the name and title it shows; on a phone they're there for screen readers only. */}
+          {loaded ? (
+            <span className="sr-only text-start md:not-sr-only md:block">
+              <span className="sf-ui-medium block text-sf-text">{persona.name}</span>
+              <span className="sf-meta block text-sf-text-muted">{persona.title}</span>
+            </span>
+          ) : (
+            <>
+              <span className="sr-only">Account menu</span>
+              <span className="hidden h-8 w-28 animate-pulse rounded-sf-md bg-sf-surface-hover md:block" aria-hidden />
+            </>
+          )}
+          <Icon
+            icon={IconChevronDown}
+            size={16}
+            className={clsx('hidden text-sf-text-secondary transition-transform duration-150 ease-sf sm:block', props['aria-expanded'] && 'rotate-180')}
+          />
+        </button>
+      )}
+    >
+      <div role="presentation" className="flex items-center gap-3 px-4 pt-1 pb-3">
+        <Avatar id={persona.id} name={persona.name} decorative />
+        <div className="min-w-0">
+          <p className="sf-ui-medium m-0 truncate text-sf-text">{persona.name}</p>
+          <p className="sf-meta m-0 truncate text-sf-text-muted">
+            {roleLabels[persona.role]} · {persona.title}
+          </p>
+        </div>
+      </div>
+      <MenuSeparator />
+      <MenuHeading>Theme</MenuHeading>
+      <MenuItem icon={IconSun} checked={theme === 'light'} onSelect={() => setTheme('light')}>
+        Light
+      </MenuItem>
+      <MenuItem icon={IconMoon} checked={theme === 'dark'} onSelect={() => setTheme('dark')}>
+        Dark
+      </MenuItem>
+      {!backendOn && people.data && (
+        <>
+          <MenuSeparator />
+          <MenuHeading>View as</MenuHeading>
+          {viewAs.isError && (
+            <p role="alert" className="sf-small m-0 px-4 pb-1 text-sf-error">
+              Switching didn't work. Try again.
+            </p>
+          )}
+          {people.data.map((person) => (
+            <MenuItem key={person.id} checked={person.id === persona.id} disabled={viewAs.isPending} onSelect={() => switchTo(person.id)}>
+              {person.name} <span className="text-sf-text-muted">· {roleLabels[person.role]}</span>
+            </MenuItem>
+          ))}
+        </>
+      )}
+      <MenuSeparator />
+      <MenuItem icon={IconKey} disabled hint="Soon">
+        Change password
+      </MenuItem>
+      <MenuItem icon={IconLogout} disabled hint="Soon">
+        Log out
+      </MenuItem>
+    </Menu>
   )
 }

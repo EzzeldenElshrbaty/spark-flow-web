@@ -1,31 +1,31 @@
 import clsx from 'clsx'
-import { Ellipsis, FolderKanban, House, MessagesSquare, type LucideIcon } from 'lucide-react'
-import { IconX } from '@tabler/icons-react'
+import { IconDots, IconHome, IconLayoutKanban, IconMessages, IconX, type TablerIcon } from '@tabler/icons-react'
 import { useRef } from 'react'
 import { NavLink, useMatch } from 'react-router'
 import { useChannels } from '@/api/chat'
 import { useProjects } from '@/api/tickets'
 import { IconButton } from '@/components/sf/Button'
+import { Icon } from '@/components/sf/Icon'
 import { Logo, SidebarContent } from '@/layout/Sidebar'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { landingPath, paths, savedPlace, validSavedPlace } from '@/lib/paths'
 import { useDialogFocus } from '@/lib/useDialogFocus'
 import { useUiStore } from '@/lib/uiStore'
 
-const itemClass = 'flex w-full flex-col items-center gap-1 py-2 text-[11px] font-medium'
+const itemClass = 'sf-focus flex min-h-11 w-full flex-col items-center gap-1 py-2 font-sf text-[11px]/[14px] font-medium'
 
 /** A bottom-bar tab that is a link; without a place to go yet (the workspace is still loading) it waits, dimmed. */
-function TabLink({ to, active, icon: Icon, label }: { to: string | undefined; active: boolean; icon: LucideIcon; label: string }) {
+function TabLink({ to, active, icon, label }: { to: string | undefined; active: boolean; icon: TablerIcon; label: string }) {
   if (!to)
     return (
-      <button type="button" disabled className={clsx(itemClass, 'text-fg-muted opacity-50')}>
-        <Icon className="size-5" />
+      <button type="button" disabled className={clsx(itemClass, 'text-sf-text-muted opacity-50')}>
+        <Icon icon={icon} />
         {label}
       </button>
     )
   return (
-    <NavLink to={to} className={clsx(itemClass, active ? 'text-accent' : 'text-fg-muted')}>
-      <Icon className="size-5" />
+    <NavLink to={to} className={clsx(itemClass, active ? 'text-sf-accent' : 'text-sf-text-muted')}>
+      <Icon icon={icon} />
       {label}
     </NavLink>
   )
@@ -53,20 +53,20 @@ export function MobileBottomBar({ onOpenMore }: { onOpenMore: () => void }) {
   const projectsTo = slug ? (usable?.startsWith(`/w/${slug}/p/`) ? usable : paths.projects(slug)) : undefined
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden" aria-label="Main">
+    <nav className="sf fixed inset-x-0 bottom-0 z-30 border-t border-sf-line bg-sf-surface pb-[env(safe-area-inset-bottom)] lg:hidden" aria-label="Main">
       <ul className="flex">
         <li className="flex-1">
-          <TabLink to={slug ? paths.home(slug) : undefined} active={inHome} icon={House} label="Home" />
+          <TabLink to={slug ? paths.home(slug) : undefined} active={inHome} icon={IconHome} label="Home" />
         </li>
         <li className="flex-1">
-          <TabLink to={projectsTo} active={inProjects} icon={FolderKanban} label="Projects" />
+          <TabLink to={projectsTo} active={inProjects} icon={IconLayoutKanban} label="Projects" />
         </li>
         <li className="flex-1">
-          <TabLink to={chatTo} active={inChat} icon={MessagesSquare} label="Chat" />
+          <TabLink to={chatTo} active={inChat} icon={IconMessages} label="Chat" />
         </li>
         <li className="flex-1">
-          <button type="button" onClick={onOpenMore} className={clsx(itemClass, 'text-fg-muted')}>
-            <Ellipsis className="size-5" />
+          <button type="button" onClick={onOpenMore} className={clsx(itemClass, 'cursor-pointer text-sf-text-muted')}>
+            <Icon icon={IconDots} />
             More
           </button>
         </li>

@@ -1,11 +1,10 @@
 import clsx from 'clsx'
-import { LayoutGrid, ListChecks, Search, UserRound, X, Zap, type LucideIcon } from 'lucide-react'
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router'
-import { IconSearch, IconX } from '@tabler/icons-react'
+import { IconBolt, IconLayoutGrid, IconListCheck, IconSearch, IconUser, IconX, type TablerIcon } from '@tabler/icons-react'
 import { Kbd } from '@/components/sf/Badge'
-import { IconButton } from '@/components/sf/Button'
+import { Button, IconButton } from '@/components/sf/Button'
 import { Icon } from '@/components/sf/Icon'
 import { useChannels, useOpenDm } from '@/api/chat'
 import { useProjects, useTasksOf } from '@/api/tickets'
@@ -23,9 +22,9 @@ const minSearchLength = 2
 
 const searchLabel = 'Search pages, tasks, people and channels'
 
-type Hit = { id: string; title: string; subtitle: string; link: string; icon?: LucideIcon }
+type Hit = { id: string; title: string; subtitle: string; link: string; icon?: TablerIcon }
 /** A block of results: pages or actions. */
-type Group = { kind: string; label: string; icon: LucideIcon; total: number; hits: Hit[] }
+type Group = { kind: string; label: string; icon: TablerIcon; total: number; hits: Hit[] }
 
 /** Pages and actions this role can use, plus the open workspace's channels, DMs and projects, as soon as something is typed. */
 function useSearch(term: string) {
@@ -47,10 +46,10 @@ function useSearch(term: string) {
   const groups = useMemo(() => {
     const found = typed.length >= minSearchLength ? findShortcuts(all, typed) : { pages: [], actions: [] }
     return [
-      ...(found.pages.length ? [{ kind: 'pages', label: 'Go to', icon: LayoutGrid, total: found.pages.length, hits: found.pages }] : []),
-      ...(found.actions.length ? [{ kind: 'actions', label: 'Actions', icon: Zap, total: found.actions.length, hits: found.actions }] : []),
-      ...(taskHits.length ? [{ kind: 'tasks', label: 'Tasks', icon: ListChecks, total: taskHits.length, hits: taskHits }] : []),
-      ...(peopleHits.length ? [{ kind: 'people', label: 'People', icon: UserRound, total: peopleHits.length, hits: peopleHits }] : []),
+      ...(found.pages.length ? [{ kind: 'pages', label: 'Go to', icon: IconLayoutGrid, total: found.pages.length, hits: found.pages }] : []),
+      ...(found.actions.length ? [{ kind: 'actions', label: 'Actions', icon: IconBolt, total: found.actions.length, hits: found.actions }] : []),
+      ...(taskHits.length ? [{ kind: 'tasks', label: 'Tasks', icon: IconListCheck, total: taskHits.length, hits: taskHits }] : []),
+      ...(peopleHits.length ? [{ kind: 'people', label: 'People', icon: IconUser, total: peopleHits.length, hits: peopleHits }] : []),
     ]
   }, [all, typed, taskHits, peopleHits])
   return { groups, term: typed }
@@ -94,7 +93,7 @@ function Highlight({ text, term }: { text: string; term: string }) {
   return (
     <>
       {text.slice(0, index)}
-      <mark className="bg-transparent font-semibold text-fg">{text.slice(index, index + term.length)}</mark>
+      <mark className="bg-transparent font-semibold text-sf-text">{text.slice(index, index + term.length)}</mark>
       {text.slice(index + term.length)}
     </>
   )
@@ -108,30 +107,28 @@ function Results({ groups, term, active, onPick, listId }: { groups: Group[]; te
   return (
     <div id={listId} role="listbox" aria-label="Search results" className="py-1">
       {groups.map((group) => {
-        const Icon = group.icon
         return (
           <div key={group.kind} role="group" aria-label={group.label} className="py-1">
-            <p className="flex items-center gap-2 px-4 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-fg-muted">
-              <Icon className="size-3.5" /> {group.label}
-              <span className="font-medium normal-case tracking-normal text-fg-subtle">{group.total}</span>
+            <p className="sf-label m-0 flex items-center gap-2 px-4 pt-2 pb-1 text-sf-text-muted">
+              <Icon icon={group.icon} size={14} /> {group.label}
+              <span className="sf-meta normal-case tracking-normal text-sf-text-muted">{group.total}</span>
             </p>
             {group.hits.map((hit) => {
               const key = `${group.kind}:${hit.id}`
-              const HitIcon = hit.icon
               return (
                 <Option key={key} id={`${listId}-${key}`} active={active === key} onPick={() => onPick(hit.link)}>
-                  {HitIcon && (
-                    <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-surface-muted text-fg-tertiary">
-                      <HitIcon className="size-3.5" />
+                  {hit.icon && (
+                    <span className="grid size-7 flex-none place-items-center rounded-sf-md bg-sf-surface-sunken text-sf-text-secondary">
+                      <Icon icon={hit.icon} size={16} />
                     </span>
                   )}
                   <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-1.5 truncate text-sm text-fg-secondary">
+                    <span className="sf-ui flex items-center gap-1.5 truncate text-sf-text">
                       <span className="truncate">
                         <Highlight text={hit.title} term={term} />
                       </span>
                     </span>
-                    <span className="block truncate text-xs text-fg-muted">{hit.subtitle}</span>
+                    <span className="sf-meta block truncate text-sf-text-muted">{hit.subtitle}</span>
                   </span>
                 </Option>
               )
@@ -153,7 +150,7 @@ function Option({ id, active, onPick, children }: { id: string; active: boolean;
       // Keep focus in the input on desktop so typing carries on.
       onMouseDown={(event) => event.preventDefault()}
       onClick={onPick}
-      className={clsx('flex w-full items-center gap-2 px-4 py-2 text-start hover:bg-surface-muted', active && 'bg-surface-muted')}
+      className={clsx('flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-start hover:bg-sf-surface-hover', active && 'bg-sf-surface-hover')}
     >
       {children}
     </button>
@@ -161,8 +158,8 @@ function Option({ id, active, onPick, children }: { id: string; active: boolean;
 }
 
 function Status({ term, empty }: { term: string; empty: boolean }) {
-  if (term.trim().length < minSearchLength) return <p className="px-4 py-6 text-center text-sm text-fg-muted">Search pages, channels and projects.</p>
-  if (empty) return <p className="px-4 py-6 text-center text-sm text-fg-muted">Nothing matches “{term.trim()}”.</p>
+  if (term.trim().length < minSearchLength) return <p className="sf-small m-0 px-4 py-6 text-center text-sf-text-muted">Search pages, channels and projects.</p>
+  if (empty) return <p className="sf-small m-0 px-4 py-6 text-center text-sf-text-muted">Nothing matches “{term.trim()}”.</p>
   return null
 }
 
@@ -272,11 +269,11 @@ export function DesktopSearch() {
         )}
       </span>
       {open && term.trim() && (
-        <div className="absolute inset-x-0 top-full z-50 mt-2 max-h-[70vh] overflow-y-auto rounded-xl border border-line bg-surface shadow-xl motion-safe:animate-pop-in">
+        <div className="absolute inset-x-0 top-full z-[var(--z-menu)] mt-2 max-h-[70vh] overflow-y-auto rounded-sf-lg bg-sf-surface-raised py-1 shadow-sf-menu">
           <Status term={term} empty={!groups.length} />
           {groups.length > 0 && <Results groups={groups} term={shownTerm} active={keys.active} onPick={go} listId={listId} />}
           {failed && (
-            <p role="alert" className="px-4 py-2 text-sm text-red-600 dark:text-red-400">
+            <p role="alert" className="sf-small m-0 px-4 py-2 text-sf-error">
               {failed}
             </p>
           )}
@@ -316,10 +313,11 @@ function SearchScreen({ onClose }: { onClose: () => void }) {
   }, [])
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-surface motion-safe:animate-fade-in md:hidden" role="dialog" aria-modal="true" aria-label="Search">
-      <div className="flex shrink-0 items-center gap-2 border-b border-line-subtle px-3 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))]">
+    // Portaled to the page's end, so it brings the chat tokens with it.
+    <div className="sf fixed inset-0 z-[var(--z-modal)] flex flex-col bg-sf-surface text-sf-text md:hidden" role="dialog" aria-modal="true" aria-label="Search">
+      <div className="flex flex-none items-center gap-2 border-b border-sf-line px-3 pt-[calc(0.5rem+env(safe-area-inset-top))] pb-2">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-fg-subtle" />
+          <Icon icon={IconSearch} size={18} className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-sf-text-muted" />
           <input
             ref={inputRef}
             type="text"
@@ -336,23 +334,23 @@ function SearchScreen({ onClose }: { onClose: () => void }) {
             }}
             onKeyDown={keys.onKeyDown}
             placeholder="Search"
-            className="w-full rounded-lg border border-line bg-surface-sunken py-2.5 ps-9 pe-9 text-base placeholder:text-fg-subtle focus:border-brand-500 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent-soft"
+            className="h-11 w-full rounded-sf-md border border-sf-line bg-sf-surface-sunken ps-9 pe-11 text-[16px] text-sf-text outline-none placeholder:text-sf-text-muted focus:border-sf-focus focus:bg-sf-surface focus:shadow-[0_0_0_3px_var(--surface-mention)]"
           />
           {term && (
-            <button type="button" onClick={() => setTerm('')} className="absolute end-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-fg-muted hover:text-fg" aria-label="Clear search">
-              <X className="size-4" />
-            </button>
+            <span className="absolute end-0 top-1/2 -translate-y-1/2">
+              <IconButton label="Clear search" icon={IconX} size="sm" tone="muted" tooltip={false} className="size-11" onClick={() => setTerm('')} />
+            </span>
           )}
         </div>
-        <button type="button" onClick={onClose} className="shrink-0 px-2 py-2 text-sm font-medium text-accent">
+        <Button variant="ghost" touch onClick={onClose}>
           Cancel
-        </button>
+        </Button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto pb-[env(safe-area-inset-bottom)]">
         <Status term={term} empty={!groups.length} />
         {groups.length > 0 && <Results groups={groups} term={shownTerm} active={keys.active} onPick={go} listId={listId} />}
           {failed && (
-            <p role="alert" className="px-4 py-2 text-sm text-red-600 dark:text-red-400">
+            <p role="alert" className="sf-small m-0 px-4 py-2 text-sf-error">
               {failed}
             </p>
           )}

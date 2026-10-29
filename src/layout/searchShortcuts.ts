@@ -1,14 +1,14 @@
 // Pages and actions for the top-bar search, so typing a page's name offers that page first and then the things people
 // do there. Each role only gets the pages its menu shows and the actions it may take. An action opens its form where
 // it can (?new=1) or the page, tab or filter where it's done.
-import { FolderKanban, Hash, ListChecks, Lock, MessageSquare, UserRound, type LucideIcon } from 'lucide-react'
+import { IconHash, IconLayoutKanban, IconListCheck, IconLock, IconMessage, IconUser, type TablerIcon } from '@tabler/icons-react'
 import type { Channel, Project, TaskView, User, Workspace } from '@/api/types'
 import { channelLabel, isArchived } from '@/lib/channels'
 import { paths } from '@/lib/paths'
 import type { Role } from '@/lib/roles'
 import { allNavItems, canSee, settingsItem } from '@/navigation'
 
-export type Shortcut = { id: string; title: string; subtitle: string; link: string; icon?: LucideIcon; keywords: string[] }
+export type Shortcut = { id: string; title: string; subtitle: string; link: string; icon?: TablerIcon; keywords: string[] }
 
 type ActionDef = { title: string; link: string; keywords?: string[]; roles?: Role[] }
 
@@ -53,7 +53,7 @@ export function workspaceShortcuts(ws: Workspace, channels: Channel[], projects:
         title: dm ? label : `#${label}`,
         subtitle: dm ? 'Direct message' : channel.isPrivate ? 'Private channel' : 'Channel',
         link: paths.channel(ws.slug, channel.id),
-        icon: dm ? MessageSquare : channel.isPrivate ? Lock : Hash,
+        icon: dm ? IconMessage : channel.isPrivate ? IconLock : IconHash,
         keywords: dm ? ['dm', 'direct message'] : ['channel'],
       }
     }),
@@ -62,7 +62,7 @@ export function workspaceShortcuts(ws: Workspace, channels: Channel[], projects:
       title: `${project.name} · Board`,
       subtitle: `Project ${project.key}`,
       link: paths.project(ws.slug, project.key, 'tasks', { view: 'board' }),
-      icon: FolderKanban,
+      icon: IconLayoutKanban,
       keywords: [project.key, 'project', 'board'],
     })),
   ]
@@ -82,7 +82,7 @@ export function taskShortcuts(workspaceSlug: string, tasks: TaskView[], projects
   return [...byKey, ...byTitle].slice(0, 5).flatMap((t) => {
     const project = projects.find((p) => p.id === t.projectId)
     if (!project) return []
-    return [{ id: `task:${t.key}`, title: `${t.key} · ${t.title}`, subtitle: 'Task', link: `${paths.project(workspaceSlug, project.key, 'tasks')}?ticket=${encodeURIComponent(t.key)}`, icon: ListChecks, keywords: [] }]
+    return [{ id: `task:${t.key}`, title: `${t.key} · ${t.title}`, subtitle: 'Task', link: `${paths.project(workspaceSlug, project.key, 'tasks')}?ticket=${encodeURIComponent(t.key)}`, icon: IconListCheck, keywords: [] }]
   })
 }
 
@@ -93,7 +93,7 @@ export function peopleShortcuts(users: User[], meId: string, raw: string): (Shor
   return users
     .filter((u) => u.id !== meId && (u.name.toLowerCase().includes(q) || u.title.toLowerCase().includes(q)))
     .slice(0, 5)
-    .map((u) => ({ id: `person:${u.id}`, userId: u.id, title: u.name, subtitle: u.title, link: `dm:${u.id}`, icon: UserRound, keywords: [] }))
+    .map((u) => ({ id: `person:${u.id}`, userId: u.id, title: u.name, subtitle: u.title, link: `dm:${u.id}`, icon: IconUser, keywords: [] }))
 }
 
 /** "opportunities" → "opportunity", "leads" → "lead", so singular and plural find each other. */
