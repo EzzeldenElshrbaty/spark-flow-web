@@ -28,12 +28,17 @@ const matches = (query: string, ...texts: string[]) => {
 }
 
 /** What the `@` popup offers: @channel and @here, then people, projects and tasks that match; at most 8. */
-export function mentionOptions(query: string, from: { users: User[]; projects: { key: string; name: string }[]; tasks: { key: string; title: string }[] }): MentionOption[] {
+export function mentionOptions(
+  query: string,
+  from: { users: User[]; projects: { key: string; name: string }[]; tasks: { key: string; title: string }[] },
+  /** `here: false` where @here reaches nobody (a task comment: its people aren't a channel's). */
+  opts: { here?: boolean } = {},
+): MentionOption[] {
   const options: MentionOption[] = []
   const q = query.toLowerCase()
   // "al" still finds @channel: it was @all before (spec 6.8 names it @channel).
   if ('channel'.startsWith(q) || 'all'.startsWith(q)) options.push({ kind: 'all' })
-  if ('here'.startsWith(q)) options.push({ kind: 'here' })
+  if (opts.here !== false && 'here'.startsWith(q)) options.push({ kind: 'here' })
   for (const u of from.users) if (matches(query, u.name)) options.push({ kind: 'user', id: u.id, name: u.name, title: u.title })
   for (const p of from.projects) if (matches(query, p.key, p.name)) options.push({ kind: 'project', key: p.key, name: p.name })
   for (const t of from.tasks) if (matches(query, t.key, t.title)) options.push({ kind: 'task', key: t.key, title: t.title })

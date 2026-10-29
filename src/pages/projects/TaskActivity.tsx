@@ -45,6 +45,8 @@ export function TaskActivity({ task, project, users }: { task: TaskView; project
           quiet
           allowEmpty={files.length > 0}
           placeholder={kind === 'bug' ? 'What goes wrong, and how to see it' : 'Write a comment'}
+          // A comment reaches the project's people; @here (a channel's active members) reaches nobody here.
+          here={false}
           submitLabel={kind === 'bug' ? 'Report bug' : 'Post comment'}
           pendingLabel="Posting…"
           error={add.error as Error | null}

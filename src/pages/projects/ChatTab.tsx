@@ -49,6 +49,8 @@ export function ChatTab({ ws, project, people, usersLoading }: { ws: string; pro
             <Composer
               quiet
               placeholder={`Message ${project.name}`}
+              // @channel or @here to more than 25 members asks first (spec 6.8).
+              confirmGroup={{ where: project.name, members: channel.data?.memberIds.length ?? 0 }}
               onTyping={() => realtime.sendTyping(project.channelId, persona.id)}
               submitLabel="Send"
               pendingLabel="Sending…"

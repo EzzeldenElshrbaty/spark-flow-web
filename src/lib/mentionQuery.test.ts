@@ -43,6 +43,11 @@ describe('mentionOptions: groups (spec 6.8)', () => {
     expect(mentionOptions('he', from)[0]).toEqual({ kind: 'here' })
     expect(mentionOptions('al', from)[0]).toEqual({ kind: 'all' })
   })
+
+  it('without @here where it reaches nobody (a task comment)', () => {
+    expect(mentionOptions('', from, { here: false }).slice(0, 2)).toEqual([{ kind: 'all' }, expect.objectContaining({ kind: 'user' })])
+    expect(mentionOptions('he', from, { here: false }).some((o) => o.kind === 'here')).toBe(false)
+  })
 })
 
 describe('insertMention', () => {

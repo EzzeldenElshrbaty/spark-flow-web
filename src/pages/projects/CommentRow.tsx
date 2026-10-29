@@ -86,6 +86,7 @@ export function CommentRow({ comment, author, mine }: { comment: CommentView; au
               quiet
               allowEmpty={comment.attachments.length > 0}
               placeholder="Edit comment"
+              here={false}
               submitLabel="Save"
               pendingLabel="Saving…"
               initialText={comment.body}

@@ -7,7 +7,9 @@ import { Button } from '@/components/ui/Button'
 import { inputClass } from '@/components/ui/Field'
 import { activeMention, insertMention, keepDismissed, mentionOptions, type MentionOption } from '@/lib/mentionQuery'
 import { popupPlacement } from '@/lib/popupPlacement'
+import { parseBody } from '@/lib/messageBody'
 import { useMentionDirectory } from '@/lib/useMentionDirectory'
+import { useGroupConfirm } from '@/pages/chat/composer/useGroupConfirm'
 
 const MAX_ROWS = 8
 const LIST_HEIGHT = 288 // max-h-72
@@ -40,6 +42,8 @@ export function Composer({
   initialText = '',
   onCancel,
   onTyping,
+  here = true,
+  confirmGroup,
 }: {
   placeholder: string
   submitLabel: string
@@ -58,8 +62,13 @@ export function Composer({
   onTyping?: () => void
   /** Shows Cancel and makes Escape cancel (editing a message). */
   onCancel?: () => void
+  /** Offers @here in the @ list (not in task comments, where it reaches nobody). */
+  here?: boolean
+  /** A channel's box: @channel or @here to more than 25 members asks first (spec 6.8). */
+  confirmGroup?: { where: string; members: number }
 }) {
   const { users, projects, tasks } = useMentionDirectory()
+  const loud = useGroupConfirm(confirmGroup?.where ?? '', confirmGroup?.members ?? 0)
   const [text, setText] = useState(initialText)
   const [caret, setCaret] = useState(initialText.length)
   const [pending, setPending] = useState(false)
@@ -72,7 +81,7 @@ export function Composer({
   const listId = useId()
 
   const mention = activeMention(text, caret)
-  const options = mention && dismissedAt !== mention.start ? mentionOptions(mention.query, { users, projects, tasks }) : []
+  const options = mention && dismissedAt !== mention.start ? mentionOptions(mention.query, { users, projects, tasks }, { here }) : []
   const open = options.length > 0
   const active = Math.min(highlight, Math.max(0, options.length - 1))
   const rows = Math.min(MAX_ROWS, Math.max(1, text.split('\n').length))
@@ -109,6 +118,7 @@ export function Composer({
     if ((!text.trim() && !allowEmpty) || pending) return
     setPending(true)
     try {
+      if (confirmGroup) await loud.confirm(parseBody(text))
       await onSubmit(text)
       setText('')
       setCaret(0)
@@ -150,6 +160,7 @@ export function Composer({
 
   return (
     <div className="relative">
+      {loud.dialog}
       {open && (
         <ul
           id={listId}
