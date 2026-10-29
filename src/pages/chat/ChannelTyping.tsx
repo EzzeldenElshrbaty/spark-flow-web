@@ -16,11 +16,11 @@ export function TypingLine({ channelId, people, meId }: { channelId: string; peo
     .map((id) => people.find((u) => u.id === id)?.name ?? 'Someone')
   const line = typingLine(names)
   return (
-    <p className="sf sf-meta h-5 truncate pt-1 text-sf-text-muted" aria-live="polite">
+    <p className="sf sf-meta h-5 truncate pt-1 text-sf-text-secondary" aria-live="polite">
       {line && names.length <= 2
         ? line.split(new RegExp(`(${names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`)).map((part, i) =>
             names.includes(part) ? (
-              <b key={i} className="font-semibold">
+              <b key={i} className="font-semibold text-sf-text">
                 {part}
               </b>
             ) : (

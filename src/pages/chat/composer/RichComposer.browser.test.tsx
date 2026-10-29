@@ -427,3 +427,53 @@ describe('RichComposer ⌘K (spec 6.8 and 10)', () => {
     }
   })
 })
+
+describe('RichComposer metrics (spec 6.8, reference .sf-cbar, .sf-send, .sf-plus, .sf-fmtbar, .sf-editor)', () => {
+  /** The computed colour of a chat token, read off a probe inside the composer's .sf scope. */
+  const token = (name: string) => {
+    const probe = document.createElement('span')
+    probe.style.color = `var(${name})`
+    document.querySelector('.sf')!.appendChild(probe)
+    const color = getComputedStyle(probe).color
+    probe.remove()
+    return color
+  }
+  const files = { tray: null, onAdd: vi.fn(), ready: 0, waiting: null }
+
+  it('Send is 28px tall and 36px wide with a 16px icon; the action row is padded 0 8 8 4', async () => {
+    const { editor } = mount({ files })
+    await userEvent.click(editor)
+    await userEvent.keyboard('Hi')
+    const send = screen.getByRole('button', { name: 'Send' })
+    const box = send.getBoundingClientRect()
+    expect([box.height, box.width]).toEqual([28, 36])
+    expect(send.querySelector('svg')!.getAttribute('width')).toBe('16')
+    const row = getComputedStyle(send.closest('div.ms-auto')!.parentElement!)
+    expect([row.paddingTop, row.paddingRight, row.paddingBottom, row.paddingLeft]).toEqual(['0px', '8px', '8px', '4px'])
+  })
+
+  it('+ is a round surface-hover pill, and inverts (text fill) while its menu is open', async () => {
+    mount({ files })
+    const plus = screen.getByRole('button', { name: 'Attach' })
+    expect(getComputedStyle(plus).borderRadius).toBe('9999px')
+    expect(getComputedStyle(plus).backgroundColor).toBe(token('--surface-hover'))
+    expect(getComputedStyle(plus).color).toBe(token('--text'))
+    await userEvent.click(plus)
+    await vi.waitFor(() => expect(getComputedStyle(screen.getByRole('button', { name: 'Attach' })).backgroundColor).toBe(token('--text')))
+    expect(getComputedStyle(screen.getByRole('button', { name: 'Attach' })).color).toBe(token('--surface'))
+    await userEvent.keyboard('{Escape}')
+  })
+
+  it('formatting icons go from text-muted to text-secondary while the composer has focus', async () => {
+    const { editor } = mount()
+    const bold = screen.getByRole('button', { name: 'Bold' })
+    expect(getComputedStyle(bold).color).toBe(token('--text-muted'))
+    await userEvent.click(editor)
+    await vi.waitFor(() => expect(getComputedStyle(bold).color).toBe(token('--text-secondary')))
+  })
+
+  it('the editor grows to half the window at most (50vh)', () => {
+    const { editor } = mount()
+    expect(getComputedStyle(editor).maxHeight).toBe(`${innerHeight / 2}px`)
+  })
+})

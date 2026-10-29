@@ -7,6 +7,7 @@ import { Inspector } from '@/layout/Inspector'
 import { PageSkeleton } from '@/layout/PageSkeleton'
 import { MobileBottomBar, MobileDrawer } from '@/layout/MobileNav'
 import { RealtimeBridge } from '@/layout/RealtimeBridge'
+import { mainCardClass } from '@/layout/mainCard'
 import { Sidebar } from '@/layout/Sidebar'
 import { PhoneTimerBar, TimerAnnouncer } from '@/layout/TimerBar'
 import { TopBar } from '@/layout/TopBar'
@@ -35,9 +36,8 @@ export function AppLayout() {
         <RealtimeBridge />
         <Announcer />
         <Sidebar collapsed={collapsed} />
-        {/* The main card (spec 5.3): inset 8px from the top, end and bottom, radius-lg (12px), clips its content; the
-            top bar stays put and the page scrolls under it. */}
-        <div className="relative flex min-w-0 flex-1 flex-col lg:my-2 lg:me-2 lg:overflow-hidden lg:rounded-[12px] lg:bg-canvas">
+        {/* The main card (spec 5.3); the top bar stays put and the page scrolls under it. */}
+        <div className={mainCardClass(pane)}>
           <TopBar
             onOpenMenu={() => setDrawerOpen(true)}
             sidebarCollapsed={collapsed}

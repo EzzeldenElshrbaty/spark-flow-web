@@ -19,6 +19,7 @@ import { Button, IconButton } from '@/components/sf/Button'
 import { Icon } from '@/components/sf/Icon'
 import { Menu, MenuItem } from '@/components/sf/Menu'
 import { Popover } from '@/components/sf/Popover'
+import { Tooltip } from '@/components/sf/Tooltip'
 import { acceptedFiles } from '@/lib/fileTypes'
 import { bodyText, type Body } from '@/lib/messageBody'
 import { EmojiPicker } from '@/pages/chat/EmojiPicker'
@@ -299,7 +300,7 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
                 aria-placeholder={placeholder}
                 ariaAutoComplete="list"
                 placeholder={<span className="sf-body pointer-events-none absolute start-3 top-2 text-sf-text-muted max-sm:text-[16px]">{placeholder}</span>}
-                className="sf-body max-h-[40vh] min-h-[38px] overflow-auto px-3 py-2 text-sf-text outline-none [&>*+*]:mt-1"
+                className="sf-body max-h-[50vh] min-h-[38px] overflow-auto px-3 py-2 text-sf-text outline-none [&>*+*]:mt-1"
               />
             }
             ErrorBoundary={LexicalErrorBoundary}
@@ -321,11 +322,28 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
         />
         {(editing || autoFocus) && <AutoFocusPlugin defaultSelection="rootEnd" />}
         <AutocompletePlugin directory={directory} menuOpen={menuOpen} anchor={boxRef} />
-        <div className="flex items-center gap-0.5 px-1 pb-1">
+        <div className="flex items-center gap-0.5 ps-1 pe-2 pb-2">
           {files && (
             <>
-              {/* + Attach (spec 6.8): it turns into × while its menu is open. */}
-              <Menu label="Attach" trigger={(props) => <IconButton label="Attach" icon={props['aria-expanded'] ? IconX : IconPlus} size="sm" tone="muted" {...props} />}>
+              {/* + Attach (spec 6.8, .sf-plus): a round pill that inverts and turns into × while its menu is open. */}
+              <Menu
+                label="Attach"
+                trigger={(props) => (
+                  <Tooltip label="Attach">
+                    <button
+                      type="button"
+                      aria-label="Attach"
+                      {...props}
+                      className={clsx(
+                        'sf-focus inline-grid size-7 flex-none cursor-pointer place-items-center rounded-sf-full border-0 p-0 transition-colors duration-150 ease-sf',
+                        props['aria-expanded'] ? 'bg-sf-text text-sf-surface' : 'bg-sf-surface-hover text-sf-text hover:bg-sf-line',
+                      )}
+                    >
+                      <Icon icon={props['aria-expanded'] ? IconX : IconPlus} size={18} />
+                    </button>
+                  </Tooltip>
+                )}
+              >
                 <MenuItem icon={IconUpload} hint={isMac ? '⌘U' : 'Ctrl+U'} onSelect={openPicker}>
                   Upload from your computer
                 </MenuItem>
@@ -403,11 +421,11 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
             disabled={!canSend}
             onClick={send}
             className={clsx(
-              'sf-focus inline-grid size-8 flex-none place-items-center rounded-sf-md',
-              canSend ? 'bg-sf-accent-fill text-sf-on-accent hover:bg-sf-accent-fill-hover' : 'bg-transparent text-sf-text-muted',
+              'sf-focus inline-grid h-7 w-9 flex-none place-items-center rounded-sf-md',
+              canSend ? 'cursor-pointer bg-sf-accent-fill text-sf-on-accent hover:bg-sf-accent-fill-hover' : 'cursor-not-allowed bg-transparent text-sf-text-muted',
             )}
           >
-            <Icon icon={IconSend} size={18} flip />
+            <Icon icon={IconSend} size={16} flip />
           </button>
           )}
           </div>

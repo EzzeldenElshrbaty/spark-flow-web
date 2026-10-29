@@ -67,6 +67,8 @@ export function FormatBar({ onLink, uploadKey = false }: { onLink: () => void; u
       icon={icon}
       size="sm"
       tone="muted"
+      // Brighter while the composer has focus (.sf-fmtbar); a pressed one is already full text.
+      className={pressed ? undefined : 'group-focus-within/composer:text-sf-text-secondary'}
       pressed={pressed}
       shortcut={shortcut}
       // Keep the caret (and the selection) in the editor.
