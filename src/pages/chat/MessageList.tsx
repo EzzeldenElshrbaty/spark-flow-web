@@ -1,3 +1,4 @@
+import clsx from 'clsx'
 import { IconArrowDown, IconChevronDown } from '@tabler/icons-react'
 import type { InfiniteData, UseInfiniteQueryResult } from '@tanstack/react-query'
 import { useVirtualizer } from '@tanstack/react-virtual'
@@ -335,12 +336,21 @@ export function MessageList({
 
   const items = virtualizer.getVirtualItems()
   const scrollTop = virtualizer.scrollOffset ?? 0
-  const top = items.find((v) => v.end > scrollTop + 8)
-  // The sticky date hides while a day's own divider is at the top, so the two never show at once.
-  const dividerAtTop = items.some((v) => rows[v.index].kind === 'day' && v.start >= scrollTop - 8 && v.start < scrollTop + 40)
-  const stickyDay = top && !dividerAtTop ? dayOf[top.index] : null
   const summary = unreadSummary(messages, newAfterSeq, meId)
   const unread = { count: Math.max(summary.count, totalUnread), since: summary.since }
+  const barShown = bar && unread.count > 0 && Boolean(unread.since)
+  // The sticky date (spec 6.2) holds the day of whatever is under its slot. A day's own pill takes over as it reaches
+  // the slot (it is hidden there, so a day never shows twice), and the next day's pill pushes the sticky one out.
+  const slot = barShown ? STICKY_UNDER_BAR : STICKY_TOP
+  const pillTop = (v: { start: number }) => v.start - scrollTop + DIVIDER_PILL_TOP
+  const under = items.find((v) => v.end > scrollTop + slot)
+  const stickyDay = !under
+    ? null
+    : rows[under.index].kind === 'day' && pillTop(under) > slot
+      ? under.index > 0 ? dayOf[under.index - 1] : null
+      : dayOf[under.index]
+  const next = items.find((v) => rows[v.index].kind === 'day' && pillTop(v) > slot)
+  const push = next ? Math.min(0, pillTop(next) - (slot + PILL_HEIGHT + PILL_GAP)) : 0
   // The first message after the New line: where the bar's Mark as unread puts my marker back.
   const firstNew = newIndex >= 0 ? rows.slice(newIndex + 1).find((r) => r.kind === 'message')?.message : undefined
   // After a jump the newest messages aren't loaded, so there is no count to give.
@@ -355,7 +365,7 @@ export function MessageList({
             return (
               <li key={v.key} data-index={v.index} ref={virtualizer.measureElement} className="absolute inset-x-0 top-0" style={{ transform: `translateY(${v.start}px)` }}>
                 {row.kind === 'day' ? (
-                  <DayDivider label={row.label} onJump={onJump} />
+                  <DayDivider label={row.label} onJump={onJump} underSticky={stickyDay !== null && pillTop(v) <= slot} />
                 ) : row.kind === 'new' ? (
                   <NewLine />
                 ) : (
@@ -381,7 +391,7 @@ export function MessageList({
         </ol>
       </div>
 
-      {bar && unread.count > 0 && unread.since && (
+      {barShown && unread.since && (
         <div {...{ [LIST_OVERLAY]: '' }} className="sf absolute inset-x-4 top-2 z-[var(--z-sticky)] flex h-8 items-center gap-2 rounded-sf-md bg-sf-accent-fill ps-3 pe-2 font-sf text-[13px]/[18px] font-medium text-sf-on-accent">
           <button type="button" className="sf-focus min-w-0 truncate text-start" onClick={scrollToNewLine}>
             {unread.count} new {unread.count === 1 ? 'message' : 'messages'} since {formatTime(unread.since)}
@@ -402,9 +412,14 @@ export function MessageList({
         </div>
       )}
       {stickyDay && (
-        // A copy of the day's divider for the pointer; keyboard and screen reader users have the divider itself.
-        <div aria-hidden className={`sf pointer-events-none absolute inset-x-0 z-[var(--z-sticky)] flex justify-center ${bar ? 'top-12' : 'top-2'}`}>
-          <span {...{ [LIST_OVERLAY]: '' }} className="pointer-events-auto">
+        // A copy of the day's divider for the pointer; keyboard and screen reader users have the divider itself. Pushed
+        // out, it slides away under its slot's top edge (clipped there), not over the unread bar.
+        <div
+          aria-hidden
+          className="sf pointer-events-none absolute inset-x-0 z-[var(--z-sticky)] flex justify-center"
+          style={{ top: slot, clipPath: 'inset(0 -50vw -50vh -50vw)' }}
+        >
+          <span {...{ [LIST_OVERLAY]: '' }} className="pointer-events-auto" style={{ transform: `translateY(${push}px)` }}>
             <DayMenu label={stickyDay} onJump={onJump} focusable={false} />
           </span>
         </div>
@@ -482,14 +497,23 @@ function DayMenu({ label, onJump, focusable = true }: { label: string; onJump: (
   )
 }
 
+/** Where the sticky date sits from the list's top, alone or under the unread bar (32px, 8px from the top). */
+const STICKY_TOP = 8
+const STICKY_UNDER_BAR = 48
+/** The date pill is 28px tall and sits 6px down its 40px divider; the next day's pill pushes 4px ahead of itself. */
+const PILL_HEIGHT = 28
+const DIVIDER_PILL_TOP = 6
+const PILL_GAP = 4
+
 const pillClass = 'inline-flex h-7 items-center gap-1 rounded-sf-full bg-sf-surface-raised ps-3 font-sf text-[13px]/[18px] font-medium text-sf-text shadow-sf-toolbar'
 
 /** A day's start: a rule across the list with the date on it, which jumps through the channel when `onJump` is given. */
-export function DayDivider({ label, onJump }: { label: string; onJump?: (choice: JumpChoice) => void }) {
+export function DayDivider({ label, onJump, underSticky = false }: { label: string; onJump?: (choice: JumpChoice) => void; underSticky?: boolean }) {
   return (
     <div className="sf relative flex h-10 items-center justify-center">
       <span aria-hidden className="absolute inset-x-0 top-5 h-px bg-sf-line" />
-      <span className="relative">
+      {/* Under the sticky date its own pill hides (the sticky one shows the day), unless the keyboard is on it. */}
+      <span className={clsx('relative', underSticky && 'opacity-0 focus-within:opacity-100')}>
         {onJump ? (
           <DayMenu label={label} onJump={onJump} />
         ) : (

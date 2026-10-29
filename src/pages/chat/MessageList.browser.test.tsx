@@ -27,7 +27,7 @@ const PAGE = 30
 const start = Date.UTC(2026, 9, 28, 8, 0)
 
 /** A channel of `count` messages, alternating authors every 3 so some rows group and some don't. */
-function channel(count: number) {
+function channel(count: number, apartMs = 60_000) {
   const messages: ChatMessage[] = []
   const add = (senderId = 'u-2') => {
     const seq = messages.length + 1
@@ -35,7 +35,7 @@ function channel(count: number) {
     messages.push({
       id: `m${seq}`, channelId: 'c1', seq, senderId, content,
       attachments: [], reactions: [], threadCount: 0, lastReplyAt: null, linkedTicketKeys: [], mentions: [], body: parseBody(content), editedAt: null,
-      createdAt: new Date(start + seq * 60_000).toISOString(),
+      createdAt: new Date(start + seq * apartMs).toISOString(),
     })
   }
   for (let i = 0; i < count; i++) add(Math.floor(i / 3) % 2 ? 'u-1' : 'u-2')
@@ -333,5 +333,71 @@ describe('MessageList scrolling (spec 6.2)', () => {
     expect(onMarkRead).not.toHaveBeenCalled()
     view.update({ holdRead: false })
     await vi.waitFor(() => expect(onMarkRead).toHaveBeenCalledWith(40))
+  })
+})
+
+describe('MessageList sticky date (spec 6.2)', () => {
+  const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+  const shown = (el: Element) => {
+    for (let e: Element | null = el; e; e = e.parentElement) if (getComputedStyle(e).opacity === '0' || getComputedStyle(e).visibility === 'hidden') return false
+    return true
+  }
+  /** The date pills that can be seen in the top `band` px of the list, with their labels and boxes. */
+  function topPills(band: number) {
+    const box = list().getBoundingClientRect()
+    return Array.from(list().parentElement!.querySelectorAll('button'))
+      .filter((b) => b.className.includes('shadow-sf-toolbar') && shown(b))
+      .map((b) => ({ label: b.textContent, r: b.getBoundingClientRect() }))
+      .filter(({ r }) => r.bottom > box.top && r.top < box.top + band)
+  }
+  /** Scrolls up 6px at a time, from `from` (the end by default) to the top. */
+  async function scrollThrough(check: (at: number) => void, from?: number) {
+    const el = list()
+    for (let y = from ?? el.scrollHeight; y >= 0; y -= 6) {
+      el.scrollTop = y
+      await frame()
+      check(el.scrollTop)
+    }
+  }
+  const overlapping = (a: DOMRect, b: DOMRect) => a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5
+
+  it('shows each day once at the top while scrolling across days, and the next day pushes it out instead of covering it', async () => {
+    // Four days of messages, every 3 hours, in one page.
+    mount({ data: channel(28, 3 * 3_600_000) })
+    await vi.waitFor(() => expect(topOf(28)).not.toBeNull())
+    await settle()
+    let pinned = 0
+    await scrollThrough((at) => {
+      const pills = topPills(80)
+      expect(new Set(pills.map((p) => p.label)).size, `same day twice at ${at}`).toBe(pills.length)
+      for (let i = 1; i < pills.length; i++) expect(overlapping(pills[0].r, pills[i].r), `pills overlap at ${at}`).toBe(false)
+      if (pills.some((p) => p.r.top - list().getBoundingClientRect().top <= 10)) pinned++
+    })
+    // A date sits at the top through the scroll, not only now and then.
+    expect(pinned).toBeGreaterThan(50)
+  })
+
+  it('with the unread bar open, the date sits under the bar and still shows each day once', async () => {
+    mount({ data: channel(28, 3 * 3_600_000), newAfterSeq: 14, totalUnread: 14 })
+    await vi.waitFor(() => expect(screen.getByText(/14 new messages since/)).toBeTruthy())
+    await settle()
+    // Hit-testing needs the bar on screen: earlier tests may have left the page scrolled.
+    window.scrollTo(0, 0)
+    let underBar = 0
+    await scrollThrough((at) => {
+      const pills = topPills(120)
+      expect(new Set(pills.map((p) => p.label)).size, `same day twice at ${at}`).toBe(pills.length)
+      for (let i = 1; i < pills.length; i++) expect(overlapping(pills[0].r, pills[i].r), `pills overlap at ${at}`).toBe(false)
+      // While the bar shows (it goes once the New line is reached), no date pill covers it.
+      const bar = screen.queryByText(/14 new messages since/)?.parentElement
+      if (!bar) return
+      const r = bar.getBoundingClientRect()
+      for (let x = r.left + 4; x < Math.min(r.right, innerWidth) - 4; x += 16) {
+        for (const y of [r.top + 2, r.top + r.height / 2, r.bottom - 2]) expect(bar.contains(document.elementFromPoint(x, y)), `the bar is covered at ${at}`).toBe(true)
+      }
+      underBar++
+      // Up from where it opened (at the New line): the bar stays until the end is reached.
+    }, list().scrollTop)
+    expect(underBar).toBeGreaterThan(0)
   })
 })
