@@ -6,9 +6,9 @@ import { bodyText, parseBody, type Body } from '@/lib/messageBody'
 import { parseCommand, type CommandOutcome, type ParsedCommand } from '@/lib/slashCommands'
 import { useChannelCommands, type ChannelCommandUi } from '@/pages/chat/composer/useChannelCommands'
 
-const mute = vi.fn(async (_: { id: string; muted: boolean }) => {})
-const update = vi.fn(async (_: { id: string; patch: { topic?: string } }) => {})
-const leave = vi.fn(async (_: string) => {})
+const mute = vi.fn(async (_input: { id: string; muted: boolean }) => {})
+const update = vi.fn(async (_input: { id: string; patch: { topic?: string } }) => {})
+const leave = vi.fn(async (_input: string) => {})
 const navigate = vi.fn()
 let rights = { manage: true, leave: true, archive: true }
 vi.mock('@/api/chat', () => ({

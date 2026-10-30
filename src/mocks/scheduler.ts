@@ -51,13 +51,14 @@ function tell(data: DbData, workspaceId: string, userId: string, content: string
 
 /** What Flowbot says when a reminder fires: the message quoted with who wrote it, unless it's gone or out of reach. */
 function reminderText(data: DbData, item: SavedItem): string {
+  if (item.target.kind === 'note') return `Reminder: “${quoted(item.target.text)}”.`
   const found = savedRow(data, item.target)
   if (!found || found.row.deletedAt) return 'Reminder about a message that was deleted.'
   if (!canRead(data, found.channelId, item.userId)) return 'Reminder about a message you can no longer see.'
-  const text = rowText(found.row)
-  const quote = text.length > QUOTE_MAX ? `${text.slice(0, QUOTE_MAX - 1).trimEnd()}…` : text
-  return `Reminder: “${quote}” from ${senderName(found.row.senderId, data.users)}.`
+  return `Reminder: “${quoted(rowText(found.row))}” from ${senderName(found.row.senderId, data.users)}.`
 }
+
+const quoted = (text: string) => (text.length > QUOTE_MAX ? `${text.slice(0, QUOTE_MAX - 1).trimEnd()}…` : text)
 
 /**
  * Fires a saved item's reminder: Flowbot's DM card, and an Activity item under Reminders (spec 6.12) while its owner

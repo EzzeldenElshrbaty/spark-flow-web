@@ -158,3 +158,20 @@ describe('a saved item’s reminder firing (spec 6.5: Flowbot DM; 6.12: Activity
     expect(await runScheduler(db, hub, now)).toBe(1)
   })
 })
+
+describe('saved.note: /remind (spec 6.8): a reminder about words, not a message', () => {
+  it('keeps the words and the channel it was set in, In progress, with my name as the author', async () => {
+    const item = await api.saved.note('c-backend', '  check the deploy  ', inMinutes(60))
+    expect(item).toMatchObject({ target: { kind: 'note', text: 'check the deploy', channelId: 'c-backend' }, status: 'inProgress', remindAt: inMinutes(60), firedAt: null })
+    expect(item).toMatchObject({ channelId: 'c-backend', rootId: null, authorId: 'u-1', authorName: 'Youssef Abdelrahman', text: 'check the deploy', gone: null })
+    expect((await api.saved.list('ws-eng')).map((s) => s.id)).toContain(item.id)
+    expect(events).toContainEqual({ type: 'savedChanged', userId: 'u-1' })
+  })
+
+  it('needs words, a future time and a channel I can read', async () => {
+    await expect(api.saved.note('c-backend', '  ', inMinutes(60))).rejects.toMatchObject({ status: 400, detail: 'Write what to remind you about.' })
+    await expect(api.saved.note('c-backend', 'x', inMinutes(-1))).rejects.toMatchObject({ status: 400, detail: 'Pick a time in the future.' })
+    await expect(api.saved.note('c-nope', 'x', inMinutes(60))).rejects.toMatchObject({ status: 404 })
+    await expect(api.saved.note('c-backend', 'x'.repeat(1001), inMinutes(60))).rejects.toMatchObject({ status: 400, detail: 'Keep a reminder under 1,000 characters.' })
+  })
+})

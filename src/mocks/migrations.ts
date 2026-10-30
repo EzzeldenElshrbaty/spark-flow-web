@@ -138,6 +138,8 @@ export const migrations: Record<number, (doc: Record<string, unknown>) => void> 
     doc.saved = reminders.map((r) => ({ id: r.id, userId: r.userId, workspaceId: r.workspaceId, target: r.target, status: 'inProgress', remindAt: r.remindAt, firedAt: r.firedAt ?? null, savedAt: r.remindAt }))
     delete doc.reminders
   },
+  // 19: a saved item may be a /remind note (spec 6.8); every stored one is a message or reply already.
+  18: () => {},
   // 18: files say whether they're a text snippet (spec 6.9); none were.
   17: (doc) => {
     const list = (value: unknown) => (Array.isArray(value) ? (value as Record<string, unknown>[]).filter(Boolean) : [])

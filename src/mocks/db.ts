@@ -30,7 +30,7 @@ import { memoryActor, type Actor } from './actor'
 import { migrate } from './migrations'
 import type { MockStore } from './store'
 
-export const DB_VERSION = 18 // 2: the company-system document (spec §3); 3: mention read state; 4: channel reads per person; 5: typed columns, history; 6: rate history; 7: message seq, channel member state; 8: message bodies; 9: drafts; 10: deleted messages kept for Undo; 11: thread follows; 12: activity items, channel levels; 13: channel description, who can post; 14: email invites, default channels; 15: file details (uploader, title, description, scan); 16: reminders, scheduled messages; 17: reminders on saved items; 18: text snippets
+export const DB_VERSION = 19 // 2: the company-system document (spec §3); 3: mention read state; 4: channel reads per person; 5: typed columns, history; 6: rate history; 7: message seq, channel member state; 8: message bodies; 9: drafts; 10: deleted messages kept for Undo; 11: thread follows; 12: activity items, channel levels; 13: channel description, who can post; 14: email invites, default channels; 15: file details (uploader, title, description, scan); 16: reminders, scheduled messages; 17: reminders on saved items; 18: text snippets; 19: /remind notes
 /** Phase 1+2 kept the mock database in localStorage under keys starting with this. */
 const LEGACY_PREFIX = 'spark-flow.mockdb.v1'
 

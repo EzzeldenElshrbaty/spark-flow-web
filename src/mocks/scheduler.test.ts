@@ -107,6 +107,20 @@ describe('runScheduler: reminders on saved items (spec §7, fired by a scheduler
   })
 })
 
+describe('runScheduler: a /remind note (spec 6.8)', () => {
+  it('Flowbot quotes the words, with Mark complete and Snooze but nothing to view', async () => {
+    await db.update((d) => {
+      d.saved.push({ id: 'sav-n', userId: 'u-1', workspaceId: 'ws-eng', target: { kind: 'note', text: 'check the deploy', channelId: 'c-backend' }, status: 'inProgress', remindAt: before(1000), firedAt: null, savedAt: before(60_000) })
+    })
+    const notificationsBefore = (await db.read()).notifications.length
+    expect(await runScheduler(db, hub, NOW)).toBe(1)
+    const [note] = await messagesIn((await flowbotDm())!.id)
+    expect(note.content).toBe('Reminder: “check the deploy”.')
+    expect(note.flowbot).toEqual({ kind: 'reminder', savedId: 'sav-n', channelId: '', rootId: null, target: { kind: 'note', text: 'check the deploy', channelId: 'c-backend' } })
+    expect((await db.read()).notifications).toHaveLength(notificationsBefore)
+  })
+})
+
 describe('runScheduler: scheduled messages (spec §7 ScheduledMessage)', () => {
   it('sends a due message as its author, once, and marks it sent', async () => {
     await schedule(before(0))

@@ -224,6 +224,7 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
       save: (target, remindAt) => send('PUT', '/api/saved', { target, ...(remindAt ? { remindAt } : {}) }),
       update: (id, patch) => send('PATCH', `/api/saved/${enc(id)}`, patch),
       remove: (id) => send<void>('DELETE', `/api/saved/${enc(id)}`),
+      note: (channelId, text, remindAt) => send('POST', '/api/saved/notes', { channelId, text, remindAt }),
     },
     rates: {
       list: () => get('/api/rates'),

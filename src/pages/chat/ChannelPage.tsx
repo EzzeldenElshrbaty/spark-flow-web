@@ -29,6 +29,8 @@ import { TypingLine } from '@/pages/chat/ChannelTyping'
 import { useCanPost, useCanWrite, useReadOnlyLine } from '@/pages/chat/useCanPost'
 import { useTaskFromMessage } from '@/pages/chat/useTaskFromMessage'
 import { useSnippet } from '@/pages/chat/snippets/useSnippet'
+import { RemindDialog } from '@/pages/chat/saved/RemindDialog'
+import { useNoteReminder } from '@/api/saved'
 import { useChannelCommands, type ChannelCommandUi } from '@/pages/chat/composer/useChannelCommands'
 import { ArchiveChannelModal, ArchivedChannelLine, JoinChannelLine, useChannelProject, useChannelRights } from '@/pages/chat/ChannelActions'
 import { ChannelHeader } from '@/pages/chat/ChannelHeader'
@@ -70,6 +72,9 @@ export function ChannelPage() {
   const panelId = useId()
   // Channel details: from the header, and from /invite and /topic in the box (spec 6.8).
   const [details, setDetails] = useState<OpenDetails | null>(null)
+  // /remind: the words to be reminded of, while Set a reminder is open.
+  const [reminding, setReminding] = useState<string | null>(null)
+  const noteReminder = useNoteReminder()
   const [params, setParams] = useSearchParams()
   const tab = channel.data ? tabFromParam(params.get('tab'), channel.data) : 'messages'
   const setTab = (next: ChannelTab) => setParams(next === 'messages' ? {} : { tab: next }, { replace: true })
@@ -159,7 +164,7 @@ export function ChannelPage() {
               channel={current}
               placeholder={`Message ${title}`}
               uploads={uploads}
-              commandUi={{ openDetails: (on, options) => setDetails({ tab: on, ...options }), newTask: fromMessage.fromCommand }}
+              commandUi={{ openDetails: (on, options) => setDetails({ tab: on, ...options }), newTask: fromMessage.fromCommand, remind: setReminding }}
               onTyping={() => realtime.sendTyping(current.id, persona.id)}
               // Shown at once and sent in the background (spec 6.2), with its files; a failure shows on the message, with Retry.
               onSend={async (body) => {
@@ -186,6 +191,14 @@ export function ChannelPage() {
       )}
       </div>
       {fromMessage.sheet}
+      {reminding !== null && (
+        <RemindDialog
+          initialText={reminding}
+          where={title}
+          onSet={(text, at) => noteReminder.mutateAsync({ channelId: current.id, text, remindAt: at.toISOString() }).then(() => setReminding(null))}
+          onClose={() => setReminding(null)}
+        />
+      )}
       <ChannelShortcuts channel={current} workspaceSlug={ws} />
     </div>
     </FileActionsProvider>

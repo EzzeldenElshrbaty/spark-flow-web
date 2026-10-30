@@ -1,4 +1,4 @@
-import type { Api, ChatMessage, ChatTarget, SavedItem, SavedStatus, SavedView, ThreadReply } from '@/api/types'
+import type { Api, ChatMessage, SavedItem, SavedStatus, SavedTarget, SavedView, ThreadReply } from '@/api/types'
 import { senderName } from '@/lib/flowbot'
 import { bodyText } from '@/lib/messageBody'
 import type { DbData, MockDb } from './db'
@@ -8,9 +8,12 @@ import type { MockHub } from './realtime'
 import { badRequest, clone, currentUser, newId, notFound } from './shared'
 
 const STATUSES: SavedStatus[] = ['inProgress', 'archived', 'completed']
+/** How long a /remind note may be. */
+const NOTE_MAX = 1000
 
 /** What a saved target points at: the message or reply, its channel, and the thread it's in. */
-export function savedRow(data: DbData, target: ChatTarget): { row: ChatMessage | ThreadReply; channelId: string; messageId: string; replyId: string | null } | null {
+export function savedRow(data: DbData, target: SavedTarget): { row: ChatMessage | ThreadReply; channelId: string; messageId: string; replyId: string | null } | null {
+  if (target.kind === 'note') return null
   if (target.kind === 'message') {
     const row = data.messages.find((m) => m.id === target.id)
     return row ? { row, channelId: row.channelId, messageId: row.id, replyId: null } : null
@@ -24,6 +27,11 @@ export const rowText = (row: Pick<ChatMessage, 'body' | 'content'>) => (row.body
 
 /** A saved item as its owner sees it now: an edit shows, and a deleted or out-of-reach message keeps no text. */
 function viewOf(data: DbData, item: SavedItem): SavedView {
+  // A /remind note is my own words: I'm its author, and it opens the channel it was set in.
+  if (item.target.kind === 'note') {
+    const authorName = senderName(item.userId, data.users)
+    return { ...item, channelId: item.target.channelId, rootId: null, createdAt: item.savedAt, authorId: item.userId, authorName, text: item.target.text, gone: null }
+  }
   const found = savedRow(data, item.target)
   const base = { ...item, channelId: found?.channelId ?? null, rootId: found?.replyId ? found.messageId : null, createdAt: found?.row.createdAt ?? null }
   if (!found || found.row.deletedAt) return { ...base, authorId: null, authorName: null, text: '', gone: 'deleted' }
@@ -67,7 +75,7 @@ export function savedApi(db: MockDb, hub: MockHub, now: () => Date): Api['saved'
         if (!found || !channel || !canRead(data, channel.id, me.id)) throw notFound(target.kind === 'message' ? 'Message' : 'Reply', target.id)
         if (found.row.deletedAt) throw badRequest('This message was deleted.')
         const at = remindAt === undefined ? undefined : future(remindAt)
-        let item = data.saved.find((s) => s.userId === me.id && s.target.kind === target.kind && s.target.id === target.id)
+        let item = data.saved.find((s) => s.userId === me.id && s.target.kind === target.kind && 'id' in s.target && s.target.id === target.id)
         if (!item) {
           item = { id: newId('sav'), userId: me.id, workspaceId: channel.workspaceId, target: { kind: target.kind, id: target.id }, status: 'inProgress', remindAt: null, firedAt: null, savedAt: now().toISOString() }
           data.saved.push(item)
@@ -97,6 +105,25 @@ export function savedApi(db: MockDb, hub: MockHub, now: () => Date): Api['saved'
           item.firedAt = null
           if (item.remindAt) item.status = 'inProgress'
         }
+        return viewOf(data, item)
+      })
+      changed(view.userId)
+      return clone(view)
+    },
+    async note(channelId, text, remindAt) {
+      await delay()
+      const view = await db.update((data) => {
+        const me = currentUser(data)
+        const channel = data.channels.find((c) => c.id === channelId)
+        if (!channel || !canRead(data, channel.id, me.id)) throw notFound('Channel', channelId)
+        const words = typeof text === 'string' ? text.trim() : ''
+        if (!words) throw badRequest('Write what to remind you about.')
+        if (words.length > NOTE_MAX) throw badRequest('Keep a reminder under 1,000 characters.')
+        const item: SavedItem = {
+          id: newId('sav'), userId: me.id, workspaceId: channel.workspaceId, target: { kind: 'note', text: words, channelId: channel.id },
+          status: 'inProgress', remindAt: future(remindAt), firedAt: null, savedAt: now().toISOString(),
+        }
+        data.saved.push(item)
         return viewOf(data, item)
       })
       changed(view.userId)

@@ -210,7 +210,7 @@ export type ChatMessage = {
 /** What a Flowbot message is about: a reminder that fired, or a scheduled message that couldn't be sent. */
 export type FlowbotNote =
   /** `rootId`: the thread a reminded reply is in, for the card's link. */
-  | { kind: 'reminder'; savedId: string; channelId: string; rootId: string | null; target: ChatTarget }
+  | { kind: 'reminder'; savedId: string; channelId: string; rootId: string | null; target: SavedTarget }
   | { kind: 'scheduleFailed'; scheduledId: string }
 
 export type SavedStatus = 'inProgress' | 'archived' | 'completed'
@@ -220,7 +220,7 @@ export type SavedStatus = 'inProgress' | 'archived' | 'completed'
  * 6.5: "Reminders also appear in Saved"); the scheduler fires it once (`firedAt`) as a Flowbot DM and an Activity item.
  */
 export type SavedItem = {
-  id: string; userId: string; workspaceId: string; target: ChatTarget
+  id: string; userId: string; workspaceId: string; target: SavedTarget
   status: SavedStatus
   remindAt: string | null; firedAt: string | null
   savedAt: string
@@ -302,6 +302,10 @@ export type ActivityEntry = {
 
 /** A message or a thread reply, for the actions both have (react, edit, delete). */
 export type ChatTarget = { kind: 'message' | 'reply'; id: string }
+/** A /remind reminder (spec 6.8): words to be reminded of, and the channel it was set in; no message. */
+export type NoteTarget = { kind: 'note'; text: string; channelId: string }
+/** What a saved item is about: a message or reply, or a /remind note. */
+export type SavedTarget = ChatTarget | NoteTarget
 
 export type ThreadReply = {
   id: string; messageId: string; channelId: string; senderId: string; content: string
@@ -636,6 +640,8 @@ export interface Api {
     /** Complete, archive or bring back; a new reminder time (or null, none). Completing or archiving cancels it. */
     update(id: string, patch: { status?: SavedStatus; remindAt?: string | null }): Promise<SavedView>
     remove(id: string): Promise<void>
+    /** /remind (spec 6.8): a reminder about `text` at `remindAt`, set in a channel I can read; In progress. */
+    note(channelId: string, text: string, remindAt: string): Promise<SavedView>
   }
   /** The manager dashboard (spec §5): Admin and Sales see every project, a PM the ones they manage. */
   dashboard: { projects(workspaceId: string): Promise<DashboardProject[]>; checkedIn(workspaceId: string): Promise<CheckedInNow[]> }

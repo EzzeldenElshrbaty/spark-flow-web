@@ -13,6 +13,7 @@ type Reminder = Extract<FlowbotNote, { kind: 'reminder' }>
 
 /** Where a reminder's View message goes: the message in its channel, or a reply's thread. */
 export function reminderLink(note: Reminder, ws: string): string {
+  if (note.target.kind === 'note') return paths.channel(ws, note.target.channelId)
   if (note.rootId) return `${paths.channel(ws, note.channelId)}?thread=${encodeURIComponent(note.rootId)}`
   return paths.message(ws, note.channelId, note.target.id)
 }

@@ -19,6 +19,11 @@ export function useUpdateSaved() {
   return useMutation({ mutationFn: ({ id, ...patch }: { id: string; status?: SavedStatus; remindAt?: string | null }) => api.saved.update(id, patch) })
 }
 
+/** /remind (spec 6.8): a reminder about words, set in a channel. */
+export function useNoteReminder() {
+  return useMutation({ mutationFn: ({ channelId, text, remindAt }: { channelId: string; text: string; remindAt: string }) => api.saved.note(channelId, text, remindAt) })
+}
+
 /** Takes it out of Saved. */
 export function useRemoveSaved() {
   return useMutation({ mutationFn: (id: string) => api.saved.remove(id) })

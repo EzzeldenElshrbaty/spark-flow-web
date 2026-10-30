@@ -165,3 +165,10 @@ describe('17 → 18', () => {
     expect(out.replies[0].attachments[0].snippet).toBeNull()
   })
 })
+
+describe('18 → 19', () => {
+  it('saved items can now be /remind notes; nothing stored changes', () => {
+    const doc = { version: 18, currentUserId: 'u-1', saved: [{ id: 's1', target: { kind: 'message', id: 'm1' } }] }
+    expect(migrate(doc, 19)).toEqual({ ...doc, version: 19 })
+  })
+})

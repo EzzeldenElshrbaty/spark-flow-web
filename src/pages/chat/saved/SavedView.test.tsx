@@ -56,7 +56,7 @@ describe('Saved (spec 6.12)', () => {
   it('opens the message, or a reply in its thread', () => {
     show({ items: [plain, item({ id: 'reply', target: { kind: 'reply', id: 'r9' }, rootId: 'm-root' })] })
     const links = within(screen.getByRole('tabpanel')).getAllByRole('link', { name: /View message/ })
-    expect(links[0].getAttribute('href')).toBe(`/w/engineering/c/c-backend?message=${plain.target.id}`)
+    expect(links[0].getAttribute('href')).toBe(`/w/engineering/c/c-backend?message=${'id' in plain.target ? plain.target.id : ''}`)
     expect(links[1].getAttribute('href')).toBe('/w/engineering/c/c-backend?thread=m-root')
   })
 
@@ -134,5 +134,16 @@ describe('Saved (spec 6.12)', () => {
     const { onRetry } = show({ items: undefined, error: true })
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Try again' })))
     expect(onRetry).toHaveBeenCalled()
+  })
+})
+
+describe('Saved: a /remind note (spec 6.8)', () => {
+  it('says where it was set, shows my words, and opens that channel', () => {
+    const note = item({ id: 'note', target: { kind: 'note', text: 'check the deploy', channelId: 'c-backend' }, authorId: 'u-1', authorName: 'Youssef Abdelrahman', text: 'check the deploy', remindAt: hours(1) })
+    show({ items: [note] })
+    const [row] = rows()
+    expect(row.getAttribute('aria-label')).toBe('Reminder set in #backend')
+    expect(row.textContent).toContain('check the deploy')
+    expect(within(row).getByRole('link', { name: 'Open #backend: check the deploy' }).getAttribute('href')).toBe('/w/engineering/c/c-backend')
   })
 })
