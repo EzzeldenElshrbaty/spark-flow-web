@@ -1,18 +1,4 @@
-import {
-  IconArchive,
-  IconBell,
-  IconBellOff,
-  IconChecks,
-  IconChevronDown,
-  IconDotsVertical,
-  IconHash,
-  IconLink,
-  IconLock,
-  IconLogout,
-  IconInfoCircle,
-  IconStar,
-  IconStarFilled,
-} from '@tabler/icons-react'
+import { IconArchive, IconBell, IconBellOff, IconChecks, IconChevronDown, IconDotsVertical, IconHash, IconInfoCircle, IconLink, IconLock, IconLogout, IconSearch, IconStar, IconStarFilled } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
 import type { Channel, NotifyLevel } from '@/api/types'
 import { Avatar } from '@/components/sf/Avatar'
@@ -42,15 +28,17 @@ export type ChannelHeaderProps = {
   onCopyLink: () => Promise<void>
   onLeave: () => void
   onArchive: () => void
+  /** Search in this channel (spec 6.1); no button without it (a group conversation). */
+  onSearch?: () => void
 }
 
 /**
  * The 52px channel header (spec 6.1): name, star, topic, then members, the notifications bell (spec 6.11) and the more
  * menu at the end. A channel's name opens Channel details for everyone who can read it. It never wraps: the topic
  * truncates first, then the members button goes (Members is in Channel details too). On phones the topic moves into
- * the more menu. Call and channel search come in later phases.
+ * the more menu, with channel search before the menu (spec 6.1). Call comes in a later phase.
  */
-export function ChannelHeader({ channel, title, members, rights, onDetails, onStar, onMute, onNotifyLevel, onMarkRead, onCopyLink, onLeave, onArchive }: ChannelHeaderProps) {
+export function ChannelHeader({ channel, title, members, rights, onDetails, onStar, onMute, onNotifyLevel, onMarkRead, onCopyLink, onLeave, onArchive, onSearch }: ChannelHeaderProps) {
   const phone = usePhone()
   // What Copy link did, said next to the menu for a moment; there are no toasts outside Undo.
   const [copied, setCopied] = useState<'' | 'Link copied' | "Couldn't copy the link">('')
@@ -129,6 +117,7 @@ export function ChannelHeader({ channel, title, members, rights, onDetails, onSt
             />
           )}
         />
+        {onSearch && <IconButton label={isChannel ? 'Search in channel' : 'Search in conversation'} icon={IconSearch} shortcut={['⌘', 'F']} onClick={onSearch} />}
         <Menu label="Channel actions" trigger={(props) => <IconButton label="Channel actions" icon={IconDotsVertical} {...props} />}>
           {phone && topic && <MenuHeading>{topic}</MenuHeading>}
           {isChannel && (

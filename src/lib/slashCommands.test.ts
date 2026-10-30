@@ -30,7 +30,7 @@ describe('parseCommand (spec 6.8 shortcuts)', () => {
 
 describe('commandOptions', () => {
   it('lists the offered commands that start with what was typed, in the spec order', () => {
-    expect(commandOptions('', COMMANDS).map((c) => c.name)).toEqual(['remind', 'task', 'invite', 'topic', 'mute', 'leave', 'shrug'])
+    expect(commandOptions('', COMMANDS).map((c) => c.name)).toEqual(['remind', 'task', 'invite', 'topic', 'mute', 'leave', 'search', 'shrug'])
     expect(commandOptions('t', COMMANDS).map((c) => c.name)).toEqual(['task', 'topic'])
     expect(commandOptions('MU', COMMANDS).map((c) => c.name)).toEqual(['mute'])
     expect(commandOptions('x', COMMANDS)).toEqual([])

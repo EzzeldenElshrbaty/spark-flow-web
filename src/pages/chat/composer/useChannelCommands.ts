@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router'
 import { useLeaveChannel, useSetMuted, useUpdateChannel } from '@/api/chat'
 import type { Channel } from '@/api/types'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
+import type { SearchNavState } from '@/lib/openSearch'
 import { paths } from '@/lib/paths'
 import { COMMANDS, shrugBody, type CommandName, type CommandOutcome, type ComposerSlash, type ParsedCommand } from '@/lib/slashCommands'
 import type { Body } from '@/lib/messageBody'
@@ -38,6 +39,7 @@ export function useChannelCommands(channel: Channel, ui: ChannelCommandUi): Comp
     topic: rights.manage,
     mute: true,
     leave: rights.leave,
+    search: true,
     shrug: true,
   }
   const commands = COMMANDS.filter((c) => offered[c.name]).map((c) =>
@@ -71,6 +73,10 @@ export function useChannelCommands(channel: Channel, ui: ChannelCommandUi): Comp
         return {}
       case 'remind':
         ui.remind?.(text)
+        return {}
+      case 'search':
+        // Across the workspace, as Slack's /search does; the channel's 🔍 and ⌘F search just here.
+        if (slug) navigate(paths.search(slug, text), { state: { focus: 'search' } satisfies SearchNavState })
         return {}
       case 'shrug':
         return { send: shrugBody(body) }

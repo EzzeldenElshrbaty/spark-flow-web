@@ -58,6 +58,16 @@ describe('channelKey', () => {
     expect(key('Escape', { shiftKey: true })).toBe('markAllRead')
   })
 
+  it('reads ⌘/Ctrl+F (by the key’s place, so any layout) as search in this channel (spec 10)', () => {
+    expect(channelKey({ key: 'f', code: 'KeyF', altKey: false, shiftKey: false, ctrlKey: false, metaKey: true })).toBe('search')
+    expect(channelKey({ key: 'ب', code: 'KeyF', altKey: false, shiftKey: false, ctrlKey: true, metaKey: false })).toBe('search')
+    expect(channelKey({ key: 'F', code: 'KeyF', altKey: false, shiftKey: true, ctrlKey: true, metaKey: false })).toBeNull()
+    expect(channelKey({ key: 'f', code: 'KeyF', altKey: false, shiftKey: false, ctrlKey: false, metaKey: false })).toBeNull()
+    // Dvorak: the letter decides (⌘U stays the page's, ⌘F is found where F is).
+    expect(channelKey({ key: 'u', code: 'KeyF', altKey: false, shiftKey: false, ctrlKey: false, metaKey: true })).toBeNull()
+    expect(channelKey({ key: 'f', code: 'KeyY', altKey: false, shiftKey: false, ctrlKey: false, metaKey: true })).toBe('search')
+  })
+
   it('leaves other keys and other modifiers alone', () => {
     expect(key('ArrowDown')).toBeNull()
     expect(key('ArrowDown', { altKey: true, metaKey: true })).toBeNull()

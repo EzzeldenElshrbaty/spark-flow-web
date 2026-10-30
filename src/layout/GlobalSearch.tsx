@@ -1,7 +1,7 @@
 import clsx from 'clsx'
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { useNavigate } from 'react-router'
+import { useLocation, useNavigate, useSearchParams } from 'react-router'
 import { IconBolt, IconLayoutGrid, IconListCheck, IconSearch, IconUser, IconX, type TablerIcon } from '@tabler/icons-react'
 import { Kbd } from '@/components/sf/Badge'
 import { Button, IconButton } from '@/components/sf/Button'
@@ -14,9 +14,10 @@ import { useRole } from '@/lib/useRole'
 import { findShortcuts, opensSearch, peopleShortcuts, searchPlaceholder, shortcutsFor, taskShortcuts, workspaceShortcuts } from '@/layout/searchShortcuts'
 import { useWorkspaceMode } from '@/layout/useWorkspaceMode'
 import { paths } from '@/lib/paths'
+import { useFocusOnArrival } from '@/lib/openSearch'
 
-// TODO(api): search messages on the server too, as Spark CRM's GlobalSearch does for its records
-// (design/reference-code/src/layout/GlobalSearch.tsx). For now it finds pages, channels, DMs, projects, tasks and people.
+// It jumps to pages, channels, DMs, projects, tasks and people; its last row (and ⌘/Ctrl+Enter) opens Search, which
+// looks through what people wrote (spec 6.12).
 
 /** Fewer letters than this match too much to be useful. */
 const minSearchLength = 2
@@ -26,6 +27,9 @@ const searchLabel = 'Search pages, tasks, people and channels'
 type Hit = { id: string; title: string; subtitle: string; link: string; icon?: TablerIcon }
 /** A block of results: pages or actions. */
 type Group = { kind: string; label: string; icon: TablerIcon; total: number; hits: Hit[] }
+
+/** The last group: one row that opens Search for the words (spec 6.12). */
+const SEARCH_KIND = 'search'
 
 /** Pages and actions this role can use, plus the open workspace's channels, DMs and projects, as soon as something is typed. */
 function useSearch(term: string) {
@@ -51,8 +55,11 @@ function useSearch(term: string) {
       ...(found.actions.length ? [{ kind: 'actions', label: 'Actions', icon: IconBolt, total: found.actions.length, hits: found.actions }] : []),
       ...(taskHits.length ? [{ kind: 'tasks', label: 'Tasks', icon: IconListCheck, total: taskHits.length, hits: taskHits }] : []),
       ...(peopleHits.length ? [{ kind: 'people', label: 'People', icon: IconUser, total: peopleHits.length, hits: peopleHits }] : []),
+      ...(typed && workspace
+        ? [{ kind: SEARCH_KIND, label: 'Search', icon: IconSearch, total: 1, hits: [{ id: 'all', title: `Search messages and files for “${typed}”`, subtitle: 'Messages, files, tasks, channels and people', link: paths.search(workspace.slug, typed), icon: IconSearch }] }]
+        : []),
     ]
-  }, [all, typed, taskHits, peopleHits])
+  }, [all, typed, taskHits, peopleHits, workspace])
   return { groups, term: typed }
 }
 
@@ -60,7 +67,7 @@ function useSearch(term: string) {
  * Going to a result: a page or channel link, or `dm:<userId>` for a person, which opens your conversation with them.
  * `failed` is the sentence to show near the box when that didn't work.
  */
-function useGo(after: () => void) {
+function useGo(after: (link: string) => void) {
   const navigate = useNavigate()
   const { workspace } = useCurrentWorkspace()
   const openDm = useOpenDm()
@@ -69,7 +76,7 @@ function useGo(after: () => void) {
     setFailed(null)
     if (!link.startsWith('dm:')) {
       navigate(link)
-      after()
+      after(link)
       return
     }
     if (!workspace) return
@@ -78,7 +85,7 @@ function useGo(after: () => void) {
       {
         onSuccess: (dm) => {
           navigate(paths.channel(workspace.slug, dm.id))
-          after()
+          after(link)
         },
         onError: () => setFailed("Couldn't open the conversation."),
       },
@@ -175,6 +182,12 @@ function useKeyboard(groups: Group[], open: (link: string) => void, close: () =>
       if (!flat.length) return
       const next = event.key === 'ArrowDown' ? (current + 1) % flat.length : (current - 1 + flat.length) % flat.length
       setActive(flat[next].key)
+    } else if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+      const search = groups.find((g) => g.kind === SEARCH_KIND)?.hits[0]
+      if (search) {
+        event.preventDefault()
+        open(search.link)
+      }
     } else if (event.key === 'Enter') {
       const pick = flat[current] ?? flat[0]
       if (pick) open(pick.link)
@@ -189,9 +202,25 @@ function useKeyboard(groups: Group[], open: (link: string) => void, close: () =>
 /** ⌘ on Apple keyboards, Ctrl elsewhere (both work). */
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
 
+/** On Search, the box shows its query (spec 5.2); elsewhere it starts empty. */
+function useSearchTerm() {
+  const { pathname } = useLocation()
+  const [params] = useSearchParams()
+  const onSearch = /^\/w\/[^/]+\/search\/?$/.test(pathname)
+  const query = onSearch ? (params.get('q') ?? '') : ''
+  const [term, setTerm] = useState(query)
+  // A new query in the address (Search opened, a chip, Back) replaces what the box holds.
+  const [shown, setShown] = useState(query)
+  if (query !== shown) {
+    setShown(query)
+    setTerm(query)
+  }
+  return [term, setTerm] as const
+}
+
 export function DesktopSearch() {
   const side = useWorkspaceMode()
-  const [term, setTerm] = useState('')
+  const [term, setTerm] = useSearchTerm()
   const [open, setOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const boxRef = useRef<HTMLDivElement>(null)
@@ -202,11 +231,15 @@ export function DesktopSearch() {
     setOpen(false)
     inputRef.current?.blur()
   }
-  const { go, failed } = useGo(() => {
-    setTerm('')
+  // Opening Search keeps the words in the box (it shows the query there); anywhere else the box empties.
+  const { go, failed } = useGo((link) => {
+    if (!/^\/w\/[^/]+\/search(\?|$)/.test(link)) setTerm('')
     close()
   })
   const keys = useKeyboard(groups, go, close)
+
+  // Sent here by the channel's 🔍, ⌘F or /search: the caret goes in the box, after the query.
+  useFocusOnArrival(inputRef)
 
   useEffect(() => {
     const onKey = (event: globalThis.KeyboardEvent) => {

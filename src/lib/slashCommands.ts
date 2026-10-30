@@ -1,8 +1,8 @@
-import { IconAlarm, IconBellOff, IconFileDescription, IconListCheck, IconLogout, IconMoodSmile, IconUserPlus, type TablerIcon } from '@tabler/icons-react'
+import { IconAlarm, IconBellOff, IconFileDescription, IconListCheck, IconLogout, IconMoodSmile, IconSearch, IconUserPlus, type TablerIcon } from '@tabler/icons-react'
 import { bodyText, type Body, type Inline } from '@/lib/messageBody'
 
 /** The built-in shortcuts (spec 6.8). /search comes with Search, /call with Calls, app commands with apps. */
-export type CommandName = 'remind' | 'task' | 'invite' | 'topic' | 'mute' | 'leave' | 'shrug'
+export type CommandName = 'remind' | 'task' | 'invite' | 'topic' | 'mute' | 'leave' | 'search' | 'shrug'
 
 /** A row of the `/` list: the command, what it takes, and what it does. */
 export type SlashCommand = { name: CommandName; args: string; description: string; icon: TablerIcon }
@@ -21,6 +21,7 @@ export const COMMANDS: SlashCommand[] = [
   { name: 'topic', args: '[text]', description: 'Set the channel topic', icon: IconFileDescription },
   { name: 'mute', args: '', description: 'Mute this conversation', icon: IconBellOff },
   { name: 'leave', args: '', description: 'Leave this channel', icon: IconLogout },
+  { name: 'search', args: '[words]', description: 'Search messages and files', icon: IconSearch },
   { name: 'shrug', args: '[message]', description: 'Send a message with ¯\\_(ツ)_/¯', icon: IconMoodSmile },
 ]
 

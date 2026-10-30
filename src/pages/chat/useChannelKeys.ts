@@ -17,11 +17,12 @@ function typingElsewhere(target: EventTarget | null): boolean {
 
 /**
  * The channel page's keys (spec 10): Alt+↑/↓ open the previous or next channel in the sidebar (with Shift, the
- * previous or next unread one); Esc marks the channel read and Shift+Esc asks to mark everything read. From the page
+ * previous or next unread one); Esc marks the channel read and Shift+Esc asks to mark everything read; ⌘/Ctrl+F opens
+ * Search in the channel. From the page
  * or the channel's composer, not while I'm typing in another field. Nothing while a dialog is open, or for a key
  * something already used.
  */
-export function useChannelKeys(options: { channelId: string; order: Channel[]; onGo: (channelId: string) => void; onMarkRead: () => void; onMarkAllRead: () => void }) {
+export function useChannelKeys(options: { channelId: string; order: Channel[]; onGo: (channelId: string) => void; onMarkRead: () => void; onMarkAllRead: () => void; onSearch?: () => void }) {
   const latest = useRef(options)
   useEffect(() => {
     latest.current = options
@@ -34,8 +35,10 @@ export function useChannelKeys(options: { channelId: string; order: Channel[]; o
     const onKeyDown = (event: KeyboardEvent) => {
       const action = channelKey(event)
       if (!action || event.defaultPrevented || event.isComposing || dialog.open() || typingElsewhere(event.target)) return
-      const { channelId, order, onGo, onMarkRead, onMarkAllRead } = latest.current
+      const { channelId, order, onGo, onMarkRead, onMarkAllRead, onSearch } = latest.current
+      if (action === 'search' && !onSearch) return
       event.preventDefault()
+      if (action === 'search') return onSearch?.()
       if (action === 'markRead') return onMarkRead()
       if (action === 'markAllRead') return onMarkAllRead()
       const next = stepChannel(order, channelId, action === 'next' || action === 'nextUnread' ? 1 : -1, action === 'nextUnread' || action === 'previousUnread')

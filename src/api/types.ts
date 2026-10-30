@@ -329,6 +329,35 @@ export type ThreadCard = {
 /** A page of threads, unread first; `unreadThreads` counts every followed thread with unread replies (the sidebar's). */
 export type ThreadsPage = { items: ThreadCard[]; nextCursor: string | null; unreadThreads: number }
 
+/** Search's tabs and sort (spec 6.12). */
+export type SearchTab = 'messages' | 'files' | 'tasks' | 'channels' | 'people'
+export type SearchSort = 'relevant' | 'newest'
+/**
+ * One search, as the client sends it (§8 `GET /search`): the words and "phrases" as text, and the filters the page
+ * resolved from the query (`from` people and `in` a channel by id). Dates are days, YYYY-MM-DD, in `tz`.
+ */
+export type SearchRequest = {
+  q: string; tab: SearchTab; sort: SearchSort
+  from: string[]; in: string | null; has: 'file' | 'link' | 'pin' | 'reaction' | null; thread: boolean
+  after: string | null; before: string | null
+  /** The viewer's time zone (IANA), whose days `after` and `before` name. */
+  tz: string
+  cursor?: string
+}
+/** A message or reply that matched: its plain text (the page highlights it), where it is, and who wrote it when. */
+export type MessageHit = {
+  kind: 'message'; target: ChatTarget; channelId: string; rootId: string | null
+  senderId: string; text: string; createdAt: string
+}
+export type SearchHit =
+  | MessageHit
+  | { kind: 'file'; file: Attachment; channelId: string; messageId: string; replyId: string | null; senderId: string; at: string }
+  | { kind: 'task'; task: TaskRef }
+  | { kind: 'channel'; channel: Channel }
+  | { kind: 'person'; user: User }
+/** A page of one tab's results, with every tab's count for the same search. */
+export type SearchResults = { counts: Record<SearchTab, number>; items: SearchHit[]; nextCursor: string | null }
+
 export type ChatTarget = { kind: 'message' | 'reply'; id: string }
 /** The Files tab's filters (spec 6.1): a type, who shared it, since when; `cursor` for the next 50. */
 export type ChannelFileFilter = { type?: FileKind; from?: string; since?: string; folderId?: string; cursor?: string }
@@ -669,6 +698,8 @@ export interface Api {
     /** Marks these items read; without ids, all of mine in the workspace. A mention's read state is the bell's. */
     markRead(workspaceId: string, ids?: string[]): Promise<void>
   }
+  /** Search (spec 6.12): only what I may read (§9). */
+  search: { run(workspaceId: string, request: SearchRequest): Promise<SearchResults> }
   /** Threads I follow (spec 6.12 Threads); their read state is Activity's. */
   threads: {
     /** 20 a page: those with unread replies first, then the rest, each newest reply first. */

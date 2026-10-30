@@ -201,6 +201,8 @@ describe('createHttpApi', () => {
     await api.threads.list('w1')
     await api.threads.list('w1', '20')
     await api.threads.markRead('w1', ['m1'])
+    await api.search.run('w1', { q: 'deploy "page size"', tab: 'messages', sort: 'newest', from: ['u2', 'u3'], in: 'c1', has: 'file', thread: true, after: '2026-10-01', before: '2026-10-31', tz: 'Africa/Cairo', cursor: '20' })
+    await api.search.run('w1', { q: '', tab: 'people', sort: 'relevant', from: [], in: null, has: null, thread: false, after: null, before: null, tz: 'UTC' })
     await api.chat.addMembers('c1', ['u2', 'u3'])
     await api.chat.removeMember('c1', 'u 3')
     await api.chat.updateChannel('c1', { description: 'About', whoCanPost: 'admins' })
@@ -239,6 +241,8 @@ describe('createHttpApi', () => {
       'GET /api/workspaces/w1/threads undefined',
       'GET /api/workspaces/w1/threads?cursor=20 undefined',
       'POST /api/workspaces/w1/threads/read {"rootIds":["m1"]}',
+      'GET /api/workspaces/w1/search?q=deploy+%22page+size%22&type=messages&sort=newest&from=u2&from=u3&in=c1&has=file&is=thread&after=2026-10-01&before=2026-10-31&tz=Africa%2FCairo&cursor=20 undefined',
+      'GET /api/workspaces/w1/search?q=&type=people&sort=relevant&tz=UTC undefined',
       'POST /api/channels/c1/members {"userIds":["u2","u3"]}',
       'DELETE /api/channels/c1/members/u%203 undefined',
       'PATCH /api/channels/c1 {"description":"About","whoCanPost":"admins"}',

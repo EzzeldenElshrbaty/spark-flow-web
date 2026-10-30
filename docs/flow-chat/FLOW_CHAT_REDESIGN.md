@@ -436,7 +436,7 @@ Order, with separators shown as —:
 - **Shortcuts (`/`):** /remind, /task (create a Flow task in the channel's linked project), /call, /invite, /topic, /status, /mute, /leave, /search, /shrug.
   - Each row shows the command (mono), its arguments (`text-secondary`) and a description.
   - Apps can register commands that POST to a URL and answer ephemerally or in the channel.
-  - Built (slice X, 30 Oct 2026): /remind (Set a reminder: the words, and a Remind me time; a note in Saved), /task, /invite, /topic, /mute, /leave, /shrug, each where the channel's own menus offer it, in the channel box only. A `/word` at the start that isn't offered doesn't post and says how to send it. /search comes with Search, /call with Calls; /status waits for a status feature.
+  - Built (slice X, 30 Oct 2026): /remind (Set a reminder: the words, and a Remind me time; a note in Saved), /task, /invite, /topic, /mute, /leave, /shrug, each where the channel's own menus offer it, in the channel box only. A `/word` at the start that isn't offered doesn't post and says how to send it. /search came with Search (slice V), /call comes with Calls; /status waits for a status feature.
 - **Attach menu (+, the button turns into ×):**
   - Upload from your computer (⌘U)
   - Add from Flow files
@@ -523,6 +523,18 @@ Each view has a 52px header with a `title`, an optional tabs row, and a scrollin
   - Operator hint: `from:@nour`, `has:file`; quoted phrases are supported.
   - Each result is a card: channel and date, then the message with matches highlighted (`surface-selected` background, weight 600). Hover shows "View in channel", which jumps to the message and selects it.
   - Backend: a full-text index that respects channel permissions.
+  - *Note (slice V, 31 Oct 2026, approved):*
+    - **The query:**
+      - The address holds the query (`/w/:ws/search?q=`), and the chips rewrite it.
+      - `in:@name` searches a 1:1 conversation.
+      - Words match at the start of a word, ignoring accents.
+    - **Ways in:**
+      - The top bar box ends with "Search messages and files for …" (or ⌘/Ctrl+Enter), and shows the query while on Search.
+      - The channel header's 🔍 and ⌘/Ctrl+F on a channel page open it with `in:#channel`. A group conversation has neither, and the browser's find stays.
+      - `/search` searches the whole workspace.
+    - **Phones:** the view has its own box.
+    - **Sides:** Search keeps the side you were on (5.5).
+    - **Results:** tasks, channels and people go by the words only.
 - **Activity:**
   - Tabs: All, Mentions, Reactions, Threads, Reminders. An "Unread only" switch and "Mark all read".
   - Each row: a red unread dot, avatar, kind line (icon plus "Mentioned you in #frontend-dev"), the text, and the time. An "Earlier" group follows the unread rows.

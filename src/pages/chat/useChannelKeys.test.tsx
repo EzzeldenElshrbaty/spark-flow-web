@@ -21,7 +21,7 @@ const channel = (id: string, unreadCount = 0): Channel => ({
 const order = [channel('a', 2), channel('b'), channel('c'), channel('d', 1)]
 
 function setup(channelId = 'b') {
-  const handlers = { onGo: vi.fn(), onMarkRead: vi.fn(), onMarkAllRead: vi.fn() }
+  const handlers = { onGo: vi.fn(), onMarkRead: vi.fn(), onMarkAllRead: vi.fn(), onSearch: vi.fn() }
   renderHook(() => useChannelKeys({ channelId, order, ...handlers }))
   return handlers
 }
@@ -166,5 +166,21 @@ describe('useChannelKeys: what already has the key', () => {
     onInspectorEscape(event, close)
     expect(close).toHaveBeenCalledOnce()
     expect(event.defaultPrevented).toBe(true)
+  })
+})
+
+describe('useChannelKeys: ⌘/Ctrl+F (spec 10)', () => {
+  it('opens Search in this channel instead of the browser’s find, also from the channel’s composer', () => {
+    const { onSearch } = setup()
+    expect(press('f', { code: 'KeyF', metaKey: true })).toBe(true)
+    expect(onSearch).toHaveBeenCalledTimes(1)
+    const box = field(`<div ${CHANNEL_COMPOSER}><div contenteditable="true"></div></div>`)
+    press('f', { code: 'KeyF', ctrlKey: true }, box)
+    expect(onSearch).toHaveBeenCalledTimes(2)
+  })
+  it('leaves it to another field I’m typing in', () => {
+    const { onSearch } = setup()
+    expect(press('f', { code: 'KeyF', metaKey: true }, field('<input />'))).toBe(false)
+    expect(onSearch).not.toHaveBeenCalled()
   })
 })

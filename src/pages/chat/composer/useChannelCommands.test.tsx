@@ -44,12 +44,12 @@ const run = async (channel: Channel, text: string | Body, u = ui()) => {
 
 describe('useChannelCommands (spec 6.8)', () => {
   it('offers by rights: an Admin in a channel gets every one but /task without a project; a member less; a DM only /mute and /shrug', () => {
-    expect(names(backend)).toEqual(['invite', 'topic', 'mute', 'leave', 'shrug'])
-    expect(names(backend, ui({ newTask: { projectName: 'Nexus Core', open: vi.fn() }, remind: vi.fn() }))).toEqual(['remind', 'task', 'invite', 'topic', 'mute', 'leave', 'shrug'])
+    expect(names(backend)).toEqual(['invite', 'topic', 'mute', 'leave', 'search', 'shrug'])
+    expect(names(backend, ui({ newTask: { projectName: 'Nexus Core', open: vi.fn() }, remind: vi.fn() }))).toEqual(['remind', 'task', 'invite', 'topic', 'mute', 'leave', 'search', 'shrug'])
     rights = { manage: false, leave: true, archive: false }
-    expect(names(backend)).toEqual(['mute', 'leave', 'shrug'])
+    expect(names(backend)).toEqual(['mute', 'leave', 'search', 'shrug'])
     rights = { manage: false, leave: false, archive: false }
-    expect(names(dm)).toEqual(['mute', 'shrug'])
+    expect(names(dm)).toEqual(['mute', 'search', 'shrug'])
   })
 
   it('words /task for the project and /mute for what it will do', () => {
@@ -90,6 +90,11 @@ describe('useChannelCommands (spec 6.8)', () => {
     expect(open).toHaveBeenCalledWith({ title: 'Fix the cursor filter', assigneeId: null })
     await run(backend, '/remind check the deploy', u)
     expect(remind).toHaveBeenCalledWith('check the deploy')
+  })
+
+  it('/search opens Search for the words across the workspace, the caret in the box', async () => {
+    expect(await run(backend, '/search deploy notes')).toEqual({})
+    expect(navigate).toHaveBeenCalledWith('/w/engineering/search?q=deploy%20notes', { state: { focus: 'search' } })
   })
 
   it('/shrug sends the shrug', async () => {

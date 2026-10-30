@@ -104,6 +104,36 @@ The client refreshes resolved tasks on `ticketUpdated`, so chip status is live. 
 
 Messages read from the API carry `replyUserIds`: who replied last, newest first, each once, at most 5 (spec §7 `reply_user_ids`). It is worked out on read (or kept with `threadCount` and `lastReplyAt` in the same transaction as each reply) and should come with `thread.updated`.
 
+### Search (spec 6.12, §8, §9)
+
+| Call | Route | Returns |
+|---|---|---|
+| Search | `GET /api/workspaces/:id/search?q=&type=&sort=&from=&from=&in=&has=&is=thread&after=&before=&cursor=` | `SearchResults`: `{ counts, items: SearchHit[], nextCursor }` |
+
+- **What the client sends:** `q` is the words and "quoted phrases" only. The client reads the operators (`from:@nour`, `in:#backend` or `in:@nour`, `has:`, `is:thread`, `after:`, `before:`) with `lib/searchQuery.ts` and sends them as parameters:
+  - `from`: people ids, repeatable, anyone of them.
+  - `in`: one channel or DM id.
+  - `has`: `file`, `link`, `pin` or `reaction`.
+  - `is=thread`: a thread's parent or a reply.
+  - `after` and `before`: the viewer's local days, `YYYY-MM-DD`. `after` includes its day; `before` doesn't.
+  - `type`: one of `messages`, `files`, `tasks`, `channels`, `people`.
+  - `sort`: `relevant` or `newest`.
+- **Access (§9):**
+  - Messages and replies come from the workspace's public channels (joined or not, archived included), and from private channels and DMs only for their members.
+  - Deleted messages, system lines and task cards are never results.
+  - A reply also sent to the channel is found once, as the reply.
+  - Files come from the same places, each once.
+  - Tasks come from projects in the workspace that aren't archived. Channels are the ones the person may see. People are the workspace's members.
+- **Matching:**
+  - Every word must start a word, and a phrase must appear as written. Case and accents are ignored, Arabic marks included. The client highlights with the same rule.
+  - Messages and files take every filter. A filter-only query (e.g. `from:@nour`) lists that person's messages and files.
+  - Tasks (key, title), channels (name, topic) and people (name, title) go by the words only and need some.
+- **Order and paging:**
+  - Most relevant ranks by more matches, with a phrase match counting 3, then newest first. Newest is by time.
+  - Messages come 20 a page with an opaque `cursor`; the other tabs return up to 50.
+  - `counts` holds every tab's total for the same search.
+- **Backend:** a full-text index over `body_text` (§7) with the access filter applied in the query, not after it, so counts never leak private messages. One index per workspace is fine.
+
 ### Threads (spec 6.12)
 
 | Call | Route | Returns |

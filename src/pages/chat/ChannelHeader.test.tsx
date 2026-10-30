@@ -29,6 +29,19 @@ function header(props: Partial<ChannelHeaderProps> = {}) {
 const openMenu = () => fireEvent.click(screen.getByRole('button', { name: 'Channel actions' }))
 const item = (name: string) => screen.getByRole('menuitem', { name })
 
+describe('ChannelHeader search (spec 6.1)', () => {
+  it('the search button opens Search in this channel', () => {
+    const onSearch = vi.fn()
+    header({ onSearch })
+    fireEvent.click(screen.getByRole('button', { name: 'Search in channel' }))
+    expect(onSearch).toHaveBeenCalledOnce()
+  })
+  it('no button where there is nothing to scope it to', () => {
+    header()
+    expect(screen.queryByRole('button', { name: /Search in/ })).toBeNull()
+  })
+})
+
 describe('ChannelHeader (spec 6.1)', () => {
   it('names the channel in a heading; the name opens Channel details on About, for everyone who can read it (spec 6.1)', () => {
     const { onDetails } = header()

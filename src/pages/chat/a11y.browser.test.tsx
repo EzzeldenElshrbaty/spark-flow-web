@@ -32,6 +32,8 @@ import { SnippetView } from '@/pages/chat/snippets/SnippetCard'
 import { PinsTab } from '@/pages/chat/PinsTab'
 import { LinkPreviewView } from '@/pages/chat/LinkPreviewCard'
 import { ThreadCardView } from '@/pages/chat/threads/ThreadCardView'
+import { SearchResultCard } from '@/pages/chat/search/SearchResultCard'
+import { parseQuery } from '@/lib/searchQuery'
 import { FilesTab } from '@/pages/chat/files/FilesTab'
 import { AddBookmarkDialog } from '@/pages/chat/AddBookmarkDialog'
 import { NewFolderDialog } from '@/pages/chat/files/NewFolderDialog'
@@ -270,6 +272,24 @@ const surfaces: [string, () => ReactNode][] = [
           />
         ))}
       </>
+    ),
+  ],
+  [
+    'search results (spec 6.12)',
+    () => (
+      <ul>
+        {[null, 'm1'].map((rootId) => (
+          <li key={String(rootId)}>
+            <SearchResultCard
+              hit={{ kind: 'message', target: { kind: rootId ? 'reply' : 'message', id: rootId ? 'r1' : 'm1' }, channelId: 'c-backend', rootId, senderId: 'u-2', text: 'Deploys go out at page size 100', createdAt: '2026-10-28T09:00:00.000Z' }}
+              query={parseQuery('deploy "page size"')}
+              place="#backend"
+              author="Nour El-Sayed"
+              ws="engineering"
+            />
+          </li>
+        ))}
+      </ul>
     ),
   ],
   ['snippet dialog (spec 6.9)', () => <SnippetDialog where="#backend" initialContent="SELECT 1;" max={100_000} onCreate={async () => {}} onClose={vi.fn()} />],

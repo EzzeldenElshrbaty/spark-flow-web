@@ -2,7 +2,7 @@ import type { Channel } from '@/api/types'
 import { sidebarRowState } from '@/lib/channels'
 
 /** What a key does on a channel page (spec 10): move through the sidebar, or mark read. */
-export type ChannelKeyAction = 'previous' | 'next' | 'previousUnread' | 'nextUnread' | 'markRead' | 'markAllRead'
+export type ChannelKeyAction = 'previous' | 'next' | 'previousUnread' | 'nextUnread' | 'markRead' | 'markAllRead' | 'search'
 
 type Rows = { channel: Channel }[]
 
@@ -23,9 +23,14 @@ export function stepChannel(order: Channel[], currentId: string, dir: 1 | -1, un
   return null
 }
 
-/** Alt+↑/↓ (with Shift: unread only), Esc and Shift+Esc; anything else, or another modifier, is null. */
-export function channelKey(e: { key: string; altKey: boolean; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }): ChannelKeyAction | null {
-  if (e.ctrlKey || e.metaKey) return null
+/** F by its letter (any Latin layout, Dvorak too), or by its place when the layout types no Latin letter (Arabic). */
+const isF = (e: { key: string; code?: string }) => e.key.toLowerCase() === 'f' || (!/^[a-z]$/i.test(e.key) && e.code === 'KeyF')
+
+/**
+ * Alt+↑/↓ (with Shift: unread only), Esc and Shift+Esc, and ⌘/Ctrl+F (search in the channel); anything else, or another modifier, is null.
+ */
+export function channelKey(e: { key: string; code?: string; altKey: boolean; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }): ChannelKeyAction | null {
+  if (e.ctrlKey || e.metaKey) return isF(e) && !e.altKey && !e.shiftKey ? 'search' : null
   if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
     const down = e.key === 'ArrowDown'
     return e.shiftKey ? (down ? 'nextUnread' : 'previousUnread') : down ? 'next' : 'previous'

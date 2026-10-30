@@ -31,6 +31,8 @@ export const paths = {
   activity: (ws: string) => `/w/${ws}/activity`,
   /** Threads I follow, unread first (spec 6.12). */
   threads: (ws: string) => `/w/${ws}/threads`,
+  /** Search (spec 6.12) for a query as typed. */
+  search: (ws: string, q = '') => `/w/${ws}/search${q ? `?q=${encodeURIComponent(q)}` : ''}`,
   saved: (ws: string) => `/w/${ws}/saved`,
   drafts: (ws: string) => `/w/${ws}/drafts`,
 }

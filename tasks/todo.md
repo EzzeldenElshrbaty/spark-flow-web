@@ -1205,3 +1205,83 @@ Rulings (cost if wrong):
   - The `chatRedesign` flag stays in place with nothing behind it now.
   - A card whose thread is deleted while the view is open stays until the view is left.
   - The seed has no unread followed threads for Youssef, so the demo opens with nothing new until someone replies.
+
+# Slice V: the Search view (spec 6.12 Search, 5.2, 6.1 channel search, §8, §9) — 31 Oct 2026, approved ("yes")
+
+Asked: the agreed order X → W → L → U → V. Today ⌘K only jumps to pages, channels, tasks and people; nothing searches what people wrote.
+
+```mermaid
+flowchart LR
+  K["⌘K box: Enter on 'Search for “x”'"] --> V["/w/:ws/search?q=…&tab=…&sort=…"]
+  H[channel header 🔍 / ⌘F in a channel] -->|"q = in:#backend "| V
+  S["/search words in the box"] --> V
+  V -->|"parse q (lib/searchQuery)"| A["GET /api/workspaces/:id/search?q&type&from&in&has&is&after&before&sort&cursor"]
+  A --> R[counts per tab + results]
+  R --> T[tabs: Messages · Files · Tasks · Channels · People]
+  T --> C[cards with matches highlighted → View in channel]
+  V --> F[chips: From · In · Date · Has · Only threads] -->|rewrite q| V
+```
+
+Rulings (cost if wrong):
+- **The address holds the query** (`?q=`), and the chips rewrite it: `from:@nour in:#backend has:file is:thread after:2026-10-01 "exact words" deploy`. The URL and Back always match what is on screen, and one parser (`lib/searchQuery.ts`) is shared by the page and the mock. The client sends the parsed filters as separate parameters, as the spec's §8 route has them, so the server never parses operator syntax.
+- **Matching:**
+  - Every word must match the start of a word, case and accents ignored ("deploy" finds "Deploys").
+  - A quoted phrase matches as written.
+  - `from:@nour` is anyone whose first name or email name starts with "nour".
+  - `in:#backend` is a channel by name; `in:@nour` is my DM with them.
+  - `has:` takes file, link, pin or reaction; `is:thread` is a thread's parent or reply.
+  - A filter that names no one or nothing says so under the box, e.g. "No one matches @x".
+- **What it searches (the index respects access, §9):**
+  - **Messages:** messages and replies in public channels of the workspace and the private channels and DMs I'm in. Archived channels are included. Deleted and system lines aren't. A reply also sent to the channel counts once.
+  - **Files:** files shared there, by title.
+  - **Tasks:** tasks in projects I can see, by key or title.
+  - **Channels:** channels I can see, by name or topic.
+  - **People:** people in the workspace, by name or title.
+- **The view:**
+  - Header: "Results for “query”" and a Sort control (Most relevant / Newest). Relevant means more words matched, a phrase matched, then the newest first.
+  - Tabs: the five above, each with its count.
+  - Chips: From, In, Date (Today, Last 7 days, Last 30 days), Has, Only threads. A set chip is inverted with ×.
+  - Operator hint: `from:@nour` · `has:file` · "quoted words".
+  - Messages: 20 at a time with Load more. Other tabs: up to 50.
+- **The message card:** channel or DM and date, author, then the text with each match highlighted (`surface-selected`, 600 weight). It is plain text, never HTML, about 240 characters around the first match. On hover or focus "View in channel" shows (always on phones). It jumps to the message and selects it, or opens a reply in its thread.
+- **Ways in:**
+  - **⌘K box:** typing shows the usual jump results and a last row, "Search messages and files for “x”". Enter on it, or ⌘/Ctrl+Enter anywhere in the box, opens Search. While on Search, the box shows the query with a × to clear it (spec 5.2).
+  - **Channel header:** a new 🔍 button opens Search with `in:#channel` and the caret in the box (spec 6.1).
+  - **⌘/Ctrl+F in a channel:** does the same, in place of the browser's find. It does this only on a channel page, so ⌘F stays the browser's everywhere else.
+  - **`/search words`:** in the channel box, opens Search for those words across the workspace, as Slack does.
+- **Tasks:** results open the task panel. **People:** results open my DM with them. **Channels:** results open the channel.
+- **Not in this slice:** recent searches, saved searches, search inside Pages, and a real full-text index (the contract describes it for the backend).
+
+## Plan
+
+- [x] V1. **The query** (`lib/searchQuery.ts`): `parseQuery`, `withFilter` and `withoutFilter` (for chips), `matches` and `matchRanges` (word-start and phrase matching, case and accents ignored), and `excerpt`. Tests: `searchQuery.test.ts` (operators, quotes, unknown words kept as text, round trips, Arabic and accents, ranges).
+- [x] V2. **The API and mock index:** `api.search.run(workspaceId, query, { tab, sort, cursor })` returns `{ counts, items, nextCursor }` (`SearchResults`). The mock is `src/mocks/search.ts`, with access rules, from/in/has/is/dates, relevance and newest. HTTP uses the §8 route. Tests: `mocks/search.test.ts` (private channels and DMs hidden, broadcast once, deleted and system left out, each filter, both sorts, paging, counts), `http.test.ts`.
+- [x] V3. **The view:** `pages/chat/search/SearchPage.tsx` (header, Sort, tabs with counts, chips, operator hint, Load more, empty states "Nothing matches “x”." with Clear filters), `SearchResultCard` (highlighted excerpt, View in channel), rows for files, tasks, channels and people, and the route `/w/:ws/search` on the Chat side. Tests: jsdom view and card tests, `SearchPage.browser.test.tsx` (chips rewrite q, tabs, View in channel, 390px), axe in both themes.
+- [x] V4. **Ways in:** the ⌘K row and ⌘/Ctrl+Enter, the box showing the query with ×, the header 🔍, ⌘/Ctrl+F in a channel, and `/search`. Tests: `GlobalSearch` tests, `ChannelHeader.test.tsx`, `useChannelKeys.test.tsx`, `useChannelCommands.test.tsx`, `workspaceMode.test.ts`, `paths.test.ts`.
+- [x] V5. **Close:**
+  - Docs: the contract (route, parameters, access rules, relevance, the index for the .NET team), a spec 6.12 note and a CLAUDE.md line.
+  - Checks: tsc, lint, unit, browser, build, an app check in both themes and at 390px, a review, then onto your branch.
+
+### Review (slice V)
+
+- **Checks:** unit 1,555 and browser 218 all pass. tsc, lint and build:prototype are clean. App check: ⌘F in #backend, then "page size", then ⌘Enter, at desktop in light and dark; the 🔍 button at 390px.
+- **Test-first gaps:** V1 to V4 were each run red before the code, but the mock search tests and the SearchPage browser tests were first run with their code.
+- **Changed from the plan:**
+  - Search keeps the side you were on, as spec 5.5 and `modeOf` already said. The plan wrongly put it on the Chat side.
+  - Phones get the view's own query box, since the top bar there has only a button.
+  - Channels and people come with the request as data. The page resolves names itself (`resolveSearch`).
+  - The request now sends `tz`.
+- **Review fixes:**
+  - `in:@sam` takes the exact handle over Samir, and says when several people fit.
+  - The viewer's time zone goes with the dates.
+  - Arriving focuses the box once: the state is cleared, so Back or Forward doesn't steal focus again.
+  - A highlight inside a character that unfolds to several (½) is no longer empty.
+  - An unclosed quote is a phrase to the end, and empty quotes are dropped.
+  - A highlight crossing the excerpt's cut keeps its inside part, and the end cut never splits an emoji.
+  - Folding no longer uses the locale (Turkish "I").
+  - ⌘F goes by the letter on Latin layouts (Dvorak), and by place otherwise.
+  - "Last 7 days" really covers 7 days.
+- **Left as is:**
+  - Tasks, channels and people ignore the from, in, has and date filters, so their counts can show with an `in:` chip set. This was ruled in the plan.
+  - Results don't update live while open; any change I make refreshes them.
+  - Group DMs have no 🔍 or ⌘F, because `in:` can't name them.

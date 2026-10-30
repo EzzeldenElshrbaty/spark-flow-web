@@ -52,6 +52,8 @@ import { FileActionsProvider } from '@/pages/chat/files/FileActions'
 import { withInspector } from '@/lib/inspector'
 import { UploadTray } from '@/pages/chat/uploads/UploadTray'
 import { composerLinkPreview } from '@/pages/chat/LinkPreviewCard'
+import { channelScope } from '@/pages/chat/search/resolveSearch'
+import { useOpenSearch } from '@/lib/openSearch'
 import { paneDrop, useUploads, type Uploads } from '@/pages/chat/uploads/useUploads'
 
 /** A channel or DM: its header and tabs over its messages, newest at the bottom, filling the main card (spec 5.3, 6.1). */
@@ -213,7 +215,7 @@ export function ChannelPage() {
           onClose={() => setReminding(null)}
         />
       )}
-      <ChannelShortcuts channel={current} workspaceSlug={ws} />
+      <ChannelShortcuts channel={current} workspaceSlug={ws} searchScope={channelScope(current, people, persona.id)} />
     </div>
     </FileActionsProvider>
   )
@@ -293,6 +295,8 @@ function ChannelTop({
     setDetails({ tab: on, editTopic })
   }
   const copyLink = () => navigator.clipboard.writeText(new URL(paths.channel(workspaceSlug, channel.id), window.location.origin).href)
+  const openSearch = useOpenSearch(workspaceSlug)
+  const scope = channelScope(channel, people, persona.id)
   const leaveChannel = () => leave.mutate(channel.id, { onSuccess: () => navigate(paths.home(workspaceSlug)) })
   return (
     <div ref={top} className="sf flex-none bg-sf-surface">
@@ -312,6 +316,7 @@ function ChannelTop({
         onCopyLink={copyLink}
         onLeave={leaveChannel}
         onArchive={() => setArchiving(true)}
+        onSearch={scope ? () => openSearch(scope) : undefined}
       />
       <ChannelTabs
         channel={channel}

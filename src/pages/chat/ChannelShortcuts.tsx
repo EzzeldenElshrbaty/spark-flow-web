@@ -9,6 +9,7 @@ import { paths } from '@/lib/paths'
 import { sidebarOrder } from '@/pages/chat/channelKeys'
 import { markOpenChannelRead, useReadHold } from '@/pages/chat/readState'
 import { useChannelKeys } from '@/pages/chat/useChannelKeys'
+import { useOpenSearch } from '@/lib/openSearch'
 
 /** Navigation state Alt+↑/↓ leave: the channel they open puts the caret in its composer. */
 export type ChannelNavState = { focus?: 'composer' } | null
@@ -17,8 +18,9 @@ export type ChannelNavState = { focus?: 'composer' } | null
  * The channel page's keys (spec 10), with the confirm Shift+Esc asks first: the read marker only moves back one
  * channel at a time (U), so marking everything read is hard to undo.
  */
-export function ChannelShortcuts({ channel, workspaceSlug }: { channel: Channel; workspaceSlug: string }) {
+export function ChannelShortcuts({ channel, workspaceSlug, searchScope }: { channel: Channel; workspaceSlug: string; searchScope: string | null }) {
   const navigate = useNavigate()
+  const openSearch = useOpenSearch(workspaceSlug)
   const order = sidebarOrder(useSidebarGroups())
   const { mutate: markRead } = useMarkRead()
   const [confirming, setConfirming] = useState<Channel[] | null>(null)
@@ -27,6 +29,8 @@ export function ChannelShortcuts({ channel, workspaceSlug }: { channel: Channel;
     order,
     onGo: (id) => navigate(paths.channel(workspaceSlug, id), { state: { focus: 'composer' } satisfies ChannelNavState }),
     onMarkRead: () => markOpenChannelRead(channel, (channelId) => markRead({ channelId })),
+    // ⌘/Ctrl+F: Search in this channel; a group conversation leaves it to the browser's find.
+    onSearch: searchScope ? () => openSearch(searchScope) : undefined,
     onMarkAllRead: () => {
       const unread = order.filter((c) => c.unreadCount > 0)
       if (unread.length > 0) setConfirming(unread)

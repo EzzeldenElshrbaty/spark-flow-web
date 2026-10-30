@@ -247,6 +247,20 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
       pin: (messageId) => send<void>('PUT', `/api/messages/${enc(messageId)}/pin`),
       unpin: (messageId) => send<void>('DELETE', `/api/messages/${enc(messageId)}/pin`),
     },
+    search: {
+      run: (workspaceId, r) => {
+        const params = new URLSearchParams({ q: r.q, type: r.tab, sort: r.sort })
+        for (const id of r.from) params.append('from', id)
+        if (r.in) params.set('in', r.in)
+        if (r.has) params.set('has', r.has)
+        if (r.thread) params.set('is', 'thread')
+        if (r.after) params.set('after', r.after)
+        if (r.before) params.set('before', r.before)
+        params.set('tz', r.tz)
+        if (r.cursor) params.set('cursor', r.cursor)
+        return get(`/api/workspaces/${enc(workspaceId)}/search?${params}`)
+      },
+    },
     threads: {
       list: (workspaceId, cursor) => get(`/api/workspaces/${enc(workspaceId)}/threads${cursor ? `?cursor=${enc(cursor)}` : ''}`),
       markRead: (workspaceId, rootIds) => send<void>('POST', `/api/workspaces/${enc(workspaceId)}/threads/read`, { rootIds }),

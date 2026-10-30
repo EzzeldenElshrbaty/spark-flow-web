@@ -55,7 +55,7 @@ const lastSeqOf = (data: DbData, channelId: string) => data.messages.reduce((n, 
  * The channel as the current user sees it: their own state, and their unread count (messages past their read marker
  * that someone else sent, not deleted).
  */
-function withUnread(data: DbData, channel: StoredChannel): Channel {
+export function withUnread(data: DbData, channel: StoredChannel): Channel {
   const state = data.channelState[data.currentUserId]?.[channel.id] ?? freshState(channel.kind)
   const unreadCount = data.messages
     .filter((m) => m.channelId === channel.id && m.seq > state.lastReadSeq && m.senderId !== data.currentUserId)
