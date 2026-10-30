@@ -172,3 +172,9 @@ describe('18 → 19', () => {
     expect(migrate(doc, 19)).toEqual({ ...doc, version: 19 })
   })
 })
+
+describe('19 → 20', () => {
+  it('no pins yet (spec §7 Pin)', () => {
+    expect(migrate({ version: 19, currentUserId: 'u-1' }, 20)).toMatchObject({ version: 20, pins: [] })
+  })
+})

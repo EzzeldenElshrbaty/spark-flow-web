@@ -104,10 +104,16 @@ function listed(data: DbData, message: ChatMessage): ChatMessage {
  * A message with who last replied to it (spec §7 reply_user_ids): the latest 5 people, newest first, each once; and
  * whether the current user follows its thread. A broadcast reply has no thread of its own.
  */
-function withThread(data: DbData, message: ChatMessage): ChatMessage {
+export function withThread(data: DbData, message: ChatMessage): ChatMessage {
   if (message.broadcast) return listed(data, message)
   const replies = data.replies.filter((r) => r.messageId === message.id).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
-  return { ...message, replyUserIds: [...new Set(replies.map((r) => r.senderId))].slice(0, REPLY_FACES), following: follows(data, message, replies, data.currentUserId) }
+  const pin = data.pins.find((p) => p.messageId === message.id)
+  return {
+    ...message,
+    replyUserIds: [...new Set(replies.map((r) => r.senderId))].slice(0, REPLY_FACES),
+    following: follows(data, message, replies, data.currentUserId),
+    ...(pin && { pin: { by: pin.pinnedBy, at: pin.pinnedAt } }),
+  }
 }
 
 export function findChannel(data: DbData, id: string): StoredChannel {
@@ -128,7 +134,7 @@ const notInChannel = () => new ApiError({ title: 'Forbidden', status: 403, detai
 const visible = (data: DbData, channel: StoredChannel) => !channel.isPrivate || channel.memberIds.includes(data.currentUserId)
 
 /** A channel I may read: unknown is 404, someone else's private channel is 403. */
-function readableChannel(data: DbData, id: string): StoredChannel {
+export function readableChannel(data: DbData, id: string): StoredChannel {
   const channel = findChannel(data, id)
   if (!visible(data, channel)) throw notInChannel()
   return channel
@@ -197,7 +203,7 @@ function attachFiles(data: DbData, ids: string[] | undefined, userId: string): A
  * Who may write in a channel (spec §4.3, collab.post): a project's channel follows its project; a private channel needs
  * membership; any other channel is open to the workspace.
  */
-function checkCanPost(data: DbData, channel: StoredChannel) {
+export function checkCanPost(data: DbData, channel: StoredChannel) {
   if (channel.archivedAt) throw badRequest('This channel is archived.')
   const project = data.projects.find((p) => p.channelId === channel.id)
   if (project) return requireCan(data, 'collab.post', project)
@@ -553,6 +559,8 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         row.reactions = []
         row.deletedAt = new Date().toISOString()
         if (target.kind === 'message') (row as ChatMessage).linkedTicketKeys = []
+        // A deleted message is no longer pinned (Undo doesn't pin it again).
+        data.pins = data.pins.filter((p) => p.messageId !== row.id)
         return { channelId: channel.id, messageId }
       })
       changed(channelId, messageId)
@@ -795,7 +803,7 @@ function keepHere(data: DbData, row: { mentions: Mention[]; hereIds?: string[]; 
 }
 
 /** What the channel says about a change the current user made (joined, left, renamed, topic changed). */
-function postSystem(data: DbData, channelId: string, event: SystemEvent): ChatMessage {
+export function postSystem(data: DbData, channelId: string, event: SystemEvent): ChatMessage {
   return postMessage(data, { channelId, content: '' }, { system: event })
 }
 

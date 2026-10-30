@@ -75,6 +75,7 @@ export function MessageToolbar({
   follow,
   save,
   remind,
+  pin,
   extra,
   className,
 }: {
@@ -95,6 +96,8 @@ export function MessageToolbar({
   save?: SaveToggle
   /** Remind me about this ▸, in the ⋯ menu. */
   remind?: RemindChoices
+  /** Pin to channel / Unpin from channel (P), in the ⋯ menu. */
+  pin?: { pinned: boolean; onToggle: () => void }
   /** More menu items from the page (Create task). */
   extra?: ReactNode
   /** Where it sits on the row's end side. */
@@ -133,7 +136,7 @@ export function MessageToolbar({
   }
   // A refused delete says why, here, outside the toolbar: shown while it hides.
   const [deleteError, setDeleteError] = useState<string | null>(null)
-  const menu = { target, can, confirmDelete, onEdit, onMarkUnread, onCopyLink, onCopyText, follow, remind, extra, onDeleteError: setDeleteError }
+  const menu = { target, can, confirmDelete, onEdit, onMarkUnread, onCopyLink, onCopyText, follow, remind, pin, extra, onDeleteError: setDeleteError }
   const message = react.error?.message ?? deleteError
   const error = message && (
     <p role="alert" className={clsx('sf-meta absolute top-9 z-10 w-56 rounded-sf-md bg-sf-surface-raised p-2 text-sf-error shadow-sf-menu', className)}>
@@ -192,7 +195,7 @@ export function MessageToolbar({
     )
   }
 
-  const offersMenu = Boolean(follow || onMarkUnread || remind || onCopyLink || onCopyText || can.edit || can.remove || extra)
+  const offersMenu = Boolean(follow || onMarkUnread || remind || pin || onCopyLink || onCopyText || can.edit || can.remove || extra)
   const stops: Stop[] = [
     ...(can.react ? [...QUICK_REACTIONS, 'add' as const] : []),
     ...(onReply ? ['reply' as const] : []),

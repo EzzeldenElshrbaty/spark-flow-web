@@ -22,17 +22,30 @@ export function tabFromParam(value: string | null, channel: Pick<Channel, 'kind'
 }
 
 /** The channel's views under its header (spec 6.1). Bookmarks and + come in a later phase. */
-export function ChannelTabs({ channel, tab, onChange, panelId }: { channel: Pick<Channel, 'kind'>; tab: ChannelTab; onChange: (tab: ChannelTab) => void; panelId: string }) {
-  return <Tabs label="Channel views" tabs={channelTabs(channel)} tab={tab} onChange={onChange} panelId={panelId} />
+export function ChannelTabs({
+  channel,
+  tab,
+  onChange,
+  panelId,
+  pinCount,
+}: {
+  channel: Pick<Channel, 'kind'>
+  tab: ChannelTab
+  onChange: (tab: ChannelTab) => void
+  panelId: string
+  /** Pins (count), once the pins are in (spec 6.1). */
+  pinCount?: number
+}) {
+  const tabs = channelTabs(channel).map((t) => (t.id === 'pins' && pinCount ? { ...t, count: pinCount } : t))
+  return <Tabs label="Channel views" tabs={tabs} tab={tab} onChange={onChange} panelId={panelId} />
 }
 
-const STUBS: Record<Exclude<ChannelTab, 'messages'>, string> = {
+const STUBS: Record<Exclude<ChannelTab, 'messages' | 'pins'>, string> = {
   files: 'Files shared in this channel will be listed here.',
-  pins: 'Pinned messages will be listed here.',
   page: "This channel's page will live here.",
 }
 
-/** What Files, Pins and Page show until they're built (Phase 3 and 4). */
-export function TabStub({ tab }: { tab: Exclude<ChannelTab, 'messages'> }) {
+/** What Files and Page show until they're built (slice W, Phase 4). */
+export function TabStub({ tab }: { tab: Exclude<ChannelTab, 'messages' | 'pins'> }) {
   return <p className="sf-ui px-6 py-8 text-sf-text-muted">{STUBS[tab]}</p>
 }

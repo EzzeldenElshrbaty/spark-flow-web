@@ -226,6 +226,11 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
       remove: (id) => send<void>('DELETE', `/api/saved/${enc(id)}`),
       note: (channelId, text, remindAt) => send('POST', '/api/saved/notes', { channelId, text, remindAt }),
     },
+    pins: {
+      list: (channelId) => get(`/api/channels/${enc(channelId)}/pins`),
+      pin: (messageId) => send<void>('PUT', `/api/messages/${enc(messageId)}/pin`),
+      unpin: (messageId) => send<void>('DELETE', `/api/messages/${enc(messageId)}/pin`),
+    },
     rates: {
       list: () => get('/api/rates'),
       update: (userId, hourlyCost) => send('PUT', `/api/rates/${enc(userId)}`, { hourlyCost }),

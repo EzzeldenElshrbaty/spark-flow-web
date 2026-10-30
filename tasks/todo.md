@@ -1048,3 +1048,44 @@ Review focus (each has a test in its task):
   - The prefilled Add people test lives in `ChannelDetails.test.tsx` (there is no `ChannelMembers.test.tsx`).
 - Found in the app check and fixed: menus at `--z-menu` drew under modals, so Channel details' notification level (already broken) and the snippet's Type couldn't be clicked; `InModalScope` puts them at `--z-modal-layer`, with a real hit-test.
 - Checks: 1,399 unit and 161 browser tests, tsc, lint, `build:prototype` (the entry chunk grows 1.8 kB gzipped). In the app: the `/` list, /mute (the bell and sidebar show it; the line says how to undo), `/foo` refused, `:thu` → 👍, ⌘⇧↵ → snippet → SQL card in light and dark, 390px without page scroll, /remind → Saved "Reminder set in #backend".
+
+# Slice W: Pins, Files, bookmarks, folders and jump to date (spec 6.1, 6.2, 6.5, 6.9, 6.10) — 31 Oct 2026, approved (workspace folders; Add from Flow files: files I may share)
+
+Goal: the channel's Files and Pins tabs work; Pin to channel, bookmarks (+), Add from Flow files, Save for later and Add to folder on files, and Jump to a specific date. The Page tab stays a stub (Phase 4) and Channel details › Integrations waits for apps.
+Architecture: three new records in the mock (Pin, Bookmark, Folder, DB v20) and a file target for saved items, each with routes, an event and query keys like the slices before; the tabs read them through `@/api/*` hooks. No new dependency.
+
+```mermaid
+flowchart TD
+  M[message ⋯ or P] --> PIN[Pin to channel] --> S1[system line: pinned a message] --> PT[Pins tab, count in the tab]
+  T[Files tab] --> F{filters: type, person, date, folder} --> L[rows: open, Details, file menu]
+  FM[file menu] --> SAVE[Save for later → Saved] & FOLD[Add to folder ▸ / New folder…]
+  PLUS["+ Add from Flow files"] --> PICK[picker: files I may share] --> TRAY[composer tray, ready] --> SEND[send with fileIds]
+  TAB["tabs row +"] --> BM[Add a bookmark: link + name] --> ROW[bookmark after the tabs; ⋯ Edit, Remove] --> DT[Channel details › Tabs]
+  PILL[date pill menu] --> DATE[Jump to a specific date…] --> FROM[open the list from that day]
+```
+
+Rulings (cost if wrong):
+- Pins: anyone who may post in the channel pins and unpins, as Slack; each pin posts a system line "pinned a message" — §9 is silent — cost: a rule in `can()`.
+- Bookmarks are links only (http/https) until Flow pages exist (Phase 4); anyone who may post adds them, and they show after the tabs, in the order added — cost: a reorder later.
+- Add from Flow files offers the files I may share (spec 6.9 security ruling: I uploaded them, or I'm an Admin), from channels I read and my projects — anyone else's file goes by Share or a link — cost: a narrower picker. **Asked below.**
+- Folders are workspace folders, one per file (spec §7 `folder_id`); whoever may edit the file's details puts it in one or makes a new one; File details shows it and the Files tab filters by it. "Add to section" stays OPEN (13.2). **Asked below.**
+- Save for later on a file is the same saved item as for a message (Saved shows the file's card) — cost: none.
+- Jump to a specific date opens the list from local midnight of that day; a day with no messages lands on the next message.
+
+Review focus:
+1. A pin, bookmark or folder change by someone else shows live (events), and on a message that's deleted the pin goes too.
+2. Private channels: Files, Pins and the Add from Flow files picker never show what I can't read.
+3. Bookmark links: only http/https, never `javascript:`; shown with `rel="noopener noreferrer"`.
+4. Files tab with 500 files at 390px: filters fit, the list pages in, no page scroll.
+5. Jump to a date before the channel existed or in the future: the beginning, or "No messages from that day on."
+
+## Plan
+
+- [ ] W1. Pins. Data and routes (Pin, DB v20; `PUT`/`DELETE /api/messages/:id/pin`, `GET /api/channels/:id/pins`; `pinsChanged`), `can('message.pin')`, the system line; ⋯ Pin to channel / Unpin from channel (P), "Pinned by Nour" on the message; the Pins tab (count, newest first, Jump, Unpin). Tests: `pins.test.ts`, `permissions.test.ts`, `ChannelMessage.test.tsx`, `PinsTab.test.tsx`, real P key.
+- [ ] W2. Files tab. `GET /api/channels/:id/files?type&from&since&folder&cursor` (files in messages and replies, newest first, 50 a page); filters Type (Images, PDFs, Documents, Snippets, Videos, Other), Person, Date (Any time, Today, Last 7 days, Last 30 days), Folder; rows with the file card's actions. Tests: `channelFiles.test.ts`, `FilesTab.test.tsx`, 390px browser test.
+- [ ] W3. Save for later on files. `SavedTarget` gains `{ kind: 'file'; id }`; the file menu item; the Saved row shows the file. Tests: `saved.test.ts`, `SavedView.test.tsx`, `MessageFiles.test.tsx`.
+- [ ] W4. Folders. Folder record, `GET/POST /api/workspaces/:id/folders`, `PATCH /api/files/:id { folderId }`; Add to folder ▸ (folders, New folder…), File details › Folder, the Files filter. Tests: `folders.test.ts`, `FileActions.test.tsx`, `FileInspector.test.tsx`.
+- [ ] W5. Add from Flow files. `GET /api/workspaces/:id/files?q=` (files I may share); `+` item and picker (search, type icon, where it is); picked files join the tray as ready; send accepts them. Tests: `chatFiles.test.ts`, `FilePicker.test.tsx`, `useUploads.test.tsx`.
+- [ ] W6. Bookmarks. Bookmark record, `GET/POST /api/channels/:id/bookmarks`, `PATCH/DELETE /api/bookmarks/:id`, `bookmarksChanged`; the tabs row's bookmarks and +; Channel details › Tabs (rename, remove). Tests: `bookmarks.test.ts`, `ChannelTabs.test.tsx`, `ChannelDetails.test.tsx`.
+- [ ] W7. Jump to a specific date. The pill menu's last item and a date dialog; `jumpSince` takes a date. Tests: `messageRows.test.ts`, `MessageList.browser.test.tsx`.
+- [ ] W8. Close: contract, spec notes, CLAUDE.md; axe both themes, 390px; full suites, tsc, lint, build; app check; fresh review; move the commits to your branch.

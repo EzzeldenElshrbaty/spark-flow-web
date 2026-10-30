@@ -36,6 +36,8 @@ import { ArchiveChannelModal, ArchivedChannelLine, JoinChannelLine, useChannelPr
 import { ChannelHeader } from '@/pages/chat/ChannelHeader'
 import { ChannelDetails, detailsRights, type DetailsTab } from '@/pages/chat/ChannelDetails'
 import { ChannelTabs, TabStub, tabFromParam, type ChannelTab } from '@/pages/chat/ChannelTabs'
+import { ChannelPins } from '@/pages/chat/PinsTab'
+import { usePins } from '@/api/pins'
 import type { Attachment, Channel, ChatMessage, User } from '@/api/types'
 import { useProjectSummaries, useTeams } from '@/api/projects'
 import { MessageSkeleton } from '@/pages/chat/MessageSkeleton'
@@ -135,7 +137,11 @@ export function ChannelPage() {
     <div className="flex min-h-0 flex-1 flex-col">
       <ChannelTop channel={current} people={people} workspaceSlug={ws} tab={tab} onTab={setTab} panelId={panelId} details={details} setDetails={setDetails} />
       <div id={panelId} role="tabpanel" aria-label={tab === 'messages' ? 'Messages' : tab} className="flex min-h-0 flex-1 flex-col" {...paneDrop(writing, uploads.add)}>
-      {tab !== 'messages' ? (
+      {tab === 'pins' ? (
+        <div className="sf flex min-h-0 flex-1 flex-col">
+          <ChannelPins channel={current} users={people} canPost={canPost === true} />
+        </div>
+      ) : tab !== 'messages' ? (
         <div className="sf">
           <TabStub tab={tab} />
         </div>
@@ -258,6 +264,8 @@ function ChannelTop({
   const teams = useTeams(details ? channel.workspaceId : undefined).data ?? []
   const invitations = useInvitations(channel.id, Boolean(details) && allowed.manage)
   const [archiving, setArchiving] = useState(false)
+  // The Pins tab's count (spec 6.1).
+  const pins = usePins(channel.id)
   const top = useRef<HTMLDivElement>(null)
   // The details change the star, level and mute too: while they're open, these errors show under their header.
   const headerError = (star.error ?? mute.error ?? level.error) as Error | null
@@ -290,7 +298,7 @@ function ChannelTop({
         onLeave={leaveChannel}
         onArchive={() => setArchiving(true)}
       />
-      <ChannelTabs channel={channel} tab={tab} onChange={onTab} panelId={panelId} />
+      <ChannelTabs channel={channel} tab={tab} onChange={onTab} panelId={panelId} pinCount={pins.data?.length} />
       {error && !details && <p className="sf-small px-4 pt-2 text-sf-error">{error.message}</p>}
       {details && channel.kind === 'channel' && (
         <ChannelDetails

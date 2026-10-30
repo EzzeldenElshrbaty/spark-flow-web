@@ -203,6 +203,8 @@ export type ChatMessage = {
    * the reply's, and its edits, deletes and reactions go to the reply (`/api/replies/:id`).
    */
   broadcast?: { rootId: string; rootText: string }
+  /** Who pinned it to the channel, and when (spec 6.5, §7 Pin); worked out on read. */
+  pin?: { by: string; at: string } | null
   /** Set on what Flowbot sends (spec 5.1 Apps): what it is about, for the card it shows. */
   flowbot?: FlowbotNote
 }
@@ -275,6 +277,7 @@ export type SystemEvent =
   | { kind: 'topic'; to: string }
   | { kind: 'added'; userIds: string[] }
   | { kind: 'removed'; userId: string }
+  | { kind: 'pinned'; messageId: string }
 
 /** What a task event card says: the task, and what happened to it. */
 /** `statusLabel` is the column's name when the card was posted (renaming or deleting it later doesn't change the card). */
@@ -302,6 +305,10 @@ export type ActivityEntry = {
 
 /** A message or a thread reply, for the actions both have (react, edit, delete). */
 export type ChatTarget = { kind: 'message' | 'reply'; id: string }
+/** A message pinned to its channel (spec §7 Pin). */
+export type Pin = { channelId: string; messageId: string; pinnedBy: string; pinnedAt: string }
+/** The Pins tab's row: the message as the channel shows it, and who pinned it when. */
+export type PinnedMessage = { message: ChatMessage; pinnedBy: string; pinnedAt: string }
 /** A /remind reminder (spec 6.8): words to be reminded of, and the channel it was set in; no message. */
 export type NoteTarget = { kind: 'note'; text: string; channelId: string }
 /** What a saved item is about: a message or reply, or a /remind note. */
@@ -621,6 +628,14 @@ export interface Api {
     markRead(workspaceId: string, ids?: string[]): Promise<void>
   }
   /** My messages to send later (spec 6.8 Schedule menu, 6.12 Drafts & sent). */
+  /** Pins (spec 6.5, 6.1 Pins tab): whoever may post in the channel pins and unpins its messages. */
+  pins: {
+    /** Newest pin first; the channel must be one I can read. */
+    list(channelId: string): Promise<PinnedMessage[]>
+    /** Pins a message (again is fine) and posts "pinned a message". */
+    pin(messageId: string): Promise<void>
+    unpin(messageId: string): Promise<void>
+  }
   scheduled: {
     /** Those still to go out, and failed ones, soonest first. */
     list(workspaceId: string): Promise<ScheduledMessage[]>

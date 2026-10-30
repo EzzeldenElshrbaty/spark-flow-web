@@ -1,4 +1,4 @@
-import { IconAlarm, IconBell, IconBellOff, IconCircleDot, IconClipboardText, IconLink, IconPencil, IconTrash } from '@tabler/icons-react'
+import { IconAlarm, IconBell, IconBellOff, IconCircleDot, IconClipboardText, IconLink, IconPencil, IconPin, IconPinnedOff, IconTrash } from '@tabler/icons-react'
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useDeleteMessage, useRestoreMessage } from '@/api/chat'
 import type { ChatTarget } from '@/api/types'
@@ -39,6 +39,7 @@ export function MessageMenu({
   onCopyText,
   follow,
   remind,
+  pin,
   extra,
   lead,
   trigger,
@@ -56,6 +57,8 @@ export function MessageMenu({
   /** Following its thread: a top-level message's. */
   follow?: Follow
   remind?: RemindChoices
+  /** Pin to channel or Unpin from channel (P, spec 6.5): a top-level message, where I may post. */
+  pin?: { pinned: boolean; onToggle: () => void }
   /** More items from the page (Create task), as `MenuItem`s. */
   extra?: ReactNode
   /** Phones: the quick reactions, Add reaction and Reply in thread, first in the sheet. */
@@ -115,6 +118,11 @@ export function MessageMenu({
     ],
     [
       extra,
+      pin && (
+        <MenuItem icon={pin.pinned ? IconPinnedOff : IconPin} shortcut="P" onSelect={pin.onToggle}>
+          {pin.pinned ? 'Unpin from channel' : 'Pin to channel'}
+        </MenuItem>
+      ),
       onCopyLink && (
         <MenuItem icon={IconLink} shortcut="L" onSelect={onCopyLink}>
           Copy link

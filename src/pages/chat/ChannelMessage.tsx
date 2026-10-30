@@ -1,4 +1,5 @@
-import { IconAlertCircle, IconTrash } from '@tabler/icons-react'
+import { IconAlertCircle, IconPinFilled, IconTrash } from '@tabler/icons-react'
+import { useSetPinned } from '@/api/pins'
 import clsx from 'clsx'
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
@@ -45,6 +46,8 @@ export function systemText(event: SystemEvent, nameOf: (userId: string) => strin
       return `added ${listOf(event.userIds.map(nameOf))}.`
     case 'removed':
       return `removed ${nameOf(event.userId)} from the channel.`
+    case 'pinned':
+      return 'pinned a message to this channel.'
   }
 }
 
@@ -163,6 +166,19 @@ export function ChannelMessage({
     root && !root.system && !broadcast
       ? { following: Boolean(root.following), onToggle: () => setFollowing.mutate({ messageId: root.id, following: !root.following }, { onError: () => say("Couldn't change that. Try again.", true) }) }
       : undefined
+  // Pin to channel (P, spec 6.5): a top-level message that's there and settled, where I may post; not a card or a line.
+  const setPinned = useSetPinned()
+  const pin =
+    root && canPost && !root.system && !broadcast && !root.deletedAt && !sendState && !root.commentId && !root.taskEvent
+      ? {
+          pinned: Boolean(root.pin),
+          onToggle: () =>
+            setPinned.mutate(
+              { messageId: root.id, pinned: !root.pin },
+              { onSuccess: () => say(root.pin ? 'Unpinned' : 'Pinned to the channel'), onError: (e) => say(e.message || "Couldn't change that. Try again.", true) },
+            ),
+        }
+      : undefined
   // Save for later (S) and Remind me (spec 6.4, 6.5): a message or reply that's there and settled, not a channel event.
   const saving = useSaveTarget(target, ctx.workspaceId, !message.deletedAt && !sendState && !root?.system, say)
   // Reply in thread (T, spec 6.4): a top-level message outside its own thread, where I may post; the thread opens to
@@ -188,6 +204,13 @@ export function ChannelMessage({
     </Tooltip>
   )
 
+  // Who pinned it, over its text (spec 6.5).
+  const pinnedBy = root?.pin && !message.deletedAt && (
+    <p className="sf-meta m-0 flex items-center gap-1 text-sf-text-secondary">
+      <Icon icon={IconPinFilled} size={14} />
+      Pinned by {senderName(root.pin.by, users)}
+    </p>
+  )
   let body: ReactNode
   if (editing) body = <EditBox message={message} target={target} ctx={ctx} onDone={stopEditing} />
   else if (message.deletedAt)
@@ -205,6 +228,7 @@ export function ChannelMessage({
     const link = firstPreviewable(message.body)
     body = (
       <>
+        {pinnedBy}
         <MessageBody body={message.body} ctx={ctx} muted={sendState === 'failed'} after={message.editedAt && <span className="sf-meta ms-1 text-sf-text-muted">(edited)</span>} />
         <MessageFiles attachments={message.attachments} link={permalink} message={message} pending={Boolean(sendState)} />
         {root?.flowbot?.kind === 'reminder' && <FlowbotReminder note={root.flowbot} ws={ctx.ws} workspaceId={ctx.workspaceId} say={say} />}
@@ -244,6 +268,9 @@ export function ChannelMessage({
         } else if (key === 't' && openThread && !sendState) {
           e.preventDefault()
           openThread()
+        } else if (key === 'p' && pin) {
+          e.preventDefault()
+          pin.onToggle()
         } else if (key === 's' && saving.toggle) {
           e.preventDefault()
           saving.toggle()
@@ -318,6 +345,7 @@ export function ChannelMessage({
           follow={follow}
           save={saving.save}
           remind={saving.remind}
+          pin={pin}
           extra={message.deletedAt ? undefined : actions}
           className={compact ? 'end-3' : 'end-4 md:end-6'}
         />

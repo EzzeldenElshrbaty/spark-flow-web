@@ -744,3 +744,50 @@ describe('Flowbot’s reminder card (spec 6.5: preview, link, Mark complete, Sno
     await vi.waitFor(() => expect(within(row).queryByRole('button', { name: 'Mark complete' })).toBeNull())
   })
 })
+
+describe('Pin to channel (spec 6.5, 10: P)', () => {
+  it('⋯ has Pin to channel with P; choosing it pins the message', async () => {
+    const pin = vi.spyOn(api.pins, 'pin').mockResolvedValue()
+    show(message('Deploy at 23:00'))
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }))
+    const item = screen.getByRole('menuitem', { name: /Pin to channel/ })
+    expect(item.textContent).toContain('P')
+    await act(async () => {
+      fireEvent.click(item)
+    })
+    expect(pin).toHaveBeenCalledWith('m1')
+  })
+
+  it('a pinned message says who pinned it, and ⋯ offers Unpin from channel', async () => {
+    const unpin = vi.spyOn(api.pins, 'unpin').mockResolvedValue()
+    show(message('Deploy at 23:00', { pin: { by: 'u-2', at: '2026-10-28T10:00:00.000Z' } }))
+    expect(screen.getByText('Pinned by Nour El-Sayed')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }))
+    await act(async () => {
+      fireEvent.click(screen.getByRole('menuitem', { name: /Unpin from channel/ }))
+    })
+    expect(unpin).toHaveBeenCalledWith('m1')
+  })
+
+  it('P on the focused message pins it, and again unpins', async () => {
+    const pin = vi.spyOn(api.pins, 'pin').mockResolvedValue()
+    show(message('Deploy at 23:00'))
+    await act(async () => {
+      fireEvent.keyDown(screen.getByRole('button', { name: 'More actions' }), { key: 'p' })
+    })
+    expect(pin).toHaveBeenCalledWith('m1')
+  })
+
+  it('no pin where I can’t post, on a thread reply, or on a system line', () => {
+    show(message('x'), { canPost: false })
+    expect(screen.queryByRole('menuitem', { name: /Pin to channel/ })).toBeNull()
+    cleanup()
+    show({ id: 'r1', messageId: 'm1', channelId: 'c1', senderId: 'u-2', content: 'r', body: parseBody('r'), attachments: [], reactions: [], mentions: [], createdAt: '2026-10-28T09:00:00.000Z' } as ThreadReply)
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }))
+    expect(screen.queryByRole('menuitem', { name: /Pin to channel/ })).toBeNull()
+  })
+
+  it('the system line reads "pinned a message to this channel."', () => {
+    expect(systemText({ kind: 'pinned', messageId: 'm1' })).toBe('pinned a message to this channel.')
+  })
+})

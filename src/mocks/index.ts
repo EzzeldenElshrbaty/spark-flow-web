@@ -1,3 +1,4 @@
+import { pinsApi } from './pins'
 import type { Api, ChatMessage, NewTicket, ThreadReply, Ticket, TicketPatch } from '@/api/types'
 import { addReply, chatApi, sendMessage, type AddReplyInput, type SendMessageInput } from './chat'
 import { sessionActor } from './actor'
@@ -61,6 +62,7 @@ export function createMockApi(db: MockDb, hub: MockHub, now: () => Date = () => 
     inbox: inboxApi(db, hub),
     saved: savedApi(db, hub, now),
     scheduled: scheduledApi(db, hub, now),
+    pins: pinsApi(db, hub),
     dashboard: dashboardApi(db, now),
     files: filesApi(db, hub, now),
     db: dbApi(db, hub),

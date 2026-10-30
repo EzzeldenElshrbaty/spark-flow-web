@@ -19,6 +19,7 @@ export const qk = {
   message: (id: string) => ['chat', 'message', id],
   replies: (messageId: string) => ['chat', 'replies', messageId],
   invitations: (channelId: string) => ['chat', 'invitations', channelId],
+  pins: (channelId: string) => ['chat', 'pins', channelId],
   fileDetails: (fileId: string) => ['chat', 'file', fileId],
   projects: (workspaceId: string) => ['tickets', 'projects', workspaceId],
   archivedProjects: (workspaceId: string) => ['tickets', 'projects', workspaceId, 'archived'],
@@ -75,14 +76,14 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
       // Hours change everywhere: my day, every task and project summary (under 'tickets'), and the Time tabs.
       return [qk.myDay(), ['tickets'], qk.timeAll(), ['dashboard'], ['time', 'report']]
     case 'messageChanged':
-      return [qk.messages(event.channelId), qk.message(event.messageId), qk.replies(event.messageId), qk.mentions(), qk.activityAll(), qk.sentAll()]
+      return [qk.messages(event.channelId), qk.message(event.messageId), qk.replies(event.messageId), qk.mentions(), qk.activityAll(), qk.sentAll(), qk.pins(event.channelId)]
     case 'projectChanged':
       // Summaries and task lists live under 'tickets'; phases, deliverables and project time under 'projects'.
       return [['tickets'], ['projects'], ['dashboard'], qk.projectHistory(event.projectId)]
     case 'channelChanged':
       // Leaving, removal, archiving and privacy decide what my mentions and Activity may show; inviting and revoking
       // change its Invited list (spec 6.10).
-      return [qk.channelsAll(), qk.channel(event.channelId), qk.mentions(), qk.activityAll(), qk.invitations(event.channelId)]
+      return [qk.channelsAll(), qk.channel(event.channelId), qk.mentions(), qk.activityAll(), qk.invitations(event.channelId), qk.pins(event.channelId)]
     case 'commentAdded':
       return [qk.comments(event.taskKey), qk.mentions(), qk.activityAll(), qk.taskHistory(event.taskKey), qk.projectHistory(event.projectId)]
     case 'ratesChanged':
