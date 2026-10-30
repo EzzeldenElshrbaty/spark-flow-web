@@ -912,8 +912,8 @@ Review: 143 files / 1434 tests pass; tsc, lint and the prototype build are clean
 Review: 145 files / 1454 tests pass; tsc, lint and the prototype build are clean. In the app: scheduled "Scheduled check from T" in #general for tomorrow 9:00 AM (box cleared, note shown), saw it under Scheduled with the time zone note, Send now posted it, Sent lists it first, the sidebar count went 1 → none.
 - [ ] U. Threads view: followed threads, unread first, latest replies and an inline reply box, "You're caught up."; ⌘⇧T; the sidebar row. Route `/w/:ws/threads`.
 - [ ] V. Search view: a mock index that respects channel access; tabs with counts; From, In, Date, Has, Only threads chips; `from:`, `has:`, quoted phrases; View in channel; channel search button and ⌘F (`in:#channel`). Route `/w/:ws/search?q=`.
-- [ ] W. Pins and Files tabs: Pin to channel, the Pins count, the Files tab, the tabs "+" (bookmarks), jump to date.
-- [ ] X. / shortcuts (built-ins) and the text snippet (⌘⇧↵).
+- [x] W. Pins and Files tabs (slice W below): Pin to channel, the Pins count, the Files tab, the tabs "+" (bookmarks), jump to date.
+- [x] X. / shortcuts (built-ins) and the text snippet (slice X below) (⌘⇧↵).
 - [ ] Y. Sidebar drag to reorder Starred and Channels (`sidebar_position`).
 - [ ] Z. Preferences: delivery (desktop, push, email digest), Do Not Disturb, the global default level, keywords.
 
@@ -1081,11 +1081,11 @@ Review focus:
 
 ## Plan
 
-- [ ] W1. Pins. Data and routes (Pin, DB v20; `PUT`/`DELETE /api/messages/:id/pin`, `GET /api/channels/:id/pins`; `pinsChanged`), `can('message.pin')`, the system line; ⋯ Pin to channel / Unpin from channel (P), "Pinned by Nour" on the message; the Pins tab (count, newest first, Jump, Unpin). Tests: `pins.test.ts`, `permissions.test.ts`, `ChannelMessage.test.tsx`, `PinsTab.test.tsx`, real P key.
-- [ ] W2. Files tab. `GET /api/channels/:id/files?type&from&since&folder&cursor` (files in messages and replies, newest first, 50 a page); filters Type (Images, PDFs, Documents, Snippets, Videos, Other), Person, Date (Any time, Today, Last 7 days, Last 30 days), Folder; rows with the file card's actions. Tests: `channelFiles.test.ts`, `FilesTab.test.tsx`, 390px browser test.
-- [ ] W3. Save for later on files. `SavedTarget` gains `{ kind: 'file'; id }`; the file menu item; the Saved row shows the file. Tests: `saved.test.ts`, `SavedView.test.tsx`, `MessageFiles.test.tsx`.
-- [ ] W4. Folders. Folder record, `GET/POST /api/workspaces/:id/folders`, `PATCH /api/files/:id { folderId }`; Add to folder ▸ (folders, New folder…), File details › Folder, the Files filter. Tests: `folders.test.ts`, `FileActions.test.tsx`, `FileInspector.test.tsx`.
-- [ ] W5. Add from Flow files. `GET /api/workspaces/:id/files?q=` (files I may share); `+` item and picker (search, type icon, where it is); picked files join the tray as ready; send accepts them. Tests: `chatFiles.test.ts`, `FilePicker.test.tsx`, `useUploads.test.tsx`.
-- [ ] W6. Bookmarks. Bookmark record, `GET/POST /api/channels/:id/bookmarks`, `PATCH/DELETE /api/bookmarks/:id`, `bookmarksChanged`; the tabs row's bookmarks and +; Channel details › Tabs (rename, remove). Tests: `bookmarks.test.ts`, `ChannelTabs.test.tsx`, `ChannelDetails.test.tsx`.
-- [ ] W7. Jump to a specific date. The pill menu's last item and a date dialog; `jumpSince` takes a date. Tests: `messageRows.test.ts`, `MessageList.browser.test.tsx`.
-- [ ] W8. Close: contract, spec notes, CLAUDE.md; axe both themes, 390px; full suites, tsc, lint, build; app check; fresh review; move the commits to your branch.
+- [x] W1. Pins. Data and routes (Pin, DB v20; `PUT`/`DELETE /api/messages/:id/pin`, `GET /api/channels/:id/pins`; `pinsChanged`), `can('message.pin')`, the system line; ⋯ Pin to channel / Unpin from channel (P), "Pinned by Nour" on the message; the Pins tab (count, newest first, Jump, Unpin). Tests: `pins.test.ts`, `permissions.test.ts`, `ChannelMessage.test.tsx`, `PinsTab.test.tsx`, real P key.
+- [x] W2. Files tab. `GET /api/channels/:id/files?type&from&since&folder&cursor` (files in messages and replies, newest first, 50 a page); filters Type (Images, PDFs, Documents, Snippets, Videos, Other), Person, Date (Any time, Today, Last 7 days, Last 30 days), Folder; rows with the file card's actions. Tests: `channelFiles.test.ts`, `FilesTab.test.tsx`, 390px browser test.
+- [x] W3. Save for later on files. `SavedTarget` gains `{ kind: 'file'; id }`; the file menu item; the Saved row shows the file. Tests: `saved.test.ts`, `SavedView.test.tsx`, `MessageFiles.test.tsx`.
+- [x] W4. Folders. Folder record, `GET/POST /api/workspaces/:id/folders`, `PATCH /api/files/:id { folderId }`; Add to folder ▸ (folders, New folder…), File details › Folder, the Files filter. Tests: `folders.test.ts`, `FileActions.test.tsx`, `FileInspector.test.tsx`.
+- [x] W5. Add from Flow files. `GET /api/workspaces/:id/files?q=` (files I may share); `+` item and picker (search, type icon, where it is); picked files join the tray as ready; send accepts them. Tests: `chatFiles.test.ts`, `FilePicker.test.tsx`, `useUploads.test.tsx`.
+- [x] W6. Bookmarks. Bookmark record, `GET/POST /api/channels/:id/bookmarks`, `PATCH/DELETE /api/bookmarks/:id`, `bookmarksChanged`; the tabs row's bookmarks and +; Channel details › Tabs (rename, remove). Tests: `bookmarks.test.ts`, `ChannelTabs.test.tsx`, `ChannelDetails.test.tsx`.
+- [x] W7. Jump to a specific date. The pill menu's last item and a date dialog; `jumpSince` takes a date. Tests: `messageRows.test.ts`, `MessageList.browser.test.tsx`.
+- [x] W8. Close: contract, spec notes, CLAUDE.md; axe both themes, 390px; full suites, tsc, lint, build; app check; fresh review; move the commits to your branch.

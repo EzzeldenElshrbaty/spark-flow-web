@@ -139,12 +139,13 @@ export function FilesTab({
                 <li key={`${file.id}:${replyId ?? messageId}`} className="border-b border-sf-line">
                   <button
                     type="button"
-                    aria-label={`Open ${file.title}: ${subline(file)}, ${senderName(senderId, people)} · ${formatWhen(at)}`}
                     onClick={() => onOpen(file)}
                     className="sf-focus flex w-full items-center gap-3 px-4 py-3 text-start hover:bg-sf-surface-hover sm:px-6">
                     <span aria-hidden className="grid size-10 flex-none place-items-center rounded-sf-md border border-sf-line bg-sf-surface-sunken text-sf-text-secondary">
                       <Icon icon={type.icon} />
                     </span>
+                    {/* Named "Open" + what it shows, so the name and the visible text agree (spec 10). */}
+                    <span className="sr-only">Open</span>{' '}
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-sf text-[14px]/[20px] font-semibold text-sf-text">{file.title}</span>
                       <span className="sf-small block truncate text-sf-text-secondary">{subline(file)}</span>

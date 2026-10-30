@@ -258,6 +258,7 @@ Each item lists anatomy, states, behaviour and acceptance criteria (AC). Class n
   - Pins lists pinned messages.
   - Page is the channel page (6.14).
   - + adds a bookmark (link or Flow page) or a tab.
+  - Built (slice W, 31 Oct 2026): Files (Type, Person, Date and Folder chips, 50 a page), Pins (count, newest first, View message, Unpin), bookmarks as http/https links after a separator with +, managed in Channel details › Tabs. Flow pages as bookmarks wait for Pages (Phase 4).
 - **AC:** the header never wraps. The topic truncates first, then the facepile, then Call moves into ⋮.
 
 ### 6.2 Message list (`sf-msglist`, `sf-day`, `sf-datediv`, `sf-newdiv`, `sf-jump`)
@@ -467,6 +468,7 @@ Order, with separators shown as —:
   - On hover the border becomes `line-strong` and an action pill appears: Download, Share, Details (opens the File details panel), More.
   - **File menu:** Save for later, Create task from file, Copy link to file, — Edit file details, Add to folder ▸, — Delete file (`accent`, confirm; uploader or admin).
   - **OPEN:** whether "Add to section" is needed in addition to folders.
+  - Built (slice W): Save for later (the same saved item as a message's), Add to folder ▸ (workspace folders, one per file, New folder…), and Add from Flow files in the Attach menu (files I may share: mine; an Admin's, any they can see).
 - **Previews:** images and video inline (max 420px wide, `radius-lg`), PDF, code with highlighting, office files and RTF through a converted preview; anything else downloads.
 - **File details panel:** preview, name, type and size, Download / Share / Open, then Uploaded by, Uploaded, Shared in (channels and tasks), Folder, Access, Description (Edit file details).
 - **Text snippet modal:**

@@ -35,7 +35,7 @@ describe('Files tab (spec 6.1: every file in the channel, filterable by type, pe
     expect(rows[0].textContent).toContain('Nour El-Sayed')
     expect(rows[1].textContent).toContain('explain-query')
     expect(rows[1].textContent).toContain('SQL snippet')
-    fireEvent.click(within(rows[0]).getByRole('button', { name: /^Open scope\.pdf/ }))
+    fireEvent.click(within(rows[0]).getByRole('button', { name: /^Open\s*scope\.pdf/ }))
     expect(onOpen).toHaveBeenCalledWith(items[0].file)
   })
 

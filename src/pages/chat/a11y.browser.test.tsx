@@ -29,6 +29,12 @@ import { FileActionsContext, FileActionsProvider, useFileActions, type FileActio
 import { FileInspector } from '@/pages/chat/files/FileInspector'
 import { MessageFiles } from '@/pages/chat/MessageFiles'
 import { SnippetView } from '@/pages/chat/snippets/SnippetCard'
+import { PinsTab } from '@/pages/chat/PinsTab'
+import { FilesTab } from '@/pages/chat/files/FilesTab'
+import { AddBookmarkDialog } from '@/pages/chat/AddBookmarkDialog'
+import { NewFolderDialog } from '@/pages/chat/files/NewFolderDialog'
+import { JumpDateDialog } from '@/pages/chat/JumpDateDialog'
+import { BookmarksPanel } from '@/pages/chat/BookmarksPanel'
 import { SnippetDialog } from '@/pages/chat/snippets/SnippetDialog'
 import { UploadTray } from '@/pages/chat/uploads/UploadTray'
 import type { Upload } from '@/pages/chat/uploads/useUploads'
@@ -178,6 +184,46 @@ const surfaces: [string, () => ReactNode][] = [
     'snippet card (spec 6.9)',
     () => <SnippetView attachment={{ ...scope, title: 'explain-query', snippet: { language: 'sql' } }} text={"-- slow on prod\nselect id, 'x' from messages\nwhere n > 50;\n" + 'select 1;\n'.repeat(10)} />,
   ],
+  [
+    'Pins tab (spec 6.1)',
+    () => (
+      <PinsTab
+        pins={[{ message: { ...message('Deploys are on Thursdays'), id: 'm-pin' }, pinnedBy: 'u-1', pinnedAt: '2026-10-28T10:00:00.000Z' }]}
+        ctx={ctx}
+        canUnpin
+        onUnpin={async () => {}}
+      />
+    ),
+  ],
+  [
+    'Files tab (spec 6.1)',
+    () => (
+      <FilesTab
+        items={[{ file: scope, senderId: 'u-1', at: '2026-10-28T09:00:00.000Z', messageId: 'm1', replyId: null }]}
+        people={users}
+        folders={[{ id: 'fold-1', workspaceId: 'ws-eng', name: 'Releases', createdBy: 'u-1', createdAt: '' }]}
+        filter={{ type: 'pdf' }}
+        hasMore
+        loadingMore={false}
+        onFilter={() => {}}
+        onMore={() => {}}
+        onOpen={() => {}}
+      />
+    ),
+  ],
+  [
+    'tabs row with bookmarks (spec 6.1)',
+    () => (
+      <>
+        <ChannelTabs channel={{ kind: 'channel' }} tab="messages" onChange={() => {}} panelId="tabs-panel" pinCount={2} bookmarks={[{ id: 'b1', channelId: 'c-backend', title: 'Runbook', url: 'https://wiki.spark-sys.com/runbook', createdBy: 'u-1', createdAt: '' }]} onAddBookmark={async () => {}} />
+        <div id="tabs-panel" role="tabpanel" aria-label="Messages" />
+      </>
+    ),
+  ],
+  ['Add a bookmark (spec 6.1)', () => <AddBookmarkDialog onAdd={async () => {}} onClose={() => {}} />],
+  ['New folder (spec 6.9)', () => <NewFolderDialog fileTitle="scope.pdf" onCreate={async () => {}} onClose={() => {}} />],
+  ['Jump to a date (spec 6.2)', () => <JumpDateDialog onJump={() => {}} onClose={() => {}} />],
+  ['Channel details bookmarks (spec 6.10)', () => <BookmarksPanel bookmarks={[{ id: 'b1', channelId: 'c-backend', title: 'Runbook', url: 'https://wiki.spark-sys.com/runbook', createdBy: 'u-1', createdAt: '' }]} onUpdate={async () => {}} onRemove={async () => {}} />],
   ['snippet dialog (spec 6.9)', () => <SnippetDialog where="#backend" initialContent="SELECT 1;" max={100_000} onCreate={async () => {}} onClose={vi.fn()} />],
 ]
 

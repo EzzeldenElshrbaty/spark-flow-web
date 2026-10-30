@@ -21,10 +21,10 @@ describe('qk', () => {
 describe('keysForEvent', () => {
   it('maps events to the keys to invalidate', () => {
     expect(keysForEvent({ type: 'messageReceived', message: { ...m, channelId: 'c1' } })).toEqual([
-      qk.messages('c1'), qk.channelsAll(), qk.channel('c1'), qk.mentions(), qk.sentAll(),
+      qk.messages('c1'), qk.channelsAll(), qk.channel('c1'), qk.mentions(), qk.sentAll(), qk.channelFiles('c1'),
     ])
     expect(keysForEvent({ type: 'replyReceived', reply: { ...r, channelId: 'c1', messageId: 'm1' } })).toEqual([
-      qk.replies('m1'), qk.message('m1'), qk.messages('c1'), qk.channelsAll(), qk.channel('c1'), qk.mentions(), qk.sentAll(),
+      qk.replies('m1'), qk.message('m1'), qk.messages('c1'), qk.channelsAll(), qk.channel('c1'), qk.mentions(), qk.sentAll(), qk.channelFiles('c1'),
     ])
     // A scheduled message made, changed, sent or failed: the Scheduled tab and Sent (spec 6.12).
     expect(keysForEvent({ type: 'scheduledChanged', userId: 'u-1' })).toEqual([qk.scheduledAll(), qk.sentAll()])
@@ -35,14 +35,14 @@ describe('keysForEvent', () => {
     ])
     expect(keysForEvent({ type: 'timeLogged', userId: 'u1', projectId: 'p1' })).toEqual([qk.myDay(), ['tickets'], ['projects', 'time'], ['dashboard'], ['time', 'report']])
     expect(keysForEvent({ type: 'userTyping', channelId: 'c1', userId: 'u2' })).toEqual([])
-    expect(keysForEvent({ type: 'messageChanged', channelId: 'c1', messageId: 'm1' })).toEqual([qk.messages('c1'), qk.message('m1'), qk.replies('m1'), qk.mentions(), qk.activityAll(), qk.sentAll()])
+    expect(keysForEvent({ type: 'messageChanged', channelId: 'c1', messageId: 'm1' })).toEqual([qk.messages('c1'), qk.message('m1'), qk.replies('m1'), qk.mentions(), qk.activityAll(), qk.sentAll(), qk.pins('c1'), qk.channelFiles('c1')])
     // Leaving, removal, archiving and privacy decide what my mentions and Activity may show.
     // Inviting and revoking change the channel's Invited list (spec 6.10) too.
-    expect(keysForEvent({ type: 'channelChanged', channelId: 'c1' })).toEqual([qk.channelsAll(), qk.channel('c1'), qk.mentions(), qk.activityAll(), qk.invitations('c1')])
+    expect(keysForEvent({ type: 'channelChanged', channelId: 'c1' })).toEqual([qk.channelsAll(), qk.channel('c1'), qk.mentions(), qk.activityAll(), qk.invitations('c1'), qk.pins('c1'), qk.bookmarks('c1')])
     // Activity (spec 6.12) refreshes when something is stored for me, a mention included, not on every new message.
     expect(keysForEvent({ type: 'notificationCreated', userId: 'u1' })).toEqual([qk.activityAll()])
     // A file's title, description or deletion changes its details; the messages showing it get messageChanged too.
-    expect(keysForEvent({ type: 'fileChanged', fileId: 'a1' })).toEqual([qk.fileDetails('a1')])
+    expect(keysForEvent({ type: 'fileChanged', fileId: 'a1' })).toEqual([qk.fileDetails('a1'), ['chat', 'files'], ['folders']])
     expect(keysForEvent({ type: 'projectChanged', projectId: 'p1' })).toEqual([['tickets'], ['projects'], ['dashboard'], qk.projectHistory('p1')])
   })
 })
