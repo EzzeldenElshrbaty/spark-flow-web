@@ -247,6 +247,10 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
       pin: (messageId) => send<void>('PUT', `/api/messages/${enc(messageId)}/pin`),
       unpin: (messageId) => send<void>('DELETE', `/api/messages/${enc(messageId)}/pin`),
     },
+    threads: {
+      list: (workspaceId, cursor) => get(`/api/workspaces/${enc(workspaceId)}/threads${cursor ? `?cursor=${enc(cursor)}` : ''}`),
+      markRead: (workspaceId, rootIds) => send<void>('POST', `/api/workspaces/${enc(workspaceId)}/threads/read`, { rootIds }),
+    },
     rates: {
       list: () => get('/api/rates'),
       update: (userId, hourlyCost) => send('PUT', `/api/rates/${enc(userId)}`, { hourlyCost }),

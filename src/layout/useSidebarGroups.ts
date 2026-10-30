@@ -3,6 +3,7 @@ import { useChannels, useDrafts } from '@/api/chat'
 import { useActivity } from '@/api/inbox'
 import { useSaved } from '@/api/saved'
 import { useScheduled } from '@/api/scheduled'
+import { useThreads } from '@/api/threads'
 import { useMyMentions } from '@/api/mentions'
 import { useProjects } from '@/api/tickets'
 import { useUsers } from '@/api/users'
@@ -28,6 +29,8 @@ export function useSidebarGroups() {
   const activityQuery = useActivity(workspace?.id)
   const savedQuery = useSaved(workspace?.id)
   const scheduledQuery = useScheduled(workspace?.id)
+  // The Threads view's own first page: the sidebar and the view share it.
+  const threadsQuery = useThreads(workspace?.id)
 
   const users = usersQuery.data ?? []
   const sorted = sortChannels(channelsQuery.data ?? [])
@@ -67,6 +70,8 @@ export function useSidebarGroups() {
     projectNews: unreadTaskMentions(mentionsQuery.data, workspace?.id),
     /** Unread items in my Activity here (spec 6.12): its row's count. */
     activityUnread: (activityQuery.data ?? []).filter((item) => !item.read).length,
+    /** Followed threads here with replies I haven't read (spec 6.12): the Threads row's muted count. */
+    threadsUnread: threadsQuery.data?.pages[0]?.unreadThreads ?? 0,
     /** My In progress saved items here (spec 5.1): the Saved row's muted count. */
     savedInProgress: (savedQuery.data ?? []).filter((item) => item.status === 'inProgress').length,
     /** My drafts plus scheduled messages here (spec 5.1): the Drafts & sent row's muted count. */

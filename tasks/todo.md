@@ -1133,3 +1133,75 @@ Rulings (cost if wrong):
 - Left as is:
   - The prototype's sample images are our own SVGs in `public/`. The image-route rule (no SVG) is for fetched images.
   - The old textarea composer (project Chat tab) has no box card. Its sent messages still get the card underneath.
+
+# Slice U: the Threads view (spec 6.12 Threads, 6.7 Following) — 31 Oct 2026, approved ("yes")
+
+Asked: the agreed order X → W → L → U. Threads lists every thread I follow, unread first, so I can catch up and reply without opening each channel.
+
+```mermaid
+flowchart LR
+  S[Sidebar Threads row · bold + count] --> V["/w/:ws/threads"]
+  K[⌘/Ctrl+Shift+T] --> V
+  V -->|GET /api/workspaces/:id/threads| L[cards: unread first, then the rest, newest reply first]
+  L --> C[card: channel · people · Unfollow · ⋯ / parent / Show N more replies / latest replies / reply box]
+  C -->|on screen 1 s| R[POST …/threads/read → its replies read here and in Activity]
+  C -->|reply| P[POST /messages/:id/replies → card moves up, live]
+  L --> E[You're caught up.]
+```
+
+Rulings (cost if wrong):
+- **What "unread" is:** a reply in a followed thread that I haven't read. One read state is shared with Activity: the thread items it already keeps, plus mentions of me in replies. Reading a thread in one place clears it in the other, with no second record. Cost: none for users; a backend that stores per-thread markers maps them onto the same call.
+- **Order and paging:** threads with unread replies first, then the rest, each newest reply first, 20 per page with Load more. Only threads I follow, in channels I can still read, whose parent isn't deleted with no replies left.
+- **The card:**
+  - Header: #channel or the DM's name, up to 5 participants' avatars, Unfollow, and ⋯ (View in channel, Copy link).
+  - Body: the parent, then "Show N more replies", then the latest replies (the unread ones, at least 2, at most 10), then the thread reply box (Also send to #channel).
+  - Parent and replies are the same message rows as the channel and thread panel, with the same toolbar (react, edit, save, ⋯).
+- **Read:** a card counts as read once it has been on screen for 1 second. Its "New" marks stay until I leave the view, so nothing jumps while I read. No Mark all read button here; Activity has one.
+- **Unfollow:** the card stays where it is, folded to "You won't be told about new replies. Follow again", until I leave the view. No toast, since toasts are only for Undo after a delete.
+- **Sidebar:** the Threads row leaves the `chatRedesign` flag and shows for everyone. It is bold while any followed thread has unread replies, with a muted count of those threads (a mention count stays Activity's).
+- **⌘/Ctrl+Shift+T** opens Threads, as in the spec. Chrome and Safari keep ⌘⇧T for reopening a tab and don't pass it to pages, so on Mac browsers the key may do nothing. It works in the desktop app and where the browser allows it. Cost: low, since the sidebar row is always there.
+- **Phones:** full screen like Activity. The reply box sits inside the card, and the keys stay usable at 390px.
+- **Not in this slice:** Mute a thread (AA clean-up) and "open in a new window".
+
+## Plan
+
+- [x] U1. **API and mock.**
+  - `api.threads.list(workspaceId, cursor?)` returns `{ items: ThreadCard[], nextCursor }`. A `ThreadCard` is the root, the channel, its participants, the replies shown, `unreadCount`, `totalReplies` and `following`.
+  - `api.threads.markRead(workspaceId, rootIds)` marks those replies read, shared with Activity. It publishes `threadsRead`, which invalidates Threads, Activity and the bell.
+  - Live keys: a reply, an edit, a delete, a follow change, `threadsRead`.
+  - Tests: `mocks/threads.test.ts` (order, unread count, the replies picked, permissions, deleted parents, paging, markRead clearing Activity), `queryKeys.test.ts`.
+- [x] U2. **The view.**
+  - `pages/chat/threads/ThreadsView.tsx` (cards, Load more, empty and caught-up states) and `ThreadCard.tsx` (header, parent, more replies, latest replies, reply box, folded Unfollow).
+  - A card is marked read after it has been on screen for 1 s (IntersectionObserver), and the "New" marks are a snapshot taken on load.
+  - Route `/w/:ws/threads` on the Chat side.
+  - Tests: `ThreadsView.test.tsx` (jsdom) and `ThreadsView.browser.test.tsx` (read on screen, reply moves the card, 390px), plus axe in both themes.
+- [x] U3. **Ways in.**
+  - The sidebar row (no flag, bold and count).
+  - ⌘/Ctrl+Shift+T in `useAppShortcuts`, and `PLACE` in paths so the last place is remembered.
+  - Tests: `Sidebar.test.tsx`, `useAppShortcuts.test.tsx`, `workspaceMode.test.ts`, `paths.test.ts`.
+- [x] U4. **Close.**
+  - Docs: the contract (`/threads`, `/threads/read`, the event), a spec 6.12 note and a CLAUDE.md line.
+  - Checks: tsc, lint, unit, browser, build, an app check in both themes and at 390px, a review, then onto your branch.
+
+### Review (slice U)
+
+- **Checks:** unit 1,506 and browser 208 all pass. tsc, lint and build:prototype are clean. App check: Threads at desktop in light and dark, and at 390px.
+- **Test-first gaps:** U1's tests were run only once the module existed, and the ThreadsPage and threadOrder tests were written alongside the code. To make up for it, the "keeps its place" test was mutation-checked: it fails with the order snapshot removed.
+- **Changed from the plan:** reads publish the existing `readChanged` event instead of a new `threadsRead`, since it already refreshes Activity, the bell and now Threads.
+- **Review fixes:**
+  - The view keeps every card it has shown, as the server last sent it. A card read past the loaded pages, or unfollowed, can't vanish or show twice.
+  - Follow again no longer blinks. The keyboard moves between Unfollow and Follow again.
+  - Channels set to Nothing count nothing unread, as in Activity.
+  - Activity's Mark all read now marks every item, not only the 100 it lists.
+  - Reply boxes mount on Reply… or when a draft waits, not on every card.
+  - `useSeen` fires once per stretch.
+  - The RTL double flip of the avatar overlap is gone.
+  - The view starts afresh in another workspace, without a second fetch.
+  - A failed load of channels or people says so.
+- **Refactors:**
+  - `ThreadReplyBox`, shared by the panel and the cards.
+  - `useCopyLink`, shared by both menus.
+- **Left as is:**
+  - The `chatRedesign` flag stays in place with nothing behind it now.
+  - A card whose thread is deleted while the view is open stays until the view is left.
+  - The seed has no unread followed threads for Youssef, so the demo opens with nothing new until someone replies.

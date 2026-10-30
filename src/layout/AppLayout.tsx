@@ -24,7 +24,7 @@ export function AppLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   // The phone search screen opens from the top bar; its state lives here with the other overlays.
   const [searchOpen, setSearchOpen] = useState(false)
-  // ⌘/Ctrl+Shift+A for Activity, anywhere in the workspace (spec 10).
+  // ⌘/Ctrl+Shift+A for Activity and ⌘/Ctrl+Shift+T for Threads, anywhere in the workspace (spec 10, 6.12).
   useAppShortcuts(useCurrentWorkspace().workspace?.slug)
   // G then P / G then C: the two sides of Flow (spec 5.5).
   useModeShortcuts()

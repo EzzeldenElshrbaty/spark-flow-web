@@ -23,6 +23,7 @@ vi.mock('@/layout/useSidebarGroups', () => ({
     projects: [{ id: 'p-nex', key: 'NEX', name: 'Nexus Core', managerId: 'u-1' }],
     mentions: { byChannel: new Map() },
     activityUnread: 0,
+    threadsUnread: 2,
     savedInProgress: 0,
     draftsAndScheduled: 0,
     chatCount: 2,
@@ -60,6 +61,13 @@ describe('The sidebar shows one side of Flow at a time (spec 5.5)', () => {
     // The switch already says Chat: the quick links need no heading of their own.
     expect(within(nav()).queryByRole('button', { name: /^Chat/ })).toBeNull()
     expect(screen.getByRole('link', { name: 'Settings' })).toBeTruthy()
+  })
+
+  it('Threads is for everyone (no flag), bold with how many followed threads have new replies (spec 6.12)', () => {
+    at('/w/engineering/c/c-general', <SidebarContent />)
+    const row = within(nav()).getByRole('link', { name: 'Threads, 2 with new replies' })
+    expect(row.getAttribute('href')).toBe('/w/engineering/threads')
+    expect(row.className).toContain('font-semibold')
   })
 
   it('on a page both sides share, the side last opened stays', () => {

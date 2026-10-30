@@ -73,7 +73,7 @@ const namesUser = (row: ChatMessage | ThreadReply, userId: string) => row.mentio
  * Whether this person follows the thread (spec 6.7): their own choice, else the defaults: they wrote the message,
  * replied to it, or were mentioned by name in it or a reply.
  */
-function follows(data: DbData, message: ChatMessage, replies: ThreadReply[], userId: string): boolean {
+export function follows(data: DbData, message: ChatMessage, replies: ThreadReply[], userId: string): boolean {
   const choice = data.threadFollows.find((f) => f.userId === userId && f.rootId === message.id)
   if (choice) return choice.following
   return message.senderId === userId || namesUser(message, userId) || replies.some((r) => r.senderId === userId || namesUser(r, userId))

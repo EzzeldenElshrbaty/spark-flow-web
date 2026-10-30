@@ -18,11 +18,11 @@ const workspaceOf = (data: DbData, channelId: string) => data.channels.find((c) 
  * the message or reply now; a fired reminder is Flowbot's. Channels set to Nothing, and channels they can no longer read, are left out; a reply that
  * mentions them is its mention alone.
  */
-export function activityFor(data: DbData, userId: string, workspaceId: string): ActivityItem[] {
+export function activityFor(data: DbData, userId: string, workspaceId: string, limit = MAX_ITEMS): ActivityItem[] {
   const quiet = silenced(data, userId)
   const read = new Set(data.mentionReads[userId] ?? [])
   const nameOf = (id: string) => (isFlowbot(id) ? FLOWBOT_NAME : (data.users.find((u) => u.id === id)?.name ?? 'Someone'))
-  const mentions: ActivityItem[] = mentionsFor(data, userId, (m) => m.workspaceId === workspaceId && !quiet(m.channelId), MAX_ITEMS)
+  const mentions: ActivityItem[] = mentionsFor(data, userId, (m) => m.workspaceId === workspaceId && !quiet(m.channelId), limit)
     .map((m) => ({
       id: m.id, kind: 'mention', read: read.has(m.id), createdAt: m.createdAt, workspaceId: m.workspaceId, actorId: m.authorId, actorName: m.authorName,
       channelId: m.channelId, messageId: m.messageId, replyId: m.source === 'reply' ? m.id : null, taskKey: m.taskKey, projectId: m.projectId, excerpt: m.excerpt, emoji: null,
@@ -40,7 +40,7 @@ export function activityFor(data: DbData, userId: string, workspaceId: string): 
       channelId: n.channelId, messageId: n.messageId, replyId: n.replyId, taskKey: null, projectId: null, excerpt: excerptOf(row.content), emoji: n.emoji,
     })
   }
-  return [...mentions, ...kept].sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0)).slice(0, MAX_ITEMS)
+  return [...mentions, ...kept].sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0)).slice(0, limit)
 }
 
 /** Activity (spec 6.12): the list, and marking items read (a mention's read state is the bell's). */
@@ -55,7 +55,8 @@ export function inboxApi(db: MockDb, hub: MockHub): Api['inbox'] {
       await delay()
       const userId = await db.update((data) => {
         const me = currentUser(data)
-        const wanted = new Set(ids ?? activityFor(data, me.id, workspaceId).map((item) => item.id))
+        // Without ids: every item, not only the 100 the list shows (Threads reads the same state).
+        const wanted = new Set(ids ?? activityFor(data, me.id, workspaceId, Infinity).map((item) => item.id))
         // Any mention of mine in this workspace, not only the newest (an older one can still be on screen); and only
         // this workspace's items, as the route says.
         const here = (m: { workspaceId: string }) => m.workspaceId === workspaceId

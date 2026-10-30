@@ -527,6 +527,14 @@ Each view has a 52px header with a `title`, an optional tabs row, and a scrollin
   - Tabs: All, Mentions, Reactions, Threads, Reminders. An "Unread only" switch and "Mark all read".
   - Each row: a red unread dot, avatar, kind line (icon plus "Mentioned you in #frontend-dev"), the text, and the time. An "Earlier" group follows the unread rows.
 - **Threads:** cards per followed thread with unread replies first. Each card has a header (channel, participants, Unfollow, ⋮), the parent, "Show N more replies", the latest replies, and an inline reply composer. Then "You're caught up."
+  - *Note (slice U, 31 Oct 2026, approved):*
+    - Unread is Activity's read state: one read state for both, no second marker.
+    - A card is read after a second on screen. Its "N new" and its place stay until the view is left.
+    - Unfollow folds the card in place, with Follow again; no toast.
+    - The header's ⋮ has View in channel and Copy link.
+    - The sidebar row shows for everyone, bold with a muted count of threads that have new replies.
+    - ⌘/Ctrl+Shift+T opens it where the browser passes the key on.
+    - Mute a thread comes later (AA).
 - **Saved:**
   - Tabs: In progress (count), Archived, Completed.
   - Each row: a complete checkbox, avatar or file icon, source line, text, and the reminder time (`accent` when it is due within 24h).

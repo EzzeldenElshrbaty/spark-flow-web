@@ -45,6 +45,14 @@ describe('useAppShortcuts (spec 10)', () => {
     box.remove()
   })
 
+  it('⌘/Ctrl+Shift+T opens Threads (spec 6.12), where the browser lets the page have the key', () => {
+    renderHook(() => useAppShortcuts('engineering'), { wrapper })
+    expect(press({ key: 'T', code: 'KeyT', metaKey: true, shiftKey: true }).defaultPrevented).toBe(true)
+    expect(navigate).toHaveBeenLastCalledWith('/w/engineering/threads')
+    press({ key: 'ف', code: 'KeyT', ctrlKey: true, shiftKey: true })
+    expect(navigate).toHaveBeenCalledTimes(2)
+  })
+
   it('leaves other keys, a key something else took, and a page with no workspace', () => {
     const { rerender } = renderHook(({ ws }) => useAppShortcuts(ws), { wrapper, initialProps: { ws: 'engineering' as string | undefined } })
     press({ key: 'a', metaKey: true })

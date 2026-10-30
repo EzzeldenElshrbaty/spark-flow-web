@@ -22,6 +22,7 @@ describe('paths', () => {
     expect(paths.tasks('engineering')).toBe('/w/engineering/tasks')
     expect(paths.settings('engineering')).toBe('/w/engineering/settings')
     expect(paths.activity('engineering')).toBe('/w/engineering/activity')
+    expect(paths.threads('engineering')).toBe('/w/engineering/threads')
   })
 })
 
@@ -80,6 +81,7 @@ describe('validSavedPlace', () => {
     expect(validSavedPlace('/w/engineering/projects', engineering, engineeringProjects)).toBe(true)
     expect(validSavedPlace('/w/engineering/tasks', engineering, engineeringProjects)).toBe(true)
     expect(validSavedPlace('/w/engineering/activity', engineering, engineeringProjects)).toBe(true)
+    expect(validSavedPlace('/w/engineering/threads', engineering, engineeringProjects)).toBe(true)
     expect(validSavedPlace(`/w/engineering/p/${key}/board`, engineering, engineeringProjects)).toBe(false) // old address: redirected, not saved
     expect(validSavedPlace(`/w/engineering/p/${key}/nope`, engineering, engineeringProjects)).toBe(false)
   })

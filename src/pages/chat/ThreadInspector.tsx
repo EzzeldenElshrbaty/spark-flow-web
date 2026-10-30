@@ -1,23 +1,19 @@
 import { useMemo } from 'react'
 import { useSearchParams } from 'react-router'
-import { useChannel, useMessage, useReply, useThread } from '@/api/chat'
+import { useChannel, useMessage, useThread } from '@/api/chat'
 import { useUsers } from '@/api/users'
 import { QueryError } from '@/components/ui/QueryError'
 import { InspectorFrame, InspectorSkeleton, TitleSkeleton, type InspectorBodyProps } from '@/layout/InspectorFrame'
 import { ApiError } from '@/lib/api'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
-import { channelLabel, inWorkspace, isArchived, mustJoin, cantWriteLine } from '@/lib/channels'
-import { useProjectSummaries } from '@/api/projects'
-import { JoinChannelLine } from '@/pages/chat/ChannelActions'
+import { channelLabel, inWorkspace, isArchived } from '@/lib/channels'
 import { useRole } from '@/lib/useRole'
 import { NotFound } from '@/pages/NotFound'
-import { ThreadComposer } from '@/pages/chat/ThreadComposer'
-import { bodyText } from '@/lib/messageBody'
 import { ChannelMessage } from '@/pages/chat/ChannelMessage'
 import { canContinue } from '@/pages/chat/messageRows'
 import { useBodyContext, useProjectKeys } from '@/pages/chat/useBodyContext'
-import { useCanPost, useCanWrite, useReadOnlyLine } from '@/pages/chat/useCanPost'
-import { CanPostError } from '@/pages/chat/CanPostError'
+import { useCanPost } from '@/pages/chat/useCanPost'
+import { ThreadReplyBox } from '@/pages/chat/ThreadReplyBox'
 import { useReplyFocus } from '@/pages/chat/useReplyFocus'
 import { ThreadMenu } from '@/pages/chat/ThreadMenu'
 import { paths } from '@/lib/paths'
@@ -36,11 +32,6 @@ export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: st
   const users = useUsers(channel.data?.workspaceId)
   const replies = useThread(message.data ? messageId : undefined)
   const canPost = useCanPost(channel.data)
-  const canWrite = useCanWrite(channel.data)
-  const readOnly = useReadOnlyLine(channel.data)
-  const reply = useReply()
-  // As in the channel: a public channel I'm not in asks me to join before I write, here too.
-  const projects = useProjectSummaries(channel.data?.workspaceId)
   const projectKeys = useProjectKeys(channel.data?.workspaceId)
   const people = useMemo(() => users.data ?? [], [users.data])
   const scope = useMemo(() => ({ users: people, projectKeys, ws: workspace?.slug ?? '', workspaceId: channel.data?.workspaceId ?? '' }), [people, projectKeys, workspace, channel.data])
@@ -102,23 +93,7 @@ export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: st
           </ul>
         )}
         <div ref={replyBox} className="mt-4">
-          {channel.data && mustJoin(channel.data, persona.id, projects.data) ? (
-            <JoinChannelLine channel={channel.data} />
-          ) : canPost === false ? (
-            <p className="text-sm text-fg-muted">{readOnly}</p>
-          ) : canPost && channel.data && !canWrite ? (
-            <p className="text-sm text-fg-muted">{cantWriteLine(channel.data)}</p>
-          ) : canPost && channel.data ? (
-            <ThreadComposer
-              channel={channel.data}
-              rootId={messageId}
-              sendTo={where ?? 'the channel'}
-              error={reply.error as Error | null}
-              onSend={(body, alsoInChannel, fileIds) => reply.mutateAsync({ messageId, content: bodyText(body), body, alsoInChannel, fileIds, clientId: crypto.randomUUID() })}
-            />
-          ) : (
-            <CanPostError channel={channel.data} />
-          )}
+          {channel.data && <ThreadReplyBox channel={channel.data} rootId={messageId} where={where ?? 'the channel'} />}
         </div>
       </>
     )

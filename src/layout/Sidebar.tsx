@@ -32,7 +32,6 @@ import { NewTaskButton } from '@/layout/NewTaskButton'
 import { useSidebarGroups, type ChannelRow } from '@/layout/useSidebarGroups'
 import { useWorkspaceMode } from '@/layout/useWorkspaceMode'
 import { countNoun, sidebarRowState } from '@/lib/channels'
-import { hasFeature } from '@/lib/features'
 import { isFlowbot } from '@/lib/flowbot'
 import { paths } from '@/lib/paths'
 import { SIDEBAR_WIDTH, useUiStore } from '@/lib/uiStore'
@@ -59,6 +58,8 @@ type SideLinkProps = {
   draft?: boolean
   /** Muted trailing number (Drafts & sent, Saved). */
   trail?: number
+  /** Said after the trail count to screen readers: "Threads, 2 with new replies". */
+  trailNoun?: string
   /** The row is active anywhere under this path (a project's link goes to one view but stays lit on the other). */
   within?: string
   /** Active only on this exact path (Home, whose path is the start of every other). */
@@ -84,6 +85,7 @@ export function SideLink({
   muted = false,
   draft = false,
   trail,
+  trailNoun,
   within,
   end,
   active: forced,
@@ -156,7 +158,16 @@ export function SideLink({
                     <span className="sr-only">, draft</span>
                   </span>
                 ) : trail ? (
-                  <span className="sf-meta ms-auto text-sf-sidebar-text-muted tabular-nums">{trail}</span>
+                  <span className="sf-meta ms-auto text-sf-sidebar-text-muted tabular-nums">
+                    {trailNoun ? (
+                      <>
+                        <span className="sr-only">{`, ${trail} ${trailNoun}`}</span>
+                        <span aria-hidden>{trail}</span>
+                      </>
+                    ) : (
+                      trail
+                    )}
+                  </span>
                 ) : null}
               </>
             )}
@@ -260,13 +271,12 @@ export function SidebarContent({
 }) {
   const { role, persona } = useRole()
   const check = usePermission()
-  const { workspace, starred, channels, dms, apps, projects, mentions, activityUnread, savedInProgress, draftsAndScheduled, chatLoading, projectsLoading, failed } = useSidebarGroups()
+  const { workspace, starred, channels, dms, apps, projects, mentions, activityUnread, threadsUnread, savedInProgress, draftsAndScheduled, chatLoading, projectsLoading, failed } = useSidebarGroups()
   const slug = workspace?.slug
   const [newChannel, setNewChannel] = useState(false)
   const [newMessage, setNewMessage] = useState(false)
   const managesAny = projectsLoading ? undefined : projects.some((p) => p.managerId === persona.id)
   const canDashboard = check('dashboard.view', { managesAny })
-  const preview = hasFeature('chatRedesign')
   const row = { collapsed, onNavigate }
   // One side of Flow at a time (spec 5.5): the switch above picks Projects or Chat.
   const side = useWorkspaceMode()
@@ -311,11 +321,17 @@ export function SidebarContent({
         {slug && onChat && (
           // The switch says Chat already, so these rows open the side without a heading of their own.
           <ul className="flex flex-none flex-col gap-0.5">
-            {preview && (
-              <li className="flex-none">
-                <SideLink to={`/w/${slug}/threads`} label="Threads" icon={IconMessages} {...row} />
-              </li>
-            )}
+            <li className="flex-none">
+              <SideLink
+                to={paths.threads(slug)}
+                label="Threads"
+                icon={IconMessages}
+                unread={threadsUnread > 0}
+                trail={threadsUnread || undefined}
+                trailNoun="with new replies"
+                {...row}
+              />
+            </li>
             <li className="flex-none">
               <SideLink to={paths.activity(slug)} label="Activity" icon={IconAt} mentions={activityUnread} noun={['unread', 'unread']} {...row} />
             </li>

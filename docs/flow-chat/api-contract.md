@@ -104,6 +104,26 @@ The client refreshes resolved tasks on `ticketUpdated`, so chip status is live. 
 
 Messages read from the API carry `replyUserIds`: who replied last, newest first, each once, at most 5 (spec §7 `reply_user_ids`). It is worked out on read (or kept with `threadCount` and `lastReplyAt` in the same transaction as each reply) and should come with `thread.updated`.
 
+### Threads (spec 6.12)
+
+| Call | Route | Returns |
+|---|---|---|
+| Threads I follow | `GET /api/workspaces/:id/threads?cursor=` | `ThreadsPage`: `{ items: ThreadCard[], nextCursor, unreadThreads }` |
+| Read threads | `POST /api/workspaces/:id/threads/read` `{ rootIds }` | `204` |
+
+- **Which threads:** a thread is a message with at least one reply that isn't deleted, in a channel or DM of this workspace that I'm a member of, and that I follow (spec 6.7: my own choice, else I wrote it, replied, or was named). A deleted parent still shows while it has replies; its row reads as deleted.
+- **Order and paging:** threads with unread replies first, then the rest, each newest reply first. 20 a page; `cursor` is opaque. `unreadThreads` counts every followed thread with unread replies in the workspace, on every page; it is the sidebar's count.
+- **`ThreadCard`:**
+  - `root`: the message, as the channel lists it, with `following`.
+  - `channelId`.
+  - `replies`: the replies shown, oldest first. These are the unread ones, at least 2 and at most 10, otherwise the latest 2. Deleted replies are left out.
+  - `totalReplies`: replies that aren't deleted.
+  - `unreadCount`: replies by others that I haven't read.
+  - `participantIds`: the newest repliers then the parent's author, at most 5.
+  - `lastReplyAt`.
+- **What unread means:** it is Activity's read state. A reply is unread while its `thread` Activity item is unread, or while a mention of me in it is unread (the bell). There is no separate thread marker. `/threads/read` marks both for every reply in those threads, skips roots I can't read or don't follow (no error), and sends `readChanged` to me. Activity's Mark all read clears Threads too.
+- **Live:** `replyReceived`, `messageChanged` (edits, deletes, follow changes), `channelChanged` (leaving) and `readChanged` refresh the list.
+
 ### Link previews
 
 | Call | Route | Returns |

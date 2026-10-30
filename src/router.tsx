@@ -26,6 +26,7 @@ const SettingsPage = page(() => import('@/pages/settings/SettingsPage'), 'Settin
 const DatabasePage = page(() => import('@/pages/settings/DatabasePage'), 'DatabasePage')
 const RatesPage = page(() => import('@/pages/settings/RatesPage'), 'RatesPage')
 const ActivityPage = page(() => import('@/pages/chat/ActivityPage'), 'ActivityPage')
+const ThreadsPage = page(() => import('@/pages/chat/threads/ThreadsPage'), 'ThreadsPage')
 const SavedPage = page(() => import('@/pages/chat/saved/SavedPage'), 'SavedPage')
 const DraftsPage = page(() => import('@/pages/chat/outbox/DraftsPage'), 'DraftsPage')
 
@@ -73,6 +74,7 @@ export const router = createBrowserRouter([
           // A pane: the channel fills the main card and scrolls its own message list (spec 5.3).
           { path: 'c/:channelId', element: <ChannelPage />, handle: { pane: true } },
           { path: 'activity', element: <ActivityPage />, handle: { pane: true } },
+          { path: 'threads', element: <ThreadsPage />, handle: { pane: true } },
           { path: 'saved', element: <SavedPage />, handle: { pane: true } },
           { path: 'drafts', element: <DraftsPage />, handle: { pane: true } },
           { path: 'projects', element: <ProjectsPage /> },

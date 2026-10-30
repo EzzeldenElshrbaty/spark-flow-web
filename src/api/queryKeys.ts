@@ -48,6 +48,8 @@ export const qk = {
   mentions: () => ['mentions', 'me'],
   activityAll: () => ['activity'],                       // prefix of every workspace's Activity
   activity: (workspaceId: string) => ['activity', workspaceId],
+  threadsAll: () => ['threads'],                         // prefix of every workspace's Threads (spec 6.12)
+  threads: (workspaceId: string) => ['threads', workspaceId],
   savedAll: () => ['saved'],                             // prefix of every workspace's Saved
   saved: (workspaceId: string) => ['saved', workspaceId],
   scheduledAll: () => ['scheduled'],                     // prefix of every workspace's scheduled messages
@@ -67,7 +69,7 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
     }
     case 'replyReceived': {
       const { channelId, messageId } = event.reply
-      return [qk.replies(messageId), qk.message(messageId), qk.messages(channelId), qk.channelsAll(), qk.channel(channelId), qk.mentions(), qk.sentAll(), qk.channelFiles(channelId)]
+      return [qk.replies(messageId), qk.message(messageId), qk.messages(channelId), qk.channelsAll(), qk.channel(channelId), qk.mentions(), qk.sentAll(), qk.channelFiles(channelId), qk.threadsAll()]
     }
     case 'ticketUpdated':
       // Project summaries (progress, overdue) and the dashboard are worked out from tasks too.
@@ -79,14 +81,14 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
       // Hours change everywhere: my day, every task and project summary (under 'tickets'), and the Time tabs.
       return [qk.myDay(), ['tickets'], qk.timeAll(), ['dashboard'], ['time', 'report']]
     case 'messageChanged':
-      return [qk.messages(event.channelId), qk.message(event.messageId), qk.replies(event.messageId), qk.mentions(), qk.activityAll(), qk.sentAll(), qk.pins(event.channelId), qk.channelFiles(event.channelId)]
+      return [qk.messages(event.channelId), qk.message(event.messageId), qk.replies(event.messageId), qk.mentions(), qk.activityAll(), qk.sentAll(), qk.pins(event.channelId), qk.channelFiles(event.channelId), qk.threadsAll()]
     case 'projectChanged':
       // Summaries and task lists live under 'tickets'; phases, deliverables and project time under 'projects'.
       return [['tickets'], ['projects'], ['dashboard'], qk.projectHistory(event.projectId)]
     case 'channelChanged':
       // Leaving, removal, archiving and privacy decide what my mentions and Activity may show; inviting and revoking
       // change its Invited list (spec 6.10).
-      return [qk.channelsAll(), qk.channel(event.channelId), qk.mentions(), qk.activityAll(), qk.invitations(event.channelId), qk.pins(event.channelId), qk.bookmarks(event.channelId)]
+      return [qk.channelsAll(), qk.channel(event.channelId), qk.mentions(), qk.activityAll(), qk.invitations(event.channelId), qk.pins(event.channelId), qk.bookmarks(event.channelId), qk.threadsAll()]
     case 'commentAdded':
       return [qk.comments(event.taskKey), qk.mentions(), qk.activityAll(), qk.taskHistory(event.taskKey), qk.projectHistory(event.projectId)]
     case 'ratesChanged':
@@ -100,7 +102,7 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
     case 'draftChanged':
       return [qk.draftsAll()]
     case 'readChanged':
-      return [qk.channelsAll(), qk.mentions(), qk.activityAll(), ...(event.channelId ? [qk.channel(event.channelId)] : [])]
+      return [qk.channelsAll(), qk.mentions(), qk.activityAll(), qk.threadsAll(), ...(event.channelId ? [qk.channel(event.channelId)] : [])]
     case 'notificationCreated':
       // Something was stored for me, or a new message or reply mentions me (spec 6.12).
       return [qk.activityAll()]

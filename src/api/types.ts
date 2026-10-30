@@ -317,6 +317,18 @@ export type ActivityEntry = {
 }
 
 /** A message or a thread reply, for the actions both have (react, edit, delete). */
+/**
+ * A thread I follow, as the Threads view shows it (spec 6.12): its parent, the replies shown (the unread ones, at least 2
+ * and at most 10, oldest first), how many there are and how many I haven't read, and who is in it (newest first, at
+ * most 5, the parent's author last).
+ */
+export type ThreadCard = {
+  root: ChatMessage; channelId: string; replies: ThreadReply[]
+  totalReplies: number; unreadCount: number; participantIds: string[]; lastReplyAt: string
+}
+/** A page of threads, unread first; `unreadThreads` counts every followed thread with unread replies (the sidebar's). */
+export type ThreadsPage = { items: ThreadCard[]; nextCursor: string | null; unreadThreads: number }
+
 export type ChatTarget = { kind: 'message' | 'reply'; id: string }
 /** The Files tab's filters (spec 6.1): a type, who shared it, since when; `cursor` for the next 50. */
 export type ChannelFileFilter = { type?: FileKind; from?: string; since?: string; folderId?: string; cursor?: string }
@@ -656,6 +668,13 @@ export interface Api {
     list(workspaceId: string): Promise<ActivityItem[]>
     /** Marks these items read; without ids, all of mine in the workspace. A mention's read state is the bell's. */
     markRead(workspaceId: string, ids?: string[]): Promise<void>
+  }
+  /** Threads I follow (spec 6.12 Threads); their read state is Activity's. */
+  threads: {
+    /** 20 a page: those with unread replies first, then the rest, each newest reply first. */
+    list(workspaceId: string, cursor?: string): Promise<ThreadsPage>
+    /** Reads every reply in these threads, here and in Activity and the bell; roots I can't read are skipped. */
+    markRead(workspaceId: string, rootIds: string[]): Promise<void>
   }
   /** My messages to send later (spec 6.8 Schedule menu, 6.12 Drafts & sent). */
   /** Channel bookmarks (spec 6.1): whoever may post adds, renames and removes them. */

@@ -31,6 +31,7 @@ import { MessageFiles } from '@/pages/chat/MessageFiles'
 import { SnippetView } from '@/pages/chat/snippets/SnippetCard'
 import { PinsTab } from '@/pages/chat/PinsTab'
 import { LinkPreviewView } from '@/pages/chat/LinkPreviewCard'
+import { ThreadCardView } from '@/pages/chat/threads/ThreadCardView'
 import { FilesTab } from '@/pages/chat/files/FilesTab'
 import { AddBookmarkDialog } from '@/pages/chat/AddBookmarkDialog'
 import { NewFolderDialog } from '@/pages/chat/files/NewFolderDialog'
@@ -240,6 +241,34 @@ const surfaces: [string, () => ReactNode][] = [
         <LinkPreviewView preview={{ ...elevenlabs, url: 'https://figma.com/design/flow-chat', image: { url: '/link-previews/figma.svg', width: 400, height: 400 } }} />
         <LinkPreviewView preview={{ url: 'https://example.com/pricing', title: 'example.com/pricing', description: null, image: null }} />
         <LinkPreviewView preview={elevenlabs} onRemove={() => {}} />
+      </>
+    ),
+  ],
+  [
+    'Threads cards (spec 6.12)',
+    () => (
+      <>
+        <h1 className="sr-only">Threads</h1>
+        {[false, true].map((unfollowed) => (
+          <ThreadCardView
+            key={String(unfollowed)}
+            place="#backend"
+            participants={users}
+            newCount={2}
+            hiddenCount={3}
+            loadingMore={false}
+            onShowMore={() => {}}
+            unfollowed={unfollowed}
+            onUnfollow={() => {}}
+            onFollow={() => {}}
+            followError={unfollowed ? 'Couldn’t change that. Try again.' : null}
+            channelHref="/w/engineering/c/c-backend"
+            link="http://localhost/w/engineering/c/c-backend?thread=m1"
+            parent={<ChannelMessage message={message('Deploys are on Thursdays')} users={users} ctx={ctx} meId="u-1" canPost continuation={false} showThread={false} compact />}
+            replies={<ChannelMessage message={message('Noted')} users={users} ctx={ctx} meId="u-1" canPost continuation={false} compact />}
+            replyBox={<RichComposer placeholder="Reply in the thread" onSend={async () => {}} directory={directory} showFormatting={false} />}
+          />
+        ))}
       </>
     ),
   ],

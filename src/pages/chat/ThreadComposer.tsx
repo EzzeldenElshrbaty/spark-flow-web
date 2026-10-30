@@ -28,6 +28,7 @@ export function ThreadComposer({
   sendTo,
   error,
   onSend,
+  autoFocus = false,
 }: {
   channel: Channel
   rootId: string
@@ -35,6 +36,8 @@ export function ThreadComposer({
   sendTo: string
   error?: Error | null
   onSend: (body: Body, alsoInChannel: boolean, fileIds: string[]) => Promise<unknown>
+  /** Take the caret on open (a Threads card's Reply… opens it). */
+  autoFocus?: boolean
 }) {
   const drafts = useDrafts(channel.workspaceId)
   const saveDraft = useDraftSaver()
@@ -68,6 +71,7 @@ export function ThreadComposer({
           placeholder="Reply in the thread"
           initialBody={draft?.body}
           showFormatting={false}
+          autoFocus={autoFocus}
           onSend={(body) => {
             // The cards that go with this reply; any added while it sends stay in the tray.
             const sent = uploads.items.filter((i) => i.status === 'ready').map((i) => i.key)
