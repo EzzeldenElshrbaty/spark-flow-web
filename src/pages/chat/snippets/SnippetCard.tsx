@@ -49,7 +49,7 @@ export function SnippetView({ attachment, text }: { attachment: Attachment; text
   const count = `${lines.length} ${lines.length === 1 ? 'line' : 'lines'}`
   return (
     <div className="w-[720px] max-w-full overflow-hidden rounded-sf-lg border border-sf-line bg-sf-surface">
-      <div className="min-w-0 px-3 pt-2 pb-2 pe-40">
+      <div className="min-w-0 px-3 pt-2 pb-2 pe-40 max-md:pe-20">
         <p id={regionId} className="m-0 truncate font-sf text-[14px]/[20px] font-semibold text-sf-text">
           {attachment.title}
         </p>

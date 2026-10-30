@@ -1035,3 +1035,16 @@ Review focus (each has a test in its task):
   - Saved lists it ("Reminder set in #backend"), and the scheduler fires it as Flowbot's card with Mark complete and Snooze, no View message.
   - Tests: `saved.test.ts`, `scheduler.test.ts`, `SavedView.test.tsx`, `ChannelMessage.test.tsx`. Commit.
 - [x] X9. Close: spec notes on the rulings in 6.8 and 6.9, the CLAUDE.md line, the contract; full suites, tsc, lint, `build:prototype`; app check at 1440×900 light and dark and at 390px; the review here.
+
+## Review (30 Oct 2026)
+
+- Built as planned, test first, nine commits on top of a63d847 (X2 and X3 together, and one fix):
+  - X1 `:` emoji · X2–X3 `/` in the composer · X4 the channel's commands · X5 snippet files and tokens (DB v18) · X6 Create a text snippet · X7 the code card · X8 /remind notes (DB v19) · a fix: menus and popovers inside a modal.
+- Rulings beyond the plan:
+  - `ComposerSlash.run` takes the body too, so /shrug keeps bold and mentions.
+  - A snippet's title is its name without `.txt` (set by the API).
+  - A snippet's message runs the @channel and invite prompts after the upload; a snippet made in a thread is a plain reply.
+  - A /remind note makes no Activity item (Activity rows open a message); Flowbot's DM still counts.
+  - The prefilled Add people test lives in `ChannelDetails.test.tsx` (there is no `ChannelMembers.test.tsx`).
+- Found in the app check and fixed: menus at `--z-menu` drew under modals, so Channel details' notification level (already broken) and the snippet's Type couldn't be clicked; `InModalScope` puts them at `--z-modal-layer`, with a real hit-test.
+- Checks: 1,399 unit and 161 browser tests, tsc, lint, `build:prototype` (the entry chunk grows 1.8 kB gzipped). In the app: the `/` list, /mute (the bell and sidebar show it; the line says how to undo), `/foo` refused, `:thu` → 👍, ⌘⇧↵ → snippet → SQL card in light and dark, 390px without page scroll, /remind → Saved "Reminder set in #backend".
