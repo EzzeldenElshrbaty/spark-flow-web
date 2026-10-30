@@ -1,4 +1,4 @@
-import { IconAt, IconMessages, IconMoodSmile, type TablerIcon } from '@tabler/icons-react'
+import { IconAlarm, IconAt, IconMessages, IconMoodSmile, type TablerIcon } from '@tabler/icons-react'
 import { useId, useState } from 'react'
 import { Link } from 'react-router'
 import type { ActivityItem, ActivityItemKind } from '@/api/types'
@@ -11,7 +11,7 @@ import { timeAgo } from '@/lib/format'
 import { useNow } from '@/lib/useNow'
 import { ACTIVITY_TABS, activityKind, activityLink, shownActivity, type ActivityTab } from '@/pages/chat/activityRows'
 
-const KIND_ICONS: Record<ActivityItemKind, TablerIcon> = { mention: IconAt, reaction: IconMoodSmile, thread: IconMessages }
+const KIND_ICONS: Record<ActivityItemKind, TablerIcon> = { mention: IconAt, reaction: IconMoodSmile, thread: IconMessages, reminder: IconAlarm }
 
 /**
  * The Activity view (spec 6.12): a 52px header with Unread only and Mark all read, the tabs, and the rows, unread

@@ -33,7 +33,7 @@ const emptyData = (): DbData => ({
   threadFollows: [],
   notifications: [],
   invitations: [],
-  reminders: [],
+  saved: [],
   scheduled: [],
   counters: {},
 })

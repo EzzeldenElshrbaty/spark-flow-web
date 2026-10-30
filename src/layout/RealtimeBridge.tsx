@@ -29,6 +29,7 @@ export function RealtimeBridge(): null {
       client.onReadChanged((e) => invalidate({ type: 'readChanged', ...e })),
       client.onDraftChanged((e) => invalidate({ type: 'draftChanged', ...e })),
       client.onNotificationCreated((e) => invalidate({ type: 'notificationCreated', ...e })),
+      client.onSavedChanged((e) => invalidate({ type: 'savedChanged', ...e })),
       client.onDataReset(() => invalidate({ type: 'dataReset' })),
       client.onUserTyping(({ channelId, userId }) => useUiStore.getState().addTyper(channelId, userId)),
     ]

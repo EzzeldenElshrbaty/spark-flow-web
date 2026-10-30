@@ -205,11 +205,35 @@ export type ChatMessage = {
 
 /** What a Flowbot message is about: a reminder that fired, or a scheduled message that couldn't be sent. */
 export type FlowbotNote =
-  | { kind: 'reminder'; channelId: string; target: ChatTarget }
+  | { kind: 'reminder'; savedId: string; channelId: string; target: ChatTarget }
   | { kind: 'scheduleFailed'; scheduledId: string }
 
-/** A reminder about a message or reply (spec §7 Reminder): the scheduler fires it at `remindAt` as a Flowbot DM. */
-export type Reminder = { id: string; userId: string; workspaceId: string; target: ChatTarget; remindAt: string; firedAt: string | null }
+export type SavedStatus = 'inProgress' | 'archived' | 'completed'
+
+/**
+ * A message or reply I saved (spec §7 SavedItem; 6.12 Saved), one per target. Remind me sets `remindAt` on it (spec
+ * 6.5: "Reminders also appear in Saved"); the scheduler fires it once (`firedAt`) as a Flowbot DM and an Activity item.
+ */
+export type SavedItem = {
+  id: string; userId: string; workspaceId: string; target: ChatTarget
+  status: SavedStatus
+  remindAt: string | null; firedAt: string | null
+  savedAt: string
+}
+
+/** A saved item as the Saved view shows it, worked out on read. */
+export type SavedView = SavedItem & {
+  channelId: string | null
+  /** The thread a saved reply opens in. */
+  rootId: string | null
+  authorId: string | null; authorName: string | null
+  /** The text as people read it; '' when it's gone. */
+  text: string
+  /** When the message was sent. */
+  createdAt: string | null
+  /** The message was deleted, or I can no longer read its channel. */
+  gone: 'deleted' | 'hidden' | null
+}
 
 /**
  * A message to send later (spec §7 ScheduledMessage), to a channel or, with `rootId`, into a thread. The scheduler
@@ -360,8 +384,8 @@ export type MentionItem = {
   authorName: string                                     // so a mention from another workspace still names its author
   channelId: string | null; messageId: string | null; taskKey: string | null; projectId: string | null
 }
-/** What an Activity row is about (spec 6.12): a mention of me, a reaction to mine, a reply in a thread I follow. */
-export type ActivityItemKind = 'mention' | 'reaction' | 'thread'
+/** What an Activity row is about (spec 6.12): a mention of me, a reaction to mine, a reply in a thread I follow, a reminder. */
+export type ActivityItemKind = 'mention' | 'reaction' | 'thread' | 'reminder'
 /**
  * One Activity row, newest first. `messageId` is the message (a thread's root for a reply); `replyId` the reply,
  * when it's about one. A mention in a task comment has `taskKey` and `projectId` instead of a channel.
@@ -580,6 +604,15 @@ export interface Api {
     list(workspaceId: string): Promise<ActivityItem[]>
     /** Marks these items read; without ids, all of mine in the workspace. A mention's read state is the bell's. */
     markRead(workspaceId: string, ids?: string[]): Promise<void>
+  }
+  /** My saved messages and replies, and their reminders (spec 6.12 Saved, 6.5 Remind me). */
+  saved: {
+    list(workspaceId: string): Promise<SavedView[]>
+    /** Saves it In progress (again, if it was saved before); with `remindAt`, also sets its reminder. */
+    save(target: ChatTarget, remindAt?: string): Promise<SavedView>
+    /** Complete, archive or bring back; a new reminder time (or null, none). Completing or archiving cancels it. */
+    update(id: string, patch: { status?: SavedStatus; remindAt?: string | null }): Promise<SavedView>
+    remove(id: string): Promise<void>
   }
   /** The manager dashboard (spec §5): Admin and Sales see every project, a PM the ones they manage. */
   dashboard: { projects(workspaceId: string): Promise<DashboardProject[]>; checkedIn(workspaceId: string): Promise<CheckedInNow[]> }

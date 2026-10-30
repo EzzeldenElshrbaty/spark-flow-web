@@ -6,6 +6,7 @@ import { createDb, removeLegacyStorage, type MockDb } from './db'
 import { dbApi } from './dbApi'
 import { filesApi } from './files'
 import { mockHub, type MockHub } from './realtime'
+import { savedApi } from './saved'
 import { startScheduler } from './scheduler'
 import { seed } from './seed'
 import { openStore } from './store'
@@ -57,6 +58,7 @@ export function createMockApi(db: MockDb, hub: MockHub, now: () => Date = () => 
     activity: activityApi(db),
     mentions: mentionsApi(db, hub),
     inbox: inboxApi(db, hub),
+    saved: savedApi(db, hub, now),
     dashboard: dashboardApi(db, now),
     files: filesApi(db, hub, now),
     db: dbApi(db, hub),
@@ -116,7 +118,9 @@ export function getMockApi(): Api {
             const workspaceId = data.channels.find((c) => c.id === message?.channelId)?.workspaceId
             if (!message || !workspaceId) throw new Error(`No message ${messageId}`)
             const remindAt = new Date(Date.now() + seconds * 1000).toISOString()
-            data.reminders.push({ id: crypto.randomUUID(), userId: data.currentUserId, workspaceId, target: { kind: 'message', id: messageId }, remindAt, firedAt: null })
+            const target = { kind: 'message' as const, id: messageId }
+            data.saved = data.saved.filter((s) => !(s.userId === data.currentUserId && s.target.kind === 'message' && s.target.id === messageId))
+            data.saved.push({ id: crypto.randomUUID(), userId: data.currentUserId, workspaceId, target, status: 'inProgress', remindAt, firedAt: null, savedAt: new Date().toISOString() })
           }),
       }
     }

@@ -145,3 +145,13 @@ describe('15 → 16', () => {
     expect(migrate({ version: 15, currentUserId: 'u-1' }, 16)).toMatchObject({ version: 16, reminders: [], scheduled: [] })
   })
 })
+
+describe('16 → 17', () => {
+  it('each reminder becomes a saved item In progress with its time (spec 6.5)', () => {
+    const target = { kind: 'message', id: 'm1' }
+    const doc = { version: 16, currentUserId: 'u-1', reminders: [{ id: 'r1', userId: 'u-1', workspaceId: 'ws', target, remindAt: '2030-01-01T09:00:00.000Z', firedAt: null }] }
+    const out = migrate(doc, 17)!
+    expect(out.saved).toEqual([{ id: 'r1', userId: 'u-1', workspaceId: 'ws', target, status: 'inProgress', remindAt: '2030-01-01T09:00:00.000Z', firedAt: null, savedAt: '2030-01-01T09:00:00.000Z' }])
+    expect(out).not.toHaveProperty('reminders')
+  })
+})

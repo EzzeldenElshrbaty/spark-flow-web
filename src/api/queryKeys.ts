@@ -44,6 +44,8 @@ export const qk = {
   mentions: () => ['mentions', 'me'],
   activityAll: () => ['activity'],                       // prefix of every workspace's Activity
   activity: (workspaceId: string) => ['activity', workspaceId],
+  savedAll: () => ['saved'],                             // prefix of every workspace's Saved
+  saved: (workspaceId: string) => ['saved', workspaceId],
   dashboard: (workspaceId: string) => ['dashboard', workspaceId],
   checkedIn: (workspaceId: string) => ['dashboard', 'checked-in', workspaceId],
 } as const
@@ -94,6 +96,8 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
     case 'notificationCreated':
       // Something was stored for me, or a new message or reply mentions me (spec 6.12).
       return [qk.activityAll()]
+    case 'savedChanged':
+      return [qk.savedAll()]
     case 'dataReset':
       // The empty key matches every query.
       return [[]]

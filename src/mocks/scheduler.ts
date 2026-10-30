@@ -1,11 +1,12 @@
-import type { ChatMessage, FlowbotNote, Reminder, ScheduledMessage, StoredChannel } from '@/api/types'
+import type { FlowbotNote, SavedItem, ScheduledMessage, StoredChannel } from '@/api/types'
 import { ApiError } from '@/lib/apiError'
 import { FLOWBOT_ID, senderName } from '@/lib/flowbot'
-import { bodyText, type Body } from '@/lib/messageBody'
+import type { Body } from '@/lib/messageBody'
 import type { RealtimeEvent } from '@/lib/realtime'
 import { postMessage, writeMessage, writeReply } from './chat'
 import type { DbData, MockDb } from './db'
 import { canRead } from './membership'
+import { rowText, savedRow } from './saved'
 import type { MockHub } from './realtime'
 import { clone, newId } from './shared'
 
@@ -49,14 +50,32 @@ function tell(data: DbData, workspaceId: string, userId: string, content: string
 }
 
 /** What Flowbot says when a reminder fires: the message quoted with who wrote it, unless it's gone or out of reach. */
-function reminderText(data: DbData, reminder: Reminder): { content: string; channelId: string } {
-  const row: Pick<ChatMessage, 'channelId' | 'senderId' | 'content' | 'body' | 'deletedAt'> | undefined =
-    reminder.target.kind === 'message' ? data.messages.find((m) => m.id === reminder.target.id) : data.replies.find((r) => r.id === reminder.target.id)
-  if (!row || row.deletedAt) return { content: 'Reminder about a message that was deleted.', channelId: row?.channelId ?? '' }
-  if (!canRead(data, row.channelId, reminder.userId)) return { content: 'Reminder about a message you can no longer see.', channelId: row.channelId }
-  const text = (row.body.length > 0 ? bodyText(row.body) : row.content).replace(/\s+/g, ' ').trim()
+function reminderText(data: DbData, item: SavedItem): string {
+  const found = savedRow(data, item.target)
+  if (!found || found.row.deletedAt) return 'Reminder about a message that was deleted.'
+  if (!canRead(data, found.channelId, item.userId)) return 'Reminder about a message you can no longer see.'
+  const text = rowText(found.row)
   const quote = text.length > QUOTE_MAX ? `${text.slice(0, QUOTE_MAX - 1).trimEnd()}…` : text
-  return { content: `Reminder: “${quote}” from ${senderName(row.senderId, data.users)}.`, channelId: row.channelId }
+  return `Reminder: “${quote}” from ${senderName(found.row.senderId, data.users)}.`
+}
+
+/**
+ * Fires a saved item's reminder: Flowbot's DM card, and an Activity item under Reminders (spec 6.12) while its owner
+ * can still read the message. The item stays In progress.
+ */
+function fireReminder(data: DbData, item: SavedItem, at: string): RealtimeEvent[] {
+  item.firedAt = at
+  const found = savedRow(data, item.target)
+  const readable = found && !found.row.deletedAt && canRead(data, found.channelId, item.userId)
+  if (readable) {
+    data.notifications.push({ id: newId('n'), userId: item.userId, kind: 'reminder', actorId: FLOWBOT_ID, channelId: found.channelId, messageId: found.messageId, replyId: found.replyId, emoji: null, at, read: false })
+  }
+  const note: FlowbotNote = { kind: 'reminder', savedId: item.id, channelId: found?.channelId ?? '', target: item.target }
+  return [
+    ...tell(data, item.workspaceId, item.userId, reminderText(data, item), note),
+    { type: 'savedChanged', userId: item.userId },
+    ...(readable ? [{ type: 'notificationCreated' as const, userId: item.userId }] : []),
+  ]
 }
 
 /** Sends a scheduled message as its author; the reason it can't be sent, if it can't. */
@@ -93,11 +112,9 @@ export function fireDue(data: DbData, now: Date): { handled: number; events: Rea
   const at = now.toISOString()
   const events: RealtimeEvent[] = []
   let handled = 0
-  for (const reminder of data.reminders) {
-    if (reminder.firedAt || reminder.remindAt > at) continue
-    reminder.firedAt = at
-    const { content, channelId } = reminderText(data, reminder)
-    events.push(...tell(data, reminder.workspaceId, reminder.userId, content, { kind: 'reminder', channelId, target: reminder.target }))
+  for (const item of data.saved) {
+    if (item.status !== 'inProgress' || !item.remindAt || item.firedAt || item.remindAt > at) continue
+    events.push(...fireReminder(data, item, at))
     handled++
   }
   for (const item of data.scheduled) {

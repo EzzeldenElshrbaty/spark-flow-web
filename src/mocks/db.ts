@@ -13,7 +13,7 @@ import type {
   Project,
   ProjectFile,
   Rate,
-  Reminder,
+  SavedItem,
   ScheduledMessage,
   Sprint,
   StoredChannel,
@@ -30,7 +30,7 @@ import { memoryActor, type Actor } from './actor'
 import { migrate } from './migrations'
 import type { MockStore } from './store'
 
-export const DB_VERSION = 16 // 2: the company-system document (spec §3); 3: mention read state; 4: channel reads per person; 5: typed columns, history; 6: rate history; 7: message seq, channel member state; 8: message bodies; 9: drafts; 10: deleted messages kept for Undo; 11: thread follows; 12: activity items, channel levels; 13: channel description, who can post; 14: email invites, default channels; 15: file details (uploader, title, description, scan); 16: reminders, scheduled messages
+export const DB_VERSION = 17 // 2: the company-system document (spec §3); 3: mention read state; 4: channel reads per person; 5: typed columns, history; 6: rate history; 7: message seq, channel member state; 8: message bodies; 9: drafts; 10: deleted messages kept for Undo; 11: thread follows; 12: activity items, channel levels; 13: channel description, who can post; 14: email invites, default channels; 15: file details (uploader, title, description, scan); 16: reminders, scheduled messages; 17: reminders on saved items
 /** Phase 1+2 kept the mock database in localStorage under keys starting with this. */
 const LEGACY_PREFIX = 'spark-flow.mockdb.v1'
 
@@ -39,7 +39,7 @@ const LEGACY_PREFIX = 'spark-flow.mockdb.v1'
  * thread they follow. Its text is read from the message or reply each time, so an edit shows and a delete removes it.
  */
 export type StoredNotification = {
-  id: string; userId: string; kind: 'reaction' | 'thread'; actorId: string; channelId: string; messageId: string
+  id: string; userId: string; kind: 'reaction' | 'thread' | 'reminder'; actorId: string; channelId: string; messageId: string
   replyId: string | null; emoji: string | null; at: string; read: boolean
 }
 
@@ -80,8 +80,8 @@ export type DbData = {
   notifications: StoredNotification[]
   /** Email invites to channels (spec 6.10, §7 Invitation), revoked ones too. */
   invitations: Invitation[]
-  /** Reminders about messages (spec §7 Reminder), fired ones too. */
-  reminders: Reminder[]
+  /** Saved messages and replies with their reminders (spec §7 SavedItem), completed and archived ones too. */
+  saved: SavedItem[]
   /** Messages to send later (spec §7 ScheduledMessage), sent and failed ones too. */
   scheduled: ScheduledMessage[]
 }
@@ -117,7 +117,7 @@ export interface MockDb {
 
 const COLLECTIONS = [
   'users', 'workspaces', 'projects', 'sprints', 'tickets', 'channels', 'messages', 'replies',
-  'teams', 'phases', 'deliverables', 'comments', 'attachments', 'projectFiles', 'timeEntries', 'checkIns', 'rates', 'activity', 'drafts', 'trash', 'threadFollows', 'notifications', 'invitations', 'reminders', 'scheduled',
+  'teams', 'phases', 'deliverables', 'comments', 'attachments', 'projectFiles', 'timeEntries', 'checkIns', 'rates', 'activity', 'drafts', 'trash', 'threadFollows', 'notifications', 'invitations', 'saved', 'scheduled',
 ] as const
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>

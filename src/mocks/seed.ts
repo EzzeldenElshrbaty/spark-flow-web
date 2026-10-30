@@ -550,7 +550,7 @@ export function seed(now: Date): SeedResult {
     threadFollows: [],
     notifications: [],
     invitations: [],
-    reminders: [],
+    saved: [],
     scheduled: [],
     activity: tickets
       .map((t) => ({ id: `act-${t.id}`, projectId: t.projectId, taskKey: t.key, actorId: t.reporterId, at: t.createdAt, kind: 'task.created' as const, changes: [] }))

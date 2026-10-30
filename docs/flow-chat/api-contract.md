@@ -380,11 +380,11 @@ The server keeps reminders and scheduled messages and fires them from a job queu
 Flowbot is an app, not a person: it is in no user list and has no role. Its id is `app-flowbot` (`lib/flowbot.ts`). Each person gets one DM with it per workspace (`kind: "dm"`, `memberIds: [userId, "app-flowbot"]`, private), made the first time Flowbot has something to say there. The sidebar lists it under Apps.
 
 - Nobody posts in it: a new message or reply there is `403` "Flowbot sends reminders here. It can’t read replies." Reactions are allowed.
-- Its messages are plain text (`body` is one paragraph of text), so a quoted mention or task key notifies nobody. They carry `flowbot`: `{ kind: "reminder", channelId, target: { kind: "message" | "reply", id } }` or `{ kind: "scheduleFailed", scheduledId }`, for the card slices S and T draw.
+- Its messages are plain text (`body` is one paragraph of text), so a quoted mention or task key notifies nobody. They carry `flowbot`: `{ kind: "reminder", savedId, channelId, target: { kind: "message" | "reply", id } }` or `{ kind: "scheduleFailed", scheduledId }`, for the card slices S and T draw.
 
 ### Reminder
 
-`{ id, userId, workspaceId, target: { kind, id }, remindAt, firedAt }`, times ISO 8601. When due, the job sets `firedAt` and Flowbot sends its owner:
+A reminder lives on its saved item (slice S, below: `remindAt`, `firedAt`). When due, the job sets `firedAt` and Flowbot sends its owner:
 
 - `Reminder: “<the text, up to 150 characters>” from <author>.`
 - `Reminder about a message that was deleted.` when it is gone.
@@ -397,3 +397,31 @@ Flowbot is an app, not a person: it is in no user list and has no role. Its id i
 ### Events
 
 Firing sends what a send would: `message.created` (or the reply event) for what was posted, `notification.created` for whom it mentions, and `channel.updated` when Flowbot's DM was just made. Each item fires once, however many workers run. In the prototype every tab runs a pass every 15 seconds inside one IndexedDB transaction, so only one tab fires each item.
+
+## Phase 3 · Slice S: Saved and Remind me (spec 6.4, 6.5, 6.12, §7 SavedItem)
+
+### Saved item
+
+`{ id, userId, workspaceId, target: { kind: "message" | "reply", id }, status: "inProgress" | "archived" | "completed", remindAt, firedAt, savedAt }`. One per person and target. The spec's separate Reminder record is folded into it: Remind me sets `remindAt` on the same item ("Reminders also appear in Saved").
+
+A read adds what the Saved view shows, worked out each time: `channelId`, `rootId` (the thread a saved reply opens in), `authorId`, `authorName`, `text` (as people read it), `createdAt`, and `gone`: `"deleted"` or `"hidden"` (I can no longer read the channel), with no text or author then.
+
+### Routes
+
+| Call | Route | Body | Returns |
+|---|---|---|---|
+| List | `GET /api/workspaces/:id/saved` | — | My items there: those with a reminder first (soonest first), then the newest saved. The client splits them by status. |
+| Save / Remind me | `PUT /api/saved` | `{ target, remindAt? }` | The item. Saves it In progress (again, if it was saved before); `remindAt` also sets its reminder and clears `firedAt`. |
+| Change | `PATCH /api/saved/:id` | `{ status?, remindAt? }` | The item. |
+| Remove | `DELETE /api/saved/:id` | — | Nothing (`204`). |
+
+Rules:
+
+- **Save:** the target must be one I can read (`404` otherwise) and not deleted (`400` "This message was deleted.").
+- **Reminder time:** ISO 8601, in the future (`400` "Pick a time in the future."; not a time: "Pick a date and time."). The client works out the presets (In 20 minutes, In 1 hour, In 3 hours, Tomorrow 9:00 AM, Next week Monday 9:00 AM) in the person's own time zone.
+- **Change:** completing or archiving cancels the reminder (`remindAt: null`). A new time brings it back to In progress and clears `firedAt`; `remindAt: null` cancels it. Snooze on Flowbot's card is a new time; Mark complete is `status: "completed"`.
+- **Only mine:** someone else's item is `404`, so nobody learns it exists.
+- **Firing:** an In progress item whose `remindAt` has passed and that hasn't fired. Besides Flowbot's DM (slice R), it stores an Activity item of kind `"reminder"` (actor Flowbot) while I can still read the message. The item stays In progress.
+- **Events:** every change, and a reminder firing, sends `saved.changed` (`{ userId }`, client handler `onSavedChanged`) to that person; firing also sends `notification.created`.
+
+Saving files (the file menu's Save for later) comes with the Files tab (slice W).

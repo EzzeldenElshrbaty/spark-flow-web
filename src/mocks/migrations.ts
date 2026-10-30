@@ -132,6 +132,12 @@ export const migrations: Record<number, (doc: Record<string, unknown>) => void> 
     if (!Array.isArray(doc.reminders)) doc.reminders = []
     if (!Array.isArray(doc.scheduled)) doc.scheduled = []
   },
+  // 17: a reminder lives on its saved item (spec 6.5, "Reminders also appear in Saved"): each becomes one, In progress.
+  16: (doc) => {
+    const reminders = Array.isArray(doc.reminders) ? (doc.reminders as Record<string, unknown>[]).filter(Boolean) : []
+    doc.saved = reminders.map((r) => ({ id: r.id, userId: r.userId, workspaceId: r.workspaceId, target: r.target, status: 'inProgress', remindAt: r.remindAt, firedAt: r.firedAt ?? null, savedAt: r.remindAt }))
+    delete doc.reminders
+  },
 }
 
 /** The document brought up to `to`, or null when a step on the way is missing. */

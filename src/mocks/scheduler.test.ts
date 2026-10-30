@@ -41,7 +41,7 @@ const messagesIn = async (channelId: string) => (await db.read()).messages.filte
 
 async function remind(remindAt: string, messageId = 'm-e01', userId = 'u-1') {
   await db.update((d) => {
-    d.reminders.push({ id: `rem-${d.reminders.length + 1}`, userId, workspaceId: 'ws-eng', target: { kind: 'message', id: messageId }, remindAt, firedAt: null })
+    d.saved.push({ id: `sav-${d.saved.length + 1}`, userId, workspaceId: 'ws-eng', target: { kind: 'message', id: messageId }, status: 'inProgress', remindAt, firedAt: null, savedAt: before(60_000) })
   })
 }
 
@@ -55,7 +55,7 @@ async function schedule(sendAt: string, over: Partial<{ channelId: string; rootI
   })
 }
 
-describe('runScheduler: reminders (spec §7 Reminder, fired by a scheduler as a Flowbot DM)', () => {
+describe('runScheduler: reminders on saved items (spec §7, fired by a scheduler as a Flowbot DM)', () => {
   it('sends a due reminder to its owner from Flowbot, once', async () => {
     await remind(before(1000))
     expect(await runScheduler(db, hub, NOW)).toBe(1)
@@ -65,8 +65,8 @@ describe('runScheduler: reminders (spec §7 Reminder, fired by a scheduler as a 
     const [note] = await messagesIn(dm!.id)
     expect(note.senderId).toBe(FLOWBOT_ID)
     expect(note.content).toBe('Reminder: “Can we pair on the refresh token tests tomorrow at 11:00? I want to cover the 30-second grace window.” from Nour El-Sayed.')
-    expect(note.flowbot).toEqual({ kind: 'reminder', channelId: 'c-dm-1', target: { kind: 'message', id: 'm-e01' } })
-    expect((await db.read()).reminders[0].firedAt).toBe(NOW.toISOString())
+    expect(note.flowbot).toEqual({ kind: 'reminder', savedId: 'sav-1', channelId: 'c-dm-1', target: { kind: 'message', id: 'm-e01' } })
+    expect((await db.read()).saved[0].firedAt).toBe(NOW.toISOString())
     expect(events).toContainEqual(expect.objectContaining({ type: 'messageReceived', message: expect.objectContaining({ id: note.id }) }))
     expect(events).toContainEqual({ type: 'channelChanged', channelId: dm!.id })
 
@@ -163,13 +163,13 @@ describe('startScheduler', () => {
     await remind(before(0))
     await remind(after(SCHEDULER_EVERY_MS - 1), 'm-e02')
     const stop = startScheduler(db, hub)
-    await vi.waitFor(async () => expect((await db.read()).reminders.filter((r) => r.firedAt)).toHaveLength(1))
+    await vi.waitFor(async () => expect((await db.read()).saved.filter((r) => r.firedAt)).toHaveLength(1))
     await vi.advanceTimersByTimeAsync(SCHEDULER_EVERY_MS)
-    await vi.waitFor(async () => expect((await db.read()).reminders.filter((r) => r.firedAt)).toHaveLength(2))
+    await vi.waitFor(async () => expect((await db.read()).saved.filter((r) => r.firedAt)).toHaveLength(2))
     stop()
     await remind(after(SCHEDULER_EVERY_MS * 2), 'm-e01')
     await vi.advanceTimersByTimeAsync(SCHEDULER_EVERY_MS * 3)
-    expect((await db.read()).reminders.filter((r) => r.firedAt)).toHaveLength(2)
+    expect((await db.read()).saved.filter((r) => r.firedAt)).toHaveLength(2)
     expect(SCHEDULER_EVERY_MS).toBe(15_000)
   })
 })

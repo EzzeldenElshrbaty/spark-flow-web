@@ -1,4 +1,5 @@
 import type { ActivityItem, Api } from '@/api/types'
+import { FLOWBOT_NAME, isFlowbot } from '@/lib/flowbot'
 import { canRead, silenced } from './membership'
 import type { DbData, MockDb } from './db'
 import { delay } from './latency'
@@ -14,13 +15,13 @@ const workspaceOf = (data: DbData, channelId: string) => data.channels.find((c) 
 /**
  * This person's Activity in a workspace (spec 6.12), newest first: their mentions (as the bell has them, with its read
  * state), and the items kept for them (reactions to theirs, replies in threads they follow), whose text is read from
- * the message or reply now. Channels set to Nothing, and channels they can no longer read, are left out; a reply that
+ * the message or reply now; a fired reminder is Flowbot's. Channels set to Nothing, and channels they can no longer read, are left out; a reply that
  * mentions them is its mention alone.
  */
 export function activityFor(data: DbData, userId: string, workspaceId: string): ActivityItem[] {
   const quiet = silenced(data, userId)
   const read = new Set(data.mentionReads[userId] ?? [])
-  const nameOf = (id: string) => data.users.find((u) => u.id === id)?.name ?? 'Someone'
+  const nameOf = (id: string) => (isFlowbot(id) ? FLOWBOT_NAME : (data.users.find((u) => u.id === id)?.name ?? 'Someone'))
   const mentions: ActivityItem[] = mentionsFor(data, userId, (m) => m.workspaceId === workspaceId && !quiet(m.channelId), MAX_ITEMS)
     .map((m) => ({
       id: m.id, kind: 'mention', read: read.has(m.id), createdAt: m.createdAt, workspaceId: m.workspaceId, actorId: m.authorId, actorName: m.authorName,

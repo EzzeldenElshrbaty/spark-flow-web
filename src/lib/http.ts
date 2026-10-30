@@ -211,6 +211,12 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
       list: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/activity`),
       markRead: (workspaceId, ids) => send<void>('POST', `/api/workspaces/${enc(workspaceId)}/activity/read`, ids ? { ids } : undefined),
     },
+    saved: {
+      list: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/saved`),
+      save: (target, remindAt) => send('PUT', '/api/saved', { target, ...(remindAt ? { remindAt } : {}) }),
+      update: (id, patch) => send('PATCH', `/api/saved/${enc(id)}`, patch),
+      remove: (id) => send<void>('DELETE', `/api/saved/${enc(id)}`),
+    },
     rates: {
       list: () => get('/api/rates'),
       update: (userId, hourlyCost) => send('PUT', `/api/rates/${enc(userId)}`, { hourlyCost }),

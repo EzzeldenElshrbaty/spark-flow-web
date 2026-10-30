@@ -36,6 +36,7 @@ export const api: Api = {
   get activity() { return resolve().activity },
   get mentions() { return resolve().mentions },
   get inbox() { return resolve().inbox },
+  get saved() { return resolve().saved },
   get dashboard() { return resolve().dashboard },
   get files() { return resolve().files },
   get db() { return resolve().db },
