@@ -257,7 +257,7 @@ export function SidebarContent({
 }) {
   const { role, persona } = useRole()
   const check = usePermission()
-  const { workspace, starred, channels, dms, apps, projects, mentions, activityUnread, savedInProgress, chatLoading, projectsLoading, failed } = useSidebarGroups()
+  const { workspace, starred, channels, dms, apps, projects, mentions, activityUnread, savedInProgress, draftsAndScheduled, chatLoading, projectsLoading, failed } = useSidebarGroups()
   const slug = workspace?.slug
   const [newChannel, setNewChannel] = useState(false)
   const [newMessage, setNewMessage] = useState(false)
@@ -311,11 +311,9 @@ export function SidebarContent({
             <li className="flex-none">
               <SideLink to={paths.activity(slug)} label="Activity" icon={IconAt} mentions={activityUnread} noun={['unread', 'unread']} {...row} />
             </li>
-            {preview && (
-              <li className="flex-none">
-                <SideLink to={`/w/${slug}/drafts`} label="Drafts & sent" icon={IconSend} {...row} />
-              </li>
-            )}
+            <li className="flex-none">
+              <SideLink to={paths.drafts(slug)} label="Drafts & sent" icon={IconSend} trail={draftsAndScheduled || undefined} {...row} />
+            </li>
             <li className="flex-none">
               <SideLink to={paths.saved(slug)} label="Saved" icon={IconBookmark} trail={savedInProgress || undefined} {...row} />
             </li>

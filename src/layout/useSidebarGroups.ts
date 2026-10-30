@@ -2,6 +2,7 @@ import type { Channel, Presence, Project } from '@/api/types'
 import { useChannels, useDrafts } from '@/api/chat'
 import { useActivity } from '@/api/inbox'
 import { useSaved } from '@/api/saved'
+import { useScheduled } from '@/api/scheduled'
 import { useMyMentions } from '@/api/mentions'
 import { useProjects } from '@/api/tickets'
 import { useUsers } from '@/api/users'
@@ -26,6 +27,7 @@ export function useSidebarGroups() {
   const mentionsQuery = useMyMentions(Boolean(persona.id))
   const activityQuery = useActivity(workspace?.id)
   const savedQuery = useSaved(workspace?.id)
+  const scheduledQuery = useScheduled(workspace?.id)
 
   const users = usersQuery.data ?? []
   const sorted = sortChannels(channelsQuery.data ?? [])
@@ -54,6 +56,8 @@ export function useSidebarGroups() {
     activityUnread: (activityQuery.data ?? []).filter((item) => !item.read).length,
     /** My In progress saved items here (spec 5.1): the Saved row's muted count. */
     savedInProgress: (savedQuery.data ?? []).filter((item) => item.status === 'inProgress').length,
+    /** My drafts plus scheduled messages here (spec 5.1): the Drafts & sent row's muted count. */
+    draftsAndScheduled: (drafts.data?.length ?? 0) + (scheduledQuery.data?.length ?? 0),
     // The channel list and the people behind DM names arrive separately; show rows only when both are there.
     chatLoading: workspaceLoading || (Boolean(workspace) && (channelsQuery.isPending || usersQuery.isPending)),
     projectsLoading: workspaceLoading || (Boolean(workspace) && projectsQuery.isPending),

@@ -27,6 +27,7 @@ const DatabasePage = page(() => import('@/pages/settings/DatabasePage'), 'Databa
 const RatesPage = page(() => import('@/pages/settings/RatesPage'), 'RatesPage')
 const ActivityPage = page(() => import('@/pages/chat/ActivityPage'), 'ActivityPage')
 const SavedPage = page(() => import('@/pages/chat/saved/SavedPage'), 'SavedPage')
+const DraftsPage = page(() => import('@/pages/chat/outbox/DraftsPage'), 'DraftsPage')
 
 /** `/w/:ws/p/:projectKey` has no page of its own: it opens the Overview tab. */
 function ProjectOverviewRedirect() {
@@ -73,6 +74,7 @@ export const router = createBrowserRouter([
           { path: 'c/:channelId', element: <ChannelPage />, handle: { pane: true } },
           { path: 'activity', element: <ActivityPage />, handle: { pane: true } },
           { path: 'saved', element: <SavedPage />, handle: { pane: true } },
+          { path: 'drafts', element: <DraftsPage />, handle: { pane: true } },
           { path: 'projects', element: <ProjectsPage /> },
           { path: 'tasks', element: <MyTasksPage /> },
           { path: 'dashboard', element: <DashboardPage /> },

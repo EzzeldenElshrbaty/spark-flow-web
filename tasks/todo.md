@@ -900,7 +900,16 @@ Review: 140 files / 1394 tests pass; tsc, lint and the prototype build are clean
   - Process note: the part 1 tests (`saved.test.ts`) were written first but not run before the code, so their RED wasn't watched; every later part was.
 
 Review: 143 files / 1434 tests pass; tsc, lint and the prototype build are clean. In the app: a reminder fired into Flowbot's DM with View message, Mark complete (then "Completed") and Snooze; Activity → Reminders lists it; Saved at desktop and 375px.
-- [ ] T. Schedule send: split Send with the Schedule menu (Tomorrow 9:00 AM, Monday 9:00 AM, Custom time…, the time zone note); Drafts & sent view (Drafts, Scheduled, Sent; Send now, Reschedule, Edit, Delete). Route `/w/:ws/drafts`.
+- [x] T. Schedule send and Drafts & sent (route `/w/:ws/drafts`), in three commits:
+  - e705f26: routes to list, schedule (checks what a send checks, now), reschedule or edit, delete and send now; a refused Send now changes nothing; `scheduledChanged` from every change and from the scheduler; `GET /workspaces/:id/sent`. Tests: `scheduled.test.ts` (9).
+  - 87e3934: split Send: the chevron opens Schedule message (Tomorrow at 9:00 AM, Monday at 9:00 AM, Custom time…, "Times are in <tz>. Scheduled messages are in Drafts & sent."); it runs the @channel and invite prompts, empties the box and says when it goes out. Tests: `RichComposer.browser.test.tsx` (3), `remindTimes.test.ts`.
+  - Drafts & sent: Drafts (open where written, Delete draft), Scheduled ("Sends tomorrow at 9:00 AM", a failed one's reason; Send now, Reschedule, Edit in a dialog with the rich editor, Delete; the time zone note), Sent (opens the message or the reply's thread); the sidebar row with the drafts plus scheduled count, out of `chatRedesign`. Tests: `DraftsView.test.tsx` (7), `queryKeys.test.ts`, `paths.test.ts`.
+  - Ruling: scheduled messages are text only (Schedule is off while files are added) — slice R's record has no files — cost if wrong: files wait for a later slice.
+  - Ruling: in a thread, Schedule steps aside while Also send to #channel is ticked — the record has no broadcast flag — cost if wrong: one combination unavailable.
+  - Ruling: Schedule runs the same @channel/@here and invite prompts as Send, at scheduling time; the job doesn't ask again — cost if wrong: membership can change before it goes out (the job's checks still apply).
+  - Found and fixed while building: `DraftsPage` first called `useShownError` behind `??`, which skips hooks; it now calls all three.
+
+Review: 145 files / 1454 tests pass; tsc, lint and the prototype build are clean. In the app: scheduled "Scheduled check from T" in #general for tomorrow 9:00 AM (box cleared, note shown), saw it under Scheduled with the time zone note, Send now posted it, Sent lists it first, the sidebar count went 1 → none.
 - [ ] U. Threads view: followed threads, unread first, latest replies and an inline reply box, "You're caught up."; ⌘⇧T; the sidebar row. Route `/w/:ws/threads`.
 - [ ] V. Search view: a mock index that respects channel access; tabs with counts; From, In, Date, Has, Only threads chips; `from:`, `has:`, quoted phrases; View in channel; channel search button and ⌘F (`in:#channel`). Route `/w/:ws/search?q=`.
 - [ ] W. Pins and Files tabs: Pin to channel, the Pins count, the Files tab, the tabs "+" (bookmarks), jump to date.

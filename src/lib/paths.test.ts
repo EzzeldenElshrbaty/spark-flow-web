@@ -67,6 +67,7 @@ describe('validSavedPlace', () => {
     expect(paths.home('engineering')).toBe('/w/engineering')
     expect(paths.dashboard('engineering')).toBe('/w/engineering/dashboard')
     expect(validSavedPlace(paths.saved('engineering'), engineering, engineeringProjects)).toBe(true)
+    expect(validSavedPlace(paths.drafts('engineering'), engineering, engineeringProjects)).toBe(true)
     expect(validSavedPlace('/w/engineering/dashboard', engineering, engineeringProjects)).toBe(true)
   })
 
