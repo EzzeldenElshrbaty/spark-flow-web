@@ -249,7 +249,7 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
     },
     sidebar: {
       order: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/sidebar-order`),
-      setOrder: (workspaceId, section, channelIds) => send<void>('PUT', `/api/workspaces/${enc(workspaceId)}/sidebar-order`, { section, channelIds }),
+      setOrder: (workspaceId, section, ids) => send<void>('PUT', `/api/workspaces/${enc(workspaceId)}/sidebar-order`, { section, ids }),
     },
     search: {
       run: (workspaceId, r) => {

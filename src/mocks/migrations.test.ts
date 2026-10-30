@@ -173,6 +173,14 @@ describe('18 → 19', () => {
   })
 })
 
+describe('21 → 22', () => {
+  it('a sidebar order holds `ids` (channels or projects) instead of `channelIds`', () => {
+    const out = migrate({ version: 21, currentUserId: 'u-1', sidebarOrders: [{ id: 'u-1:ws:channels', userId: 'u-1', workspaceId: 'ws', section: 'channels', channelIds: ['c1'] }] }, 22)
+    expect(out).toMatchObject({ version: 22, sidebarOrders: [{ id: 'u-1:ws:channels', section: 'channels', ids: ['c1'] }] })
+    expect((out as { sidebarOrders: Record<string, unknown>[] }).sidebarOrders[0]).not.toHaveProperty('channelIds')
+  })
+})
+
 describe('20 → 21', () => {
   it('nobody has ordered their sidebar yet', () => {
     expect(migrate({ version: 20, currentUserId: 'u-1' }, 21)).toMatchObject({ version: 21, sidebarOrders: [] })

@@ -45,13 +45,15 @@ export function useSidebarGroups() {
     const other = channel.memberIds.find((id) => id !== persona.id) ?? persona.id
     return { channel, label: channelLabel(channel, users, persona.id), presence: users.find((u) => u.id === other)?.presence ?? 'offline', group: channel.memberIds.length > 2, otherId: other, draft: drafted.has(channel.id) }
   }
-  const projects: Project[] = projectsQuery.data ?? []
+  // In my order (spec 5.1, slice Y+); projects have no muted rows. Filled in once the order has arrived.
+  let projects: Project[] = projectsQuery.data ?? []
 
   // A starred channel or DM is listed once, under Starred (spec §5.1).
   const listed = [...sidebarChannels(sorted.channels, persona.id, myProjectChannelIds), ...sorted.dms, ...sorted.apps].map(row)
 
   const mentions = unreadMentions(mentionsQuery.data, workspace?.id)
   const idOf = (r: ChannelRow) => r.channel.id
+  projects = applyOrder(projects, order?.projects, (p) => p.id, () => false)
   // Only an order that still names a listed row counts (stale ids are dropped by the server as rows move or go).
   const ownOrder = (rows: ChannelRow[], saved: string[] | undefined) => Boolean(saved?.some((id) => rows.some((r) => r.channel.id === id)))
   const isMuted = (r: ChannelRow) => r.channel.muted
@@ -81,8 +83,12 @@ export function useSidebarGroups() {
     activityUnread: (activityQuery.data ?? []).filter((item) => !item.read).length,
     /** Followed threads here with replies I haven't read (spec 6.12): the Threads row's muted count. */
     threadsUnread: threadsQuery.data?.pages[0]?.unreadThreads ?? 0,
-    /** Whether I ordered Starred or Channels myself: their ⋯ then offers Sort A–Z. */
-    customOrder: { starred: ownOrder(starred, order?.starred), channels: ownOrder(channels, order?.channels) },
+    /** Whether I ordered a section myself: its ⋯ then offers Sort A–Z (Reset order for Projects). */
+    customOrder: {
+      starred: ownOrder(starred, order?.starred),
+      channels: ownOrder(channels, order?.channels),
+      projects: Boolean(order?.projects.some((id) => projects.some((p) => p.id === id))),
+    },
     /** My In progress saved items here (spec 5.1): the Saved row's muted count. */
     savedInProgress: (savedQuery.data ?? []).filter((item) => item.status === 'inProgress').length,
     /** My drafts plus scheduled messages here (spec 5.1): the Drafts & sent row's muted count. */
@@ -90,7 +96,7 @@ export function useSidebarGroups() {
     // The channel list and the people behind DM names arrive separately; show rows only when both are there.
     // My order too, so the rows don't jump from A–Z into it.
     chatLoading: workspaceLoading || (Boolean(workspace) && (channelsQuery.isPending || usersQuery.isPending || orderQuery.isPending)),
-    projectsLoading: workspaceLoading || (Boolean(workspace) && projectsQuery.isPending),
+    projectsLoading: workspaceLoading || (Boolean(workspace) && (projectsQuery.isPending || orderQuery.isPending)),
     failed: channelsQuery.isError || projectsQuery.isError,
   }
 }

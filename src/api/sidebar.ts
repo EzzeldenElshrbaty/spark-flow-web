@@ -16,14 +16,14 @@ const setPending = (ws: string, section: SidebarSection, ids: string[] | null) =
   })
 
 /**
- * My order of Starred and Channels in a workspace (spec 5.1) as the sidebar shows it: the server's, with any drop still
+ * My order of Starred, Channels and Projects in a workspace (spec 5.1) as the sidebar shows it: the server's, with any drop still
  * saving on top, so nothing jumps back while it saves (another drop's reload included). Not asked again on failure: the
  * sidebar falls back to the default order rather than wait.
  */
 export function useShownSidebarOrder(workspaceId: string | undefined) {
   const query = useQuery({ queryKey: qk.sidebarOrder(workspaceId ?? ''), queryFn: () => api.sidebar.order(workspaceId!), enabled: Boolean(workspaceId), retry: false })
   const pending = usePending((s) => (workspaceId ? s.byWs[workspaceId] : undefined))
-  const data = query.data && { starred: pending?.starred ?? query.data.starred, channels: pending?.channels ?? query.data.channels }
+  const data = query.data && { starred: pending?.starred ?? query.data.starred, channels: pending?.channels ?? query.data.channels, projects: pending?.projects ?? query.data.projects }
   return { data, isPending: query.isPending && query.fetchStatus !== 'idle' }
 }
 
@@ -34,17 +34,17 @@ export function useShownSidebarOrder(workspaceId: string | undefined) {
  */
 export function useSaveSidebarOrder(workspaceId: string | undefined) {
   const mutation = useMutation({
-    mutationFn: ({ ws, section, channelIds }: { ws: string; section: SidebarSection; channelIds: string[] }) => api.sidebar.setOrder(ws, section, channelIds),
+    mutationFn: ({ ws, section, ids }: { ws: string; section: SidebarSection; ids: string[] }) => api.sidebar.setOrder(ws, section, ids),
   })
   const [error, setError] = useState<SidebarSection | null>(null)
-  const save = (section: SidebarSection, channelIds: string[]) => {
+  const save = (section: SidebarSection, ids: string[]) => {
     if (!workspaceId) return
     const ws = workspaceId
-    setPending(ws, section, channelIds)
+    setPending(ws, section, ids)
     // Still the latest drop of this section? (A newer one owns what shows, and its own outcome.)
-    const latest = () => usePending.getState().byWs[ws]?.[section] === channelIds
+    const latest = () => usePending.getState().byWs[ws]?.[section] === ids
     // By promise, not by `mutate` options: those only run for the latest call.
-    mutation.mutateAsync({ ws, section, channelIds }).then(
+    mutation.mutateAsync({ ws, section, ids }).then(
       () => {
         if (!latest()) return
         setPending(ws, section, null)

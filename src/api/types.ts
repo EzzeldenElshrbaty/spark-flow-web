@@ -358,8 +358,9 @@ export type SearchHit =
 /** A page of one tab's results, with every tab's count for the same search. */
 export type SearchResults = { counts: Record<SearchTab, number>; items: SearchHit[]; nextCursor: string | null }
 
-/** The sidebar sections people order by dragging (spec 5.1), and my order for each: channel ids, empty for none. */
-export type SidebarSection = 'starred' | 'channels'
+/** The sidebar sections people order by dragging (spec 5.1), and my order for each: channel ids (project ids for
+ * Projects), empty for none. */
+export type SidebarSection = 'starred' | 'channels' | 'projects'
 export type SidebarOrder = Record<SidebarSection, string[]>
 
 export type ChatTarget = { kind: 'message' | 'reply'; id: string }
@@ -705,8 +706,8 @@ export interface Api {
   /** My sidebar order in a workspace (spec 5.1 drag to reorder). */
   sidebar: {
     order(workspaceId: string): Promise<SidebarOrder>
-    /** Replaces a section's order; ids I can't list there are dropped, and an empty list goes back to A–Z. */
-    setOrder(workspaceId: string, section: SidebarSection, channelIds: string[]): Promise<void>
+    /** Replaces a section's order; ids I can't list there are dropped, and an empty list goes back to the default order. */
+    setOrder(workspaceId: string, section: SidebarSection, ids: string[]): Promise<void>
   }
   /** Search (spec 6.12): only what I may read (§9). */
   search: { run(workspaceId: string, request: SearchRequest): Promise<SearchResults> }

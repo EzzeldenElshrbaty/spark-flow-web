@@ -10,7 +10,7 @@ import { api } from '@/lib/api'
 let server: SidebarOrder
 const saves: { ids: string[]; resolve: () => void; reject: (e: Error) => void }[] = []
 beforeEach(() => {
-  server = { starred: [], channels: ['a', 'b', 'c'] }
+  server = { starred: [], channels: ['a', 'b', 'c'], projects: [] }
   saves.length = 0
   vi.spyOn(api.sidebar, 'order').mockImplementation(async () => structuredClone(server))
   vi.spyOn(api.sidebar, 'setOrder').mockImplementation(

@@ -1,4 +1,5 @@
 import {
+  IconArrowBackUp,
   IconAt,
   IconBellOff,
   IconBookmark,
@@ -30,7 +31,7 @@ import { Count } from '@/components/sf/Badge'
 import { IconButton } from '@/components/sf/Button'
 import { Menu, MenuItem } from '@/components/sf/Menu'
 import { useSaveSidebarOrder } from '@/api/sidebar'
-import type { SidebarSection } from '@/api/types'
+import type { Project, SidebarSection } from '@/api/types'
 import { SortableSideList } from '@/layout/SortableSideList'
 import { Icon } from '@/components/sf/Icon'
 import { WorkspaceModeSwitch } from '@/layout/ModeSwitch'
@@ -314,12 +315,41 @@ function OrderedRows({
   )
 }
 
-/** A section's ⋯ while I have my own order there: Sort A–Z throws it away. */
-function OrderMenu({ label, onSort }: { label: string; onSort: () => void }) {
+/** The Projects section's rows (slice Y+): in my order, dragged to change it, except in the collapsed rail. */
+function ProjectRows({ projects, slug, collapsed, onNavigate, onReorder }: { projects: Project[]; slug: string; collapsed: boolean; onNavigate?: () => void; onReorder: (ids: string[]) => void }) {
+  const link = (project: Project, describedBy?: string) => (
+    <SideLink
+      to={paths.project(slug, project.key)}
+      label={project.name}
+      within={paths.project(slug, project.key).replace(/\/[^/]+$/, '')}
+      icon={IconFolder}
+      collapsed={collapsed}
+      onNavigate={onNavigate}
+      describedBy={describedBy}
+    />
+  )
+  if (collapsed)
+    return projects.map((project) => (
+      <li key={project.id} className="flex-none">
+        {link(project)}
+      </li>
+    ))
+  return (
+    <SortableSideList label="Projects" items={projects.map((p) => ({ id: p.id, label: p.name, muted: false }))} onReorder={onReorder}>
+      {(item, describedBy) => link(projects.find((p) => p.id === item.id)!, describedBy)}
+    </SortableSideList>
+  )
+}
+
+/**
+ * A section's ⋯ while I have my own order there: throws it away. "Sort A–Z" where the default is A–Z (channels),
+ * "Reset order" where it isn't (projects keep the order they were made in).
+ */
+function OrderMenu({ label, reset = 'Sort A–Z', onReset }: { label: string; reset?: 'Sort A–Z' | 'Reset order'; onReset: () => void }) {
   return (
     <Menu label={`${label} options`} trigger={(props) => <IconButton label={`${label} options`} icon={IconDots} size="xs" tone="sidebar-muted" className="max-lg:size-11" {...props} />}>
-      <MenuItem icon={IconSortAscendingLetters} onSelect={onSort}>
-        Sort A–Z
+      <MenuItem icon={reset === 'Sort A–Z' ? IconSortAscendingLetters : IconArrowBackUp} onSelect={onReset}>
+        {reset}
       </MenuItem>
     </Menu>
   )
@@ -418,7 +448,7 @@ export function SidebarContent({
         )}
 
         {slug && workspace && onChat && !chatLoading && starred.length > 0 && (
-          <SideSection id="starred" label="Starred" actions={customOrder.starred && <OrderMenu label="Starred" onSort={() => reorder('starred', [])} />} {...row}>
+          <SideSection id="starred" label="Starred" actions={customOrder.starred && <OrderMenu label="Starred" onReset={() => reorder('starred', [])} />} {...row}>
             <OrderedRows section="starred" label="Starred" rows={starred} slug={slug} mentions={mentions.byChannel} onReorder={reorder} collapsed={collapsed} onNavigate={onNavigate} />
             {orderProblem('starred')}
           </SideSection>
@@ -430,7 +460,7 @@ export function SidebarContent({
             label="Channels"
             actions={
               <>
-                {customOrder.channels && <OrderMenu label="Channels" onSort={() => reorder('channels', [])} />}
+                {customOrder.channels && <OrderMenu label="Channels" onReset={() => reorder('channels', [])} />}
                 <IconButton label="New channel" icon={IconPlus} size="xs" tone="sidebar-muted" className="max-lg:size-11" onClick={() => setNewChannel(true)} />
               </>
             }
@@ -482,21 +512,14 @@ export function SidebarContent({
         )}
 
         {slug && onProjects && (projectsLoading || projects.length > 0) && (
-          <SideSection id="projects" label="Projects" {...row}>
+          <SideSection id="projects" label="Projects" actions={customOrder.projects && <OrderMenu label="Projects" reset="Reset order" onReset={() => reorder('projects', [])} />} {...row}>
             {projectsLoading ? (
               <GroupSkeleton />
             ) : (
-              projects.map((project) => (
-                <li key={project.id} className="flex-none">
-                  <SideLink
-                    to={paths.project(slug, project.key)}
-                    label={project.name}
-                    within={paths.project(slug, project.key).replace(/\/[^/]+$/, '')}
-                    icon={IconFolder}
-                    {...row}
-                  />
-                </li>
-              ))
+              <>
+                <ProjectRows projects={projects} slug={slug} collapsed={collapsed} onNavigate={onNavigate} onReorder={(ids) => reorder('projects', ids)} />
+                {orderProblem('projects')}
+              </>
             )}
           </SideSection>
         )}

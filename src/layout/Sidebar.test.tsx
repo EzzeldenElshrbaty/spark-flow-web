@@ -14,7 +14,7 @@ vi.mock('@/lib/usePermission', () => ({ usePermission: () => () => true }))
 vi.mock('@/layout/NewTaskButton', () => ({ NewTaskButton: () => <button type="button">New task</button> }))
 vi.mock('@/layout/useGoToMode', () => ({ useGoToMode: () => () => true }))
 const setOrder = vi.fn()
-let customOrder = { starred: false, channels: false }
+let customOrder = { starred: false, channels: false, projects: false }
 let orderError: string | null = null
 vi.mock('@/api/sidebar', () => ({ useSaveSidebarOrder: () => ({ save: setOrder, error: orderError }) }))
 vi.mock('@/layout/useSidebarGroups', () => ({
@@ -41,7 +41,7 @@ vi.mock('@/layout/useSidebarGroups', () => ({
 
 beforeEach(() => {
   useUiStore.setState(initialUiState)
-  customOrder = { starred: false, channels: false }
+  customOrder = { starred: false, channels: false, projects: false }
   orderError = null
   setOrder.mockReset()
 })
@@ -120,7 +120,7 @@ describe('my order of Channels (spec 5.1 drag to reorder)', () => {
     at('/w/engineering/c/c-general', <SidebarContent />)
     expect(screen.queryByRole('button', { name: 'Channels options' })).toBeNull()
     cleanup()
-    customOrder = { starred: false, channels: true }
+    customOrder = { starred: false, channels: true, projects: false }
     at('/w/engineering/c/c-general', <SidebarContent />)
     fireEvent.click(screen.getByRole('button', { name: 'Channels options' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Sort A–Z' }))
@@ -129,6 +129,32 @@ describe('my order of Channels (spec 5.1 drag to reorder)', () => {
   it('a refused save says so under its section', () => {
     orderError = 'channels'
     at('/w/engineering/c/c-general', <SidebarContent />)
+    expect(screen.getByRole('alert').textContent).toBe('Couldn’t save the order. Try again.')
+  })
+})
+
+describe('my order of Projects (slice Y+)', () => {
+  it('project rows can be moved, not in the collapsed rail', () => {
+    at('/w/engineering/p/NEX/tasks', <SidebarContent />)
+    const id = within(nav()).getByRole('link', { name: 'Nexus Core' }).getAttribute('aria-describedby')
+    expect(id && document.getElementById(id)?.textContent).toMatch(/press Space/)
+    cleanup()
+    at('/w/engineering/p/NEX/tasks', <SidebarContent collapsed />)
+    expect(within(nav()).getByRole('link', { name: 'Nexus Core' }).getAttribute('aria-describedby')).toBeNull()
+  })
+  it('Reset order shows once I have one, and goes back to the default order', () => {
+    at('/w/engineering/p/NEX/tasks', <SidebarContent />)
+    expect(screen.queryByRole('button', { name: 'Projects options' })).toBeNull()
+    cleanup()
+    customOrder = { starred: false, channels: false, projects: true }
+    at('/w/engineering/p/NEX/tasks', <SidebarContent />)
+    fireEvent.click(screen.getByRole('button', { name: 'Projects options' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Reset order' }))
+    expect(setOrder).toHaveBeenCalledWith('projects', [])
+  })
+  it('a refused save says so under Projects', () => {
+    orderError = 'projects'
+    at('/w/engineering/p/NEX/tasks', <SidebarContent />)
     expect(screen.getByRole('alert').textContent).toBe('Couldn’t save the order. Try again.')
   })
 })

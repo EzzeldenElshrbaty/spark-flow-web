@@ -108,16 +108,20 @@ Messages read from the API carry `replyUserIds`: who replied last, newest first,
 
 | Call | Route | Returns |
 |---|---|---|
-| My order | `GET /api/workspaces/:id/sidebar-order` | `SidebarOrder`: `{ starred: string[], channels: string[] }`; an empty list means no order of my own. |
-| Save a section's order | `PUT /api/workspaces/:id/sidebar-order` `{ section: 'starred' \| 'channels', channelIds }` | `204` |
+| My order | `GET /api/workspaces/:id/sidebar-order` | `SidebarOrder`: `{ starred: string[], channels: string[], projects: string[] }`. An empty list means I have no order of my own there. |
+| Save a section's order | `PUT /api/workspaces/:id/sidebar-order` `{ section: 'starred' \| 'channels' \| 'projects', ids }` | `204` |
 
-- **Scope:** one order per person, per workspace, per section. It follows me to my other devices and tabs through `sidebarChanged { userId }` (only to me).
-- **What is kept:** only ids of channels and DMs in that workspace I may list (public channels, and private ones and DMs I'm in), each once, at most 500 (more is `400`). An empty list deletes the order (the client's Sort A–Z). An unknown section is `400`, and an unknown workspace `404`.
-- **The client applies it** (`lib/sidebarOrder.ts`):
+- **Scope:** each person has one order per workspace and section. It follows them to their other devices and tabs through `sidebarChanged { userId }`, which is sent only to that person.
+- **What is kept:** only ids that may be listed in that section, each once, at most 500 (more is `400`).
+  - Starred and Channels hold channels and DMs in that workspace that I may list: public channels, and private ones and DMs I'm in.
+  - Projects holds that workspace's projects. An archived project stays in the list, so it comes back to its place when restored.
+  - An empty list deletes the order (the client's Sort A–Z, or Reset order for Projects).
+  - An unknown section is `400`; an unknown workspace is `404`.
+- **Kept current by the server:** starring, unstarring or leaving a channel removes its id from my Starred and Channels lists in the same write, and sends `sidebarChanged`. The row then comes back at the end of its section.
+- **Applied by the client** (`lib/sidebarOrder.ts`):
   - Saved ids come first, in order.
-  - Rows the order doesn't know (joined or starred later) follow in the default order (A–Z for channels).
-  - Muted rows sink to the end (spec 6.11), keeping that order. A drag can't cross the line between muted and unmuted rows.
-- **The server stores lists, not positions,** so stale ids just drop out when they can't be listed any more.
+  - Rows the order doesn't know follow in the default order: A–Z for channels, creation order for projects.
+  - Muted channels sink to the end (spec 6.11), keeping that order. A drag can't cross the line between muted and unmuted rows.
 
 ### Search (spec 6.12, §8, §9)
 

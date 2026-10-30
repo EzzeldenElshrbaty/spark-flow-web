@@ -241,7 +241,7 @@ describe('createHttpApi', () => {
       'POST /api/workspaces/w1/activity/read {"ids":["a1"]}',
       'POST /api/workspaces/w1/activity/read undefined',
       'GET /api/workspaces/w1/sidebar-order undefined',
-      'PUT /api/workspaces/w1/sidebar-order {"section":"channels","channelIds":["c2","c1"]}',
+      'PUT /api/workspaces/w1/sidebar-order {"section":"channels","ids":["c2","c1"]}',
       'GET /api/workspaces/w1/threads undefined',
       'GET /api/workspaces/w1/threads?cursor=20 undefined',
       'POST /api/workspaces/w1/threads/read {"rootIds":["m1"]}',

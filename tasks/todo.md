@@ -1360,3 +1360,38 @@ Rulings (cost if wrong):
   - DMs and Apps don't drag (spec).
   - The collapsed rail doesn't drag.
   - Another person's order is never sent to me: `sidebarChanged` only refreshes my own.
+
+# Slice Y+: drag to reorder Projects in the sidebar too — 31 Oct 2026, approved ("Approve, build it"; reset is "Reset order")
+
+Asked (31 Oct, with a screenshot of the Projects section): "sort the project also".
+
+```mermaid
+flowchart LR
+  P[drag a project row · hold on touch · Space ↑↓ Space] --> S[new order at once]
+  S --> A["PUT /api/workspaces/:id/sidebar-order { section: 'projects', channelIds→ids }"]
+  A --> E[sidebarChanged → my other tabs and devices]
+```
+
+Rulings (cost if wrong):
+- **Same machinery as Starred and Channels:** `SortableSideList`, the shared sensors, drops that show at once, the latest drop deciding, and the error line under the section. Projects become a third section in my sidebar order (`'projects'`), per person and workspace, saved on the server. No new record or migration: the v21 list just takes a third section.
+- **Which ids are kept:** for this section, the server keeps ids of projects in the workspace, not channels. The contract's field becomes `ids` (`channelIds` stays accepted).
+- **Projects have no muted rows,** so any row can go anywhere.
+- **New and archived projects:** a project created after I ordered goes at the end. An archived one leaves the list; restored, it comes back where it was. The row's link and its "lit while inside the project" behaviour stay as they are.
+- **Rail:** in the collapsed rail, projects don't drag (as with channels).
+
+## Plan
+
+- [x] Y+1. **API and mock:** `SidebarSection` gains `'projects'`, and the mock keeps project ids for it. Tests: `mocks/sidebarOrder.test.ts`, `api/sidebar.test.tsx`.
+- [x] Y+2. **Sidebar:** the Projects section uses `SortableSideList` with the order applied, plus the ⋯ reset item (see the question below). Tests: `Sidebar.test.tsx`, a browser drag on a project row, axe.
+- [x] Y+3. **Close:** contract, spec note, CLAUDE.md; tsc, lint, unit, browser, build, an app check, a review, then onto your branch.
+
+### Review (slice Y+)
+
+- **Checks:**
+  - Unit 1,581 and browser 230 pass, and tsc, lint and build:prototype are clean. One known composer timing flake passed when run alone.
+  - App check: dragging Sela booking above Nexus Core stays on the page with no reload, and survives a reload. Reset order brings back the creation order.
+- **Test-first:** the mock, migration, HTTP and sidebar tests were run red first.
+- **Changed from the plan:**
+  - The stored field and the body are now `ids`, not `channelIds`. DB v22 migrates v21 records, so no one's saved order is lost. The plan had said the API would keep accepting `channelIds`; it doesn't.
+  - No separate browser drag test for project rows: `SortableSideList`'s own tests cover dragging, and the app check covered a real project drag.
+- **Left as is:** there was no separate review agent this time, since the change reuses the reviewed slice Y parts. The diff was read once more before committing.

@@ -195,6 +195,7 @@ Rows must not shrink when the list overflows (give them `flex: none`); the list 
   - **Getting A–Z back:** "Sort A–Z" is in the section's ⋯ once there's an order.
   - **How a drag starts:** the mouse after 5px, touch after a 250ms hold, and the keyboard with Space, then ↑/↓, then Space (Enter still opens).
   - **Collapsed rail:** nothing drags there.
+  - *Slice Y+ (31 Oct 2026, approved):* Projects drag the same way. They keep their creation order by default, so the ⋯ item there is "Reset order".
 
 ### 5.2 Top bar (inside the main card, 56px, `surface`, bottom border `line`)
 

@@ -20,7 +20,7 @@ afterEach(() => hub.close())
 
 describe('sidebar order (spec 5.1: drag to reorder Starred and Channels)', () => {
   it('nobody has one at first', async () => {
-    expect(await api.sidebar.order('ws-eng')).toEqual({ starred: [], channels: [] })
+    expect(await api.sidebar.order('ws-eng')).toEqual({ starred: [], channels: [], projects: [] })
   })
 
   it('keeps my order per section and workspace, says so live, and is mine alone', async () => {
@@ -29,8 +29,8 @@ describe('sidebar order (spec 5.1: drag to reorder Starred and Channels)', () =>
     await api.sidebar.setOrder('ws-eng', 'channels', ['c-general', 'c-backend'])
     off()
     expect(events).toContain('sidebarChanged')
-    expect(await api.sidebar.order('ws-eng')).toEqual({ starred: [], channels: ['c-general', 'c-backend'] })
-    expect(await api.sidebar.order('ws-design')).toEqual({ starred: [], channels: [] })
+    expect(await api.sidebar.order('ws-eng')).toEqual({ starred: [], channels: ['c-general', 'c-backend'], projects: [] })
+    expect(await api.sidebar.order('ws-design')).toEqual({ starred: [], channels: [], projects: [] })
     await api.sidebar.setOrder('ws-eng', 'channels', ['c-backend'])
     expect((await api.sidebar.order('ws-eng')).channels).toEqual(['c-backend'])
     db.actAs('u-2')
@@ -49,16 +49,23 @@ describe('sidebar order (spec 5.1: drag to reorder Starred and Channels)', () =>
     await api.sidebar.setOrder('ws-eng', 'channels', ['c-general', 'c-backend', 'c-frontend'])
     await api.sidebar.setOrder('ws-eng', 'starred', ['c-backend'])
     await api.chat.setStarred('c-general', true)
-    expect(await api.sidebar.order('ws-eng')).toEqual({ starred: ['c-backend'], channels: ['c-backend', 'c-frontend'] })
+    expect(await api.sidebar.order('ws-eng')).toEqual({ starred: ['c-backend'], channels: ['c-backend', 'c-frontend'], projects: [] })
     await api.chat.setStarred('c-backend', false)
     // Unstarred, it leaves both lists: it comes back at the end of Channels.
-    expect(await api.sidebar.order('ws-eng')).toEqual({ starred: [], channels: ['c-frontend'] })
+    expect(await api.sidebar.order('ws-eng')).toEqual({ starred: [], channels: ['c-frontend'], projects: [] })
     const events: string[] = []
     const off = hub.subscribe((e) => events.push(e.type))
     await api.chat.leave('c-frontend')
     off()
     expect((await api.sidebar.order('ws-eng')).channels).toEqual([])
     expect(events).toContain('sidebarChanged')
+  })
+
+  it('Projects keeps project ids of the workspace (not channels, not another workspace’s)', async () => {
+    await api.sidebar.setOrder('ws-eng', 'projects', ['p-sel', 'c-backend', 'p-brd', 'p-nex', 'p-sel'])
+    expect((await api.sidebar.order('ws-eng')).projects).toEqual(['p-sel', 'p-nex'])
+    await api.sidebar.setOrder('ws-eng', 'channels', ['p-nex', 'c-general'])
+    expect((await api.sidebar.order('ws-eng')).channels).toEqual(['c-general'])
   })
 
   it('an empty list throws the order away (Sort A–Z); a bad section or a huge list is refused', async () => {

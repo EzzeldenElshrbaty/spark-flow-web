@@ -138,6 +138,13 @@ export const migrations: Record<number, (doc: Record<string, unknown>) => void> 
     doc.saved = reminders.map((r) => ({ id: r.id, userId: r.userId, workspaceId: r.workspaceId, target: r.target, status: 'inProgress', remindAt: r.remindAt, firedAt: r.firedAt ?? null, savedAt: r.remindAt }))
     delete doc.reminders
   },
+  // 22: a sidebar order holds `ids` (channels, or projects for the Projects section) instead of `channelIds`.
+  21: (doc) => {
+    for (const order of Array.isArray(doc.sidebarOrders) ? (doc.sidebarOrders as Record<string, unknown>[]).filter(Boolean) : []) {
+      order.ids ??= Array.isArray(order.channelIds) ? order.channelIds : []
+      delete order.channelIds
+    }
+  },
   // 21: each person's sidebar order (spec 5.1 drag to reorder), none yet.
   20: (doc) => {
     if (!Array.isArray(doc.sidebarOrders)) doc.sidebarOrders = []
