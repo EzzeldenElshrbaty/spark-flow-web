@@ -2,8 +2,7 @@
  * Work in progress that is built but not shown yet. Turn one on in a dev or prototype build with
  * localStorage['spark-flow.features'] = 'chatRedesign' and a reload; production keeps them all off.
  *
- * chatRedesign: the Flow chat sidebar sections whose views land in later phases (Threads, Drafts & sent, Saved,
- * Starred, Apps).
+ * chatRedesign: the Flow chat sidebar rows whose views land in later phases (Threads, Drafts & sent).
  */
 export type Feature = 'chatRedesign'
 
