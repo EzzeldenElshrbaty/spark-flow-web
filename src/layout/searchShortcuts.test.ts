@@ -5,7 +5,7 @@ import { seed } from '@/mocks/seed'
 
 const data = seed(new Date('2026-10-26T09:00:00Z')).data
 const ws = data.workspaces.find((w) => w.slug === 'engineering')!
-const chans: Channel[] = data.channels.filter((c) => c.workspaceId === ws.id).map((c) => ({ ...c, unreadCount: 0, lastSeq: 0, lastReadSeq: 0, starred: false, muted: false, notifyLevel: 'all' as const }))
+const chans: Channel[] = data.channels.filter((c) => c.workspaceId === ws.id).map((c) => ({ ...c, unreadCount: 0, lastSeq: 0, lastReadSeq: 0, starred: false, muted: false, notifyLevel: 'all' as const, notifyLevelOwn: false }))
 const projects = data.projects.filter((p) => p.workspaceId === ws.id)
 const nour = data.users.find((u) => u.id === 'u-2')!
 

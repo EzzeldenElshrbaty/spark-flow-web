@@ -18,7 +18,7 @@ afterEach(() => {
 
 const channel: Channel = {
   id: 'c-backend', workspaceId: 'ws-eng', kind: 'channel', name: 'backend', topic: '', memberIds: ['u-1'], isPrivate: false, lastMessageAt: null, description: '', whoCanPost: 'everyone', isDefault: false,
-  unreadCount: 0, lastSeq: 9, lastReadSeq: 9, starred: false, muted: false, notifyLevel: 'all',
+  unreadCount: 0, lastSeq: 9, lastReadSeq: 9, starred: false, muted: false, notifyLevel: 'all', notifyLevelOwn: false,
 }
 
 async function mount() {

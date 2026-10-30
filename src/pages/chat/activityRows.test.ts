@@ -39,6 +39,8 @@ describe('activityKind: reminders', () => {
 describe('activityKind: the line above the text', () => {
   it('names what happened and where', () => {
     expect(activityKind(item(), '#backend')).toBe('Mentioned you in #backend')
+    // A keyword of mine (spec 6.11) says which.
+    expect(activityKind(item({ keyword: 'deploy' }), '#backend')).toBe('Matched “deploy” in #backend')
     // The text under a reaction is mine, so the line names who reacted.
     expect(activityKind(item({ kind: 'reaction', emoji: '👍' }), '#backend')).toBe('Nour El-Sayed reacted 👍 to your message in #backend')
     expect(activityKind(item({ kind: 'reaction', emoji: '🎉', replyId: 'r1' }), '#backend')).toBe('Nour El-Sayed reacted 🎉 to your reply in #backend')

@@ -9,6 +9,7 @@ export const qk = {
   channelsAll: () => ['chat', 'channels'],               // prefix of every workspace's channel list
   channels: (workspaceId: string) => ['chat', 'channels', workspaceId],
   channel: (id: string) => ['chat', 'channel', id],
+  everyChannel: () => ['chat', 'channel'],               // prefix of every single channel
   messages: (channelId: string) => ['chat', 'messages', channelId],
   // Under messages(), so every live update about the channel reaches it too.
   messagesFrom: (channelId: string, seq: number) => ['chat', 'messages', channelId, 'from', seq],
@@ -48,6 +49,7 @@ export const qk = {
   mentions: () => ['mentions', 'me'],
   activityAll: () => ['activity'],                       // prefix of every workspace's Activity
   activity: (workspaceId: string) => ['activity', workspaceId],
+  preferences: () => ['preferences', 'me'],
   sidebarOrderAll: () => ['sidebar-order'],
   sidebarOrder: (workspaceId: string) => ['sidebar-order', workspaceId],
   searchAll: () => ['search'],
@@ -114,6 +116,10 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
       return [qk.savedAll()]
     case 'sidebarChanged':
       return [qk.sidebarOrderAll()]
+    case 'preferencesChanged':
+      // The default level is every channel's level that isn't its own; keywords are mentions, Activity and so
+      // Threads' unread replies.
+      return [qk.preferences(), qk.channelsAll(), qk.everyChannel(), qk.mentions(), qk.activityAll(), qk.threadsAll()]
     case 'scheduledChanged':
       return [qk.scheduledAll(), qk.sentAll()]
     case 'dataReset':

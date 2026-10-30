@@ -58,6 +58,11 @@ describe('keysForEvent (M10)', () => {
     expect(keysForEvent({ type: 'filesChanged', projectId: 'p1' })).toEqual([qk.files('p1')])
     expect(keysForEvent({ type: 'readChanged', userId: 'u1' })).toEqual([qk.channelsAll(), qk.mentions(), qk.activityAll(), qk.threadsAll()])
     // The empty key matches every query.
+    // My preferences changed: the default level (every channel's own level), keywords (mentions, Activity).
+    expect(keysForEvent({ type: 'preferencesChanged', userId: 'u1' })).toEqual([qk.preferences(), qk.channelsAll(), qk.everyChannel(), qk.mentions(), qk.activityAll(), qk.threadsAll()])
+    // One key reaches every open channel, and none of the lists.
+    expect(qk.channel('c1').slice(0, 2)).toEqual(qk.everyChannel())
+    expect(qk.channelsAll()).not.toEqual(qk.everyChannel())
     // My sidebar order (spec 5.1) changed, here or on another device.
     expect(keysForEvent({ type: 'sidebarChanged', userId: 'u1' })).toEqual([qk.sidebarOrderAll()])
     // Threads (spec 6.12) sit under one prefix, so one key reaches every workspace's pages.

@@ -520,6 +520,13 @@ Order, with separators shown as —:
 - — A note on Do Not Disturb with a link to Preferences.
 - Per-channel levels override the global default. Do Not Disturb has a schedule.
 - Delivery: in-app badges, desktop notifications, mobile push, and an email digest of missed mentions.
+- *Note (slice Z, 31 Oct 2026, approved):*
+  - **Where:** Preferences (`/w/:ws/preferences`) opens from the user menu, from "Desktop, mobile and email…" at the end of the bell's menu, and from the Do Not Disturb note there ("Do Not Disturb until 9:00 AM", shown while it's on). A small moon on my avatar in the top bar shows it too.
+  - **Default level:** for channels, All, Mentions and keywords, or Nothing; DMs stay at All unless set in the DM. A channel follows it until a level is picked in its bell.
+  - **Keywords:** up to 20, matched like Search. Someone else's message with one counts like a mention (bell, Activity "Matched “deploy” in #backend", the sidebar's count), except in channels at Nothing or muted. A keyword counts from when it's added, so old messages don't come back as unread.
+  - **Desktop notifications:** a switch that asks the browser; shown only while no Flow tab is in front, for a mention or keyword, a DM, or anything in a channel at All; never my own, muted channels or during Do Not Disturb. Clicking one opens the message.
+  - **Mobile push and the email digest** (Off, Hourly, Daily) are stored for the backend; the prototype sends neither and says so.
+  - **Do Not Disturb:** pause for 30 minutes, 1 hour, 2 hours, until tomorrow at 9:00 AM or a custom time, with Resume; and a daily schedule (from, to, days, time zone). It holds back desktop, push and email only.
 
 ### 6.12 Full views in the main pane
 

@@ -9,7 +9,7 @@ afterEach(cleanup)
 
 const backend: Channel = {
   id: 'c-backend', workspaceId: 'ws-eng', kind: 'channel', name: 'backend', topic: 'APIs and jobs', memberIds: ['u-1', 'u-2', 'u-3', 'u-4'],
-  isPrivate: false, lastMessageAt: null, description: '', whoCanPost: 'everyone', isDefault: false, unreadCount: 2, lastSeq: 9, lastReadSeq: 7, starred: false, muted: false, notifyLevel: 'mentions',
+  isPrivate: false, lastMessageAt: null, description: '', whoCanPost: 'everyone', isDefault: false, unreadCount: 2, lastSeq: 9, lastReadSeq: 7, starred: false, muted: false, notifyLevel: 'mentions', notifyLevelOwn: false,
 }
 const people = [
   { id: 'u-1', name: 'Youssef Abdelrahman' },
@@ -199,6 +199,32 @@ describe('the channel bell (spec 6.11)', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'Unmute channel' }))
     expect(again.onMute).toHaveBeenCalledWith(false)
   })
+
+  it('ends with "Desktop, mobile and email…", which opens Preferences; while Do Not Disturb is on, a note says until when', () => {
+    const onOpen = vi.fn()
+    header({ preferences: { dndEnd: null, onOpen } })
+    openBell()
+    expect(screen.getAllByRole('menuitem').map((el) => el.textContent)).toEqual(['Mute channel', 'Desktop, mobile and email…'])
+    // The spec's layout: a line before Mute, and one before the Do Not Disturb note when there is one.
+    expect(screen.getByRole('menu').querySelectorAll('[role="separator"]')).toHaveLength(1)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Desktop, mobile and email…' }))
+    expect(onOpen).toHaveBeenCalledOnce()
+    expect(screen.queryByRole('menu')).toBeNull()
+    cleanup()
+    header({ preferences: { dndEnd: '9:00 AM', onOpen } })
+    openBell()
+    expect(screen.getAllByRole('menuitem').map((el) => el.textContent)).toEqual(['Mute channel', 'Desktop, mobile and email…', 'Do Not Disturb until 9:00 AM'])
+    expect(screen.getByRole('menu').querySelectorAll('[role="separator"]')).toHaveLength(2)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Do Not Disturb until 9:00 AM' }))
+    expect(onOpen).toHaveBeenCalledTimes(2)
+  })
+
+  it('Notification settings in the more menu has them too', () => {
+    header({ preferences: { dndEnd: '9:00 AM', onOpen: vi.fn() } })
+    openMenu()
+    fireEvent.click(item('Notification settings'))
+    expect(screen.getByRole('menuitem', { name: 'Do Not Disturb until 9:00 AM' })).toBeTruthy()
+  })
 })
 
 describe('channel tabs (spec 6.1)', () => {
@@ -232,10 +258,10 @@ describe('channel tabs (spec 6.1)', () => {
   })
 
   it('its name says when the channel is muted or set to Nothing, as its crossed-out bell shows', () => {
-    header({ channel: { ...backend, notifyLevel: 'none' } })
+    header({ channel: { ...backend, notifyLevel: 'none', notifyLevelOwn: false } })
     expect(screen.getByRole('button', { name: 'Channel notifications: nothing' })).toBeTruthy()
     cleanup()
-    header({ channel: { ...backend, notifyLevel: 'none', muted: true } })
+    header({ channel: { ...backend, notifyLevel: 'none', notifyLevelOwn: false, muted: true } })
     expect(screen.getByRole('button', { name: 'Channel notifications: muted' })).toBeTruthy()
     cleanup()
     const dm: Channel = { ...backend, id: 'c-dm-1', kind: 'dm', name: null, topic: '', isPrivate: true, memberIds: ['u-1', 'u-2'], muted: true }

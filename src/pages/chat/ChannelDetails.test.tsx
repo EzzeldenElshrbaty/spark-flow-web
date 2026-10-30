@@ -11,7 +11,7 @@ window.matchMedia ??= ((media: string) => ({ matches: false, media, addEventList
 
 const backend: Channel = {
   id: 'c-backend', workspaceId: 'ws-eng', kind: 'channel', name: 'backend', topic: 'APIs and jobs', memberIds: ['u-1', 'u-2', 'u-3'], isPrivate: false,
-  lastMessageAt: null, description: '', whoCanPost: 'everyone', isDefault: false, unreadCount: 0, lastSeq: 9, lastReadSeq: 9, starred: false, muted: false, notifyLevel: 'mentions',
+  lastMessageAt: null, description: '', whoCanPost: 'everyone', isDefault: false, unreadCount: 0, lastSeq: 9, lastReadSeq: 9, starred: false, muted: false, notifyLevel: 'mentions', notifyLevelOwn: false,
 }
 const people = [
   { id: 'u-1', name: 'Youssef Abdelrahman', email: 'youssef.abdelrahman@spark-sys.com', title: 'Managing Director', presence: 'active', role: 'admin' },
@@ -71,6 +71,14 @@ describe('Channel details: the header and tabs (spec 6.10)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Channel notifications: Mentions and keywords' }))
     fireEvent.click(screen.getByRole('menuitemradio', { name: 'All new messages' }))
     expect(onNotifyLevel).toHaveBeenCalledWith('all')
+  })
+
+  it('its menu also opens Preferences, with the Do Not Disturb note while it’s on (spec 6.11)', () => {
+    const onOpen = vi.fn()
+    show({ preferences: { dndEnd: 'tomorrow at 9:00 AM', onOpen } })
+    fireEvent.click(screen.getByRole('button', { name: 'Channel notifications: Mentions and keywords' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Do Not Disturb until tomorrow at 9:00 AM' }))
+    expect(onOpen).toHaveBeenCalledOnce()
   })
 
   it('without the right to manage it there is no Settings and nothing to edit', () => {

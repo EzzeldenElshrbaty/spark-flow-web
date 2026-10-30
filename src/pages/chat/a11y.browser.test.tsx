@@ -57,7 +57,7 @@ const task: TaskRef = { key: 'NEX-103', title: 'Rate limit the search API', stat
 const ctx: BodyContext = { users, tasks: new Map([[task.key, task]]), projectKeys: new Set(['NEX']), ws: 'engineering', workspaceId: 'ws-eng' }
 const channel: Channel = {
   id: 'c-backend', workspaceId: 'ws-eng', kind: 'channel', name: 'backend', topic: 'APIs and jobs', memberIds: ['u-1', 'u-2'], isPrivate: false, lastMessageAt: null, description: '', whoCanPost: 'everyone', isDefault: false,
-  unreadCount: 0, lastSeq: 9, lastReadSeq: 9, starred: true, muted: false, notifyLevel: 'mentions',
+  unreadCount: 0, lastSeq: 9, lastReadSeq: 9, starred: true, muted: false, notifyLevel: 'mentions', notifyLevelOwn: false,
 }
 let n = 0
 const message = (content: string, over: Partial<ChatMessage> = {}): ChatMessage => ({
@@ -161,7 +161,7 @@ const surfaces: [string, () => ReactNode][] = [
     'channel header and tabs',
     () => (
       <>
-        <ChannelHeader channel={channel} title="backend" members={users} rights={{ manage: true, leave: true, archive: true }} onDetails={vi.fn()} onStar={vi.fn()} onMute={vi.fn()} onNotifyLevel={vi.fn()} onMarkRead={vi.fn()} onCopyLink={async () => {}} onLeave={vi.fn()} onArchive={vi.fn()} />
+        <ChannelHeader channel={channel} title="backend" members={users} rights={{ manage: true, leave: true, archive: true }} onDetails={vi.fn()} onStar={vi.fn()} onMute={vi.fn()} onNotifyLevel={vi.fn()} preferences={{ dndEnd: 'tomorrow at 9:00 AM', onOpen: vi.fn() }} onMarkRead={vi.fn()} onCopyLink={async () => {}} onLeave={vi.fn()} onArchive={vi.fn()} />
         <ChannelTabs channel={channel} tab="messages" onChange={vi.fn()} panelId="p" />
         <div id="p" role="tabpanel" aria-label="Messages" />
       </>
@@ -315,6 +315,7 @@ describe.each([
     mount(surfaces[0][1](), dark)
     await userEvent.click(screen.getByRole('button', { name: 'Channel notifications' }))
     expect(screen.getByRole('menuitemradio', { name: 'Mentions and keywords' })).toBeTruthy()
+    expect(screen.getByRole('menuitem', { name: 'Do Not Disturb until tomorrow at 9:00 AM' })).toBeTruthy()
     expect(await violations()).toEqual([])
   })
 
@@ -694,9 +695,13 @@ describe('focus when an edit ends (spec 10)', () => {
 })
 
 describe('the shell around the chat (spec 10)', () => {
-  it('the logo, workspace switcher and account menu are named by what they show', async () => {
+  it('the logo, workspace switcher and account menu are named by what they show, with the Do Not Disturb moon', async () => {
     // Wide enough for the account button to show the name and title.
     await page.viewport(1280, 800)
+    vi.spyOn(api.preferences, 'get').mockResolvedValue({
+      defaultLevel: 'mentions', keywords: [], desktop: true, push: true, emailDigest: 'daily', dndUntil: new Date(Date.now() + 3_600_000).toISOString(),
+      dndSchedule: { on: false, from: '18:00', to: '09:00', days: [0, 1, 2, 3, 4], tz: 'Africa/Cairo' },
+    })
     mount(
       <ThemeProvider>
         {/* The logo sits on the sidebar's dark frame. */}
@@ -710,6 +715,7 @@ describe('the shell around the chat (spec 10)', () => {
     )
     // Loaded: no placeholders left.
     await vi.waitFor(() => expect(document.querySelector('.animate-pulse')).toBeNull(), { timeout: 3000 })
+    await vi.waitFor(() => expect(document.querySelector('[data-dnd]')).not.toBeNull(), { timeout: 3000 })
     try {
       expect(await violations()).toEqual([])
     } finally {

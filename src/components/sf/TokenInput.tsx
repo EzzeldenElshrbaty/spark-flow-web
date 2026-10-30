@@ -40,8 +40,8 @@ export function TokenInput({
   tokens: Token[]
   onRemove: (id: string) => void
   onAdd: (token: Suggestion) => void
-  /** Typed text with no suggestion picked, e.g. a raw email. */
-  onCommit?: (text: string) => void
+  /** Typed text with no suggestion picked, e.g. a raw email. Returning false keeps the text (it was refused). */
+  onCommit?: (text: string) => void | boolean
   query: string
   onQueryChange: (query: string) => void
   suggestions?: Suggestion[]
@@ -69,8 +69,7 @@ export function TokenInput({
     else if (event.key === 'Enter' || event.key === ',') {
       if (current) pick(current)
       else if (query.trim() && onCommit) {
-        onCommit(query.trim())
-        onQueryChange('')
+        if (onCommit(query.trim()) !== false) onQueryChange('')
       } else if (event.key === 'Enter') return
     } else if (event.key === 'Backspace' && query === '' && tokens.length > 0) {
       onRemove(tokens[tokens.length - 1].id)

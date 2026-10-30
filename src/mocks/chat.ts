@@ -8,7 +8,7 @@ import { FLOWBOT_READ_ONLY, isFlowbotDm } from '@/lib/flowbot'
 import { isOneEmoji } from '@/lib/emojiText'
 import { MAX_DISTINCT_REACTIONS, setReaction } from '@/lib/reactions'
 import { filePlace } from './saved'
-import type { DbData, MockDb } from './db'
+import type { DbData, MockDb, StoredMemberState } from './db'
 import { delay } from './latency'
 import type { MockHub } from './realtime'
 import { ApiError } from '@/lib/apiError'
@@ -17,7 +17,7 @@ import { parseMentions, parseTicketKeys } from './text'
 import { bodyTaskKeys, bodyText, mentionsOf, parseBody, validBody, type Body } from '@/lib/messageBody'
 import { linkPreviewFor } from './linkPreviews'
 import { firstLine } from '@/lib/inspector'
-import { canRead, freshState } from './membership'
+import { applied, canRead, freshState } from './membership'
 import { hereReached, reachedBy } from './mentions'
 import { forgetInOrder } from './sidebarOrder'
 import { rowText } from './saved'
@@ -41,10 +41,10 @@ function olderPage(data: DbData, channelId: string, before: number | null): Page
   return { items: items.map((m) => withThread(data, m)), nextCursor: older.length > PAGE_SIZE ? encodeCursor(items[items.length - 1]) : null }
 }
 
-/** The current user's own state in a channel, created with the defaults when first needed. */
-function myState(data: DbData, channelId: string): ChannelMemberState {
+/** The current user's own stored state in a channel, created fresh when first needed. */
+function myState(data: DbData, channelId: string): StoredMemberState {
   const mine = (data.channelState[data.currentUserId] ??= {})
-  return (mine[channelId] ??= freshState(data.channels.find((c) => c.id === channelId)?.kind))
+  return (mine[channelId] ??= freshState())
 }
 
 const NOTIFY_LEVELS: NotifyLevel[] = ['all', 'mentions', 'none']
@@ -57,7 +57,7 @@ const lastSeqOf = (data: DbData, channelId: string) => data.messages.reduce((n, 
  * that someone else sent, not deleted).
  */
 export function withUnread(data: DbData, channel: StoredChannel): Channel {
-  const state = data.channelState[data.currentUserId]?.[channel.id] ?? freshState(channel.kind)
+  const state = applied(data, data.currentUserId, channel.kind, data.channelState[data.currentUserId]?.[channel.id] ?? freshState())
   const unreadCount = data.messages
     .filter((m) => m.channelId === channel.id && m.seq > state.lastReadSeq && m.senderId !== data.currentUserId)
     .map((m) => listed(data, m))

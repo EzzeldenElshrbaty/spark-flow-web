@@ -23,7 +23,8 @@ New fields on every message:
 | `lastReadSeq` | integer | My read marker. 0 for a channel I have never opened. |
 | `starred` | boolean | Mine only. |
 | `muted` | boolean | Mine only. |
-| `notifyLevel` | `"all" \| "mentions" \| "none"` | Mine only. Without a row: `"mentions"` for a channel, `"all"` for a DM. Set with `PATCH /api/channels/:id/me` `{ notifyLevel }` (Phase 2 slice 3). |
+| `notifyLevel` | `"all" \| "mentions" \| "none"` | Mine only, the level that applies. Without a level of my own: my Preferences default for a channel (`"mentions"` until I change it), `"all"` for a DM. Set with `PATCH /api/channels/:id/me` `{ notifyLevel }` (Phase 2 slice 3). |
+| `notifyLevelOwn` | boolean | Whether I picked `notifyLevel` here; otherwise it is my Preferences default (`"all"` for a DM) (slice Z). |
 | `unreadCount` | integer | Messages with `seq > lastReadSeq`, sent by someone else, not deleted. |
 
 These map to the spec's `ChannelMember` row (`last_read_seq`, `starred`, `muted`, `notify_level`). A person with no row reads as the defaults above.
@@ -173,6 +174,32 @@ Messages read from the API carry `replyUserIds`: who replied last, newest first,
 - **What unread means:** it is Activity's read state. A reply is unread while its `thread` Activity item is unread, or while a mention of me in it is unread (the bell). There is no separate thread marker. `/threads/read` marks both for every reply in those threads, skips roots I can't read or don't follow (no error), and sends `readChanged` to me. Activity's Mark all read clears Threads too.
 - **Live:** `replyReceived`, `messageChanged` (edits, deletes, follow changes), `channelChanged` (leaving) and `readChanged` refresh the list.
 
+### Preferences (spec 6.11, §7 NotificationPref)
+
+| Call | Route | Returns |
+|---|---|---|
+| Mine | `GET /api/me/preferences` | `Preferences` |
+| Change some | `PATCH /api/me/preferences` with any of the fields | `Preferences` as stored |
+
+- **One record per person**, across every workspace. Without one, the defaults: `defaultLevel: "mentions"`, `keywords: []`, `desktop: false`, `push: true`, `emailDigest: "daily"`, `dndUntil: null`, `dndSchedule: { on: false, from: "18:00", to: "09:00", days: [0,1,2,3,4], tz: "Africa/Cairo" }` (Sunday to Thursday is Spark's week; the backend may start `tz` from the person's own zone).
+- **Fields and their checks** (`400` with the sentence in `src/mocks/preferences.ts`):
+  - `defaultLevel`: `"all" | "mentions" | "none"`.
+  - `keywords`: up to 20, each trimmed and at most 40 characters; empty ones are dropped and duplicates (ignoring case) kept once.
+  - `desktop`, `push`: booleans. `emailDigest`: `"off" | "hourly" | "daily"`.
+  - `dndUntil`: an ISO time with a time part, or `null` (Resume).
+  - `dndSchedule`: `from` and `to` as `HH:MM` and not the same time, `days` 0 (Sunday) to 6, at least one day while `on`, and `tz` a real IANA zone.
+- It sends `preferencesChanged { userId }` to that person's connections only; channel lists and open channels, the bell, Activity and Threads reload with it.
+- **The level a channel reports** (the Channel fields above): my own level for it when I picked one, else my `defaultLevel` for a channel and `"all"` for a DM. `notifyLevelOwn: boolean` says which. A stored level that equals the old default (`"mentions"` for a channel, `"all"` for a DM) was never really chosen: read it as not set (the mock's v23 migration does that).
+- **Keywords count like mentions.** In a channel I'm a member of whose level isn't Nothing and that isn't muted, someone else's message or reply whose text holds one of my keywords (matched like Search: a word start, case and accents ignored) is a mention for the bell, Activity and the sidebar's count. Its `MentionItem` and Activity item carry `keyword` (the keyword as I wrote it), else `null`.
+  - Only someone's own words: not system lines, task or comment cards, nor a reply's copy in the channel (`keywordable` in `src/lib/notifyRules.ts`).
+  - **From when it was added:** the server keeps when each keyword (lowercased) was added and matches it only in messages and replies created since, so adding a word never brings old messages back as unread mentions. Writing a kept keyword another way keeps its time; removing it and adding it again starts over.
+- **Delivery outside the app** follows `notifies` in `src/lib/notifyRules.ts`, the same rule for desktop (client), push and email (server), each behind its own switch (`desktop`, `push`, `emailDigest`):
+  - Never my own messages or what the channel itself says, never a muted channel or one at Nothing, never while Do Not Disturb is on.
+  - At All (and in a DM by default), every message; at Mentions and keywords, a mention of me (`@channel`, `@here` as recorded, by name) or one of my keywords.
+  - **Do Not Disturb** is on while `now < dndUntil`, or inside the schedule read in its own `tz`. A schedule that runs past midnight (18:00 to 09:00) belongs to the day it starts. It holds back desktop, push and email only; badges and counts don't change.
+  - Push goes out when `push` is on; the email digest of unread mentions (Off, Hourly, Daily) when Do Not Disturb isn't on at send time. The prototype sends neither.
+  - The client shows a desktop notification only while no Flow tab in that browser is in front (tabs tell each other over a `BroadcastChannel`, `src/lib/flowInFront.ts`) and the browser allows it, tagged with the message or reply id so another tab's replaces it.
+
 ### Link previews
 
 | Call | Route | Returns |
@@ -285,7 +312,7 @@ What a delete takes is kept only for the Undo window, then dropped (retention be
 - It sends `read.marker_updated` `{ userId, channelId }` like star and mute.
 - What a level does in the sidebar (client side, spec 5.1): All counts every unread message, Mentions counts my mentions, Nothing shows no count; the row is still bold with unread. Muted wins over the level: never bold, no count, and the row goes last in its group.
 - A channel at Nothing is left out of Activity and of the bell's mentions (`GET /api/mentions`). Both leave it out before taking their newest items (the bell's 50, Activity's 100), so a busy channel at Nothing never pushes other mentions out. Its stored items are kept, so they show again when the level changes back.
-- Keywords, desktop, mobile and email delivery, and Do Not Disturb wait for Preferences.
+- Keywords, desktop, mobile and email delivery, Do Not Disturb and the default level: see Preferences above (slice Z).
 
 ### Activity item
 

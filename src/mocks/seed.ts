@@ -1,5 +1,4 @@
 import type {
-  ChannelMemberState,
   Attachment,
   ChatMessage,
   CheckIn,
@@ -28,6 +27,7 @@ import { localDay } from '@/lib/dates'
 import { mentionsFor } from './mentions'
 import { parseMentions, parseTicketKeys } from './text'
 import { parseBody } from '@/lib/messageBody'
+import type { StoredMemberState } from './db'
 import { projectPeopleIds } from '@/lib/projectPeople'
 
 // ── Builders and derived-field helpers ────────────────────────────────────
@@ -146,13 +146,12 @@ function buildChannelState(
   channels: { id: string; kind: string }[],
   messages: ChatMessage[],
   { unread, starred, muted }: { unread: Record<string, number>; starred: string[]; muted: string[] },
-): Record<string, ChannelMemberState> {
+): Record<string, StoredMemberState> {
   return Object.fromEntries(
-    channels.map(({ id, kind }) => {
+    channels.map(({ id }) => {
       const last = messages.filter((m) => m.channelId === id).length // seq runs 1..n
-      // A channel tells me about my mentions, a DM about every message (spec 6.11).
-      const notifyLevel = kind === 'dm' ? 'all' : 'mentions'
-      return [id, { lastReadSeq: Math.max(0, last - (unread[id] ?? 0)), starred: starred.includes(id), muted: muted.includes(id), notifyLevel }]
+      // Every level follows the person's default (spec 6.11): a channel, mentions; a DM, every message.
+      return [id, { lastReadSeq: Math.max(0, last - (unread[id] ?? 0)), starred: starred.includes(id), muted: muted.includes(id), notifyLevel: null }]
     }),
   )
 }
@@ -557,6 +556,7 @@ export function seed(now: Date): SeedResult {
     folders: [],
     bookmarks: [],
     sidebarOrders: [],
+    notificationPrefs: [],
     activity: tickets
       .map((t) => ({ id: `act-${t.id}`, projectId: t.projectId, taskKey: t.key, actorId: t.reporterId, at: t.createdAt, kind: 'task.created' as const, changes: [] }))
       .sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0)),

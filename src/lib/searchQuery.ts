@@ -172,3 +172,9 @@ export function personMatches(person: { name: string; email?: string | null }, h
   const local = fold((person.email ?? '').split('@')[0])
   return first.startsWith(h) || (local !== '' && local.startsWith(h))
 }
+
+/** The first of my keywords (spec 6.11) a text has, as a phrase at word starts like Search, or null. */
+export function matchedKeyword(text: string, keywords: string[]): string | null {
+  const hay = fold(text)
+  return keywords.find((k) => hits(hay, fold(k)).length > 0) ?? null
+}

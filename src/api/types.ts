@@ -173,7 +173,13 @@ export type Invitation = {
 
 export type NotifyLevel = 'all' | 'mentions' | 'none'
 /** The current user's own state in a channel (spec §7 ChannelMember). Everyone starts at nothing read, nothing set. */
-export type ChannelMemberState = { lastReadSeq: number; starred: boolean; muted: boolean; notifyLevel: NotifyLevel }
+export type ChannelMemberState = {
+  lastReadSeq: number; starred: boolean; muted: boolean
+  /** The level that applies: my own for this channel, else my default (a DM: All) (spec 6.11). */
+  notifyLevel: NotifyLevel
+  /** Whether I picked the level in this channel; otherwise it follows my default. */
+  notifyLevelOwn: boolean
+}
 
 export type ChatMessage = {
   id: string; channelId: string; senderId: string; content: string
@@ -363,6 +369,24 @@ export type SearchResults = { counts: Record<SearchTab, number>; items: SearchHi
 export type SidebarSection = 'starred' | 'channels' | 'projects'
 export type SidebarOrder = Record<SidebarSection, string[]>
 
+/** How often the email digest of missed mentions goes out (spec 6.11). */
+export type EmailDigest = 'off' | 'hourly' | 'daily'
+/** Do Not Disturb's daily schedule (spec 6.11): from and to as HH:MM in `tz`, on these days (0 = Sunday). */
+export type DndSchedule = { on: boolean; from: string; to: string; days: number[]; tz: string }
+/** My notification preferences (spec 6.11, §7 NotificationPref), the same in every workspace. */
+export type Preferences = {
+  /** What channels tell me about until I pick a level in one; DMs stay All. */
+  defaultLevel: NotifyLevel
+  /** Words that count like a mention of me (at most 20, each 1–40 characters). */
+  keywords: string[]
+  desktop: boolean
+  push: boolean
+  emailDigest: EmailDigest
+  /** Notifications paused until then; null when not paused. */
+  dndUntil: string | null
+  dndSchedule: DndSchedule
+}
+
 export type ChatTarget = { kind: 'message' | 'reply'; id: string }
 /** The Files tab's filters (spec 6.1): a type, who shared it, since when; `cursor` for the next 50. */
 export type ChannelFileFilter = { type?: FileKind; from?: string; since?: string; folderId?: string; cursor?: string }
@@ -471,6 +495,8 @@ export type MentionItem = {
   workspaceId: string                                    // where it opens; the bell lists every workspace's
   authorName: string                                     // so a mention from another workspace still names its author
   channelId: string | null; messageId: string | null; taskKey: string | null; projectId: string | null
+  /** Set when it isn't a mention of me but has one of my keywords (spec 6.11): which. */
+  keyword: string | null
 }
 /** What an Activity row is about (spec 6.12): a mention of me, a reaction to mine, a reply in a thread I follow, a reminder. */
 export type ActivityItemKind = 'mention' | 'reaction' | 'thread' | 'reminder'
@@ -486,6 +512,8 @@ export type ActivityItem = {
   excerpt: string
   /** A reaction's emoji; null otherwise. */
   emoji: string | null
+  /** A mention row that is one of my keywords instead (spec 6.11): which; absent or null otherwise. */
+  keyword?: string | null
 }
 /** A project's time: every entry, and the hourly costs only for people who may see cost (else null). */
 export type ProjectTime = { entries: TimeEntry[]; rates: Rate[] | null }
@@ -702,6 +730,12 @@ export interface Api {
     list(workspaceId: string): Promise<ActivityItem[]>
     /** Marks these items read; without ids, all of mine in the workspace. A mention's read state is the bell's. */
     markRead(workspaceId: string, ids?: string[]): Promise<void>
+  }
+  /** My notification preferences (spec 6.11). */
+  preferences: {
+    get(): Promise<Preferences>
+    /** Changes the parts given; a part that can't be used is 400 and nothing is saved. */
+    update(patch: Partial<Preferences>): Promise<Preferences>
   }
   /** My sidebar order in a workspace (spec 5.1 drag to reorder). */
   sidebar: {

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { MentionItem } from '@/api/types'
 import { mentionLink } from './mentionLink'
 
-const item = (over: Partial<MentionItem>): MentionItem => ({ id: 'x', source: 'message', authorId: 'u', excerpt: '', createdAt: '', read: false, workspaceId: 'ws-eng', authorName: 'A', channelId: null, messageId: null, taskKey: null, projectId: null, ...over })
+const item = (over: Partial<MentionItem>): MentionItem => ({ id: 'x', source: 'message', authorId: 'u', excerpt: '', createdAt: '', read: false, workspaceId: 'ws-eng', authorName: 'A', channelId: null, messageId: null, taskKey: null, projectId: null, keyword: null, ...over })
 const workspaces = [{ id: 'ws-eng', slug: 'engineering' }, { id: 'ws-design', slug: 'design' }]
 
 describe('mentionLink', () => {
@@ -11,7 +11,7 @@ describe('mentionLink', () => {
   })
   it('a reply opens its thread; a comment its task on the project Tasks tab', () => {
     expect(mentionLink(item({ source: 'reply', channelId: 'c-general', messageId: 'm1' }), workspaces, 'engineering')).toBe('/w/engineering/c/c-general?thread=m1')
-    expect(mentionLink(item({ source: 'comment', taskKey: 'NEX-105', projectId: 'p-nex' }), workspaces, 'engineering')).toBe('/w/engineering/p/NEX/tasks?ticket=NEX-105')
+    expect(mentionLink(item({ source: 'comment', taskKey: 'NEX-105', projectId: 'p-nex', keyword: null }), workspaces, 'engineering')).toBe('/w/engineering/p/NEX/tasks?ticket=NEX-105')
   })
   it('a mention from another workspace links into that workspace', () => {
     expect(mentionLink(item({ workspaceId: 'ws-design', channelId: 'c-design', messageId: 'm2' }), workspaces, 'engineering')).toBe('/w/design/c/c-design?thread=m2')

@@ -15,7 +15,7 @@ afterEach(() => {
 
 const channel = (id: string, unreadCount: number): Channel => ({
   id, workspaceId: 'ws-eng', kind: 'channel', name: id, topic: '', memberIds: ['u-1'], isPrivate: false, lastMessageAt: null, description: '', whoCanPost: 'everyone', isDefault: false,
-  unreadCount, lastSeq: 5, lastReadSeq: 5 - unreadCount, starred: false, muted: false, notifyLevel: 'all',
+  unreadCount, lastSeq: 5, lastReadSeq: 5 - unreadCount, starred: false, muted: false, notifyLevel: 'all', notifyLevelOwn: false,
 })
 
 function show(channels: Channel[] | null, client = new QueryClient({ defaultOptions: { mutations: { retry: false } } })) {

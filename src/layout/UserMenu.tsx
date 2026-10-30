@@ -1,7 +1,8 @@
 import clsx from 'clsx'
 import { useQueryClient } from '@tanstack/react-query'
-import { IconChevronDown, IconKey, IconLogout, IconMoon, IconSun } from '@tabler/icons-react'
+import { IconAdjustmentsHorizontal, IconChevronDown, IconKey, IconLogout, IconMoon, IconSun } from '@tabler/icons-react'
 import { useNavigate } from 'react-router'
+import { useDndEnd } from '@/api/preferences'
 import type { User } from '@/api/types'
 import { useUsers, useViewAs } from '@/api/users'
 import { Avatar } from '@/components/sf/Avatar'
@@ -9,6 +10,7 @@ import { Icon } from '@/components/sf/Icon'
 import { Menu, MenuHeading, MenuItem, MenuSeparator, useCloseMenu } from '@/components/sf/Menu'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { backendOn } from '@/lib/api'
+import { paths } from '@/lib/paths'
 import { roleLabels } from '@/lib/roles'
 import { useRole } from '@/lib/useRole'
 import { useTheme } from '@/lib/useTheme'
@@ -26,6 +28,8 @@ export function UserMenu() {
   const viewAs = useViewAs()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  // While Do Not Disturb is on, a moon on my avatar says so (spec 6.11).
+  const dndEnd = useDndEnd()
 
   // Demo only: become someone else, then start fresh on that workspace's home, since what they may see differs. The
   // menu stays open until the switch lands, so a failure shows its sentence there (viewAs.isError).
@@ -51,7 +55,19 @@ export function UserMenu() {
           className="sf-focus flex h-11 flex-none cursor-pointer items-center gap-2 rounded-sf-md ps-1 pe-2 hover:bg-sf-surface-hover"
         >
           {loaded ? (
-            <Avatar id={persona.id} name={persona.name} presence={people.data?.find((u) => u.id === persona.id)?.presence} decorative />
+            <span className="relative flex-none">
+              <Avatar id={persona.id} name={persona.name} presence={people.data?.find((u) => u.id === persona.id)?.presence} decorative />
+              {dndEnd && (
+                <span
+                  data-dnd
+                  aria-hidden
+                  style={{ boxShadow: '0 0 0 2px var(--surface)' }}
+                  className="absolute -end-1 -top-1 grid size-4 place-items-center rounded-sf-full bg-sf-surface text-sf-text-secondary"
+                >
+                  <Icon icon={IconMoon} size={14} />
+                </span>
+              )}
+            </span>
           ) : (
             <span aria-hidden className="size-sf-avatar animate-pulse rounded-sf-md bg-sf-surface-hover" />
           )}
@@ -67,6 +83,7 @@ export function UserMenu() {
               <span className="hidden h-8 w-28 animate-pulse rounded-sf-md bg-sf-surface-hover md:block" aria-hidden />
             </>
           )}
+          {loaded && dndEnd && <span className="sr-only">, Do Not Disturb until {dndEnd}</span>}
           <Icon
             icon={IconChevronDown}
             size={16}
@@ -85,6 +102,11 @@ export function UserMenu() {
         </div>
       </div>
       <MenuSeparator />
+      {workspace && (
+        <MenuItem icon={IconAdjustmentsHorizontal} onSelect={() => navigate(paths.preferences(workspace.slug))}>
+          Preferences
+        </MenuItem>
+      )}
       <MenuHeading>Theme</MenuHeading>
       <MenuItem icon={IconSun} checked={theme === 'light'} onSelect={() => setTheme('light')}>
         Light

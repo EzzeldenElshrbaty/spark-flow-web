@@ -38,6 +38,7 @@ export interface RealtimeClient {
   /** My saved items or their reminders changed (another tab or device, or a reminder fired). */
   onSavedChanged(cb: (event: { userId: string }) => void): () => void
   onSidebarChanged(cb: (event: { userId: string }) => void): () => void
+  onPreferencesChanged(cb: (event: { userId: string }) => void): () => void
   /** My scheduled messages changed: one was made, changed, sent or failed (spec §8 scheduled.sent). */
   onScheduledChanged(cb: (event: { userId: string }) => void): () => void
   /** One of my drafts changed (in another tab or device): the sidebar's pencils follow. */
@@ -65,6 +66,7 @@ export type RealtimeEvent =
   | { type: 'notificationCreated'; userId: string }
   | { type: 'savedChanged'; userId: string }
   | { type: 'sidebarChanged'; userId: string }
+  | { type: 'preferencesChanged'; userId: string }
   | { type: 'scheduledChanged'; userId: string }
   | { type: 'dataReset' }
 
@@ -100,6 +102,7 @@ function createUnconnectedClient(): RealtimeClient {
     onNotificationCreated: () => noop,
     onSavedChanged: () => noop,
     onSidebarChanged: () => noop,
+    onPreferencesChanged: () => noop,
     onScheduledChanged: () => noop,
     onDataReset: () => noop,
   }

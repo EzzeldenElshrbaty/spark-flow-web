@@ -10,7 +10,7 @@ import { Tabs } from '@/components/sf/Tabs'
 import { channelFormErrors, descriptionError, MAX_TOPIC } from '@/lib/channelForm'
 import { BookmarksPanel } from '@/pages/chat/BookmarksPanel'
 import { Members, type PeopleChange, type Person } from '@/pages/chat/ChannelMembers'
-import { levelLabel, NotifyLevelMenu } from '@/pages/chat/NotifyLevelMenu'
+import { levelLabel, NotifyLevelMenu, type PreferencesLink } from '@/pages/chat/NotifyLevelMenu'
 import { errorText, usePicked } from '@/pages/chat/usePicked'
 
 export type DetailsTab = 'about' | 'members' | 'tabs' | 'settings'
@@ -72,6 +72,7 @@ export function ChannelDetails({
   onRevoke,
   onStar,
   onNotifyLevel,
+  preferences,
   onMute,
   onCopyLink,
   onLeave,
@@ -112,6 +113,8 @@ export function ChannelDetails({
   onRevoke: (invitationId: string) => Promise<unknown>
   onStar: (starred: boolean) => void
   onNotifyLevel: (level: NotifyLevel) => void
+  /** The bell's way to my Preferences and its Do Not Disturb note (spec 6.11). */
+  preferences?: PreferencesLink
   onMute: (muted: boolean) => void
   onCopyLink: () => Promise<void>
   onLeave: () => void
@@ -154,6 +157,7 @@ export function ChannelDetails({
           <NotifyLevelMenu
             channel={channel}
             label={bell}
+            preferences={preferences}
             onNotifyLevel={onNotifyLevel}
             onMute={onMute}
             trigger={(props) => (

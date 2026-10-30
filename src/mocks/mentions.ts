@@ -1,10 +1,13 @@
-import type { Api, MentionItem, Mention } from '@/api/types'
+import type { Api, ChatMessage, MentionItem, Mention, ThreadReply } from '@/api/types'
+import { bodyText } from '@/lib/messageBody'
+import { matchedKeyword } from '@/lib/searchQuery'
 import type { DbData, MockDb } from './db'
 import type { MockHub } from './realtime'
 import { delay } from './latency'
 import { clone, currentUser, excerptOf } from './shared'
 import { projectPeopleIds } from '@/lib/projectPeople'
-import { silenced } from './membership'
+import { keywordsSinceOf, prefsOf, silenced, stateOf } from './membership'
+import { keywordable } from '@/lib/notifyRules'
 
 const MAX_ITEMS = 50
 
@@ -48,13 +51,31 @@ export function mentionsFor(data: DbData, userId: string, keep: (item: Omit<Ment
   const items: Omit<MentionItem, 'read'>[] = []
   const nameOf = (id: string) => data.users.find((u) => u.id === id)?.name ?? 'Someone'
   const wsOfChannel = (channelId: string) => data.channels.find((c) => c.id === channelId)?.workspaceId ?? ''
+  // My keywords (spec 6.11) count like a mention in channels I'm in and haven't muted, from when each was added; a
+  // row that names me is a mention already.
+  const keywords = prefsOf(data, userId).keywords
+  const since = keywordsSinceOf(data, userId)
+  const keywordIn = (row: ChatMessage | ThreadReply) => {
+    if (!keywords.length || !data.channels.find((c) => c.id === row.channelId)?.memberIds.includes(userId) || stateOf(data, userId, row.channelId).muted) return null
+    return matchedKeyword(bodyText(row.body), keywords.filter((k) => row.createdAt >= (since[k.toLowerCase()] ?? '')))
+  }
+  /** A row by someone else that names me (the mention) or, failing that, has one of my keywords; null otherwise. */
+  const hit = (row: ChatMessage | ThreadReply, keywordable: boolean): { keyword: string | null } | null => {
+    if (row.deletedAt || row.senderId === userId) return null
+    if (reaches(row.mentions, userId, members(row.channelId), closed(row.channelId), (id) => row.hereIds?.includes(id) ?? false)) return { keyword: null }
+    const keyword = keywordable ? keywordIn(row) : null
+    return keyword ? { keyword } : null
+  }
   for (const m of data.messages) {
-    if (m.commentId || m.deletedAt || m.senderId === userId || !reaches(m.mentions, userId, members(m.channelId), closed(m.channelId), (id) => m.hereIds?.includes(id) ?? false)) continue
-    items.push({ id: m.id, source: 'message', workspaceId: wsOfChannel(m.channelId), authorId: m.senderId, authorName: nameOf(m.senderId), excerpt: excerptOf(m.content), createdAt: m.createdAt, channelId: m.channelId, messageId: m.id, taskKey: null, projectId: null })
+    if (m.commentId) continue
+    const found = hit(m, keywordable(m))
+    if (!found) continue
+    items.push({ id: m.id, source: 'message', workspaceId: wsOfChannel(m.channelId), authorId: m.senderId, authorName: nameOf(m.senderId), excerpt: excerptOf(m.content), createdAt: m.createdAt, channelId: m.channelId, messageId: m.id, taskKey: null, projectId: null, keyword: found.keyword })
   }
   for (const r of data.replies) {
-    if (r.deletedAt || r.senderId === userId || !reaches(r.mentions, userId, members(r.channelId), closed(r.channelId), (id) => r.hereIds?.includes(id) ?? false)) continue
-    items.push({ id: r.id, source: 'reply', workspaceId: wsOfChannel(r.channelId), authorId: r.senderId, authorName: nameOf(r.senderId), excerpt: excerptOf(r.content), createdAt: r.createdAt, channelId: r.channelId, messageId: r.messageId, taskKey: null, projectId: null })
+    const found = hit(r, true)
+    if (!found) continue
+    items.push({ id: r.id, source: 'reply', workspaceId: wsOfChannel(r.channelId), authorId: r.senderId, authorName: nameOf(r.senderId), excerpt: excerptOf(r.content), createdAt: r.createdAt, channelId: r.channelId, messageId: r.messageId, taskKey: null, projectId: null, keyword: found.keyword })
   }
   for (const c of data.comments) {
     if (c.authorId === userId || c.deletedAt) continue
@@ -63,7 +84,7 @@ export function mentionsFor(data: DbData, userId: string, keep: (item: Omit<Ment
     const mentions = card?.mentions ?? []
     if (!reaches(mentions, userId, () => projectPeople(data, c.projectId))) continue
     const taskKey = data.tickets.find((t) => t.id === c.taskId)?.key ?? null
-    items.push({ id: c.id, source: 'comment', workspaceId: data.projects.find((p) => p.id === c.projectId)?.workspaceId ?? '', authorId: c.authorId, authorName: nameOf(c.authorId), excerpt: excerptOf(c.body), createdAt: c.createdAt, channelId: null, messageId: null, taskKey, projectId: c.projectId })
+    items.push({ id: c.id, source: 'comment', workspaceId: data.projects.find((p) => p.id === c.projectId)?.workspaceId ?? '', authorId: c.authorId, authorName: nameOf(c.authorId), excerpt: excerptOf(c.body), createdAt: c.createdAt, channelId: null, messageId: null, taskKey, projectId: c.projectId, keyword: null })
   }
   return items.filter(keep).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)).slice(0, limit)
 }

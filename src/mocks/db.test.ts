@@ -39,6 +39,7 @@ const emptyData = (): DbData => ({
   folders: [],
   bookmarks: [],
   sidebarOrders: [],
+  notificationPrefs: [],
   counters: {},
 })
 
@@ -96,8 +97,8 @@ describe('createDb', () => {
     const data = await createDb(store, fakeSeed).read()
     expect(data.version).toBe(DB_VERSION)
     expect(data.counters).toEqual({ p1: 7 })
-    // No messages yet, so the read time becomes a marker before the first one; a channel's level is Mentions (v12).
-    const migrated = { ...state, notifyLevel: 'mentions' }
+    // No messages yet, so the read time becomes a marker before the first one; a channel's level is Mentions (v12), which then follows the default (v23).
+    const migrated = { ...state, notifyLevel: null }
     expect(data.channelState).toEqual({ u1: { c1: migrated } })
     expect(await store.readDoc()).toMatchObject({ version: DB_VERSION, channelState: { u1: { c1: migrated } } })
   })

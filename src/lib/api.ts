@@ -42,6 +42,7 @@ export const api: Api = {
   get threads() { return resolve().threads },
   get search() { return resolve().search },
   get sidebar() { return resolve().sidebar },
+  get preferences() { return resolve().preferences },
   get folders() { return resolve().folders },
   get bookmarks() { return resolve().bookmarks },
   get dashboard() { return resolve().dashboard },

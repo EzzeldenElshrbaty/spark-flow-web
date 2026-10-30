@@ -16,7 +16,7 @@ window.matchMedia ??= ((media: string) => ({ matches: false, media, addEventList
 
 const channel = (id: string, unreadCount = 0): Channel => ({
   id, workspaceId: 'ws-eng', kind: 'channel', name: id, topic: '', memberIds: ['u-1'], isPrivate: false, lastMessageAt: null, description: '', whoCanPost: 'everyone', isDefault: false,
-  unreadCount, lastSeq: 5, lastReadSeq: 5 - unreadCount, starred: false, muted: false, notifyLevel: 'all',
+  unreadCount, lastSeq: 5, lastReadSeq: 5 - unreadCount, starred: false, muted: false, notifyLevel: 'all', notifyLevelOwn: false,
 })
 const order = [channel('a', 2), channel('b'), channel('c'), channel('d', 1)]
 

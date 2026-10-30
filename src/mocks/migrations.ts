@@ -138,6 +138,19 @@ export const migrations: Record<number, (doc: Record<string, unknown>) => void> 
     doc.saved = reminders.map((r) => ({ id: r.id, userId: r.userId, workspaceId: r.workspaceId, target: r.target, status: 'inProgress', remindAt: r.remindAt, firedAt: r.firedAt ?? null, savedAt: r.remindAt }))
     delete doc.reminders
   },
+  // 23: notification preferences (spec 6.11), none yet; a channel level equal to the default it had (a channel:
+  // mentions, a DM: all) now follows the default, so it moves with the person's new default level.
+  22: (doc) => {
+    if (!Array.isArray(doc.notificationPrefs)) doc.notificationPrefs = []
+    const kinds = new Map((Array.isArray(doc.channels) ? (doc.channels as { id: string; kind: string }[]).filter(Boolean) : []).map((c) => [c.id, c.kind]))
+    for (const states of Object.values((doc.channelState ?? {}) as Record<string, Record<string, { notifyLevel?: unknown }>>)) {
+      for (const [channelId, state] of Object.entries(states ?? {})) {
+        if (!state) continue
+        const old = kinds.get(channelId) === 'dm' ? 'all' : 'mentions'
+        if (state.notifyLevel === old || state.notifyLevel === undefined) state.notifyLevel = null
+      }
+    }
+  },
   // 22: a sidebar order holds `ids` (channels, or projects for the Projects section) instead of `channelIds`.
   21: (doc) => {
     for (const order of Array.isArray(doc.sidebarOrders) ? (doc.sidebarOrders as Record<string, unknown>[]).filter(Boolean) : []) {

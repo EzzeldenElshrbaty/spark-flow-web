@@ -83,6 +83,7 @@ export function createMockRealtimeClient(hub: MockHub): RealtimeClient {
     onNotificationCreated: (cb) => on(hub, 'notificationCreated', (e) => cb({ userId: e.userId })),
     onSavedChanged: (cb) => on(hub, 'savedChanged', (e) => cb({ userId: e.userId })),
     onSidebarChanged: (cb) => on(hub, 'sidebarChanged', (e) => cb({ userId: e.userId })),
+    onPreferencesChanged: (cb) => on(hub, 'preferencesChanged', (e) => cb({ userId: e.userId })),
     onScheduledChanged: (cb) => on(hub, 'scheduledChanged', (e) => cb({ userId: e.userId })),
     onDataReset: (cb) => on(hub, 'dataReset', () => cb()),
   }

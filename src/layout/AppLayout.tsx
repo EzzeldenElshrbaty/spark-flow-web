@@ -3,6 +3,7 @@ import { Suspense, useState } from 'react'
 import { Announcer } from '@/components/sf/Announcer'
 import { ToastProvider, ToastRegion } from '@/components/sf/Toast'
 import { Outlet, useMatches } from 'react-router'
+import { DesktopNotifier } from '@/layout/DesktopNotifier'
 import { Inspector } from '@/layout/Inspector'
 import { PageSkeleton } from '@/layout/PageSkeleton'
 import { MobileBottomBar, MobileDrawer } from '@/layout/MobileNav'
@@ -41,6 +42,7 @@ export function AppLayout() {
         {/* The dark frame behind the sidebar and the card. Its own .sf element, so the chat tokens don't reach the pages. */}
         <div aria-hidden className="sf fixed inset-0 -z-10 hidden bg-sf-app-frame lg:block" />
         <RealtimeBridge />
+        <DesktopNotifier />
         <Announcer />
         <Sidebar collapsed={collapsed} />
         {/* The main card (spec 5.3); the top bar stays put and the page scrolls under it. */}

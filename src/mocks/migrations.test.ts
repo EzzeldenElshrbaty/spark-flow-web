@@ -173,6 +173,22 @@ describe('18 → 19', () => {
   })
 })
 
+describe('22 → 23', () => {
+  it('no preferences yet; a channel level equal to its old default now follows the default', () => {
+    const out = migrate(
+      {
+        version: 22,
+        currentUserId: 'u-1',
+        channels: [{ id: 'c1', kind: 'channel' }, { id: 'c2', kind: 'channel' }, { id: 'd1', kind: 'dm' }, { id: 'd2', kind: 'dm' }],
+        channelState: { 'u-1': { c1: { notifyLevel: 'mentions' }, c2: { notifyLevel: 'all' }, d1: { notifyLevel: 'all' }, d2: { notifyLevel: 'none' } } },
+      },
+      23,
+    ) as { notificationPrefs: unknown[]; channelState: Record<string, Record<string, { notifyLevel: unknown }>> }
+    expect(out.notificationPrefs).toEqual([])
+    expect(Object.fromEntries(Object.entries(out.channelState['u-1']).map(([id, s]) => [id, s.notifyLevel]))).toEqual({ c1: null, c2: 'all', d1: null, d2: 'none' })
+  })
+})
+
 describe('21 → 22', () => {
   it('a sidebar order holds `ids` (channels or projects) instead of `channelIds`', () => {
     const out = migrate({ version: 21, currentUserId: 'u-1', sidebarOrders: [{ id: 'u-1:ws:channels', userId: 'u-1', workspaceId: 'ws', section: 'channels', channelIds: ['c1'] }] }, 22)

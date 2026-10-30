@@ -4,7 +4,7 @@ import { modeOf, modeTarget } from '@/lib/workspaceMode'
 import { seed } from '@/mocks/seed'
 
 const data = seed(new Date('2026-10-26T09:00:00Z')).data
-const toChannel = (c: (typeof data.channels)[number]): Channel => ({ ...c, unreadCount: 0, lastSeq: 0, lastReadSeq: 0, starred: false, muted: false, notifyLevel: 'all' as const })
+const toChannel = (c: (typeof data.channels)[number]): Channel => ({ ...c, unreadCount: 0, lastSeq: 0, lastReadSeq: 0, starred: false, muted: false, notifyLevel: 'all' as const, notifyLevelOwn: false })
 const channels = data.channels.filter((c) => c.workspaceId === 'ws-eng').map(toChannel)
 const projects: Project[] = data.projects.filter((p) => p.workspaceId === 'ws-eng')
 
@@ -22,7 +22,7 @@ describe('modeOf', () => {
   })
 
   it('leaves Settings, search and unknown pages to the side you were on', () => {
-    for (const path of ['/w/engineering/settings', '/w/engineering/settings/rates', '/w/engineering/search', '/', '/w/engineering/nope', '/dev/ui']) {
+    for (const path of ['/w/engineering/settings', '/w/engineering/settings/rates', '/w/engineering/search', '/w/engineering/preferences', '/', '/w/engineering/nope', '/dev/ui']) {
       expect(modeOf(path), path).toBeNull()
     }
   })

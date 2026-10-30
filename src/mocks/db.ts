@@ -28,13 +28,15 @@ import type {
   Folder,
   Bookmark,
   SidebarSection,
+  NotifyLevel,
+  Preferences,
 } from '@/api/types'
 import { ApiError } from '@/lib/apiError'
 import { memoryActor, type Actor } from './actor'
 import { migrate } from './migrations'
 import type { MockStore } from './store'
 
-export const DB_VERSION = 22 // 2: the company-system document (spec §3); 3: mention read state; 4: channel reads per person; 5: typed columns, history; 6: rate history; 7: message seq, channel member state; 8: message bodies; 9: drafts; 10: deleted messages kept for Undo; 11: thread follows; 12: activity items, channel levels; 13: channel description, who can post; 14: email invites, default channels; 15: file details (uploader, title, description, scan); 16: reminders, scheduled messages; 17: reminders on saved items; 18: text snippets; 19: /remind notes; 20: pins, folders, bookmarks; 21: sidebar order; 22: sidebar order ids (projects too)
+export const DB_VERSION = 23 // 2: the company-system document (spec §3); 3: mention read state; 4: channel reads per person; 5: typed columns, history; 6: rate history; 7: message seq, channel member state; 8: message bodies; 9: drafts; 10: deleted messages kept for Undo; 11: thread follows; 12: activity items, channel levels; 13: channel description, who can post; 14: email invites, default channels; 15: file details (uploader, title, description, scan); 16: reminders, scheduled messages; 17: reminders on saved items; 18: text snippets; 19: /remind notes; 20: pins, folders, bookmarks; 21: sidebar order; 22: sidebar order ids (projects too); 23: notification preferences, levels that follow the default
 /** Phase 1+2 kept the mock database in localStorage under keys starting with this. */
 const LEGACY_PREFIX = 'spark-flow.mockdb.v1'
 
@@ -68,7 +70,7 @@ export type DbData = {
   checkIns: CheckIn[]
   rates: Rate[]
   /** userId -> channelId -> their own state there (read marker, star, mute). Missing means the defaults. */
-  channelState: Record<string, Record<string, ChannelMemberState>>
+  channelState: Record<string, Record<string, StoredMemberState>>
   /** userId -> ids of the mentions they have read. */
   mentionReads: Record<string, string[]>
   counters: Record<string, number> // projectId -> next ticket number
@@ -96,7 +98,14 @@ export type DbData = {
   bookmarks: Bookmark[]
   /** Each person's order of a sidebar section in a workspace (spec 5.1); id is `user:workspace:section`. */
   sidebarOrders: StoredSidebarOrder[]
+  /** Each person's notification preferences (spec 6.11, §7 NotificationPref); id is the person's. */
+  notificationPrefs: StoredPreferences[]
 }
+
+/** A person's state in a channel as stored: `notifyLevel` null follows their default (spec 6.11). */
+export type StoredMemberState = Omit<ChannelMemberState, 'notifyLevel' | 'notifyLevelOwn'> & { notifyLevel: NotifyLevel | null }
+/** My preferences as kept: `keywordsSince` holds when each keyword (lowercased) was added, which only the server reads. */
+export type StoredPreferences = Preferences & { id: string; keywordsSince?: Record<string, string> }
 
 export type StoredSidebarOrder = { id: string; userId: string; workspaceId: string; section: SidebarSection; ids: string[] }
 
@@ -131,7 +140,7 @@ export interface MockDb {
 
 const COLLECTIONS = [
   'users', 'workspaces', 'projects', 'sprints', 'tickets', 'channels', 'messages', 'replies',
-  'teams', 'phases', 'deliverables', 'comments', 'attachments', 'projectFiles', 'timeEntries', 'checkIns', 'rates', 'activity', 'drafts', 'trash', 'threadFollows', 'notifications', 'invitations', 'saved', 'scheduled', 'pins', 'folders', 'bookmarks', 'sidebarOrders',
+  'teams', 'phases', 'deliverables', 'comments', 'attachments', 'projectFiles', 'timeEntries', 'checkIns', 'rates', 'activity', 'drafts', 'trash', 'threadFollows', 'notifications', 'invitations', 'saved', 'scheduled', 'pins', 'folders', 'bookmarks', 'sidebarOrders', 'notificationPrefs',
 ] as const
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>

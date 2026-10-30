@@ -18,7 +18,7 @@ const users = [
 ] as unknown as User[]
 const backend: Channel = {
   id: 'c-backend', workspaceId: 'ws-eng', kind: 'channel', name: 'backend', topic: '', memberIds: ['u-1', 'u-2'], isPrivate: false, lastMessageAt: null, description: '', whoCanPost: 'everyone', isDefault: false,
-  unreadCount: 0, lastSeq: 9, lastReadSeq: 9, starred: false, muted: false, notifyLevel: 'all',
+  unreadCount: 0, lastSeq: 9, lastReadSeq: 9, starred: false, muted: false, notifyLevel: 'all', notifyLevelOwn: false,
 }
 const root = (id: string, text: string): ChatMessage => ({
   id, channelId: 'c-backend', seq: 1, senderId: 'u-1', content: text, body: parseBody(text), attachments: [], reactions: [], threadCount: 3, lastReplyAt: null,

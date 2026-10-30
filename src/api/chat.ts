@@ -1,4 +1,4 @@
-import { type QueryClient, useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData, type QueryKey } from '@tanstack/react-query'
+import { type QueryClient, queryOptions, useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData, type QueryKey } from '@tanstack/react-query'
 import { qk } from '@/api/queryKeys'
 import { retryUnlessNotFound as retry } from '@/api/retry'
 import type { ChannelPatch, ChatTarget, Draft, Invitation, NewChannel, NotifyLevel, Page, Reaction } from '@/api/types'
@@ -14,8 +14,11 @@ export function useChannels(workspaceId: string | undefined) {
   return useQuery({ queryKey: qk.channels(workspaceId ?? ''), queryFn: () => api.chat.channels(workspaceId!), retry, enabled: Boolean(workspaceId) })
 }
 
+/** One channel with my state in it, for the hook and for reads outside render (desktop notifications). */
+export const channelQuery = (id: string) => queryOptions({ queryKey: qk.channel(id), queryFn: () => api.chat.channel(id), retry })
+
 export function useChannel(id: string | undefined) {
-  return useQuery({ queryKey: qk.channel(id ?? ''), queryFn: () => api.chat.channel(id!), retry, enabled: Boolean(id) })
+  return useQuery({ ...channelQuery(id ?? ''), enabled: Boolean(id) })
 }
 
 /** A channel's messages, newest first, a page at a time. */

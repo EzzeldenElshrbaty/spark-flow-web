@@ -31,6 +31,8 @@ export const paths = {
   activity: (ws: string) => `/w/${ws}/activity`,
   /** Threads I follow, unread first (spec 6.12). */
   threads: (ws: string) => `/w/${ws}/threads`,
+  /** My notification preferences (spec 6.11). */
+  preferences: (ws: string) => `/w/${ws}/preferences`,
   /** Search (spec 6.12) for a query as typed. */
   search: (ws: string, q = '') => `/w/${ws}/search${q ? `?q=${encodeURIComponent(q)}` : ''}`,
   saved: (ws: string) => `/w/${ws}/saved`,
@@ -57,7 +59,7 @@ export function landingPath(workspaceSlug: string, lastVisited: Record<string, s
   return target ? paths.channel(workspaceSlug, target.id) : paths.settings(workspaceSlug)
 }
 
-const PLACE = /^\/w\/[^/]+\/(?:c\/([^/]+)|p\/([^/]+)\/([^/?]+)(?:\?.*)?|settings(?:\/(?:database|rates))?|projects|tasks|dashboard|time|teams|activity|threads|saved|drafts)$/
+const PLACE = /^\/w\/[^/]+\/(?:c\/([^/]+)|p\/([^/]+)\/([^/?]+)(?:\?.*)?|settings(?:\/(?:database|rates))?|projects|tasks|dashboard|time|teams|activity|threads|preferences|saved|drafts)$/
 
 /**
  * Whether a saved place still leads somewhere: a channel that is still in the list, a project that still exists on

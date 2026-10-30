@@ -7,7 +7,7 @@ import { Icon } from '@/components/sf/Icon'
 import { Menu, MenuHeading, MenuItem, MenuSeparator, Submenu } from '@/components/sf/Menu'
 import { usePhone } from '@/components/sf/usePhone'
 import type { DetailsTab } from '@/pages/chat/ChannelDetails'
-import { NotifyLevelItems, NotifyLevelMenu } from '@/pages/chat/NotifyLevelMenu'
+import { NotifyLevelItems, NotifyLevelMenu, type PreferencesLink } from '@/pages/chat/NotifyLevelMenu'
 
 const COPIED_MS = 2000
 
@@ -24,6 +24,8 @@ export type ChannelHeaderProps = {
   onMute: (muted: boolean) => void
   /** What the channel notifies me about (spec 6.11). */
   onNotifyLevel: (level: NotifyLevel) => void
+  /** The bell's way to my Preferences and its Do Not Disturb note (spec 6.11). */
+  preferences?: PreferencesLink
   onMarkRead: () => void
   onCopyLink: () => Promise<void>
   onLeave: () => void
@@ -38,7 +40,7 @@ export type ChannelHeaderProps = {
  * truncates first, then the members button goes (Members is in Channel details too). On phones the topic moves into
  * the more menu, with channel search before the menu (spec 6.1). Call comes in a later phase.
  */
-export function ChannelHeader({ channel, title, members, rights, onDetails, onStar, onMute, onNotifyLevel, onMarkRead, onCopyLink, onLeave, onArchive, onSearch }: ChannelHeaderProps) {
+export function ChannelHeader({ channel, title, members, rights, onDetails, onStar, onMute, onNotifyLevel, preferences, onMarkRead, onCopyLink, onLeave, onArchive, onSearch }: ChannelHeaderProps) {
   const phone = usePhone()
   // What Copy link did, said next to the menu for a moment; there are no toasts outside Undo.
   const [copied, setCopied] = useState<'' | 'Link copied' | "Couldn't copy the link">('')
@@ -106,6 +108,7 @@ export function ChannelHeader({ channel, title, members, rights, onDetails, onSt
         <NotifyLevelMenu
           channel={channel}
           label={bell}
+          preferences={preferences}
           onNotifyLevel={onNotifyLevel}
           onMute={onMute}
           trigger={(props) => (
@@ -127,7 +130,7 @@ export function ChannelHeader({ channel, title, members, rights, onDetails, onSt
           )}
           {/* The bell's levels, here too (spec 6.1). */}
           <Submenu icon={IconBell} label="Notification settings">
-            <NotifyLevelItems channel={channel} onNotifyLevel={onNotifyLevel} onMute={onMute} />
+            <NotifyLevelItems channel={channel} preferences={preferences} onNotifyLevel={onNotifyLevel} onMute={onMute} />
           </Submenu>
           <MenuItem
             icon={IconLink}

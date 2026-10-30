@@ -25,7 +25,7 @@ export function activityFor(data: DbData, userId: string, workspaceId: string, l
   const mentions: ActivityItem[] = mentionsFor(data, userId, (m) => m.workspaceId === workspaceId && !quiet(m.channelId), limit)
     .map((m) => ({
       id: m.id, kind: 'mention', read: read.has(m.id), createdAt: m.createdAt, workspaceId: m.workspaceId, actorId: m.authorId, actorName: m.authorName,
-      channelId: m.channelId, messageId: m.messageId, replyId: m.source === 'reply' ? m.id : null, taskKey: m.taskKey, projectId: m.projectId, excerpt: m.excerpt, emoji: null,
+      channelId: m.channelId, messageId: m.messageId, replyId: m.source === 'reply' ? m.id : null, taskKey: m.taskKey, projectId: m.projectId, excerpt: m.excerpt, emoji: null, keyword: m.keyword,
     }))
   // A reply's mention id is the reply's id.
   const mentioned = new Set(mentions.map((m) => m.id))

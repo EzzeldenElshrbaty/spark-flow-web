@@ -11,9 +11,9 @@ const other = users.find((u) => u.id === 'u-2')!
 
 const dm = (memberIds: string[]): Channel => ({
   id: 'c-x', workspaceId: 'ws-eng', kind: 'dm', name: null, topic: '', memberIds, isPrivate: true, lastMessageAt: null, description: '', whoCanPost: 'everyone', isDefault: false, unreadCount: 0,
-  lastSeq: 0, lastReadSeq: 0, starred: false, muted: false, notifyLevel: 'all',
+  lastSeq: 0, lastReadSeq: 0, starred: false, muted: false, notifyLevel: 'all', notifyLevelOwn: false,
 })
-const channel = (name: string, lastMessageAt: string | null = null): Channel => ({ ...dm([]), id: `c-${name}`, kind: 'channel', name, isPrivate: false, lastMessageAt, notifyLevel: 'mentions' })
+const channel = (name: string, lastMessageAt: string | null = null): Channel => ({ ...dm([]), id: `c-${name}`, kind: 'channel', name, isPrivate: false, lastMessageAt, notifyLevel: 'mentions', notifyLevelOwn: false })
 
 describe('channelLabel', () => {
   it('names a channel after its name', () => {
@@ -118,7 +118,7 @@ describe('sidebarChannels', () => {
 describe('unreadMentions', () => {
   const item = (over: Partial<MentionItem>): MentionItem => ({
     id: 'm', source: 'message', authorId: 'u-2', authorName: 'Hala', excerpt: '', createdAt: '2026-10-26T09:00:00Z',
-    read: false, workspaceId: 'ws-eng', channelId: 'c-general', messageId: 'x', taskKey: null, projectId: null, ...over,
+    read: false, workspaceId: 'ws-eng', channelId: 'c-general', messageId: 'x', taskKey: null, projectId: null, keyword: null, ...over,
   })
 
   it('counts my unread mentions per channel of the workspace on screen', () => {
@@ -153,14 +153,14 @@ describe('sidebarRowState (spec §5.1 row rules, 6.11 levels)', () => {
   })
   it('a DM at All (its default) counts every unread message, and so does a channel at All', () => {
     expect(sidebarRowState({ ...dm([me.id, other.id]), ...state, unreadCount: 3 }, 0)).toEqual({ bold: true, count: 3, muted: false })
-    expect(sidebarRowState({ ...channel('a'), ...state, notifyLevel: 'all', unreadCount: 3 }, 1)).toEqual({ bold: true, count: 3, muted: false })
+    expect(sidebarRowState({ ...channel('a'), ...state, notifyLevel: 'all', notifyLevelOwn: false, unreadCount: 3 }, 1)).toEqual({ bold: true, count: 3, muted: false })
   })
   it('a DM at Mentions counts only my mentions', () => {
-    expect(sidebarRowState({ ...dm([me.id, other.id]), ...state, notifyLevel: 'mentions', unreadCount: 3 }, 0)).toEqual({ bold: true, count: 0, muted: false })
+    expect(sidebarRowState({ ...dm([me.id, other.id]), ...state, notifyLevel: 'mentions', notifyLevelOwn: false, unreadCount: 3 }, 0)).toEqual({ bold: true, count: 0, muted: false })
   })
   it('at Nothing the row is still bold with unread, with no count', () => {
-    expect(sidebarRowState({ ...channel('a'), ...state, notifyLevel: 'none', unreadCount: 3 }, 2)).toEqual({ bold: true, count: 0, muted: false })
-    expect(sidebarRowState({ ...dm([me.id, other.id]), ...state, notifyLevel: 'none', unreadCount: 3 }, 0)).toEqual({ bold: true, count: 0, muted: false })
+    expect(sidebarRowState({ ...channel('a'), ...state, notifyLevel: 'none', notifyLevelOwn: false, unreadCount: 3 }, 2)).toEqual({ bold: true, count: 0, muted: false })
+    expect(sidebarRowState({ ...dm([me.id, other.id]), ...state, notifyLevel: 'none', notifyLevelOwn: false, unreadCount: 3 }, 0)).toEqual({ bold: true, count: 0, muted: false })
   })
   it('a read row is plain', () => {
     expect(sidebarRowState({ ...channel('a'), ...state, unreadCount: 0 }, 0)).toEqual({ bold: false, count: 0, muted: false })
@@ -206,13 +206,13 @@ describe('cantWriteLine: what shows instead of the composer when I may post but 
 describe('the workspace switch badges (spec 5.5)', () => {
   const item = (over: Partial<MentionItem>): MentionItem => ({
     id: 'm', source: 'comment', authorId: 'u-2', authorName: 'Hala', excerpt: '', createdAt: '2026-10-26T09:00:00Z',
-    read: false, workspaceId: 'ws-eng', channelId: null, messageId: null, taskKey: 'NEX-1', projectId: 'p-nex', ...over,
+    read: false, workspaceId: 'ws-eng', channelId: null, messageId: null, taskKey: 'NEX-1', projectId: 'p-nex', keyword: null, ...over,
   })
 
   it('chatCount adds up the red count of every chat row, by the row rules', () => {
     const atMentions = { ...channel('backend'), unreadCount: 4 }
     const atAll = { ...dm(['u-1', 'u-2']), unreadCount: 2 }
-    const quiet = { ...channel('general'), unreadCount: 6, notifyLevel: 'none' as const }
+    const quiet = { ...channel('general'), unreadCount: 6, notifyLevel: 'none' as const, notifyLevelOwn: false }
     const muted = { ...dm(['u-1', 'u-3']), unreadCount: 9, muted: true }
     expect(chatCount([{ channel: atMentions, mentions: 1 }, { channel: atAll, mentions: 0 }, { channel: quiet, mentions: 3 }, { channel: muted, mentions: 0 }])).toBe(3)
     expect(chatCount([])).toBe(0)
@@ -223,7 +223,7 @@ describe('the workspace switch badges (spec 5.5)', () => {
       item({ id: '1' }),
       item({ id: '2', read: true }),
       item({ id: '3', workspaceId: 'ws-design' }),
-      item({ id: '4', source: 'message', channelId: 'c-general', taskKey: null, projectId: null }),
+      item({ id: '4', source: 'message', channelId: 'c-general', taskKey: null, projectId: null, keyword: null }),
     ]
     expect(unreadTaskMentions(items, 'ws-eng')).toBe(1)
     expect(unreadTaskMentions(undefined, 'ws-eng')).toBe(0)

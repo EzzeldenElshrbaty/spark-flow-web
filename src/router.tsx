@@ -28,6 +28,7 @@ const RatesPage = page(() => import('@/pages/settings/RatesPage'), 'RatesPage')
 const ActivityPage = page(() => import('@/pages/chat/ActivityPage'), 'ActivityPage')
 const ThreadsPage = page(() => import('@/pages/chat/threads/ThreadsPage'), 'ThreadsPage')
 const SearchPage = page(() => import('@/pages/chat/search/SearchPage'), 'SearchPage')
+const PreferencesPage = page(() => import('@/pages/preferences/PreferencesPage'), 'PreferencesPage')
 const SavedPage = page(() => import('@/pages/chat/saved/SavedPage'), 'SavedPage')
 const DraftsPage = page(() => import('@/pages/chat/outbox/DraftsPage'), 'DraftsPage')
 
@@ -77,6 +78,7 @@ export const router = createBrowserRouter([
           { path: 'activity', element: <ActivityPage />, handle: { pane: true } },
           { path: 'threads', element: <ThreadsPage />, handle: { pane: true } },
           { path: 'search', element: <SearchPage />, handle: { pane: true } },
+          { path: 'preferences', element: <PreferencesPage />, handle: { pane: true } },
           { path: 'saved', element: <SavedPage />, handle: { pane: true } },
           { path: 'drafts', element: <DraftsPage />, handle: { pane: true } },
           { path: 'projects', element: <ProjectsPage /> },

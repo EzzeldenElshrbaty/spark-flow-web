@@ -1395,3 +1395,85 @@ Rulings (cost if wrong):
   - The stored field and the body are now `ids`, not `channelIds`. DB v22 migrates v21 records, so no one's saved order is lost. The plan had said the API would keep accepting `channelIds`; it doesn't.
   - No separate browser drag test for project rows: `SortableSideList`'s own tests cover dragging, and the app check covered a real project drag.
 - **Left as is:** there was no separate review agent this time, since the change reuses the reviewed slice Y parts. The diff was read once more before committing.
+
+# Slice Z: Preferences, notifications (spec 6.11, §7 NotificationPref) — 31 Oct 2026, approved ("yes")
+
+Asked: the agreed order X → W → L → U → V → Y → Z. Today each channel has its own level, and nothing else can be set: there is no default, no keywords, no Do Not Disturb, and nothing outside the app tells you anything.
+
+```mermaid
+flowchart LR
+  U[User menu › Preferences] --> P["/w/:ws/preferences"]
+  B[channel bell ▾ › “Do Not Disturb is on…” · Preferences] --> P
+  P -->|PATCH /api/me/preferences| S[(NotificationPref)]
+  S --> L[channels without their own level follow the default]
+  S --> K[keywords count like mentions: bell, Activity, sidebar]
+  E[live message or reply] --> R{notifies me? level · mute · mention/keyword/DM · DND}
+  R -->|yes, desktop on, tab in the background| N[browser notification → opens the message]
+```
+
+Rulings (cost if wrong):
+- **Where:** a "Preferences" item in the user menu opens `/w/:ws/preferences`, which keeps the side you were on, like Settings. Preferences are per person across every workspace; there's one record (§7 NotificationPref). Admin Settings stays as it is.
+- **Default level (spec 6.11: "Per-channel levels override the global default"):**
+  - The default covers channels: All new messages, Mentions and keywords (today's), or Nothing. DMs keep All unless set in the DM.
+  - A channel follows the default until you pick a level in its bell menu.
+  - Your existing choices stay. A stored level equal to today's default becomes "follows the default" (DB v23 migration), so nothing changes on screen.
+- **Keywords:**
+  - Up to 20 words or phrases, matched like Search (word starts, case and accents ignored).
+  - In a channel you're in at "Mentions and keywords" or "All", someone else's message or reply with a keyword counts like a mention: the bell, Activity ("Matched “deploy” in #backend") and the sidebar's red count.
+  - Not in channels set to Nothing or muted, as with mentions.
+- **Delivery:**
+  - **Desktop notifications** are a switch, and turning it on asks the browser for permission. It says plainly when the browser blocks it.
+  - A notification is shown for something that notifies you while the Flow tab is in the background: a mention or keyword, a DM, or any message in a channel set to All. Never your own messages, never muted channels, never during Do Not Disturb.
+  - Clicking one opens the message.
+  - **Mobile push** and the **email digest of missed mentions** (Off / Hourly / Daily) are stored and in the contract for the backend. The prototype sends neither and says so under each.
+- **Do Not Disturb (spec 6.11: "has a schedule"):**
+  - "Pause notifications" for 30 minutes, 1 hour, 2 hours, until tomorrow 9:00 or a custom time, with Resume.
+  - A daily schedule: on or off, from and to, which days, in your time zone.
+  - While it's on, only desktop, push and email are held back. Badges and counts in the app don't change.
+  - The channel bell menu ends with the spec's note, for example "Do Not Disturb is on until 9:00 AM · Preferences", and a small moon on your avatar in the top bar shows it.
+- **Not in this slice:** the theme, which already lives in the user menu; sounds; per-channel email; phone push itself (it needs the app); and anything OPEN in §13.
+
+## Plan
+
+- [x] Z1. **API and mock:**
+  - The `Preferences` type with `api.preferences.get()` / `update(patch)`, and DB v23 with `notificationPrefs` plus the channel states' own-level migration.
+  - Channels report their effective level and whether it's their own (`notifyLevelOwn`).
+  - Tests: `mocks/preferences.test.ts` (validation and limits, default level applied, own level kept, DND fields), `migrations.test.ts`, `http.test.ts`, `queryKeys.test.ts`.
+- [x] Z2. **Keywords as mentions:** `mentionsFor` adds keyword hits (`MentionItem.keyword`), and the Activity row wording follows. Tests: `mentions.test.ts`, `activity.test.ts`, `activityRows.test.ts`.
+- [x] Z3. **The Preferences page:**
+  - `pages/preferences/PreferencesPage.tsx` with four sections: Notify me about, Keywords (TokenInput), Delivery and Do Not Disturb.
+  - Each change saves on its own, with an error line near its control and no toasts.
+  - The user menu item and the route.
+  - Tests: jsdom page tests, axe in both themes, 390px.
+- [x] Z4. **Desktop notifications and Do Not Disturb:**
+  - `lib/notifyRules.ts`: the pure `notifies(event, ctx)` and `dndActive(prefs, now)`, including schedules that run past midnight.
+  - `layout/DesktopNotifier.tsx` listens to live events.
+  - The DND note in the bell menu and the moon on the avatar.
+  - Tests: `notifyRules.test.ts`, `DesktopNotifier.test.tsx` (stubbed Notification), `NotifyLevelMenu` tests.
+- [x] Z5. **Close:**
+  - Docs: the contract (`/api/me/preferences`, keyword mentions, the effective level, the DND rules for push and email), a spec 6.11 note and a CLAUDE.md line.
+  - Checks: tsc, lint, unit, browser, build, an app check in both themes and at 390px, a review, then onto your branch.
+
+### Review (slice Z)
+
+- **Checks:**
+  - Unit 1,644 and browser 235 pass, and tsc, lint and build:prototype are clean. The first full browser run had the two known timing flakes (the mention list, the unread bar); they passed when run again.
+  - Preferences has an axe check in light and dark (with a refusal shown and the Pause menu open) and a 390px check. The bell menu with the Do Not Disturb item and the account button with the moon are in the chat axe suite.
+  - App check, both themes and 390px: pause for an hour, then the moon and the bell's "Do Not Disturb until 2:17 AM", which opens Preferences, and Resume. A DM sent as Nour in a second tab showed a desktop notification in Youssef's background tab, and clicking it opened the DM. A second Flow tab in front kept the first one quiet.
+- **Test-first:** the rules, the notifier, the bell, the moon and all the review fixes were run red first. Some of Z1–Z3 (the page and the mock) were written alongside their tests.
+- **Changed from the plan:**
+  - The bell's menu also has "Desktop, mobile and email…", which opens Preferences, as in the spec's 6.11 artboard; the Do Not Disturb item only shows while it's on. It reads "Do Not Disturb until 9:00 AM", not "… is on until … · Preferences", so it fits a phone's sheet.
+  - `notifyRules` has `dndState` (the plan's `dndActive`), and `notifies` takes the message, channel, me, preferences and the time.
+- **Review fixes:**
+  - **Keywords from when they're added:** the server keeps when each keyword was added and only matches newer messages. Before, adding a common word turned old messages into dozens of unread mentions.
+  - **Muted channels:** keyword hits there no longer count, as the plan said. A mention of me still does.
+  - **Quick edits:** saves are optimistic, so a second day or keyword builds on the first. Schedule times save when you leave the field: Chrome reports each keystroke as a whole time.
+  - **One rule for desktop, push and email:** the desktop switch moved out of `notifies` into the notifier. Keywords match only someone's own words (`keywordable`), the same for the bell and desktop.
+  - **Several tabs:** a hidden tab no longer notifies while another Flow tab is in front. Tabs tell each other over a BroadcastChannel (`lib/flowInFront.ts`); a tab that vanishes stops counting after a minute.
+  - **The schedule's end** is an actual time in the schedule's zone, shown in mine, even across a clock change. Before, a Cairo schedule seen from Dubai said 9:00 AM for 11:00 AM.
+  - **Refusals in place:** a custom pause in the past, a keyword over 40 characters (the text stays to fix), more than 20 keywords, and a browser prompt closed without an answer each get their own sentence. The server refuses a schedule whose start and end are the same.
+  - `preferencesChanged` also reloads open channels and Threads. The pause times are worked out when clicked. The Do Not Disturb label renders only when its words change, not every 30 seconds.
+- **Left as is:**
+  - **Pinning the default from the bell** isn't possible, and neither is going back to following the default once a level is picked. `notifyLevelOwn` is in the API for that. This is a question for you.
+  - "Until tomorrow at 9:00 AM" pressed after midnight means the next day's 9:00. Keyword matching uses Search's word-start rule, so "PR" matches "project".
+

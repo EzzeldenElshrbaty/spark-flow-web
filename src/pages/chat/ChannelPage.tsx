@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams, useSearchParams } from 'react-rout
 import { useSchedule, viewerZone } from '@/api/scheduled'
 import { useAddMembers, useChannel, useChannels, useDrafts, useDraftSaver, useInvitations, useJumpTarget, useLeaveChannel, useMarkRead, useMessage, useMessages, useMessagesFrom, useRemoveMember, useRevokeInvitation, useSetMuted, useSetNotifyLevel, useSetStarred, useUpdateChannel } from '@/api/chat'
 import { useUsers } from '@/api/users'
+import { useDndEnd } from '@/api/preferences'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
@@ -262,6 +263,9 @@ function ChannelTop({
   const removeMember = useRemoveMember()
   const revoke = useRevokeInvitation()
   const navigate = useNavigate()
+  // The bell's way to Preferences, with the Do Not Disturb note while it's on (spec 6.11).
+  const dndEnd = useDndEnd()
+  const preferences = { dndEnd, onOpen: () => navigate(paths.preferences(workspaceSlug)) }
   // An archived project's channel still names its project (review).
   const own = useChannelProject(channel).project
   const takenNames = (useChannels(channel.workspaceId).data ?? []).filter((c) => c.kind === 'channel' && c.id !== channel.id).map((c) => c.name ?? '')
@@ -309,6 +313,7 @@ function ChannelTop({
         onStar={(starred) => star.mutate({ id: channel.id, starred })}
         onMute={(muted) => mute.mutate({ id: channel.id, muted })}
         onNotifyLevel={(notifyLevel) => level.mutate({ id: channel.id, level: notifyLevel })}
+        preferences={preferences}
         onMarkRead={() => {
           useReadHold.getState().release(channel.id)
           markRead.mutate({ channelId: channel.id })
@@ -355,6 +360,7 @@ function ChannelTop({
           onRevoke={(invitationId) => revoke.mutateAsync(invitationId)}
           onStar={(starred) => star.mutate({ id: channel.id, starred })}
           onNotifyLevel={(notifyLevel) => level.mutate({ id: channel.id, level: notifyLevel })}
+          preferences={preferences}
           onMute={(muted) => mute.mutate({ id: channel.id, muted })}
           onCopyLink={copyLink}
           onLeave={() => {

@@ -15,7 +15,7 @@ const users = [
 ] as unknown as User[]
 const channel = (id: string, name: string | null, kind: 'channel' | 'dm' = 'channel', memberIds = ['u-1', 'u-2']): Channel => ({
   id, workspaceId: 'ws-eng', kind, name, topic: 'APIs', memberIds, isPrivate: kind === 'dm', lastMessageAt: null, description: '', whoCanPost: 'everyone', isDefault: false,
-  unreadCount: 0, lastSeq: 0, lastReadSeq: 0, starred: false, muted: false, notifyLevel: 'all',
+  unreadCount: 0, lastSeq: 0, lastReadSeq: 0, starred: false, muted: false, notifyLevel: 'all', notifyLevelOwn: false,
 })
 const results = (n = 2): SearchResults => ({
   counts: { messages: n, files: 1, tasks: 0, channels: 1, people: 0 },

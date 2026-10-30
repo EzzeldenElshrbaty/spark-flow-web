@@ -12,6 +12,7 @@ const viewAs = vi.fn()
 const markRead = vi.fn()
 const navigate = vi.fn()
 let mentions: MentionItem[] = []
+let dndEnd: string | null = null
 
 vi.mock('react-router', async (original) => ({ ...(await original<typeof import('react-router')>()), useNavigate: () => navigate }))
 vi.mock('@tanstack/react-query', async (original) => ({ ...(await original<typeof import('@tanstack/react-query')>()), useQueryClient: () => ({ clear: vi.fn() }) }))
@@ -27,6 +28,7 @@ vi.mock('@/layout/useCurrentWorkspace', () => ({
     workspaces: [{ id: 'ws-eng', slug: 'engineering', name: 'Spark Engineering' }, { id: 'ws-ops', slug: 'ops', name: 'Spark Ops' }],
   }),
 }))
+vi.mock('@/api/preferences', () => ({ useDndEnd: () => dndEnd }))
 vi.mock('@/api/workspaces', () => ({ useWorkspaces: () => ({ data: [{ id: 'ws-eng', slug: 'engineering', name: 'Spark Engineering' }] }) }))
 vi.mock('@/api/mentions', () => ({
   useMyMentions: () => ({ data: mentions, refetch: vi.fn(), isFetching: false, isError: false }),
@@ -36,6 +38,7 @@ vi.mock('@/api/mentions', () => ({
 beforeEach(() => {
   vi.clearAllMocks()
   mentions = []
+  dndEnd = null
 })
 afterEach(cleanup)
 window.matchMedia ??= ((media: string) => ({ matches: false, media, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia
@@ -69,6 +72,24 @@ describe('UserMenu (spec 5.2: the account menu)', () => {
     expect(setTheme).toHaveBeenCalledWith('dark')
   })
 
+  it('Preferences opens my notification preferences (spec 6.11)', async () => {
+    show(<UserMenu />)
+    await open(/Youssef Abdelrahman/)
+    await act(async () => fireEvent.click(screen.getByRole('menuitem', { name: /Preferences/ })))
+    expect(navigate).toHaveBeenCalledWith('/w/engineering/preferences')
+  })
+
+  it('a moon on my avatar while Do Not Disturb is on, and its name says until when (spec 6.11)', () => {
+    show(<UserMenu />)
+    expect(document.querySelector('[data-dnd]')).toBeNull()
+    expect(screen.getByRole('button', { name: /Youssef Abdelrahman/ }).textContent).not.toContain('Do Not Disturb')
+    cleanup()
+    dndEnd = '9:00 AM'
+    show(<UserMenu />)
+    const button = screen.getByRole('button', { name: /Youssef Abdelrahman.*, Do Not Disturb until 9:00 AM$/ })
+    expect(button.querySelector('[data-dnd] svg')?.getAttribute('class')).toContain('tabler-icon-moon')
+  })
+
   it('View as someone else keeps the menu open until the switch lands (a failure says so there), then goes home', async () => {
     show(<UserMenu />)
     await open(/Youssef Abdelrahman/)
@@ -96,7 +117,7 @@ describe('WorkspaceSwitcher (spec 5.2)', () => {
 describe('NotificationsMenu (spec 5.2: the bell)', () => {
   const item = (id: string, read: boolean): MentionItem => ({
     id, source: 'message', authorId: 'u-2', authorName: 'Nour El-Sayed', excerpt: `ping ${id}`, createdAt: new Date().toISOString(), read,
-    workspaceId: 'ws-eng', channelId: 'c-general', messageId: id, taskKey: null, projectId: null,
+    workspaceId: 'ws-eng', channelId: 'c-general', messageId: id, taskKey: null, projectId: null, keyword: null,
   })
 
   it('lists my mentions, filters to unread, marks all read, and opens one', async () => {

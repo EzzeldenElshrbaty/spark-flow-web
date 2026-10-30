@@ -247,6 +247,10 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
       pin: (messageId) => send<void>('PUT', `/api/messages/${enc(messageId)}/pin`),
       unpin: (messageId) => send<void>('DELETE', `/api/messages/${enc(messageId)}/pin`),
     },
+    preferences: {
+      get: () => get('/api/me/preferences'),
+      update: (patch) => send('PATCH', '/api/me/preferences', patch),
+    },
     sidebar: {
       order: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/sidebar-order`),
       setOrder: (workspaceId, section, ids) => send<void>('PUT', `/api/workspaces/${enc(workspaceId)}/sidebar-order`, { section, ids }),

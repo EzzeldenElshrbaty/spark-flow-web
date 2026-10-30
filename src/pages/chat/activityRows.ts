@@ -27,7 +27,7 @@ export function activityKind(item: ActivityItem, place: string | null): string {
   if (item.kind === 'reaction') return `${item.actorName} reacted ${item.emoji ?? ''} to your ${item.replyId ? 'reply' : 'message'}${where}`
   if (item.kind === 'thread') return `Replied in a thread you follow${where}`
   if (item.kind === 'reminder') return `Reminder about a ${item.replyId ? 'reply' : 'message'}${where}`
-  return `Mentioned you${where}`
+  return item.keyword ? `Matched “${item.keyword}”${where}` : `Mentioned you${where}`
 }
 
 /**

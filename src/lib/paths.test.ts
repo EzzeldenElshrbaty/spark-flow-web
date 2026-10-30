@@ -4,7 +4,7 @@ import { landingPath, legacyProjectPath, paths, projectTabs, validSavedPlace } f
 import { seed } from '@/mocks/seed'
 
 const data = seed(new Date('2026-10-26T09:00:00Z')).data
-const toChannel = (c: (typeof data.channels)[number]): Channel => ({ ...c, unreadCount: 0, lastSeq: 0, lastReadSeq: 0, starred: false, muted: false, notifyLevel: 'all' as const })
+const toChannel = (c: (typeof data.channels)[number]): Channel => ({ ...c, unreadCount: 0, lastSeq: 0, lastReadSeq: 0, starred: false, muted: false, notifyLevel: 'all' as const, notifyLevelOwn: false })
 const engineering = data.channels.filter((c) => c.workspaceId === 'ws-eng').map(toChannel)
 const design = data.channels.filter((c) => c.workspaceId === 'ws-design').map(toChannel)
 const noGeneral = engineering.filter((c) => c.name !== 'general')
@@ -82,6 +82,7 @@ describe('validSavedPlace', () => {
     expect(validSavedPlace('/w/engineering/tasks', engineering, engineeringProjects)).toBe(true)
     expect(validSavedPlace('/w/engineering/activity', engineering, engineeringProjects)).toBe(true)
     expect(validSavedPlace('/w/engineering/threads', engineering, engineeringProjects)).toBe(true)
+    expect(validSavedPlace('/w/engineering/preferences', engineering, engineeringProjects)).toBe(true)
     expect(validSavedPlace(`/w/engineering/p/${key}/board`, engineering, engineeringProjects)).toBe(false) // old address: redirected, not saved
     expect(validSavedPlace(`/w/engineering/p/${key}/nope`, engineering, engineeringProjects)).toBe(false)
   })
