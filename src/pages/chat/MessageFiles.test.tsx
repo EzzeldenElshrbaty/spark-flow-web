@@ -207,3 +207,22 @@ describe('the file card, slice 6 review minors', () => {
     expect(menu()).toEqual(['Copy link to file', 'Delete file'])
   })
 })
+
+describe('a text snippet in a message (spec 6.9)', () => {
+  const snip: Attachment = { ...pdf, id: 'a-s', name: 'q.txt', title: 'q', mimeType: 'text/plain', snippet: { language: 'sql' } }
+
+  it('shows as a code card under "SQL snippet", and Copy puts the code on the clipboard', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('SELECT 1;'))
+    const writeText = vi.fn(async () => {})
+    Object.assign(navigator, { clipboard: { writeText } })
+    render(<MessageFiles attachments={[snip]} link={link} />)
+    expect(screen.getByRole('button', { name: 'SQL snippet · q' })).toBeTruthy()
+    expect(await screen.findByText('SELECT')).toBeTruthy()
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Copy snippet' }))
+    })
+    expect(writeText).toHaveBeenCalledWith('SELECT 1;')
+    expect(screen.getByRole('status').textContent).toBe('Copied')
+    fetchSpy.mockRestore()
+  })
+})

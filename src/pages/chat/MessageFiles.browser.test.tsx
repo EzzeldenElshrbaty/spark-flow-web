@@ -52,3 +52,25 @@ describe('MessageFiles image frame (spec 6.9: hugs the image, max 420px, radius-
     expect(pill.right).toBeLessThanOrEqual(frame.right + 0.5)
   })
 })
+
+describe('a snippet card at 390px (spec 6.9, 6.16)', () => {
+  it('a 5,000-line snippet with a 2,000-character line scrolls inside the card, never the page; Show all keeps up', async () => {
+    const code = ['x'.repeat(2000), ...Array.from({ length: 4999 }, (_, i) => `SELECT ${i};`)].join('\n')
+    urls['a-big'] = `data:text/plain;charset=utf-8,${encodeURIComponent(code)}`
+    const big: Attachment = { ...image(10, 10), id: 'a-big', name: 'big.txt', title: 'big', mimeType: 'text/plain', snippet: { language: 'sql' } }
+    render(
+      <div className="sf" style={{ width: 390 }}>
+        <MessageFiles attachments={[big]} />
+      </div>,
+    )
+    const region = await screen.findByRole('region', { name: 'big' }, { timeout: 3000 })
+    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth)
+    expect(region.getBoundingClientRect().width).toBeLessThanOrEqual(390)
+    expect(region.scrollWidth).toBeGreaterThan(region.clientWidth)
+    const started = performance.now()
+    screen.getByRole('button', { name: 'Show all 5000 lines' }).click()
+    await vi.waitFor(() => expect(region.querySelectorAll('[data-line]')).toHaveLength(5000))
+    expect(performance.now() - started).toBeLessThan(2000)
+    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth)
+  })
+})

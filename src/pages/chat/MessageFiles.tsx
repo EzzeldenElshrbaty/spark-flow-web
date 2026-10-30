@@ -2,6 +2,7 @@ import {
   IconChevronDown,
   IconChevronRight,
   IconDots,
+  IconCopy,
   IconDownload,
   IconFileText,
   IconFileTypePdf,
@@ -26,6 +27,7 @@ import { viewedFile } from '@/lib/fileView'
 import { downloadUrl, fileSubline, previewOf } from '@/lib/fileTypes'
 import { useFileActions } from '@/pages/chat/files/FileActions'
 import { canMakeTask } from '@/pages/chat/taskDraft'
+import { snippetLabel, SnippetView, useSnippetText } from '@/pages/chat/snippets/SnippetCard'
 
 const COPIED_MS = 2000
 
@@ -41,7 +43,7 @@ export function download(url: string, name: string) {
 }
 
 /** "PDF": a file's type, from its extension, as the label above its card says. */
-const typeLabel = (a: Attachment) => (a.name.includes('.') ? a.name.split('.').pop()!.toUpperCase() : 'File')
+const typeLabel = (a: Attachment) => (a.snippet ? snippetLabel(a) : a.name.includes('.') ? a.name.split('.').pop()!.toUpperCase() : 'File')
 
 /**
  * The action pill on a file (spec 6.9): Download, Share, Details and More, which holds Create task from file, Copy
@@ -54,6 +56,7 @@ function FileActionsPill({
   link,
   message,
   pending = false,
+  copyText,
 }: {
   attachment: Attachment
   url: string | null
@@ -61,6 +64,8 @@ function FileActionsPill({
   message?: ChatMessage | ThreadReply
   /** The message is still on its way: only Download (nothing else has anything to act on yet). */
   pending?: boolean
+  /** A snippet's code: Copy snippet puts it on the clipboard (spec 6.9). */
+  copyText?: string
 }) {
   const offered = useFileActions()
   const actions = pending ? null : offered
@@ -76,7 +81,7 @@ function FileActionsPill({
   const share = actions && manage && clean
   const task = actions?.createTask && clean && message && 'threadCount' in message && canMakeTask(message)
   const copy = Boolean(link) && !pending
-  const [said, setSaid] = useState<'' | 'Link copied' | "Couldn't copy the link">('')
+  const [said, setSaid] = useState<'' | 'Link copied' | "Couldn't copy the link" | 'Copied' | "Couldn't copy">('')
   useEffect(() => {
     if (!said) return
     const timer = setTimeout(() => setSaid(''), COPIED_MS)
@@ -96,6 +101,19 @@ function FileActionsPill({
           always ? 'opacity-100' : 'opacity-0 group-hover/file:opacity-100 focus-within:opacity-100 has-[[aria-expanded=true]]:opacity-100',
         )}
       >
+        {copyText !== undefined && (
+          <IconButton
+            label="Copy snippet"
+            icon={IconCopy}
+            size="sm"
+            onClick={() => {
+              navigator.clipboard.writeText(copyText).then(
+                () => setSaid('Copied'),
+                () => setSaid("Couldn't copy"),
+              )
+            }}
+          />
+        )}
         {!phone && clean && <IconButton label="Download" icon={IconDownload} size="sm" disabled={!url} onClick={save} />}
         {!phone && share && <IconButton label="Share" icon={IconShare3} size="sm" onClick={() => actions!.share(attachment)} />}
         {!phone && actions && <IconButton label="Details" icon={IconInfoCircle} size="sm" onClick={() => actions.details(attachment)} />}
@@ -184,6 +202,8 @@ function Unchecked({ attachment, link, message, pending }: { attachment: Attachm
 function Live({ attachment, link, message, pending }: { attachment: Attachment; link?: string; message?: ChatMessage | ThreadReply; pending?: boolean }) {
   const clean = attachment.scanStatus === 'clean'
   const { url, failed } = useFileUrl(clean ? attachment.id : null)
+  // A snippet shows its code (spec 6.9), read from the file once it's clean.
+  const code = useSnippetText(attachment.snippet && clean ? url : null)
   const [shown, setShown] = useState(true)
   const [viewing, setViewing] = useState(false)
   // Images the browser shows (not HEIC), and videos it can play; anything else is a file card that opens it.
@@ -210,7 +230,17 @@ function Live({ attachment, link, message, pending }: { attachment: Attachment; 
   )
   let body
   if (!clean) body = <Unchecked attachment={attachment} link={link} message={message} pending={pending} />
-  else if (failed) body = <p className="sf-small text-sf-error">{attachment.title} couldn't be opened.</p>
+  else if (failed || code === false) body = <p className="sf-small text-sf-error">{attachment.title} couldn't be opened.</p>
+  else if (attachment.snippet)
+    body =
+      typeof code === 'string' ? (
+        <div className="group/file relative w-[720px] max-w-full">
+          <SnippetView attachment={attachment} text={code} />
+          <FileActionsPill attachment={attachment} url={url} link={link} message={message} pending={pending} copyText={code} />
+        </div>
+      ) : (
+        <span aria-hidden className="block h-24 w-[min(720px,100%)] animate-pulse rounded-sf-lg bg-sf-surface-hover" />
+      )
   else if (kind === 'image')
     body = (
       // The 420px cap is on the frame, not the image: a percentage cap on the image doesn't count while the frame

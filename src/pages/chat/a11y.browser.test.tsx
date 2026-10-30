@@ -28,6 +28,8 @@ import { ThreadComposer } from '@/pages/chat/ThreadComposer'
 import { FileActionsContext, FileActionsProvider, useFileActions, type FileActions } from '@/pages/chat/files/FileActions'
 import { FileInspector } from '@/pages/chat/files/FileInspector'
 import { MessageFiles } from '@/pages/chat/MessageFiles'
+import { SnippetView } from '@/pages/chat/snippets/SnippetCard'
+import { SnippetDialog } from '@/pages/chat/snippets/SnippetDialog'
 import { UploadTray } from '@/pages/chat/uploads/UploadTray'
 import type { Upload } from '@/pages/chat/uploads/useUploads'
 import type { BodyContext } from '@/pages/chat/MessageBody'
@@ -172,6 +174,11 @@ const surfaces: [string, () => ReactNode][] = [
   ['emoji picker', () => <EmojiPicker onPick={vi.fn()} />],
   ['composer', () => <RichComposer placeholder="Message #backend" onSend={async () => {}} directory={directory} />],
   ['composer editing a message', () => <RichComposer mode="edit" placeholder="Edit message" initialBody={parseBody('fix *this*')} onSend={async () => {}} onCancel={vi.fn()} directory={directory} />],
+  [
+    'snippet card (spec 6.9)',
+    () => <SnippetView attachment={{ ...scope, title: 'explain-query', snippet: { language: 'sql' } }} text={"-- slow on prod\nselect id, 'x' from messages\nwhere n > 50;\n" + 'select 1;\n'.repeat(10)} />,
+  ],
+  ['snippet dialog (spec 6.9)', () => <SnippetDialog where="#backend" initialContent="SELECT 1;" max={100_000} onCreate={async () => {}} onClose={vi.fn()} />],
 ]
 
 describe.each([
