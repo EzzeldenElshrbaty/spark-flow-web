@@ -205,7 +205,8 @@ export type ChatMessage = {
 
 /** What a Flowbot message is about: a reminder that fired, or a scheduled message that couldn't be sent. */
 export type FlowbotNote =
-  | { kind: 'reminder'; savedId: string; channelId: string; target: ChatTarget }
+  /** `rootId`: the thread a reminded reply is in, for the card's link. */
+  | { kind: 'reminder'; savedId: string; channelId: string; rootId: string | null; target: ChatTarget }
   | { kind: 'scheduleFailed'; scheduledId: string }
 
 export type SavedStatus = 'inProgress' | 'archived' | 'completed'

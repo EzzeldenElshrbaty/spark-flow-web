@@ -70,7 +70,7 @@ function fireReminder(data: DbData, item: SavedItem, at: string): RealtimeEvent[
   if (readable) {
     data.notifications.push({ id: newId('n'), userId: item.userId, kind: 'reminder', actorId: FLOWBOT_ID, channelId: found.channelId, messageId: found.messageId, replyId: found.replyId, emoji: null, at, read: false })
   }
-  const note: FlowbotNote = { kind: 'reminder', savedId: item.id, channelId: found?.channelId ?? '', target: item.target }
+  const note: FlowbotNote = { kind: 'reminder', savedId: item.id, channelId: found?.channelId ?? '', rootId: found?.replyId ? found.messageId : null, target: item.target }
   return [
     ...tell(data, item.workspaceId, item.userId, reminderText(data, item), note),
     { type: 'savedChanged', userId: item.userId },

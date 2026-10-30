@@ -7,6 +7,7 @@ import { Button } from '@/components/sf/Button'
 import { Icon } from '@/components/sf/Icon'
 import { Tabs } from '@/components/sf/Tabs'
 import { Toggle } from '@/components/sf/Toggle'
+import { isFlowbot } from '@/lib/flowbot'
 import { timeAgo } from '@/lib/format'
 import { useNow } from '@/lib/useNow'
 import { ACTIVITY_TABS, activityKind, activityLink, shownActivity, type ActivityTab } from '@/pages/chat/activityRows'
@@ -66,14 +67,14 @@ export function ActivityView({
             <span className="sr-only">Unread, </span>
           </span>
         )}
-        <Avatar id={item.actorId} name={item.actorName} decorative />
+        <Avatar id={item.actorId} name={item.actorName} app={isFlowbot(item.actorId)} decorative />
         <span className="min-w-0">
           <span className="sf-meta flex items-center gap-1 font-medium text-sf-text-secondary">
             <Icon icon={KIND_ICONS[item.kind]} size={16} className="flex-none" />
             <span className="truncate">{activityKind(item, placeOf(item))}</span>
           </span>
-          {item.kind === 'reaction' ? (
-            // My own words, under the line that says who reacted.
+          {item.kind === 'reaction' || item.kind === 'reminder' ? (
+            // My own words under the line that says who reacted; or the message a reminder is about.
             <span className="sf-body mt-0.5 line-clamp-2 block text-sf-text-secondary">{item.excerpt}</span>
           ) : (
             <span className="sf-body mt-0.5 line-clamp-2 block text-sf-text">

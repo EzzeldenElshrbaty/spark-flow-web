@@ -380,7 +380,7 @@ The server keeps reminders and scheduled messages and fires them from a job queu
 Flowbot is an app, not a person: it is in no user list and has no role. Its id is `app-flowbot` (`lib/flowbot.ts`). Each person gets one DM with it per workspace (`kind: "dm"`, `memberIds: [userId, "app-flowbot"]`, private), made the first time Flowbot has something to say there. The sidebar lists it under Apps.
 
 - Nobody posts in it: a new message or reply there is `403` "Flowbot sends reminders here. It can’t read replies." Reactions are allowed.
-- Its messages are plain text (`body` is one paragraph of text), so a quoted mention or task key notifies nobody. They carry `flowbot`: `{ kind: "reminder", savedId, channelId, target: { kind: "message" | "reply", id } }` or `{ kind: "scheduleFailed", scheduledId }`, for the card slices S and T draw.
+- Its messages are plain text (`body` is one paragraph of text), so a quoted mention or task key notifies nobody. They carry `flowbot`: `{ kind: "reminder", savedId, channelId, rootId, target: { kind: "message" | "reply", id } }` (`rootId`: a reply's thread) or `{ kind: "scheduleFailed", scheduledId }`, for the card slices S and T draw.
 
 ### Reminder
 

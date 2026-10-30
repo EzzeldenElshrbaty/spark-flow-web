@@ -29,6 +29,13 @@ describe('shownActivity (spec 6.12)', () => {
   })
 })
 
+describe('activityKind: reminders', () => {
+  it('says it is a reminder, and where the message is', () => {
+    expect(activityKind(item({ kind: 'reminder' }), '#backend')).toBe('Reminder about a message in #backend')
+    expect(activityKind(item({ kind: 'reminder', replyId: 'r1' }), null)).toBe('Reminder about a reply')
+  })
+})
+
 describe('activityKind: the line above the text', () => {
   it('names what happened and where', () => {
     expect(activityKind(item(), '#backend')).toBe('Mentioned you in #backend')

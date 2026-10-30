@@ -3,12 +3,13 @@ import { paths } from '@/lib/paths'
 
 export type ActivityTab = 'all' | ActivityItemKind
 
-/** Activity's tabs (spec 6.12); Reminders comes with reminders (Phase 3). */
+/** Activity's tabs (spec 6.12). */
 export const ACTIVITY_TABS: { id: ActivityTab; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'mention', label: 'Mentions' },
   { id: 'reaction', label: 'Reactions' },
   { id: 'thread', label: 'Threads' },
+  { id: 'reminder', label: 'Reminders' },
 ]
 
 /** A tab's rows, newest first as they come: the unread ones, then the read ones under "Earlier" (none with Unread only). */
@@ -25,6 +26,7 @@ export function activityKind(item: ActivityItem, place: string | null): string {
   const where = item.taskKey && !item.channelId ? ` on ${item.taskKey}` : place ? ` in ${place}` : ''
   if (item.kind === 'reaction') return `${item.actorName} reacted ${item.emoji ?? ''} to your ${item.replyId ? 'reply' : 'message'}${where}`
   if (item.kind === 'thread') return `Replied in a thread you follow${where}`
+  if (item.kind === 'reminder') return `Reminder about a ${item.replyId ? 'reply' : 'message'}${where}`
   return `Mentioned you${where}`
 }
 

@@ -65,7 +65,7 @@ describe('runScheduler: reminders on saved items (spec §7, fired by a scheduler
     const [note] = await messagesIn(dm!.id)
     expect(note.senderId).toBe(FLOWBOT_ID)
     expect(note.content).toBe('Reminder: “Can we pair on the refresh token tests tomorrow at 11:00? I want to cover the 30-second grace window.” from Nour El-Sayed.')
-    expect(note.flowbot).toEqual({ kind: 'reminder', savedId: 'sav-1', channelId: 'c-dm-1', target: { kind: 'message', id: 'm-e01' } })
+    expect(note.flowbot).toEqual({ kind: 'reminder', savedId: 'sav-1', channelId: 'c-dm-1', rootId: null, target: { kind: 'message', id: 'm-e01' } })
     expect((await db.read()).saved[0].firedAt).toBe(NOW.toISOString())
     expect(events).toContainEqual(expect.objectContaining({ type: 'messageReceived', message: expect.objectContaining({ id: note.id }) }))
     expect(events).toContainEqual({ type: 'channelChanged', channelId: dm!.id })

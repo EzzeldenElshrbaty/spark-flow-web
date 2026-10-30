@@ -23,6 +23,7 @@ import { TaskEventCard } from '@/pages/chat/TaskEventCard'
 import { useEditing } from '@/pages/chat/editingStore'
 import { actionsFor, deleteNeedsConfirm } from '@/pages/chat/messageRights'
 import { useComposerDirectory } from '@/pages/chat/useComposerDirectory'
+import { FlowbotReminder } from '@/pages/chat/saved/FlowbotReminder'
 import { useSaveTarget } from '@/pages/chat/saved/useSaveTarget'
 import { replyState } from '@/pages/chat/useReplyFocus'
 
@@ -206,6 +207,7 @@ export function ChannelMessage({
       <>
         <MessageBody body={message.body} ctx={ctx} muted={sendState === 'failed'} after={message.editedAt && <span className="sf-meta ms-1 text-sf-text-muted">(edited)</span>} />
         <MessageFiles attachments={message.attachments} link={permalink} message={message} pending={Boolean(sendState)} />
+        {root?.flowbot?.kind === 'reminder' && <FlowbotReminder note={root.flowbot} ws={ctx.ws} workspaceId={ctx.workspaceId} say={say} />}
         {root && <LinkedTasks message={root} ctx={ctx} />}
         {unfurl && <TaskUnfurl task={unfurl} users={users} />}
         {link && <LinkPreviewCard url={link} />}

@@ -36,10 +36,10 @@ const spoken = (el: Element) => {
 const rowNames = (list: string) => within(screen.getByRole('list', { name: list })).getAllByRole('link').map(spoken)
 
 describe('Activity (spec 6.12)', () => {
-  it('has its title, the tabs (no Reminders yet), Unread only and Mark all read', () => {
+  it('has its title, the tabs, Unread only and Mark all read', () => {
     show()
     expect(screen.getByRole('heading', { level: 1, name: 'Activity' })).toBeTruthy()
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['All', 'Mentions', 'Reactions', 'Threads'])
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['All', 'Mentions', 'Reactions', 'Threads', 'Reminders'])
     expect(screen.getByRole('tab', { name: 'All' }).getAttribute('aria-selected')).toBe('true')
     expect(screen.getByRole('switch', { name: 'Unread only' }).getAttribute('aria-checked')).toBe('false')
     expect(screen.getByRole('button', { name: 'Mark all read' })).toBeTruthy()
@@ -143,5 +143,17 @@ describe('Activity header (spec 6.12, .sf-view-head)', () => {
     const head = document.querySelector('header')!
     expect(head.className.split(' ')).toContain('pe-4')
     expect(head.className.split(' ')).not.toContain('pe-3')
+  })
+})
+
+describe('Activity reminders (spec 6.12 Reminders tab)', () => {
+  it('a fired reminder is Flowbot’s, under Reminders, with the message’s text', async () => {
+    const reminder = item({ id: 'rem', kind: 'reminder', actorId: 'app-flowbot', actorName: 'Flowbot', excerpt: 'Review the release notes' })
+    show({ items: [mention, reminder] })
+    await act(async () => fireEvent.click(screen.getByRole('tab', { name: 'Reminders' })))
+    const [row] = within(screen.getByRole('list', { name: 'Unread' })).getAllByRole('link')
+    expect(spoken(row)).toContain('Reminder about a message in #backend')
+    expect(spoken(row)).toContain('Review the release notes')
+    expect(row.querySelector('.bg-sf-ink-950')).not.toBeNull()
   })
 })

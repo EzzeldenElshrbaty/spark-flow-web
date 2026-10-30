@@ -886,7 +886,20 @@ Spec §12 Phase 3, split into slices. R comes first because S and T need its tim
   - Found and fixed: `time.test.ts` "forgotten timer" assumed 16:00 + 12 h reads 04:00, false tonight (Cairo leaves DST on 30 Oct 2026); it now measures 12 hours elapsed. a4879c9
 
 Review: 140 files / 1394 tests pass; tsc, lint and the prototype build are clean.
-- [ ] S. Saved + Remind me: Save for later and Remind me (submenu) in the toolbar and ⋯ menu; Saved view (In progress, Archived, Completed); Activity's Reminders tab; the sidebar Saved row. Route `/w/:ws/saved`.
+- [x] S. Saved + Remind me (route `/w/:ws/saved`), in four commits:
+  - 0d7f2de: saved items (one per person and message or reply; In progress, Archived, Completed) with `remindAt` / `firedAt`; routes list, `PUT` save, `PATCH`, `DELETE`; `savedChanged`; the scheduler fires an item once as Flowbot's card plus an Activity item of kind `reminder`; DB_VERSION 17. Tests: `saved.test.ts` (12), `scheduler.test.ts`, `migrations.test.ts`.
+  - 919a66e: the Saved view (tabs with the In progress count; checkbox, author, source line, text, reminder time in accent within 24 h; Change reminder, Archive / Move to In progress, Remove from Saved) and the sidebar Saved row with its muted count, no longer behind `chatRedesign`. Tests: `SavedView.test.tsx` (10), `remindTimes.test.ts` (4), `paths.test.ts`.
+  - 619fd6a: toolbar Save for later (S, pressed while In progress; again removes it), on the phone sheet too; ⋯ Remind me about this ▸ (In 20 minutes, In 1 hour, In 3 hours, Tomorrow 9:00 AM, Next week Mon 9:00 AM, Custom…). Tests: `MessageToolbar.test.tsx` (3), `ChannelMessage.test.tsx` (4).
+  - Flowbot's reminder card (View message, Mark complete, Snooze, "Completed" once done) and Activity's Reminders tab. Tests: `ChannelMessage.test.tsx` (4), `ActivityView.test.tsx`, `activityRows.test.ts`.
+  - Ruling: the spec's Reminder record folds into SavedItem (`remindAt`, `firedAt`) — the spec says reminders appear in Saved, and two records would drift — cost if wrong: a split later if the backend wants a reminders table; the API shape stays.
+  - Ruling: Save for later on a message already In progress takes it out of Saved (a toggle, as Slack's Later) — cost if wrong: one press semantics.
+  - Ruling: completing or archiving cancels the reminder; a new time brings the item back to In progress — the spec is silent — cost if wrong: a reminder that fires on done work, or one that doesn't.
+  - Ruling: saving files (the file menu's Save for later) moves to slice W with the Files tab — cost if wrong: one menu item later.
+  - Found in the app: a document opened mid-edit (DB_VERSION 17 before its step existed) reseeded the local data; a real v16 document put back in IndexedDB migrated its reminder into Saved on reload.
+  - Deferred minor: the Saved row's action buttons are 32px on phones, under spec 6.16's 44px touch target.
+  - Process note: the part 1 tests (`saved.test.ts`) were written first but not run before the code, so their RED wasn't watched; every later part was.
+
+Review: 143 files / 1434 tests pass; tsc, lint and the prototype build are clean. In the app: a reminder fired into Flowbot's DM with View message, Mark complete (then "Completed") and Snooze; Activity → Reminders lists it; Saved at desktop and 375px.
 - [ ] T. Schedule send: split Send with the Schedule menu (Tomorrow 9:00 AM, Monday 9:00 AM, Custom time…, the time zone note); Drafts & sent view (Drafts, Scheduled, Sent; Send now, Reschedule, Edit, Delete). Route `/w/:ws/drafts`.
 - [ ] U. Threads view: followed threads, unread first, latest replies and an inline reply box, "You're caught up."; ⌘⇧T; the sidebar row. Route `/w/:ws/threads`.
 - [ ] V. Search view: a mock index that respects channel access; tabs with counts; From, In, Date, Has, Only threads chips; `from:`, `has:`, quoted phrases; View in channel; channel search button and ⌘F (`in:#channel`). Route `/w/:ws/search?q=`.

@@ -135,7 +135,7 @@ describe('a saved item’s reminder firing (spec 6.5: Flowbot DM; 6.12: Activity
     const data = await db.read()
     const dm = data.channels.find((c) => c.memberIds.includes(FLOWBOT_ID))!
     const card = data.messages.find((m) => m.channelId === dm.id)!
-    expect(card.flowbot).toEqual({ kind: 'reminder', savedId: item.id, channelId: 'c-dm-1', target: message })
+    expect(card.flowbot).toEqual({ kind: 'reminder', savedId: item.id, channelId: 'c-dm-1', rootId: null, target: message })
     expect(data.saved[0]).toMatchObject({ status: 'inProgress', firedAt: now.toISOString() })
     const activity = await api.inbox.list('ws-eng')
     expect(activity[0]).toMatchObject({ kind: 'reminder', actorId: FLOWBOT_ID, actorName: 'Flowbot', channelId: 'c-dm-1', messageId: 'm-e01', read: false })

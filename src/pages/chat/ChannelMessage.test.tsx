@@ -697,3 +697,50 @@ describe('Save for later and Remind me on a message (spec 6.4, 6.5, 10)', () => 
     expect(screen.queryByRole('button', { name: 'Save for later' })).toBeNull()
   })
 })
+
+describe('Flowbot’s reminder card (spec 6.5: preview, link, Mark complete, Snooze)', () => {
+  const note = { kind: 'reminder' as const, savedId: 's1', channelId: 'c-backend', rootId: null, target: { kind: 'message' as const, id: 'm-x' } }
+  const card = () => message('Reminder: “Ship it.” from Nour El-Sayed.', { senderId: FLOWBOT_ID, flowbot: note })
+  const saved = (status: 'inProgress' | 'completed') => ({
+    id: 's1', userId: 'u-1', workspaceId: 'ws-eng', target: note.target, status, remindAt: null, firedAt: '2026-10-28T09:00:00.000Z',
+    savedAt: '2026-10-28T08:00:00.000Z', channelId: 'c-backend', rootId: null, authorId: 'u-2', authorName: 'Nour El-Sayed', text: 'Ship it.', createdAt: null, gone: null,
+  })
+
+  it('links to the message', async () => {
+    vi.spyOn(api.saved, 'list').mockResolvedValue([saved('inProgress')])
+    const row = show(card())
+    expect(within(row).getByRole('link', { name: 'View message' }).getAttribute('href')).toBe(paths.message('engineering', 'c-backend', 'm-x'))
+  })
+
+  it('Mark complete completes the saved item; once done it says Completed', async () => {
+    vi.spyOn(api.saved, 'list').mockResolvedValue([saved('inProgress')])
+    const update = vi.spyOn(api.saved, 'update').mockResolvedValue(saved('completed'))
+    const row = show(card())
+    fireEvent.click(await within(row).findByRole('button', { name: 'Mark complete' }))
+    await vi.waitFor(() => expect(update).toHaveBeenCalledWith('s1', { status: 'completed' }))
+    cleanup()
+    vi.spyOn(api.saved, 'list').mockResolvedValue([saved('completed')])
+    const done = show(card())
+    expect(await within(done).findByText('Completed')).toBeTruthy()
+    expect(within(done).queryByRole('button', { name: 'Snooze' })).toBeNull()
+  })
+
+  it('Snooze sets a new time on the saved item', async () => {
+    vi.spyOn(api.saved, 'list').mockResolvedValue([saved('inProgress')])
+    const update = vi.spyOn(api.saved, 'update').mockResolvedValue(saved('inProgress'))
+    const row = show(card())
+    fireEvent.click(await within(row).findByRole('button', { name: 'Snooze' }))
+    await act(async () => fireEvent.click(screen.getByRole('menuitem', { name: /In 1 hour/ })))
+    await vi.waitFor(() => expect(update).toHaveBeenCalled())
+    const [id, patch] = update.mock.calls[0]
+    expect(id).toBe('s1')
+    expect(Math.abs(new Date(patch.remindAt!).getTime() - (Date.now() + 3_600_000))).toBeLessThan(5_000)
+  })
+
+  it('a reply’s reminder opens its thread; one removed from Saved keeps only the link', async () => {
+    vi.spyOn(api.saved, 'list').mockResolvedValue([])
+    const row = show(message('Reminder', { senderId: FLOWBOT_ID, flowbot: { ...note, rootId: 'm-root', target: { kind: 'reply', id: 'r-x' } } }))
+    expect(within(row).getByRole('link', { name: 'View message' }).getAttribute('href')).toBe('/w/engineering/c/c-backend?thread=m-root')
+    await vi.waitFor(() => expect(within(row).queryByRole('button', { name: 'Mark complete' })).toBeNull())
+  })
+})
