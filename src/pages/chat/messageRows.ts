@@ -88,10 +88,15 @@ export function unreadSummary(messages: ChatMessage[], newAfterSeq: number | nul
   return { count: mine.length, since: mine[0]?.createdAt ?? null }
 }
 
-export type JumpChoice = 'today' | 'yesterday' | 'week' | 'month' | 'beginning'
+export type JumpChoice = 'today' | 'yesterday' | 'week' | 'month' | 'beginning' | { date: string }
 
 /** Where a choice in the date menu starts (local midnight), or null for the very beginning. */
 export function jumpSince(choice: JumpChoice, now: Date): string | null {
+  // A day picked (YYYY-MM-DD): its local midnight.
+  if (typeof choice === 'object') {
+    const [year, month, day] = choice.date.split('-').map(Number)
+    return new Date(year, month - 1, day).toISOString()
+  }
   const y = now.getFullYear()
   const m = now.getMonth()
   const d = now.getDate()

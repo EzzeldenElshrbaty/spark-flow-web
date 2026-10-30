@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { IconArrowDown, IconChevronDown } from '@tabler/icons-react'
+import { IconArrowDown, IconCalendarEvent, IconChevronDown } from '@tabler/icons-react'
 import type { InfiniteData, UseInfiniteQueryResult } from '@tanstack/react-query'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
@@ -7,7 +7,8 @@ import type { ChatMessage, Page, User } from '@/api/types'
 import { senderName } from '@/lib/flowbot'
 import type { PendingMessage } from '@/lib/sendQueue'
 import { Icon } from '@/components/sf/Icon'
-import { Menu, MenuItem } from '@/components/sf/Menu'
+import { Menu, MenuItem, MenuSeparator } from '@/components/sf/Menu'
+import { JumpDateDialog } from '@/pages/chat/JumpDateDialog'
 import { QueryError } from '@/components/ui/QueryError'
 import { formatTime } from '@/lib/format'
 import { readUpTo } from '@/pages/chat/markRead'
@@ -472,9 +473,11 @@ const JUMPS: { choice: JumpChoice; label: string }[] = [
   { choice: 'beginning', label: 'The very beginning' },
 ]
 
-/** The date pill (spec 6.2): it opens a menu that jumps through the channel. Jump to a specific date comes later. */
+/** The date pill (spec 6.2): it opens a menu that jumps through the channel, to a choice or a day picked. */
 function DayMenu({ label, onJump, focusable = true }: { label: string; onJump: (choice: JumpChoice) => void; focusable?: boolean }) {
+  const [picking, setPicking] = useState(false)
   return (
+    <>
     <Menu
       label="Jump to"
       trigger={(props) => (
@@ -490,11 +493,17 @@ function DayMenu({ label, onJump, focusable = true }: { label: string; onJump: (
       )}
     >
       {JUMPS.map((j) => (
-        <MenuItem key={j.choice} onSelect={() => onJump(j.choice)}>
+        <MenuItem key={j.label} onSelect={() => onJump(j.choice)}>
           {j.label}
         </MenuItem>
       ))}
+      <MenuSeparator />
+      <MenuItem icon={IconCalendarEvent} onSelect={() => setPicking(true)}>
+        Jump to a specific date…
+      </MenuItem>
     </Menu>
+    {picking && <JumpDateDialog onJump={onJump} onClose={() => setPicking(false)} />}
+    </>
   )
 }
 

@@ -146,3 +146,9 @@ describe('jumpSince (spec 6.2 date menu)', () => {
     expect(jumpSince('beginning', at)).toBeNull()
   })
 })
+
+describe('jumpSince: a specific date (spec 6.2 Jump to a specific date…)', () => {
+  it('starts at local midnight of the day picked', () => {
+    expect(jumpSince({ date: '2026-10-20' }, new Date(2026, 9, 28, 15, 30))).toBe(new Date(2026, 9, 20).toISOString())
+  })
+})
