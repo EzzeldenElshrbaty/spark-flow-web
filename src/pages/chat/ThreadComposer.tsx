@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState } from 'react'
+import { useSchedule, viewerZone } from '@/api/scheduled'
 import { useDraftSaver, useDrafts } from '@/api/chat'
 import type { Channel } from '@/api/types'
 import { Checkbox } from '@/components/sf/Toggle'
@@ -42,6 +43,7 @@ export function ThreadComposer({
   const loud = useGroupConfirm(channel.kind === 'channel' ? `#${channel.name}` : 'this conversation', channel.memberIds.length)
   // Someone mentioned who isn't in the channel: add them, or send without them (spec 6.8).
   const invite = useChannelInvite(channel, directory.users)
+  const schedule = useSchedule()
   if (drafts.isPending) return skeleton
   const draft = drafts.data?.find((d) => d.channelId === channel.id && d.rootId === rootId)
   return (
@@ -66,8 +68,18 @@ export function ThreadComposer({
                 uploads.clear(sent)
               })
           }}
+          // A scheduled reply stays in the thread: with Also send ticked, Schedule steps aside.
+          onSchedule={
+            also
+              ? undefined
+              : (body, at) =>
+                  loud
+                    .confirm(body)
+                    .then(() => invite.confirm(body))
+                    .then(() => schedule.mutateAsync({ channelId: channel.id, rootId, body, sendAt: at.toISOString(), tz: viewerZone() }))
+          }
           onDraft={(body) => saveDraft(channel.id, body, rootId)}
-          error={error}
+          error={error ?? schedule.error}
           directory={directory}
           files={{
             tray: <UploadTray uploads={uploads.items} refused={uploads.refused} onRemove={uploads.remove} onRetry={uploads.retry} />,

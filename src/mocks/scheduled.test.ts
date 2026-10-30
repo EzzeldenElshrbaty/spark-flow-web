@@ -127,7 +127,7 @@ describe('chat.sent (spec 6.12 Drafts & sent: Sent)', () => {
     const data = await db.read()
     expect(sent.length).toBeGreaterThan(0)
     expect(sent.every((s) => (s.target.kind === 'message' ? data.messages : data.replies).find((r) => r.id === s.target.id)?.senderId === 'u-1')).toBe(true)
-    expect(sent.map((s) => s.createdAt)).toEqual([...sent.map((s) => s.createdAt)].sort().reverse())
+    expect(sent.map((s) => s.createdAt)).toEqual(sent.map((s) => s.createdAt).sort().reverse())
     const reply = sent.find((s) => s.target.kind === 'reply')
     if (reply) expect(reply.rootId).not.toBeNull()
     expect(sent.some((s) => s.text === '')).toBe(false)

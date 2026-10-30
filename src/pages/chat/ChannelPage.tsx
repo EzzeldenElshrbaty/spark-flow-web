@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
+import { useSchedule, viewerZone } from '@/api/scheduled'
 import { useAddMembers, useChannel, useChannels, useDrafts, useDraftSaver, useInvitations, useJumpTarget, useLeaveChannel, useMarkRead, useMessage, useMessages, useMessagesFrom, useRemoveMember, useRevokeInvitation, useSetMuted, useSetNotifyLevel, useSetStarred, useUpdateChannel } from '@/api/chat'
 import { useUsers } from '@/api/users'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -444,6 +445,7 @@ function ChannelComposer({
   const loud = useGroupConfirm(channel.kind === 'channel' ? `#${channel.name}` : 'this conversation', channel.memberIds.length)
   // Someone mentioned who isn't in the channel: add them, or send without them (spec 6.8).
   const invite = useChannelInvite(channel, directory.users)
+  const schedule = useSchedule()
   if (drafts.isPending) return composerSkeleton
   const draft = drafts.data?.find((d) => d.channelId === channel.id && d.rootId === null)
   return (
@@ -455,10 +457,16 @@ function ChannelComposer({
       placeholder={placeholder}
       initialBody={draft?.body}
       onSend={(body) => loud.confirm(body).then(() => invite.confirm(body)).then(() => onSend(body))}
+      onSchedule={(body, at) =>
+        loud
+          .confirm(body)
+          .then(() => invite.confirm(body))
+          .then(() => schedule.mutateAsync({ channelId: channel.id, rootId: null, body, sendAt: at.toISOString(), tz: viewerZone() }))
+      }
       onEditLast={onEditLast}
       onDraft={(body) => saveDraft(channel.id, body)}
       onTyping={onTyping}
-      error={error}
+      error={error ?? schedule.error}
       directory={directory}
       autoFocus={arrived}
       files={{

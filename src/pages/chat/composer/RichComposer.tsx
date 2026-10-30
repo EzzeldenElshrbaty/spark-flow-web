@@ -11,23 +11,26 @@ import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPl
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import { $findMatchingParent } from '@lexical/utils'
-import { IconAt, IconLetterCase, IconMoodSmile, IconPlus, IconSend, IconUpload, IconX } from '@tabler/icons-react'
+import { IconAt, IconCalendarEvent, IconChevronDown, IconClock, IconLetterCase, IconMoodSmile, IconPlus, IconSend, IconUpload, IconX } from '@tabler/icons-react'
 import clsx from 'clsx'
 import { $createTextNode, $getSelection, $insertNodes, $isRangeSelection, $setSelection, type BaseSelection, type EditorState, type LexicalEditor } from 'lexical'
 import { useCallback, useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react'
 import { Button, IconButton } from '@/components/sf/Button'
 import { Icon } from '@/components/sf/Icon'
-import { Menu, MenuItem } from '@/components/sf/Menu'
+import { Menu, MenuItem, MenuSeparator } from '@/components/sf/Menu'
 import { Popover } from '@/components/sf/Popover'
 import { Tooltip } from '@/components/sf/Tooltip'
 import { acceptedFiles } from '@/lib/fileTypes'
+import { formatWhen } from '@/lib/format'
 import { bodyText, type Body } from '@/lib/messageBody'
+import { schedulePresets } from '@/lib/remindTimes'
 import { EmojiPicker } from '@/pages/chat/EmojiPicker'
 import { AutocompletePlugin, type ComposerDirectory } from '@/pages/chat/composer/AutocompletePlugin'
 import { $bodyFromEditor, $editorFromBody, COMPOSER_NODES } from '@/pages/chat/composer/bodyEditor'
 import { FormatBar } from '@/pages/chat/composer/FormatBar'
 import { KeysPlugin } from '@/pages/chat/composer/KeysPlugin'
 import { COMPOSER_TRANSFORMERS } from '@/pages/chat/composer/markdown'
+import { CustomReminder } from '@/pages/chat/saved/RemindMenu'
 
 export type { ComposerDirectory }
 
@@ -104,6 +107,7 @@ export function RichComposer({
   showFormatting = true,
   files,
   allowEmpty = false,
+  onSchedule,
 }: {
   /** send: the channel's box; edit: a message's body being edited in place, with Cancel and Save (spec 6.3). */
   mode?: 'send' | 'edit'
@@ -127,6 +131,8 @@ export function RichComposer({
   files?: ComposerFiles
   /** An empty box may still send or save (an edit of a message that has files). */
   allowEmpty?: boolean
+  /** Send mode: the Send chevron's Schedule menu (spec 6.8) hands the body and the chosen time here. Text only. */
+  onSchedule?: (body: Body, at: Date) => Promise<unknown>
 }) {
   const config = {
     namespace: 'flow-composer',
@@ -154,12 +160,13 @@ export function RichComposer({
         showFormatting={showFormatting}
         files={files}
         allowEmpty={allowEmpty}
+        onSchedule={onSchedule}
       />
     </LexicalComposer>
   )
 }
 
-function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEditLast, onDraft, onTyping, error, directory, autoFocus, showFormatting = true, files, allowEmpty = false }: Parameters<typeof RichComposer>[0]) {
+function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEditLast, onDraft, onTyping, error, directory, autoFocus, showFormatting = true, files, allowEmpty = false, onSchedule }: Parameters<typeof RichComposer>[0]) {
   const editing = mode === 'edit'
   const [editor] = useLexicalComposerContext()
   const boxRef = useRef<HTMLDivElement>(null)
@@ -167,6 +174,9 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
   const [body, setBody] = useState<Body>(initialBody ?? [])
   const [formatting, setFormatting] = useState(showFormatting)
   const [pending, setPending] = useState(false)
+  // When the last box I scheduled goes out: said under the box until I write again.
+  const [scheduledFor, setScheduledFor] = useState<Date | null>(null)
+  const [customTime, setCustomTime] = useState(false)
   const [linking, setLinking] = useState<{ url: string; selection: BaseSelection | null } | null>(null)
   const draftTimer = useRef<number | undefined>(undefined)
   const [draftFailed, setDraftFailed] = useState(false)
@@ -200,27 +210,35 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
   const over = length > MAX_LENGTH
   // With files ready an empty box sends them alone; while any go up (or failed), Send waits (spec 6.9).
   const canSend = (!empty || allowEmpty || (files?.ready ?? 0) > 0) && !over && !pending && !files?.waiting
+  // Scheduled messages are text only for now: not while files are added.
+  const canSchedule = canSend && !empty && (files?.ready ?? 0) === 0 && !files?.waiting
 
   const latest = useRef({ canSend, body })
   latest.current = { canSend, body }
 
-  const send = useCallback(() => {
-    const { canSend: ok, body: now } = latest.current
-    if (!ok) return
-    setPending(true)
-    onSend(now).then(
-      () => {
-        // An edit is closed by its message; a sent message empties the box.
-        if (editing) return setPending(false)
-        window.clearTimeout(draftTimer.current)
-        editor.update(() => $editorFromBody([]))
-        latestBody.current = []
-        void saveDraft()
-        setPending(false)
-      },
-      () => setPending(false),
-    )
-  }, [editor, onSend, saveDraft, editing])
+  // Sends, or with `at` schedules (spec 6.8); either way a box that went out empties, and its draft goes.
+  const deliver = useCallback(
+    (at?: Date) => {
+      const { canSend: ok, body: now } = latest.current
+      if (!ok || (at && !onSchedule)) return
+      setPending(true)
+      ;(at ? onSchedule!(now, at) : onSend(now)).then(
+        () => {
+          // An edit is closed by its message; a sent message empties the box.
+          if (editing) return setPending(false)
+          window.clearTimeout(draftTimer.current)
+          editor.update(() => $editorFromBody([]))
+          latestBody.current = []
+          void saveDraft()
+          setPending(false)
+          setScheduledFor(at ?? null)
+        },
+        () => setPending(false),
+      )
+    },
+    [editor, onSend, onSchedule, saveDraft, editing],
+  )
+  const send = useCallback(() => deliver(), [deliver])
 
   const onChange = (state: EditorState) => {
     const next = state.read(() => $bodyFromEditor())
@@ -415,6 +433,7 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
               </Button>
             </>
           ) : (
+          <span className="inline-flex">
           <Tooltip label="Send" shortcut={['Enter']}>
             <button
               type="button"
@@ -423,16 +442,25 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
               onClick={send}
               className={clsx(
                 'sf-focus inline-grid h-7 w-9 flex-none place-items-center rounded-sf-md',
+                onSchedule && 'rounded-e-none',
                 canSend ? 'cursor-pointer bg-sf-accent-fill text-sf-on-accent hover:bg-sf-accent-fill-hover' : 'cursor-not-allowed bg-transparent text-sf-text-muted',
               )}
             >
               <Icon icon={IconSend} size={16} flip />
             </button>
           </Tooltip>
+          {onSchedule && <ScheduleMenu disabled={!canSchedule} onPick={(at) => deliver(at)} onCustom={() => setCustomTime(true)} />}
+          </span>
           )}
           </div>
         </div>
       </div>
+      {scheduledFor && empty && (
+        <p role="status" className="sf-small mt-1 text-sf-text-muted">
+          Scheduled for {formatWhen(scheduledFor.toISOString())}. It’s in Drafts & sent.
+        </p>
+      )}
+      {onSchedule && <CustomReminder open={customTime} onClose={() => setCustomTime(false)} onPick={(at) => deliver(at)} title="Schedule message" action="Schedule" />}
       {draftFailed && <p className="sf-small mt-1 text-sf-text-muted">Draft not saved. Trying again…</p>}
       {over && <p className="sf-small mt-1 text-sf-error">Keep the message under 40,000 characters.</p>}
       {error && <p className="sf-small mt-1 text-sf-error">{error.message}</p>}
@@ -502,5 +530,48 @@ function LinkBar({ editor, linking, onDone }: { editor: LexicalEditor; linking: 
       </Button>
       {invalid && <p className="sf-small basis-full text-sf-error">Enter a web address, like spark-sys.com/docs.</p>}
     </div>
+  )
+}
+
+/** The Send chevron's Schedule menu (spec 6.8): Tomorrow at 9:00 AM, Monday at 9:00 AM, — Custom time…, — the note. */
+function ScheduleMenu({ disabled, onPick, onCustom }: { disabled: boolean; onPick: (at: Date) => void; onCustom: () => void }) {
+  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  return (
+    <Menu
+      label="Schedule message"
+      trigger={(props) => (
+        <Tooltip label="Schedule message">
+          <button
+            type="button"
+            aria-label="Schedule message"
+            disabled={disabled}
+            {...props}
+            className={clsx(
+              'sf-focus inline-grid h-7 w-6 flex-none place-items-center rounded-sf-md rounded-s-none border-s',
+              disabled
+                ? 'cursor-not-allowed border-transparent bg-transparent text-sf-text-muted'
+                : 'cursor-pointer border-sf-on-accent/25 bg-sf-accent-fill text-sf-on-accent hover:bg-sf-accent-fill-hover',
+            )}
+          >
+            <Icon icon={IconChevronDown} size={16} />
+          </button>
+        </Tooltip>
+      )}
+    >
+      <p aria-hidden className="sf-label m-0 px-3 pt-1.5 pb-1 text-sf-text-muted">
+        Schedule message
+      </p>
+      {schedulePresets(new Date()).map((preset) => (
+        <MenuItem key={preset.label} icon={IconClock} onSelect={() => onPick(preset.at)}>
+          {preset.label}
+        </MenuItem>
+      ))}
+      <MenuSeparator />
+      <MenuItem icon={IconCalendarEvent} onSelect={onCustom}>
+        Custom time…
+      </MenuItem>
+      <MenuSeparator />
+      <p className="sf-meta m-0 max-w-64 px-3 py-1.5 text-sf-text-muted">Times are in {zone}. Scheduled messages are in Drafts & sent.</p>
+    </Menu>
   )
 }

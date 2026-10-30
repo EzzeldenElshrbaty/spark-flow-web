@@ -32,8 +32,23 @@ export function RemindItems({ onPick, onCustom, onClear }: { onPick: (at: Date) 
   )
 }
 
-/** Custom… (spec 6.5): a date and time, in the future, in the viewer's own time zone. */
-export function CustomReminder({ open, onClose, onPick }: { open: boolean; onClose: () => void; onPick: (at: Date) => void }) {
+/**
+ * Custom… (spec 6.5) and Custom time… (spec 6.8): a date and time, in the future, in the viewer's own time zone.
+ * `title` and `action` name what it's for (Remind me · Set reminder; Schedule message · Schedule).
+ */
+export function CustomReminder({
+  open,
+  onClose,
+  onPick,
+  title = 'Remind me',
+  action = 'Set reminder',
+}: {
+  open: boolean
+  onClose: () => void
+  onPick: (at: Date) => void
+  title?: string
+  action?: string
+}) {
   const inputId = useId()
   const [value, setValue] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -53,13 +68,13 @@ export function CustomReminder({ open, onClose, onPick }: { open: boolean; onClo
     <Modal
       open={open}
       onClose={close}
-      title="Remind me"
+      title={title}
       description={`Times are in ${zone}.`}
       footer={
         <>
           <Button onClick={close}>Cancel</Button>
           <Button variant="primary" onClick={submit}>
-            Set reminder
+            {action}
           </Button>
         </>
       }

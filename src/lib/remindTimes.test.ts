@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { customRemindError, dueSoon, remindPresets } from '@/lib/remindTimes'
+import { customRemindError, dueSoon, remindPresets, schedulePresets } from '@/lib/remindTimes'
 
 // A Wednesday, 14:10 local time.
 const now = new Date(2030, 0, 2, 14, 10)
@@ -35,5 +35,15 @@ describe('dueSoon (spec 6.12: the reminder time is accent within 24h)', () => {
     expect(dueSoon(new Date(2030, 0, 3, 14, 0).toISOString(), now)).toBe(true)
     expect(dueSoon(new Date(2030, 0, 3, 14, 20).toISOString(), now)).toBe(false)
     expect(dueSoon(new Date(2030, 0, 1, 9, 0).toISOString(), now)).toBe(true)
+  })
+})
+
+describe('schedulePresets (spec 6.8 Schedule menu)', () => {
+  it('Tomorrow at 9:00 AM and Monday at 9:00 AM, local time; on a Monday, the next one', () => {
+    expect(schedulePresets(now).map((p) => [p.label, p.at.getTime()])).toEqual([
+      ['Tomorrow at 9:00 AM', new Date(2030, 0, 3, 9, 0).getTime()],
+      ['Monday at 9:00 AM', new Date(2030, 0, 7, 9, 0).getTime()],
+    ])
+    expect(schedulePresets(new Date(2030, 0, 7, 8, 0))[1].at.getTime()).toBe(new Date(2030, 0, 14, 9, 0).getTime())
   })
 })
