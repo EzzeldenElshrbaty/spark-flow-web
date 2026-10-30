@@ -41,12 +41,28 @@ describe('uiStore', () => {
     expect(useUiStore.getState()).toMatchObject({ lastWorkspace: 'engineering', lastVisited: { engineering: '/w/engineering/c/c-backend' } })
   })
 
+  it('visit also keeps the last place and the last side per workspace, Home included (spec 5.5)', () => {
+    const { visit } = useUiStore.getState()
+    visit('engineering', '/w/engineering/c/c-backend')
+    visit('engineering', '/w/engineering/p/NEX/tasks')
+    visit('engineering', '/w/engineering/settings')
+    expect(useUiStore.getState()).toMatchObject({
+      lastByMode: { engineering: { chat: '/w/engineering/c/c-backend', projects: '/w/engineering/p/NEX/tasks' } },
+      lastMode: { engineering: 'projects' },
+      lastVisited: { engineering: '/w/engineering/settings' },
+    })
+    visit('engineering', '/w/engineering')
+    expect(useUiStore.getState().lastByMode.engineering.projects).toBe('/w/engineering')
+    // Home is the workspace's own address: it doesn't replace the last place opened inside it.
+    expect(useUiStore.getState().lastVisited.engineering).toBe('/w/engineering/settings')
+  })
+
   it('forgetPlaces clears the last places but keeps other preferences', () => {
     useUiStore.getState().visit('engineering', '/w/engineering/c/c-backend')
     useUiStore.getState().setProjectView('NEX', 'list')
     useUiStore.getState().toggleSidebar()
     useUiStore.getState().forgetPlaces()
-    expect(useUiStore.getState()).toMatchObject({ lastWorkspace: null, lastVisited: {}, lastProjectView: { NEX: 'list' }, sidebarCollapsed: true })
+    expect(useUiStore.getState()).toMatchObject({ lastWorkspace: null, lastVisited: {}, lastByMode: {}, lastMode: {}, lastProjectView: { NEX: 'list' }, sidebarCollapsed: true })
   })
 
   it('toggleSidebar flips the collapsed flag', () => {

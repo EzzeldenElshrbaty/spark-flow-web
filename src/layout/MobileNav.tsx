@@ -1,16 +1,16 @@
 import clsx from 'clsx'
 import { IconDots, IconHome, IconLayoutKanban, IconMessages, IconX, type TablerIcon } from '@tabler/icons-react'
 import { useRef } from 'react'
-import { NavLink, useMatch } from 'react-router'
-import { useChannels } from '@/api/chat'
-import { useProjects } from '@/api/tickets'
+import { NavLink, useLocation, useMatch } from 'react-router'
 import { IconButton } from '@/components/sf/Button'
 import { Icon } from '@/components/sf/Icon'
+import { WorkspaceModeSwitch } from '@/layout/ModeSwitch'
 import { Logo, SidebarContent } from '@/layout/Sidebar'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
-import { landingPath, paths, savedPlace, validSavedPlace } from '@/lib/paths'
+import { useModeTarget } from '@/layout/useGoToMode'
+import { paths } from '@/lib/paths'
 import { useDialogFocus } from '@/lib/useDialogFocus'
-import { useUiStore } from '@/lib/uiStore'
+import { modeOf } from '@/lib/workspaceMode'
 
 const itemClass = 'sf-focus flex min-h-11 w-full flex-col items-center gap-1 py-2 font-sf text-[11px]/[14px] font-medium'
 
@@ -31,26 +31,22 @@ function TabLink({ to, active, icon, label }: { to: string | undefined; active: 
   )
 }
 
-/** Home · Projects · Chat · More (search is in the top bar). Chat and Projects reopen what you last had open there. */
+/**
+ * Home · Projects · Chat · More (search is in the top bar). Chat and Projects reopen the last place on their side
+ * (spec 5.5), as the sidebar's switch does; Home has its own tab, so Projects starts on the project list.
+ */
 export function MobileBottomBar({ onOpenMore }: { onOpenMore: () => void }) {
   const { workspace } = useCurrentWorkspace()
-  const lastVisited = useUiStore((state) => state.lastVisited)
-  const channels = useChannels(workspace?.id).data
-  const projects = useProjects(workspace?.id).data
-  const inChat = useMatch('/w/:ws/c/*') !== null
+  const { pathname } = useLocation()
   const inHome = useMatch({ path: '/w/:ws', end: true }) !== null
-  // Every hook runs every render: the three matches are read first, then combined.
-  const inProject = useMatch('/w/:ws/p/*') !== null
-  const inProjectList = useMatch('/w/:ws/projects') !== null
-  const inMyTasks = useMatch('/w/:ws/tasks') !== null
-  const inProjects = inProject || inProjectList || inMyTasks
+  const side = modeOf(pathname)
+  const inChat = side === 'chat'
+  const inProjects = side === 'projects' && !inHome
 
   const slug = workspace?.slug
-  const saved = slug ? savedPlace(slug, lastVisited) : undefined
-  // A saved place is only used while it still leads somewhere (its channel or project may be gone).
-  const usable = saved && channels && projects && validSavedPlace(saved, channels, projects) ? saved : undefined
-  const chatTo = slug && channels ? (usable?.startsWith(`/w/${slug}/c/`) ? usable : landingPath(slug, {}, channels)) : undefined
-  const projectsTo = slug ? (usable?.startsWith(`/w/${slug}/p/`) ? usable : paths.projects(slug)) : undefined
+  const chatTo = useModeTarget('chat')
+  const projectsTarget = useModeTarget('projects')
+  const projectsTo = slug && projectsTarget === paths.home(slug) ? paths.projects(slug) : projectsTarget
 
   return (
     <nav className="sf fixed inset-x-0 bottom-0 z-30 border-t border-sf-line bg-sf-surface pb-[env(safe-area-inset-bottom)] lg:hidden" aria-label="Main">
@@ -87,6 +83,9 @@ export function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => 
         <div className="flex h-14 flex-none items-center justify-between ps-2 pe-3">
           <Logo onClick={onClose} />
           <IconButton label="Close menu" icon={IconX} tone="sidebar" onClick={onClose} data-autofocus />
+        </div>
+        <div className="flex flex-none px-2 pb-3">
+          <WorkspaceModeSwitch size="phone" />
         </div>
         <div className="min-h-0 flex-1">
           <SidebarContent onNavigate={onClose} />

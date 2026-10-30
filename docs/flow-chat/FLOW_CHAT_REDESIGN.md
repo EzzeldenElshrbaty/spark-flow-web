@@ -207,6 +207,39 @@ Pressing ⌘K or Ctrl+K focuses search. When a query is active, the box shows th
 | 768–1023 | The sidebar collapses to a drawer opened by the toggle |
 | <768 | Single pane (6.16). The topic, facepile and Call collapse into the channel's more menu; the top bar hides the role text and round buttons |
 
+### 5.5 Workspaces: Projects | Chat (approved 30 Oct 2026)
+
+Project work and chat are two sides of one workspace. Each side owns the whole sidebar; the switch under the logo moves between them. Design: the "Projects / Chat split" canvas.
+
+**Which side is on screen** comes from the address (`src/lib/workspaceMode.ts` `modeOf`), so no route changes:
+
+| Side | Addresses |
+|---|---|
+| Projects | Home, Projects, My tasks, Teams, Dashboard, Time and cost, every project tab (its Chat tab included) |
+| Chat | Channels and DMs, Threads, Activity, Drafts & sent, Saved |
+| Neither | Settings, search and anything else: the side you were on stays |
+
+**Sidebar per side** (replaces the single order in 5.1 for the sections below; Settings stays pinned on both):
+
+- Projects: the New task button in the header (one project you can manage: opens its sheet; several: a menu of them; none: hidden), then Work, Manage and Projects.
+- Chat: the New message button in the header, then the chat links without a heading (Threads, Activity, Drafts & sent, Saved), then Starred, Channels, Direct messages and Apps.
+
+**The switch** (`src/layout/ModeSwitch.tsx`):
+
+- A `tablist` named "Workspace" with two tabs. The side on screen is selected and is the only tab in the tab order; arrows, Home and End move focus, Enter or a click goes. Clicking the open side does nothing.
+- Track `sidebar-hover` with a 1px inset `ink-700` line; a white thumb under the open side slides 300ms `ease-sf` (none with reduced motion), RTL-mirrored. The open side's icon is `red-600`.
+- The other side carries its news: Chat its red count (the sum of the sidebar rows' counts), Projects a dot while I have unread mentions in task comments. Both are read out ("Chat, 3 unread").
+- Sizes: 40px tall in the sidebar; upright 48×88 with screen-reader-only names in the collapsed sidebar; 48px tall in the phone drawer, which stays open after a switch.
+- Tooltip: the side's name, or "Switch to Chat" with the shortcut.
+
+**Where a switch goes:** the last place opened on that side in this workspace (`uiStore.lastByMode`, persisted), while it still exists; else #general for Chat and Home for Projects. Waits while the channel or project lists it must check are loading.
+
+**Keys:** G then P opens Projects, G then C opens Chat, within a second, by key position so any keyboard layout works. Not while typing, with a modifier, on a repeat or with a dialog open. Taken in the capture phase, so the P never also pins a focused message.
+
+**Phone:** the bottom bar (Home · Projects · Chat · More) lights Chat on any chat page and Projects on any projects page but Home; its Projects tab never goes to Home, which has its own tab. The drawer shows the switch under its header.
+
+**Search** stays global; only the placeholder follows the side ("Search projects, tasks, people…" / "Search channels, people, tasks…").
+
 ## 6. Component and feature specs
 
 Each item lists anatomy, states, behaviour and acceptance criteria (AC). Class names refer to the reference CSS.
@@ -634,6 +667,7 @@ Store `body` as structured rich text: blocks with inline marks and entities (men
   | Shift+Esc | Mark all read |
   | Up | Edit last message |
   | Message focus: T / E / U / P / L / S | Thread, edit, unread, pin, link, save |
+  | G then P / G then C | Projects side / Chat side (5.5) |
 
 - **RTL (Arabic UI):**
   - Mirror the layout with logical CSS properties (`margin-inline-start`, `inset-inline-end`).

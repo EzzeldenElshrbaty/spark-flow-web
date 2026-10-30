@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware'
+import { modeOf, type PlacesByMode, type WorkspaceMode } from '@/lib/workspaceMode'
 
 export type ProjectView = 'board' | 'list' // the Tasks tab's view
 export type Typer = { userId: string; until: number }
@@ -16,6 +17,8 @@ type UiState = {
   collapsedSections: string[]                    // sidebar sections closed by their chevron (work, channels…)
   lastWorkspace: string | null
   lastVisited: Record<string, string>            // workspace slug → last path opened in it
+  lastByMode: PlacesByMode                       // workspace slug → last path on each side, Projects and Chat (spec 5.5)
+  lastMode: Record<string, WorkspaceMode>        // workspace slug → the side last opened, for pages both sides share
   lastProjectView: Record<string, ProjectView>   // project key → board or list on its Tasks tab
   lastFilters: Record<string, { phase?: string; sprint?: string }> // project key → its Tasks tab's last phase and sprint
   typing: Record<string, Typer[]>                // channel id → who is typing; never persisted
@@ -25,6 +28,7 @@ type UiActions = {
   toggleSidebar: () => void
   toggleSection: (id: string) => void
   setSidebarWidth: (px: number) => void
+  /** Remembers a place: the last one in the workspace (inside it), and the last one on its side (Home included). */
   visit: (workspaceSlug: string, path: string) => void
   /** Forgets where the person was (after the demo data is reset, those places may be gone). */
   forgetPlaces: () => void
@@ -39,6 +43,8 @@ export const initialUiState: UiState = {
   collapsedSections: [],
   lastWorkspace: null,
   lastVisited: {},
+  lastByMode: {},
+  lastMode: {},
   lastProjectView: {},
   lastFilters: {},
   typing: {},
@@ -102,8 +108,20 @@ export const useUiStore = create<UiState & UiActions>()(
             : [...state.collapsedSections, id],
         })),
       visit: (workspaceSlug, path) =>
-        set((state) => ({ lastWorkspace: workspaceSlug, lastVisited: { ...state.lastVisited, [workspaceSlug]: path } })),
-      forgetPlaces: () => set({ lastWorkspace: null, lastVisited: {} }),
+        set((state) => {
+          const mode = modeOf(path)
+          // Home is the workspace's own address: it counts for its side, but the last place is one opened inside.
+          const inside = path.startsWith(`/w/${workspaceSlug}/`)
+          return {
+            lastWorkspace: workspaceSlug,
+            ...(inside && { lastVisited: { ...state.lastVisited, [workspaceSlug]: path } }),
+            ...(mode && {
+              lastByMode: { ...state.lastByMode, [workspaceSlug]: { ...state.lastByMode[workspaceSlug], [mode]: path } },
+              lastMode: { ...state.lastMode, [workspaceSlug]: mode },
+            }),
+          }
+        }),
+      forgetPlaces: () => set({ lastWorkspace: null, lastVisited: {}, lastByMode: {}, lastMode: {} }),
       setProjectView: (key, view) => set((state) => ({ lastProjectView: { ...state.lastProjectView, [key]: view } })),
       setProjectFilters: (key, filters) => set((state) => ({ lastFilters: { ...state.lastFilters, [key]: filters } })),
       addTyper: (channelId, userId, now = Date.now()) =>

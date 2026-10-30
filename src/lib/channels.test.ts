@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Channel, MentionItem } from '@/api/types'
 import { FLOWBOT_ID } from '@/lib/flowbot'
-import { channelLabel, countNoun, onlyAdminsLine, cantWriteLine, inWorkspace, mutedLast, mustJoin, readOnlyFor, sidebarChannels, sidebarRowState, sortChannels, unreadMentions } from '@/lib/channels'
+import { channelLabel, chatCount, countNoun, onlyAdminsLine, cantWriteLine, inWorkspace, mutedLast, mustJoin, readOnlyFor, sidebarChannels, sidebarRowState, sortChannels, unreadMentions, unreadTaskMentions } from '@/lib/channels'
 import { seed } from '@/mocks/seed'
 
 const data = seed(new Date('2026-10-26T09:00:00Z')).data
@@ -200,5 +200,32 @@ describe('cantWriteLine: what shows instead of the composer when I may post but 
   it('Only admins in a restricted channel; Flowbot’s own line in its DM', () => {
     expect(cantWriteLine(channel('general'))).toBe('Only admins can post in #general.')
     expect(cantWriteLine(dm(['u-1', FLOWBOT_ID]))).toBe('Flowbot sends reminders here. It can’t read replies.')
+  })
+})
+
+describe('the workspace switch badges (spec 5.5)', () => {
+  const item = (over: Partial<MentionItem>): MentionItem => ({
+    id: 'm', source: 'comment', authorId: 'u-2', authorName: 'Hala', excerpt: '', createdAt: '2026-10-26T09:00:00Z',
+    read: false, workspaceId: 'ws-eng', channelId: null, messageId: null, taskKey: 'NEX-1', projectId: 'p-nex', ...over,
+  })
+
+  it('chatCount adds up the red count of every chat row, by the row rules', () => {
+    const atMentions = { ...channel('backend'), unreadCount: 4 }
+    const atAll = { ...dm(['u-1', 'u-2']), unreadCount: 2 }
+    const quiet = { ...channel('general'), unreadCount: 6, notifyLevel: 'none' as const }
+    const muted = { ...dm(['u-1', 'u-3']), unreadCount: 9, muted: true }
+    expect(chatCount([{ channel: atMentions, mentions: 1 }, { channel: atAll, mentions: 0 }, { channel: quiet, mentions: 3 }, { channel: muted, mentions: 0 }])).toBe(3)
+    expect(chatCount([])).toBe(0)
+  })
+
+  it('unreadTaskMentions counts my unread mentions in task comments of this workspace (the Projects dot)', () => {
+    const items = [
+      item({ id: '1' }),
+      item({ id: '2', read: true }),
+      item({ id: '3', workspaceId: 'ws-design' }),
+      item({ id: '4', source: 'message', channelId: 'c-general', taskKey: null, projectId: null }),
+    ]
+    expect(unreadTaskMentions(items, 'ws-eng')).toBe(1)
+    expect(unreadTaskMentions(undefined, 'ws-eng')).toBe(0)
   })
 })

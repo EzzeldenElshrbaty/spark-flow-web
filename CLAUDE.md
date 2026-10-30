@@ -66,4 +66,5 @@ The approved chat redesign (`docs/flow-chat/FLOW_CHAT_REDESIGN.md` + `design/`) 
 - **Names**: Call, Page, Task list, Automation, Saved, Create task.
 - **Gallery**: `/dev/ui` (prototype build only) shows every primitive state in both themes; component tests are `*.test.tsx` in jsdom, and scrolling and layout tests are `*.browser.test.tsx` in Chromium.
 - **Feature flag**: sidebar sections whose data lands in a later phase hide behind `chatRedesign` in `src/lib/features.ts`.
+- **Workspaces** (spec 5.5): the sidebar shows one side at a time, Projects or Chat. The side comes from the address (`lib/workspaceMode.ts` `modeOf`; Settings and search keep the last side) and never from a stored flag; the switch under the logo (`layout/ModeSwitch.tsx`), G then P / G then C and the phone bar all go through `useGoToMode`, which reopens that side's last place (`uiStore.lastByMode`). A new page joins a side by matching `modeOf`'s patterns, with a test in `workspaceMode.test.ts`.
 - Don't build anything marked OPEN in the spec's section 13.

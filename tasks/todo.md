@@ -918,3 +918,38 @@ Review: 145 files / 1454 tests pass; tsc, lint and the prototype build are clean
 - [ ] Z. Preferences: delivery (desktop, push, email digest), Do Not Disturb, the global default level, keywords.
 
 Left out: GIFs (OPEN, spec 13.6); app commands in / (Phase 4 apps); Forward (no flow in the spec, needs a ruling).
+
+# Workspace split: Projects | Chat (30 Oct 2026, approved)
+
+Design: the "Separate workspaces" row of the Flow Chat Redesign canvas (Projects workspace, Chat workspace, Task inside Chat, Workspace switch states) and `ModeSwitch` in the Spark Flow design system. Taken over from Claude Code after slice T (d5370e3).
+
+```mermaid
+flowchart LR
+  URL[address] -->|modeOf| M{side}
+  M -->|c/, activity, saved, drafts, threads| Chat
+  M -->|home, projects, tasks, teams, dashboard, time, p/| Projects
+  M -->|settings, search, other| Last[last side for this workspace, else Chat]
+  Visit[WorkspaceGate visit] --> Store[uiStore: lastVisited + lastByMode + lastMode]
+  Switch[ModeSwitch / G then P, G then C / phone bar] -->|modeTarget| Target{saved place on that side still valid?}
+  Target -->|yes| Saved[that place]
+  Target -->|no| Start[Chat: #general · Projects: Home]
+```
+
+- [x] 1. `lib/workspaceMode.ts`: `modeOf(pathname)` (chat, projects or null for shared pages) and `modeTarget(slug, mode, lastByMode, channels, projects)` (the saved place on that side while it still leads somewhere, else #general or Home). Tests: `workspaceMode.test.ts`.
+- [x] 2. `uiStore`: `visit` also keeps `lastByMode[slug][mode]` and `lastMode[slug]`; `forgetPlaces` clears them. Tests: `uiStore.test.ts`.
+- [x] 3. `layout/useWorkspaceMode.ts`: the side on screen (from the address, else the last side, else Chat). `useSidebarGroups` gains `chatCount` (the red counts of every chat row) and `projectNews` (my unread mentions in task comments). Tests: `useWorkspaceMode.test.tsx`.
+- [x] 4. `layout/ModeSwitch.tsx`: tablist of Projects and Chat; white thumb that slides 300 ms (none with reduced motion); roving focus, arrows move, Enter or Space switches; tooltip "Projects · G then P" / "Chat · G then C"; Chat shows `chatCount`, Projects a dot for `projectNews`; sizes `sidebar` (40px), `rail` (48×88, collapsed sidebar) and `phone` (48px). Tests: `ModeSwitch.test.tsx`.
+- [x] 5. Sidebar by side: Projects shows Work, Manage, Projects; Chat shows Threads (flag), Activity, Drafts & sent, Saved, Starred, Channels, Direct messages, Apps; Settings in both. The switch under the logo; the drawer gets the phone size. Header button: New message on Chat; on Projects New task (a menu of the projects where I may add tasks, then the existing TaskSheet; one project skips the menu; hidden with none). Tests: `Sidebar.test.tsx`, `NewTaskButton.test.tsx`.
+- [x] 6. Top bar search placeholder by side ("Search projects, tasks, people…" / "Search channels, people, tasks…"); results stay global (slice V orders them by side). Phone bottom bar uses `modeTarget` instead of its own copy. Tests: `MobileNav.test.tsx`, `GlobalSearch` placeholder.
+- [x] 7. `useAppShortcuts`: G then P, G then C (within 1 s; not in a text box, not with a dialog open, not on repeats, by `code`). Tests: `useAppShortcuts.test.tsx` and a real-key browser test (lesson of 28 Oct).
+- [x] 8. Docs: spec §5.5 Workspaces; CLAUDE.md line; review here. Full suite, tsc, lint, prototype build; app check at 1440×900 light and dark and at 390px.
+
+## Review (30 Oct 2026)
+
+- Done as planned, test first, with these differences:
+  - Step 7 lives in its own `layout/useModeShortcuts.ts` (called from `AppLayout`) rather than inside `useAppShortcuts`: it listens in the capture phase so the second key never reaches a focused message, which the other shortcuts must not do. `useModeShortcuts.browser.test.tsx` presses real keys and fails if the listener moves to the bubble phase.
+  - The tooltip shows the side's name ("Switch to Chat" on the other side) with the G P / G C keys as `Kbd`s, as the other tooltips do.
+  - `--color-sf-red-600` was added to `index.css` for the open side's icon.
+- Checks: unit and browser suites, `tsc -b`, lint and `build:prototype` pass. The entry chunk grows 0.46 kB gzipped. App checked at 1440×900 in light and dark (both sides, the collapsed rail) and at 390px (bottom bar, drawer); a click on Projects then Chat comes back to the same channel, and G then C from a project opens #general.
+- Already flaky before this change (on d5370e3 one of them failed in 3 of 4 full runs on a 2-CPU machine): `RichComposer` "@ offers people", `a11y` "the open mention list" and `MessageList` "opens at the New line". Each passes alone. Left for a separate fix.
+

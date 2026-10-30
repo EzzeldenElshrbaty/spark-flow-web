@@ -27,7 +27,10 @@ import { Avatar } from '@/components/sf/Avatar'
 import { Count } from '@/components/sf/Badge'
 import { IconButton } from '@/components/sf/Button'
 import { Icon } from '@/components/sf/Icon'
+import { WorkspaceModeSwitch } from '@/layout/ModeSwitch'
+import { NewTaskButton } from '@/layout/NewTaskButton'
 import { useSidebarGroups, type ChannelRow } from '@/layout/useSidebarGroups'
+import { useWorkspaceMode } from '@/layout/useWorkspaceMode'
 import { countNoun, sidebarRowState } from '@/lib/channels'
 import { hasFeature } from '@/lib/features'
 import { isFlowbot } from '@/lib/flowbot'
@@ -265,11 +268,15 @@ export function SidebarContent({
   const canDashboard = check('dashboard.view', { managesAny })
   const preview = hasFeature('chatRedesign')
   const row = { collapsed, onNavigate }
+  // One side of Flow at a time (spec 5.5): the switch above picks Projects or Chat.
+  const side = useWorkspaceMode()
+  const onProjects = side === 'projects'
+  const onChat = side === 'chat'
 
   return (
     <div className="sf flex h-full flex-col px-2 pb-2 text-sf-sidebar-text">
       <nav className="flex min-h-0 flex-1 flex-col overflow-y-auto pt-1" aria-label="Workspace">
-        {slug && (
+        {slug && onProjects && (
           <SideSection id="work" label="Work" first {...row}>
             <li className="flex-none">
               <SideLink to={paths.home(slug)} end label="Home" icon={IconHome} {...row} />
@@ -286,7 +293,7 @@ export function SidebarContent({
           </SideSection>
         )}
 
-        {slug && (canDashboard || check('timeCost.view')) && (
+        {slug && onProjects && (canDashboard || check('timeCost.view')) && (
           <SideSection id="manage" label="Manage" {...row}>
             {canDashboard && (
               <li className="flex-none">
@@ -301,8 +308,9 @@ export function SidebarContent({
           </SideSection>
         )}
 
-        {slug && (
-          <SideSection id="chat" label="Chat" {...row}>
+        {slug && onChat && (
+          // The switch says Chat already, so these rows open the side without a heading of their own.
+          <ul className="flex flex-none flex-col gap-0.5">
             {preview && (
               <li className="flex-none">
                 <SideLink to={`/w/${slug}/threads`} label="Threads" icon={IconMessages} {...row} />
@@ -317,10 +325,10 @@ export function SidebarContent({
             <li className="flex-none">
               <SideLink to={paths.saved(slug)} label="Saved" icon={IconBookmark} trail={savedInProgress || undefined} {...row} />
             </li>
-          </SideSection>
+          </ul>
         )}
 
-        {slug && workspace && !chatLoading && starred.length > 0 && (
+        {slug && workspace && onChat && !chatLoading && starred.length > 0 && (
           <SideSection id="starred" label="Starred" {...row}>
             {starred.map((r) => (
               <li key={r.channel.id} className="flex-none">
@@ -330,7 +338,7 @@ export function SidebarContent({
           </SideSection>
         )}
 
-        {slug && workspace && (
+        {slug && workspace && onChat && (
           <SideSection
             id="channels"
             label="Channels"
@@ -356,7 +364,7 @@ export function SidebarContent({
           </SideSection>
         )}
 
-        {slug && workspace && (
+        {slug && workspace && onChat && (
           <SideSection
             id="dms"
             label="Direct messages"
@@ -377,7 +385,7 @@ export function SidebarContent({
           </SideSection>
         )}
 
-        {slug && workspace && !chatLoading && apps.length > 0 && (
+        {slug && workspace && onChat && !chatLoading && apps.length > 0 && (
           <SideSection id="apps" label="Apps" {...row}>
             {apps.map((r) => (
               <li key={r.channel.id} className="flex-none">
@@ -387,7 +395,7 @@ export function SidebarContent({
           </SideSection>
         )}
 
-        {slug && (projectsLoading || projects.length > 0) && (
+        {slug && onProjects && (projectsLoading || projects.length > 0) && (
           <SideSection id="projects" label="Projects" {...row}>
             {projectsLoading ? (
               <GroupSkeleton />
@@ -460,14 +468,16 @@ export function Logo({ collapsed = false, onClick }: { collapsed?: boolean; onCl
   )
 }
 
-/** Logo row with the white New message button at the end (spec 5.1). */
+/** Logo row with the white button at the end (spec 5.1, 5.5): New message on the Chat side, New task on Projects. */
 export function SidebarHeader({ collapsed = false, onNavigate }: { collapsed?: boolean; onNavigate?: () => void }) {
   const { workspace } = useSidebarGroups()
+  const side = useWorkspaceMode()
   const [newMessage, setNewMessage] = useState(false)
   return (
     <div className={clsx('sf flex h-14 flex-none items-center gap-1 ps-2 pe-3', collapsed && 'justify-center px-0')}>
       <Logo collapsed={collapsed} onClick={onNavigate} />
-      {!collapsed && workspace && (
+      {!collapsed && workspace && side === 'projects' && <NewTaskButton />}
+      {!collapsed && workspace && side === 'chat' && (
         <>
           <IconButton label="New message" icon={IconEdit} tone="compose" className="ms-auto" onClick={() => setNewMessage(true)} />
           {newMessage && (
@@ -545,6 +555,9 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
       className="sf sticky top-0 hidden h-screen flex-none flex-col bg-sf-app-frame lg:flex"
     >
       <SidebarHeader collapsed={collapsed} />
+      <div className={clsx('flex flex-none pb-3', collapsed ? 'justify-center' : 'px-2')}>
+        <WorkspaceModeSwitch size={collapsed ? 'rail' : 'sidebar'} />
+      </div>
       <div className="min-h-0 flex-1">
         <SidebarContent collapsed={collapsed} />
       </div>

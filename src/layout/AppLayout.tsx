@@ -12,6 +12,7 @@ import { Sidebar } from '@/layout/Sidebar'
 import { PhoneTimerBar, TimerAnnouncer } from '@/layout/TimerBar'
 import { TopBar } from '@/layout/TopBar'
 import { useAppShortcuts } from '@/layout/useAppShortcuts'
+import { useModeShortcuts } from '@/layout/useModeShortcuts'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { useUiStore } from '@/lib/uiStore'
 import { useRole } from '@/lib/useRole'
@@ -25,6 +26,8 @@ export function AppLayout() {
   const [searchOpen, setSearchOpen] = useState(false)
   // ⌘/Ctrl+Shift+A for Activity, anywhere in the workspace (spec 10).
   useAppShortcuts(useCurrentWorkspace().workspace?.slug)
+  // G then P / G then C: the two sides of Flow (spec 5.5).
+  useModeShortcuts()
   // Without an account nothing below can be decided: say why instead of refusing every page.
   const account = useRole()
   // A pane page (a channel) fills the card instead of scrolling inside the padded page column.

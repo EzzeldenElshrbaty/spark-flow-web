@@ -6,6 +6,7 @@ import type { Channel, Project, TaskView, User, Workspace } from '@/api/types'
 import { channelLabel, isArchived } from '@/lib/channels'
 import { paths } from '@/lib/paths'
 import type { Role } from '@/lib/roles'
+import type { WorkspaceMode } from '@/lib/workspaceMode'
 import { allNavItems, canSee, settingsItem } from '@/navigation'
 
 export type Shortcut = { id: string; title: string; subtitle: string; link: string; icon?: TablerIcon; keywords: string[] }
@@ -145,4 +146,9 @@ export function opensSearch(event: KeyboardEvent): boolean {
   const target = event.target as HTMLElement | null
   const typing = Boolean(target && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)))
   return (event.key === 'k' && (event.metaKey || event.ctrlKey)) || (event.key === '/' && !typing)
+}
+
+/** The search box's hint on each side of Flow (spec 5.5). Both sides search everything; the hint leads with theirs. */
+export function searchPlaceholder(mode: WorkspaceMode): string {
+  return mode === 'projects' ? 'Search projects, tasks, people…' : 'Search channels, people, tasks…'
 }

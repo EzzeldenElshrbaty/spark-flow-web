@@ -6,7 +6,7 @@ import { useScheduled } from '@/api/scheduled'
 import { useMyMentions } from '@/api/mentions'
 import { useProjects } from '@/api/tickets'
 import { useUsers } from '@/api/users'
-import { channelLabel, mutedLast, sidebarChannels, sortChannels, unreadMentions } from '@/lib/channels'
+import { channelLabel, chatCount, mutedLast, sidebarChannels, sortChannels, unreadMentions, unreadTaskMentions } from '@/lib/channels'
 import { isFlowbotDm } from '@/lib/flowbot'
 import { projectPeopleIds } from '@/lib/projectPeople'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
@@ -42,16 +42,29 @@ export function useSidebarGroups() {
   // A starred channel or DM is listed once, under Starred (spec §5.1).
   const listed = [...sidebarChannels(sorted.channels, persona.id, myProjectChannelIds), ...sorted.dms, ...sorted.apps].map(row)
 
+  const mentions = unreadMentions(mentionsQuery.data, workspace?.id)
+  const starred = mutedLast(listed.filter((r) => r.channel.starred), (r) => r.channel.muted)
+  const channels = listed.filter((r) => r.channel.kind === 'channel' && !r.channel.starred)
+  const dms = listed.filter((r) => r.channel.kind === 'dm' && !isFlowbotDm(r.channel) && !r.channel.starred)
+  const apps = listed.filter((r) => isFlowbotDm(r.channel) && !r.channel.starred)
+  // As the rows show them: Starred and Channels count my mentions there, DMs and Apps their messages.
+  const withMentions = (r: ChannelRow) => ({ channel: r.channel, mentions: mentions.byChannel.get(r.channel.id) ?? 0 })
+  const ownCount = (r: ChannelRow) => ({ channel: r.channel, mentions: 0 })
+
   return {
     workspace,
-    starred: mutedLast(listed.filter((r) => r.channel.starred), (r) => r.channel.muted),
-    channels: listed.filter((r) => r.channel.kind === 'channel' && !r.channel.starred),
-    dms: listed.filter((r) => r.channel.kind === 'dm' && !isFlowbotDm(r.channel) && !r.channel.starred),
+    starred,
+    channels,
+    dms,
     /** Flowbot's DM (spec 5.1 Apps), once Flowbot has written. */
-    apps: listed.filter((r) => isFlowbotDm(r.channel) && !r.channel.starred),
+    apps,
     projects,
     /** My unread mentions here: each channel row's badge. */
-    mentions: unreadMentions(mentionsQuery.data, workspace?.id),
+    mentions,
+    /** The Chat side's count on the workspace switch (spec 5.5): every chat row's red count. */
+    chatCount: chatCount([...starred.map(withMentions), ...channels.map(withMentions), ...dms.map(ownCount), ...apps.map(ownCount)]),
+    /** My unread mentions in task comments here: the Projects side's dot (spec 5.5). */
+    projectNews: unreadTaskMentions(mentionsQuery.data, workspace?.id),
     /** Unread items in my Activity here (spec 6.12): its row's count. */
     activityUnread: (activityQuery.data ?? []).filter((item) => !item.read).length,
     /** My In progress saved items here (spec 5.1): the Saved row's muted count. */

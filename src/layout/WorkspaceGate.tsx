@@ -15,8 +15,8 @@ export function WorkspaceGate() {
   const known = workspaces?.some((w) => w.slug === ws) ?? false
 
   useEffect(() => {
-    // The bare workspace address only redirects; remembering it would overwrite the real last place.
-    if (ws && known && pathname.startsWith(`${paths.workspace(ws)}/`)) visit(ws, pathname)
+    // The store keeps Home for its side only, so the last place inside the workspace isn't overwritten by it.
+    if (ws && known && (pathname === paths.workspace(ws) || pathname.startsWith(`${paths.workspace(ws)}/`))) visit(ws, pathname)
   }, [ws, known, pathname, visit])
 
   if (isPending) return <PageSkeleton />

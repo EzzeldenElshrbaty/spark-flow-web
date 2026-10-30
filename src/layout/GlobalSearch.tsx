@@ -11,7 +11,8 @@ import { useProjects, useTasksOf } from '@/api/tickets'
 import { useUsers } from '@/api/users'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { useRole } from '@/lib/useRole'
-import { findShortcuts, opensSearch, peopleShortcuts, shortcutsFor, taskShortcuts, workspaceShortcuts } from '@/layout/searchShortcuts'
+import { findShortcuts, opensSearch, peopleShortcuts, searchPlaceholder, shortcutsFor, taskShortcuts, workspaceShortcuts } from '@/layout/searchShortcuts'
+import { useWorkspaceMode } from '@/layout/useWorkspaceMode'
 import { paths } from '@/lib/paths'
 
 // TODO(api): search messages on the server too, as Spark CRM's GlobalSearch does for its records
@@ -189,6 +190,7 @@ function useKeyboard(groups: Group[], open: (link: string) => void, close: () =>
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
 
 export function DesktopSearch() {
+  const side = useWorkspaceMode()
   const [term, setTerm] = useState('')
   const [open, setOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -245,7 +247,7 @@ export function DesktopSearch() {
         }}
         onFocus={() => setOpen(true)}
         onKeyDown={keys.onKeyDown}
-        placeholder="Search pages, tasks, people, channels…"
+        placeholder={searchPlaceholder(side)}
         className="sf-ui h-sf-input w-full truncate rounded-sf-md border border-sf-line bg-sf-surface-sunken ps-9 pe-16 text-sf-text outline-none placeholder:text-sf-text-muted focus:border-sf-focus focus:shadow-[0_0_0_3px_var(--surface-mention)]"
       />
       <span className="absolute end-2 top-1/2 flex -translate-y-1/2 items-center gap-1">

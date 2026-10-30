@@ -75,3 +75,11 @@ describe('opensSearch (spec 10: ⌘/Ctrl+K)', () => {
     expect(opensSearch(key({ key: 'k', metaKey: true }, null, true))).toBe(false)
   })
 })
+
+describe('searchPlaceholder (spec 5.5)', () => {
+  it('leads with what each side looks for; both still search everything', async () => {
+    const { searchPlaceholder } = await import('@/layout/searchShortcuts')
+    expect(searchPlaceholder('projects')).toBe('Search projects, tasks, people…')
+    expect(searchPlaceholder('chat')).toBe('Search channels, people, tasks…')
+  })
+})

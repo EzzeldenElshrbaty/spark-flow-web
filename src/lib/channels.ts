@@ -77,6 +77,16 @@ export function unreadMentions(items: MentionItem[] | undefined, workspaceId: st
   return { byChannel }
 }
 
+/** My unread mentions in task comments of a workspace: the Projects side's dot on the workspace switch (spec 5.5). */
+export function unreadTaskMentions(items: MentionItem[] | undefined, workspaceId: string | undefined): number {
+  return (items ?? []).filter((item) => !item.read && item.workspaceId === workspaceId && !item.channelId && Boolean(item.taskKey)).length
+}
+
+/** The Chat side's count on the workspace switch (spec 5.5): every chat row's red count, by the row rules. */
+export function chatCount(rows: { channel: Channel; mentions: number }[]): number {
+  return rows.reduce((sum, row) => sum + sidebarRowState(row.channel, row.mentions).count, 0)
+}
+
 /**
  * How a sidebar row shows a channel (spec §5.1, 6.11): bold while it has unread messages, with a count by what it
  * notifies me about: every unread message at All (a DM's default), my mentions at Mentions (a channel's), none at
