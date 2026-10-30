@@ -669,3 +669,31 @@ describe('RichComposer / shortcuts (spec 6.8)', () => {
     await vi.waitFor(() => expect((screen.getByRole('button', { name: 'Shortcuts' }) as HTMLButtonElement).disabled).toBe(true))
   })
 })
+
+describe('RichComposer Text snippet (spec 6.8, 6.9)', () => {
+  const files = { tray: null, onAdd: () => {}, ready: 0, waiting: null }
+
+  it('Ctrl/Cmd+Shift+Enter hands the box text to the snippet and empties the box once it is made', async () => {
+    const onSnippet = vi.fn(async (_text: string) => true)
+    const { editor, onSend } = await ready({ onSnippet, files })
+    await userEvent.click(editor)
+    await userEvent.keyboard('SELECT 1;{Control>}{Shift>}{Enter}{/Shift}{/Control}')
+    await vi.waitFor(() => expect(onSnippet).toHaveBeenCalledWith('SELECT 1;'))
+    await vi.waitFor(() => expect(editor.textContent).toBe(''))
+    expect(onSend).not.toHaveBeenCalled()
+  })
+
+  it('+ has Text snippet with its keys; a cancelled snippet leaves the box alone', async () => {
+    const onSnippet = vi.fn(async (_text: string) => false)
+    const { editor } = await ready({ onSnippet, files })
+    await userEvent.click(editor)
+    await userEvent.keyboard('keep me')
+    await userEvent.click(screen.getByRole('button', { name: 'Attach' }))
+    const item = screen.getByRole('menuitem', { name: /Text snippet/ })
+    expect(item.textContent).toMatch(/Ctrl\+Shift\+Enter|⌘⇧↵/)
+    await userEvent.click(item)
+    await vi.waitFor(() => expect(onSnippet).toHaveBeenCalledWith('keep me'))
+    await new Promise((r) => setTimeout(r, 100))
+    expect(editor.textContent).toBe('keep me')
+  })
+})

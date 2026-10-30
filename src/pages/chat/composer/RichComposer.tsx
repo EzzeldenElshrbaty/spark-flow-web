@@ -11,7 +11,7 @@ import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPl
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import { $findMatchingParent } from '@lexical/utils'
-import { IconAt, IconCalendarEvent, IconChevronDown, IconClock, IconLetterCase, IconMoodSmile, IconPlus, IconSend, IconSlash, IconUpload, IconX } from '@tabler/icons-react'
+import { IconAt, IconCalendarEvent, IconChevronDown, IconClock, IconCode, IconLetterCase, IconMoodSmile, IconPlus, IconSend, IconSlash, IconUpload, IconX } from '@tabler/icons-react'
 import clsx from 'clsx'
 import { $createTextNode, $getSelection, $insertNodes, $isRangeSelection, $setSelection, type BaseSelection, type EditorState, type LexicalEditor } from 'lexical'
 import { useCallback, useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react'
@@ -110,6 +110,7 @@ export function RichComposer({
   allowEmpty = false,
   onSchedule,
   slash,
+  onSnippet,
 }: {
   /** send: the channel's box; edit: a message's body being edited in place, with Cancel and Save (spec 6.3). */
   mode?: 'send' | 'edit'
@@ -137,6 +138,8 @@ export function RichComposer({
   onSchedule?: (body: Body, at: Date) => Promise<unknown>
   /** Send mode: the `/` shortcuts (spec 6.8): listed at the start of the box, run on Enter instead of sending. */
   slash?: ComposerSlash
+  /** Text snippet (spec 6.9): the box's text goes into it; true once it's made, and the box empties. */
+  onSnippet?: (text: string) => Promise<boolean>
 }) {
   const config = {
     namespace: 'flow-composer',
@@ -166,12 +169,13 @@ export function RichComposer({
         allowEmpty={allowEmpty}
         onSchedule={onSchedule}
         slash={slash}
+        onSnippet={onSnippet}
       />
     </LexicalComposer>
   )
 }
 
-function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEditLast, onDraft, onTyping, error, directory, autoFocus, showFormatting = true, files, allowEmpty = false, onSchedule, slash }: Parameters<typeof RichComposer>[0]) {
+function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEditLast, onDraft, onTyping, error, directory, autoFocus, showFormatting = true, files, allowEmpty = false, onSchedule, slash, onSnippet }: Parameters<typeof RichComposer>[0]) {
   const editing = mode === 'edit'
   const [editor] = useLexicalComposerContext()
   const boxRef = useRef<HTMLDivElement>(null)
@@ -280,6 +284,10 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
     [onSend, onSchedule, editing, slash, runCommand, emptyBox],
   )
   const send = useCallback(() => deliver(), [deliver])
+  // What's in the box becomes the snippet's content; once it's made the box empties (Cancel leaves it).
+  const snippet = useCallback(() => {
+    void onSnippet?.(bodyText(latest.current.body)).then((created) => created && emptyBox())
+  }, [onSnippet, emptyBox])
 
   const onChange = (state: EditorState) => {
     const next = state.read(() => $bodyFromEditor())
@@ -382,6 +390,7 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
           onUpEmpty={editing ? undefined : onEditLast}
           onUpload={files ? openPicker : undefined}
           onFiles={files?.onAdd}
+          onSnippet={onSnippet ? snippet : undefined}
         />
         {(editing || autoFocus) && <AutoFocusPlugin defaultSelection="rootEnd" />}
         <AutocompletePlugin directory={directory} menuOpen={menuOpen} anchor={boxRef} commands={slash?.commands} />
@@ -410,6 +419,11 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
                 <MenuItem icon={IconUpload} hint={isMac ? '⌘U' : 'Ctrl+U'} onSelect={openPicker}>
                   Upload from your computer
                 </MenuItem>
+                {onSnippet && (
+                  <MenuItem icon={IconCode} hint={isMac ? '⌘⇧↵' : 'Ctrl+Shift+Enter'} onSelect={snippet}>
+                    Text snippet
+                  </MenuItem>
+                )}
               </Menu>
               <input
                 ref={picker}

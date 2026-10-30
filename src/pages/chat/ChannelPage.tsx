@@ -28,12 +28,13 @@ import { CanPostError } from '@/pages/chat/CanPostError'
 import { TypingLine } from '@/pages/chat/ChannelTyping'
 import { useCanPost, useCanWrite, useReadOnlyLine } from '@/pages/chat/useCanPost'
 import { useTaskFromMessage } from '@/pages/chat/useTaskFromMessage'
+import { useSnippet } from '@/pages/chat/snippets/useSnippet'
 import { useChannelCommands, type ChannelCommandUi } from '@/pages/chat/composer/useChannelCommands'
 import { ArchiveChannelModal, ArchivedChannelLine, JoinChannelLine, useChannelProject, useChannelRights } from '@/pages/chat/ChannelActions'
 import { ChannelHeader } from '@/pages/chat/ChannelHeader'
 import { ChannelDetails, detailsRights, type DetailsTab } from '@/pages/chat/ChannelDetails'
 import { ChannelTabs, TabStub, tabFromParam, type ChannelTab } from '@/pages/chat/ChannelTabs'
-import type { Channel, ChatMessage, User } from '@/api/types'
+import type { Attachment, Channel, ChatMessage, User } from '@/api/types'
 import { useProjectSummaries, useTeams } from '@/api/projects'
 import { MessageSkeleton } from '@/pages/chat/MessageSkeleton'
 import { useChannelReadState, useReadHold, useReadHoldScope } from '@/pages/chat/readState'
@@ -164,6 +165,10 @@ export function ChannelPage() {
               onSend={async (body) => {
                 queue.enqueue({ clientId: crypto.randomUUID(), channelId: current.id, content: bodyText(body), body, fileIds: uploads.ready.map((f) => f.id), attachments: uploads.ready })
                 uploads.clear()
+              }}
+              // A snippet goes out like any file, on its own with its message (spec 6.9).
+              onSendSnippet={async (file, body) => {
+                queue.enqueue({ clientId: crypto.randomUUID(), channelId: current.id, content: bodyText(body), body, fileIds: [file.id], attachments: [file] })
               }}
               onEditLast={() => {
                 const loaded = queryClient.getQueryData<InfiniteData<Page<ChatMessage>>>(qk.messages(current.id))
@@ -452,6 +457,7 @@ function ChannelComposer({
   error,
   onSend,
   onEditLast,
+  onSendSnippet,
   commandUi,
 }: {
   channel: Channel
@@ -461,6 +467,7 @@ function ChannelComposer({
   error?: Error | null
   onSend: (body: Body) => Promise<unknown>
   onEditLast: () => void
+  onSendSnippet: (file: Attachment, message: Body) => Promise<unknown>
   commandUi: ChannelCommandUi
 }) {
   const drafts = useDrafts(channel.workspaceId)
@@ -475,12 +482,18 @@ function ChannelComposer({
   const schedule = useSchedule()
   // The / shortcuts this channel offers me (spec 6.8).
   const slash = useChannelCommands(channel, commandUi)
+  const snippet = useSnippet({
+    channelId: channel.id,
+    where: placeholder.replace(/^Message /, ''),
+    send: (file, message) => loud.confirm(message).then(() => invite.confirm(message)).then(() => onSendSnippet(file, message)),
+  })
   if (drafts.isPending) return composerSkeleton
   const draft = drafts.data?.find((d) => d.channelId === channel.id && d.rootId === null)
   return (
     <Suspense fallback={composerSkeleton}>
     {loud.dialog}
     {invite.dialog}
+    {snippet.dialog}
     <RichComposer
       key={channel.id}
       placeholder={placeholder}
@@ -498,6 +511,7 @@ function ChannelComposer({
       error={error ?? schedule.error}
       directory={directory}
       slash={slash}
+      onSnippet={snippet.open}
       autoFocus={arrived}
       files={{
         tray: <UploadTray uploads={uploads.items} refused={uploads.refused} onRemove={uploads.remove} onRetry={uploads.retry} />,

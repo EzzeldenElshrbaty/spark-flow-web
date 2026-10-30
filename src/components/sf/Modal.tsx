@@ -1,4 +1,5 @@
 import { IconX } from '@tabler/icons-react'
+import clsx from 'clsx'
 import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { IconButton } from './Button'
 import { focusables, SfPortal, trapTab, useEscapeLayer, useRestoreFocus } from './layers'
@@ -15,6 +16,7 @@ export function Modal({
   actions,
   footer,
   fallbackFocus,
+  wide = false,
   children,
 }: {
   open: boolean
@@ -27,6 +29,8 @@ export function Modal({
   footer?: ReactNode
   /** Where focus goes on close when what opened the dialog is gone (an "Add a topic" that a saved topic replaced). */
   fallbackFocus?: () => HTMLElement | null | undefined
+  /** 720px instead of 540 (spec 6.10: the snippet). */
+  wide?: boolean
   children?: ReactNode
 }) {
   const titleId = useId()
@@ -71,7 +75,7 @@ export function Modal({
           // 540px, or the screen less 16px a side on a phone (spec 6.10). Against the viewport: a percentage would be of
           // the grid track the dialog itself sizes, and leave it 508px wide.
           onKeyDown={(event) => trapTab(event, event.currentTarget)}
-          className="w-[min(540px,calc(100vw-32px))] rounded-sf-lg bg-sf-surface-raised p-6 text-sf-text shadow-sf-modal outline-none"
+          className={clsx(wide ? 'w-[min(720px,calc(100vw-32px))]' : 'w-[min(540px,calc(100vw-32px))]', 'rounded-sf-lg bg-sf-surface-raised p-6 text-sf-text shadow-sf-modal outline-none')}
         >
           <div className="mb-4 flex items-start gap-4">
             <div className="min-w-0">

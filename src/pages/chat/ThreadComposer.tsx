@@ -6,6 +6,7 @@ import { Checkbox } from '@/components/sf/Toggle'
 import type { Body } from '@/lib/messageBody'
 import { useChannelInvite } from '@/pages/chat/composer/useChannelInvite'
 import { useGroupConfirm } from '@/pages/chat/composer/useGroupConfirm'
+import { useSnippet } from '@/pages/chat/snippets/useSnippet'
 import { useComposerDirectory } from '@/pages/chat/useComposerDirectory'
 import { UploadTray } from '@/pages/chat/uploads/UploadTray'
 import { paneDrop, useUploads } from '@/pages/chat/uploads/useUploads'
@@ -44,12 +45,19 @@ export function ThreadComposer({
   // Someone mentioned who isn't in the channel: add them, or send without them (spec 6.8).
   const invite = useChannelInvite(channel, directory.users)
   const schedule = useSchedule()
+  // A snippet from the thread box is a reply (spec 6.9), never also sent to the channel.
+  const snippet = useSnippet({
+    channelId: channel.id,
+    where: 'the thread',
+    send: (file, message) => loud.confirm(message).then(() => invite.confirm(message)).then(() => onSend(message, false, [file.id])),
+  })
   if (drafts.isPending) return skeleton
   const draft = drafts.data?.find((d) => d.channelId === channel.id && d.rootId === rootId)
   return (
     <div className="sf flex flex-col gap-2" {...paneDrop(true, uploads.add)}>
       {loud.dialog}
       {invite.dialog}
+      {snippet.dialog}
       <Suspense fallback={skeleton}>
         <RichComposer
           key={rootId}
@@ -81,6 +89,7 @@ export function ThreadComposer({
           onDraft={(body) => saveDraft(channel.id, body, rootId)}
           error={error ?? schedule.error}
           directory={directory}
+          onSnippet={snippet.open}
           files={{
             tray: <UploadTray uploads={uploads.items} refused={uploads.refused} onRemove={uploads.remove} onRetry={uploads.retry} />,
             onAdd: uploads.add,

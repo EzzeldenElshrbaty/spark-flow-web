@@ -31,6 +31,7 @@ export function KeysPlugin({
   onUpEmpty,
   onUpload,
   onFiles,
+  onSnippet,
 }: {
   onSend: () => void
   menuOpen: RefObject<boolean>
@@ -43,6 +44,8 @@ export function KeysPlugin({
   onUpload?: () => void
   /** Files pasted into a box that takes files (spec 6.9); a pasted image is named after when it was pasted. */
   onFiles?: (files: File[]) => void
+  /** ⌘/Ctrl+Shift+Enter: Text snippet (spec 6.8). */
+  onSnippet?: () => void
 }) {
   const [editor] = useLexicalComposerContext()
   useEffect(
@@ -53,6 +56,11 @@ export function KeysPlugin({
           (event) => {
             if (menuOpen.current) return false
             if (event && (event.isComposing || event.keyCode === 229)) return false
+            if (event && onSnippet && event.shiftKey && (event.metaKey || event.ctrlKey)) {
+              event.preventDefault()
+              onSnippet()
+              return true
+            }
             if (event?.shiftKey) {
               event.preventDefault()
               return editor.dispatchCommand(INSERT_PARAGRAPH_COMMAND, undefined)
@@ -136,7 +144,7 @@ export function KeysPlugin({
           COMMAND_PRIORITY_NORMAL,
         ),
       ),
-    [editor, menuOpen, onSend, onLink, onEscape, onUpEmpty, onUpload, onFiles],
+    [editor, menuOpen, onSend, onLink, onEscape, onUpEmpty, onUpload, onFiles, onSnippet],
   )
   return null
 }
