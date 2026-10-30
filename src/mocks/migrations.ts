@@ -138,9 +138,17 @@ export const migrations: Record<number, (doc: Record<string, unknown>) => void> 
     doc.saved = reminders.map((r) => ({ id: r.id, userId: r.userId, workspaceId: r.workspaceId, target: r.target, status: 'inProgress', remindAt: r.remindAt, firedAt: r.firedAt ?? null, savedAt: r.remindAt }))
     delete doc.reminders
   },
-  // 20: pins (spec §7 Pin), none yet.
+  // 20: pins (spec §7 Pin) and file folders (spec 6.9), none yet; every file is in no folder.
   19: (doc) => {
     if (!Array.isArray(doc.pins)) doc.pins = []
+    if (!Array.isArray(doc.folders)) doc.folders = []
+    const list = (value: unknown) => (Array.isArray(value) ? (value as Record<string, unknown>[]).filter(Boolean) : [])
+    const fill = (file: Record<string, unknown>) => {
+      file.folderId ??= null
+    }
+    for (const file of list(doc.attachments)) fill(file)
+    for (const row of [...list(doc.messages), ...list(doc.replies)]) for (const file of list(row.attachments)) fill(file)
+    for (const entry of list(doc.trash)) for (const file of list((entry.snapshot as Record<string, unknown> | undefined)?.attachments)) fill(file)
   },
   // 19: a saved item may be a /remind note (spec 6.8); every stored one is a message or reply already.
   18: () => {},

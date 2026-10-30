@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Attachment, ChatMessage } from '@/api/types'
 import { FileActionsContext, type FileActions } from '@/pages/chat/files/FileActions'
@@ -15,7 +15,7 @@ window.matchMedia ??= ((media: string) => ({ matches: false, media, addEventList
 
 const pdf: Attachment = {
   id: 'a1', name: 'Scope v3.pdf', mimeType: 'application/pdf', size: 188_416, createdAt: '2026-10-28T09:00:00.000Z',
-  uploadedBy: 'u-2', title: 'Scope v3.pdf', description: '', scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null, snippet: null,
+  uploadedBy: 'u-2', title: 'Scope v3.pdf', description: '', scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null, snippet: null, folderId: null,
 }
 const link = 'http://localhost/w/engineering/c/c-backend?message=m1'
 
@@ -247,5 +247,44 @@ describe('Save for later on a file (spec 6.9 file menu)', () => {
     show({ ...base, save: { isSaved: () => true, toggle } })
     fireEvent.click(screen.getByRole('button', { name: 'More file actions' }))
     expect(screen.getByRole('menuitem', { name: 'Remove from Saved' })).toBeTruthy()
+  })
+})
+
+describe('Add to folder (spec 6.9 file menu)', () => {
+  const message = { id: 'm1', channelId: 'c-backend', content: 'Scope', attachments: [pdf], threadCount: 0 } as unknown as ChatMessage
+  const folders = [{ id: 'fold-1', workspaceId: 'ws-eng', name: 'Releases', createdBy: 'u-1', createdAt: '' }]
+  const show = (over: Partial<FileActions['folders']> = {}, file = pdf) => {
+    const set = vi.fn(async () => {})
+    const create = vi.fn(async () => {})
+    render(
+      <FileActionsContext.Provider value={{ mayManage: () => true, share: vi.fn(), details: vi.fn(), edit: vi.fn(), remove: vi.fn(), folders: { list: folders, set, create, ...over } }}>
+        <MessageFiles attachments={[file]} link={link} message={message} />
+      </FileActionsContext.Provider>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'More file actions' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Add to folder' }))
+    return { set, create }
+  }
+
+  it('files it in a folder, or takes it out of the one it is in', () => {
+    const { set } = show()
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Releases' }))
+    expect(set).toHaveBeenCalledWith(pdf, 'fold-1')
+    cleanup()
+    const second = show({}, { ...pdf, folderId: 'fold-1' })
+    expect(screen.getByRole('menuitemradio', { name: 'Releases' }).getAttribute('aria-checked')).toBe('true')
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'No folder' }))
+    expect(second.set).toHaveBeenCalledWith({ ...pdf, folderId: 'fold-1' }, null)
+  })
+
+  it('New folder… names one and files it there', async () => {
+    const { create } = show()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'New folder…' }))
+    const dialog = within(screen.getByRole('dialog', { name: 'New folder' }))
+    fireEvent.change(dialog.getByRole('textbox', { name: 'Name' }), { target: { value: 'Designs' } })
+    await act(async () => {
+      fireEvent.click(dialog.getByRole('button', { name: 'Create and add' }))
+    })
+    expect(create).toHaveBeenCalledWith(pdf, 'Designs')
   })
 })

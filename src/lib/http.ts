@@ -232,6 +232,10 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
       remove: (id) => send<void>('DELETE', `/api/saved/${enc(id)}`),
       note: (channelId, text, remindAt) => send('POST', '/api/saved/notes', { channelId, text, remindAt }),
     },
+    folders: {
+      list: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/folders`),
+      create: (workspaceId, name) => send('POST', `/api/workspaces/${enc(workspaceId)}/folders`, { name }),
+    },
     pins: {
       list: (channelId) => get(`/api/channels/${enc(channelId)}/pins`),
       pin: (messageId) => send<void>('PUT', `/api/messages/${enc(messageId)}/pin`),

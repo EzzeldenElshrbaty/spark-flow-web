@@ -36,6 +36,7 @@ const emptyData = (): DbData => ({
   saved: [],
   scheduled: [],
   pins: [],
+  folders: [],
   counters: {},
 })
 

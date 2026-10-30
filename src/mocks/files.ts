@@ -53,7 +53,7 @@ export async function withSavedBytes<T>(db: MockDb, bytes: [id: string, blob: Bl
 export function fileRecord(file: { name: string; type: string; size: number }, uploadedBy: string, at: string, snippet: Attachment['snippet'] = null): Attachment {
   return {
     id: newId('a'), name: file.name, mimeType: file.type || 'application/octet-stream', size: file.size, createdAt: at,
-    uploadedBy, title: snippet ? file.name.replace(/\.txt$/i, '') : file.name, description: '', scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null, snippet,
+    uploadedBy, title: snippet ? file.name.replace(/\.txt$/i, '') : file.name, description: '', scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null, snippet, folderId: null,
   }
 }
 
@@ -235,7 +235,7 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
       onProgress?.(1)
       return clone(stored)
     },
-    async inChannel(channelId, { type, from, since, cursor }) {
+    async inChannel(channelId, { type, from, since, folderId, cursor }) {
       await delay()
       const data = await db.read()
       readableChannel(data, channelId)
@@ -250,7 +250,7 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
             .filter((file) => !file.deletedAt)
             .map((file) => ({ file, senderId: row.senderId, at: row.createdAt, messageId, replyId })),
         )
-        .filter((f) => (!type || fileKind(f.file) === type) && (!from || f.senderId === from) && (!since || f.at >= since))
+        .filter((f) => (!type || fileKind(f.file) === type) && (!from || f.senderId === from) && (!since || f.at >= since) && (!folderId || f.file.folderId === folderId))
       const start = cursor ? Number(cursor) || 0 : 0
       const items = shared.slice(start, start + FILES_PAGE)
       return clone({ items, nextCursor: start + FILES_PAGE < shared.length ? String(start + FILES_PAGE) : null })
@@ -270,7 +270,9 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
         const description = (patch.description ?? file.description).trim()
         const wrong = fileTitleError(title) ?? fileDescriptionError(description)
         if (wrong) throw badRequest(wrong)
-        const changed = changeEverywhere(data, id, { title, description })
+        const folderId = patch.folderId === undefined ? file.folderId : patch.folderId
+        if (folderId !== null && !data.folders.some((f) => f.id === folderId)) throw badRequest('That folder doesn’t exist.')
+        const changed = changeEverywhere(data, id, { title, description, folderId })
         return { file: clone(file), changed }
       })
       hub.publish({ type: 'fileChanged', fileId: id })

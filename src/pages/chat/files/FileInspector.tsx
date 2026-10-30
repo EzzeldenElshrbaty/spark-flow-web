@@ -4,7 +4,8 @@ import { Link, useSearchParams } from 'react-router'
 import { useChannels } from '@/api/chat'
 import { useFileDetails } from '@/api/files'
 import { useProjectSummaries } from '@/api/projects'
-import type { Channel, FileDetails, ProjectSummary, User } from '@/api/types'
+import { useFolders } from '@/api/folders'
+import type { Channel, FileDetails, Folder, ProjectSummary, User } from '@/api/types'
 import { useUsers } from '@/api/users'
 import { useFileUrl } from '@/components/AttachmentView'
 import { Button } from '@/components/sf/Button'
@@ -53,7 +54,7 @@ function Row({ term, children }: { term: string; children: ReactNode }) {
 }
 
 /** The panel's content, inside the file actions (Share, Edit file details). */
-function Details({ details, ws, users, channels, projects, meId }: { details: FileDetails; ws: string; users: User[]; channels: Channel[]; projects: ProjectSummary[]; meId: string }) {
+function Details({ details, ws, users, channels, projects, folders, meId }: { details: FileDetails; ws: string; users: User[]; channels: Channel[]; projects: ProjectSummary[]; folders: Folder[]; meId: string }) {
   const { file } = details
   const actions = useFileActions()
   const manage = actions?.mayManage(file) ?? false
@@ -126,6 +127,7 @@ function Details({ details, ws, users, channels, projects, meId }: { details: Fi
               ))}
           </ul>
         </Row>
+        <Row term="Folder">{folders.find((f) => f.id === file.folderId)?.name ?? '—'}</Row>
         <Row term="Access">
           <ul className="m-0 flex list-none flex-col gap-1 p-0">
             {accessLines(details, channels, projects, users, meId).map((line) => (
@@ -160,6 +162,7 @@ export function FileInspector({ fileId, onClose, closeTo }: { fileId: string } &
   const users = useUsers(workspace?.id).data ?? []
   const channels = useChannels(workspace?.id).data ?? []
   const projects = useProjectSummaries(workspace?.id).data ?? []
+  const folders = useFolders(workspace?.id).data ?? []
   const [, setParams] = useSearchParams()
   const notFound = details.error instanceof ApiError && details.error.status === 404
 
@@ -167,7 +170,7 @@ export function FileInspector({ fileId, onClose, closeTo }: { fileId: string } &
   if (notFound) body = <NotFound what="file" backTo={closeTo} backLabel="Close the details" />
   else if (details.isError) body = <QueryError what="File" onRetry={() => void details.refetch()} />
   else if (!details.data) body = <InspectorSkeleton />
-  else body = <Details details={details.data} ws={workspace?.slug ?? ''} users={users} channels={channels} projects={projects} meId={persona.id} />
+  else body = <Details details={details.data} ws={workspace?.slug ?? ''} users={users} channels={channels} projects={projects} folders={folders} meId={persona.id} />
 
   return (
     <FileActionsProvider workspaceId={workspace?.id ?? ''} meId={persona.id} people={users} onDetails={(file) => setParams((p) => withInspector(p, { kind: 'file', fileId: file.id }))}>

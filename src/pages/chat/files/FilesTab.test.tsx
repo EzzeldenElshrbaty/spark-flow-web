@@ -13,7 +13,7 @@ const people = [
 ] as User[]
 const file = (id: string, name: string, over: Partial<Attachment> = {}): Attachment => ({
   id, name, title: name, description: '', mimeType: 'application/pdf', size: 188_416, createdAt: '2026-10-28T09:00:00.000Z', uploadedBy: 'u-2',
-  scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null, snippet: null, ...over,
+  scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null, snippet: null, folderId: null, ...over,
 })
 const items: ChannelFile[] = [
   { file: file('a1', 'scope.pdf'), senderId: 'u-2', at: '2026-10-28T09:00:00.000Z', messageId: 'm1', replyId: null },
@@ -63,5 +63,14 @@ describe('Files tab (spec 6.1: every file in the channel, filterable by type, pe
     cleanup()
     show({ items: [] })
     expect(screen.getByText('No files have been shared in this channel yet.')).toBeTruthy()
+  })
+})
+
+describe('Files tab: Folder (spec 6.9)', () => {
+  it('a Folder chip narrows to one folder', () => {
+    const { onFilter } = show({ folders: [{ id: 'fold-1', workspaceId: 'ws-eng', name: 'Releases', createdBy: 'u-1', createdAt: '' }] })
+    fireEvent.click(screen.getByRole('button', { name: 'Folder: Any folder' }))
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Releases' }))
+    expect(onFilter).toHaveBeenLastCalledWith({ folderId: 'fold-1' })
   })
 })

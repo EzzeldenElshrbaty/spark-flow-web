@@ -6,6 +6,8 @@ import {
   IconBookmarkFilled,
   IconCopy,
   IconDownload,
+  IconFolder,
+  IconFolderPlus,
   IconFileText,
   IconFileTypePdf,
   IconInfoCircle,
@@ -22,12 +24,13 @@ import type { Attachment, ChatMessage, ThreadReply } from '@/api/types'
 import { useFileUrl } from '@/components/AttachmentView'
 import { IconButton } from '@/components/sf/Button'
 import { Icon } from '@/components/sf/Icon'
-import { Menu, MenuItem, MenuSeparator } from '@/components/sf/Menu'
+import { Menu, MenuItem, MenuSeparator, Submenu } from '@/components/sf/Menu'
 import { useNoHover, usePhone } from '@/components/sf/usePhone'
 import { FileViewer } from '@/components/ui/FileViewer'
 import { viewedFile } from '@/lib/fileView'
 import { downloadUrl, fileSubline, previewOf } from '@/lib/fileTypes'
 import { useFileActions } from '@/pages/chat/files/FileActions'
+import { NewFolderDialog } from '@/pages/chat/files/NewFolderDialog'
 import { canMakeTask } from '@/pages/chat/taskDraft'
 import { snippetLabel, SnippetView, useSnippetText } from '@/pages/chat/snippets/SnippetCard'
 
@@ -83,13 +86,17 @@ function FileActionsPill({
   const share = actions && manage && clean
   const task = actions?.createTask && clean && message && 'threadCount' in message && canMakeTask(message)
   const copy = Boolean(link) && !pending
-  const [said, setSaid] = useState<'' | 'Link copied' | "Couldn't copy the link" | 'Copied' | "Couldn't copy">('')
+  // What the pill last did (Link copied, Copied) or why it couldn't, beside it for a moment.
+  const [said, setSaid] = useState('')
   useEffect(() => {
     if (!said) return
     const timer = setTimeout(() => setSaid(''), COPIED_MS)
     return () => clearTimeout(timer)
   }, [said])
   const save = () => url && download(url, attachment.name)
+  const [newFolder, setNewFolder] = useState(false)
+  // Add to folder ▸ (spec 6.9): whoever may edit the file's details files it; a refusal is said beside the pill.
+  const fileIn = (folderId: string | null) => actions?.folders?.set(attachment, folderId).catch((e: Error) => setSaid(e.message || "Couldn't file it. Try again."))
   return (
     <div className="absolute end-2 top-2 flex items-center gap-1">
       <span role="status" className="sf-meta rounded-sf-sm bg-sf-surface-raised px-1 text-sf-text-muted empty:hidden">
@@ -166,6 +173,22 @@ function FileActionsPill({
                 <MenuItem icon={IconPencil} onSelect={() => actions.edit(attachment)}>
                   Edit file details
                 </MenuItem>
+                {actions.folders && (
+                  <Submenu icon={IconFolder} label="Add to folder">
+                    <MenuItem checked={attachment.folderId === null} onSelect={() => void fileIn(null)}>
+                      No folder
+                    </MenuItem>
+                    {actions.folders.list.map((folder) => (
+                      <MenuItem key={folder.id} checked={attachment.folderId === folder.id} onSelect={() => void fileIn(folder.id)}>
+                        {folder.name}
+                      </MenuItem>
+                    ))}
+                    <MenuSeparator />
+                    <MenuItem icon={IconFolderPlus} onSelect={() => setNewFolder(true)}>
+                      New folder…
+                    </MenuItem>
+                  </Submenu>
+                )}
               </>
             )}
             {actions && manage && change && (
@@ -179,6 +202,9 @@ function FileActionsPill({
           </Menu>
         )}
       </div>
+      {newFolder && actions?.folders && (
+        <NewFolderDialog fileTitle={attachment.title} onCreate={(name) => actions.folders!.create(attachment, name)} onClose={() => setNewFolder(false)} />
+      )}
     </div>
   )
 }

@@ -88,7 +88,7 @@ const mariam = { id: 'u-3', name: 'Mariam Fathy', title: 'Designer', email: 'mar
 const sentInvite = { id: 'inv-1', email: 'lina@partner.io', invitedBy: 'u-1', workspaceId: 'ws-eng', channelId: 'c-backend', role: 'guest' as const, status: 'pending' as const, createdAt: '2026-10-28T08:00:00.000Z' }
 const scope: Attachment = {
   id: 'a-scope', name: 'scope.pdf', title: 'Release scope', description: 'What ships in 2.4.', mimeType: 'application/pdf', size: 188_416, createdAt: '2026-10-28T09:00:00.000Z',
-  uploadedBy: 'u-1', scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null, snippet: null,
+  uploadedBy: 'u-1', scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null, snippet: null, folderId: null,
 }
 const fileActions: FileActions = { mayManage: () => true, share: vi.fn(), details: vi.fn(), edit: vi.fn(), remove: vi.fn(), createTask: vi.fn() }
 const uploadOf = (name: string, over: Partial<Upload> = {}): Upload => ({

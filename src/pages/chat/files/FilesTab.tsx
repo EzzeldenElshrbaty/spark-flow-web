@@ -1,7 +1,8 @@
 import { IconChevronDown, IconCode, IconFile, IconFileText, IconFileTypePdf, IconMovie, IconPhoto, type TablerIcon } from '@tabler/icons-react'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState } from 'react'
 import { useChannelFiles } from '@/api/files'
-import type { Attachment, Channel, ChannelFile, User } from '@/api/types'
+import { useFolders } from '@/api/folders'
+import type { Attachment, Channel, ChannelFile, Folder, User } from '@/api/types'
 import { Button } from '@/components/sf/Button'
 import { Icon } from '@/components/sf/Icon'
 import { Menu, MenuItem } from '@/components/sf/Menu'
@@ -87,7 +88,7 @@ export function FilesTab({
   onFilter,
   onMore,
   onOpen,
-  extraFilters,
+  folders = [],
 }: {
   items: ChannelFile[]
   people: User[]
@@ -97,8 +98,8 @@ export function FilesTab({
   onFilter: (filter: FilesFilter) => void
   onMore: () => void
   onOpen: (file: Attachment) => void
-  /** More chips after Date (Folder). */
-  extraFilters?: ReactNode
+  /** The workspace's folders: a Folder chip while there are any (spec 6.9). */
+  folders?: Folder[]
 }) {
   const set = <K extends keyof FilesFilter>(key: K, value: FilesFilter[K]) => {
     const next = { ...filter, [key]: value }
@@ -112,7 +113,7 @@ export function FilesTab({
         <Filter name="Type" any="Any type" options={TYPES} value={filter.type} onPick={(v) => set('type', v)} />
         <Filter name="Person" any="Anyone" options={people.map((p) => ({ id: p.id, label: p.name }))} value={filter.from} onPick={(v) => set('from', v)} />
         <Filter name="Date" any="Any time" options={DATES} value={filter.date} onPick={(v) => set('date', v)} />
-        {extraFilters}
+        {folders.length > 0 && <Filter name="Folder" any="Any folder" options={folders.map((f) => ({ id: f.id, label: f.name }))} value={filter.folderId} onPick={(v) => set('folderId', v)} />}
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         {items.length === 0 ? (
@@ -176,6 +177,7 @@ export function ChannelFiles({ channel, users }: { channel: Channel; users: User
   const since = useMemo(() => filesSince(filter.date, new Date()), [filter.date])
   const files = useChannelFiles(channel.id, { type: filter.type, from: filter.from, since, folderId: filter.folderId })
   const actions = useFileActions()
+  const folders = useFolders(channel.workspaceId)
   const people = useMemo(() => users.filter((u) => channel.memberIds.includes(u.id)), [users, channel.memberIds])
   if (files.isError)
     return (
@@ -191,6 +193,7 @@ export function ChannelFiles({ channel, users }: { channel: Channel; users: User
     <FilesTab
       items={files.data.pages.flatMap((p) => p.items)}
       people={people}
+      folders={folders.data}
       filter={filter}
       hasMore={files.hasNextPage}
       loadingMore={files.isFetchingNextPage}

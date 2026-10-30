@@ -11,7 +11,7 @@ const people = [{ id: 'u-2', name: 'Nour El-Sayed' }] as User[]
 const items: ChannelFile[] = Array.from({ length: 500 }, (_, i) => ({
   file: {
     id: `a${i}`, name: `a-very-long-file-name-for-the-release-${i}-final-v2-approved.pdf`, title: `a-very-long-file-name-for-the-release-${i}-final-v2-approved.pdf`, description: '',
-    mimeType: 'application/pdf', size: 188_416, createdAt: '2026-10-28T09:00:00.000Z', uploadedBy: 'u-2', scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null, snippet: null,
+    mimeType: 'application/pdf', size: 188_416, createdAt: '2026-10-28T09:00:00.000Z', uploadedBy: 'u-2', scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null, snippet: null, folderId: null,
   } as Attachment,
   senderId: 'u-2', at: '2026-10-28T09:00:00.000Z', messageId: `m${i}`, replyId: null,
 }))

@@ -16,6 +16,8 @@ const root = { id: 'm1', channelId: 'c-release', seq: 1, senderId: 'u-1', conten
 let channelError: Error | null = null
 let channelData: unknown = undefined
 // The file actions read my Saved (spec 6.9 Save for later).
+vi.mock('@/api/files', async (original) => ({ ...(await original<typeof import('@/api/files')>()), useUpdateFile: () => ({ mutateAsync: async () => {} }) }))
+vi.mock('@/api/folders', () => ({ useFolders: () => ({ data: [] }), useCreateFolder: () => ({ mutateAsync: async () => {} }) }))
 vi.mock('@/api/saved', () => ({ useSaved: () => ({ data: [] }), useSave: () => ({ mutate: () => {} }), useRemoveSaved: () => ({ mutate: () => {} }) }))
 vi.mock('@/api/chat', () => ({
   useMessage: () => ({ data: root, error: null, isError: false, isPending: false }),

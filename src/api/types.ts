@@ -109,10 +109,14 @@ export type Attachment = {
   deletedAt: string | null
   /** A text snippet (spec 6.9): a .txt file shown as code in this language; null for any other file. */
   snippet: { language: CodeLanguage } | null
+  /** The workspace folder it's filed in (spec 6.9 Add to folder, §7 folder_id); null for none. */
+  folderId: string | null
 }
+/** A workspace folder for files (spec 6.9): one per file, shared by everyone in the workspace. */
+export type Folder = { id: string; workspaceId: string; name: string; createdBy: string; createdAt: string }
 /** A snippet's Type (spec 6.9). */
 export type CodeLanguage = 'text' | 'bash' | 'csharp' | 'css' | 'html' | 'javascript' | 'json' | 'markdown' | 'python' | 'sql' | 'typescript' | 'yaml'
-export type FilePatch = Partial<Pick<Attachment, 'title' | 'description'>>
+export type FilePatch = Partial<Pick<Attachment, 'title' | 'description' | 'folderId'>>
 /** Where a file is shared, as I may see it (spec 6.9 File details: Shared in, Access). */
 export type FileDetails = {
   file: Attachment
@@ -640,6 +644,11 @@ export interface Api {
     markRead(workspaceId: string, ids?: string[]): Promise<void>
   }
   /** My messages to send later (spec 6.8 Schedule menu, 6.12 Drafts & sent). */
+  /** Folders for files (spec 6.9), one list per workspace, by name. */
+  folders: {
+    list(workspaceId: string): Promise<Folder[]>
+    create(workspaceId: string, name: string): Promise<Folder>
+  }
   /** Pins (spec 6.5, 6.1 Pins tab): whoever may post in the channel pins and unpins its messages. */
   pins: {
     /** Newest pin first; the channel must be one I can read. */

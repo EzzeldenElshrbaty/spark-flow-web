@@ -11,7 +11,7 @@ window.matchMedia ??= ((media: string) => ({ matches: false, media, addEventList
 
 const file: Attachment = {
   id: 'a1', name: 'scope.pdf', title: 'Release scope', description: 'What ships in 2.4.', mimeType: 'application/pdf', size: 188_416, createdAt: '2026-10-28T09:00:00.000Z',
-  uploadedBy: 'u-2', scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null, snippet: null,
+  uploadedBy: 'u-2', scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null, snippet: null, folderId: null,
 }
 const details: FileDetails = {
   file,
@@ -38,6 +38,7 @@ vi.mock('@/api/files', () => ({
   useShareFile: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 vi.mock('@/api/chat', () => ({ useChannels: () => ({ data: channels }) }))
+vi.mock('@/api/folders', () => ({ useFolders: () => ({ data: [{ id: 'fold-1', workspaceId: 'ws-eng', name: 'Releases', createdBy: 'u-1', createdAt: '' }] }), useCreateFolder: () => ({ mutateAsync: vi.fn() }) }))
 vi.mock('@/api/users', () => ({ useUsers: () => ({ data: [{ id: 'u-2', name: 'Nour El-Sayed' }, { id: 'u-3', name: 'Mariam Fathy' }] }) }))
 vi.mock('@/api/projects', () => ({ useProjectSummaries: () => ({ data: [{ id: 'p-nex', name: 'Nexus Core', key: 'NEX', channelId: 'c-p-nex' }] }) }))
 vi.mock('@/layout/useCurrentWorkspace', () => ({ useCurrentWorkspace: () => ({ workspace: { id: 'ws-eng', slug: 'engineering' } }) }))
@@ -107,5 +108,17 @@ describe('File details panel focus (slice 6 review)', () => {
   it('opening it puts focus on its heading, so the keyboard carries on there', () => {
     show()
     expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Release scope' }))
+  })
+})
+
+describe('File details: Folder (spec 6.9)', () => {
+  it('says which folder the file is in, or — when it is in none', () => {
+    state.data = { ...state.data!, file: { ...state.data!.file, folderId: 'fold-1' } }
+    show()
+    expect(value('Folder').textContent).toBe('Releases')
+    cleanup()
+    state.data = { ...state.data!, file: { ...state.data!.file, folderId: null } }
+    show()
+    expect(value('Folder').textContent).toBe('—')
   })
 })

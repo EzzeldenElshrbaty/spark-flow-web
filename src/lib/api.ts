@@ -39,6 +39,7 @@ export const api: Api = {
   get saved() { return resolve().saved },
   get scheduled() { return resolve().scheduled },
   get pins() { return resolve().pins },
+  get folders() { return resolve().folders },
   get dashboard() { return resolve().dashboard },
   get files() { return resolve().files },
   get db() { return resolve().db },

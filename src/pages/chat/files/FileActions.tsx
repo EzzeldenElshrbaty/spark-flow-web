@@ -1,8 +1,9 @@
 import { createContext, useContext, useId, useState, type ReactNode } from 'react'
+import { useCreateFolder, useFolders } from '@/api/folders'
 import { useRemoveSaved, useSave, useSaved } from '@/api/saved'
 import { useChannels } from '@/api/chat'
 import { useDeleteFile, useShareFile, useUpdateFile } from '@/api/files'
-import type { Attachment, ChatMessage, User } from '@/api/types'
+import type { Attachment, ChatMessage, Folder, User } from '@/api/types'
 import { Button } from '@/components/sf/Button'
 import { Modal } from '@/components/sf/Modal'
 import { ROW_FOCUS } from '@/pages/chat/MessageActions'
@@ -25,6 +26,8 @@ export type FileActions = {
   frozen?: boolean
   /** Save for later (spec 6.9 file menu): whether it's in my Saved, and the toggle. */
   save?: { isSaved: (file: Attachment) => boolean; toggle: (file: Attachment) => void }
+  /** Add to folder ▸ (spec 6.9): the workspace's folders, filing a file in one (or none), and New folder…. */
+  folders?: { list: Folder[]; set: (file: Attachment, folderId: string | null) => Promise<unknown>; create: (file: Attachment, name: string) => Promise<unknown> }
 }
 
 export const FileActionsContext = createContext<FileActions | null>(null)
@@ -60,6 +63,9 @@ export function FileActionsProvider({
   const saved = useSaved(workspaceId)
   const saveFile = useSave()
   const removeSaved = useRemoveSaved()
+  const folderList = useFolders(workspaceId)
+  const createFolder = useCreateFolder()
+  const updateFile = useUpdateFile()
   const savedItem = (file: Attachment) => saved.data?.find((s) => s.target.kind === 'file' && s.target.id === file.id && s.status === 'inProgress')
   const [open, setOpen] = useState<{ kind: 'share' | 'edit' | 'delete'; file: Attachment } | null>(null)
   const close = () => setOpen(null)
@@ -71,6 +77,11 @@ export function FileActionsProvider({
     remove: (file) => setOpen({ kind: 'delete', file }),
     createTask: onCreateTask,
     frozen,
+    folders: {
+      list: folderList.data ?? [],
+      set: (file, folderId) => updateFile.mutateAsync({ id: file.id, patch: { folderId } }),
+      create: (file, name) => createFolder.mutateAsync({ workspaceId, name }).then((folder) => updateFile.mutateAsync({ id: file.id, patch: { folderId: folder.id } })),
+    },
     save: {
       isSaved: (file) => Boolean(savedItem(file)),
       toggle: (file) => {

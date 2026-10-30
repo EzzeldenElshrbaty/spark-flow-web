@@ -1,3 +1,4 @@
+import { foldersApi } from './folders'
 import { pinsApi } from './pins'
 import type { Api, ChatMessage, NewTicket, ThreadReply, Ticket, TicketPatch } from '@/api/types'
 import { addReply, chatApi, sendMessage, type AddReplyInput, type SendMessageInput } from './chat'
@@ -63,6 +64,7 @@ export function createMockApi(db: MockDb, hub: MockHub, now: () => Date = () => 
     saved: savedApi(db, hub, now),
     scheduled: scheduledApi(db, hub, now),
     pins: pinsApi(db, hub),
+    folders: foldersApi(db),
     dashboard: dashboardApi(db, now),
     files: filesApi(db, hub, now),
     db: dbApi(db, hub),
