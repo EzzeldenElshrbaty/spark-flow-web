@@ -242,7 +242,7 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
       if (!slash.commands.some((c) => c.name === parsed.name)) return setNotice(refusal(parsed.name))
       setPending(true)
       slash
-        .run(parsed)
+        .run(parsed, now)
         .then((outcome) => (outcome.send ? onSend(outcome.send).then(() => outcome) : outcome))
         .then(
           (outcome) => {

@@ -58,6 +58,7 @@ export function ChannelDetails({
   rights,
   tab: firstTab,
   editTopic = false,
+  addPeople,
   headerError,
   fallbackFocus,
   onClose,
@@ -90,6 +91,8 @@ export function ChannelDetails({
   tab: DetailsTab
   /** Opened from "Add a topic": the topic field starts open. */
   editTopic?: boolean
+  /** /invite: open on Add people with these people filled in (spec 6.8). */
+  addPeople?: string[]
   /** What went wrong with the star, the level or mute, shown under the header (they're changed from here too). */
   headerError?: string | null
   /** Where focus goes on close when what opened the details is gone ("Add a topic", once there's a topic). */
@@ -177,6 +180,7 @@ export function ChannelDetails({
             rights={rights}
             invitations={invitations}
             mayRevoke={mayRevoke}
+            addPeople={addPeople}
             onAdd={onAdd}
             onRemove={onRemove}
             onRevoke={onRevoke}

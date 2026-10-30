@@ -75,7 +75,7 @@ export function shrugBody(body: Body): Body {
 export type CommandOutcome = { notice?: string; send?: Body }
 
 /** The shortcuts a box offers and what runs them (the page decides both). */
-export type ComposerSlash = { commands: SlashCommand[]; run: (command: ParsedCommand) => Promise<CommandOutcome> }
+export type ComposerSlash = { commands: SlashCommand[]; run: (command: ParsedCommand, body: Body) => Promise<CommandOutcome> }
 
 /** Why a `/word` at the start didn't run: it isn't a shortcut, or not one this place offers. */
 export function refusal(name: string): string {

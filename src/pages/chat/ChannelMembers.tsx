@@ -33,6 +33,7 @@ export function Members({
   rights,
   invitations,
   mayRevoke,
+  addPeople,
   onAdd,
   onRemove,
   onRevoke,
@@ -46,13 +47,15 @@ export function Members({
   rights: MembersRights
   invitations: Invitation[]
   mayRevoke: (invitation: Invitation) => boolean
+  /** /invite: Add people starts open, with these people filled in. */
+  addPeople?: string[]
   onAdd: (change: PeopleChange) => Promise<unknown>
   onRemove: (userId: string) => Promise<unknown>
   onRevoke: (invitationId: string) => Promise<unknown>
   onSave: (patch: ChannelPatch) => Promise<unknown>
 }) {
   const [query, setQuery] = useState('')
-  const [adding, setAdding] = useState(false)
+  const [adding, setAdding] = useState(addPeople !== undefined && rights.manage)
   const [removing, setRemoving] = useState<Person | null>(null)
   const find = useRef<HTMLInputElement>(null)
   const changeable = rights.manage && !project
@@ -111,6 +114,7 @@ export function Members({
           teams={teams}
           invitedEmails={invitations.map((i) => i.email)}
           rights={rights}
+          initial={addPeople}
           onAdd={onAdd}
           onSave={onSave}
           onClose={() => setAdding(false)}
@@ -260,6 +264,7 @@ function AddPeople({
   teams,
   invitedEmails,
   rights,
+  initial = [],
   onAdd,
   onSave,
   onClose,
@@ -271,11 +276,15 @@ function AddPeople({
   /** Emails with a pending invite here already. */
   invitedEmails: string[]
   rights: MembersRights
+  /** People to start with; anyone already in the channel (or me) is left out. */
+  initial?: string[]
   onAdd: (change: PeopleChange) => Promise<unknown>
   onSave: (patch: ChannelPatch) => Promise<unknown>
   onClose: () => void
 }) {
-  const [tokens, setTokens] = useState<Token[]>([])
+  const [tokens, setTokens] = useState<Token[]>(() =>
+    people.filter((p) => initial.includes(p.id) && p.id !== meId && !channel.memberIds.includes(p.id)).map((p) => ({ id: p.id, label: p.name, kind: 'person' as const })),
+  )
   const [query, setQuery] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)

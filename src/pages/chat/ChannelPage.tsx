@@ -28,6 +28,7 @@ import { CanPostError } from '@/pages/chat/CanPostError'
 import { TypingLine } from '@/pages/chat/ChannelTyping'
 import { useCanPost, useCanWrite, useReadOnlyLine } from '@/pages/chat/useCanPost'
 import { useTaskFromMessage } from '@/pages/chat/useTaskFromMessage'
+import { useChannelCommands, type ChannelCommandUi } from '@/pages/chat/composer/useChannelCommands'
 import { ArchiveChannelModal, ArchivedChannelLine, JoinChannelLine, useChannelProject, useChannelRights } from '@/pages/chat/ChannelActions'
 import { ChannelHeader } from '@/pages/chat/ChannelHeader'
 import { ChannelDetails, detailsRights, type DetailsTab } from '@/pages/chat/ChannelDetails'
@@ -66,6 +67,8 @@ export function ChannelPage() {
   // Start fetching the composer with the page, not once the drafts are in.
   useEffect(() => void loadComposer(), [])
   const panelId = useId()
+  // Channel details: from the header, and from /invite and /topic in the box (spec 6.8).
+  const [details, setDetails] = useState<OpenDetails | null>(null)
   const [params, setParams] = useSearchParams()
   const tab = channel.data ? tabFromParam(params.get('tab'), channel.data) : 'messages'
   const setTab = (next: ChannelTab) => setParams(next === 'messages' ? {} : { tab: next }, { replace: true })
@@ -124,7 +127,7 @@ export function ChannelPage() {
       frozen={isArchived(current)}
     >
     <div className="flex min-h-0 flex-1 flex-col">
-      <ChannelTop channel={current} people={people} workspaceSlug={ws} tab={tab} onTab={setTab} panelId={panelId} />
+      <ChannelTop channel={current} people={people} workspaceSlug={ws} tab={tab} onTab={setTab} panelId={panelId} details={details} setDetails={setDetails} />
       <div id={panelId} role="tabpanel" aria-label={tab === 'messages' ? 'Messages' : tab} className="flex min-h-0 flex-1 flex-col" {...paneDrop(writing, uploads.add)}>
       {tab !== 'messages' ? (
         <div className="sf">
@@ -155,6 +158,7 @@ export function ChannelPage() {
               channel={current}
               placeholder={`Message ${title}`}
               uploads={uploads}
+              commandUi={{ openDetails: (on, options) => setDetails({ tab: on, ...options }), newTask: fromMessage.fromCommand }}
               onTyping={() => realtime.sendTyping(current.id, persona.id)}
               // Shown at once and sent in the background (spec 6.2), with its files; a failure shows on the message, with Retry.
               onSend={async (body) => {
@@ -189,7 +193,28 @@ function Padded({ children }: { children: ReactNode }) {
 }
 
 /** The header and tabs, with what they open: Channel details, Archive, and errors from their actions near them. */
-function ChannelTop({ channel, people, workspaceSlug, tab, onTab, panelId }: { channel: Channel; people: User[]; workspaceSlug: string; tab: ChannelTab; onTab: (tab: ChannelTab) => void; panelId: string }) {
+/** Channel details as opened: the tab, and what /topic and /invite start it with. */
+type OpenDetails = { tab: DetailsTab; editTopic?: boolean; addPeople?: string[] }
+
+function ChannelTop({
+  channel,
+  people,
+  workspaceSlug,
+  tab,
+  onTab,
+  panelId,
+  details,
+  setDetails,
+}: {
+  channel: Channel
+  people: User[]
+  workspaceSlug: string
+  tab: ChannelTab
+  onTab: (tab: ChannelTab) => void
+  panelId: string
+  details: OpenDetails | null
+  setDetails: (details: OpenDetails | null) => void
+}) {
   const { persona } = useRole()
   const check = usePermission()
   const rights = useChannelRights(channel)
@@ -206,7 +231,6 @@ function ChannelTop({ channel, people, workspaceSlug, tab, onTab, panelId }: { c
   // An archived project's channel still names its project (review).
   const own = useChannelProject(channel).project
   const takenNames = (useChannels(channel.workspaceId).data ?? []).filter((c) => c.kind === 'channel' && c.id !== channel.id).map((c) => c.name ?? '')
-  const [details, setDetails] = useState<{ tab: DetailsTab; editTopic?: boolean } | null>(null)
   const allowed = detailsRights(channel, rights, {
     restrictPosting: check('channel.restrictPosting', { channel }),
     inviteByEmail: check('channel.inviteByEmail', { channel }),
@@ -263,6 +287,7 @@ function ChannelTop({ channel, people, workspaceSlug, tab, onTab, panelId }: { c
           rights={allowed}
           tab={details.tab}
           editTopic={details.editTopic}
+          addPeople={details.addPeople}
           headerError={headerError?.message}
           // "Add a topic" is gone once there's a topic: focus goes back to the channel's name.
           fallbackFocus={() => top.current?.querySelector<HTMLElement>('h1 button')}
@@ -427,6 +452,7 @@ function ChannelComposer({
   error,
   onSend,
   onEditLast,
+  commandUi,
 }: {
   channel: Channel
   placeholder: string
@@ -435,6 +461,7 @@ function ChannelComposer({
   error?: Error | null
   onSend: (body: Body) => Promise<unknown>
   onEditLast: () => void
+  commandUi: ChannelCommandUi
 }) {
   const drafts = useDrafts(channel.workspaceId)
   const saveDraft = useDraftSaver()
@@ -446,6 +473,8 @@ function ChannelComposer({
   // Someone mentioned who isn't in the channel: add them, or send without them (spec 6.8).
   const invite = useChannelInvite(channel, directory.users)
   const schedule = useSchedule()
+  // The / shortcuts this channel offers me (spec 6.8).
+  const slash = useChannelCommands(channel, commandUi)
   if (drafts.isPending) return composerSkeleton
   const draft = drafts.data?.find((d) => d.channelId === channel.id && d.rootId === null)
   return (
@@ -468,6 +497,7 @@ function ChannelComposer({
       onTyping={onTyping}
       error={error ?? schedule.error}
       directory={directory}
+      slash={slash}
       autoFocus={arrived}
       files={{
         tray: <UploadTray uploads={uploads.items} refused={uploads.refused} onRemove={uploads.remove} onRetry={uploads.retry} />,

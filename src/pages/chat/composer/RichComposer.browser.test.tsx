@@ -585,7 +585,7 @@ describe('RichComposer : emoji (spec 6.8)', () => {
 })
 
 describe('RichComposer / shortcuts (spec 6.8)', () => {
-  const withSlash = async (run: (c: ParsedCommand) => Promise<CommandOutcome> = async () => ({ notice: '#backend is muted. Type /mute to unmute it.' })) => {
+  const withSlash = async (run: (c: ParsedCommand, b: Body) => Promise<CommandOutcome> = async () => ({ notice: '#backend is muted. Type /mute to unmute it.' })) => {
     const spy = vi.fn(run)
     const mounted = await ready({ slash: { commands: COMMANDS.filter((c) => c.name !== 'task'), run: spy } })
     await userEvent.click(mounted.editor)
@@ -602,7 +602,7 @@ describe('RichComposer / shortcuts (spec 6.8)', () => {
     expect(run).not.toHaveBeenCalled()
     await userEvent.keyboard('{Enter}')
     await vi.waitFor(() => expect(run).toHaveBeenCalledOnce())
-    expect(run).toHaveBeenCalledWith({ name: 'mute', args: '', userIds: [] })
+    expect(run.mock.calls[0]![0]).toEqual({ name: 'mute', args: '', userIds: [] })
     expect(onSend).not.toHaveBeenCalled()
     await vi.waitFor(() => expect(editor.textContent).toBe(''))
     expect(screen.getByRole('status').textContent).toBe('#backend is muted. Type /mute to unmute it.')

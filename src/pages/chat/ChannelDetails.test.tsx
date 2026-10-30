@@ -622,3 +622,12 @@ describe('Add people errors go with their cause (slice 5 review minors)', () => 
     expect(add.getByText(help)).toBeTruthy()
   })
 })
+
+describe('Channel details: /invite opens Add people filled in (spec 6.8)', () => {
+  it('starts on Add people with the people named who are not in the channel yet', () => {
+    show({ tab: 'members', addPeople: ['u-4', 'u-2'] })
+    const add = within(screen.getByRole('dialog', { name: 'Add people to #backend' }))
+    expect(add.getByText('Omar Hassan')).toBeTruthy()
+    expect(add.queryByText('Nour El-Sayed')).toBeNull()
+  })
+})

@@ -32,7 +32,7 @@ type Values = {
 }
 
 /** What a new task starts from when it is made from somewhere else (a chat message). */
-export type TaskDraft = Pick<NewTicket, 'title' | 'description'> & Partial<Pick<NewTicket, 'linkedChannelId' | 'linkedMessageId'>>
+export type TaskDraft = Pick<NewTicket, 'title' | 'description'> & Partial<Pick<NewTicket, 'linkedChannelId' | 'linkedMessageId' | 'assigneeId'>>
 
 const valuesOf = (task: TaskView | undefined, phaseId: string | null, firstStatus: string, draft?: TaskDraft): Values => ({
   title: task?.title ?? draft?.title ?? '',
@@ -41,7 +41,7 @@ const valuesOf = (task: TaskView | undefined, phaseId: string | null, firstStatu
   phaseId: (task ? task.phaseId : phaseId) ?? '',
   status: task?.status ?? firstStatus,
   priority: task?.priority ?? 'medium',
-  assigneeId: task?.assigneeId ?? '',
+  assigneeId: task?.assigneeId ?? draft?.assigneeId ?? '',
   due: task?.dueAt ? task.dueAt.slice(0, 10) : '',
   estimate: task?.estimateHours != null ? String(task.estimateHours) : '',
   sprintId: task?.sprintId ?? '',
