@@ -2,6 +2,8 @@ import {
   IconChevronDown,
   IconChevronRight,
   IconDots,
+  IconBookmark,
+  IconBookmarkFilled,
   IconCopy,
   IconDownload,
   IconFileText,
@@ -132,6 +134,11 @@ function FileActionsPill({
             {phone && actions && (
               <MenuItem icon={IconInfoCircle} onSelect={() => actions.details(attachment)}>
                 Details
+              </MenuItem>
+            )}
+            {actions?.save && clean && (
+              <MenuItem icon={actions.save.isSaved(attachment) ? IconBookmarkFilled : IconBookmark} onSelect={() => actions.save!.toggle(attachment)}>
+                {actions.save.isSaved(attachment) ? 'Remove from Saved' : 'Save for later'}
               </MenuItem>
             )}
             {/* A task starts from a channel message, not a thread reply or its copy in the channel. */}

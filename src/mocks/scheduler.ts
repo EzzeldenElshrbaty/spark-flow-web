@@ -52,6 +52,11 @@ function tell(data: DbData, workspaceId: string, userId: string, content: string
 /** What Flowbot says when a reminder fires: the message quoted with who wrote it, unless it's gone or out of reach. */
 function reminderText(data: DbData, item: SavedItem): string {
   if (item.target.kind === 'note') return `Reminder: “${quoted(item.target.text)}”.`
+  if (item.target.kind === 'file') {
+    const fileId = item.target.id
+    const file = data.attachments.find((a) => a.id === fileId)
+    return file && !file.deletedAt ? `Reminder: the file “${quoted(file.title)}”.` : 'Reminder about a file that was deleted.'
+  }
   const found = savedRow(data, item.target)
   if (!found || found.row.deletedAt) return 'Reminder about a message that was deleted.'
   if (!canRead(data, found.channelId, item.userId)) return 'Reminder about a message you can no longer see.'

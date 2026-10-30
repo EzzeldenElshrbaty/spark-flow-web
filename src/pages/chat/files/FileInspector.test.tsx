@@ -29,6 +29,8 @@ const channels = [
   { id: 'c-release', kind: 'channel', name: 'release-v2', isPrivate: true, memberIds: ['u-2'] },
   { id: 'c-p-nex', kind: 'channel', name: 'nexus-core', isPrivate: false, memberIds: ['u-2'] },
 ] as Channel[]
+// The file actions read my Saved (spec 6.9 Save for later).
+vi.mock('@/api/saved', () => ({ useSaved: () => ({ data: [] }), useSave: () => ({ mutate: () => {} }), useRemoveSaved: () => ({ mutate: () => {} }) }))
 vi.mock('@/api/files', () => ({
   useFileDetails: () => ({ data: state.data, error: state.error, isError: state.error !== null, isPending: !state.data && !state.error, refetch: vi.fn() }),
   useUpdateFile: () => ({ mutateAsync: vi.fn(), isPending: false }),

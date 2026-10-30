@@ -147,3 +147,13 @@ describe('Saved: a /remind note (spec 6.8)', () => {
     expect(within(row).getByRole('link', { name: 'Open #backend: check the deploy' }).getAttribute('href')).toBe('/w/engineering/c/c-backend')
   })
 })
+
+describe('Saved: a file (spec 6.9)', () => {
+  it('says it is a file, shows its title, and opens the message it was shared in', () => {
+    const file = item({ id: 'f', target: { kind: 'file', id: 'a1' }, text: 'scope.pdf', messageId: 'm7', file: { id: 'a1', name: 'scope.pdf', title: 'scope.pdf' } as never })
+    show({ items: [file] })
+    const [row] = rows()
+    expect(row.getAttribute('aria-label')).toBe('File from Nour El-Sayed in #backend')
+    expect(within(row).getByRole('link', { name: 'View file: scope.pdf' }).getAttribute('href')).toBe('/w/engineering/c/c-backend?message=m7')
+  })
+})

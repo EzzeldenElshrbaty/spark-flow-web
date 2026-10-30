@@ -175,3 +175,25 @@ describe('saved.note: /remind (spec 6.8): a reminder about words, not a message'
     await expect(api.saved.note('c-backend', 'x'.repeat(1001), inMinutes(60))).rejects.toMatchObject({ status: 400, detail: 'Keep a reminder under 1,000 characters.' })
   })
 })
+
+describe('saving a file (spec 6.9 file menu: Save for later)', () => {
+  const blob = (name: string) => Object.assign(new Blob(['%PDF-1.4'], { type: 'application/pdf' }), { name })
+  it('saves a file I can see, In progress, showing its title, who uploaded it and where it was shared', async () => {
+    const file = await api.files.uploadForChat('c-backend', blob('scope.pdf'))
+    const m = await api.chat.send('c-backend', '', undefined, undefined, [file.id])
+    const item = await api.saved.save({ kind: 'file', id: file.id })
+    expect(item).toMatchObject({ target: { kind: 'file', id: file.id }, status: 'inProgress', channelId: 'c-backend', authorId: 'u-1', text: 'scope.pdf', gone: null })
+    expect(item.file?.id).toBe(file.id)
+    expect(item.messageId).toBe(m.id)
+    expect((await api.saved.save({ kind: 'file', id: file.id })).id).toBe(item.id)
+  })
+
+  it('a deleted file stays in Saved as gone; a file I can’t see is not found', async () => {
+    const file = await api.files.uploadForChat('c-backend', blob('gone.pdf'))
+    await api.chat.send('c-backend', '', undefined, undefined, [file.id])
+    const item = await api.saved.save({ kind: 'file', id: file.id })
+    await api.files.delete(file.id)
+    expect((await api.saved.list('ws-eng')).find((s) => s.id === item.id)).toMatchObject({ gone: 'deleted', text: '' })
+    await expect(api.saved.save({ kind: 'file', id: 'a-nope' })).rejects.toMatchObject({ status: 404 })
+  })
+})

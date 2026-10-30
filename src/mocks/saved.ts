@@ -26,7 +26,32 @@ export function savedRow(data: DbData, target: SavedTarget): { row: ChatMessage 
 export const rowText = (row: Pick<ChatMessage, 'body' | 'content'>) => (row.body.length > 0 ? bodyText(row.body) : row.content).replace(/\s+/g, ' ').trim()
 
 /** A saved item as its owner sees it now: an edit shows, and a deleted or out-of-reach message keeps no text. */
+/** Where a file is shared that `userId` can read: the first message or reply, oldest first. */
+export function filePlace(data: DbData, fileId: string, userId: string): { channelId: string; messageId: string; replyId: string | null } | null {
+  const has = (row: { attachments: { id: string }[] }) => row.attachments.some((a) => a.id === fileId)
+  const rows = [
+    ...data.messages.filter((m) => has(m) && !m.broadcast).map((m) => ({ at: m.createdAt, channelId: m.channelId, messageId: m.id, replyId: null })),
+    ...data.replies.filter(has).map((r) => ({ at: r.createdAt, channelId: r.channelId, messageId: r.messageId, replyId: r.id })),
+  ]
+    .filter((p) => canRead(data, p.channelId, userId))
+    .sort((a, b) => a.at.localeCompare(b.at))
+  const [first] = rows
+  return first ? { channelId: first.channelId, messageId: first.messageId, replyId: first.replyId } : null
+}
+
 function viewOf(data: DbData, item: SavedItem): SavedView {
+  if (item.target.kind === 'file') {
+    const fileId = item.target.id
+    const file = data.attachments.find((a) => a.id === fileId)
+    const place = file && !file.deletedAt ? filePlace(data, fileId, item.userId) : null
+    const none = { channelId: null, rootId: null, createdAt: null, authorId: null, authorName: null, text: '', file: null, messageId: null }
+    if (!file || file.deletedAt) return { ...item, ...none, gone: 'deleted' }
+    if (!place) return { ...item, ...none, gone: 'hidden' }
+    return {
+      ...item, channelId: place.channelId, rootId: place.replyId ? place.messageId : null, messageId: place.replyId ? null : place.messageId,
+      createdAt: file.createdAt, authorId: file.uploadedBy, authorName: senderName(file.uploadedBy, data.users), text: file.title, file, gone: null,
+    }
+  }
   // A /remind note is my own words: I'm its author, and it opens the channel it was set in.
   if (item.target.kind === 'note') {
     const authorName = senderName(item.userId, data.users)
@@ -58,6 +83,24 @@ export function savedApi(db: MockDb, hub: MockHub, now: () => Date): Api['saved'
     return item
   }
   const changed = (userId: string) => hub.publish({ type: 'savedChanged', userId })
+  /** Save for later on a file I can see where it's shared (spec 6.9): the same item each time, In progress. */
+  const saveFile = (data: DbData, userId: string, fileId: string, at: string | undefined): SavedView => {
+    const file = data.attachments.find((a) => a.id === fileId)
+    const place = file && !file.deletedAt ? filePlace(data, fileId, userId) : null
+    const channel = place && data.channels.find((c) => c.id === place.channelId)
+    if (!file || !place || !channel) throw notFound('File', fileId)
+    let item = data.saved.find((s) => s.userId === userId && s.target.kind === 'file' && s.target.id === fileId)
+    if (!item) {
+      item = { id: newId('sav'), userId, workspaceId: channel.workspaceId, target: { kind: 'file', id: fileId }, status: 'inProgress', remindAt: null, firedAt: null, savedAt: now().toISOString() }
+      data.saved.push(item)
+    }
+    item.status = 'inProgress'
+    if (at) {
+      item.remindAt = at
+      item.firedAt = null
+    }
+    return viewOf(data, item)
+  }
 
   return {
     async list(workspaceId) {
@@ -70,6 +113,7 @@ export function savedApi(db: MockDb, hub: MockHub, now: () => Date): Api['saved'
       await delay()
       const view = await db.update((data) => {
         const me = currentUser(data)
+        if (target.kind === 'file') return saveFile(data, me.id, target.id, remindAt === undefined ? undefined : future(remindAt))
         const found = savedRow(data, target)
         const channel = found && data.channels.find((c) => c.id === found.channelId)
         if (!found || !channel || !canRead(data, channel.id, me.id)) throw notFound(target.kind === 'message' ? 'Message' : 'Reply', target.id)

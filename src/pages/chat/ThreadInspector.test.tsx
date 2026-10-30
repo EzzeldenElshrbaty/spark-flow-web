@@ -15,6 +15,8 @@ afterEach(() => {
 const root = { id: 'm1', channelId: 'c-release', seq: 1, senderId: 'u-1', content: 'Ship it', body: [], attachments: [], reactions: [], threadCount: 2, mentions: [], createdAt: '2026-10-28T09:00:00.000Z' } as unknown as ChatMessage
 let channelError: Error | null = null
 let channelData: unknown = undefined
+// The file actions read my Saved (spec 6.9 Save for later).
+vi.mock('@/api/saved', () => ({ useSaved: () => ({ data: [] }), useSave: () => ({ mutate: () => {} }), useRemoveSaved: () => ({ mutate: () => {} }) }))
 vi.mock('@/api/chat', () => ({
   useMessage: () => ({ data: root, error: null, isError: false, isPending: false }),
   useChannel: () => ({ data: channelData, error: channelError, isError: channelError !== null, isLoading: false, refetch: vi.fn() }),

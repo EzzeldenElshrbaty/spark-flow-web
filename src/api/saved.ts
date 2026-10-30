@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { qk } from '@/api/queryKeys'
 import { retryUnlessNotFound as retry } from '@/api/retry'
-import type { ChatTarget, SavedStatus } from '@/api/types'
+import type { ChatTarget, FileTarget, SavedStatus } from '@/api/types'
 import { api } from '@/lib/api'
 
 /** My saved messages and replies in a workspace (spec 6.12 Saved), reminders first. Live events refresh it. */
@@ -11,7 +11,7 @@ export function useSaved(workspaceId: string | undefined) {
 
 /** Save for later (S), or Remind me with a time: the same item (spec 6.4, 6.5). */
 export function useSave() {
-  return useMutation({ mutationFn: ({ target, remindAt }: { target: ChatTarget; remindAt?: string }) => api.saved.save(target, remindAt) })
+  return useMutation({ mutationFn: ({ target, remindAt }: { target: ChatTarget | FileTarget; remindAt?: string }) => api.saved.save(target, remindAt) })
 }
 
 /** Complete, archive, bring back, or change the reminder (a new time, or null for none). */

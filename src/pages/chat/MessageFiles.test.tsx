@@ -226,3 +226,26 @@ describe('a text snippet in a message (spec 6.9)', () => {
     fetchSpy.mockRestore()
   })
 })
+
+describe('Save for later on a file (spec 6.9 file menu)', () => {
+  const message = { id: 'm1', channelId: 'c-backend', content: 'Scope', attachments: [pdf], threadCount: 0 } as unknown as ChatMessage
+  const base: FileActions = { mayManage: () => false, share: vi.fn(), details: vi.fn(), edit: vi.fn(), remove: vi.fn() }
+  const show = (value: FileActions) =>
+    render(
+      <FileActionsContext.Provider value={value}>
+        <MessageFiles attachments={[pdf]} link={link} message={message} />
+      </FileActionsContext.Provider>,
+    )
+
+  it('the file menu saves it, and once saved offers Remove from Saved', () => {
+    const toggle = vi.fn()
+    show({ ...base, save: { isSaved: () => false, toggle } })
+    fireEvent.click(screen.getByRole('button', { name: 'More file actions' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Save for later' }))
+    expect(toggle).toHaveBeenCalledWith(pdf)
+    cleanup()
+    show({ ...base, save: { isSaved: () => true, toggle } })
+    fireEvent.click(screen.getByRole('button', { name: 'More file actions' }))
+    expect(screen.getByRole('menuitem', { name: 'Remove from Saved' })).toBeTruthy()
+  })
+})

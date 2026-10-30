@@ -1,4 +1,5 @@
 import { createContext, useContext, useId, useState, type ReactNode } from 'react'
+import { useRemoveSaved, useSave, useSaved } from '@/api/saved'
 import { useChannels } from '@/api/chat'
 import { useDeleteFile, useShareFile, useUpdateFile } from '@/api/files'
 import type { Attachment, ChatMessage, User } from '@/api/types'
@@ -22,6 +23,8 @@ export type FileActions = {
   createTask?: (file: Attachment, message: ChatMessage) => void
   /** The channel (or its project) is archived: its files can't be edited or deleted until it's restored. */
   frozen?: boolean
+  /** Save for later (spec 6.9 file menu): whether it's in my Saved, and the toggle. */
+  save?: { isSaved: (file: Attachment) => boolean; toggle: (file: Attachment) => void }
 }
 
 export const FileActionsContext = createContext<FileActions | null>(null)
@@ -54,6 +57,10 @@ export function FileActionsProvider({
   children: ReactNode
 }) {
   const check = usePermission()
+  const saved = useSaved(workspaceId)
+  const saveFile = useSave()
+  const removeSaved = useRemoveSaved()
+  const savedItem = (file: Attachment) => saved.data?.find((s) => s.target.kind === 'file' && s.target.id === file.id && s.status === 'inProgress')
   const [open, setOpen] = useState<{ kind: 'share' | 'edit' | 'delete'; file: Attachment } | null>(null)
   const close = () => setOpen(null)
   const value: FileActions = {
@@ -64,6 +71,14 @@ export function FileActionsProvider({
     remove: (file) => setOpen({ kind: 'delete', file }),
     createTask: onCreateTask,
     frozen,
+    save: {
+      isSaved: (file) => Boolean(savedItem(file)),
+      toggle: (file) => {
+        const item = savedItem(file)
+        if (item) removeSaved.mutate(item.id)
+        else saveFile.mutate({ target: { kind: 'file', id: file.id } })
+      },
+    },
   }
   return (
     <FileActionsContext.Provider value={value}>

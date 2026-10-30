@@ -241,6 +241,9 @@ export type SavedView = SavedItem & {
   createdAt: string | null
   /** The message was deleted, or I can no longer read its channel. */
   gone: 'deleted' | 'hidden' | null
+  /** A saved file: the file, and the message it was first shared in that I can read (null for a reply's). */
+  file?: Attachment | null
+  messageId?: string | null
 }
 
 /**
@@ -316,8 +319,10 @@ export type Pin = { channelId: string; messageId: string; pinnedBy: string; pinn
 export type PinnedMessage = { message: ChatMessage; pinnedBy: string; pinnedAt: string }
 /** A /remind reminder (spec 6.8): words to be reminded of, and the channel it was set in; no message. */
 export type NoteTarget = { kind: 'note'; text: string; channelId: string }
-/** What a saved item is about: a message or reply, or a /remind note. */
-export type SavedTarget = ChatTarget | NoteTarget
+/** A file saved for later (spec 6.9 file menu). */
+export type FileTarget = { kind: 'file'; id: string }
+/** What a saved item is about: a message or reply, a file, or a /remind note. */
+export type SavedTarget = ChatTarget | FileTarget | NoteTarget
 
 export type ThreadReply = {
   id: string; messageId: string; channelId: string; senderId: string; content: string
@@ -658,7 +663,7 @@ export interface Api {
   saved: {
     list(workspaceId: string): Promise<SavedView[]>
     /** Saves it In progress (again, if it was saved before); with `remindAt`, also sets its reminder. */
-    save(target: ChatTarget, remindAt?: string): Promise<SavedView>
+    save(target: ChatTarget | FileTarget, remindAt?: string): Promise<SavedView>
     /** Complete, archive or bring back; a new reminder time (or null, none). Completing or archiving cancels it. */
     update(id: string, patch: { status?: SavedStatus; remindAt?: string | null }): Promise<SavedView>
     remove(id: string): Promise<void>

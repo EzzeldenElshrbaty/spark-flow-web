@@ -28,6 +28,7 @@ const EMPTY: Record<SavedStatus, string> = {
 export function savedLink(item: Saved, ws: string): string | null {
   if (item.gone || !item.channelId) return null
   if (item.target.kind === 'note') return paths.channel(ws, item.channelId)
+  if (item.target.kind === 'file' && !item.rootId) return item.messageId ? paths.message(ws, item.channelId, item.messageId) : paths.channel(ws, item.channelId)
   if (item.rootId) return `${paths.channel(ws, item.channelId)}?thread=${encodeURIComponent(item.rootId)}`
   return paths.message(ws, item.channelId, item.target.id)
 }
@@ -69,7 +70,12 @@ export function SavedView({
   const row = (item: Saved) => {
     const place = placeOf(item.channelId) ?? 'a conversation'
     const note = item.target.kind === 'note'
-    const source = note ? `Reminder set in ${place}` : item.authorName ? `${item.authorName} in ${place}` : 'Saved message'
+    const isFile = item.target.kind === 'file'
+    const source = note
+      ? `Reminder set in ${place}`
+      : isFile
+        ? item.authorName ? `File from ${item.authorName} in ${place}` : 'Saved file'
+        : item.authorName ? `${item.authorName} in ${place}` : 'Saved message'
     const link = savedLink(item, ws)
     const completed = item.status === 'completed'
     const body = (
@@ -98,7 +104,7 @@ export function SavedView({
           </span>
           {item.authorId ? <Avatar id={item.authorId} name={item.authorName ?? ''} app={isFlowbot(item.authorId)} decorative /> : <span />}
           {link ? (
-            <Link to={link} aria-label={note ? `Open ${place}: ${item.text}` : `View message: ${item.text}`} className="sf-focus min-w-0 rounded-sf-sm">
+            <Link to={link} aria-label={note ? `Open ${place}: ${item.text}` : isFile ? `View file: ${item.text}` : `View message: ${item.text}`} className="sf-focus min-w-0 rounded-sf-sm">
               {body}
             </Link>
           ) : (
