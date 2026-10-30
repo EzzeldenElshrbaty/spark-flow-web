@@ -1,4 +1,4 @@
-import { IconDotsVertical, IconMessageReply, IconMoodPlus } from '@tabler/icons-react'
+import { IconBookmark, IconBookmarkFilled, IconDotsVertical, IconMessageReply, IconMoodPlus } from '@tabler/icons-react'
 import clsx from 'clsx'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useReact } from '@/api/chat'
@@ -6,6 +6,7 @@ import type { ChatTarget, Reaction } from '@/api/types'
 import { IconButton } from '@/components/sf/Button'
 import { isRtl } from '@/components/sf/layers'
 import { MenuItem, useCloseMenu } from '@/components/sf/Menu'
+import type { RemindChoices } from '@/pages/chat/MessageActions'
 import { Popover, type PopoverTriggerProps } from '@/components/sf/Popover'
 import { Tooltip } from '@/components/sf/Tooltip'
 import { useNoHover, usePhone } from '@/components/sf/usePhone'
@@ -47,10 +48,14 @@ function placeToolbar(row: HTMLElement, bar: HTMLElement): number {
   return [-RISE, -(height + GAP), GAP, underCeiling, underHeader].find((top) => box.top + top >= ceiling && !hides(top)) ?? Math.max(underCeiling, underHeader)
 }
 
-type Stop = 'more' | 'reply' | 'add' | (typeof QUICK_REACTIONS)[number]
+type Stop = 'more' | 'reply' | 'save' | 'add' | (typeof QUICK_REACTIONS)[number]
+
+/** Save for later (S, spec 6.4): whether it's in my Saved (In progress), and the toggle. */
+export type SaveToggle = { saved: boolean; onToggle: () => void }
 
 /**
- * The toolbar of a message or reply (spec 6.4): ✅ 👀 🙌, Add reaction, Reply in thread (T) and More (the ⋯ menu).
+ * The toolbar of a message or reply (spec 6.4): ✅ 👀 🙌, Add reaction, Reply in thread (T), Save for later (S) and
+ * More (the ⋯ menu).
  * Shown while its row is hovered or has keyboard focus, and while its menu or picker is open. One Tab stop per row
  * (More, then wherever I left it); ←/→, Home and End move along it. It rises 16px above the row's top end, and moves
  * where it hides neither the author's name nor the time and isn't cut off (the top row of a list, the narrow panel). Phones and tablets have no hover: the ⋯ alone,
@@ -68,6 +73,8 @@ export function MessageToolbar({
   onCopyLink,
   onCopyText,
   follow,
+  save,
+  remind,
   extra,
   className,
 }: {
@@ -84,6 +91,10 @@ export function MessageToolbar({
   onCopyText?: () => void
   /** Following its thread: a top-level message's. */
   follow?: Follow
+  /** Save for later (S). */
+  save?: SaveToggle
+  /** Remind me about this ▸, in the ⋯ menu. */
+  remind?: RemindChoices
   /** More menu items from the page (Create task). */
   extra?: ReactNode
   /** Where it sits on the row's end side. */
@@ -122,7 +133,7 @@ export function MessageToolbar({
   }
   // A refused delete says why, here, outside the toolbar: shown while it hides.
   const [deleteError, setDeleteError] = useState<string | null>(null)
-  const menu = { target, can, confirmDelete, onEdit, onMarkUnread, onCopyLink, onCopyText, follow, extra, onDeleteError: setDeleteError }
+  const menu = { target, can, confirmDelete, onEdit, onMarkUnread, onCopyLink, onCopyText, follow, remind, extra, onDeleteError: setDeleteError }
   const message = react.error?.message ?? deleteError
   const error = message && (
     <p role="alert" className={clsx('sf-meta absolute top-9 z-10 w-56 rounded-sf-md bg-sf-surface-raised p-2 text-sf-error shadow-sf-menu', className)}>
@@ -131,12 +142,17 @@ export function MessageToolbar({
   )
 
   if (touch) {
-    const lead = (can.react || onReply) && (
+    const lead = (can.react || onReply || save) && (
       <>
         {can.react && <SheetReactions mine={mine} onToggle={toggle} onAdd={() => bar.current?.querySelector<HTMLElement>('[data-add-reaction]')?.click()} />}
         {onReply && (
           <MenuItem icon={IconMessageReply} onSelect={onReply}>
             Reply in thread
+          </MenuItem>
+        )}
+        {save && (
+          <MenuItem icon={save.saved ? IconBookmarkFilled : IconBookmark} onSelect={save.onToggle}>
+            {save.saved ? 'Remove from Saved' : 'Save for later'}
           </MenuItem>
         )}
       </>
@@ -176,8 +192,13 @@ export function MessageToolbar({
     )
   }
 
-  const offersMenu = Boolean(follow || onMarkUnread || onCopyLink || onCopyText || can.edit || can.remove || extra)
-  const stops: Stop[] = [...(can.react ? [...QUICK_REACTIONS, 'add' as const] : []), ...(onReply ? ['reply' as const] : []), ...(offersMenu ? ['more' as const] : [])]
+  const offersMenu = Boolean(follow || onMarkUnread || remind || onCopyLink || onCopyText || can.edit || can.remove || extra)
+  const stops: Stop[] = [
+    ...(can.react ? [...QUICK_REACTIONS, 'add' as const] : []),
+    ...(onReply ? ['reply' as const] : []),
+    ...(save ? ['save' as const] : []),
+    ...(offersMenu ? ['more' as const] : []),
+  ]
   if (stops.length === 0) return null
   const current = active && stops.includes(active) ? active : stops[stops.length - 1]
   const stop = (key: Stop) => ({ tabIndex: key === current ? 0 : -1, onFocus: () => setActive(key), 'data-toolbar-stop': key, [ROW_FOCUS]: key === current ? '' : undefined })
@@ -228,8 +249,18 @@ export function MessageToolbar({
             </Tooltip>
           ))}
         {can.react && <AddReaction onPick={add} trigger={(props) => <IconButton label="Add reaction" icon={IconMoodPlus} {...props} {...stop('add')} />} />}
-        {can.react && (onReply || offersMenu) && <span aria-hidden className="mx-0.5 h-5 w-px bg-sf-line" />}
+        {can.react && (onReply || save || offersMenu) && <span aria-hidden className="mx-0.5 h-5 w-px bg-sf-line" />}
         {onReply && <IconButton label="Reply in thread" icon={IconMessageReply} shortcut={['T']} onClick={onReply} {...stop('reply')} />}
+        {save && (
+          <IconButton
+            label={save.saved ? 'Remove from Saved' : 'Save for later'}
+            icon={save.saved ? IconBookmarkFilled : IconBookmark}
+            pressed={save.saved}
+            shortcut={['S']}
+            onClick={save.onToggle}
+            {...stop('save')}
+          />
+        )}
         {offersMenu && <MessageMenu {...menu} trigger={(props) => <IconButton label="More actions" icon={IconDotsVertical} {...props} {...stop('more')} />} />}
       </div>
       {error}

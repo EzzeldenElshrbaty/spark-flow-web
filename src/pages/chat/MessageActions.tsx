@@ -1,11 +1,12 @@
-import { IconBell, IconBellOff, IconCircleDot, IconClipboardText, IconLink, IconPencil, IconTrash } from '@tabler/icons-react'
+import { IconAlarm, IconBell, IconBellOff, IconCircleDot, IconClipboardText, IconLink, IconPencil, IconTrash } from '@tabler/icons-react'
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useDeleteMessage, useRestoreMessage } from '@/api/chat'
 import type { ChatTarget } from '@/api/types'
 import { Button as SfButton } from '@/components/sf/Button'
-import { Menu, MenuItem, MenuSeparator, type MenuTriggerProps } from '@/components/sf/Menu'
+import { Menu, MenuItem, MenuSeparator, Submenu, type MenuTriggerProps } from '@/components/sf/Menu'
 import { Modal } from '@/components/sf/Modal'
 import { useToast } from '@/components/sf/Toast'
+import { RemindItems } from '@/pages/chat/saved/RemindMenu'
 
 /** Marks the element a row's focus goes back to (after an edit or a delete): its toolbar's Tab stop. */
 export const ROW_FOCUS = 'data-row-focus'
@@ -20,8 +21,11 @@ export function FollowItem({ following, onToggle }: Follow) {
   )
 }
 
+/** Remind me about this ▸ (spec 6.5): a preset's time, Custom… (the page's date picker), and Remove reminder when set. */
+export type RemindChoices = { onPick: (at: Date) => void; onCustom: () => void; onClear?: () => void }
+
 /**
- * The ⋯ menu of a message or reply (spec 6.5), in its order: Get notified about replies (a thread's root) and Mark unread · — · whatever the page adds (Create task),
+ * The ⋯ menu of a message or reply (spec 6.5), in its order: Get notified about replies (a thread's root), Mark unread and Remind me ▸ · — · whatever the page adds (Create task),
  * Copy link, Copy text · — · Edit and Delete for the author (or Delete for an Admin). On phones `lead` comes first:
  * what the toolbar would carry there. A separator only between groups that have something.
  */
@@ -34,6 +38,7 @@ export function MessageMenu({
   onCopyLink,
   onCopyText,
   follow,
+  remind,
   extra,
   lead,
   trigger,
@@ -50,6 +55,7 @@ export function MessageMenu({
   onCopyText?: () => void
   /** Following its thread: a top-level message's. */
   follow?: Follow
+  remind?: RemindChoices
   /** More items from the page (Create task), as `MenuItem`s. */
   extra?: ReactNode
   /** Phones: the quick reactions, Add reaction and Reply in thread, first in the sheet. */
@@ -100,6 +106,11 @@ export function MessageMenu({
         <MenuItem icon={IconCircleDot} shortcut="U" onSelect={onMarkUnread}>
           Mark unread
         </MenuItem>
+      ),
+      remind && (
+        <Submenu icon={IconAlarm} label="Remind me about this">
+          <RemindItems {...remind} />
+        </Submenu>
       ),
     ],
     [

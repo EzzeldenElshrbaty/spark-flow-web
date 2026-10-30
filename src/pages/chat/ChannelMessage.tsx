@@ -23,6 +23,7 @@ import { TaskEventCard } from '@/pages/chat/TaskEventCard'
 import { useEditing } from '@/pages/chat/editingStore'
 import { actionsFor, deleteNeedsConfirm } from '@/pages/chat/messageRights'
 import { useComposerDirectory } from '@/pages/chat/useComposerDirectory'
+import { useSaveTarget } from '@/pages/chat/saved/useSaveTarget'
 import { replyState } from '@/pages/chat/useReplyFocus'
 
 /** "A", "A and B", "A, B and C". */
@@ -161,6 +162,8 @@ export function ChannelMessage({
     root && !root.system && !broadcast
       ? { following: Boolean(root.following), onToggle: () => setFollowing.mutate({ messageId: root.id, following: !root.following }, { onError: () => say("Couldn't change that. Try again.", true) }) }
       : undefined
+  // Save for later (S) and Remind me (spec 6.4, 6.5): a message or reply that's there and settled, not a channel event.
+  const saving = useSaveTarget(target, ctx.workspaceId, !message.deletedAt && !sendState && !root?.system, say)
   // Reply in thread (T, spec 6.4): a top-level message outside its own thread, where I may post; the thread opens to
   // its reply box. Asked again while that thread is open, it doesn't add a step to the history.
   const navigate = useNavigate()
@@ -219,7 +222,7 @@ export function ChannelMessage({
     <article
       ref={row}
       // While focus is in it (its toolbar), as long as I'm not typing somewhere: E edits my message (spec 6.3), U marks
-      // it unread from here, L copies its link, T opens its thread to reply (spec 10).
+      // it unread from here, L copies its link, T opens its thread to reply, S saves it (spec 10).
       onKeyDown={(e) => {
         // Keys from this row's portals (the emoji picker, the ⋯ menu on phones) bubble here too, and so do keys from
         // its open ⋯ menu (which picks its own items by their keys): they aren't for the row. A held key acts once.
@@ -239,6 +242,9 @@ export function ChannelMessage({
         } else if (key === 't' && openThread && !sendState) {
           e.preventDefault()
           openThread()
+        } else if (key === 's' && saving.toggle) {
+          e.preventDefault()
+          saving.toggle()
         }
       }}
       className={clsx(
@@ -308,10 +314,13 @@ export function ChannelMessage({
           onCopyLink={message.deletedAt ? undefined : () => void copyLink()}
           onCopyText={message.deletedAt ? undefined : () => void copyText()}
           follow={follow}
+          save={saving.save}
+          remind={saving.remind}
           extra={message.deletedAt ? undefined : actions}
           className={compact ? 'end-3' : 'end-4 md:end-6'}
         />
       )}
+      {saving.dialog}
     </article>
   )
 }

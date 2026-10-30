@@ -650,3 +650,50 @@ describe('editing a message that shows in two places (spec 6.3, 6.7)', () => {
   })
 })
 
+
+describe('Save for later and Remind me on a message (spec 6.4, 6.5, 10)', () => {
+  const view = (over = {}) => ({
+    id: 's1', userId: 'u-1', workspaceId: 'ws-eng', target: { kind: 'message' as const, id: 'm1' }, status: 'inProgress' as const, remindAt: null, firedAt: null,
+    savedAt: '2026-10-28T09:00:00.000Z', channelId: 'c1', rootId: null, authorId: 'u-2', authorName: 'Nour El-Sayed', text: 'x', createdAt: null, gone: null, ...over,
+  })
+
+  it('S saves it, says so, and Save for later shows it saved', async () => {
+    vi.spyOn(api.saved, 'list').mockResolvedValue([])
+    const save = vi.spyOn(api.saved, 'save').mockResolvedValue(view())
+    const row = show(message('Ship it'))
+    fireEvent.keyDown(row, { key: 's' })
+    await vi.waitFor(() => expect(save).toHaveBeenCalledWith({ kind: 'message', id: 'm1' }, undefined))
+    await vi.waitFor(() => expect(row.textContent).toContain('Saved for later'))
+  })
+
+  it('S on a saved one takes it out of Saved', async () => {
+    vi.spyOn(api.saved, 'list').mockResolvedValue([view()])
+    const remove = vi.spyOn(api.saved, 'remove').mockResolvedValue()
+    show(message('Ship it'))
+    const button = await screen.findByRole('button', { name: 'Remove from Saved' })
+    fireEvent.click(button)
+    await vi.waitFor(() => expect(remove).toHaveBeenCalledWith('s1'))
+  })
+
+  it('Remind me about this ▸ In 20 minutes saves it with that time', async () => {
+    vi.spyOn(api.saved, 'list').mockResolvedValue([])
+    const save = vi.spyOn(api.saved, 'save').mockResolvedValue(view())
+    show(message('Ship it'))
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }))
+    await act(async () => fireEvent.click(screen.getByRole('menuitem', { name: 'Remind me about this' })))
+    await act(async () => fireEvent.click(screen.getByRole('menuitem', { name: /In 20 minutes/ })))
+    await vi.waitFor(() => expect(save).toHaveBeenCalled())
+    const [target, at] = save.mock.calls[0]
+    expect(target).toEqual({ kind: 'message', id: 'm1' })
+    expect(Math.abs(new Date(at!).getTime() - (Date.now() + 20 * 60_000))).toBeLessThan(5_000)
+  })
+
+  it('a pending or deleted message has neither', () => {
+    vi.spyOn(api.saved, 'list').mockResolvedValue([])
+    show(message('Ship it', { deletedAt: '2026-10-28T10:00:00.000Z' }))
+    expect(screen.queryByRole('button', { name: 'Save for later' })).toBeNull()
+    cleanup()
+    show(message('Ship it'), { sendState: 'sending' })
+    expect(screen.queryByRole('button', { name: 'Save for later' })).toBeNull()
+  })
+})

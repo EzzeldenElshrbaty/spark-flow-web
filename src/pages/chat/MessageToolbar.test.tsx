@@ -177,3 +177,42 @@ describe('on a phone (no hover: the ⋯ and its sheet)', () => {
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'More actions' }))
   })
 })
+
+describe('Save for later and Remind me (spec 6.4, 6.5)', () => {
+  it('Save for later (S) sits after Reply in thread and shows whether it is saved', async () => {
+    const onToggle = vi.fn()
+    show({ save: { saved: false, onToggle } })
+    expect(buttons().map((b) => b.getAttribute('aria-label'))).toEqual(['React with ✅', 'React with 👀', 'React with 🙌', 'Add reaction', 'Reply in thread', 'Save for later', 'More actions'])
+    expect(named('Save for later').getAttribute('aria-pressed')).toBe('false')
+    await act(async () => fireEvent.click(named('Save for later')))
+    expect(onToggle).toHaveBeenCalled()
+    cleanup()
+    show({ save: { saved: true, onToggle } })
+    expect(named('Remove from Saved').getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('the ⋯ menu has Remind me about this ▸ after Mark unread, with the presets and Custom…', async () => {
+    const onPick = vi.fn()
+    const onCustom = vi.fn()
+    show({ onMarkUnread: vi.fn(), remind: { onPick, onCustom } })
+    await act(async () => fireEvent.click(named('More actions')))
+    const items = screen.getAllByRole('menuitem').map((i) => i.textContent)
+    expect(items.indexOf('Remind me about this')).toBe(items.findIndex((t) => t?.startsWith('Mark unread')) + 1)
+    await act(async () => fireEvent.click(screen.getByRole('menuitem', { name: 'Remind me about this' })))
+    await act(async () => fireEvent.click(screen.getByRole('menuitem', { name: /In 3 hours/ })))
+    expect(Math.abs((onPick.mock.calls[0][0] as Date).getTime() - (Date.now() + 3 * 3_600_000))).toBeLessThan(5_000)
+    await act(async () => fireEvent.click(named('More actions')))
+    await act(async () => fireEvent.click(screen.getByRole('menuitem', { name: 'Remind me about this' })))
+    await act(async () => fireEvent.click(screen.getByRole('menuitem', { name: 'Custom…' })))
+    expect(onCustom).toHaveBeenCalled()
+  })
+
+  it('on phones the sheet carries Save for later with the reactions and Reply in thread', async () => {
+    window.matchMedia = phone
+    const onToggle = vi.fn()
+    show({ save: { saved: false, onToggle } })
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'More actions' })))
+    await act(async () => fireEvent.click(screen.getByRole('menuitem', { name: 'Save for later' })))
+    expect(onToggle).toHaveBeenCalled()
+  })
+})
