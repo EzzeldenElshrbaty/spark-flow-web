@@ -276,7 +276,12 @@ export type Draft = { channelId: string; rootId: string | null; body: Body; upda
 export type SentItem = { target: ChatTarget; channelId: string; rootId: string | null; text: string; createdAt: string }
 
 /** What a link's preview card shows. `image` is an https address or null. */
-export type LinkPreview = { url: string; siteName: string; title: string; description: string | null; image: string | null }
+/**
+ * What the server read from a linked page (spec 6.3): its og/twitter title, description and image, else its <title> and
+ * meta description, else its address as the title. `image` is served by our API (never the site's own address), with
+ * its size so the card can lay out before it loads.
+ */
+export type LinkPreview = { url: string; title: string; description: string | null; image: { url: string; width: number; height: number } | null }
 
 /** A channel event shown in its timeline (spec 6.3 system messages). */
 export type SystemEvent =

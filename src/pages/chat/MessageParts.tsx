@@ -1,7 +1,7 @@
 import { IconChevronRight, IconListCheck, IconMessage, IconMoodPlus } from '@tabler/icons-react'
 import clsx from 'clsx'
 import { Link, useNavigate, useSearchParams } from 'react-router'
-import { useLinkPreview, useOpenDm, useReact } from '@/api/chat'
+import { useOpenDm, useReact } from '@/api/chat'
 import type { ChatMessage, ChatTarget, Reaction, User } from '@/api/types'
 import { Avatar } from '@/components/sf/Avatar'
 import { Tag } from '@/components/sf/Badge'
@@ -267,28 +267,5 @@ export function CommentCard({ message, ctx, link }: { message: ChatMessage; ctx:
       {text.trim() && <div className="mt-2"><MessageBody body={parseBody(text)} ctx={ctx} /></div>}
       <MessageFiles attachments={message.attachments} link={link} />
     </div>
-  )
-}
-
-/** A link's preview (spec 6.3 URL unfurl): site, title, description and image, for allowed domains only. */
-export function LinkPreviewCard({ url }: { url: string }) {
-  const preview = useLinkPreview(url)
-  const p = preview.data
-  if (!p) return null
-  const image = p.image?.startsWith('https://') ? p.image : null
-  return (
-    <a
-      href={p.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="sf-focus mt-1 grid max-w-[520px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-sf-lg border border-sf-line bg-sf-surface p-3 hover:bg-sf-surface-hover"
-    >
-      <span className="min-w-0">
-        <span className="sf-meta block truncate text-sf-text-muted">{p.siteName}</span>
-        <span className="block truncate font-sf text-[14px]/[20px] font-semibold text-sf-accent">{p.title}</span>
-        {p.description && <span className="sf-small line-clamp-2 text-sf-text-secondary">{p.description}</span>}
-      </span>
-      {image && <img src={image} alt="" loading="lazy" referrerPolicy="no-referrer" className="size-16 rounded-sf-md border border-sf-line object-cover" />}
-    </a>
   )
 }

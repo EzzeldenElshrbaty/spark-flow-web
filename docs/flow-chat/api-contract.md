@@ -108,12 +108,16 @@ Messages read from the API carry `replyUserIds`: who replied last, newest first,
 
 | Call | Route | Returns |
 |---|---|---|
-| Preview a link | `GET /api/link-preview?url=<url>` | `LinkPreview` (`url, siteName, title, description, image`) or `null`. |
+| Preview a link | `GET /api/link-preview?url=<url>` | `LinkPreview` (`url, title, description, image`) or `null`. |
+| A preview's image | `GET /api/link-preview/image?u=<id>` | The image bytes the server fetched, with its own `Content-Type` (an image type only). |
 
-- Only for domains on the allow-list (`PREVIEW_DOMAINS` in `src/lib/linkPreview.ts`: spark-sys.com, github.com, figma.com, docs.google.com, and their subdomains); anything else returns `null` without a request.
-- **The server fetches the page, never the browser.** Guard the fetch: http and https only, resolve the host and refuse private, loopback and link-local addresses (SSRF), follow at most 3 redirects and re-check each one against the allow-list, 3s timeout, read at most 1 MB, and send no cookies or credentials.
-- Take `og:title` / `<title>`, `og:description`, `og:site_name` and `og:image`. Return `image` only as an https address (better: proxied through the API). Cache results for an hour.
-- The client shows one preview per message: the first allowed link.
+- Any http or https link (slice L, 31 Oct 2026; the earlier allow-list is gone). `null` only for an address that isn't a web address, or a page the server could not reach.
+- **The server fetches the page, never the browser.** Guard every fetch (the page and its image): http and https only, ports 80 and 443 only; resolve the host, refuse private, loopback, link-local, unique-local and other non-public addresses (IPv4-mapped IPv6 too), and **connect to the address you just checked** (pin it, don't resolve again), so DNS rebinding can't reach the internal network; do all of that again for each redirect (at most 3); 5 s timeout; read at most 1 MB of HTML (and 5 MB of image); send no cookies or credentials; a plain `User-Agent` naming Spark Flow.
+- The image route serves only PNG, JPEG, WebP and GIF, checked by their first bytes (re-encode, or refuse anything else; never SVG, which runs script on our origin), with `X-Content-Type-Options: nosniff`, `Content-Security-Policy: sandbox` and `Content-Disposition: inline`. The client loads preview images only from the app's or the API's origin (`ownImage` in `src/lib/linkPreview.ts`).
+- Read, in order: `og:title` / `twitter:title` / `<title>`; `og:description` / `twitter:description` / `<meta name="description">`; `og:image` / `twitter:image`. The address must have a host with a dot (`previewable`); the client doesn't ask for a half-typed one. Without a title, the title is the address as host and path, without `www.` or a trailing `/` ("example.com/pricing"); never a made-up one.
+- `image` is `{ url, width, height }` or `null`. `url` is the API's image route above (the client never loads the site's own image address); `width` and `height` are the real image's size, which the server learns while fetching it, so the card can lay out before it loads. Drop images that aren't images, are over 5 MB or under 64 px.
+- Cache each result for 24 hours by address.
+- One preview per message: its first http or https link outside code. The author can remove it (× on the card in the box): the message stores that link with `"noPreview": true` in its `body` (a field of the `link` inline, kept by the body check like the others, and kept on edit when the client sends it again). The client then shows no card for that message.
 
 ### Reactions
 

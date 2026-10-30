@@ -9,7 +9,8 @@ export type Mark = 'b' | 'i' | 'u' | 's' | 'code'
 
 export type Inline =
   | { type: 'text'; text: string; marks?: Mark[] }
-  | { type: 'link'; href: string; text: string }
+  /** `noPreview`: its author removed the link's preview card (spec 6.3); set on the message's first link only. */
+  | { type: 'link'; href: string; text: string; noPreview?: true }
   | { type: 'user'; id: string; name: string }
   | { type: 'all' } // @channel (spec 6.8)
   | { type: 'here' }
@@ -222,7 +223,8 @@ function validInline(n: unknown): Inline | null {
       return marks.length ? { type: 'text', text: n.text, marks } : { type: 'text', text: n.text }
     }
     case 'link':
-      return isWebAddress(n.href) && isText(n.text, 2048) ? { type: 'link', href: n.href as string, text: n.text } : null
+      if (!isWebAddress(n.href) || !isText(n.text, 2048)) return null
+      return n.noPreview === true ? { type: 'link', href: n.href as string, text: n.text, noPreview: true } : { type: 'link', href: n.href as string, text: n.text }
     case 'user':
       return isText(n.id) && ID.test(n.id) && isText(n.name, 200) ? { type: 'user', id: n.id, name: n.name } : null
     case 'all':

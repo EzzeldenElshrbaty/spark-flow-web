@@ -51,6 +51,7 @@ import { useChannelInvite } from '@/pages/chat/composer/useChannelInvite'
 import { FileActionsProvider } from '@/pages/chat/files/FileActions'
 import { withInspector } from '@/lib/inspector'
 import { UploadTray } from '@/pages/chat/uploads/UploadTray'
+import { composerLinkPreview } from '@/pages/chat/LinkPreviewCard'
 import { paneDrop, useUploads, type Uploads } from '@/pages/chat/uploads/useUploads'
 
 /** A channel or DM: its header and tabs over its messages, newest at the bottom, filling the main card (spec 5.3, 6.1). */
@@ -561,6 +562,7 @@ function ChannelComposer({
       directory={directory}
       slash={slash}
       onSnippet={snippet.open}
+      linkPreview={composerLinkPreview}
       autoFocus={arrived}
       files={{
         tray: <UploadTray uploads={uploads.items} refused={uploads.refused} onRemove={uploads.remove} onRetry={uploads.retry} />,

@@ -23,6 +23,7 @@ import { Tooltip } from '@/components/sf/Tooltip'
 import { acceptedFiles } from '@/lib/fileTypes'
 import { webAddress } from '@/lib/webAddress'
 import { formatWhen } from '@/lib/format'
+import { dismissedPreview, firstPreviewable, withoutPreview } from '@/lib/linkPreview'
 import { bodyText, type Body } from '@/lib/messageBody'
 import { schedulePresets } from '@/lib/remindTimes'
 import { parseCommand, refusal, type ComposerSlash } from '@/lib/slashCommands'
@@ -101,6 +102,7 @@ export function RichComposer({
   onSchedule,
   slash,
   onSnippet,
+  linkPreview,
 }: {
   /** send: the channel's box; edit: a message's body being edited in place, with Cancel and Save (spec 6.3). */
   mode?: 'send' | 'edit'
@@ -130,6 +132,11 @@ export function RichComposer({
   slash?: ComposerSlash
   /** Text snippet (spec 6.9): the box's text goes into it; true once it's made, and the box empties. */
   onSnippet?: (text: string) => Promise<boolean>
+  /**
+   * The first link's preview above the box (spec 6.3), shown once typing pauses; `onRemove` (its ×) sends the message
+   * without it. The composer decides which link and keeps the choice; the page renders the card.
+   */
+  linkPreview?: (url: string, onRemove: () => void) => ReactNode
 }) {
   const config = {
     namespace: 'flow-composer',
@@ -160,12 +167,33 @@ export function RichComposer({
         onSchedule={onSchedule}
         slash={slash}
         onSnippet={onSnippet}
+        linkPreview={linkPreview}
       />
     </LexicalComposer>
   )
 }
 
-function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEditLast, onDraft, onTyping, error, directory, autoFocus, showFormatting = true, files, allowEmpty = false, onSchedule, slash, onSnippet }: Parameters<typeof RichComposer>[0]) {
+/** How long typing pauses before the first link's preview is asked for (spec 6.3). */
+const PREVIEW_PAUSE_MS = 600
+
+/** `value` once it has held still for `ms`; null meanwhile, so the same value again waits again. */
+function useSettled(value: string | null, ms: number): string | null {
+  const [settled, setSettled] = useState<string | null>(null)
+  // A new value drops the settled one during render (React's "adjust state on a prop change"), before any paint.
+  const [seen, setSeen] = useState(value)
+  if (seen !== value) {
+    setSeen(value)
+    setSettled(null)
+  }
+  useEffect(() => {
+    if (value === null) return
+    const timer = window.setTimeout(() => setSettled(value), ms)
+    return () => window.clearTimeout(timer)
+  }, [value, ms])
+  return settled === value ? value : null
+}
+
+function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEditLast, onDraft, onTyping, error, directory, autoFocus, showFormatting = true, files, allowEmpty = false, onSchedule, slash, onSnippet, linkPreview }: Parameters<typeof RichComposer>[0]) {
   const editing = mode === 'edit'
   const [editor] = useLexicalComposerContext()
   const boxRef = useRef<HTMLDivElement>(null)
@@ -194,12 +222,22 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
   const dragDepth = useRef(0)
   const openPicker = useCallback(() => picker.current?.click(), [])
 
+  // The link whose card I took off (×): it goes out as `noPreview` on that link (with the message, a scheduled one,
+  // the draft); an edit or a reopened draft starts with the choice it had. The ref is what the callbacks read.
+  const [dismissed, setDismissed] = useState<string | null>(() => (initialBody ? dismissedPreview(initialBody) : null))
+  const dismissedRef = useRef(dismissed)
+  const dismiss = useCallback((url: string | null) => {
+    dismissedRef.current = url
+    setDismissed(url)
+  }, [])
+
   /** Saves the latest draft; a failure is said near the box and tried again shortly. */
   const saveDraft = useCallback(async () => {
     if (!onDraft) return
     window.clearTimeout(draftTimer.current)
     unsaved.current = false
-    const ok = await Promise.resolve(onDraft(latestBody.current)).catch(() => false)
+    const off = dismissedRef.current
+    const ok = await Promise.resolve(onDraft(off ? withoutPreview(latestBody.current, off) : latestBody.current)).catch(() => false)
     if (ok === false) {
       unsaved.current = true
       setDraftFailed(true)
@@ -217,6 +255,9 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
   // Scheduled messages are text only for now: not while files are added.
   const canSchedule = canSend && !empty && !command && (files?.ready ?? 0) === 0 && !files?.waiting
 
+  const candidate = linkPreview ? firstPreviewable(body) : null
+  const previewed = useSettled(candidate === dismissed ? null : candidate, PREVIEW_PAUSE_MS)
+
   const latest = useRef({ canSend, body })
   latest.current = { canSend, body }
 
@@ -225,8 +266,9 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
     window.clearTimeout(draftTimer.current)
     editor.update(() => $editorFromBody([]))
     latestBody.current = []
+    dismiss(null)
     void saveDraft()
-  }, [editor, saveDraft])
+  }, [editor, saveDraft, dismiss])
 
   // A shortcut (spec 6.8): one offered here runs, and what it says shows under the box; anything else says why not.
   const runCommand = useCallback(
@@ -256,8 +298,10 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
   // Sends, or with `at` schedules (spec 6.8); either way a box that went out empties.
   const deliver = useCallback(
     (at?: Date) => {
-      const { canSend: ok, body: now } = latest.current
+      const { canSend: ok, body: typed } = latest.current
       if (!ok || (at && !onSchedule)) return
+      const off = dismissedRef.current
+      const now = off ? withoutPreview(typed, off) : typed
       if (!at && slash && parseCommand(now)) return runCommand(now)
       setPending(true)
       ;(at ? onSchedule!(now, at) : onSend(now)).then(
@@ -279,6 +323,14 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
     void onSnippet?.(bodyText(latest.current.body)).then((created) => created && emptyBox())
   }, [onSnippet, emptyBox])
 
+  /** Saves the draft once writing pauses (DRAFT_MS). */
+  const scheduleDraft = () => {
+    if (!onDraft) return
+    unsaved.current = true
+    window.clearTimeout(draftTimer.current)
+    draftTimer.current = window.setTimeout(() => void saveDraft(), DRAFT_MS)
+  }
+
   const onChange = (state: EditorState) => {
     const next = state.read(() => $bodyFromEditor())
     setBody(next)
@@ -287,11 +339,7 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
       setNotice(null)
       setCommandError(null)
     }
-    if (onDraft) {
-      unsaved.current = true
-      window.clearTimeout(draftTimer.current)
-      draftTimer.current = window.setTimeout(() => void saveDraft(), DRAFT_MS)
-    }
+    scheduleDraft()
     if (onTyping && next.length > 0 && Date.now() - typedAt.current > TYPING_EVERY_MS) {
       typedAt.current = Date.now()
       onTyping()
@@ -351,6 +399,12 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
         )}
       >
         {files?.tray}
+        {previewed &&
+          linkPreview?.(previewed, () => {
+            dismiss(previewed)
+            scheduleDraft()
+            editor.focus()
+          })}
         {formatting && <FormatBar onLink={openLink} uploadKey={Boolean(files)} />}
         {linking && <LinkBar editor={editor} linking={linking} onDone={() => setLinking(null)} />}
         <div className="relative">

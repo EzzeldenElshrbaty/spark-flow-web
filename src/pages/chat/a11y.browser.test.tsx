@@ -30,6 +30,7 @@ import { FileInspector } from '@/pages/chat/files/FileInspector'
 import { MessageFiles } from '@/pages/chat/MessageFiles'
 import { SnippetView } from '@/pages/chat/snippets/SnippetCard'
 import { PinsTab } from '@/pages/chat/PinsTab'
+import { LinkPreviewView } from '@/pages/chat/LinkPreviewCard'
 import { FilesTab } from '@/pages/chat/files/FilesTab'
 import { AddBookmarkDialog } from '@/pages/chat/AddBookmarkDialog'
 import { NewFolderDialog } from '@/pages/chat/files/NewFolderDialog'
@@ -145,6 +146,13 @@ async function violations() {
   return result.violations.map((v) => `${v.id}: ${v.nodes.map((node) => node.target.join(' ')).join(', ')}`)
 }
 
+const elevenlabs = {
+  url: 'https://elevenlabs.io/',
+  title: 'Free AI Voice Generator & Voice Agents Platform | ElevenLabs',
+  description: 'Create lifelike speech with our AI voice generator and build voice agents. Text to speech in 70+ languages.',
+  image: { url: '/link-previews/elevenlabs.svg', width: 1200, height: 630 },
+}
+
 const surfaces: [string, () => ReactNode][] = [
   [
     'channel header and tabs',
@@ -224,6 +232,17 @@ const surfaces: [string, () => ReactNode][] = [
   ['New folder (spec 6.9)', () => <NewFolderDialog fileTitle="scope.pdf" onCreate={async () => {}} onClose={() => {}} />],
   ['Jump to a date (spec 6.2)', () => <JumpDateDialog onJump={() => {}} onClose={() => {}} />],
   ['Channel details bookmarks (spec 6.10)', () => <BookmarksPanel bookmarks={[{ id: 'b1', channelId: 'c-backend', title: 'Runbook', url: 'https://wiki.spark-sys.com/runbook', createdBy: 'u-1', createdAt: '' }]} onUpdate={async () => {}} onRemove={async () => {}} />],
+  [
+    'link previews (spec 6.3)',
+    () => (
+      <>
+        <LinkPreviewView preview={elevenlabs} />
+        <LinkPreviewView preview={{ ...elevenlabs, url: 'https://figma.com/design/flow-chat', image: { url: '/link-previews/figma.svg', width: 400, height: 400 } }} />
+        <LinkPreviewView preview={{ url: 'https://example.com/pricing', title: 'example.com/pricing', description: null, image: null }} />
+        <LinkPreviewView preview={elevenlabs} onRemove={() => {}} />
+      </>
+    ),
+  ],
   ['snippet dialog (spec 6.9)', () => <SnippetDialog where="#backend" initialContent="SELECT 1;" max={100_000} onCreate={async () => {}} onClose={vi.fn()} />],
 ]
 
@@ -938,6 +957,33 @@ describe('files on a phone (spec 10, 6.16, slice 6)', () => {
       expect(panel.getBoundingClientRect().right).toBeLessThanOrEqual(390)
       expect(panel.scrollWidth).toBeLessThanOrEqual(panel.clientWidth)
       for (const name of ['Download', 'Share', 'Open', 'Edit file details']) expect(answers(screen.getByRole('button', { name })), name).toEqual([true, true])
+    } finally {
+      await page.viewport(414, 896)
+    }
+  })
+})
+
+describe('link previews on a phone (spec 10, 6.3)', () => {
+  const answers = (el: Element) => {
+    const r = el.getBoundingClientRect()
+    const x = r.left + r.width / 2
+    return [r.top + r.height / 2 - 21, r.top + r.height / 2 + 21].map((y) => el.contains(document.elementFromPoint(x, y)))
+  }
+  it('a card fits 390px with its image, and the box card’s × answers a 44px touch', async () => {
+    await page.viewport(390, 844)
+    try {
+      mount(
+        <div style={{ paddingTop: 24 }}>
+          <LinkPreviewView preview={elevenlabs} />
+          <LinkPreviewView preview={elevenlabs} onRemove={() => {}} />
+        </div>,
+        false,
+      )
+      Object.assign(document.querySelector('main')!.style, { width: '390px', padding: '0' })
+      const card = screen.getByRole('link', { name: /Free AI Voice Generator/ })
+      expect(card.getBoundingClientRect().right).toBeLessThanOrEqual(390)
+      expect(card.querySelector('img')!.getBoundingClientRect().width).toBeCloseTo(card.getBoundingClientRect().width - 2, 0)
+      expect(answers(screen.getByRole('button', { name: 'Remove preview' }))).toEqual([true, true])
     } finally {
       await page.viewport(414, 896)
     }

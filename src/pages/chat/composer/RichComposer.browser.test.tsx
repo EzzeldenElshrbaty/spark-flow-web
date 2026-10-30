@@ -710,3 +710,126 @@ describe('RichComposer Add from Flow files (spec 6.8)', () => {
     expect(fromFlow).toHaveBeenCalledOnce()
   })
 })
+
+describe('the link preview above the box (spec 6.3)', () => {
+  const linkPreview = (url: string, onRemove: () => void) => (
+    <div data-testid="preview">
+      Preview of {url}
+      <button type="button" onClick={onRemove}>
+        Remove preview
+      </button>
+    </div>
+  )
+  const firstLink = (body: Body) => body.flatMap((b) => (b.type === 'p' ? b.children : [])).find((n) => n.type === 'link')
+  const offBody = (href: string): Body => [{ type: 'p', children: [{ type: 'link', href, text: href, noPreview: true }] }]
+
+  it('shows the first link’s preview once I pause, not on every key', async () => {
+    const { editor } = await ready({ linkPreview })
+    await userEvent.click(editor)
+    await userEvent.keyboard('listen https://elevenlabs.io/ now')
+    expect(screen.queryByTestId('preview')).toBeNull()
+    expect((await screen.findByTestId('preview', undefined, { timeout: 2000 })).textContent).toContain('Preview of https://elevenlabs.io/')
+  })
+
+  it('sends the link as it is when the preview stays', async () => {
+    const { onSend, editor } = await ready({ linkPreview })
+    await userEvent.click(editor)
+    await userEvent.keyboard('https://elevenlabs.io/')
+    await screen.findByTestId('preview', undefined, { timeout: 2000 })
+    await userEvent.keyboard('{Enter}')
+    expect(firstLink(onSend.mock.calls[0][0])).toEqual({ type: 'link', href: 'https://elevenlabs.io/', text: 'https://elevenlabs.io/' })
+  })
+
+  it('× takes it off and the message goes without it; the next message previews again', async () => {
+    const { onSend, editor } = await ready({ linkPreview })
+    await userEvent.click(editor)
+    await userEvent.keyboard('https://elevenlabs.io/')
+    await userEvent.click(await screen.findByRole('button', { name: 'Remove preview' }, { timeout: 2000 }))
+    expect(screen.queryByTestId('preview')).toBeNull()
+    await userEvent.click(editor)
+    await userEvent.keyboard('{Enter}')
+    expect(firstLink(onSend.mock.calls[0][0])).toMatchObject({ href: 'https://elevenlabs.io/', noPreview: true })
+    await vi.waitFor(() => expect(editor.textContent).toBe(''))
+    await userEvent.keyboard('https://elevenlabs.io/')
+    expect(await screen.findByTestId('preview', undefined, { timeout: 2000 })).toBeTruthy()
+  })
+
+  it('after ×, a different first link previews', async () => {
+    const { editor } = await ready({ linkPreview, initialBody: parseBody('https://a.example.com/') })
+    await userEvent.click(await screen.findByRole('button', { name: 'Remove preview' }, { timeout: 2000 }))
+    await userEvent.click(editor)
+    await userEvent.keyboard('{Control>}a{/Control}{Meta>}a{/Meta}https://b.example.com/')
+    expect((await screen.findByTestId('preview', undefined, { timeout: 2000 })).textContent).toContain('https://b.example.com/')
+  })
+
+  it('a scheduled message keeps the choice', async () => {
+    const onSchedule = vi.fn(async (_b: Body, _at: Date) => {})
+    const { editor } = await ready({ linkPreview, onSchedule })
+    await userEvent.click(editor)
+    await userEvent.keyboard('https://elevenlabs.io/')
+    await userEvent.click(await screen.findByRole('button', { name: 'Remove preview' }, { timeout: 2000 }))
+    await userEvent.click(screen.getByRole('button', { name: 'Schedule message' }))
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Tomorrow at 9:00 AM' }))
+    await vi.waitFor(() => expect(onSchedule).toHaveBeenCalled())
+    expect(firstLink(onSchedule.mock.calls[0][0])).toMatchObject({ noPreview: true })
+  })
+
+  it('an edit opens with the choice kept: no preview, and saving keeps it off', async () => {
+    const onSend = vi.fn(async (_b: Body) => {})
+    render(
+      <div className="sf" style={{ width: 720 }}>
+        <RichComposer mode="edit" placeholder="Edit message" initialBody={offBody('https://elevenlabs.io/')} onSend={onSend} onCancel={vi.fn()} directory={directory} linkPreview={linkPreview} />
+      </div>,
+    )
+    const editor = screen.getByRole('textbox', { name: 'Edit message' })
+    await vi.waitFor(() => expect(document.activeElement).toBe(editor))
+    await new Promise((r) => setTimeout(r, 800))
+    expect(screen.queryByTestId('preview')).toBeNull()
+    await userEvent.keyboard(' ok{Enter}')
+    expect(firstLink(onSend.mock.calls[0][0])).toMatchObject({ href: 'https://elevenlabs.io/', noPreview: true })
+  })
+
+  it('the draft keeps the choice, so the card stays off when I come back', async () => {
+    const { onDraft, editor } = await ready({ linkPreview })
+    await userEvent.click(editor)
+    await userEvent.keyboard('https://elevenlabs.io/')
+    await userEvent.click(await screen.findByRole('button', { name: 'Remove preview' }, { timeout: 2000 }))
+    await vi.waitFor(() => expect(firstLink(onDraft.mock.calls.at(-1)![0] as Body)).toMatchObject({ noPreview: true }), { timeout: 2000 })
+    const saved = onDraft.mock.calls.at(-1)![0] as Body
+    cleanup()
+    await ready({ linkPreview, initialBody: saved })
+    await new Promise((r) => setTimeout(r, 800))
+    expect(screen.queryByTestId('preview')).toBeNull()
+  })
+
+  it('a shortcut that sends (/shrug) keeps the choice', async () => {
+    const run = vi.fn(async (_c: ParsedCommand, body: Body): Promise<CommandOutcome> => ({ send: body }))
+    const { onSend, editor } = await ready({ linkPreview, slash: { commands: COMMANDS.filter((c) => c.name === 'shrug'), run } })
+    await userEvent.click(editor)
+    await userEvent.keyboard('/shrug https://elevenlabs.io/')
+    await userEvent.click(await screen.findByRole('button', { name: 'Remove preview' }, { timeout: 2000 }))
+    await userEvent.click(editor)
+    await userEvent.keyboard('{End}{Enter}')
+    await vi.waitFor(() => expect(onSend).toHaveBeenCalled())
+    expect(firstLink(onSend.mock.calls[0][0])).toMatchObject({ noPreview: true })
+  })
+
+  it('the same link again waits for the pause again', async () => {
+    const { editor } = await ready({ linkPreview })
+    await userEvent.click(editor)
+    await userEvent.keyboard('https://elevenlabs.io/')
+    await screen.findByTestId('preview', undefined, { timeout: 2000 })
+    await userEvent.keyboard('{Enter}')
+    await vi.waitFor(() => expect(editor.textContent).toBe(''))
+    await userEvent.keyboard('https://elevenlabs.io/')
+    expect(screen.queryByTestId('preview')).toBeNull()
+  })
+
+  it('a link in code gets no preview', async () => {
+    const { editor } = await ready({ linkPreview })
+    await userEvent.click(editor)
+    await userEvent.keyboard('`https://elevenlabs.io/`')
+    await new Promise((r) => setTimeout(r, 800))
+    expect(screen.queryByTestId('preview')).toBeNull()
+  })
+})

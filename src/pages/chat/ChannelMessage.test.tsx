@@ -292,12 +292,11 @@ describe('ChannelMessage parts (feature 4 follow-up)', () => {
     expect(row.querySelector('strong')?.textContent).toBe('fails')
   })
 
-  it('a link on an allowed domain gets a preview card; others do not', async () => {
+  it('any link gets a preview card, one per message: the first link’s', async () => {
     show(message('see https://github.com/spark-sys/flow/pull/42 and https://example.com'))
-    const card = await screen.findByRole('link', { name: /GitHub/ })
-    expect(card.textContent).toContain('spark-sys/flow/pull/42')
+    const card = await screen.findByRole('link', { name: /github\.com\/spark-sys\/flow\/pull\/42/ })
     expect(card.getAttribute('rel')).toBe('noopener noreferrer')
-    expect(screen.queryByRole('link', { name: /example\.com.*example/ })).toBeNull()
+    expect(screen.queryByRole('link', { name: /^example\.com/ })).toBeNull()
   })
 })
 
@@ -789,5 +788,22 @@ describe('Pin to channel (spec 6.5, 10: P)', () => {
 
   it('the system line reads "pinned a message to this channel."', () => {
     expect(systemText({ kind: 'pinned', messageId: 'm1' })).toBe('pinned a message to this channel.')
+  })
+})
+
+describe('the link preview under a message (spec 6.3)', () => {
+  const preview = { url: 'https://elevenlabs.io/', title: 'Voice AI', description: 'Lifelike speech.', image: null }
+  it('shows the first link’s card once the page is read', async () => {
+    const read = vi.spyOn(api.chat, 'linkPreview').mockResolvedValue(preview)
+    show(message('listen https://elevenlabs.io/ now'))
+    expect(await screen.findByRole('link', { name: /Voice AI/ })).toBeTruthy()
+    expect(read).toHaveBeenCalledWith('https://elevenlabs.io/')
+  })
+  it('shows none when its author removed it', async () => {
+    const read = vi.spyOn(api.chat, 'linkPreview').mockResolvedValue(preview)
+    show(message('https://elevenlabs.io/', { body: [{ type: 'p', children: [{ type: 'link', href: 'https://elevenlabs.io/', text: 'https://elevenlabs.io/', noPreview: true }] }] }))
+    await act(async () => {})
+    expect(screen.queryByRole('link', { name: /Voice AI/ })).toBeNull()
+    expect(read).not.toHaveBeenCalled()
   })
 })

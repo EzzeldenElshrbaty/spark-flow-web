@@ -297,6 +297,7 @@ Each item lists anatomy, states, behaviour and acceptance criteria (AC). Class n
 - **Body rendering** (structured rich text, see 7):
   - Paragraphs, bold, italic, underline and strikethrough.
   - Links in `accent`; URL unfurls (title, description, image) for allowed domains.
+    - *Note (slice L, 31 Oct 2026, approved): every http/https link unfurls, not only allowed domains; one card per message, for its first link. A wide image leads the card, a small one is a thumbnail, otherwise text only; title, two lines of description, host with a link icon. The card also shows above the box while writing (after a 600 ms pause), with × to send without it (`noPreview` on the link). The server fetches pages with SSRF guards; see api-contract.md.*
   - Inline `code` (13px mono, `surface-sunken`, 1px `line`, `radius-sm`) and code blocks (`radius-md`, no syntax colour beyond ink weights).
   - Quotes with a 4px `line` bar, and lists.
   - Mention pills (`surface-mention` background, `accent` text, 500).

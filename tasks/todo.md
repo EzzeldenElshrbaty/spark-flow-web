@@ -1089,3 +1089,47 @@ Review focus:
 - [x] W6. Bookmarks. Bookmark record, `GET/POST /api/channels/:id/bookmarks`, `PATCH/DELETE /api/bookmarks/:id`, `bookmarksChanged`; the tabs row's bookmarks and +; Channel details › Tabs (rename, remove). Tests: `bookmarks.test.ts`, `ChannelTabs.test.tsx`, `ChannelDetails.test.tsx`.
 - [x] W7. Jump to a specific date. The pill menu's last item and a date dialog; `jumpSince` takes a date. Tests: `messageRows.test.ts`, `MessageList.browser.test.tsx`.
 - [x] W8. Close: contract, spec notes, CLAUDE.md; axe both themes, 390px; full suites, tsc, lint, build; app check; fresh review; move the commits to your branch.
+
+# Slice L: link previews for any link (spec 6.3 URL unfurls) — 31 Oct 2026, approved ("go")
+
+Asked (31 Oct): any web link gets a card, it shows in the box before Send with × to drop it, the prototype uses sample data. Changes the spec's "for allowed domains" (6.3) to "any http/https link, read by our server with safeguards".
+
+```mermaid
+flowchart LR
+  T[link typed in the box] -->|600 ms after typing stops| P[GET /api/link-preview?url] --> C[card above the box, ×]
+  C -- × --> X[sent with previewOff]
+  C -- Send --> M[message] --> V[card under the message: big image on top, or compact]
+```
+
+Rulings (cost if wrong):
+- One card per message, for its first http/https link outside code; `PREVIEW_DOMAINS` stays only as nicer site names.
+- The client never fetches other sites: the API reads the page. The contract asks the server to refuse internal addresses (private, loopback, link-local, after every redirect, at most 3), give up after 5 s or 1 MB, read `og:*`, `twitter:*`, `<title>` and the meta description, serve the image through our API (a viewer's address never reaches the other site), and cache 24 h — cost: backend work, written down for the .NET team.
+- The card: an image wider than it is tall shows on top at full width (as in your screenshot), a small one as a thumbnail at the side, none: text only; title (600), two lines of description, the host with a link icon; Spark tokens, light and dark; an image that fails to load just goes.
+- × in the box sends the message without a card (`previewOff`, stored on the message); editing the message keeps that choice.
+- Prototype: sample cards for a few sites (elevenlabs.io from your screenshot, GitHub, Figma, staging), any other link shows the host and the address — no made-up titles.
+
+## Plan
+
+- [x] L1. Any link: `firstPreviewable` drops the allowlist (http/https only, not in code); the mock answers any link (samples, else host + address). Tests: `linkPreview.test.ts`, `linkPreviews.test.ts`.
+- [x] L2. The card: big image / thumbnail / text, image errors, host line. Tests: `LinkPreviewCard.test.tsx`, axe in both themes, 390px.
+- [x] L3. The box: the card above the composer after typing stops, × to drop it; `previewOff` on send, schedule and edit (`ChatMessage.previewOff`, send input). Tests: `RichComposer.browser.test.tsx`, `chat.test.ts`, `ChannelMessage.test.tsx`.
+- [x] L4. Close: contract (the server rules above), spec 6.3 note, CLAUDE.md; full suites, tsc, lint, build; app check; review; to your branch.
+
+### Review (slice L)
+
+- Built test-first. Unit 1,480 tests pass; browser 190 tests, with one or two autocomplete or scroll timing tests flaking per run on the 2-CPU container. A different test flakes each run, and the baseline (slice W) flakes the same way. tsc, lint and build:prototype are clean. Checked in the app: the card in the box, × sending without it, a wide card and a thumbnail card, at desktop and 390px.
+- Changed from the plan, more simply:
+  - The × choice is stored on the body's first link as `noPreview: true`, not as `ChatMessage.previewOff`. Every path that carries a body (send, reply, schedule, edit, drafts, shortcuts) keeps it with no API change.
+  - `siteName` and `PREVIEW_DOMAINS` are gone. The card shows the host, as in the screenshot.
+- Review fixes:
+  - A × is now kept in the draft.
+  - The card links to the message's own address, not to the one the server answered.
+  - Images load only from the app or the API (`ownImage`).
+  - The contract pins the checked IP against DNS rebinding and allows no SVG or sniffing on the image route.
+  - The same link typed again waits for the pause again.
+  - A shortcut that sends keeps the ×.
+  - A half-typed host (no dot) isn't fetched.
+  - The box card is a labelled group.
+- Left as is:
+  - The prototype's sample images are our own SVGs in `public/`. The image-route rule (no SVG) is for fetched images.
+  - The old textarea composer (project Chat tab) has no box card. Its sent messages still get the card underneath.

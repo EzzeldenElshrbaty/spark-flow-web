@@ -19,7 +19,8 @@ import { firstTask, MessageBody, TaskUnfurl, type BodyContext } from '@/pages/ch
 import { ROW_FOCUS } from '@/pages/chat/MessageActions'
 import { MessageFiles } from '@/pages/chat/MessageFiles'
 import { MessageToolbar, ROW_HEADER } from '@/pages/chat/MessageToolbar'
-import { AuthorName, CommentCard, LinkedTasks, LinkPreviewCard, Reactions, ThreadSummary } from '@/pages/chat/MessageParts'
+import { AuthorName, CommentCard, LinkedTasks, Reactions, ThreadSummary } from '@/pages/chat/MessageParts'
+import { composerLinkPreview, LinkPreviewCard } from '@/pages/chat/LinkPreviewCard'
 import { TaskEventCard } from '@/pages/chat/TaskEventCard'
 import { useEditing } from '@/pages/chat/editingStore'
 import { actionsFor, deleteNeedsConfirm } from '@/pages/chat/messageRights'
@@ -384,6 +385,7 @@ function EditBox({ message, target, ctx, onDone }: { message: ChatMessage | Thre
           // A message with a file may lose its text, as files alone can be sent.
           allowEmpty={message.attachments.some((a) => !a.deletedAt)}
           onSend={(body) => edit.mutateAsync({ target, content: bodyText(body), body }).then(onDone)}
+          linkPreview={composerLinkPreview}
         />
       </Suspense>
     </div>

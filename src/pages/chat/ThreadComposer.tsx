@@ -10,6 +10,7 @@ import { useSnippet } from '@/pages/chat/snippets/useSnippet'
 import { useFlowFilePicker } from '@/pages/chat/files/FilePicker'
 import { useComposerDirectory } from '@/pages/chat/useComposerDirectory'
 import { UploadTray } from '@/pages/chat/uploads/UploadTray'
+import { composerLinkPreview } from '@/pages/chat/LinkPreviewCard'
 import { paneDrop, useUploads } from '@/pages/chat/uploads/useUploads'
 
 
@@ -93,6 +94,7 @@ export function ThreadComposer({
           error={error ?? schedule.error}
           directory={directory}
           onSnippet={snippet.open}
+          linkPreview={composerLinkPreview}
           files={{
             tray: <UploadTray uploads={uploads.items} refused={uploads.refused} onRemove={uploads.remove} onRetry={uploads.retry} />,
             onAdd: uploads.add,
