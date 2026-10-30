@@ -3,11 +3,13 @@ import { useChannels, useDrafts } from '@/api/chat'
 import { useActivity } from '@/api/inbox'
 import { useSaved } from '@/api/saved'
 import { useScheduled } from '@/api/scheduled'
+import { useShownSidebarOrder } from '@/api/sidebar'
 import { useThreads } from '@/api/threads'
+import { applyOrder } from '@/lib/sidebarOrder'
 import { useMyMentions } from '@/api/mentions'
 import { useProjects } from '@/api/tickets'
 import { useUsers } from '@/api/users'
-import { channelLabel, chatCount, mutedLast, sidebarChannels, sortChannels, unreadMentions, unreadTaskMentions } from '@/lib/channels'
+import { channelLabel, chatCount, sidebarChannels, sortChannels, unreadMentions, unreadTaskMentions } from '@/lib/channels'
 import { isFlowbotDm } from '@/lib/flowbot'
 import { projectPeopleIds } from '@/lib/projectPeople'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
@@ -31,6 +33,9 @@ export function useSidebarGroups() {
   const scheduledQuery = useScheduled(workspace?.id)
   // The Threads view's own first page: the sidebar and the view share it.
   const threadsQuery = useThreads(workspace?.id)
+  // My order of Starred and Channels (spec 5.1 drag to reorder).
+  const orderQuery = useShownSidebarOrder(workspace?.id)
+  const order = orderQuery.data
 
   const users = usersQuery.data ?? []
   const sorted = sortChannels(channelsQuery.data ?? [])
@@ -46,8 +51,12 @@ export function useSidebarGroups() {
   const listed = [...sidebarChannels(sorted.channels, persona.id, myProjectChannelIds), ...sorted.dms, ...sorted.apps].map(row)
 
   const mentions = unreadMentions(mentionsQuery.data, workspace?.id)
-  const starred = mutedLast(listed.filter((r) => r.channel.starred), (r) => r.channel.muted)
-  const channels = listed.filter((r) => r.channel.kind === 'channel' && !r.channel.starred)
+  const idOf = (r: ChannelRow) => r.channel.id
+  // Only an order that still names a listed row counts (stale ids are dropped by the server as rows move or go).
+  const ownOrder = (rows: ChannelRow[], saved: string[] | undefined) => Boolean(saved?.some((id) => rows.some((r) => r.channel.id === id)))
+  const isMuted = (r: ChannelRow) => r.channel.muted
+  const starred = applyOrder(listed.filter((r) => r.channel.starred), order?.starred, idOf, isMuted)
+  const channels = applyOrder(listed.filter((r) => r.channel.kind === 'channel' && !r.channel.starred), order?.channels, idOf, isMuted)
   const dms = listed.filter((r) => r.channel.kind === 'dm' && !isFlowbotDm(r.channel) && !r.channel.starred)
   const apps = listed.filter((r) => isFlowbotDm(r.channel) && !r.channel.starred)
   // As the rows show them: Starred and Channels count my mentions there, DMs and Apps their messages.
@@ -72,12 +81,15 @@ export function useSidebarGroups() {
     activityUnread: (activityQuery.data ?? []).filter((item) => !item.read).length,
     /** Followed threads here with replies I haven't read (spec 6.12): the Threads row's muted count. */
     threadsUnread: threadsQuery.data?.pages[0]?.unreadThreads ?? 0,
+    /** Whether I ordered Starred or Channels myself: their ⋯ then offers Sort A–Z. */
+    customOrder: { starred: ownOrder(starred, order?.starred), channels: ownOrder(channels, order?.channels) },
     /** My In progress saved items here (spec 5.1): the Saved row's muted count. */
     savedInProgress: (savedQuery.data ?? []).filter((item) => item.status === 'inProgress').length,
     /** My drafts plus scheduled messages here (spec 5.1): the Drafts & sent row's muted count. */
     draftsAndScheduled: (drafts.data?.length ?? 0) + (scheduledQuery.data?.length ?? 0),
     // The channel list and the people behind DM names arrive separately; show rows only when both are there.
-    chatLoading: workspaceLoading || (Boolean(workspace) && (channelsQuery.isPending || usersQuery.isPending)),
+    // My order too, so the rows don't jump from A–Z into it.
+    chatLoading: workspaceLoading || (Boolean(workspace) && (channelsQuery.isPending || usersQuery.isPending || orderQuery.isPending)),
     projectsLoading: workspaceLoading || (Boolean(workspace) && projectsQuery.isPending),
     failed: channelsQuery.isError || projectsQuery.isError,
   }

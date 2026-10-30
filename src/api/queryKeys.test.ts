@@ -58,6 +58,8 @@ describe('keysForEvent (M10)', () => {
     expect(keysForEvent({ type: 'filesChanged', projectId: 'p1' })).toEqual([qk.files('p1')])
     expect(keysForEvent({ type: 'readChanged', userId: 'u1' })).toEqual([qk.channelsAll(), qk.mentions(), qk.activityAll(), qk.threadsAll()])
     // The empty key matches every query.
+    // My sidebar order (spec 5.1) changed, here or on another device.
+    expect(keysForEvent({ type: 'sidebarChanged', userId: 'u1' })).toEqual([qk.sidebarOrderAll()])
     // Threads (spec 6.12) sit under one prefix, so one key reaches every workspace's pages.
     expect(qk.threads('ws1')).toEqual([...qk.threadsAll(), 'ws1'])
     expect(keysForEvent({ type: 'dataReset' })).toEqual([[]])

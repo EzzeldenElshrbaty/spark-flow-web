@@ -2,18 +2,13 @@ import {
   closestCorners,
   DndContext,
   DragOverlay,
-  KeyboardSensor,
-  PointerSensor,
-  TouchSensor,
   useDroppable,
-  useSensor,
-  useSensors,
   type Announcements,
   type DragEndEvent,
   type DragOverEvent,
   type DragStartEvent,
 } from '@dnd-kit/core'
-import { horizontalListSortingStrategy, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { horizontalListSortingStrategy, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import clsx from 'clsx'
 import { ArrowLeft, ArrowRight, Inbox, MoreHorizontal, Pencil, Plus, Shapes, Trash2 } from 'lucide-react'
@@ -24,6 +19,7 @@ import { canDeleteColumn, columnErrors, columnsOf, MAX_COLUMNS, MAX_LABEL, moveC
 import { ColumnSheet } from '@/pages/projects/ColumnSheet'
 import { DeleteColumnSheet } from '@/pages/projects/DeleteColumnSheet'
 import { DEFAULT_COLUMNS } from '@/lib/statuses'
+import { useDragSensors } from '@/lib/dragSensors'
 import { boardDrop, prunePending, withPending, type PendingMoves } from '@/pages/projects/boardMove'
 import { TicketRow } from '@/pages/projects/TicketRow'
 import { tintOf } from '@/pages/projects/ticketPills'
@@ -328,12 +324,8 @@ export function ProjectBoard({
   /** How many tasks a column holds in all (filters and archived included), for the delete sheet. */
   countOf?: (columnId: string) => number
 }) {
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    // A press and hold lifts a card on touch screens, so a swipe still scrolls the columns.
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  )
+  // A press and hold lifts a card on touch screens, so a swipe still scrolls the columns.
+  const sensors = useDragSensors()
   const [activeKey, setActiveKey] = useState<string | null>(null)
   const [overStatus, setOverStatus] = useState<TicketStatus | null>(null)
   // Drops show at once, each until the server's copy of its task changes (the save landed, or someone else moved it),

@@ -38,6 +38,7 @@ const emptyData = (): DbData => ({
   pins: [],
   folders: [],
   bookmarks: [],
+  sidebarOrders: [],
   counters: {},
 })
 

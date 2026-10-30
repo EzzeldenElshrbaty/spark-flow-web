@@ -247,6 +247,10 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
       pin: (messageId) => send<void>('PUT', `/api/messages/${enc(messageId)}/pin`),
       unpin: (messageId) => send<void>('DELETE', `/api/messages/${enc(messageId)}/pin`),
     },
+    sidebar: {
+      order: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/sidebar-order`),
+      setOrder: (workspaceId, section, channelIds) => send<void>('PUT', `/api/workspaces/${enc(workspaceId)}/sidebar-order`, { section, channelIds }),
+    },
     search: {
       run: (workspaceId, r) => {
         const params = new URLSearchParams({ q: r.q, type: r.tab, sort: r.sort })

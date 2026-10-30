@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Sidebar, SidebarContent, SidebarHeader } from '@/layout/Sidebar'
@@ -13,8 +13,13 @@ vi.mock('@/lib/useRole', () => ({ useRole: () => ({ role: 'admin', persona: { id
 vi.mock('@/lib/usePermission', () => ({ usePermission: () => () => true }))
 vi.mock('@/layout/NewTaskButton', () => ({ NewTaskButton: () => <button type="button">New task</button> }))
 vi.mock('@/layout/useGoToMode', () => ({ useGoToMode: () => () => true }))
+const setOrder = vi.fn()
+let customOrder = { starred: false, channels: false }
+let orderError: string | null = null
+vi.mock('@/api/sidebar', () => ({ useSaveSidebarOrder: () => ({ save: setOrder, error: orderError }) }))
 vi.mock('@/layout/useSidebarGroups', () => ({
   useSidebarGroups: () => ({
+    customOrder,
     workspace,
     starred: [],
     channels: [channel('c-general', 'general'), channel('c-backend', 'backend')],
@@ -34,7 +39,12 @@ vi.mock('@/layout/useSidebarGroups', () => ({
   }),
 }))
 
-beforeEach(() => useUiStore.setState(initialUiState))
+beforeEach(() => {
+  useUiStore.setState(initialUiState)
+  customOrder = { starred: false, channels: false }
+  orderError = null
+  setOrder.mockReset()
+})
 afterEach(cleanup)
 window.matchMedia ??= ((media: string) => ({ matches: false, media, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia
 
@@ -93,5 +103,32 @@ describe('The sidebar shows one side of Flow at a time (spec 5.5)', () => {
     cleanup()
     at('/w/engineering/c/c-general', <Sidebar collapsed />)
     expect(screen.getByRole('tablist', { name: 'Workspace' }).getAttribute('aria-orientation')).toBe('vertical')
+  })
+})
+
+describe('my order of Channels (spec 5.1 drag to reorder)', () => {
+  it('rows can be moved: each says how, to a screen reader', () => {
+    at('/w/engineering/c/c-general', <SidebarContent />)
+    const id = within(nav()).getByRole('link', { name: 'backend' }).getAttribute('aria-describedby')
+    expect(id && document.getElementById(id)?.textContent).toMatch(/press Space/)
+  })
+  it('not in the collapsed rail', () => {
+    at('/w/engineering/c/c-general', <SidebarContent collapsed />)
+    expect(within(nav()).getByRole('link', { name: 'backend' }).getAttribute('aria-describedby')).toBeNull()
+  })
+  it('Sort A–Z shows once I have an order, and throws it away', () => {
+    at('/w/engineering/c/c-general', <SidebarContent />)
+    expect(screen.queryByRole('button', { name: 'Channels options' })).toBeNull()
+    cleanup()
+    customOrder = { starred: false, channels: true }
+    at('/w/engineering/c/c-general', <SidebarContent />)
+    fireEvent.click(screen.getByRole('button', { name: 'Channels options' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Sort A–Z' }))
+    expect(setOrder).toHaveBeenCalledWith('channels', [])
+  })
+  it('a refused save says so under its section', () => {
+    orderError = 'channels'
+    at('/w/engineering/c/c-general', <SidebarContent />)
+    expect(screen.getByRole('alert').textContent).toBe('Couldn’t save the order. Try again.')
   })
 })

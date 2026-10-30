@@ -173,6 +173,12 @@ describe('18 → 19', () => {
   })
 })
 
+describe('20 → 21', () => {
+  it('nobody has ordered their sidebar yet', () => {
+    expect(migrate({ version: 20, currentUserId: 'u-1' }, 21)).toMatchObject({ version: 21, sidebarOrders: [] })
+  })
+})
+
 describe('19 → 20', () => {
   it('no pins or folders yet; every file is in no folder', () => {
     const out = migrate({ version: 19, currentUserId: 'u-1', attachments: [{ id: 'a1' }], messages: [{ attachments: [{ id: 'a1' }] }] }, 20) as { pins: unknown[]; folders: unknown[]; attachments: { folderId: unknown }[]; messages: { attachments: { folderId: unknown }[] }[] }

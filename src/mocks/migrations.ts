@@ -138,6 +138,10 @@ export const migrations: Record<number, (doc: Record<string, unknown>) => void> 
     doc.saved = reminders.map((r) => ({ id: r.id, userId: r.userId, workspaceId: r.workspaceId, target: r.target, status: 'inProgress', remindAt: r.remindAt, firedAt: r.firedAt ?? null, savedAt: r.remindAt }))
     delete doc.reminders
   },
+  // 21: each person's sidebar order (spec 5.1 drag to reorder), none yet.
+  20: (doc) => {
+    if (!Array.isArray(doc.sidebarOrders)) doc.sidebarOrders = []
+  },
   // 20: pins (spec §7 Pin), file folders (spec 6.9) and bookmarks (§7 Bookmark), none yet; every file is in no folder.
   19: (doc) => {
     if (!Array.isArray(doc.pins)) doc.pins = []

@@ -19,6 +19,7 @@ import { linkPreviewFor } from './linkPreviews'
 import { firstLine } from '@/lib/inspector'
 import { canRead, freshState } from './membership'
 import { hereReached, reachedBy } from './mentions'
+import { forgetInOrder } from './sidebarOrder'
 import { rowText } from './saved'
 
 const PAGE_SIZE = 30
@@ -287,7 +288,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
   /** Joins or leaves a channel as the current user. A project's channel follows its people; a DM keeps its own. */
   const setMember = async (id: string, join: boolean) => {
     await delay()
-    const { channel, posted } = await db.update((data) => {
+    const { channel, posted, userId } = await db.update((data) => {
       const channel = findChannel(data, id)
       const me = currentUser(data)
       const wasMember = channel.memberIds.includes(me.id)
@@ -299,13 +300,15 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         if (!channel.memberIds.includes(me.id)) channel.memberIds.push(me.id)
       } else {
         channel.memberIds = channel.memberIds.filter((m) => m !== me.id)
+        forgetInOrder(data, me.id, channel.id)
       }
       // Only a real change says so in the channel.
       const posted = wasMember === join ? [] : [postSystem(data, channel.id, { kind: join ? 'joined' : 'left' })]
-      return { channel: withUnread(data, channel), posted }
+      return { channel: withUnread(data, channel), posted, userId: me.id }
     })
     for (const message of posted) hub.publish({ type: 'messageReceived', message: clone(message) })
     hub.publish({ type: 'channelChanged', channelId: id })
+    if (!join) hub.publish({ type: 'sidebarChanged', userId })
     return clone(channel)
   }
   /** Archives or restores a channel: Admins who may manage it (spec 6.1); a project's channel follows its project, a DM never is. */
@@ -334,10 +337,14 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
     await delay()
     const result = await db.update((data) => {
       const channel = readableChannel(data, id)
-      Object.assign(myState(data, id), patch)
-      return { channel: withUnread(data, channel), userId: data.currentUserId }
+      const state = myState(data, id)
+      // A row that changes section leaves my order of both (spec 5.1): it shows at the end of its new one.
+      const moved = patch.starred !== undefined && patch.starred !== state.starred && forgetInOrder(data, data.currentUserId, id)
+      Object.assign(state, patch)
+      return { channel: withUnread(data, channel), userId: data.currentUserId, moved }
     })
     hub.publish({ type: 'readChanged', userId: result.userId, channelId: id })
+    if (result.moved) hub.publish({ type: 'sidebarChanged', userId: result.userId })
     return clone(result.channel)
   }
   return {

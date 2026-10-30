@@ -198,6 +198,8 @@ describe('createHttpApi', () => {
     await api.inbox.list('w1')
     await api.inbox.markRead('w1', ['a1'])
     await api.inbox.markRead('w1')
+    await api.sidebar.order('w1')
+    await api.sidebar.setOrder('w1', 'channels', ['c2', 'c1'])
     await api.threads.list('w1')
     await api.threads.list('w1', '20')
     await api.threads.markRead('w1', ['m1'])
@@ -238,6 +240,8 @@ describe('createHttpApi', () => {
       'GET /api/workspaces/w1/activity undefined',
       'POST /api/workspaces/w1/activity/read {"ids":["a1"]}',
       'POST /api/workspaces/w1/activity/read undefined',
+      'GET /api/workspaces/w1/sidebar-order undefined',
+      'PUT /api/workspaces/w1/sidebar-order {"section":"channels","channelIds":["c2","c1"]}',
       'GET /api/workspaces/w1/threads undefined',
       'GET /api/workspaces/w1/threads?cursor=20 undefined',
       'POST /api/workspaces/w1/threads/read {"rootIds":["m1"]}',

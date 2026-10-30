@@ -188,6 +188,14 @@ Row rules (28px rows, 2px gaps, `radius-md`, 18px icon, `ui` type):
 
 Rows must not shrink when the list overflows (give them `flex: none`); the list scrolls. Drag to reorder channels within Starred and Channels (Phase 3).
 
+- *Note (slice Y, 31 Oct 2026, approved):*
+  - **What drags:** rows drag within Starred (starred DMs included) and within Channels, never between them; starring moves a row. DMs and Apps keep newest first.
+  - **Saved and shared:** the order is kept per person and workspace on the server.
+  - **New and muted rows:** new rows go at the end. Muted rows stay last and reorder among themselves.
+  - **Getting A–Z back:** "Sort A–Z" is in the section's ⋯ once there's an order.
+  - **How a drag starts:** the mouse after 5px, touch after a 250ms hold, and the keyboard with Space, then ↑/↓, then Space (Enter still opens).
+  - **Collapsed rail:** nothing drags there.
+
 ### 5.2 Top bar (inside the main card, 56px, `surface`, bottom border `line`)
 
 Sidebar toggle | search box (440px, 36px tall, `surface-sunken`, placeholder "Search pages, tasks, people, messages…", ⌘K hint) | spacer | bell (round, red dot when unread) | "SE" control (unchanged, **OPEN**: confirm what it is) | profile (36px avatar with presence, name in `ui-medium`, role in `meta`, chevron).

@@ -1285,3 +1285,78 @@ Rulings (cost if wrong):
   - Tasks, channels and people ignore the from, in, has and date filters, so their counts can show with an `in:` chip set. This was ruled in the plan.
   - Results don't update live while open; any change I make refreshes them.
   - Group DMs have no 🔍 or ⌘F, because `in:` can't name them.
+
+# Slice Y: drag to reorder the sidebar (spec 5.1: "Drag to reorder channels within Starred and Channels") — 31 Oct 2026, approved ("yes")
+
+Asked: the agreed order X → W → L → U → V → Y. Today Channels are A–Z and Starred follows the same rule; nobody can put #backend first.
+
+```mermaid
+flowchart LR
+  P[press and drag a row · hold on touch · Space and arrows on the keyboard] --> D[drop in its own section]
+  D -->|at once, on screen| S[new order]
+  D --> A["PUT /api/workspaces/:id/sidebar-order { section, channelIds }"]
+  A -->|ok| E[sidebarChanged → other tabs and devices]
+  A -->|refused| R[back to the old order + a sentence under the section]
+  S --> K[Alt+↑/↓ follow the same order]
+```
+
+Rulings (cost if wrong):
+- **Where:** rows drag within Starred and within Channels, as the spec says. Starred includes DMs starred there. A row can't be dropped into the other section, since starring is what moves a row between them. Direct messages and Apps keep their newest-first order.
+- **Order is kept per person, per workspace, on the server**, so it follows you to another device. It's stored as one list per section: `{ starred: string[], channels: string[] }`. The mock adds a record, DB v21 with a migration.
+- **What isn't in the saved order:**
+  - a channel I join or star later goes at the end of its section;
+  - with no saved order the section stays A–Z, as today.
+  - "Sort A–Z" in the section's ⋯ throws the saved order away. It only shows once there is one.
+- **Muted rows still sink to the end** (spec 6.11), in the order you gave them. A muted row reorders among the muted ones, an unmuted one among the unmuted.
+- **Hands:**
+  - Mouse: drag after 5px, so clicking still opens the row.
+  - Touch, in the phone drawer: press and hold for 250ms, so scrolling still works.
+  - Keyboard: Space picks the row up, ↑/↓ move it, Space drops it and Esc cancels. A screen reader hears every step.
+  - This is the same dnd-kit setup the project board uses.
+  - In the collapsed icon rail, rows don't drag.
+- **Feedback:**
+  - The new order shows at once.
+  - A refusal puts the old order back with "Couldn't save the order. Try again." under the section, and no toast.
+  - Other tabs follow through a `sidebarChanged` event.
+- **Alt+↑/↓** follow the order you set, because they read the same lists.
+
+## Plan
+
+- [x] Y1. **The rule** (`lib/sidebarOrder.ts`):
+  - `applyOrder(rows, saved)` puts saved ids first, then the rest in their default order, with muted last.
+  - `moveInOrder(ids, from, to, mutedIds)` stays within the row's own muted or unmuted part.
+  - Tests: `sidebarOrder.test.ts` (unknown and removed ids, starred and unstarred, muted part, stable A–Z for new ones).
+- [x] Y2. **The API and mock:**
+  - `api.sidebar.order(workspaceId)` and `api.sidebar.setOrder(workspaceId, section, channelIds)`.
+  - DB v21 migration with `sidebarOrders`, and the `sidebarChanged` event with its query key.
+  - The mock drops ids I can't list there and keeps each once.
+  - Tests: `mocks/sidebarOrder.test.ts`, `migrations.test.ts`, `queryKeys.test.ts`, `http.test.ts`.
+- [x] Y3. **Dragging:**
+  - `SortableSideList` (dnd-kit) for Starred and Channels, with the sensors and announcements shared with the board through a small hook.
+  - An optimistic save that rolls back with the error sentence, and "Sort A–Z" in the section's ⋯.
+  - No dragging in the rail.
+  - Tests:
+    - `Sidebar.test.tsx` (order applied, Sort A–Z shown only with an order)
+    - `SortableSideList.browser.test.tsx` (mouse drag, keyboard Space, ↓ and Space, Esc cancels, a muted row stays in its part, a failed save rolls back, a click still opens, 390px drawer)
+    - axe
+- [x] Y4. **Close:**
+  - Docs: the contract (`GET`/`PUT /sidebar-order`, the event), a spec 5.1 note and a CLAUDE.md line.
+  - Checks: tsc, lint, unit, browser, build, an app check in both themes and at 390px, a review, then onto your branch.
+
+### Review (slice Y)
+
+- **Checks:**
+  - Unit 1,576 and browser 230 pass, and tsc, lint and build:prototype are clean. Earlier full runs had known timing flakes (the mention list, the unread bar); they passed when run alone.
+  - App check: a real mouse drag of release-v2 to the top of Channels stays on #backend and survives a reload. Then the keyboard (Space, ↑, Space), then Sort A–Z back. The board still drags without a page load, and the phone drawer shows the rows.
+- **Not test-first:** the mock order tests and `applyOrder`/`moveInOrder` were run together with their code.
+- **Found by the app check, not the tests:** dropping a row loaded the whole page on the link. dnd-kit stops the click a drag ends with on its way to React, but doesn't cancel it, so the link's own navigation ran. The fix cancels that click on the window during a mouse or touch drag. Its test was mutation-checked: it fails without the fix.
+- **Review fixes:**
+  - **Touch:** dragging now uses a mouse sensor and a touch sensor instead of one pointer sensor. Before, a finger lifted a row after 5px, so the 250ms hold never counted. This also fixes the board, which shares the sensors.
+  - **Saving:** drops still saving are kept per workspace and section, and shown over the server's copy until they land. Only the latest drop of a section decides, so two quick drops don't jump back, and an older failure is quiet. A failed order request doesn't retry for seconds while the sidebar waits.
+  - **Stale ids:** starring, unstarring or leaving takes the id out of my order, so the row comes back at the end. Sort A–Z only counts an order that still names a listed row.
+  - **Dropping:** only rows on the dragged row's side of the muted line are offered as drop places, for both the preview and the announcements. Keyboard drags leave clicks elsewhere alone.
+  - **Focus:** focus after a keyboard drop is checked moving both up and down.
+- **Left as is:**
+  - DMs and Apps don't drag (spec).
+  - The collapsed rail doesn't drag.
+  - Another person's order is never sent to me: `sidebarChanged` only refreshes my own.

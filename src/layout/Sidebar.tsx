@@ -4,6 +4,7 @@ import {
   IconBookmark,
   IconChevronDown,
   IconClock,
+  IconDots,
   IconEdit,
   IconFolder,
   IconHash,
@@ -17,6 +18,7 @@ import {
   IconPlus,
   IconSend,
   IconSettings,
+  IconSortAscendingLetters,
   IconUsers,
   type TablerIcon,
 } from '@tabler/icons-react'
@@ -26,6 +28,10 @@ import { Link, NavLink, useLocation } from 'react-router'
 import { Avatar } from '@/components/sf/Avatar'
 import { Count } from '@/components/sf/Badge'
 import { IconButton } from '@/components/sf/Button'
+import { Menu, MenuItem } from '@/components/sf/Menu'
+import { useSaveSidebarOrder } from '@/api/sidebar'
+import type { SidebarSection } from '@/api/types'
+import { SortableSideList } from '@/layout/SortableSideList'
 import { Icon } from '@/components/sf/Icon'
 import { WorkspaceModeSwitch } from '@/layout/ModeSwitch'
 import { NewTaskButton } from '@/layout/NewTaskButton'
@@ -68,6 +74,8 @@ type SideLinkProps = {
   active?: boolean
   collapsed: boolean
   onNavigate?: () => void
+  /** A row that can be dragged: the instructions a screen reader reads with it (spec 5.1). */
+  describedBy?: string
 }
 
 function isIcon(icon: SideLinkProps['icon']): icon is TablerIcon {
@@ -91,6 +99,7 @@ export function SideLink({
   active: forced,
   collapsed,
   onNavigate,
+  describedBy,
 }: SideLinkProps) {
   const { pathname } = useLocation()
   const inside = forced ?? (within ? pathname === within || pathname.startsWith(`${within}/`) : undefined)
@@ -103,6 +112,9 @@ export function SideLink({
       end={end}
       onClick={onNavigate}
       aria-label={collapsed ? label : undefined}
+      aria-describedby={describedBy}
+      // A row that drags is ours to drag: the browser mustn't drag (and on a drop, open) the link itself.
+      draggable={describedBy ? false : undefined}
       className={({ isActive }) =>
         clsx(
           'sf-focus flex h-11 w-full flex-none items-center gap-2 rounded-sf-md px-2 font-sf lg:h-7 text-[14px]/[20px] whitespace-nowrap transition-colors duration-150 ease-sf',
@@ -241,7 +253,7 @@ function GroupSkeleton() {
 }
 
 /** A channel or DM row: `#` or a lock, or the other person's avatar; bold, count and muted by `sidebarRowState`. */
-function ChannelLink({ slug, row: r, mentions, collapsed, onNavigate }: { slug: string; row: ChannelRow; mentions: number; collapsed?: boolean; onNavigate?: () => void }) {
+function ChannelLink({ slug, row: r, mentions, collapsed, onNavigate, describedBy }: { slug: string; row: ChannelRow; mentions: number; collapsed?: boolean; onNavigate?: () => void; describedBy?: string }) {
   const { channel, label, presence, group, otherId } = r
   const state = sidebarRowState(channel, mentions)
   const icon =
@@ -258,7 +270,58 @@ function ChannelLink({ slug, row: r, mentions, collapsed, onNavigate }: { slug: 
       draft={r.draft}
       collapsed={Boolean(collapsed)}
       onNavigate={onNavigate}
+      describedBy={describedBy}
     />
+  )
+}
+
+/**
+ * Starred's or Channels' rows (spec 5.1): in my order, dragged to change it (not in the collapsed rail). A drop shows
+ * at once and saves; a refusal puts the old order back and says so under the section.
+ */
+function OrderedRows({
+  section,
+  label,
+  rows,
+  slug,
+  mentions,
+  collapsed,
+  onNavigate,
+  onReorder,
+}: {
+  section: SidebarSection
+  label: string
+  rows: ChannelRow[]
+  slug: string
+  mentions: Map<string, number>
+  collapsed: boolean
+  onNavigate?: () => void
+  onReorder: (section: SidebarSection, ids: string[]) => void
+}) {
+  const link = (r: ChannelRow, describedBy?: string) => (
+    <ChannelLink slug={slug} row={r} mentions={mentions.get(r.channel.id) ?? 0} collapsed={collapsed} onNavigate={onNavigate} describedBy={describedBy} />
+  )
+  if (collapsed)
+    return rows.map((r) => (
+      <li key={r.channel.id} className="flex-none">
+        {link(r)}
+      </li>
+    ))
+  return (
+    <SortableSideList label={label} items={rows.map((r) => ({ id: r.channel.id, label: r.label, muted: r.channel.muted }))} onReorder={(ids) => onReorder(section, ids)}>
+      {(item, describedBy) => link(rows.find((r) => r.channel.id === item.id)!, describedBy)}
+    </SortableSideList>
+  )
+}
+
+/** A section's ⋯ while I have my own order there: Sort A–Z throws it away. */
+function OrderMenu({ label, onSort }: { label: string; onSort: () => void }) {
+  return (
+    <Menu label={`${label} options`} trigger={(props) => <IconButton label={`${label} options`} icon={IconDots} size="xs" tone="sidebar-muted" className="max-lg:size-11" {...props} />}>
+      <MenuItem icon={IconSortAscendingLetters} onSelect={onSort}>
+        Sort A–Z
+      </MenuItem>
+    </Menu>
   )
 }
 
@@ -271,13 +334,23 @@ export function SidebarContent({
 }) {
   const { role, persona } = useRole()
   const check = usePermission()
-  const { workspace, starred, channels, dms, apps, projects, mentions, activityUnread, threadsUnread, savedInProgress, draftsAndScheduled, chatLoading, projectsLoading, failed } = useSidebarGroups()
+  const { workspace, starred, channels, dms, apps, projects, mentions, activityUnread, threadsUnread, customOrder, savedInProgress, draftsAndScheduled, chatLoading, projectsLoading, failed } = useSidebarGroups()
   const slug = workspace?.slug
   const [newChannel, setNewChannel] = useState(false)
   const [newMessage, setNewMessage] = useState(false)
   const managesAny = projectsLoading ? undefined : projects.some((p) => p.managerId === persona.id)
   const canDashboard = check('dashboard.view', { managesAny })
   const row = { collapsed, onNavigate }
+  // My order of Starred and Channels (spec 5.1): a drop or Sort A–Z saves; a refusal says so under its section.
+  const { save: reorder, error: orderError } = useSaveSidebarOrder(workspace?.id)
+  const orderProblem = (section: SidebarSection) =>
+    orderError === section && (
+      <li className="flex-none px-2 py-1">
+        <p role="alert" className="sf-small m-0 text-sf-sidebar-text-strong">
+          Couldn’t save the order. Try again.
+        </p>
+      </li>
+    )
   // One side of Flow at a time (spec 5.5): the switch above picks Projects or Chat.
   const side = useWorkspaceMode()
   const onProjects = side === 'projects'
@@ -345,12 +418,9 @@ export function SidebarContent({
         )}
 
         {slug && workspace && onChat && !chatLoading && starred.length > 0 && (
-          <SideSection id="starred" label="Starred" {...row}>
-            {starred.map((r) => (
-              <li key={r.channel.id} className="flex-none">
-                <ChannelLink slug={slug} row={r} mentions={mentions.byChannel.get(r.channel.id) ?? 0} {...row} />
-              </li>
-            ))}
+          <SideSection id="starred" label="Starred" actions={customOrder.starred && <OrderMenu label="Starred" onSort={() => reorder('starred', [])} />} {...row}>
+            <OrderedRows section="starred" label="Starred" rows={starred} slug={slug} mentions={mentions.byChannel} onReorder={reorder} collapsed={collapsed} onNavigate={onNavigate} />
+            {orderProblem('starred')}
           </SideSection>
         )}
 
@@ -359,7 +429,10 @@ export function SidebarContent({
             id="channels"
             label="Channels"
             actions={
-              <IconButton label="New channel" icon={IconPlus} size="xs" tone="sidebar-muted" className="max-lg:size-11" onClick={() => setNewChannel(true)} />
+              <>
+                {customOrder.channels && <OrderMenu label="Channels" onSort={() => reorder('channels', [])} />}
+                <IconButton label="New channel" icon={IconPlus} size="xs" tone="sidebar-muted" className="max-lg:size-11" onClick={() => setNewChannel(true)} />
+              </>
             }
             {...row}
           >
@@ -367,11 +440,8 @@ export function SidebarContent({
               <GroupSkeleton />
             ) : (
               <>
-                {channels.map((r) => (
-                  <li key={r.channel.id} className="flex-none">
-                    <ChannelLink slug={slug} row={r} mentions={mentions.byChannel.get(r.channel.id) ?? 0} {...row} />
-                  </li>
-                ))}
+                <OrderedRows section="channels" label="Channels" rows={channels} slug={slug} mentions={mentions.byChannel} onReorder={reorder} collapsed={collapsed} onNavigate={onNavigate} />
+                {orderProblem('channels')}
                 <li className="flex-none">
                   <AddChannelsRow collapsed={collapsed} onAdd={() => setNewChannel(true)} />
                 </li>

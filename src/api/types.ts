@@ -358,6 +358,10 @@ export type SearchHit =
 /** A page of one tab's results, with every tab's count for the same search. */
 export type SearchResults = { counts: Record<SearchTab, number>; items: SearchHit[]; nextCursor: string | null }
 
+/** The sidebar sections people order by dragging (spec 5.1), and my order for each: channel ids, empty for none. */
+export type SidebarSection = 'starred' | 'channels'
+export type SidebarOrder = Record<SidebarSection, string[]>
+
 export type ChatTarget = { kind: 'message' | 'reply'; id: string }
 /** The Files tab's filters (spec 6.1): a type, who shared it, since when; `cursor` for the next 50. */
 export type ChannelFileFilter = { type?: FileKind; from?: string; since?: string; folderId?: string; cursor?: string }
@@ -697,6 +701,12 @@ export interface Api {
     list(workspaceId: string): Promise<ActivityItem[]>
     /** Marks these items read; without ids, all of mine in the workspace. A mention's read state is the bell's. */
     markRead(workspaceId: string, ids?: string[]): Promise<void>
+  }
+  /** My sidebar order in a workspace (spec 5.1 drag to reorder). */
+  sidebar: {
+    order(workspaceId: string): Promise<SidebarOrder>
+    /** Replaces a section's order; ids I can't list there are dropped, and an empty list goes back to A–Z. */
+    setOrder(workspaceId: string, section: SidebarSection, channelIds: string[]): Promise<void>
   }
   /** Search (spec 6.12): only what I may read (§9). */
   search: { run(workspaceId: string, request: SearchRequest): Promise<SearchResults> }

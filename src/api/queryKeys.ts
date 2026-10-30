@@ -48,6 +48,8 @@ export const qk = {
   mentions: () => ['mentions', 'me'],
   activityAll: () => ['activity'],                       // prefix of every workspace's Activity
   activity: (workspaceId: string) => ['activity', workspaceId],
+  sidebarOrderAll: () => ['sidebar-order'],
+  sidebarOrder: (workspaceId: string) => ['sidebar-order', workspaceId],
   searchAll: () => ['search'],
   search: (workspaceId: string, request: unknown) => ['search', workspaceId, request],
   threadsAll: () => ['threads'],                         // prefix of every workspace's Threads (spec 6.12)
@@ -110,6 +112,8 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
       return [qk.activityAll()]
     case 'savedChanged':
       return [qk.savedAll()]
+    case 'sidebarChanged':
+      return [qk.sidebarOrderAll()]
     case 'scheduledChanged':
       return [qk.scheduledAll(), qk.sentAll()]
     case 'dataReset':
