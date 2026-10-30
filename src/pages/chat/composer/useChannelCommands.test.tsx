@@ -31,12 +31,13 @@ afterEach(cleanup)
 
 const ui = (more: Partial<ChannelCommandUi> = {}): ChannelCommandUi => ({ openDetails: vi.fn(), ...more })
 const names = (channel: Channel, u = ui()) => renderHook(() => useChannelCommands(channel, u)).result.current.commands.map((c) => c.name)
-const cmd = (text: string) => parseCommand(parseBody(text)) as ParsedCommand
-const run = async (channel: Channel, text: string, u = ui()) => {
+const cmd = (body: Body) => parseCommand(body) as ParsedCommand
+const run = async (channel: Channel, text: string | Body, u = ui()) => {
+  const body = typeof text === 'string' ? parseBody(text) : text
   const { result } = renderHook(() => useChannelCommands(channel, u))
   let outcome: CommandOutcome | undefined
   await act(async () => {
-    outcome = await result.current.run(cmd(text), parseBody(text))
+    outcome = await result.current.run(cmd(body), body)
   })
   return outcome
 }
@@ -94,5 +95,18 @@ describe('useChannelCommands (spec 6.8)', () => {
   it('/shrug sends the shrug', async () => {
     const outcome = (await run(backend, '/shrug fine')) as { send: Body }
     expect(bodyText(outcome.send)).toBe('fine ¯\\_(ツ)_/¯')
+  })
+})
+
+describe('useChannelCommands: people named in /topic and /remind stay in the words (review)', () => {
+  const withNour = (head: string, tail: string): Body => [{ type: 'p', children: [{ type: 'text', text: head }, { type: 'user', id: 'u-2', name: 'Nour El-Sayed' }, { type: 'text', text: tail }] }]
+  it('/topic Ask @Nour for access keeps Nour', async () => {
+    await run(backend, withNour('/topic Ask ', ' for access'))
+    expect(update).toHaveBeenLastCalledWith({ id: 'c-backend', patch: { topic: 'Ask @Nour El-Sayed for access' } })
+  })
+  it('/remind tell @Nour about the deploy keeps Nour', async () => {
+    const remind = vi.fn()
+    await run(backend, withNour('/remind tell ', ' about the deploy'), ui({ remind }))
+    expect(remind).toHaveBeenCalledWith('tell @Nour El-Sayed about the deploy')
   })
 })

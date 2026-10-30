@@ -63,9 +63,9 @@ describe('Text snippet (spec 6.9)', () => {
     expect(upload).toHaveBeenCalledOnce()
     const [channelId, file, options] = upload.mock.calls[0]!
     expect(channelId).toBe('c-backend')
-    expect(file.name).toBe('explain-query.txt')
+    expect(file.name).toBe('explain query.txt')
     expect(await file.text()).toBe('SELECT 1;')
-    expect(options).toEqual({ snippet: { language: 'sql' } })
+    expect(options).toMatchObject({ snippet: { language: 'sql' } })
     expect(send).toHaveBeenCalledWith(uploaded, expect.anything())
     expect(bodyText((send.mock.calls[0] as unknown as [Attachment, Body])[1])).toBe('Slow on prod')
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
@@ -91,5 +91,39 @@ describe('Text snippet (spec 6.9)', () => {
       fireEvent.click(dialog().getByRole('button', { name: 'Cancel' }))
     })
     expect(document.querySelector('output')!.textContent).toBe('false')
+  })
+})
+
+describe('Text snippet: Cancel while it is being created (review)', () => {
+  it('stops the upload, posts nothing and resolves false, even when the upload finishes after', async () => {
+    let finishUpload: (file: Attachment) => void = () => {}
+    let signal: AbortSignal | undefined
+    upload.mockImplementationOnce((_c, _f, options) => {
+      signal = (options as { signal?: AbortSignal }).signal
+      return new Promise<Attachment>((resolve) => {
+        finishUpload = resolve
+      })
+    })
+    const send = show({ text: 'SELECT 1;' })
+    await act(async () => {
+      fireEvent.click(dialog().getByRole('button', { name: 'Create snippet' }))
+    })
+    await act(async () => {
+      fireEvent.click(dialog().getByRole('button', { name: 'Cancel' }))
+    })
+    expect(signal?.aborted).toBe(true)
+    await act(async () => finishUpload(uploaded))
+    expect(send).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(document.querySelector('output')!.textContent).toBe('false')
+  })
+
+  it('keeps the title as typed, spaces included', async () => {
+    show({ text: 'SELECT 1;' })
+    fireEvent.change(dialog().getByRole('textbox', { name: 'Title' }), { target: { value: 'Explain query' } })
+    await act(async () => {
+      fireEvent.click(dialog().getByRole('button', { name: 'Create snippet' }))
+    })
+    expect(upload.mock.calls[0]![1].name).toBe('Explain query.txt')
   })
 })

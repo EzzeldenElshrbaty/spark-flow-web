@@ -602,7 +602,7 @@ describe('RichComposer / shortcuts (spec 6.8)', () => {
     expect(run).not.toHaveBeenCalled()
     await userEvent.keyboard('{Enter}')
     await vi.waitFor(() => expect(run).toHaveBeenCalledOnce())
-    expect(run.mock.calls[0]![0]).toEqual({ name: 'mute', args: '', userIds: [] })
+    expect(run.mock.calls[0]![0]).toEqual({ name: 'mute', args: '', text: '', userIds: [] })
     expect(onSend).not.toHaveBeenCalled()
     await vi.waitFor(() => expect(editor.textContent).toBe(''))
     expect(screen.getByRole('status').textContent).toBe('#backend is muted. Type /mute to unmute it.')

@@ -6,8 +6,8 @@ const p = (...children: Inline[]): Body => [{ type: 'p', children }]
 
 describe('parseCommand (spec 6.8 shortcuts)', () => {
   it('reads /name and what follows', () => {
-    expect(parseCommand(parseBody('/topic Deploys on Thursdays'))).toEqual({ name: 'topic', args: 'Deploys on Thursdays', userIds: [] })
-    expect(parseCommand(parseBody('/mute'))).toEqual({ name: 'mute', args: '', userIds: [] })
+    expect(parseCommand(parseBody('/topic Deploys on Thursdays'))).toEqual({ name: 'topic', args: 'Deploys on Thursdays', text: 'Deploys on Thursdays', userIds: [] })
+    expect(parseCommand(parseBody('/mute'))).toEqual({ name: 'mute', args: '', text: '', userIds: [] })
     // An unknown name is still a command: the composer says it isn't one rather than posting it.
     expect(parseCommand(parseBody('/foo bar'))?.name).toBe('foo')
   })
@@ -22,9 +22,9 @@ describe('parseCommand (spec 6.8 shortcuts)', () => {
 
   it('takes the people mentioned out of the words and lists them', () => {
     const body = p({ type: 'text', text: '/invite ' }, { type: 'user', id: 'u-2', name: 'Nour El-Sayed' }, { type: 'text', text: ' ' }, { type: 'user', id: 'u-3', name: 'Hossam Gaber' })
-    expect(parseCommand(body)).toEqual({ name: 'invite', args: '', userIds: ['u-2', 'u-3'] })
+    expect(parseCommand(body)).toEqual({ name: 'invite', args: '', text: '@Nour El-Sayed @Hossam Gaber', userIds: ['u-2', 'u-3'] })
     const task = p({ type: 'text', text: '/task Fix the cursor filter ' }, { type: 'user', id: 'u-2', name: 'Nour El-Sayed' })
-    expect(parseCommand(task)).toEqual({ name: 'task', args: 'Fix the cursor filter', userIds: ['u-2'] })
+    expect(parseCommand(task)).toEqual({ name: 'task', args: 'Fix the cursor filter', text: 'Fix the cursor filter @Nour El-Sayed', userIds: ['u-2'] })
   })
 })
 

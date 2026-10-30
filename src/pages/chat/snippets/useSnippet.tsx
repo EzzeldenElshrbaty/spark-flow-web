@@ -8,7 +8,7 @@ import { SnippetDialog, type NewSnippet } from '@/pages/chat/snippets/SnippetDia
 export const MAX_SNIPPET = 100_000
 
 /** The snippet's file name: its title made safe for a file system, or "snippet". */
-export const snippetFileName = (title: string) => `${title.trim().replace(/[\\/:*?"<>|\s]+/g, '-').replace(/^-+|-+$/g, '') || 'snippet'}.txt`
+export const snippetFileName = (title: string) => `${title.trim().replace(/[\\/:*?"<>|]+/g, '-').replace(/^-+|-+$/g, '').trim() || 'snippet'}.txt`
 
 /**
  * Text snippet (spec 6.9): `open(text)` shows the dialog with the box's text as its content and resolves true once the
@@ -21,7 +21,11 @@ export function useSnippet({ channelId, where, send }: { channelId: string; wher
 } {
   const [content, setContent] = useState<string | null>(null)
   const answer = useRef<((created: boolean) => void) | null>(null)
+  // The snippet being created: closing the dialog stops it, and nothing it finishes afterwards is sent.
+  const creating = useRef<AbortController | null>(null)
   const finish = (created: boolean) => {
+    creating.current?.abort()
+    creating.current = null
     answer.current?.(created)
     answer.current = null
     setContent(null)
@@ -34,8 +38,13 @@ export function useSnippet({ channelId, where, send }: { channelId: string; wher
     })
   const create = async ({ title, language, content: code, message }: NewSnippet) => {
     const file = new File([code], snippetFileName(title), { type: 'text/plain' })
-    const uploaded = await uploadChatFile(channelId, file, { snippet: { language } })
+    const controller = new AbortController()
+    creating.current = controller
+    const uploaded = await uploadChatFile(channelId, file, { snippet: { language }, signal: controller.signal })
+    if (controller.signal.aborted) return
     await send(uploaded, message.trim() ? parseBody(message) : [])
+    if (controller.signal.aborted) return
+    creating.current = null
     finish(true)
   }
   const dialog = content !== null && <SnippetDialog where={where} initialContent={content} max={MAX_SNIPPET} onCreate={create} onClose={() => finish(false)} />

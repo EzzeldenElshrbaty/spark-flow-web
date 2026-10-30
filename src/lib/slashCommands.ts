@@ -7,8 +7,11 @@ export type CommandName = 'remind' | 'task' | 'invite' | 'topic' | 'mute' | 'lea
 /** A row of the `/` list: the command, what it takes, and what it does. */
 export type SlashCommand = { name: CommandName; args: string; description: string; icon: TablerIcon }
 
-/** What was typed: the name (known or not), the words after it without the people, and the people it names. */
-export type ParsedCommand = { name: string; args: string; userIds: string[] }
+/**
+ * What was typed: the name (known or not); `text`, everything after it as people read it ("@Nour El-Sayed" included);
+ * `args`, those words without the people (a task's title); and the people it names.
+ */
+export type ParsedCommand = { name: string; args: string; text: string; userIds: string[] }
 
 /** In the spec's order; the page words the description for where it is (the project, Mute or Unmute). */
 export const COMMANDS: SlashCommand[] = [
@@ -60,7 +63,8 @@ export function parseCommand(body: Body): ParsedCommand | null {
     })
     return { ...block, children }
   })
-  return { name, args: bodyText(words).replace(/[ \t]+/g, ' ').trim(), userIds }
+  const tidy = (b: Body) => bodyText(b).replace(/[ \t]+/g, ' ').trim()
+  return { name, args: tidy(words), text: tidy(rest), userIds }
 }
 
 /** /shrug: what follows, as written, then the shrug. */

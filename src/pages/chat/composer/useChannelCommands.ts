@@ -48,7 +48,7 @@ export function useChannelCommands(channel: Channel, ui: ChannelCommandUi): Comp
         : c,
   )
 
-  const run = async ({ name, args, userIds }: ParsedCommand, body: Body): Promise<CommandOutcome> => {
+  const run = async ({ name, args, text, userIds }: ParsedCommand, body: Body): Promise<CommandOutcome> => {
     switch (name) {
       case 'mute': {
         const muted = !channel.muted
@@ -56,8 +56,8 @@ export function useChannelCommands(channel: Channel, ui: ChannelCommandUi): Comp
         return { notice: muted ? `${where} is muted. Type /mute to unmute it.` : `${where} is unmuted.` }
       }
       case 'topic':
-        if (!args) ui.openDetails('about', { editTopic: true })
-        else await update.mutateAsync({ id: channel.id, patch: { topic: args } })
+        if (!text) ui.openDetails('about', { editTopic: true })
+        else await update.mutateAsync({ id: channel.id, patch: { topic: text } })
         return {}
       case 'invite':
         ui.openDetails('members', { addPeople: userIds })
@@ -70,7 +70,7 @@ export function useChannelCommands(channel: Channel, ui: ChannelCommandUi): Comp
         ui.newTask?.open({ title: args, assigneeId: userIds[0] ?? null })
         return {}
       case 'remind':
-        ui.remind?.(args)
+        ui.remind?.(text)
         return {}
       case 'shrug':
         return { send: shrugBody(body) }
