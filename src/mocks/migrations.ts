@@ -138,6 +138,16 @@ export const migrations: Record<number, (doc: Record<string, unknown>) => void> 
     doc.saved = reminders.map((r) => ({ id: r.id, userId: r.userId, workspaceId: r.workspaceId, target: r.target, status: 'inProgress', remindAt: r.remindAt, firedAt: r.firedAt ?? null, savedAt: r.remindAt }))
     delete doc.reminders
   },
+  // 18: files say whether they're a text snippet (spec 6.9); none were.
+  17: (doc) => {
+    const list = (value: unknown) => (Array.isArray(value) ? (value as Record<string, unknown>[]).filter(Boolean) : [])
+    const fill = (file: Record<string, unknown>) => {
+      file.snippet ??= null
+    }
+    for (const file of list(doc.attachments)) fill(file)
+    for (const row of [...list(doc.messages), ...list(doc.replies)]) for (const file of list(row.attachments)) fill(file)
+    for (const entry of list(doc.trash)) for (const file of list((entry.snapshot as Record<string, unknown> | undefined)?.attachments)) fill(file)
+  },
 }
 
 /** The document brought up to `to`, or null when a step on the way is missing. */

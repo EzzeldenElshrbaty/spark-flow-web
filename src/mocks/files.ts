@@ -11,9 +11,16 @@ import { findProject, openProject } from './projects'
 import { ApiError } from '@/lib/apiError'
 import { can } from '@/lib/permissions'
 import { logActivity } from './activity'
+import { CODE_LANGUAGES } from '@/lib/codeTokens'
 import { badRequest, clone, currentUser, newId, notFound, requireCan } from './shared'
 
 /** The upload rules (empty, too big, a type we don't take), with the sentence the form shows. */
+/** A snippet is a .txt file in a language the card knows (spec 6.9). */
+function checkSnippet(file: { name: string }, language: string) {
+  if (!CODE_LANGUAGES.some((l) => l.id === language)) throw badRequest("That snippet type isn't supported.")
+  if (!/\.txt$/i.test(file.name)) throw badRequest('A snippet is a .txt file.')
+}
+
 export function checkUpload(file: { size: number; name: string }) {
   if (file.size === 0) throw badRequest('That file is empty.')
   if (file.size > maxFileMb * 1024 * 1024) throw badRequest(`Files can be up to ${maxFileMb} MB.`)
@@ -39,10 +46,10 @@ export async function withSavedBytes<T>(db: MockDb, bytes: [id: string, blob: Bl
 }
 
 /** A new file's record: titled after itself, no description, checked clean (the prototype has no scanner). */
-export function fileRecord(file: { name: string; type: string; size: number }, uploadedBy: string, at: string): Attachment {
+export function fileRecord(file: { name: string; type: string; size: number }, uploadedBy: string, at: string, snippet: Attachment['snippet'] = null): Attachment {
   return {
     id: newId('a'), name: file.name, mimeType: file.type || 'application/octet-stream', size: file.size, createdAt: at,
-    uploadedBy, title: file.name, description: '', scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null,
+    uploadedBy, title: snippet ? file.name.replace(/\.txt$/i, '') : file.name, description: '', scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null, snippet,
   }
 }
 
@@ -197,12 +204,13 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
       if (orphan) await db.deleteFile(orphan)
       hub.publish({ type: 'filesChanged', projectId })
     },
-    async uploadForChat(channelId, file, { onProgress, signal } = {}) {
+    async uploadForChat(channelId, file, { onProgress, signal, snippet } = {}) {
       await delay()
       // upload-url: whoever may post in the channel, under the files rules.
       const before = await db.read()
       const me = checkCanWrite(before, findChannel(before, channelId))
       checkUpload(file)
+      if (snippet) checkSnippet(file, snippet.language)
       throwIfCancelled(signal)
       // The bytes go up in steps, as the browser reports them.
       for (const step of [0.25, 0.5, 0.75]) {
@@ -210,7 +218,7 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
         await delay()
         throwIfCancelled(signal)
       }
-      const record = fileRecord(file, me.id, now().toISOString())
+      const record = fileRecord(file, me.id, now().toISOString(), snippet ? { language: snippet.language } : null)
       // complete: the prototype has no scanner, so a finished upload is clean.
       const stored = await withSavedBytes(db, [[record.id, file]], () => {
         throwIfCancelled(signal)

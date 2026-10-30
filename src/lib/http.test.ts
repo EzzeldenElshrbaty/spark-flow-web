@@ -414,6 +414,19 @@ describe('uploading a chat file over HTTP (spec §8)', () => {
     expect(progress).toEqual([0.5, 1])
   })
 
+  it('a snippet sends its language with the upload link request (spec 6.9)', async () => {
+    const calls: string[] = []
+    const fetchFn = (async (url: string, init?: RequestInit) => {
+      calls.push(String(init?.body))
+      const body = url.endsWith('/upload-url') ? { file: { id: 'a1' }, uploadUrl: 'https://storage.example/put/a1' } : { id: 'a1' }
+      return new Response(JSON.stringify(body), { status: 200 })
+    }) as typeof fetch
+    const api = createHttpApi(fetchFn, fakeXhr().make)
+    const blob = Object.assign(new Blob(['SELECT 1;'], { type: 'text/plain' }), { name: 'q.txt' })
+    await api.files.uploadForChat('c1', blob, { snippet: { language: 'sql' } })
+    expect(calls[0]).toBe('{"channelId":"c1","name":"q.txt","size":9,"mimeType":"text/plain","snippet":{"language":"sql"}}')
+  })
+
   it('a refused upload of the bytes says so', async () => {
     const fetchFn = (async () => new Response(JSON.stringify({ file: { id: 'a1' }, uploadUrl: 'https://storage.example/put/a1' }), { status: 200 })) as typeof fetch
     const api = createHttpApi(fetchFn, fakeXhr(403).make)

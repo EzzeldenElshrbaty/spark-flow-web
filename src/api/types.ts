@@ -106,7 +106,11 @@ export type Attachment = {
   thumbUrl: string | null; previewUrl: string | null
   /** Set once it's deleted: where it was shared says "This file was deleted." */
   deletedAt: string | null
+  /** A text snippet (spec 6.9): a .txt file shown as code in this language; null for any other file. */
+  snippet: { language: CodeLanguage } | null
 }
+/** A snippet's Type (spec 6.9). */
+export type CodeLanguage = 'text' | 'bash' | 'csharp' | 'css' | 'html' | 'javascript' | 'json' | 'markdown' | 'python' | 'sql' | 'typescript' | 'yaml'
 export type FilePatch = Partial<Pick<Attachment, 'title' | 'description'>>
 /** Where a file is shared, as I may see it (spec 6.9 File details: Shared in, Access). */
 export type FileDetails = {
@@ -579,7 +583,8 @@ export interface Api {
      * Uploads a file for a message in `channelId` (spec §8): an upload link, the bytes, then complete, when the server
      * checks its type and scans it. A cancelled upload saves nothing and rejects with an AbortError.
      */
-    uploadForChat(channelId: string, file: UploadFile, options?: UploadOptions): Promise<Attachment>
+    /** `snippet`: the file is a text snippet in that language (spec 6.9); its title is its name without .txt. */
+    uploadForChat(channelId: string, file: UploadFile, options?: UploadOptions & { snippet?: { language: CodeLanguage } }): Promise<Attachment>
     /** Who uploaded it and where it's shared, for whoever may see it somewhere. */
     details(id: string): Promise<FileDetails>
     /** Edit file details: whoever uploaded it, or an Admin. */

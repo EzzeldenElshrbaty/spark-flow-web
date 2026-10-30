@@ -496,6 +496,7 @@ export function seed(now: Date): SeedResult {
   const fileOf = (id: string, name: string, mimeType: string, base64: string, createdAt: string, uploadedBy: string) => ({
     attachment: {
       id, name, mimeType, size: base64Size(base64), createdAt, uploadedBy, title: name, description: '', scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null,
+    snippet: null,
     } satisfies Attachment,
     bytes: { mimeType, base64 },
   })

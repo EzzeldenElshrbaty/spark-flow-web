@@ -155,3 +155,13 @@ describe('16 → 17', () => {
     expect(out).not.toHaveProperty('reminders')
   })
 })
+
+describe('17 → 18', () => {
+  it('files say they are not snippets (spec 6.9), wherever they are kept', () => {
+    const doc = { version: 17, currentUserId: 'u-1', attachments: [{ id: 'a1' }], messages: [{ attachments: [{ id: 'a1' }] }], replies: [{ attachments: [{ id: 'a2' }] }] }
+    const out = migrate(doc, 18) as { attachments: { snippet: unknown }[]; messages: { attachments: { snippet: unknown }[] }[]; replies: { attachments: { snippet: unknown }[] }[] }
+    expect(out.attachments[0].snippet).toBeNull()
+    expect(out.messages[0].attachments[0].snippet).toBeNull()
+    expect(out.replies[0].attachments[0].snippet).toBeNull()
+  })
+})

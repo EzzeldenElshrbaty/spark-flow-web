@@ -11,7 +11,7 @@ window.matchMedia ??= ((media: string) => ({ matches: false, media, addEventList
 
 const file: Attachment = {
   id: 'a1', name: 'scope.pdf', title: 'Release scope', description: 'What ships in 2.4.', mimeType: 'application/pdf', size: 188_416, createdAt: '2026-10-28T09:00:00.000Z',
-  uploadedBy: 'u-2', scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null,
+  uploadedBy: 'u-2', scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null, snippet: null,
 }
 const details: FileDetails = {
   file,

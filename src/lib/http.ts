@@ -239,10 +239,10 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
       },
       removeFromProject: (projectId, fileId) => send('DELETE', `/api/projects/${enc(projectId)}/files/${enc(fileId)}`),
       // Three steps (spec §8): an upload link for the bytes, the bytes straight to storage, then complete (type check, scan).
-      uploadForChat: async (channelId, file, { onProgress, signal } = {}) => {
+      uploadForChat: async (channelId, file, { onProgress, signal, snippet } = {}) => {
         const json = (method: string, path: string, body?: unknown) =>
           request<never>(path, body === undefined ? { method, signal } : { method, signal, body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } }, fetchFn)
-        const { file: created, uploadUrl } = await json('POST', '/api/files/upload-url', { channelId, name: file.name, size: file.size, mimeType: file.type || 'application/octet-stream' }) as { file: { id: string }; uploadUrl: string }
+        const { file: created, uploadUrl } = await json('POST', '/api/files/upload-url', { channelId, name: file.name, size: file.size, mimeType: file.type || 'application/octet-stream', ...(snippet && { snippet }) }) as { file: { id: string }; uploadUrl: string }
         await putBytes(uploadUrl, file, makeXhr, onProgress, signal)
         return json('POST', `/api/files/${enc(created.id)}/complete`)
       },

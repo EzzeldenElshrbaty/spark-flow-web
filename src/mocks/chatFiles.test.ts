@@ -211,3 +211,16 @@ describe('slice 6 review minors (mock)', () => {
     await expect(api.chat.edit({ kind: 'message', id: plain.id }, '', [])).rejects.toMatchObject({ status: 400, detail: 'Write a message first.' })
   })
 })
+
+describe('a text snippet (spec 6.9): a .txt chat file with a language', () => {
+  it('keeps its language, and its title is the name without .txt', async () => {
+    const uploaded = await api.files.uploadForChat('c-backend', file('explain-query.txt', 'SELECT 1;', 'text/plain'), { snippet: { language: 'sql' } })
+    expect(uploaded).toMatchObject({ name: 'explain-query.txt', title: 'explain-query', snippet: { language: 'sql' }, mimeType: 'text/plain' })
+    expect((await upload('scope.pdf')).snippet).toBeNull()
+  })
+
+  it('refuses a language it doesn’t know and a snippet that isn’t .txt', async () => {
+    await expect(api.files.uploadForChat('c-backend', file('a.txt', 'x', 'text/plain'), { snippet: { language: 'cobol' as never } })).rejects.toMatchObject({ status: 400, detail: "That snippet type isn't supported." })
+    await expect(api.files.uploadForChat('c-backend', file('a.pdf'), { snippet: { language: 'sql' } })).rejects.toMatchObject({ status: 400, detail: 'A snippet is a .txt file.' })
+  })
+})

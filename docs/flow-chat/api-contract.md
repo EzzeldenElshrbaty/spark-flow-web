@@ -347,7 +347,7 @@ Messages and replies carry the full records in `attachments`, as they always hav
 
 | Call | Route | Body | Returns |
 |---|---|---|---|
-| Ask to upload | `POST /api/files/upload-url` | `{ channelId, name, size, mimeType }` | `{ file, uploadUrl }`: the record (`scanStatus: "pending"`) and a short-lived address for the bytes. |
+| Ask to upload | `POST /api/files/upload-url` | `{ channelId, name, size, mimeType, snippet? }` | `{ file, uploadUrl }`: the record (`scanStatus: "pending"`) and a short-lived address for the bytes. |
 | The bytes | `PUT <uploadUrl>` | The file's bytes, `Content-Type` its type | To object storage, not the API. The browser reports progress from this request. |
 | Upload complete | `POST /api/files/:id/complete` | — | The file, once the server has sniffed its type, scanned it and made any thumbnail. |
 | Send (changed) | `POST /api/channels/:id/messages` | `{ content, clientId?, body?, fileIds? }` | The message. |
@@ -369,7 +369,14 @@ Rules:
 - **The client and the scan:** an upload is ready to send only once `complete` returns it `"clean"`; a `"blocked"` file's tray card says "This file was blocked." and can only be removed, and a `"pending"` one can be tried again.
 - **Events:** sharing sends `message.created` for the new message and `file.shared`; Edit file details sends `file.updated`, and Delete file `file.deleted` (client handler `onFileChanged`, `{ fileId }`), plus `message.updated` for every message and reply that shows the file, and `files.changed` for any project that lists it. The client refreshes the file's details on `onFileChanged`.
 
-Save for later, Add to folder and Add from Flow files come with the Saved view and the channel Files tab (Phase 3); Text snippet and code highlighting in Phase 3; voice and video messages in Phase 4.
+Save for later, Add to folder and Add from Flow files come with the channel Files tab (Phase 3, slice W); voice and video messages in Phase 4.
+
+## Phase 3 · Slice X: text snippets (spec 6.9)
+
+- **A snippet is a chat file:** `upload-url` takes `snippet: { language }` with `language` one of `text`, `bash`, `csharp`, `css`, `html`, `javascript`, `json`, `markdown`, `python`, `sql`, `typescript`, `yaml` (`400` "That snippet type isn't supported."), and the file must be a `.txt` (`400` "A snippet is a .txt file."). Everything else (bytes, `complete`, the scan, Share, Edit file details, Delete file, File details) is the same as any file.
+- **The record:** every file carries `snippet: { language } | null`; a snippet's `title` starts as its name without `.txt`.
+- **Sending:** the client creates the snippet, then sends it like any file (`fileIds`), in a message or a thread reply, with the optional message as the text.
+- **Shortcuts (spec 6.8):** the built-in `/` commands call the endpoints above (mute, channel update, leave, members, tasks); nothing new. `POST /commands/:name` waits for app commands (Phase 4).
 
 ## Phase 3 · Slice R: scheduler and Flowbot (spec 5.1 Apps, §7 Reminder and ScheduledMessage)
 
