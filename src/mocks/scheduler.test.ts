@@ -187,3 +187,18 @@ describe('startScheduler', () => {
     expect(SCHEDULER_EVERY_MS).toBe(15_000)
   })
 })
+
+describe('runScheduler: a saved file’s reminder (review)', () => {
+  it('Flowbot names the file and links to where it was shared', async () => {
+    const blob = Object.assign(new Blob(['%PDF-1.4'], { type: 'application/pdf' }), { name: 'scope.pdf' })
+    const f = await api.files.uploadForChat('c-backend', blob)
+    await api.chat.send('c-backend', '', undefined, undefined, [f.id])
+    await db.update((d) => {
+      d.saved.push({ id: 'sav-f', userId: 'u-1', workspaceId: 'ws-eng', target: { kind: 'file', id: f.id }, status: 'inProgress', remindAt: before(1000), firedAt: null, savedAt: before(60_000) })
+    })
+    await runScheduler(db, hub, NOW)
+    const notes = await messagesIn((await flowbotDm())!.id)
+    expect(notes.at(-1)?.content).toBe('Reminder: the file “scope.pdf”.')
+    expect(notes.at(-1)?.flowbot).toMatchObject({ kind: 'reminder', channelId: 'c-backend', target: { kind: 'file', id: f.id } })
+  })
+})

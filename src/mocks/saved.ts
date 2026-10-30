@@ -13,7 +13,8 @@ const NOTE_MAX = 1000
 
 /** What a saved target points at: the message or reply, its channel, and the thread it's in. */
 export function savedRow(data: DbData, target: SavedTarget): { row: ChatMessage | ThreadReply; channelId: string; messageId: string; replyId: string | null } | null {
-  if (target.kind === 'note') return null
+  // A note or a file is no message: nothing to find among the rows.
+  if (target.kind === 'note' || target.kind === 'file') return null
   if (target.kind === 'message') {
     const row = data.messages.find((m) => m.id === target.id)
     return row ? { row, channelId: row.channelId, messageId: row.id, replyId: null } : null

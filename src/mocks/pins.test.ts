@@ -66,3 +66,14 @@ describe('pins (spec 6.5 Pin to channel, §7 Pin)', () => {
     await expect(api.pins.pin('m-b07')).rejects.toMatchObject({ status: 400, detail: 'This message was deleted.' })
   })
 })
+
+describe('pins: review fixes', () => {
+  it('in a channel where only admins post, only admins pin', async () => {
+    await db.update((d) => {
+      d.channels.find((c) => c.id === 'c-backend')!.whoCanPost = 'admins'
+    })
+    await api.users.viewAs('u-5')
+    await expect(api.pins.pin('m-b07')).rejects.toMatchObject({ status: 403 })
+    await expect(api.bookmarks.add('c-backend', { title: 'x', url: 'https://x.spark-sys.com' })).rejects.toMatchObject({ status: 403 })
+  })
+})

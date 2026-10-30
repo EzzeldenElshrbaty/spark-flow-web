@@ -14,6 +14,7 @@ type Reminder = Extract<FlowbotNote, { kind: 'reminder' }>
 /** Where a reminder's View message goes: the message in its channel, or a reply's thread. */
 export function reminderLink(note: Reminder, ws: string): string {
   if (note.target.kind === 'note') return paths.channel(ws, note.target.channelId)
+  if (note.target.kind === 'file') return `${paths.channel(ws, note.channelId)}?file=${encodeURIComponent(note.target.id)}`
   if (note.rootId) return `${paths.channel(ws, note.channelId)}?thread=${encodeURIComponent(note.rootId)}`
   return paths.message(ws, note.channelId, note.target.id)
 }
@@ -35,7 +36,7 @@ export function FlowbotReminder({ note, ws, workspaceId, say }: { note: Reminder
     <div className="mt-2 flex flex-wrap items-center gap-2">
       {note.channelId && (
         <Link to={reminderLink(note, ws)} className="sf-focus sf-small inline-flex h-7 items-center rounded-sf-md border border-sf-line px-3 font-medium text-sf-text hover:bg-sf-surface-hover">
-          View message
+          {note.target.kind === 'file' ? 'View file' : 'View message'}
         </Link>
       )}
       {item?.status === 'completed' ? (

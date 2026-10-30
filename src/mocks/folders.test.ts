@@ -59,3 +59,11 @@ describe('folders (spec 6.9 Add to folder, §7 File folder_id): one per file, sh
     await expect(api.files.update(file.id, { folderId: folder.id })).rejects.toMatchObject({ status: 403 })
   })
 })
+
+describe('folders: review fixes', () => {
+  it('a file goes only in a folder of its own workspace', async () => {
+    const design = await api.folders.create('ws-design', 'Brand')
+    const file = await shared()
+    await expect(api.files.update(file.id, { folderId: design.id })).rejects.toMatchObject({ status: 400, detail: 'That folder is in another workspace.' })
+  })
+})

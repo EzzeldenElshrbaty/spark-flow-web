@@ -6,7 +6,7 @@ import type { RealtimeEvent } from '@/lib/realtime'
 import { postMessage, writeMessage, writeReply } from './chat'
 import type { DbData, MockDb } from './db'
 import { canRead } from './membership'
-import { rowText, savedRow } from './saved'
+import { filePlace, rowText, savedRow } from './saved'
 import type { MockHub } from './realtime'
 import { clone, newId } from './shared'
 
@@ -76,7 +76,9 @@ function fireReminder(data: DbData, item: SavedItem, at: string): RealtimeEvent[
   if (readable) {
     data.notifications.push({ id: newId('n'), userId: item.userId, kind: 'reminder', actorId: FLOWBOT_ID, channelId: found.channelId, messageId: found.messageId, replyId: found.replyId, emoji: null, at, read: false })
   }
-  const note: FlowbotNote = { kind: 'reminder', savedId: item.id, channelId: found?.channelId ?? '', rootId: found?.replyId ? found.messageId : null, target: item.target }
+  // A saved file links to where I can still see it shared; a note links nowhere.
+  const place = item.target.kind === 'file' ? filePlace(data, item.target.id, item.userId) : null
+  const note: FlowbotNote = { kind: 'reminder', savedId: item.id, channelId: found?.channelId ?? place?.channelId ?? '', rootId: found?.replyId ? found.messageId : null, target: item.target }
   return [
     ...tell(data, item.workspaceId, item.userId, reminderText(data, item), note),
     { type: 'savedChanged', userId: item.userId },

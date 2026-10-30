@@ -254,3 +254,12 @@ describe('Add from Flow files (spec 6.8 Attach menu): the files I may share', ()
     await expect(api.chat.send('c-general', '', undefined, undefined, [theirs.id])).rejects.toMatchObject({ status: 403 })
   })
 })
+
+describe('Add from Flow files: review fixes', () => {
+  it('an Admin is offered only what they can send: not someone else’s project-only file', async () => {
+    await api.users.viewAs('u-2')
+    const onProject = await api.files.upload('p-nex', file('brief.pdf', '%PDF-1.4 x', 'application/pdf'))
+    await api.users.viewAs('u-1')
+    expect((await api.files.shareable('ws-eng')).map((s) => s.file.id)).not.toContain(onProject.id)
+  })
+})

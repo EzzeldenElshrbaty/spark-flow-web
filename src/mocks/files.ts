@@ -17,6 +17,19 @@ import { filePlace } from './saved'
 import { badRequest, clone, currentUser, newId, notFound, requireCan } from './shared'
 
 /** The upload rules (empty, too big, a type we don't take), with the sentence the form shows. */
+/** The workspaces a file is in: those of the channels and projects it's shared in. */
+function fileWorkspaces(data: DbData, fileId: string): string[] {
+  const has = (row: { attachments: Attachment[] }) => row.attachments.some((a) => a.id === fileId)
+  const channelIds = [...data.messages, ...data.replies].filter(has).map((row) => row.channelId)
+  const projectIds = data.projectFiles.filter((f) => f.attachmentId === fileId).map((f) => f.projectId)
+  return [
+    ...new Set([
+      ...data.channels.filter((c) => channelIds.includes(c.id)).map((c) => c.workspaceId),
+      ...data.projects.filter((p) => projectIds.includes(p.id)).map((p) => p.workspaceId),
+    ]),
+  ]
+}
+
 /** The Files tab's page size (spec 6.1). */
 const FILES_PAGE = 50
 /** How many files Add from Flow files lists at once. */
@@ -272,6 +285,8 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
             const place = filePlace(data, file.id, me.id)
             const channel = place && data.channels.find((c) => c.id === place.channelId)
             if (channel && channel.workspaceId === workspaceId) return [{ file, channelId: channel.id, projectId: null }]
+            // A project-only file goes by the send rule too: only my own (an Admin re-shares from channels).
+            if (file.uploadedBy !== me.id) return []
             const listed = data.projectFiles.find((f) => f.attachmentId === file.id && onProject(data, f.projectId))
             const project = listed && data.projects.find((p) => p.id === listed.projectId)
             return project && project.workspaceId === workspaceId ? [{ file, channelId: null, projectId: project.id }] : []
@@ -295,7 +310,11 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
         const wrong = fileTitleError(title) ?? fileDescriptionError(description)
         if (wrong) throw badRequest(wrong)
         const folderId = patch.folderId === undefined ? file.folderId : patch.folderId
-        if (folderId !== null && !data.folders.some((f) => f.id === folderId)) throw badRequest('That folder doesn’t exist.')
+        if (folderId !== null) {
+          const folder = data.folders.find((f) => f.id === folderId)
+          if (!folder) throw badRequest('That folder doesn’t exist.')
+          if (!fileWorkspaces(data, id).includes(folder.workspaceId)) throw badRequest('That folder is in another workspace.')
+        }
         const changed = changeEverywhere(data, id, { title, description, folderId })
         return { file: clone(file), changed }
       })

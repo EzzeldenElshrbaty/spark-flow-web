@@ -1,6 +1,6 @@
 import type { Api, Bookmark } from '@/api/types'
 import { webAddress } from '@/lib/webAddress'
-import { checkCanPost, findChannel, readableChannel } from './chat'
+import { checkCanWrite, findChannel, readableChannel } from './chat'
 import type { DbData, MockDb } from './db'
 import { delay } from './latency'
 import type { MockHub } from './realtime'
@@ -24,7 +24,7 @@ export function bookmarksApi(db: MockDb, hub: MockHub): Api['bookmarks'] {
     const bookmark = data.bookmarks.find((b) => b.id === id)
     if (!bookmark) throw notFound('Bookmark', id)
     readableChannel(data, bookmark.channelId)
-    checkCanPost(data, findChannel(data, bookmark.channelId))
+    checkCanWrite(data, findChannel(data, bookmark.channelId))
     return bookmark
   }
   return {
@@ -38,7 +38,7 @@ export function bookmarksApi(db: MockDb, hub: MockHub): Api['bookmarks'] {
       await delay()
       const bookmark = await db.update((data) => {
         readableChannel(data, channelId)
-        const me = checkCanPost(data, findChannel(data, channelId))
+        const me = checkCanWrite(data, findChannel(data, channelId))
         const made: Bookmark = { id: crypto.randomUUID(), channelId, ...checked(input), createdBy: me.id, createdAt: new Date().toISOString() }
         data.bookmarks.push(made)
         return made

@@ -142,7 +142,7 @@ export function ChannelPage() {
       <div id={panelId} role="tabpanel" aria-label={tab === 'messages' ? 'Messages' : tab} className="flex min-h-0 flex-1 flex-col" {...paneDrop(writing, uploads.add)}>
       {tab === 'pins' ? (
         <div className="sf flex min-h-0 flex-1 flex-col">
-          <ChannelPins channel={current} users={people} canPost={canPost === true} />
+          <ChannelPins channel={current} users={people} canPost={canPost === true && canWrite === true} />
         </div>
       ) : tab === 'files' ? (
         <div className="sf flex min-h-0 flex-1 flex-col">
@@ -278,7 +278,8 @@ function ChannelTop({
   const addBookmark = useAddBookmark()
   const updateBookmark = useUpdateBookmark()
   const removeBookmark = useRemoveBookmark()
-  const mayBookmark = useCanPost(channel) === true && !isArchived(channel)
+  // "Only admins can post" holds for bookmarks too (the server checks the same).
+  const mayBookmark = useCanWrite(channel) === true && !isArchived(channel)
   const top = useRef<HTMLDivElement>(null)
   // The details change the star, level and mute too: while they're open, these errors show under their header.
   const headerError = (star.error ?? mute.error ?? level.error) as Error | null

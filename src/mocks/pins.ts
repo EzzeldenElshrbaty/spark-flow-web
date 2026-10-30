@@ -1,5 +1,5 @@
 import type { Api } from '@/api/types'
-import { checkCanPost, findChannel, findMessage, postSystem, readableChannel, withThread } from './chat'
+import { checkCanWrite, findChannel, findMessage, postSystem, readableChannel, withThread } from './chat'
 import type { MockDb } from './db'
 import { delay } from './latency'
 import type { MockHub } from './realtime'
@@ -34,7 +34,7 @@ export function pinsApi(db: MockDb, hub: MockHub): Api['pins'] {
       const result = await db.update((data) => {
         const message = findMessage(data, messageId)
         const channel = findChannel(data, message.channelId)
-        const me = checkCanPost(data, channel)
+        const me = checkCanWrite(data, channel)
         if (message.deletedAt) throw badRequest('This message was deleted.')
         if (message.system || message.broadcast) throw badRequest("This message can't be pinned.")
         if (data.pins.some((p) => p.messageId === messageId)) return { channelId: channel.id, line: null }
@@ -49,7 +49,7 @@ export function pinsApi(db: MockDb, hub: MockHub): Api['pins'] {
       const channelId = await db.update((data) => {
         const message = findMessage(data, messageId)
         const channel = findChannel(data, message.channelId)
-        checkCanPost(data, channel)
+        checkCanWrite(data, channel)
         data.pins = data.pins.filter((p) => p.messageId !== messageId)
         return channel.id
       })
