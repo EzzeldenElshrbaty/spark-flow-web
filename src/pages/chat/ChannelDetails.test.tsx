@@ -55,14 +55,14 @@ const dialog = () => screen.getByRole('dialog', { name: 'backend' })
 const card = (name: string) => screen.getByRole('group', { name })
 
 describe('Channel details: the header and tabs (spec 6.10)', () => {
-  it('names the channel, with the star, the level button and ×; About, Members (count) and Settings', () => {
+  it('names the channel, with the star, the level button and ×; About, Members (count), Tabs and Settings', () => {
     const { onStar } = show()
     const head = within(dialog())
     fireEvent.click(head.getByRole('button', { name: 'Star channel' }))
     expect(onStar).toHaveBeenCalledWith(true)
     expect(head.getByRole('button', { name: 'Channel notifications: Mentions and keywords' }).textContent).toContain('Mentions and keywords')
     expect(head.getByRole('button', { name: 'Close' })).toBeTruthy()
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['About', 'Members 3', 'Settings'])
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['About', 'Members 3', 'Tabs', 'Settings'])
     expect(screen.getByRole('tab', { name: 'About' }).getAttribute('aria-selected')).toBe('true')
   })
 
@@ -75,7 +75,7 @@ describe('Channel details: the header and tabs (spec 6.10)', () => {
 
   it('without the right to manage it there is no Settings and nothing to edit', () => {
     show({ rights: { manage: false, leave: true, restrictPosting: false, invite: false, setDefault: false, archive: false } })
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['About', 'Members 3'])
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['About', 'Members 3', 'Tabs'])
     expect(screen.queryByRole('button', { name: /^Edit/ })).toBeNull()
   })
 
@@ -629,5 +629,32 @@ describe('Channel details: /invite opens Add people filled in (spec 6.8)', () =>
     const add = within(screen.getByRole('dialog', { name: 'Add people to #backend' }))
     expect(add.getByText('Omar Hassan')).toBeTruthy()
     expect(add.queryByText('Nour El-Sayed')).toBeNull()
+  })
+})
+
+describe('Channel details › Tabs (spec 6.10): the channel’s bookmarks', () => {
+  const bookmarks = [{ id: 'b1', channelId: 'c-backend', title: 'Runbook', url: 'https://wiki.spark-sys.com/runbook', createdBy: 'u-1', createdAt: '' }]
+  it('lists them; Rename and Remove for whoever may post', async () => {
+    const onUpdateBookmark = vi.fn(async () => {})
+    const onRemoveBookmark = vi.fn(async () => {})
+    show({ tab: 'tabs', bookmarks, onUpdateBookmark, onRemoveBookmark })
+    expect(screen.getByRole('tab', { name: /Tabs/ }).getAttribute('aria-selected')).toBe('true')
+    const row = within(screen.getByRole('listitem'))
+    expect(row.getByRole('link', { name: 'Runbook' })).toBeTruthy()
+    fireEvent.click(row.getByRole('button', { name: 'Rename Runbook' }))
+    fireEvent.change(row.getByRole('textbox', { name: 'Name' }), { target: { value: 'On-call runbook' } })
+    await act(async () => {
+      fireEvent.click(row.getByRole('button', { name: 'Save' }))
+    })
+    expect(onUpdateBookmark).toHaveBeenCalledWith('b1', { title: 'On-call runbook' })
+    await act(async () => {
+      fireEvent.click(within(screen.getByRole('listitem')).getByRole('button', { name: 'Remove Runbook' }))
+    })
+    expect(onRemoveBookmark).toHaveBeenCalledWith('b1')
+  })
+
+  it('says when there are none; read-only without the handlers', () => {
+    show({ tab: 'tabs', bookmarks: [] })
+    expect(screen.getByText('No bookmarks yet. Add one with + after the channel’s tabs.')).toBeTruthy()
   })
 })

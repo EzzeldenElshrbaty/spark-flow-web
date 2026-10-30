@@ -2,17 +2,18 @@ import { IconChevronDown, IconHash, IconLink, IconLock, IconStar, IconStarFilled
 import clsx from 'clsx'
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { Link } from 'react-router'
-import type { Channel, ChannelPatch, Invitation, NotifyLevel, Team, WhoCanPost } from '@/api/types'
+import type { Bookmark, Channel, ChannelPatch, Invitation, NotifyLevel, Team, WhoCanPost } from '@/api/types'
 import { Button, IconButton } from '@/components/sf/Button'
 import { Icon } from '@/components/sf/Icon'
 import { Modal } from '@/components/sf/Modal'
 import { Tabs } from '@/components/sf/Tabs'
 import { channelFormErrors, descriptionError, MAX_TOPIC } from '@/lib/channelForm'
+import { BookmarksPanel } from '@/pages/chat/BookmarksPanel'
 import { Members, type PeopleChange, type Person } from '@/pages/chat/ChannelMembers'
 import { levelLabel, NotifyLevelMenu } from '@/pages/chat/NotifyLevelMenu'
 import { errorText, usePicked } from '@/pages/chat/usePicked'
 
-export type DetailsTab = 'about' | 'members' | 'settings'
+export type DetailsTab = 'about' | 'members' | 'tabs' | 'settings'
 
 const COPIED_MS = 2000
 // A 44px touch target on phones (spec 6.16) around a 32px icon button.
@@ -59,6 +60,9 @@ export function ChannelDetails({
   tab: firstTab,
   editTopic = false,
   addPeople,
+  bookmarks = [],
+  onUpdateBookmark,
+  onRemoveBookmark,
   headerError,
   fallbackFocus,
   onClose,
@@ -93,6 +97,10 @@ export function ChannelDetails({
   editTopic?: boolean
   /** /invite: open on Add people with these people filled in (spec 6.8). */
   addPeople?: string[]
+  /** The Tabs tab: the channel's bookmarks; Rename and Remove where I may post. */
+  bookmarks?: Bookmark[]
+  onUpdateBookmark?: (id: string, patch: { title: string }) => Promise<unknown>
+  onRemoveBookmark?: (id: string) => Promise<unknown>
   /** What went wrong with the star, the level or mute, shown under the header (they're changed from here too). */
   headerError?: string | null
   /** Where focus goes on close when what opened the details is gone ("Add a topic", once there's a topic). */
@@ -114,6 +122,7 @@ export function ChannelDetails({
   const tabs = [
     { id: 'about' as const, label: 'About' },
     { id: 'members' as const, label: 'Members', count: channel.memberIds.length },
+    { id: 'tabs' as const, label: 'Tabs', count: bookmarks.length || undefined },
     ...(rights.manage ? [{ id: 'settings' as const, label: 'Settings' }] : []),
   ]
   // Settings goes when the right to manage does (archived, or taken off a channel): About stands in.
@@ -187,6 +196,7 @@ export function ChannelDetails({
             onSave={onSave}
           />
         )}
+        {tab === 'tabs' && <BookmarksPanel bookmarks={bookmarks} onUpdate={onUpdateBookmark} onRemove={onRemoveBookmark} />}
         {tab === 'settings' && rights.manage && <Settings channel={channel} restrictPosting={rights.restrictPosting} onSave={onSave} onArchive={rights.archive ? onArchive : undefined} />}
       </div>
     </Modal>

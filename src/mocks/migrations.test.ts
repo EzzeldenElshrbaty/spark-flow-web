@@ -176,7 +176,7 @@ describe('18 → 19', () => {
 describe('19 → 20', () => {
   it('no pins or folders yet; every file is in no folder', () => {
     const out = migrate({ version: 19, currentUserId: 'u-1', attachments: [{ id: 'a1' }], messages: [{ attachments: [{ id: 'a1' }] }] }, 20) as { pins: unknown[]; folders: unknown[]; attachments: { folderId: unknown }[]; messages: { attachments: { folderId: unknown }[] }[] }
-    expect(out).toMatchObject({ version: 20, pins: [], folders: [] })
+    expect(out).toMatchObject({ version: 20, pins: [], folders: [], bookmarks: [] })
     expect(out.attachments[0].folderId).toBeNull()
     expect(out.messages[0].attachments[0].folderId).toBeNull()
   })

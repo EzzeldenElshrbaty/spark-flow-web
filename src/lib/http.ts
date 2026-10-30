@@ -232,6 +232,12 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
       remove: (id) => send<void>('DELETE', `/api/saved/${enc(id)}`),
       note: (channelId, text, remindAt) => send('POST', '/api/saved/notes', { channelId, text, remindAt }),
     },
+    bookmarks: {
+      list: (channelId) => get(`/api/channels/${enc(channelId)}/bookmarks`),
+      add: (channelId, bookmark) => send('POST', `/api/channels/${enc(channelId)}/bookmarks`, bookmark),
+      update: (id, patch) => send('PATCH', `/api/bookmarks/${enc(id)}`, patch),
+      remove: (id) => send<void>('DELETE', `/api/bookmarks/${enc(id)}`),
+    },
     folders: {
       list: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/folders`),
       create: (workspaceId, name) => send('POST', `/api/workspaces/${enc(workspaceId)}/folders`, { name }),

@@ -319,6 +319,8 @@ export type ChannelFileFilter = { type?: FileKind; from?: string; since?: string
 export type ChannelFile = { file: Attachment; senderId: string; at: string; messageId: string; replyId: string | null }
 /** A file I may add to a message from Flow (spec 6.8): the file, and where it is (a channel I read, or a project). */
 export type ShareableFile = { file: Attachment; channelId: string | null; projectId: string | null }
+/** A link in a channel's tabs row (spec 6.1 +, §7 Bookmark): http or https only, in the order added. */
+export type Bookmark = { id: string; channelId: string; title: string; url: string; createdBy: string; createdAt: string }
 /** A message pinned to its channel (spec §7 Pin). */
 export type Pin = { channelId: string; messageId: string; pinnedBy: string; pinnedAt: string }
 /** The Pins tab's row: the message as the channel shows it, and who pinned it when. */
@@ -651,6 +653,14 @@ export interface Api {
     markRead(workspaceId: string, ids?: string[]): Promise<void>
   }
   /** My messages to send later (spec 6.8 Schedule menu, 6.12 Drafts & sent). */
+  /** Channel bookmarks (spec 6.1): whoever may post adds, renames and removes them. */
+  bookmarks: {
+    list(channelId: string): Promise<Bookmark[]>
+    /** An empty title takes the address's host. */
+    add(channelId: string, bookmark: { title: string; url: string }): Promise<Bookmark>
+    update(id: string, patch: { title?: string; url?: string }): Promise<Bookmark>
+    remove(id: string): Promise<void>
+  }
   /** Folders for files (spec 6.9), one list per workspace, by name. */
   folders: {
     list(workspaceId: string): Promise<Folder[]>

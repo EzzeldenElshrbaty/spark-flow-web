@@ -138,10 +138,11 @@ export const migrations: Record<number, (doc: Record<string, unknown>) => void> 
     doc.saved = reminders.map((r) => ({ id: r.id, userId: r.userId, workspaceId: r.workspaceId, target: r.target, status: 'inProgress', remindAt: r.remindAt, firedAt: r.firedAt ?? null, savedAt: r.remindAt }))
     delete doc.reminders
   },
-  // 20: pins (spec §7 Pin) and file folders (spec 6.9), none yet; every file is in no folder.
+  // 20: pins (spec §7 Pin), file folders (spec 6.9) and bookmarks (§7 Bookmark), none yet; every file is in no folder.
   19: (doc) => {
     if (!Array.isArray(doc.pins)) doc.pins = []
     if (!Array.isArray(doc.folders)) doc.folders = []
+    if (!Array.isArray(doc.bookmarks)) doc.bookmarks = []
     const list = (value: unknown) => (Array.isArray(value) ? (value as Record<string, unknown>[]).filter(Boolean) : [])
     const fill = (file: Record<string, unknown>) => {
       file.folderId ??= null

@@ -21,6 +21,7 @@ import { Menu, MenuItem, MenuSeparator } from '@/components/sf/Menu'
 import { Popover } from '@/components/sf/Popover'
 import { Tooltip } from '@/components/sf/Tooltip'
 import { acceptedFiles } from '@/lib/fileTypes'
+import { webAddress } from '@/lib/webAddress'
 import { formatWhen } from '@/lib/format'
 import { bodyText, type Body } from '@/lib/messageBody'
 import { schedulePresets } from '@/lib/remindTimes'
@@ -57,19 +58,6 @@ const THEME = {
     underlineStrikethrough: '[text-decoration:underline_line-through]',
     code: 'sf-code rounded-sf-sm border border-sf-line bg-sf-surface-sunken px-1',
   },
-}
-
-/** A typed address as a link target: http or https, with https assumed when no scheme is given; null otherwise. */
-export function linkTarget(typed: string): string | null {
-  const text = typed.trim()
-  if (!text) return null
-  const withScheme = /^[a-z][a-z\d+.-]*:/i.test(text) ? text : `https://${text}`
-  try {
-    const url = new URL(withScheme)
-    return ['http:', 'https:'].includes(url.protocol) && url.hostname.includes('.') ? url.href : null
-  } catch {
-    return null
-  }
 }
 
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
@@ -381,7 +369,7 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
         </div>
         <HistoryPlugin />
         <ListPlugin />
-        <LinkPlugin validateUrl={(url) => linkTarget(url) !== null} />
+        <LinkPlugin validateUrl={(url) => webAddress(url) !== null} />
         <MarkdownShortcutPlugin transformers={COMPOSER_TRANSFORMERS} />
         <OnChangePlugin onChange={onChange} ignoreSelectionChange />
         <KeysPlugin
@@ -587,7 +575,7 @@ function LinkBar({ editor, linking, onDone }: { editor: LexicalEditor; linking: 
         onKeyDown={(e) => {
           if (e.key === 'Enter') {
             e.preventDefault()
-            const target = linkTarget(url)
+            const target = webAddress(url)
             if (target) apply(target)
             else setInvalid(true)
           } else if (e.key === 'Escape') {
@@ -599,7 +587,7 @@ function LinkBar({ editor, linking, onDone }: { editor: LexicalEditor; linking: 
         aria-invalid={invalid}
         className="sf-ui h-8 min-w-0 flex-1 rounded-sf-md border border-sf-line-strong bg-sf-surface px-2 text-sf-text outline-none focus:shadow-[var(--focus-ring)]"
       />
-      <Button size="sm" onClick={() => (linkTarget(url) ? apply(linkTarget(url)) : setInvalid(true))}>
+      <Button size="sm" onClick={() => (webAddress(url) ? apply(webAddress(url)) : setInvalid(true))}>
         Save link
       </Button>
       {linking.url && (

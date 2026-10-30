@@ -40,6 +40,7 @@ import { ChannelPins } from '@/pages/chat/PinsTab'
 import { ChannelFiles } from '@/pages/chat/files/FilesTab'
 import { useFlowFilePicker } from '@/pages/chat/files/FilePicker'
 import { usePins } from '@/api/pins'
+import { useAddBookmark, useBookmarks, useRemoveBookmark, useUpdateBookmark } from '@/api/bookmarks'
 import type { Attachment, Channel, ChatMessage, User } from '@/api/types'
 import { useProjectSummaries, useTeams } from '@/api/projects'
 import { MessageSkeleton } from '@/pages/chat/MessageSkeleton'
@@ -272,6 +273,12 @@ function ChannelTop({
   const [archiving, setArchiving] = useState(false)
   // The Pins tab's count (spec 6.1).
   const pins = usePins(channel.id)
+  // Bookmarks after the tabs, and in Channel details › Tabs (spec 6.1, 6.10): whoever may post manages them.
+  const bookmarks = useBookmarks(channel.id)
+  const addBookmark = useAddBookmark()
+  const updateBookmark = useUpdateBookmark()
+  const removeBookmark = useRemoveBookmark()
+  const mayBookmark = useCanPost(channel) === true && !isArchived(channel)
   const top = useRef<HTMLDivElement>(null)
   // The details change the star, level and mute too: while they're open, these errors show under their header.
   const headerError = (star.error ?? mute.error ?? level.error) as Error | null
@@ -304,7 +311,15 @@ function ChannelTop({
         onLeave={leaveChannel}
         onArchive={() => setArchiving(true)}
       />
-      <ChannelTabs channel={channel} tab={tab} onChange={onTab} panelId={panelId} pinCount={pins.data?.length} />
+      <ChannelTabs
+        channel={channel}
+        tab={tab}
+        onChange={onTab}
+        panelId={panelId}
+        pinCount={pins.data?.length}
+        bookmarks={bookmarks.data}
+        onAddBookmark={mayBookmark ? (bookmark) => addBookmark.mutateAsync({ channelId: channel.id, bookmark }) : undefined}
+      />
       {error && !details && <p className="sf-small px-4 pt-2 text-sf-error">{error.message}</p>}
       {details && channel.kind === 'channel' && (
         <ChannelDetails
@@ -320,6 +335,9 @@ function ChannelTop({
           tab={details.tab}
           editTopic={details.editTopic}
           addPeople={details.addPeople}
+          bookmarks={bookmarks.data}
+          onUpdateBookmark={mayBookmark ? (id, patch) => updateBookmark.mutateAsync({ id, patch }) : undefined}
+          onRemoveBookmark={mayBookmark ? (id) => removeBookmark.mutateAsync(id) : undefined}
           headerError={headerError?.message}
           // "Add a topic" is gone once there's a topic: focus goes back to the channel's name.
           fallbackFocus={() => top.current?.querySelector<HTMLElement>('h1 button')}

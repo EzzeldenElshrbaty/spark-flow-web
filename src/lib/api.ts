@@ -40,6 +40,7 @@ export const api: Api = {
   get scheduled() { return resolve().scheduled },
   get pins() { return resolve().pins },
   get folders() { return resolve().folders },
+  get bookmarks() { return resolve().bookmarks },
   get dashboard() { return resolve().dashboard },
   get files() { return resolve().files },
   get db() { return resolve().db },

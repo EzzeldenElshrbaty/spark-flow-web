@@ -21,6 +21,7 @@ export const qk = {
   invitations: (channelId: string) => ['chat', 'invitations', channelId],
   pins: (channelId: string) => ['chat', 'pins', channelId],
   folders: (workspaceId: string) => ['folders', workspaceId],
+  bookmarks: (channelId: string) => ['chat', 'bookmarks', channelId],
   channelFiles: (channelId: string, filter: unknown = undefined) => (filter === undefined ? ['chat', 'files', channelId] : ['chat', 'files', channelId, filter]),
   fileDetails: (fileId: string) => ['chat', 'file', fileId],
   projects: (workspaceId: string) => ['tickets', 'projects', workspaceId],
@@ -85,7 +86,7 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
     case 'channelChanged':
       // Leaving, removal, archiving and privacy decide what my mentions and Activity may show; inviting and revoking
       // change its Invited list (spec 6.10).
-      return [qk.channelsAll(), qk.channel(event.channelId), qk.mentions(), qk.activityAll(), qk.invitations(event.channelId), qk.pins(event.channelId)]
+      return [qk.channelsAll(), qk.channel(event.channelId), qk.mentions(), qk.activityAll(), qk.invitations(event.channelId), qk.pins(event.channelId), qk.bookmarks(event.channelId)]
     case 'commentAdded':
       return [qk.comments(event.taskKey), qk.mentions(), qk.activityAll(), qk.taskHistory(event.taskKey), qk.projectHistory(event.projectId)]
     case 'ratesChanged':
