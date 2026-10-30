@@ -558,3 +558,27 @@ describe('Schedule send (spec 6.8: the Send chevron opens Schedule)', () => {
     expect((screen.getByRole('button', { name: 'Schedule message' }) as HTMLButtonElement).disabled).toBe(true)
   })
 })
+
+describe('RichComposer : emoji (spec 6.8)', () => {
+  it(':thu offers emoji; Enter puts 👍 in the box instead of sending', async () => {
+    const { onSend, editor } = await ready()
+    await userEvent.click(editor)
+    await userEvent.keyboard(':thu')
+    const list = await screen.findByRole('listbox', { name: 'Emoji' }, LIST_WAIT)
+    expect(list.textContent).toContain(':thumbsup:')
+    await userEvent.keyboard('{Enter}')
+    await vi.waitFor(() => expect(editor.textContent).toContain('👍'))
+    expect(editor.textContent).not.toContain(':thu')
+    expect(onSend).not.toHaveBeenCalled()
+  })
+
+  it('a colon in a time or a link, or with one letter, opens nothing', async () => {
+    const { editor } = await ready()
+    await userEvent.click(editor)
+    for (const text of ['10:30', ' https://x', ' :z']) {
+      await userEvent.keyboard(text)
+      await new Promise((r) => setTimeout(r, 300))
+      expect(screen.queryByRole('listbox', { name: 'Emoji' })).toBeNull()
+    }
+  })
+})

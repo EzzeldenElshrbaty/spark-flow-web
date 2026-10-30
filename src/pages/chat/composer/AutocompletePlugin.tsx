@@ -9,6 +9,7 @@ import type { Presence, User } from '@/api/types'
 import { Avatar } from '@/components/sf/Avatar'
 import { Kbd } from '@/components/sf/Badge'
 import { Icon } from '@/components/sf/Icon'
+import { rememberEmoji, searchEmoji, type EmojiInfo } from '@/lib/emoji'
 import { channelOptions, mentionOptions } from '@/lib/mentionQuery'
 import { $createEntityNode, type Entity } from '@/pages/chat/composer/bodyEditor'
 
@@ -29,17 +30,23 @@ type Item =
   | { kind: 'project'; key: string; name: string }
   | { kind: 'task'; key: string; title: string }
   | { kind: 'channel'; id: string; name: string }
+  | { kind: 'emoji'; emoji: EmojiInfo }
 
 class Choice extends MenuOption {
   item: Item
   constructor(item: Item) {
-    super(item.kind === 'user' ? item.user.id : item.kind === 'all' || item.kind === 'here' ? item.kind : item.kind === 'channel' ? item.id : item.key)
+    super(item.kind === 'user' ? item.user.id : item.kind === 'all' || item.kind === 'here' ? item.kind : item.kind === 'channel' ? item.id : item.kind === 'emoji' ? item.emoji.char : item.key)
     this.item = item
   }
 }
 
-/** What `@` or `#` followed by `q` offers. */
-function choicesFor(sign: '@' | '#', q: string, directory: ComposerDirectory) {
+type Sign = '@' | '#' | ':'
+/** How many emoji `:` offers. */
+const EMOJI_SHOWN = 8
+
+/** What `@`, `#` or `:` followed by `q` offers. */
+function choicesFor(sign: Sign, q: string, directory: ComposerDirectory) {
+  if (sign === ':') return searchEmoji(q).slice(0, EMOJI_SHOWN).map((emoji) => new Choice({ kind: 'emoji', emoji }))
   if (sign === '#') return channelOptions(q, directory.channels).map((c) => new Choice({ kind: 'channel', id: c.id, name: c.name }))
   return mentionOptions(q, directory).map((o) => {
     if (o.kind !== 'user') return new Choice(o)
@@ -52,9 +59,11 @@ const PRESENCE: Record<Presence, string> = { active: 'Active', away: 'Away', off
 const MAX_QUERY = 50
 // `@` or `#` at the start or after a space or "(", then the query up to the caret.
 const TRIGGER = new RegExp(`(^|[\\s(])([@#])([^\\s@#]{0,${MAX_QUERY}})$`)
+// `:` and two or more letters, at the start or after a space or "(": never a time (10:30) or an address (https://).
+const EMOJI_TRIGGER = /(^|[\s(])(:)([a-z0-9_+-]{2,30})$/
 
 /**
- * Autocomplete (spec 6.8, `sf-ac`): `@` offers people, @all, projects and tasks; `#` offers channels. It opens above
+ * Autocomplete (spec 6.8, `sf-ac`): `@` offers people, @all, projects and tasks; `#` offers channels; `:` offers emoji. It opens above
  * the composer; arrow keys move, Enter or Tab picks, Escape closes; picking puts a pill (or a task key) in place of
  * what was typed. `menuOpen` tells the composer not to send on Enter while it's open.
  */
@@ -63,13 +72,13 @@ export function AutocompletePlugin({ directory, menuOpen, anchor }: { directory:
   const [query, setQuery] = useState<string | null>(null)
   // Open from the plugin's own open and close (Escape closes it while the query is still typed).
   const [open, setOpen] = useState(false)
-  const trigger = useRef<'@' | '#'>('@')
+  const trigger = useRef<Sign>('@')
 
   const triggerFn = (text: string): MenuTextMatch | null => {
-    const m = TRIGGER.exec(text)
+    const m = TRIGGER.exec(text) ?? EMOJI_TRIGGER.exec(text)
     // Nothing matches, no list: the editor never points at an empty listbox, and Enter sends.
-    if (!m || choicesFor(m[2] as '@' | '#', m[3], directory).length === 0) return null
-    trigger.current = m[2] as '@' | '#'
+    if (!m || choicesFor(m[2] as Sign, m[3], directory).length === 0) return null
+    trigger.current = m[2] as Sign
     return { leadOffset: m.index + m[1].length, matchingString: m[3], replaceableString: m[2] + m[3] }
   }
 
@@ -91,7 +100,8 @@ export function AutocompletePlugin({ directory, menuOpen, anchor }: { directory:
       const item = choice.item
       const entity: Entity | null =
         item.kind === 'user' ? { type: 'user', id: item.user.id, name: item.user.name } : item.kind === 'all' ? { type: 'all' } : item.kind === 'here' ? { type: 'here' } : item.kind === 'channel' ? { type: 'channel', id: item.id, name: item.name } : item.kind === 'project' ? { type: 'project', key: item.key } : null
-      const node = entity ? $createEntityNode(entity) : $createTextNode(item.kind === 'task' ? item.key : '')
+      if (item.kind === 'emoji') rememberEmoji(item.emoji.char)
+      const node = entity ? $createEntityNode(entity) : $createTextNode(item.kind === 'task' ? item.key : item.kind === 'emoji' ? item.emoji.char : '')
       if (nodeToReplace) nodeToReplace.replace(node)
       const space = $createTextNode(' ')
       node.insertAfter(space)
@@ -117,7 +127,7 @@ export function AutocompletePlugin({ directory, menuOpen, anchor }: { directory:
         if (!container || options.length === 0) return null
         const box = anchor.current?.getBoundingClientRect()
         // Lexical's container is the listbox the editor points at (aria-controls, aria-activedescendant): name it.
-        container.setAttribute('aria-label', trigger.current === '#' ? 'Link a channel' : 'Mention someone')
+        container.setAttribute('aria-label', trigger.current === '#' ? 'Link a channel' : trigger.current === ':' ? 'Emoji' : 'Mention someone')
         container.id = 'typeahead-menu'
         return createPortal(
           <div className="sf">
@@ -157,6 +167,15 @@ export function AutocompletePlugin({ directory, menuOpen, anchor }: { directory:
 }
 
 function Row({ item }: { item: Item }) {
+  if (item.kind === 'emoji')
+    return (
+      <>
+        <span aria-hidden className="sf-emoji w-5 text-center text-[18px]/[20px]">
+          {item.emoji.char}
+        </span>
+        <span className="truncate font-medium">:{item.emoji.aliases[0]}:</span>
+      </>
+    )
   if (item.kind === 'user')
     return (
       <>
