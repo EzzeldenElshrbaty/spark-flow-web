@@ -117,3 +117,22 @@ describe('useUploads: clearing what was sent (slice 6 review)', () => {
     expect(result.current.items.map((i) => i.file.name)).toEqual(['late.png'])
   })
 })
+
+describe('useUploads: files added from Flow (spec 6.8 Add from Flow files)', () => {
+  it('join the tray ready, once each, and go with the message', () => {
+    const { result } = renderHook(() => useUploads('c-backend'))
+    const picked = { ...uploaded('scope.pdf'), size: 188_416, mimeType: 'application/pdf' } as Attachment
+    act(() => result.current.addExisting([picked, picked]))
+    expect(result.current.items).toHaveLength(1)
+    expect(result.current.items[0]).toMatchObject({ status: 'ready', uploaded: picked, existing: true })
+    expect(result.current.ready).toEqual([picked])
+    expect(result.current.waiting).toBeNull()
+  })
+
+  it('no more than 10 files in the tray, and says so', () => {
+    const { result } = renderHook(() => useUploads('c-backend'))
+    act(() => result.current.addExisting(Array.from({ length: 12 }, (_, i) => ({ ...uploaded(`f${i}.pdf`), size: 1, mimeType: 'application/pdf' }) as Attachment)))
+    expect(result.current.items).toHaveLength(10)
+    expect(result.current.refused).toEqual(['Add up to 10 files at a time.'])
+  })
+})

@@ -7,6 +7,7 @@ import type { Body } from '@/lib/messageBody'
 import { useChannelInvite } from '@/pages/chat/composer/useChannelInvite'
 import { useGroupConfirm } from '@/pages/chat/composer/useGroupConfirm'
 import { useSnippet } from '@/pages/chat/snippets/useSnippet'
+import { useFlowFilePicker } from '@/pages/chat/files/FilePicker'
 import { useComposerDirectory } from '@/pages/chat/useComposerDirectory'
 import { UploadTray } from '@/pages/chat/uploads/UploadTray'
 import { paneDrop, useUploads } from '@/pages/chat/uploads/useUploads'
@@ -45,6 +46,7 @@ export function ThreadComposer({
   // Someone mentioned who isn't in the channel: add them, or send without them (spec 6.8).
   const invite = useChannelInvite(channel, directory.users)
   const schedule = useSchedule()
+  const flowFiles = useFlowFilePicker(channel.workspaceId, uploads.addExisting)
   // A snippet from the thread box is a reply (spec 6.9), never also sent to the channel.
   const snippet = useSnippet({
     channelId: channel.id,
@@ -58,6 +60,7 @@ export function ThreadComposer({
       {loud.dialog}
       {invite.dialog}
       {snippet.dialog}
+      {flowFiles.dialog}
       <Suspense fallback={skeleton}>
         <RichComposer
           key={rootId}
@@ -95,6 +98,7 @@ export function ThreadComposer({
             onAdd: uploads.add,
             ready: uploads.ready.length,
             waiting: uploads.waiting,
+            fromFlow: flowFiles.open,
           }}
         />
       </Suspense>

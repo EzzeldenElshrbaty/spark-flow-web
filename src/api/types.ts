@@ -317,6 +317,8 @@ export type ChatTarget = { kind: 'message' | 'reply'; id: string }
 export type ChannelFileFilter = { type?: FileKind; from?: string; since?: string; folderId?: string; cursor?: string }
 /** A file as the Files tab lists it: the file, who shared it, when, and the message (or reply) it's in. */
 export type ChannelFile = { file: Attachment; senderId: string; at: string; messageId: string; replyId: string | null }
+/** A file I may add to a message from Flow (spec 6.8): the file, and where it is (a channel I read, or a project). */
+export type ShareableFile = { file: Attachment; channelId: string | null; projectId: string | null }
 /** A message pinned to its channel (spec §7 Pin). */
 export type Pin = { channelId: string; messageId: string; pinnedBy: string; pinnedAt: string }
 /** The Pins tab's row: the message as the channel shows it, and who pinned it when. */
@@ -612,6 +614,11 @@ export interface Api {
     uploadForChat(channelId: string, file: UploadFile, options?: UploadOptions & { snippet?: { language: CodeLanguage } }): Promise<Attachment>
     /** The files in a channel's messages and replies, newest first, 50 at a time (spec 6.1 Files tab). */
     inChannel(channelId: string, filter: ChannelFileFilter): Promise<Page<ChannelFile>>
+    /**
+     * Add from Flow files (spec 6.8): the files in a workspace I may share (I uploaded them; an Admin, any I can see),
+     * newest first, 30 at most; `q` searches title and name.
+     */
+    shareable(workspaceId: string, q?: string): Promise<ShareableFile[]>
     /** Who uploaded it and where it's shared, for whoever may see it somewhere. */
     details(id: string): Promise<FileDetails>
     /** Edit file details: whoever uploaded it, or an Admin. */

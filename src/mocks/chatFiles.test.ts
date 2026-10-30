@@ -224,3 +224,33 @@ describe('a text snippet (spec 6.9): a .txt chat file with a language', () => {
     await expect(api.files.uploadForChat('c-backend', file('a.pdf'), { snippet: { language: 'sql' } })).rejects.toMatchObject({ status: 400, detail: 'A snippet is a .txt file.' })
   })
 })
+
+describe('Add from Flow files (spec 6.8 Attach menu): the files I may share', () => {
+  const pdf = (name: string) => file(name, '%PDF-1.4 x', 'application/pdf')
+  it('lists my files where they are, newest first, searchable; not someone else’s', async () => {
+    const mine = await upload('scope.pdf')
+    await api.chat.send('c-backend', '', undefined, undefined, [mine.id])
+    await api.users.viewAs('u-2')
+    const theirs = await api.files.uploadForChat('c-backend', pdf('theirs.pdf'))
+    await api.chat.send('c-backend', '', undefined, undefined, [theirs.id])
+    await api.users.viewAs('u-5')
+    expect((await api.files.shareable('ws-eng')).map((s) => s.file.name)).not.toContain('theirs.pdf')
+    await api.users.viewAs('u-2')
+    const list = await api.files.shareable('ws-eng')
+    expect(list.map((s) => s.file.name)).toContain('theirs.pdf')
+    expect(list.map((s) => s.file.name)).not.toContain('scope.pdf')
+    expect(list.find((s) => s.file.name === 'theirs.pdf')).toMatchObject({ channelId: 'c-backend' })
+    expect((await api.files.shareable('ws-eng', 'THEI')).map((s) => s.file.name)).toEqual(['theirs.pdf'])
+  })
+
+  it('an Admin may pick and send anyone’s file they can see; others only their own', async () => {
+    await api.users.viewAs('u-2')
+    const theirs = await api.files.uploadForChat('c-backend', pdf('theirs.pdf'))
+    await api.chat.send('c-backend', '', undefined, undefined, [theirs.id])
+    await api.users.viewAs('u-1')
+    expect((await api.files.shareable('ws-eng')).map((s) => s.file.name)).toContain('theirs.pdf')
+    await expect(api.chat.send('c-general', '', undefined, undefined, [theirs.id])).resolves.toMatchObject({ attachments: [{ id: theirs.id }] })
+    await api.users.viewAs('u-5')
+    await expect(api.chat.send('c-general', '', undefined, undefined, [theirs.id])).rejects.toMatchObject({ status: 403 })
+  })
+})

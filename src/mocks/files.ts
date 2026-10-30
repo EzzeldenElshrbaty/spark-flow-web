@@ -1,4 +1,4 @@
-import type { Api, Attachment, ChatMessage, FileDetails, ProjectFile, StoredFile } from '@/api/types'
+import type { Api, Attachment, ChatMessage, FileDetails, ProjectFile, ShareableFile, StoredFile } from '@/api/types'
 import { fileDescriptionError, fileTitleError } from '@/lib/fileDetails'
 import { isAcceptedFile, maxFileMb } from '@/lib/fileTypes'
 import { checkCanWrite, findChannel, postMessage, readableChannel } from './chat'
@@ -13,11 +13,14 @@ import { can } from '@/lib/permissions'
 import { logActivity } from './activity'
 import { CODE_LANGUAGES } from '@/lib/codeTokens'
 import { fileKind } from '@/lib/fileTypes'
+import { filePlace } from './saved'
 import { badRequest, clone, currentUser, newId, notFound, requireCan } from './shared'
 
 /** The upload rules (empty, too big, a type we don't take), with the sentence the form shows. */
 /** The Files tab's page size (spec 6.1). */
 const FILES_PAGE = 50
+/** How many files Add from Flow files lists at once. */
+const SHAREABLE_MAX = 30
 
 /** A snippet is a .txt file in a language the card knows (spec 6.9). */
 function checkSnippet(file: { name: string }, language: string) {
@@ -254,6 +257,27 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
       const start = cursor ? Number(cursor) || 0 : 0
       const items = shared.slice(start, start + FILES_PAGE)
       return clone({ items, nextCursor: start + FILES_PAGE < shared.length ? String(start + FILES_PAGE) : null })
+    },
+    async shareable(workspaceId, q = '') {
+      await delay()
+      const data = await db.read()
+      const me = currentUser(data)
+      const needle = q.trim().toLowerCase()
+      return clone(
+        data.attachments
+          .filter((a) => !a.deletedAt && a.scanStatus === 'clean' && (a.uploadedBy === me.id || me.role === 'admin'))
+          .filter((a) => !needle || a.title.toLowerCase().includes(needle) || a.name.toLowerCase().includes(needle))
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+          .flatMap((file): ShareableFile[] => {
+            const place = filePlace(data, file.id, me.id)
+            const channel = place && data.channels.find((c) => c.id === place.channelId)
+            if (channel && channel.workspaceId === workspaceId) return [{ file, channelId: channel.id, projectId: null }]
+            const listed = data.projectFiles.find((f) => f.attachmentId === file.id && onProject(data, f.projectId))
+            const project = listed && data.projects.find((p) => p.id === listed.projectId)
+            return project && project.workspaceId === workspaceId ? [{ file, channelId: null, projectId: project.id }] : []
+          })
+          .slice(0, SHAREABLE_MAX),
+      )
     },
     async details(id) {
       await delay()

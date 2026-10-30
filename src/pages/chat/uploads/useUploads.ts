@@ -11,6 +11,8 @@ export type Upload = {
   key: string; file: File; status: 'uploading' | 'ready' | 'failed'; progress: number; uploaded: Attachment | null; error: string | null
   /** A failure Retry can help (not a file the scan blocked). */
   retryable: boolean
+  /** Added from Flow files (spec 6.8): already uploaded, so no bytes and no progress. */
+  existing?: boolean
 }
 
 const filesWord = (n: number) => (n === 1 ? '1 file' : `${n} files`)
@@ -71,6 +73,18 @@ export function useUploads(channelId: string) {
     setItems((list) => [...list, ...fresh.map(({ key, file }) => ({ key, file, status: 'uploading' as const, progress: 0, uploaded: null, error: null, retryable: true }))])
     for (const { key, file } of fresh) start(key, file)
   }
+  /** Add from Flow files (spec 6.8): files already uploaded join the tray ready, once each, 10 at most with the rest. */
+  const addExisting = (picked: Attachment[]) => {
+    const fresh = picked.filter((a, i) => picked.findIndex((b) => b.id === a.id) === i && !items.some((item) => item.uploaded?.id === a.id))
+    const room = Math.max(0, MAX_MESSAGE_FILES - items.length)
+    setRefused(fresh.length > room ? [`Add up to ${MAX_MESSAGE_FILES} files at a time.`] : [])
+    setItems((list) => [
+      ...list,
+      ...fresh.slice(0, room).map((a) => ({
+        key: `u${++uploadKeys}`, file: new File([], a.name, { type: a.mimeType }), status: 'ready' as const, progress: 1, uploaded: a, error: null, retryable: false, existing: true,
+      })),
+    ])
+  }
   const remove = (key: string) => {
     controllers.current.get(key)?.abort()
     controllers.current.delete(key)
@@ -104,7 +118,7 @@ export function useUploads(channelId: string) {
         ? 'Remove the files that were blocked.'
         : null
   const ready = items.flatMap((i) => (i.status === 'ready' && i.uploaded ? [i.uploaded] : []))
-  return { items, refused, add, remove, retry, clear, waiting, ready }
+  return { items, refused, add, addExisting, remove, retry, clear, waiting, ready }
 }
 
 export type Uploads = ReturnType<typeof useUploads>

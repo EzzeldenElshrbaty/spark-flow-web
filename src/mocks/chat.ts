@@ -7,6 +7,7 @@ import { onlyAdminsLine } from '@/lib/channels'
 import { FLOWBOT_READ_ONLY, isFlowbotDm } from '@/lib/flowbot'
 import { isOneEmoji } from '@/lib/emojiText'
 import { MAX_DISTINCT_REACTIONS, setReaction } from '@/lib/reactions'
+import { filePlace } from './saved'
 import type { DbData, MockDb } from './db'
 import { delay } from './latency'
 import type { MockHub } from './realtime'
@@ -192,7 +193,9 @@ function attachFiles(data: DbData, ids: string[] | undefined, userId: string): A
   return unique.map((id) => {
     const file = data.attachments.find((a) => a.id === id)
     if (!file || file.deletedAt) throw notFound('File', id)
-    if (file.uploadedBy !== userId) throw new ApiError({ title: 'Forbidden', status: 403, detail: 'You can only send files you uploaded.' })
+    // Mine, or (as Share, spec 6.9) an Admin's pick of a file they can see where it is.
+    const admin = data.users.find((u) => u.id === userId)?.role === 'admin'
+    if (file.uploadedBy !== userId && !(admin && filePlace(data, file.id, userId))) throw new ApiError({ title: 'Forbidden', status: 403, detail: 'You can only send files you uploaded.' })
     if (file.scanStatus === 'blocked') throw badRequest(`${file.title} was blocked.`)
     if (file.scanStatus !== 'clean') throw badRequest(`${file.title} is still being checked.`)
     return clone(file)

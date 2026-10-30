@@ -262,6 +262,7 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
         await putBytes(uploadUrl, file, makeXhr, onProgress, signal)
         return json('POST', `/api/files/${enc(created.id)}/complete`)
       },
+      shareable: (workspaceId, q) => get(`/api/workspaces/${enc(workspaceId)}/files${query({ q })}`),
       inChannel: (channelId, filter) => get(`/api/channels/${enc(channelId)}/files${query(filter)}`),
       details: (id) => get(`/api/files/${enc(id)}/details`),
       update: (id, patch) => send('PATCH', `/api/files/${enc(id)}`, patch),

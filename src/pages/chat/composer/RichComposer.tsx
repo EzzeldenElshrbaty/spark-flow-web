@@ -11,7 +11,7 @@ import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPl
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import { $findMatchingParent } from '@lexical/utils'
-import { IconAt, IconCalendarEvent, IconChevronDown, IconClock, IconCode, IconLetterCase, IconMoodSmile, IconPlus, IconSend, IconSlash, IconUpload, IconX } from '@tabler/icons-react'
+import { IconAt, IconCalendarEvent, IconChevronDown, IconClock, IconCode, IconFiles, IconLetterCase, IconMoodSmile, IconPlus, IconSend, IconSlash, IconUpload, IconX } from '@tabler/icons-react'
 import clsx from 'clsx'
 import { $createTextNode, $getSelection, $insertNodes, $isRangeSelection, $setSelection, type BaseSelection, type EditorState, type LexicalEditor } from 'lexical'
 import { useCallback, useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react'
@@ -82,6 +82,8 @@ export type ComposerFiles = {
   ready: number
   /** Why Send waits ("Uploading 2 files…"), or null. */
   waiting: string | null
+  /** Add from Flow files (spec 6.8): the page opens its picker. */
+  fromFlow?: () => void
 }
 
 /** Whether a drag carries files (not text or a link being dragged). */
@@ -419,6 +421,11 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
                 <MenuItem icon={IconUpload} hint={isMac ? '⌘U' : 'Ctrl+U'} onSelect={openPicker}>
                   Upload from your computer
                 </MenuItem>
+                {files.fromFlow && (
+                  <MenuItem icon={IconFiles} onSelect={files.fromFlow}>
+                    Add from Flow files
+                  </MenuItem>
+                )}
                 {onSnippet && (
                   <MenuItem icon={IconCode} hint={isMac ? '⌘⇧↵' : 'Ctrl+Shift+Enter'} onSelect={snippet}>
                     Text snippet

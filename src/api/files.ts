@@ -35,3 +35,8 @@ export function useChannelFiles(channelId: string, filter: Omit<ChannelFileFilte
     retry,
   })
 }
+
+/** Add from Flow files (spec 6.8): the files in a workspace I may share, newest first; `q` searches them. */
+export function useShareableFiles(workspaceId: string, q: string) {
+  return useQuery({ queryKey: ['files', 'shareable', workspaceId, q], queryFn: () => api.files.shareable(workspaceId, q), retry, placeholderData: (previous) => previous })
+}

@@ -7,11 +7,11 @@ import { fileSubline, previewOf } from '@/lib/fileTypes'
 import { useUploadProgress } from '@/pages/chat/uploads/uploadProgress'
 import type { Upload } from '@/pages/chat/uploads/useUploads'
 
-/** A local picture of an image being uploaded, freed when the card goes. */
-function useLocalPreview(file: File) {
+/** A local picture of an image being uploaded, freed when the card goes; none for a file added from Flow (no bytes here). */
+function useLocalPreview(file: File | null) {
   const [url, setUrl] = useState<string | null>(null)
   useEffect(() => {
-    if (previewOf(file.name) !== 'image') return
+    if (!file || previewOf(file.name) !== 'image') return
     const made = URL.createObjectURL(file)
     setUrl(made)
     return () => URL.revokeObjectURL(made)
@@ -32,7 +32,7 @@ function Card({ upload, onRemove, onRetry }: { upload: Upload; onRemove: (key: s
   // Live while it goes up (uploadProgress); the card's own value once it's done.
   const live = useUploadProgress(upload.key)
   const progress = status === 'uploading' ? (live ?? upload.progress) : upload.progress
-  const preview = useLocalPreview(file)
+  const preview = useLocalPreview(upload.existing ? null : file)
   const percent = Math.round(progress * 100)
   return (
     <li className="relative flex w-[232px] flex-none items-center gap-2 rounded-sf-md border border-sf-line bg-sf-surface p-2">
@@ -53,7 +53,7 @@ function Card({ upload, onRemove, onRetry }: { upload: Upload; onRemove: (key: s
             <span className="block h-full rounded-sf-full bg-sf-accent-fill transition-[width] duration-150 ease-sf" style={{ width: `${percent}%` }} />
           </span>
         )}
-        {status === 'ready' && <span className="sf-meta text-sf-text-muted">{fileSubline(file.name, file.size)}</span>}
+        {status === 'ready' && <span className="sf-meta text-sf-text-muted">{fileSubline(file.name, upload.uploaded?.size ?? file.size)}</span>}
         {status === 'failed' && (
           <span className="flex min-w-0 items-center gap-1">
             <span className="sf-meta min-w-0 truncate text-sf-error">{error}</span>

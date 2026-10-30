@@ -38,6 +38,7 @@ import { ChannelDetails, detailsRights, type DetailsTab } from '@/pages/chat/Cha
 import { ChannelTabs, TabStub, tabFromParam, type ChannelTab } from '@/pages/chat/ChannelTabs'
 import { ChannelPins } from '@/pages/chat/PinsTab'
 import { ChannelFiles } from '@/pages/chat/files/FilesTab'
+import { useFlowFilePicker } from '@/pages/chat/files/FilePicker'
 import { usePins } from '@/api/pins'
 import type { Attachment, Channel, ChatMessage, User } from '@/api/types'
 import { useProjectSummaries, useTeams } from '@/api/projects'
@@ -508,6 +509,8 @@ function ChannelComposer({
   const schedule = useSchedule()
   // The / shortcuts this channel offers me (spec 6.8).
   const slash = useChannelCommands(channel, commandUi)
+  // Add from Flow files (spec 6.8): the picked files join this box's tray.
+  const flowFiles = useFlowFilePicker(channel.workspaceId, uploads.addExisting)
   const snippet = useSnippet({
     channelId: channel.id,
     where: placeholder.replace(/^Message /, ''),
@@ -520,6 +523,7 @@ function ChannelComposer({
     {loud.dialog}
     {invite.dialog}
     {snippet.dialog}
+    {flowFiles.dialog}
     <RichComposer
       key={channel.id}
       placeholder={placeholder}
@@ -544,6 +548,7 @@ function ChannelComposer({
         onAdd: uploads.add,
         ready: uploads.ready.length,
         waiting: uploads.waiting,
+        fromFlow: flowFiles.open,
       }}
     />
     </Suspense>

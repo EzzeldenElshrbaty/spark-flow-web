@@ -697,3 +697,16 @@ describe('RichComposer Text snippet (spec 6.8, 6.9)', () => {
     expect(editor.textContent).toBe('keep me')
   })
 })
+
+describe('RichComposer Add from Flow files (spec 6.8)', () => {
+  it('+ lists Add from Flow files after Upload when the page offers it', async () => {
+    const fromFlow = vi.fn()
+    await ready({ files: { tray: null, onAdd: () => {}, ready: 0, waiting: null, fromFlow } })
+    await userEvent.click(screen.getByRole('button', { name: 'Attach' }))
+    const items = screen.getAllByRole('menuitem').map((i) => i.textContent)
+    expect(items[0]).toContain('Upload from your computer')
+    expect(items[1]).toBe('Add from Flow files')
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Add from Flow files' }))
+    expect(fromFlow).toHaveBeenCalledOnce()
+  })
+})
