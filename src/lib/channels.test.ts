@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Channel, MentionItem } from '@/api/types'
-import { channelLabel, countNoun, onlyAdminsLine, inWorkspace, mutedLast, mustJoin, readOnlyFor, sidebarChannels, sidebarRowState, sortChannels, unreadMentions } from '@/lib/channels'
+import { FLOWBOT_ID } from '@/lib/flowbot'
+import { channelLabel, countNoun, onlyAdminsLine, cantWriteLine, inWorkspace, mutedLast, mustJoin, readOnlyFor, sidebarChannels, sidebarRowState, sortChannels, unreadMentions } from '@/lib/channels'
 import { seed } from '@/mocks/seed'
 
 const data = seed(new Date('2026-10-26T09:00:00Z')).data
@@ -21,6 +22,10 @@ describe('channelLabel', () => {
 
   it('names a DM after the other member', () => {
     expect(channelLabel(dm([me.id, other.id]), users, me.id)).toBe(other.name)
+  })
+
+  it('names Flowbot’s DM after Flowbot, who is not a person', () => {
+    expect(channelLabel(dm([me.id, FLOWBOT_ID]), users, me.id)).toBe('Flowbot')
   })
 
   it('joins the other members of a group DM', () => {
@@ -48,6 +53,13 @@ describe('sortChannels', () => {
     const { channels, dms } = sortChannels(list)
     expect(channels.map((c) => c.name)).toEqual(['backend', 'release'])
     expect(dms.map((c) => c.id)).toEqual(['c-new', 'c-old', 'c-none'])
+  })
+
+  it('lists Flowbot’s DM under Apps, not with the people (spec 5.1)', () => {
+    const bot = { ...dm(['u-1', FLOWBOT_ID]), id: 'c-bot', lastMessageAt: '2026-10-27T08:00:00Z' }
+    const { dms, apps } = sortChannels([bot, { ...dm(['u-1', 'u-2']), id: 'c-nour' }])
+    expect(dms.map((c) => c.id)).toEqual(['c-nour'])
+    expect(apps.map((c) => c.id)).toEqual(['c-bot'])
   })
 
   it('a muted channel or DM goes last in its group, in the same order among them (spec 6.11)', () => {
@@ -181,5 +193,12 @@ describe('mustJoin (post in a public channel: join it first)', () => {
   })
   it('not before the projects are known (no flash of Join channel)', () => {
     expect(mustJoin({ ...channel('random'), memberIds: ['u-2'] }, 'u-1', undefined)).toBe(false)
+  })
+})
+
+describe('cantWriteLine: what shows instead of the composer when I may post but not write', () => {
+  it('Only admins in a restricted channel; Flowbot’s own line in its DM', () => {
+    expect(cantWriteLine(channel('general'))).toBe('Only admins can post in #general.')
+    expect(cantWriteLine(dm(['u-1', FLOWBOT_ID]))).toBe('Flowbot sends reminders here. It can’t read replies.')
   })
 })

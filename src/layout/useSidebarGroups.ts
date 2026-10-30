@@ -5,6 +5,7 @@ import { useMyMentions } from '@/api/mentions'
 import { useProjects } from '@/api/tickets'
 import { useUsers } from '@/api/users'
 import { channelLabel, mutedLast, sidebarChannels, sortChannels, unreadMentions } from '@/lib/channels'
+import { isFlowbotDm } from '@/lib/flowbot'
 import { projectPeopleIds } from '@/lib/projectPeople'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { useRole } from '@/lib/useRole'
@@ -12,7 +13,7 @@ import { useRole } from '@/lib/useRole'
 /** group: a direct message with more than one other person, so no one presence stands for it. */
 export type ChannelRow = { channel: Channel; label: string; presence: Presence; group: boolean; /** The person a 1:1 DM is with (me, for my own notes). */ otherId: string; /** I have an unsent draft there. */ draft: boolean }
 
-/** What the sidebar lists for the workspace on screen: channels, direct messages, projects and unread mentions. */
+/** What the sidebar lists for the workspace on screen: channels, direct messages, apps, projects and unread mentions. */
 export function useSidebarGroups() {
   const { workspace, isPending: workspaceLoading } = useCurrentWorkspace()
   const { persona } = useRole()
@@ -35,13 +36,15 @@ export function useSidebarGroups() {
   const projects: Project[] = projectsQuery.data ?? []
 
   // A starred channel or DM is listed once, under Starred (spec §5.1).
-  const listed = [...sidebarChannels(sorted.channels, persona.id, myProjectChannelIds), ...sorted.dms].map(row)
+  const listed = [...sidebarChannels(sorted.channels, persona.id, myProjectChannelIds), ...sorted.dms, ...sorted.apps].map(row)
 
   return {
     workspace,
     starred: mutedLast(listed.filter((r) => r.channel.starred), (r) => r.channel.muted),
     channels: listed.filter((r) => r.channel.kind === 'channel' && !r.channel.starred),
-    dms: listed.filter((r) => r.channel.kind === 'dm' && !r.channel.starred),
+    dms: listed.filter((r) => r.channel.kind === 'dm' && !isFlowbotDm(r.channel) && !r.channel.starred),
+    /** Flowbot's DM (spec 5.1 Apps), once Flowbot has written. */
+    apps: listed.filter((r) => isFlowbotDm(r.channel) && !r.channel.starred),
     projects,
     /** My unread mentions here: each channel row's badge. */
     mentions: unreadMentions(mentionsQuery.data, workspace?.id),

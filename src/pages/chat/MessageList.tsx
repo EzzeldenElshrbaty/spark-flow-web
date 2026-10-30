@@ -4,6 +4,7 @@ import type { InfiniteData, UseInfiniteQueryResult } from '@tanstack/react-query
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { ChatMessage, Page, User } from '@/api/types'
+import { senderName } from '@/lib/flowbot'
 import type { PendingMessage } from '@/lib/sendQueue'
 import { Icon } from '@/components/sf/Icon'
 import { Menu, MenuItem } from '@/components/sf/Menu'
@@ -327,7 +328,7 @@ export function MessageList({
     }
     if (newest.seq <= lastAnnounced.current) return
     lastAnnounced.current = newest.seq
-    if (newest.senderId !== meId) setAnnounce(`${users.find((u) => u.id === newest.senderId)?.name ?? 'Someone'}: ${newest.content.slice(0, 140)}`)
+    if (newest.senderId !== meId) setAnnounce(`${senderName(newest.senderId, users)}: ${newest.content.slice(0, 140)}`)
   }, [newest, hasNewer, meId, users])
 
   if (query.isError && !query.data) return <div className="px-4 pt-4 md:px-6"><QueryError what="Messages" onRetry={() => void query.refetch()} /></div>

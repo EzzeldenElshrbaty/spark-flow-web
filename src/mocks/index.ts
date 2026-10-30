@@ -6,6 +6,7 @@ import { createDb, removeLegacyStorage, type MockDb } from './db'
 import { dbApi } from './dbApi'
 import { filesApi } from './files'
 import { mockHub, type MockHub } from './realtime'
+import { startScheduler } from './scheduler'
 import { seed } from './seed'
 import { openStore } from './store'
 import { projectsApi } from './projects'
@@ -30,6 +31,8 @@ declare global {
       addReply(input: AddReplyInput): Promise<ThreadReply>
       createTicket(input: NewTicket): Promise<Ticket>
       updateTicket(key: string, patch: TicketPatch): Promise<Ticket>
+      /** A reminder for me about a message, due in `seconds`; the scheduler fires it on its next pass after that. */
+      remindMe(messageId: string, seconds: number): Promise<void>
     }
   }
 }
@@ -107,8 +110,18 @@ export function getMockApi(): Api {
         addReply: (input) => addReply(db, mockHub, input),
         createTicket: (input) => createTicket(db, mockHub, input),
         updateTicket: (key, patch) => updateTicket(db, mockHub, key, patch),
+        remindMe: (messageId, seconds) =>
+          db.update((data) => {
+            const message = data.messages.find((m) => m.id === messageId)
+            const workspaceId = data.channels.find((c) => c.id === message?.channelId)?.workspaceId
+            if (!message || !workspaceId) throw new Error(`No message ${messageId}`)
+            const remindAt = new Date(Date.now() + seconds * 1000).toISOString()
+            data.reminders.push({ id: crypto.randomUUID(), userId: data.currentUserId, workspaceId, target: { kind: 'message', id: messageId }, remindAt, firedAt: null })
+          }),
       }
     }
+    // The prototype's stand-in for the server's job queue: due reminders and scheduled messages, every 15 seconds.
+    startScheduler(db, mockHub)
   }
   return cached.api
 }

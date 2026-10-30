@@ -30,6 +30,7 @@ import { Icon } from '@/components/sf/Icon'
 import { useSidebarGroups, type ChannelRow } from '@/layout/useSidebarGroups'
 import { countNoun, sidebarRowState } from '@/lib/channels'
 import { hasFeature } from '@/lib/features'
+import { isFlowbot } from '@/lib/flowbot'
 import { paths } from '@/lib/paths'
 import { SIDEBAR_WIDTH, useUiStore } from '@/lib/uiStore'
 import { usePermission } from '@/lib/usePermission'
@@ -230,7 +231,7 @@ function ChannelLink({ slug, row: r, mentions, collapsed, onNavigate }: { slug: 
   const { channel, label, presence, group, otherId } = r
   const state = sidebarRowState(channel, mentions)
   const icon =
-    channel.kind === 'channel' ? (channel.isPrivate ? IconLock : IconHash) : group ? IconUsers : <Avatar id={otherId} name={label} size="sm" presence={presence} on="frame" decorative />
+    channel.kind === 'channel' ? (channel.isPrivate ? IconLock : IconHash) : group ? IconUsers : isFlowbot(otherId) ? <Avatar id={otherId} name={label} size="sm" app on="frame" decorative /> : <Avatar id={otherId} name={label} size="sm" presence={presence} on="frame" decorative />
   return (
     <SideLink
       to={paths.channel(slug, channel.id)}
@@ -256,7 +257,7 @@ export function SidebarContent({
 }) {
   const { role, persona } = useRole()
   const check = usePermission()
-  const { workspace, starred, channels, dms, projects, mentions, activityUnread, chatLoading, projectsLoading, failed } = useSidebarGroups()
+  const { workspace, starred, channels, dms, apps, projects, mentions, activityUnread, chatLoading, projectsLoading, failed } = useSidebarGroups()
   const slug = workspace?.slug
   const [newChannel, setNewChannel] = useState(false)
   const [newMessage, setNewMessage] = useState(false)
@@ -377,6 +378,16 @@ export function SidebarContent({
                 </li>
               ))
             )}
+          </SideSection>
+        )}
+
+        {slug && workspace && !chatLoading && apps.length > 0 && (
+          <SideSection id="apps" label="Apps" {...row}>
+            {apps.map((r) => (
+              <li key={r.channel.id} className="flex-none">
+                <ChannelLink slug={slug} row={r} mentions={0} {...row} />
+              </li>
+            ))}
           </SideSection>
         )}
 

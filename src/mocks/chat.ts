@@ -4,6 +4,7 @@ import { channelFormErrors, descriptionError } from '@/lib/channelForm'
 import { isEmail, MAX_INVITES, normalEmail, notAnEmailLine } from '@/lib/invites'
 import { MAX_MESSAGE_FILES } from '@/lib/fileDetails'
 import { onlyAdminsLine } from '@/lib/channels'
+import { FLOWBOT_READ_ONLY, isFlowbotDm } from '@/lib/flowbot'
 import { isOneEmoji } from '@/lib/emojiText'
 import { MAX_DISTINCT_REACTIONS, setReaction } from '@/lib/reactions'
 import type { DbData, MockDb } from './db'
@@ -203,9 +204,13 @@ function checkCanPost(data: DbData, channel: StoredChannel) {
   return me
 }
 
-/** checkCanPost, for a new message or reply: a channel set to Only admins (spec §9) takes them from Admins alone. */
+/**
+ * checkCanPost, for a new message or reply: a channel set to Only admins (spec §9) takes them from Admins alone, and
+ * Flowbot's DM takes none (reactions there are fine).
+ */
 export function checkCanWrite(data: DbData, channel: StoredChannel) {
   const me = checkCanPost(data, channel)
+  if (isFlowbotDm(channel)) throw new ApiError({ title: 'Forbidden', status: 403, detail: FLOWBOT_READ_ONLY })
   if (!can('channel.post', { userId: me.id, role: me.role, channel })) {
     throw new ApiError({ title: 'Forbidden', status: 403, detail: onlyAdminsLine(channel) })
   }
@@ -570,15 +575,12 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
     async send(channelId, content, clientId, body, fileIds) {
       await delay()
       const { message, repeat, mentioned } = await db.update((data) => {
-        const channel = findChannel(data, channelId)
+        findChannel(data, channelId) // 404 before anything else
         // A retry of a send that did arrive gets the message it stored, not a second one (spec §8: writes are idempotent),
         // even if who may post has changed since; the rights are for a new message.
         const stored = clientId ? data.messages.find((m) => m.channelId === channelId && m.senderId === data.currentUserId && m.clientId === clientId) : undefined
         if (stored) return { message: stored, repeat: true, mentioned: [] }
-        const me = checkCanWrite(data, channel)
-        const attachments = attachFiles(data, fileIds, me.id)
-        const message = postMessage(data, { channelId, clientId, attachments, ...textOf(content, body, attachments.length > 0) })
-        return { message, repeat: false, mentioned: reachedBy(data, message, channelId, me.id) }
+        return { ...writeMessage(data, { channelId, content, body, fileIds, clientId }), repeat: false }
       })
       if (!repeat) hub.publish({ type: 'messageReceived', message: clone(message) })
       // Who it mentions has something new in Activity (spec 6.12); nobody else's needs to refresh.
@@ -591,12 +593,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         // A retry of a reply that did arrive gets the reply it stored (spec §8), as a send does.
         const stored = clientId ? data.replies.find((r) => r.messageId === messageId && r.senderId === data.currentUserId && r.clientId === clientId) : undefined
         if (stored) return { reply: stored, notified: [] as string[], repeat: true }
-        const me = checkCanWrite(data, findChannel(data, findMessage(data, messageId).channelId))
-        const attachments = attachFiles(data, fileIds, me.id)
-        const reply = postReply(data, { messageId, clientId, attachments, ...textOf(content, body, attachments.length > 0), alsoInChannel: Boolean(alsoInChannel) })
-        // Followers with a thread item, and whoever it mentions, each once.
-        const followers = data.notifications.filter((n) => n.replyId === reply.id).map((n) => n.userId)
-        return { reply, notified: [...new Set([...followers, ...reachedBy(data, reply, reply.channelId, reply.senderId)])], repeat: false }
+        return { ...writeReply(data, { messageId, content, body, alsoInChannel, fileIds, clientId }), repeat: false }
       })
       if (repeat) return clone(reply)
       hub.publish({ type: 'replyReceived', reply: clone(reply) })
@@ -832,6 +829,28 @@ export function postReply(data: DbData, input: AddReplyInput): ThreadReply {
   parent.lastReplyAt = createdAt
   channel.lastMessageAt = createdAt
   return created
+}
+
+type WriteInput = { content: string; body?: unknown; fileIds?: string[]; clientId?: string }
+
+/**
+ * A new message from the current user, with every check a send makes (who may post, the text, the files), inside a
+ * transaction; whom it mentions. Sending and the scheduler (a scheduled message) both write through it.
+ */
+export function writeMessage(data: DbData, input: WriteInput & { channelId: string }): { message: ChatMessage; mentioned: string[] } {
+  const me = checkCanWrite(data, findChannel(data, input.channelId))
+  const attachments = attachFiles(data, input.fileIds, me.id)
+  const message = postMessage(data, { channelId: input.channelId, clientId: input.clientId, attachments, ...textOf(input.content, input.body, attachments.length > 0) })
+  return { message, mentioned: reachedBy(data, message, input.channelId, me.id) }
+}
+
+/** writeMessage for a thread reply; whom to tell: followers with a thread item, and whoever it mentions, each once. */
+export function writeReply(data: DbData, input: WriteInput & { messageId: string; alsoInChannel?: boolean }): { reply: ThreadReply; notified: string[] } {
+  const me = checkCanWrite(data, findChannel(data, findMessage(data, input.messageId).channelId))
+  const attachments = attachFiles(data, input.fileIds, me.id)
+  const reply = postReply(data, { messageId: input.messageId, clientId: input.clientId, attachments, ...textOf(input.content, input.body, attachments.length > 0), alsoInChannel: Boolean(input.alsoInChannel) })
+  const followers = data.notifications.filter((n) => n.replyId === reply.id).map((n) => n.userId)
+  return { reply, notified: [...new Set([...followers, ...reachedBy(data, reply, reply.channelId, reply.senderId)])] }
 }
 
 /** Posts a message as the current user without the checks (dev helper and seed tools), then tells every tab. */

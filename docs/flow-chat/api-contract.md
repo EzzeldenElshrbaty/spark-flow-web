@@ -370,3 +370,30 @@ Rules:
 - **Events:** sharing sends `message.created` for the new message and `file.shared`; Edit file details sends `file.updated`, and Delete file `file.deleted` (client handler `onFileChanged`, `{ fileId }`), plus `message.updated` for every message and reply that shows the file, and `files.changed` for any project that lists it. The client refreshes the file's details on `onFileChanged`.
 
 Save for later, Add to folder and Add from Flow files come with the Saved view and the channel Files tab (Phase 3); Text snippet and code highlighting in Phase 3; voice and video messages in Phase 4.
+
+## Phase 3 · Slice R: scheduler and Flowbot (spec 5.1 Apps, §7 Reminder and ScheduledMessage)
+
+The server keeps reminders and scheduled messages and fires them from a job queue at their time. Slices S (Remind me, Saved) and T (Schedule send, Drafts & sent) add the routes that create and change them; this slice fixes the records and what firing does.
+
+### Flowbot
+
+Flowbot is an app, not a person: it is in no user list and has no role. Its id is `app-flowbot` (`lib/flowbot.ts`). Each person gets one DM with it per workspace (`kind: "dm"`, `memberIds: [userId, "app-flowbot"]`, private), made the first time Flowbot has something to say there. The sidebar lists it under Apps.
+
+- Nobody posts in it: a new message or reply there is `403` "Flowbot sends reminders here. It can’t read replies." Reactions are allowed.
+- Its messages are plain text (`body` is one paragraph of text), so a quoted mention or task key notifies nobody. They carry `flowbot`: `{ kind: "reminder", channelId, target: { kind: "message" | "reply", id } }` or `{ kind: "scheduleFailed", scheduledId }`, for the card slices S and T draw.
+
+### Reminder
+
+`{ id, userId, workspaceId, target: { kind, id }, remindAt, firedAt }`, times ISO 8601. When due, the job sets `firedAt` and Flowbot sends its owner:
+
+- `Reminder: “<the text, up to 150 characters>” from <author>.`
+- `Reminder about a message that was deleted.` when it is gone.
+- `Reminder about a message you can no longer see.` when its owner can't read the channel any more.
+
+### ScheduledMessage
+
+`{ id, userId, workspaceId, channelId, rootId, content, body, sendAt, tz, status: "scheduled" | "sent" | "failed", sentId, failure }`. When due, the job sends it as its author with every check a send makes (who may post, archived, Only admins, the text). Sent: `status: "sent"` and `sentId` is the new message or reply. Refused: `status: "failed"`, `failure` is the refusal's sentence, and Flowbot sends `Your scheduled message to #<channel> wasn’t sent. <failure>` (“a thread in #<channel>”, or “a conversation” for a DM).
+
+### Events
+
+Firing sends what a send would: `message.created` (or the reply event) for what was posted, `notification.created` for whom it mentions, and `channel.updated` when Flowbot's DM was just made. Each item fires once, however many workers run. In the prototype every tab runs a pass every 15 seconds inside one IndexedDB transaction, so only one tab fires each item.

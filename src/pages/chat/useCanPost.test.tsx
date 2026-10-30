@@ -2,6 +2,7 @@
 import { renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { Channel, Role } from '@/api/types'
+import { FLOWBOT_ID } from '@/lib/flowbot'
 import { useCanWrite } from '@/pages/chat/useCanPost'
 
 let role: Role = 'member'
@@ -24,5 +25,11 @@ describe('useCanWrite: the composer, by who can post (spec §9)', () => {
     role = 'member'
     expect(renderHook(() => useCanWrite({ ...channel, isPrivate: true, memberIds: ['u-1'] })).result.current).toBe(false)
     expect(renderHook(() => useCanWrite(undefined)).result.current).toBe(null)
+  })
+
+  it('nobody writes in Flowbot’s DM', () => {
+    role = 'admin'
+    const dm = { ...channel, kind: 'dm', name: null, isPrivate: true, memberIds: ['u-2', FLOWBOT_ID] } as Channel
+    expect(renderHook(() => useCanWrite(dm)).result.current).toBe(false)
   })
 })

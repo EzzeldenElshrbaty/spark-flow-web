@@ -127,6 +127,11 @@ export const migrations: Record<number, (doc: Record<string, unknown>) => void> 
     for (const row of [...list(doc.messages), ...list(doc.replies)]) for (const file of list(row.attachments)) fill(file)
     for (const entry of list(doc.trash)) for (const file of list((entry.snapshot as Record<string, unknown> | undefined)?.attachments)) fill(file)
   },
+  // 16: reminders and scheduled messages (spec §7), none yet.
+  15: (doc) => {
+    if (!Array.isArray(doc.reminders)) doc.reminders = []
+    if (!Array.isArray(doc.scheduled)) doc.scheduled = []
+  },
 }
 
 /** The document brought up to `to`, or null when a step on the way is missing. */

@@ -3,6 +3,7 @@ import clsx from 'clsx'
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { useEditMessage, useSetFollowing } from '@/api/chat'
+import { isFlowbot, senderName } from '@/lib/flowbot'
 import { bodyText } from '@/lib/messageBody'
 import type { ChatMessage, ChatTarget, SystemEvent, ThreadReply, User } from '@/api/types'
 import { announce } from '@/components/sf/Announcer'
@@ -122,8 +123,7 @@ export function ChannelMessage({
     if (id !== null || (document.activeElement && document.activeElement !== document.body)) return
     ;(from?.isConnected ? from : row.current?.querySelector<HTMLElement>(`[${ROW_FOCUS}]`))?.focus()
   }, [editing])
-  const author = users.find((u) => u.id === message.senderId)
-  const name = author?.name ?? 'Unknown person'
+  const name = senderName(message.senderId, users)
   const target: ChatTarget = { kind: reply || broadcast ? 'reply' : 'message', id: message.id }
   // Where a link to this message (or to a reply's thread) goes; Copy link to file gives it.
   const permalink = new URL(
@@ -253,7 +253,7 @@ export function ChannelMessage({
           {time}
         </span>
       ) : (
-        <Avatar id={message.senderId} name={name} decorative />
+        <Avatar id={message.senderId} name={name} app={isFlowbot(message.senderId)} decorative />
       )}
       <div className={clsx('min-w-0', tint)}>
         <p {...{ [ROW_HEADER]: continuation ? undefined : '' }} className={clsx('flex min-w-0 items-baseline gap-2', continuation && 'sr-only')}>

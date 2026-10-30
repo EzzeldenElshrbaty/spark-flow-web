@@ -139,3 +139,9 @@ describe('14 → 15', () => {
     })
   })
 })
+
+describe('15 → 16', () => {
+  it('no reminders or scheduled messages yet (spec §7)', () => {
+    expect(migrate({ version: 15, currentUserId: 'u-1' }, 16)).toMatchObject({ version: 16, reminders: [], scheduled: [] })
+  })
+})

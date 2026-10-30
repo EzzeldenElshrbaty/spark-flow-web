@@ -2,6 +2,7 @@ import { useProjectSummaries } from '@/api/projects'
 import type { Channel } from '@/api/types'
 import { useMe } from '@/api/users'
 import { isArchived, readOnlyFor } from '@/lib/channels'
+import { isFlowbotDm } from '@/lib/flowbot'
 import { usePermission } from '@/lib/usePermission'
 
 /**
@@ -22,11 +23,12 @@ export function useCanPost(channel: Channel | undefined): boolean | null {
 
 /**
  * Whether the composer is mine to use (spec §9): useCanPost, and in a channel set to Only admins, being an Admin.
- * Reactions, edits and deletes still go by useCanPost. `null` while that is still unknown.
+ * Reactions, edits and deletes still go by useCanPost. Nobody writes in Flowbot's DM. `null` while that is still unknown.
  */
 export function useCanWrite(channel: Channel | undefined): boolean | null {
   const canPost = useCanPost(channel)
   const check = usePermission()
+  if (channel && isFlowbotDm(channel)) return false
   return canPost === true ? check('channel.post', { channel: channel! }) : canPost
 }
 

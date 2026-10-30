@@ -199,6 +199,32 @@ export type ChatMessage = {
    * the reply's, and its edits, deletes and reactions go to the reply (`/api/replies/:id`).
    */
   broadcast?: { rootId: string; rootText: string }
+  /** Set on what Flowbot sends (spec 5.1 Apps): what it is about, for the card it shows. */
+  flowbot?: FlowbotNote
+}
+
+/** What a Flowbot message is about: a reminder that fired, or a scheduled message that couldn't be sent. */
+export type FlowbotNote =
+  | { kind: 'reminder'; channelId: string; target: ChatTarget }
+  | { kind: 'scheduleFailed'; scheduledId: string }
+
+/** A reminder about a message or reply (spec §7 Reminder): the scheduler fires it at `remindAt` as a Flowbot DM. */
+export type Reminder = { id: string; userId: string; workspaceId: string; target: ChatTarget; remindAt: string; firedAt: string | null }
+
+/**
+ * A message to send later (spec §7 ScheduledMessage), to a channel or, with `rootId`, into a thread. The scheduler
+ * sends it at `sendAt` as its author; if they can no longer post there it fails with the reason, and Flowbot says so.
+ */
+export type ScheduledMessage = {
+  id: string; userId: string; workspaceId: string; channelId: string; rootId: string | null
+  content: string; body: Body
+  sendAt: string
+  /** The author's time zone when they scheduled it, for "Sends tomorrow at 9:00 AM". */
+  tz: string
+  status: 'scheduled' | 'sent' | 'failed'
+  /** The message or reply it became. */
+  sentId: string | null
+  failure: string | null
 }
 
 /** A person's own choice to follow a thread or not (spec §7 ThreadFollow); without one, the defaults decide. */

@@ -1,4 +1,5 @@
 import type { Channel, MentionItem, User } from '@/api/types'
+import { FLOWBOT_READ_ONLY, isFlowbotDm, senderName } from '@/lib/flowbot'
 
 /** Whether a channel is archived (read-only until restored). */
 export const isArchived = (channel: { archivedAt?: string | null }): boolean => Boolean(channel.archivedAt)
@@ -11,7 +12,7 @@ export function channelLabel(channel: Channel, users: User[], meId: string): str
     if (!channel.memberIds.includes(meId)) return 'Unknown person'
     return `${users.find((u) => u.id === meId)?.name ?? 'Unknown person'} (you)`
   }
-  return others.map((id) => users.find((u) => u.id === id)?.name ?? 'Unknown person').join(', ')
+  return others.map((id) => senderName(id, users)).join(', ')
 }
 
 /** The same list with muted channels and DMs moved to its end, each part in its order (spec 6.11). */
@@ -21,16 +22,17 @@ export function mutedLast<T>(list: T[], isMuted: (item: T) => boolean): T[] {
 
 const muted = (channel: Channel) => channel.muted
 
-/** Channels A–Z; DMs with the newest message first (a DM nobody has written in goes last); muted ones last in each. */
-export function sortChannels(channels: Channel[]): { channels: Channel[]; dms: Channel[] } {
+/**
+ * Channels A–Z; DMs with the newest message first (a DM nobody has written in goes last); muted ones last in each.
+ * Flowbot's DM is listed under Apps (spec 5.1), not with the people.
+ */
+export function sortChannels(channels: Channel[]): { channels: Channel[]; dms: Channel[]; apps: Channel[] } {
+  const newestFirst = (list: Channel[]) => mutedLast(list.sort((a, b) => (b.lastMessageAt ?? '').localeCompare(a.lastMessageAt ?? '')), muted)
+  const dms = channels.filter((c) => c.kind === 'dm')
   return {
     channels: mutedLast(channels.filter((c) => c.kind === 'channel').sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')), muted),
-    dms: mutedLast(
-      channels
-        .filter((c) => c.kind === 'dm')
-        .sort((a, b) => (b.lastMessageAt ?? '').localeCompare(a.lastMessageAt ?? '')),
-      muted,
-    ),
+    dms: newestFirst(dms.filter((c) => !isFlowbotDm(c))),
+    apps: newestFirst(dms.filter(isFlowbotDm)),
   }
 }
 
@@ -57,6 +59,9 @@ export function mustJoin(channel: Channel, meId: string, projects: { channelId: 
 
 /** The line shown instead of the composer, and the server's refusal, in a channel set to Only admins (spec §9). */
 export const onlyAdminsLine = (channel: Pick<Channel, 'name'>) => `Only admins can post in #${channel.name}.`
+
+/** The line shown instead of the composer when I may post (react, edit) but not write: Flowbot's DM, or Only admins. */
+export const cantWriteLine = (channel: Pick<Channel, 'name' | 'kind' | 'memberIds'>) => (isFlowbotDm(channel) ? FLOWBOT_READ_ONLY : onlyAdminsLine(channel))
 
 /** The line shown instead of the composer to someone who may read a channel but not write in it. */
 export const readOnlyFor = (isProjectChannel: boolean) =>

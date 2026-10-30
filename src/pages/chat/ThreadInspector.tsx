@@ -6,7 +6,7 @@ import { QueryError } from '@/components/ui/QueryError'
 import { InspectorFrame, InspectorSkeleton, TitleSkeleton, type InspectorBodyProps } from '@/layout/InspectorFrame'
 import { ApiError } from '@/lib/api'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
-import { channelLabel, inWorkspace, isArchived, mustJoin, onlyAdminsLine } from '@/lib/channels'
+import { channelLabel, inWorkspace, isArchived, mustJoin, cantWriteLine } from '@/lib/channels'
 import { useProjectSummaries } from '@/api/projects'
 import { JoinChannelLine } from '@/pages/chat/ChannelActions'
 import { useRole } from '@/lib/useRole'
@@ -107,7 +107,7 @@ export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: st
           ) : canPost === false ? (
             <p className="text-sm text-fg-muted">{readOnly}</p>
           ) : canPost && channel.data && !canWrite ? (
-            <p className="text-sm text-fg-muted">{onlyAdminsLine(channel.data)}</p>
+            <p className="text-sm text-fg-muted">{cantWriteLine(channel.data)}</p>
           ) : canPost && channel.data ? (
             <ThreadComposer
               channel={channel.data}

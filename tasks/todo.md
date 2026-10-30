@@ -874,3 +874,25 @@ Test first; not pushed.
 - [x] Q. The five parked slice 6 items: focus into File details and after Delete file; thread tray keeps files added while a reply sends (`clear(keys)`); no retry on a 404 in File details; Open in the panel shows the office preview (`viewedFile`), and the viewer sends cookies only to our API (`fetchCredentials`); upload progress in `uploadProgress` (a card redraws, not the page). Tests: `FileInspector.test.tsx`, `FileActions.test.tsx`, `useUploads.test.tsx`, `UploadTray.test.tsx`, `fileView.test.ts`, `api/files.test.tsx`. ac037b0
 
 Review: 139 files / 1378 tests pass; tsc, lint and the prototype build are clean. In the app: the invite prompt on @Mariam in #backend (Esc keeps the text), ⋮ with Notification settings.
+
+## Phase 3 plan: Find and follow up (30 Oct 2026, approved)
+
+Spec §12 Phase 3, split into slices. R comes first because S and T need its timer; U–Z stand alone. Guests slice skipped for now.
+
+- [x] R. Scheduler + Flowbot: `Reminder` and `ScheduledMessage` stored (DB_VERSION 16); `mocks/scheduler.ts` fires what's due every 15 s in one transaction (each item once, however many tabs), a reminder as a Flowbot DM quoting the message, a scheduled message as its author with every send check (`writeMessage` / `writeReply`, now shared with send and reply), a refused one marked failed with Flowbot saying why. Flowbot (`lib/flowbot.ts`) is an app, not a user: its DM is listed under Apps, its messages show the app square, nobody posts there (reactions allowed; `cantWriteLine`). Dev helper `__sparkFlowDev.remindMe(messageId, seconds)`. Contract updated. Tests: `scheduler.test.ts` (10), `channels.test.ts`, `useCanPost.test.tsx`, `ChannelMessage.test.tsx`, `migrations.test.ts`. Checked in the app: a reminder on m-e01 put Flowbot under Apps with 1 unread, the quote and the read-only line.
+  - Ruling: Flowbot is not a `User` — a user record would put it in @ autocomplete, member pickers, View as and the dashboard; names go through `senderName` — cost if wrong: a few more lookups move to `senderName` later.
+  - Ruling: Flowbot's messages are plain text, so a quoted @mention or task key in a reminder notifies nobody twice — cost if wrong: no chips in the quote.
+  - Ruling: no `reminder.fired` / `scheduled.sent` events yet; `messageReceived` and `channelChanged` refresh what R shows, and S and T add those events with their views — cost if wrong: none until S/T.
+  - Found and fixed: `time.test.ts` "forgotten timer" assumed 16:00 + 12 h reads 04:00, false tonight (Cairo leaves DST on 30 Oct 2026); it now measures 12 hours elapsed. a4879c9
+
+Review: 140 files / 1394 tests pass; tsc, lint and the prototype build are clean.
+- [ ] S. Saved + Remind me: Save for later and Remind me (submenu) in the toolbar and ⋯ menu; Saved view (In progress, Archived, Completed); Activity's Reminders tab; the sidebar Saved row. Route `/w/:ws/saved`.
+- [ ] T. Schedule send: split Send with the Schedule menu (Tomorrow 9:00 AM, Monday 9:00 AM, Custom time…, the time zone note); Drafts & sent view (Drafts, Scheduled, Sent; Send now, Reschedule, Edit, Delete). Route `/w/:ws/drafts`.
+- [ ] U. Threads view: followed threads, unread first, latest replies and an inline reply box, "You're caught up."; ⌘⇧T; the sidebar row. Route `/w/:ws/threads`.
+- [ ] V. Search view: a mock index that respects channel access; tabs with counts; From, In, Date, Has, Only threads chips; `from:`, `has:`, quoted phrases; View in channel; channel search button and ⌘F (`in:#channel`). Route `/w/:ws/search?q=`.
+- [ ] W. Pins and Files tabs: Pin to channel, the Pins count, the Files tab, the tabs "+" (bookmarks), jump to date.
+- [ ] X. / shortcuts (built-ins) and the text snippet (⌘⇧↵).
+- [ ] Y. Sidebar drag to reorder Starred and Channels (`sidebar_position`).
+- [ ] Z. Preferences: delivery (desktop, push, email digest), Do Not Disturb, the global default level, keywords.
+
+Left out: GIFs (OPEN, spec 13.6); app commands in / (Phase 4 apps); Forward (no flow in the spec, needs a ruling).

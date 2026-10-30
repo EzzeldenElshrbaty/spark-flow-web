@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { ApiError } from '@/lib/api'
-import { channelLabel, inWorkspace, isArchived, mustJoin, onlyAdminsLine } from '@/lib/channels'
+import { channelLabel, inWorkspace, isArchived, mustJoin, cantWriteLine } from '@/lib/channels'
 import { paths } from '@/lib/paths'
 import { usePermission } from '@/lib/usePermission'
 import { useRole } from '@/lib/useRole'
@@ -147,7 +147,7 @@ export function ChannelPage() {
           ) : canPost === false ? (
             <p className="text-sm text-fg-muted">{readOnly}</p>
           ) : canPost && !canWrite ? (
-            <p className="text-sm text-fg-muted">{onlyAdminsLine(current)}</p>
+            <p className="text-sm text-fg-muted">{cantWriteLine(current)}</p>
           ) : canPost ? (
             <>
             <ChannelComposer

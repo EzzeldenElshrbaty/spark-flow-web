@@ -7,6 +7,7 @@ import { ToastProvider } from '@/components/sf/Toast'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ChatMessage, TaskRef, ThreadReply, User } from '@/api/types'
 import { api } from '@/lib/api'
+import { FLOWBOT_ID } from '@/lib/flowbot'
 import { parseBody } from '@/lib/messageBody'
 import { paths } from '@/lib/paths'
 import { ChannelMessage, systemText, type Selection } from '@/pages/chat/ChannelMessage'
@@ -113,6 +114,16 @@ describe('ChannelMessage body (spec 6.3)', () => {
   it('emoji alone show large', () => {
     const row = show(message('🎉🚀'))
     expect(row.querySelector('.sf-emoji')).not.toBeNull()
+  })
+})
+
+describe('ChannelMessage from Flowbot (spec 5.1 Apps)', () => {
+  it('names Flowbot with the app square, and its name opens no profile', () => {
+    const row = show(message('Reminder: “Ship it.” from Nour El-Sayed.', { senderId: FLOWBOT_ID }))
+    expect(row.textContent).toContain('Flowbot')
+    expect(row.textContent).not.toContain('Unknown person')
+    expect(within(row).queryByRole('button', { name: 'Flowbot' })).toBeNull()
+    expect(row.querySelector('.bg-sf-ink-950')).not.toBeNull()
   })
 })
 
