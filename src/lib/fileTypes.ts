@@ -72,3 +72,19 @@ export function pastedName(mimeType: string, at = new Date()) {
   const type = { 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp' }[mimeType] ?? 'png'
   return `Pasted image ${at.getFullYear()}-${two(at.getMonth() + 1)}-${two(at.getDate())} at ${two(at.getHours())}.${two(at.getMinutes())}.${type}`
 }
+
+/** The Files tab's types (spec 6.1): what a file is, for its filter and its icon. */
+export type FileKind = 'image' | 'pdf' | 'document' | 'snippet' | 'video' | 'other'
+
+const documentTypes = ['.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.csv']
+
+/** Which Files tab type a file is; a snippet is a snippet whatever its extension. */
+export function fileKind(file: { name: string; mimeType: string; snippet?: unknown }): FileKind {
+  if (file.snippet) return 'snippet'
+  const type = extension(file.name)
+  if (imageTypes.includes(type)) return 'image'
+  if (type === '.pdf') return 'pdf'
+  if (videoTypes.includes(type) || file.mimeType.startsWith('video/')) return 'video'
+  if (documentTypes.includes(type)) return 'document'
+  return 'other'
+}

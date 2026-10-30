@@ -1,3 +1,4 @@
+import type { FileKind } from '@/lib/fileTypes'
 import type { Role } from '@/lib/roles'
 import type { Body } from '@/lib/messageBody'
 
@@ -305,6 +306,10 @@ export type ActivityEntry = {
 
 /** A message or a thread reply, for the actions both have (react, edit, delete). */
 export type ChatTarget = { kind: 'message' | 'reply'; id: string }
+/** The Files tab's filters (spec 6.1): a type, who shared it, since when; `cursor` for the next 50. */
+export type ChannelFileFilter = { type?: FileKind; from?: string; since?: string; folderId?: string; cursor?: string }
+/** A file as the Files tab lists it: the file, who shared it, when, and the message (or reply) it's in. */
+export type ChannelFile = { file: Attachment; senderId: string; at: string; messageId: string; replyId: string | null }
 /** A message pinned to its channel (spec §7 Pin). */
 export type Pin = { channelId: string; messageId: string; pinnedBy: string; pinnedAt: string }
 /** The Pins tab's row: the message as the channel shows it, and who pinned it when. */
@@ -596,6 +601,8 @@ export interface Api {
      */
     /** `snippet`: the file is a text snippet in that language (spec 6.9); its title is its name without .txt. */
     uploadForChat(channelId: string, file: UploadFile, options?: UploadOptions & { snippet?: { language: CodeLanguage } }): Promise<Attachment>
+    /** The files in a channel's messages and replies, newest first, 50 at a time (spec 6.1 Files tab). */
+    inChannel(channelId: string, filter: ChannelFileFilter): Promise<Page<ChannelFile>>
     /** Who uploaded it and where it's shared, for whoever may see it somewhere. */
     details(id: string): Promise<FileDetails>
     /** Edit file details: whoever uploaded it, or an Admin. */

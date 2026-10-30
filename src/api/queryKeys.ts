@@ -20,6 +20,7 @@ export const qk = {
   replies: (messageId: string) => ['chat', 'replies', messageId],
   invitations: (channelId: string) => ['chat', 'invitations', channelId],
   pins: (channelId: string) => ['chat', 'pins', channelId],
+  channelFiles: (channelId: string, filter: unknown = undefined) => (filter === undefined ? ['chat', 'files', channelId] : ['chat', 'files', channelId, filter]),
   fileDetails: (fileId: string) => ['chat', 'file', fileId],
   projects: (workspaceId: string) => ['tickets', 'projects', workspaceId],
   archivedProjects: (workspaceId: string) => ['tickets', 'projects', workspaceId, 'archived'],
@@ -60,11 +61,11 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
   switch (event.type) {
     case 'messageReceived': {
       const { channelId } = event.message
-      return [qk.messages(channelId), qk.channelsAll(), qk.channel(channelId), qk.mentions(), qk.sentAll()]
+      return [qk.messages(channelId), qk.channelsAll(), qk.channel(channelId), qk.mentions(), qk.sentAll(), qk.channelFiles(channelId)]
     }
     case 'replyReceived': {
       const { channelId, messageId } = event.reply
-      return [qk.replies(messageId), qk.message(messageId), qk.messages(channelId), qk.channelsAll(), qk.channel(channelId), qk.mentions(), qk.sentAll()]
+      return [qk.replies(messageId), qk.message(messageId), qk.messages(channelId), qk.channelsAll(), qk.channel(channelId), qk.mentions(), qk.sentAll(), qk.channelFiles(channelId)]
     }
     case 'ticketUpdated':
       // Project summaries (progress, overdue) and the dashboard are worked out from tasks too.
@@ -76,7 +77,7 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
       // Hours change everywhere: my day, every task and project summary (under 'tickets'), and the Time tabs.
       return [qk.myDay(), ['tickets'], qk.timeAll(), ['dashboard'], ['time', 'report']]
     case 'messageChanged':
-      return [qk.messages(event.channelId), qk.message(event.messageId), qk.replies(event.messageId), qk.mentions(), qk.activityAll(), qk.sentAll(), qk.pins(event.channelId)]
+      return [qk.messages(event.channelId), qk.message(event.messageId), qk.replies(event.messageId), qk.mentions(), qk.activityAll(), qk.sentAll(), qk.pins(event.channelId), qk.channelFiles(event.channelId)]
     case 'projectChanged':
       // Summaries and task lists live under 'tickets'; phases, deliverables and project time under 'projects'.
       return [['tickets'], ['projects'], ['dashboard'], qk.projectHistory(event.projectId)]
@@ -93,7 +94,7 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
       return [qk.files(event.projectId)]
     case 'fileChanged':
       // The messages that show it get messageChanged of their own.
-      return [qk.fileDetails(event.fileId)]
+      return [qk.fileDetails(event.fileId), ['chat', 'files']]
     case 'draftChanged':
       return [qk.draftsAll()]
     case 'readChanged':

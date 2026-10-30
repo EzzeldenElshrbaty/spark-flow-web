@@ -41,6 +41,12 @@ export async function request<T>(path: string, init?: RequestInit, fetchFn: type
 }
 
 const enc = encodeURIComponent
+/** `?a=1&b=2` from the set values, or '' when none are. */
+const query = (values: Record<string, string | undefined>) => {
+  const set = Object.entries(values).filter((entry): entry is [string, string] => Boolean(entry[1]))
+  return set.length ? `?${new URLSearchParams(set).toString()}` : ''
+}
+
 const targetPath = (target: ChatTarget) => `/api/${target.kind === 'reply' ? 'replies' : 'messages'}/${enc(target.id)}`
 
 /** The Api over HTTP: one route per call, as the backend serves them. */
@@ -252,6 +258,7 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
         await putBytes(uploadUrl, file, makeXhr, onProgress, signal)
         return json('POST', `/api/files/${enc(created.id)}/complete`)
       },
+      inChannel: (channelId, filter) => get(`/api/channels/${enc(channelId)}/files${query(filter)}`),
       details: (id) => get(`/api/files/${enc(id)}/details`),
       update: (id, patch) => send('PATCH', `/api/files/${enc(id)}`, patch),
       delete: (id) => send<void>('DELETE', `/api/files/${enc(id)}`),

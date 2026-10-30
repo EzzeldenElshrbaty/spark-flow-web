@@ -1,7 +1,7 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
 import { qk } from '@/api/queryKeys'
 import { retryUnlessNotFound as retry } from '@/api/retry'
-import type { Api, FilePatch, UploadFile } from '@/api/types'
+import type { Api, ChannelFileFilter, FilePatch, UploadFile } from '@/api/types'
 import { api } from '@/lib/api'
 
 /** Uploads a file for a message in a channel (spec 6.9): progress as it goes up; the signal cancels it. */
@@ -23,4 +23,15 @@ export function useDeleteFile() {
 /** Share: posts the file in another channel or DM, with an optional message. */
 export function useShareFile() {
   return useMutation({ mutationFn: ({ id, channelId, content }: { id: string; channelId: string; content?: string }) => api.files.share(id, channelId, content) })
+}
+
+/** The files shared in a channel, newest first, 50 at a time (spec 6.1 Files tab); new messages and file changes refresh it. */
+export function useChannelFiles(channelId: string, filter: Omit<ChannelFileFilter, 'cursor'>) {
+  return useInfiniteQuery({
+    queryKey: qk.channelFiles(channelId, filter),
+    queryFn: ({ pageParam }) => api.files.inChannel(channelId, { ...filter, ...(pageParam && { cursor: pageParam }) }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+    retry,
+  })
 }

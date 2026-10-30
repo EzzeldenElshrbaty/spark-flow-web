@@ -1,7 +1,7 @@
 import type { Api, Attachment, ChatMessage, FileDetails, ProjectFile, StoredFile } from '@/api/types'
 import { fileDescriptionError, fileTitleError } from '@/lib/fileDetails'
 import { isAcceptedFile, maxFileMb } from '@/lib/fileTypes'
-import { checkCanWrite, findChannel, postMessage } from './chat'
+import { checkCanWrite, findChannel, postMessage, readableChannel } from './chat'
 import type { DbData, MockDb } from './db'
 import { canRead } from './membership'
 import { reachedBy } from './mentions'
@@ -12,9 +12,13 @@ import { ApiError } from '@/lib/apiError'
 import { can } from '@/lib/permissions'
 import { logActivity } from './activity'
 import { CODE_LANGUAGES } from '@/lib/codeTokens'
+import { fileKind } from '@/lib/fileTypes'
 import { badRequest, clone, currentUser, newId, notFound, requireCan } from './shared'
 
 /** The upload rules (empty, too big, a type we don't take), with the sentence the form shows. */
+/** The Files tab's page size (spec 6.1). */
+const FILES_PAGE = 50
+
 /** A snippet is a .txt file in a language the card knows (spec 6.9). */
 function checkSnippet(file: { name: string }, language: string) {
   if (!CODE_LANGUAGES.some((l) => l.id === language)) throw badRequest("That snippet type isn't supported.")
@@ -230,6 +234,26 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
       })
       onProgress?.(1)
       return clone(stored)
+    },
+    async inChannel(channelId, { type, from, since, cursor }) {
+      await delay()
+      const data = await db.read()
+      readableChannel(data, channelId)
+      const shared = [
+        ...data.messages.filter((m) => m.channelId === channelId && !m.broadcast && !m.deletedAt).map((m) => ({ row: m, messageId: m.id, replyId: null })),
+        ...data.replies.filter((r) => r.channelId === channelId && !r.deletedAt).map((r) => ({ row: r, messageId: r.messageId, replyId: r.id })),
+      ]
+        .sort((a, b) => b.row.createdAt.localeCompare(a.row.createdAt))
+        .flatMap(({ row, messageId, replyId }) =>
+          row.attachments
+            .map((a) => data.attachments.find((current) => current.id === a.id) ?? a)
+            .filter((file) => !file.deletedAt)
+            .map((file) => ({ file, senderId: row.senderId, at: row.createdAt, messageId, replyId })),
+        )
+        .filter((f) => (!type || fileKind(f.file) === type) && (!from || f.senderId === from) && (!since || f.at >= since))
+      const start = cursor ? Number(cursor) || 0 : 0
+      const items = shared.slice(start, start + FILES_PAGE)
+      return clone({ items, nextCursor: start + FILES_PAGE < shared.length ? String(start + FILES_PAGE) : null })
     },
     async details(id) {
       await delay()

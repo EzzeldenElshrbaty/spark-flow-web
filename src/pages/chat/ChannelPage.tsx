@@ -37,6 +37,7 @@ import { ChannelHeader } from '@/pages/chat/ChannelHeader'
 import { ChannelDetails, detailsRights, type DetailsTab } from '@/pages/chat/ChannelDetails'
 import { ChannelTabs, TabStub, tabFromParam, type ChannelTab } from '@/pages/chat/ChannelTabs'
 import { ChannelPins } from '@/pages/chat/PinsTab'
+import { ChannelFiles } from '@/pages/chat/files/FilesTab'
 import { usePins } from '@/api/pins'
 import type { Attachment, Channel, ChatMessage, User } from '@/api/types'
 import { useProjectSummaries, useTeams } from '@/api/projects'
@@ -140,6 +141,10 @@ export function ChannelPage() {
       {tab === 'pins' ? (
         <div className="sf flex min-h-0 flex-1 flex-col">
           <ChannelPins channel={current} users={people} canPost={canPost === true} />
+        </div>
+      ) : tab === 'files' ? (
+        <div className="sf flex min-h-0 flex-1 flex-col">
+          <ChannelFiles channel={current} users={people} />
         </div>
       ) : tab !== 'messages' ? (
         <div className="sf">

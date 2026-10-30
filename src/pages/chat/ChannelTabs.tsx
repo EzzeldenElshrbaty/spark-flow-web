@@ -40,12 +40,11 @@ export function ChannelTabs({
   return <Tabs label="Channel views" tabs={tabs} tab={tab} onChange={onChange} panelId={panelId} />
 }
 
-const STUBS: Record<Exclude<ChannelTab, 'messages' | 'pins'>, string> = {
-  files: 'Files shared in this channel will be listed here.',
+const STUBS: Record<Exclude<ChannelTab, 'messages' | 'pins' | 'files'>, string> = {
   page: "This channel's page will live here.",
 }
 
-/** What Files and Page show until they're built (slice W, Phase 4). */
-export function TabStub({ tab }: { tab: Exclude<ChannelTab, 'messages' | 'pins'> }) {
+/** What Page shows until it's built (Phase 4). */
+export function TabStub({ tab }: { tab: Exclude<ChannelTab, 'messages' | 'pins' | 'files'> }) {
   return <p className="sf-ui px-6 py-8 text-sf-text-muted">{STUBS[tab]}</p>
 }
