@@ -104,6 +104,8 @@
   --z-toolbar: 20;
   --z-menu: 1000;
   --z-modal: 1100;
+  /* A menu or popover opened from a modal: above it, below toasts and tooltips. */
+  --z-modal-layer: 1150;
   --z-toast: 1200;
   --font-sans: "Readex Pro Variable", "Readex Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;

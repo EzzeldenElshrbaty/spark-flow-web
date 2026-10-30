@@ -12,7 +12,7 @@ import {
   type RefObject,
 } from 'react'
 import { Icon } from './Icon'
-import { isRtl, placeBelow, SfPortal, useEscapeLayer } from './layers'
+import { isRtl, placeBelow, SfPortal, useEscapeLayer, useLayerZ } from './layers'
 import { usePhone } from './usePhone'
 
 type MenuContext = { rootId: string; closeAll: () => void; phone: boolean }
@@ -122,6 +122,8 @@ function MenuPanel({
   onOutside?: () => void
   children: ReactNode
 }) {
+  // Above a modal it opens from, else at the menu layer.
+  const z = useLayerZ()
   const { rootId, phone } = useMenu()
   const panelRef = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
@@ -207,7 +209,7 @@ function MenuPanel({
 
   return (
     <SfPortal>
-      {phone && !side && <div aria-hidden className="fixed inset-0 z-[var(--z-menu)] bg-sf-overlay" />}
+      {phone && !side && <div aria-hidden className={clsx('fixed inset-0 bg-sf-overlay', z)} />}
       <div
         ref={panelRef}
         id={id}
@@ -218,7 +220,8 @@ function MenuPanel({
         onKeyDown={onKeyDown}
         style={phone ? undefined : pos ? { top: pos.top, left: pos.left } : { top: 0, left: 0, visibility: 'hidden' }}
         className={clsx(
-          'sf-ui fixed z-[var(--z-menu)] flex flex-col overflow-auto bg-sf-surface-raised py-2 text-sf-text shadow-sf-menu outline-none',
+          z,
+          'sf-ui fixed flex flex-col overflow-auto bg-sf-surface-raised py-2 text-sf-text shadow-sf-menu outline-none',
           phone
             ? 'inset-x-0 bottom-0 max-h-[80dvh] rounded-t-sf-lg pb-[max(8px,env(safe-area-inset-bottom))]'
             : 'max-h-[calc(100dvh-16px)] min-w-[260px] rounded-sf-lg',

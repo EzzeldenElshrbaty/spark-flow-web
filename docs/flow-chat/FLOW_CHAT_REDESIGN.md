@@ -434,6 +434,7 @@ Order, with separators shown as —:
 - **Shortcuts (`/`):** /remind, /task (create a Flow task in the channel's linked project), /call, /invite, /topic, /status, /mute, /leave, /search, /shrug.
   - Each row shows the command (mono), its arguments (`text-secondary`) and a description.
   - Apps can register commands that POST to a URL and answer ephemerally or in the channel.
+  - Built (slice X, 30 Oct 2026): /remind (Set a reminder: the words, and a Remind me time; a note in Saved), /task, /invite, /topic, /mute, /leave, /shrug, each where the channel's own menus offer it, in the channel box only. A `/word` at the start that isn't offered doesn't post and says how to send it. /search comes with Search, /call with Calls; /status waits for a status feature.
 - **Attach menu (+, the button turns into ×):**
   - Upload from your computer (⌘U)
   - Add from Flow files
@@ -472,6 +473,7 @@ Order, with separators shown as —:
   - Title, Type (language select), a content editor with line numbers (mono, `surface-sunken`), and an optional message.
   - Footer: "Shares to #channel", Cancel, Create snippet.
   - In the message it renders as a collapsible code card with copy and download.
+  - Built (slice X): a `.txt` chat file with `snippet.language` (12 types), up to 100,000 characters; the box's text becomes its content; the card is up to 720px, 10 lines then Show all, ink-weight highlighting only.
 - **Voice and video messages (P2):**
   - Record in the browser after permission prompts, preview, re-record, then attach.
   - The player is a 32px `accent-fill` play button, a waveform in `line-strong` that turns `accent` as it plays, and the duration.

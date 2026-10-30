@@ -954,7 +954,7 @@ flowchart LR
 - Already flaky before this change (on d5370e3 one of them failed in 3 of 4 full runs on a 2-CPU machine): `RichComposer` "@ offers people", `a11y` "the open mention list" and `MessageList` "opens at the New line". Each passes alone. Left for a separate fix.
 
 
-# Slice X: / shortcuts, : emoji and Text snippet (spec 6.8, 6.9) — 30 Oct 2026, plan for approval
+# Slice X: / shortcuts, : emoji and Text snippet (spec 6.8, 6.9) — 30 Oct 2026, approved (with /remind)
 
 Goal: the composer runs the built-in `/` shortcuts, offers emoji after `:`, and makes text snippets that show as code cards. The `+` menu gets Text snippet.
 Architecture: commands are data in `lib/slashCommands.ts`; the page decides which apply and what they do (`useChannelCommands`); the composer only lists, parses and runs them. A snippet is a chat file (`.txt`) with a language, so upload, scan, Share, Delete, File details and the coming Files tab all work on it unchanged.
@@ -998,40 +998,40 @@ Review focus (each has a test in its task):
 
 ## Plan
 
-- [ ] X1. `:` emoji autocomplete. `AutocompletePlugin`: trigger `(^|[\s(]):([a-z0-9_+-]{2,})$`; rows = `searchEmoji(q).slice(0, 8)` as emoji + `:alias:`; picking inserts the character and a space and calls `rememberEmoji`; listbox name "Emoji". Browser tests in `RichComposer.browser.test.tsx`: `:thu` + Enter inserts 👍 and doesn't send; `10:30` and `https://x` open nothing; `:z` (1 letter) opens nothing. Commit.
-- [ ] X2. Command data, `lib/slashCommands.ts`:
+- [x] X1. `:` emoji autocomplete. `AutocompletePlugin`: trigger `(^|[\s(]):([a-z0-9_+-]{2,})$`; rows = `searchEmoji(q).slice(0, 8)` as emoji + `:alias:`; picking inserts the character and a space and calls `rememberEmoji`; listbox name "Emoji". Browser tests in `RichComposer.browser.test.tsx`: `:thu` + Enter inserts 👍 and doesn't send; `10:30` and `https://x` open nothing; `:z` (1 letter) opens nothing. Commit.
+- [x] X2. Command data, `lib/slashCommands.ts`:
   - `type CommandName = 'remind' | 'task' | 'invite' | 'topic' | 'mute' | 'leave' | 'shrug'`; `type SlashCommand = { name: CommandName; args: string; description: string; icon: TablerIcon }`; `COMMANDS` in the spec's order.
   - `parseCommand(body: Body): ParsedCommand | null` with `ParsedCommand = { name: string; args: string; userIds: string[] }` — only `^/[a-z]+(\s|$)` at the very start.
   - `commandOptions(query, offered: SlashCommand[])` (prefix match), `shrugBody(body: Body): Body` (drops `/shrug `, appends ` ¯\_(ツ)_/¯`, keeps marks and mentions).
   - Unit tests `slashCommands.test.ts`: the three review-focus 1 strings return null; `/invite @[Nour](u-2) @[Hossam](u-3)` gives both ids; `/shrug *ok*` keeps bold and ends with `¯\_(ツ)_/¯`. Commit with X3.
-- [ ] X3. Composer runs commands. `RichComposer` gains `slash?: ComposerSlash` (`{ commands: SlashCommand[]; run: (c: ParsedCommand) => Promise<CommandOutcome> }`, `CommandOutcome = { notice?: string; send?: Body }`):
+- [x] X3. Composer runs commands. `RichComposer` gains `slash?: ComposerSlash` (`{ commands: SlashCommand[]; run: (c: ParsedCommand) => Promise<CommandOutcome> }`, `CommandOutcome = { notice?: string; send?: Body }`):
   - `/` at the start of an empty first line lists `commands` (heading "Shortcuts", command in mono, args `text-secondary`, description; name "Shortcuts").
   - Enter or Tab on a row fills `/name `; Enter with the list closed: command → run; `send` goes through the normal send (prompts included); `notice` shows as a status line under the box until I type; a throw shows its message as the error line; the box clears only on success. Schedule is off while the text is a command.
   - A `/` button (Shortcuts) after `@`, behind a divider, enabled while the box is empty; it types `/`.
   - Browser tests: the review-focus 1 and 2 cases; `/mu` + Enter fills `/mute `, a second Enter runs it once; an unknown `/foo` keeps the text and says why; a failing run keeps the text. Commit.
-- [ ] X4. The channel's commands. `pages/chat/composer/useChannelCommands.ts`: `useChannelCommands(channel, ui): ComposerSlash` with `ui = { openDetails(tab: DetailsTab, opts?: { editTopic?: boolean; addPeople?: string[] }): void; newTask(draft: { title: string; assigneeId: string | null }): void }`, offered by rights:
+- [x] X4. The channel's commands. `pages/chat/composer/useChannelCommands.ts`: `useChannelCommands(channel, ui): ComposerSlash` with `ui = { openDetails(tab: DetailsTab, opts?: { editTopic?: boolean; addPeople?: string[] }): void; newTask(draft: { title: string; assigneeId: string | null }): void }`, offered by rights:
   - /shrug always; /mute (says Mute or Unmute) anywhere; /leave where the ⋮ menu offers Leave channel; /topic and /invite where I may manage the channel; /task in a project's channel where I have `task.manage`.
   - /topic text sets it (no text: About with the topic open); /invite opens Members › Add people with the mentioned people filled in; /task opens the Task sheet with the title and the first mention as assignee; /mute answers "#backend is muted. Type /mute to unmute it."; /leave leaves and goes Home.
   - For this, the Channel details state moves up from `ChannelTop` to `ChannelPage`; `ChannelMembers` takes `startAdding` and `addPeople: string[]`; `useTaskFromMessage` gains `fromCommand({ title, assigneeId })`.
   - Tests: `useChannelCommands.test.tsx` (what's offered as Admin, Member and in a DM; each run calls its mutation or opens its UI); `ChannelMembers.test.tsx` (prefilled Add people). Commit.
-- [ ] X5. Snippet data and tokens:
+- [x] X5. Snippet data and tokens:
   - `Attachment.snippet: { language: CodeLanguage } | null`; DB_VERSION 18 (existing files get null).
   - Upload-url takes `snippet` (the mock refuses an unknown language and a non-.txt name); `uploadChatFile(channelId, file, options & { snippet })`; contract section.
   - `lib/codeTokens.ts`: `CODE_LANGUAGES`, `tokenize(code, language): CodeToken[][]` with `CodeToken = { text: string; kind: 'plain' | 'keyword' | 'string' | 'comment' | 'number' }` (one array per line; `\r\n` counts once).
   - Tests: `files.test.ts` (snippet stored, bad language refused), `migrations.test.ts`, `codeTokens.test.ts` (SQL keywords any case, a keyword inside a string stays a string, an unclosed string ends at the line, TS block comments across lines, Plain text has no tokens). Commit.
-- [ ] X6. Make a snippet. `pages/chat/snippets/`:
+- [x] X6. Make a snippet. `pages/chat/snippets/`:
   - `SnippetDialog` (720px: `Modal` gains `wide`): Title, Type (a Menu of languages), Content (mono textarea with a line-number gutter, counter in the last 1,000), Message (optional), "Shares to #channel", Cancel, Create snippet ("Creating…"; off while Content is blank).
   - `useSnippet({ where, send })` returns `{ dialog, open(text): Promise<boolean> }`, the same shape as `useGroupConfirm`. Create uploads, then sends: the channel through the send queue, the thread as a reply.
   - Composer: `onSnippet?: (text: string) => Promise<boolean>`, the `+` item "Text snippet" (⌘⇧↵ / Ctrl+Shift+Enter) and that key in `KeysPlugin`; the box empties when it resolves true.
   - Tests: `SnippetDialog.test.tsx` (blank content can't be created; an upload failure keeps content and shows the reason; Create sends the file with the message), a browser test for ⌘⇧↵ carrying the box's text in. Commit.
-- [ ] X7. The code card. `SnippetCard` in `MessageFiles` for a clean file with `snippet`:
+- [x] X7. The code card. `SnippetCard` in `MessageFiles` for a clean file with `snippet`:
   - Label "SQL snippet ▾", the title, "SQL · 6 lines".
   - Code in mono 13/20 on `surface-sunken` with a line gutter, scrolling sideways inside itself; 10 lines then "Show all N lines" / "Show less".
   - The pill gains Copy (the text) beside Download, Share, Details and More.
   - Tests: `SnippetCard.test.tsx` (header, 10-line fold, Copy writes the text, keyword spans are weight 600); `MessageFiles.browser.test.tsx` (a 5,000-line snippet and a 2,000-character line at 390px: no page scroll); axe in both themes in `a11y.browser.test.tsx`. Commit.
-- [ ] X8. /remind (separable: drop it and the rest stands):
+- [x] X8. /remind (separable: drop it and the rest stands):
   - `SavedItem.target` gains `{ kind: 'note'; text: string; channelId: string }` (DB_VERSION 19).
   - /remind [what] opens "Set a reminder" with What filled in and the Remind me times (In 20 minutes … Custom…); no time parsing from the text.
   - Saved lists it ("Reminder set in #backend"), and the scheduler fires it as Flowbot's card with Mark complete and Snooze, no View message.
   - Tests: `saved.test.ts`, `scheduler.test.ts`, `SavedView.test.tsx`, `ChannelMessage.test.tsx`. Commit.
-- [ ] X9. Close: spec notes on the rulings in 6.8 and 6.9, the CLAUDE.md line, the contract; full suites, tsc, lint, `build:prototype`; app check at 1440×900 light and dark and at 390px; the review here.
+- [x] X9. Close: spec notes on the rulings in 6.8 and 6.9, the CLAUDE.md line, the contract; full suites, tsc, lint, `build:prototype`; app check at 1440×900 light and dark and at 390px; the review here.

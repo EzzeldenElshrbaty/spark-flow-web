@@ -116,3 +116,15 @@ export function placeBelow(anchor: DOMRect, panel: { width: number; height: numb
   if (top + panel.height > vh - 8 && anchor.top - panel.height - 4 >= 8) top = anchor.top - panel.height - 4
   return { top: Math.max(8, Math.min(top, vh - panel.height - 8)), left: Math.max(8, left) }
 }
+
+/** Inside a modal: its menus and popovers stack above it (`--z-modal-layer`), not under it (`--z-menu`). */
+const InModal = createContext(false)
+
+export function InModalScope({ children }: { children: ReactNode }) {
+  return <InModal.Provider value>{children}</InModal.Provider>
+}
+
+/** The z-index class a menu or popover takes where it opens. */
+export function useLayerZ(): string {
+  return useContext(InModal) ? 'z-[var(--z-modal-layer)]' : 'z-[var(--z-menu)]'
+}

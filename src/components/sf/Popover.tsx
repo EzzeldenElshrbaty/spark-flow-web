@@ -1,6 +1,6 @@
 import clsx from 'clsx'
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { focusables, isRtl, placeBelow, SfPortal, trapTab, useEscapeLayer } from './layers'
+import { focusables, isRtl, placeBelow, SfPortal, trapTab, useEscapeLayer, useLayerZ } from './layers'
 import { usePhone } from './usePhone'
 
 export type PopoverTriggerProps = {
@@ -61,6 +61,8 @@ function Panel({
   className?: string
   children: ReactNode
 }) {
+  // Above a modal it opens from, else at the menu layer.
+  const z = useLayerZ()
   const phone = usePhone()
   const panelRef = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
@@ -92,7 +94,7 @@ function Panel({
 
   return (
     <SfPortal>
-      {phone && <div aria-hidden className="fixed inset-0 z-[var(--z-menu)] bg-sf-overlay" />}
+      {phone && <div aria-hidden className={clsx('fixed inset-0 bg-sf-overlay', z)} />}
       <div
         ref={panelRef}
         id={id}
@@ -101,7 +103,8 @@ function Panel({
         onKeyDown={(event) => panelRef.current && trapTab(event, panelRef.current)}
         style={phone ? undefined : pos ? { top: pos.top, left: pos.left } : { top: 0, left: 0, visibility: 'hidden' }}
         className={clsx(
-          'sf-ui fixed z-[var(--z-menu)] bg-sf-surface-raised text-sf-text shadow-sf-menu outline-none',
+          z,
+          'sf-ui fixed bg-sf-surface-raised text-sf-text shadow-sf-menu outline-none',
           // `className` sizes the panel instead of the 300px card (the emoji picker sizes itself).
           phone ? 'inset-x-0 bottom-0 rounded-t-sf-lg pb-[max(16px,env(safe-area-inset-bottom))]' : clsx('rounded-sf-lg', className ?? 'w-[300px] max-w-[calc(100vw-16px)]'),
         )}
