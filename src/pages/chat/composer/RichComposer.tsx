@@ -11,7 +11,7 @@ import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPl
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import { $findMatchingParent } from '@lexical/utils'
-import { IconAt, IconCalendarEvent, IconChevronDown, IconClock, IconLetterCase, IconMoodSmile, IconPlus, IconSend, IconUpload, IconX } from '@tabler/icons-react'
+import { IconAt, IconCalendarEvent, IconChevronDown, IconClock, IconLetterCase, IconMoodSmile, IconPlus, IconSend, IconSlash, IconUpload, IconX } from '@tabler/icons-react'
 import clsx from 'clsx'
 import { $createTextNode, $getSelection, $insertNodes, $isRangeSelection, $setSelection, type BaseSelection, type EditorState, type LexicalEditor } from 'lexical'
 import { useCallback, useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react'
@@ -24,6 +24,7 @@ import { acceptedFiles } from '@/lib/fileTypes'
 import { formatWhen } from '@/lib/format'
 import { bodyText, type Body } from '@/lib/messageBody'
 import { schedulePresets } from '@/lib/remindTimes'
+import { parseCommand, refusal, type ComposerSlash } from '@/lib/slashCommands'
 import { EmojiPicker } from '@/pages/chat/EmojiPicker'
 import { AutocompletePlugin, type ComposerDirectory } from '@/pages/chat/composer/AutocompletePlugin'
 import { $bodyFromEditor, $editorFromBody, COMPOSER_NODES } from '@/pages/chat/composer/bodyEditor'
@@ -108,6 +109,7 @@ export function RichComposer({
   files,
   allowEmpty = false,
   onSchedule,
+  slash,
 }: {
   /** send: the channel's box; edit: a message's body being edited in place, with Cancel and Save (spec 6.3). */
   mode?: 'send' | 'edit'
@@ -133,6 +135,8 @@ export function RichComposer({
   allowEmpty?: boolean
   /** Send mode: the Send chevron's Schedule menu (spec 6.8) hands the body and the chosen time here. Text only. */
   onSchedule?: (body: Body, at: Date) => Promise<unknown>
+  /** Send mode: the `/` shortcuts (spec 6.8): listed at the start of the box, run on Enter instead of sending. */
+  slash?: ComposerSlash
 }) {
   const config = {
     namespace: 'flow-composer',
@@ -161,12 +165,13 @@ export function RichComposer({
         files={files}
         allowEmpty={allowEmpty}
         onSchedule={onSchedule}
+        slash={slash}
       />
     </LexicalComposer>
   )
 }
 
-function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEditLast, onDraft, onTyping, error, directory, autoFocus, showFormatting = true, files, allowEmpty = false, onSchedule }: Parameters<typeof RichComposer>[0]) {
+function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEditLast, onDraft, onTyping, error, directory, autoFocus, showFormatting = true, files, allowEmpty = false, onSchedule, slash }: Parameters<typeof RichComposer>[0]) {
   const editing = mode === 'edit'
   const [editor] = useLexicalComposerContext()
   const boxRef = useRef<HTMLDivElement>(null)
@@ -177,6 +182,9 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
   // When the last box I scheduled goes out: said under the box until I write again.
   const [scheduledFor, setScheduledFor] = useState<Date | null>(null)
   const [customTime, setCustomTime] = useState(false)
+  // What the last shortcut said (or why it didn't run), under the box until I write again; and why one failed.
+  const [notice, setNotice] = useState<string | null>(null)
+  const [commandError, setCommandError] = useState<string | null>(null)
   const [linking, setLinking] = useState<{ url: string; selection: BaseSelection | null } | null>(null)
   const draftTimer = useRef<number | undefined>(undefined)
   const [draftFailed, setDraftFailed] = useState(false)
@@ -210,33 +218,66 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
   const over = length > MAX_LENGTH
   // With files ready an empty box sends them alone; while any go up (or failed), Send waits (spec 6.9).
   const canSend = (!empty || allowEmpty || (files?.ready ?? 0) > 0) && !over && !pending && !files?.waiting
+  // A shortcut runs; it isn't sent, so it can't be scheduled.
+  const command = slash ? parseCommand(body) : null
   // Scheduled messages are text only for now: not while files are added.
-  const canSchedule = canSend && !empty && (files?.ready ?? 0) === 0 && !files?.waiting
+  const canSchedule = canSend && !empty && !command && (files?.ready ?? 0) === 0 && !files?.waiting
 
   const latest = useRef({ canSend, body })
   latest.current = { canSend, body }
 
-  // Sends, or with `at` schedules (spec 6.8); either way a box that went out empties, and its draft goes.
+  // A box whose message went out (or whose shortcut ran) empties, and its draft goes.
+  const emptyBox = useCallback(() => {
+    window.clearTimeout(draftTimer.current)
+    editor.update(() => $editorFromBody([]))
+    latestBody.current = []
+    void saveDraft()
+  }, [editor, saveDraft])
+
+  // A shortcut (spec 6.8): one offered here runs, and what it says shows under the box; anything else says why not.
+  const runCommand = useCallback(
+    (now: Body) => {
+      const parsed = parseCommand(now)
+      if (!slash || !parsed) return
+      if (!slash.commands.some((c) => c.name === parsed.name)) return setNotice(refusal(parsed.name))
+      setPending(true)
+      slash
+        .run(parsed)
+        .then((outcome) => (outcome.send ? onSend(outcome.send).then(() => outcome) : outcome))
+        .then(
+          (outcome) => {
+            emptyBox()
+            setNotice(outcome.notice ?? null)
+            setPending(false)
+          },
+          (reason: unknown) => {
+            setCommandError(reason instanceof Error ? reason.message : 'That shortcut didn’t run. Try again.')
+            setPending(false)
+          },
+        )
+    },
+    [slash, onSend, emptyBox],
+  )
+
+  // Sends, or with `at` schedules (spec 6.8); either way a box that went out empties.
   const deliver = useCallback(
     (at?: Date) => {
       const { canSend: ok, body: now } = latest.current
       if (!ok || (at && !onSchedule)) return
+      if (!at && slash && parseCommand(now)) return runCommand(now)
       setPending(true)
       ;(at ? onSchedule!(now, at) : onSend(now)).then(
         () => {
           // An edit is closed by its message; a sent message empties the box.
           if (editing) return setPending(false)
-          window.clearTimeout(draftTimer.current)
-          editor.update(() => $editorFromBody([]))
-          latestBody.current = []
-          void saveDraft()
+          emptyBox()
           setPending(false)
           setScheduledFor(at ?? null)
         },
         () => setPending(false),
       )
     },
-    [editor, onSend, onSchedule, saveDraft, editing],
+    [onSend, onSchedule, editing, slash, runCommand, emptyBox],
   )
   const send = useCallback(() => deliver(), [deliver])
 
@@ -244,6 +285,10 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
     const next = state.read(() => $bodyFromEditor())
     setBody(next)
     latestBody.current = next
+    if (next.length > 0) {
+      setNotice(null)
+      setCommandError(null)
+    }
     if (onDraft) {
       unsaved.current = true
       window.clearTimeout(draftTimer.current)
@@ -339,7 +384,7 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
           onFiles={files?.onAdd}
         />
         {(editing || autoFocus) && <AutoFocusPlugin defaultSelection="rootEnd" />}
-        <AutocompletePlugin directory={directory} menuOpen={menuOpen} anchor={boxRef} />
+        <AutocompletePlugin directory={directory} menuOpen={menuOpen} anchor={boxRef} commands={slash?.commands} />
         <div className="flex items-center gap-0.5 ps-1 pe-2 pb-2">
           {files && (
             <>
@@ -407,6 +452,23 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
               editor.focus()
             }}
           />
+          {slash && (
+            <>
+              <span aria-hidden className="mx-1 h-4 w-px flex-none bg-sf-line" />
+              <IconButton
+                label="Shortcuts"
+                icon={IconSlash}
+                size="sm"
+                tone="muted"
+                disabled={!empty}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  editor.update(() => $insertNodes([$createTextNode('/')]))
+                  editor.focus()
+                }}
+              />
+            </>
+          )}
           {/* Send keeps the end corner to itself (spec 6.8: browser extensions sit there otherwise). */}
           <div className="ms-auto flex items-center gap-1">
           {editing ? (
@@ -461,6 +523,12 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
         </p>
       )}
       {onSchedule && <CustomReminder open={customTime} onClose={() => setCustomTime(false)} onPick={(at) => deliver(at)} title="Schedule message" action="Schedule" />}
+      {notice && (
+        <p role="status" className="sf-small mt-1 text-sf-text-muted">
+          {notice}
+        </p>
+      )}
+      {commandError && <p className="sf-small mt-1 text-sf-error">{commandError}</p>}
       {draftFailed && <p className="sf-small mt-1 text-sf-text-muted">Draft not saved. Trying again…</p>}
       {over && <p className="sf-small mt-1 text-sf-error">Keep the message under 40,000 characters.</p>}
       {error && <p className="sf-small mt-1 text-sf-error">{error.message}</p>}

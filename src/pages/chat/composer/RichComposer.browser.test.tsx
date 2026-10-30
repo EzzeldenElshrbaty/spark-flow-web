@@ -5,6 +5,7 @@ import { userEvent } from 'vitest/browser'
 import type { User } from '@/api/types'
 import { bodyText, parseBody, type Body } from '@/lib/messageBody'
 import { opensSearch } from '@/layout/searchShortcuts'
+import { COMMANDS, type CommandOutcome, type ParsedCommand } from '@/lib/slashCommands'
 import { RichComposer, type ComposerDirectory } from '@/pages/chat/composer/RichComposer'
 
 // A real browser: the editor needs real keyboard events, selection and layout.
@@ -580,5 +581,91 @@ describe('RichComposer : emoji (spec 6.8)', () => {
       await new Promise((r) => setTimeout(r, 300))
       expect(screen.queryByRole('listbox', { name: 'Emoji' })).toBeNull()
     }
+  })
+})
+
+describe('RichComposer / shortcuts (spec 6.8)', () => {
+  const withSlash = async (run: (c: ParsedCommand) => Promise<CommandOutcome> = async () => ({ notice: '#backend is muted. Type /mute to unmute it.' })) => {
+    const spy = vi.fn(run)
+    const mounted = await ready({ slash: { commands: COMMANDS.filter((c) => c.name !== 'task'), run: spy } })
+    await userEvent.click(mounted.editor)
+    return { ...mounted, run: spy }
+  }
+
+  it('/ at the start lists the shortcuts; Enter fills one and a second Enter runs it once', async () => {
+    const { editor, onSend, run } = await withSlash()
+    await userEvent.keyboard('/mu')
+    const list = await screen.findByRole('listbox', { name: 'Shortcuts' }, LIST_WAIT)
+    expect(list.textContent).toContain('/mute')
+    await userEvent.keyboard('{Enter}')
+    await vi.waitFor(() => expect(editor.textContent).toBe('/mute '))
+    expect(run).not.toHaveBeenCalled()
+    await userEvent.keyboard('{Enter}')
+    await vi.waitFor(() => expect(run).toHaveBeenCalledOnce())
+    expect(run).toHaveBeenCalledWith({ name: 'mute', args: '', userIds: [] })
+    expect(onSend).not.toHaveBeenCalled()
+    await vi.waitFor(() => expect(editor.textContent).toBe(''))
+    expect(screen.getByRole('status').textContent).toBe('#backend is muted. Type /mute to unmute it.')
+  })
+
+  it('a shortcut not offered here is not in the list', async () => {
+    await withSlash()
+    await userEvent.keyboard('/t')
+    const list = await screen.findByRole('listbox', { name: 'Shortcuts' }, LIST_WAIT)
+    expect(list.textContent).toContain('/topic')
+    expect(list.textContent).not.toContain('/task')
+  })
+
+  it('text that only looks like a command sends as a message', async () => {
+    const { onSend, run } = await withSlash()
+    await userEvent.keyboard('/v2/invoices is slow{Enter}')
+    await vi.waitFor(() => expect(onSend).toHaveBeenCalledOnce())
+    expect(sentText(onSend)).toBe('/v2/invoices is slow')
+    expect(run).not.toHaveBeenCalled()
+  })
+
+  it('an unknown /word keeps the text and says why; one offered elsewhere says it does not work here', async () => {
+    const { editor, onSend, run } = await withSlash()
+    await userEvent.keyboard('/foo bar{Enter}')
+    await vi.waitFor(() => expect(screen.getByRole('status').textContent).toBe("/foo isn't a shortcut. To send it as a message, start it with a space."))
+    expect(editor.textContent).toBe('/foo bar')
+    await userEvent.keyboard('{Control>}a{/Control}{Backspace}/task Fix it{Enter}')
+    await vi.waitFor(() => expect(screen.getByRole('status').textContent).toBe("/task doesn't work here. To send it as a message, start it with a space."))
+    expect(run).not.toHaveBeenCalled()
+    expect(onSend).not.toHaveBeenCalled()
+  })
+
+  it('a command that fails keeps the text and shows why', async () => {
+    const { editor } = await withSlash(async () => {
+      throw new Error("You can't change this channel's topic.")
+    })
+    await userEvent.keyboard('/topic New{Enter}')
+    await vi.waitFor(() => expect(screen.getByText("You can't change this channel's topic.")).toBeTruthy())
+    expect(editor.textContent).toBe('/topic New')
+  })
+
+  it('a command that sends a message sends it through the box', async () => {
+    const sent: Body = parseBody('ok ¯\\_(ツ)_/¯')
+    const { onSend, editor } = await withSlash(async () => ({ send: sent }))
+    await userEvent.keyboard('/shrug ok{Enter}')
+    await vi.waitFor(() => expect(onSend).toHaveBeenCalledWith(sent))
+    await vi.waitFor(() => expect(editor.textContent).toBe(''))
+  })
+
+  it('Enter during IME composition never runs a command', async () => {
+    const { editor, run } = await withSlash()
+    await userEvent.keyboard('/mute ')
+    editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', isComposing: true, bubbles: true, cancelable: true }))
+    await new Promise((r) => setTimeout(r, 200))
+    expect(run).not.toHaveBeenCalled()
+  })
+
+  it('the / button types / in an empty box and is off once there is text', async () => {
+    const { editor } = await withSlash()
+    await userEvent.click(screen.getByRole('button', { name: 'Shortcuts' }))
+    await screen.findByRole('listbox', { name: 'Shortcuts' }, LIST_WAIT)
+    expect(editor.textContent).toBe('/')
+    await userEvent.keyboard('{Backspace}hi')
+    await vi.waitFor(() => expect((screen.getByRole('button', { name: 'Shortcuts' }) as HTMLButtonElement).disabled).toBe(true))
   })
 })
