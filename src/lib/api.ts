@@ -37,6 +37,7 @@ export const api: Api = {
   get mentions() { return resolve().mentions },
   get inbox() { return resolve().inbox },
   get saved() { return resolve().saved },
+  get scheduled() { return resolve().scheduled },
   get dashboard() { return resolve().dashboard },
   get files() { return resolve().files },
   get db() { return resolve().db },

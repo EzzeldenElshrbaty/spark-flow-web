@@ -7,6 +7,7 @@ import { dbApi } from './dbApi'
 import { filesApi } from './files'
 import { mockHub, type MockHub } from './realtime'
 import { savedApi } from './saved'
+import { scheduledApi } from './scheduled'
 import { startScheduler } from './scheduler'
 import { seed } from './seed'
 import { openStore } from './store'
@@ -59,6 +60,7 @@ export function createMockApi(db: MockDb, hub: MockHub, now: () => Date = () => 
     mentions: mentionsApi(db, hub),
     inbox: inboxApi(db, hub),
     saved: savedApi(db, hub, now),
+    scheduled: scheduledApi(db, hub, now),
     dashboard: dashboardApi(db, now),
     files: filesApi(db, hub, now),
     db: dbApi(db, hub),

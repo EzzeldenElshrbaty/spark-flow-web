@@ -425,3 +425,25 @@ Rules:
 - **Events:** every change, and a reminder firing, sends `saved.changed` (`{ userId }`, client handler `onSavedChanged`) to that person; firing also sends `notification.created`.
 
 Saving files (the file menu's Save for later) comes with the Files tab (slice W).
+
+## Phase 3 · Slice T: Schedule send and Drafts & sent (spec 6.8 Schedule menu, 6.12, §7 ScheduledMessage)
+
+The record is slice R's ScheduledMessage. Only `"scheduled"` and `"failed"` ones are listed; a sent one is a message in Sent.
+
+### Routes
+
+| Call | Route | Body | Returns |
+|---|---|---|---|
+| List | `GET /api/workspaces/:id/scheduled` | — | Mine there, still to go out or failed, soonest first. |
+| Schedule | `POST /api/scheduled` | `{ channelId, rootId, body, sendAt, tz }` | The record. The text is worked out from the body. |
+| Reschedule / edit | `PATCH /api/scheduled/:id` | `{ sendAt?, body? }` | The record. A new time puts a failed one back to `"scheduled"`. |
+| Delete | `DELETE /api/scheduled/:id` | — | Nothing (`204`). |
+| Send now | `POST /api/scheduled/:id/send-now` | — | The new message or reply. |
+| Sent | `GET /api/workspaces/:id/sent` | — | `[{ target: { kind, id }, channelId, rootId, text, createdAt }]`: my messages and replies there that I can still read, not deleted, newest first, at most 50. Channel events and task cards aren't listed; a reply also sent to the channel is listed once, as the reply. |
+
+Rules:
+
+- **Schedule:** checks what a send checks, at once (who may post: archived, private membership, Only admins; the text: `400` "Write a message first."), so one that can't go out isn't kept; the job checks again at its time. `rootId` must be a message in that channel (`404`). `sendAt` in the future (`400` "Pick a time in the future."). Text only: files can't be scheduled yet.
+- **Change, Delete, Send now:** only mine (`404` otherwise). A sent one: `400` "That message was already sent." Send now that's refused (`400` with the refusal's sentence) changes nothing.
+- **Events:** creating, changing, deleting, sending and failing send `scheduled.changed` (`{ userId }`, client handler `onScheduledChanged`; the spec's `scheduled.sent`) to the author; sending also sends what a send would.
+- **Times:** the Schedule menu's Tomorrow at 9:00 AM and Monday at 9:00 AM, and Custom time…, are worked out in the viewer's time zone; `tz` is kept to say when it sends.

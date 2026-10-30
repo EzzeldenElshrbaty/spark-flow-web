@@ -258,6 +258,9 @@ export type ThreadFollow = { userId: string; rootId: string; following: boolean 
 /** Text I started and haven't sent, kept on the server so it follows me between devices (spec 6.8). */
 export type Draft = { channelId: string; rootId: string | null; body: Body; updatedAt: string }
 
+/** Something I sent (spec 6.12 Drafts & sent: Sent): a message or reply, where it went, and its text. */
+export type SentItem = { target: ChatTarget; channelId: string; rootId: string | null; text: string; createdAt: string }
+
 /** What a link's preview card shows. `image` is an https address or null. */
 export type LinkPreview = { url: string; siteName: string; title: string; description: string | null; image: string | null }
 
@@ -449,6 +452,8 @@ export interface Api {
     send(channelId: string, content: string, clientId?: string, body?: Body, fileIds?: string[]): Promise<ChatMessage>
     /** My drafts in a workspace's channels (spec 6.8): one per channel and thread root. */
     drafts(workspaceId: string): Promise<Draft[]>
+    /** What I sent in a workspace (spec 6.12 Sent): messages and replies I can still read, newest first, at most 50. */
+    sent(workspaceId: string): Promise<SentItem[]>
     /** Saves my draft for a channel (or a thread in it); an empty body deletes it and returns null. */
     saveDraft(channelId: string, body: Body, rootId?: string | null): Promise<Draft | null>
     /** From the rich composer with its `body`; `alsoInChannel` also sends it to the channel (spec 6.7). */
@@ -605,6 +610,18 @@ export interface Api {
     list(workspaceId: string): Promise<ActivityItem[]>
     /** Marks these items read; without ids, all of mine in the workspace. A mention's read state is the bell's. */
     markRead(workspaceId: string, ids?: string[]): Promise<void>
+  }
+  /** My messages to send later (spec 6.8 Schedule menu, 6.12 Drafts & sent). */
+  scheduled: {
+    /** Those still to go out, and failed ones, soonest first. */
+    list(workspaceId: string): Promise<ScheduledMessage[]>
+    /** Checks what a send would (who may post, the text) now, as well as the time. */
+    create(input: { channelId: string; rootId: string | null; body: Body; sendAt: string; tz: string }): Promise<ScheduledMessage>
+    /** Reschedule (a failed one goes back to scheduled) or edit the text. */
+    update(id: string, patch: { sendAt?: string; body?: Body }): Promise<ScheduledMessage>
+    remove(id: string): Promise<void>
+    /** Sends it now: the new message or reply. A refusal says why and keeps it. */
+    sendNow(id: string): Promise<ChatMessage | ThreadReply>
   }
   /** My saved messages and replies, and their reminders (spec 6.12 Saved, 6.5 Remind me). */
   saved: {

@@ -94,6 +94,7 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
       messagesBefore: (channelId, seq) => get(`/api/channels/${enc(channelId)}/messages?before=${seq}`),
       messagesAfter: (channelId, cursor) => get(`/api/channels/${enc(channelId)}/messages?after=${enc(cursor)}`),
       drafts: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/drafts`),
+      sent: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/sent`),
       saveDraft: (channelId, body, rootId = null) => send('PUT', `/api/channels/${enc(channelId)}/draft`, { body, rootId }),
       linkPreview: (url) => get(`/api/link-preview?url=${enc(url)}`),
       jumpTarget: (channelId, since) => get(`/api/channels/${enc(channelId)}/messages/first${since ? `?since=${enc(since)}` : ''}`),
@@ -210,6 +211,13 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
     inbox: {
       list: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/activity`),
       markRead: (workspaceId, ids) => send<void>('POST', `/api/workspaces/${enc(workspaceId)}/activity/read`, ids ? { ids } : undefined),
+    },
+    scheduled: {
+      list: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/scheduled`),
+      create: (input) => send('POST', '/api/scheduled', input),
+      update: (id, patch) => send('PATCH', `/api/scheduled/${enc(id)}`, patch),
+      remove: (id) => send<void>('DELETE', `/api/scheduled/${enc(id)}`),
+      sendNow: (id) => send('POST', `/api/scheduled/${enc(id)}/send-now`),
     },
     saved: {
       list: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/saved`),

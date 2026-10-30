@@ -46,6 +46,10 @@ export const qk = {
   activity: (workspaceId: string) => ['activity', workspaceId],
   savedAll: () => ['saved'],                             // prefix of every workspace's Saved
   saved: (workspaceId: string) => ['saved', workspaceId],
+  scheduledAll: () => ['scheduled'],                     // prefix of every workspace's scheduled messages
+  scheduled: (workspaceId: string) => ['scheduled', workspaceId],
+  sentAll: () => ['sent'],                               // prefix of every workspace's Sent
+  sent: (workspaceId: string) => ['sent', workspaceId],
   dashboard: (workspaceId: string) => ['dashboard', workspaceId],
   checkedIn: (workspaceId: string) => ['dashboard', 'checked-in', workspaceId],
 } as const
@@ -55,11 +59,11 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
   switch (event.type) {
     case 'messageReceived': {
       const { channelId } = event.message
-      return [qk.messages(channelId), qk.channelsAll(), qk.channel(channelId), qk.mentions()]
+      return [qk.messages(channelId), qk.channelsAll(), qk.channel(channelId), qk.mentions(), qk.sentAll()]
     }
     case 'replyReceived': {
       const { channelId, messageId } = event.reply
-      return [qk.replies(messageId), qk.message(messageId), qk.messages(channelId), qk.channelsAll(), qk.channel(channelId), qk.mentions()]
+      return [qk.replies(messageId), qk.message(messageId), qk.messages(channelId), qk.channelsAll(), qk.channel(channelId), qk.mentions(), qk.sentAll()]
     }
     case 'ticketUpdated':
       // Project summaries (progress, overdue) and the dashboard are worked out from tasks too.
@@ -71,7 +75,7 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
       // Hours change everywhere: my day, every task and project summary (under 'tickets'), and the Time tabs.
       return [qk.myDay(), ['tickets'], qk.timeAll(), ['dashboard'], ['time', 'report']]
     case 'messageChanged':
-      return [qk.messages(event.channelId), qk.message(event.messageId), qk.replies(event.messageId), qk.mentions(), qk.activityAll()]
+      return [qk.messages(event.channelId), qk.message(event.messageId), qk.replies(event.messageId), qk.mentions(), qk.activityAll(), qk.sentAll()]
     case 'projectChanged':
       // Summaries and task lists live under 'tickets'; phases, deliverables and project time under 'projects'.
       return [['tickets'], ['projects'], ['dashboard'], qk.projectHistory(event.projectId)]
@@ -98,6 +102,8 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
       return [qk.activityAll()]
     case 'savedChanged':
       return [qk.savedAll()]
+    case 'scheduledChanged':
+      return [qk.scheduledAll(), qk.sentAll()]
     case 'dataReset':
       // The empty key matches every query.
       return [[]]

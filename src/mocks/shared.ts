@@ -3,7 +3,7 @@ import { can, type Action, type ProjectRef, type ProjectScoped } from '@/lib/per
 import { ApiError } from '@/lib/apiError'
 import { plainText } from '@/lib/mentions'
 
-export type Thing = 'Workspace' | 'User' | 'Channel' | 'Message' | 'Reply' | 'Comment' | 'Time entry' | 'Project' | 'Ticket' | 'File' | 'Phase' | 'Deliverable' | 'Invitation' | 'Saved item'
+export type Thing = 'Workspace' | 'User' | 'Channel' | 'Message' | 'Reply' | 'Comment' | 'Time entry' | 'Project' | 'Ticket' | 'File' | 'Phase' | 'Deliverable' | 'Invitation' | 'Saved item' | 'Scheduled message'
 
 /** The 404 the mock throws for an unknown id or key. */
 export function notFound(thing: Thing, id: string): ApiError {

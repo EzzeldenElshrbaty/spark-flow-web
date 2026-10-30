@@ -1,5 +1,5 @@
 import { can } from '@/lib/permissions'
-import type { Api, Attachment, Channel, ChannelMemberState, ChatMessage, Mention, NotifyLevel, Page, SystemEvent, ChatTarget, StoredChannel, ThreadReply, WhoCanPost } from '@/api/types'
+import type { Api, Attachment, Channel, ChannelMemberState, ChatMessage, Mention, NotifyLevel, Page, SentItem, SystemEvent, ChatTarget, StoredChannel, ThreadReply, WhoCanPost } from '@/api/types'
 import { channelFormErrors, descriptionError } from '@/lib/channelForm'
 import { isEmail, MAX_INVITES, normalEmail, notAnEmailLine } from '@/lib/invites'
 import { MAX_MESSAGE_FILES } from '@/lib/fileDetails'
@@ -18,6 +18,7 @@ import { linkPreviewFor } from './linkPreviews'
 import { firstLine } from '@/lib/inspector'
 import { canRead, freshState } from './membership'
 import { hereReached, reachedBy } from './mentions'
+import { rowText } from './saved'
 
 const PAGE_SIZE = 30
 
@@ -115,7 +116,7 @@ export function findChannel(data: DbData, id: string): StoredChannel {
   return channel
 }
 
-function findMessage(data: DbData, id: string): ChatMessage {
+export function findMessage(data: DbData, id: string): ChatMessage {
   const message = data.messages.find((m) => m.id === id)
   if (!message) throw notFound('Message', id)
   return message
@@ -157,6 +158,7 @@ const MAX_TEXT = 40_000 // spec 6.8
 /** How long a delete can be undone (spec 6.3: the toast's 5s, plus time for the request to arrive). */
 export const UNDO_MS = 10_000
 const MAX_DM_OTHERS = 8
+const SENT_MAX = 50
 
 /** The text as stored: trimmed, not too long, and not empty unless the message carries files (`optional`). */
 function checkText(content: string, optional = false): string {
@@ -167,7 +169,7 @@ function checkText(content: string, optional = false): string {
 }
 
 /** A body from the composer, checked, with its plain text (which the length rules apply to). */
-function checkBody(value: unknown, optional = false): { body: Body; text: string } {
+export function checkBody(value: unknown, optional = false): { body: Body; text: string } {
   const body = validBody(value)
   if (!body) throw badRequest("That message couldn't be read.")
   return { body, text: checkText(bodyText(body), optional) }
@@ -650,6 +652,19 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       return data.drafts
         .filter((d) => d.userId === data.currentUserId && here.has(d.channelId))
         .map(({ channelId, rootId, body, updatedAt }) => ({ channelId, rootId, body, updatedAt }))
+    },
+    async sent(workspaceId) {
+      await delay()
+      const data = await db.read()
+      const me = data.currentUserId
+      const here = new Set(data.channels.filter((c) => c.workspaceId === workspaceId && canRead(data, c.id, me)).map((c) => c.id))
+      const mine = (r: { senderId: string; channelId: string; deletedAt?: string | null }) => r.senderId === me && here.has(r.channelId) && !r.deletedAt
+      // A reply also sent to the channel is listed once, as the reply.
+      const items: SentItem[] = [
+        ...data.messages.filter((m) => mine(m) && !m.system && !m.broadcast && !m.commentId && !m.taskEvent).map((m) => ({ target: { kind: 'message' as const, id: m.id }, channelId: m.channelId, rootId: null, text: rowText(m), createdAt: m.createdAt })),
+        ...data.replies.filter(mine).map((r) => ({ target: { kind: 'reply' as const, id: r.id }, channelId: r.channelId, rootId: r.messageId, text: rowText(r), createdAt: r.createdAt })),
+      ]
+      return items.filter((i) => i.text).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, SENT_MAX)
     },
     async saveDraft(channelId, value, rootId = null) {
       await delay()

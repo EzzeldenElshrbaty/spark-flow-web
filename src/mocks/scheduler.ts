@@ -1,4 +1,4 @@
-import type { FlowbotNote, SavedItem, ScheduledMessage, StoredChannel } from '@/api/types'
+import type { ChatMessage, FlowbotNote, SavedItem, ScheduledMessage, StoredChannel, ThreadReply } from '@/api/types'
 import { ApiError } from '@/lib/apiError'
 import { FLOWBOT_ID, senderName } from '@/lib/flowbot'
 import type { Body } from '@/lib/messageBody'
@@ -78,19 +78,24 @@ function fireReminder(data: DbData, item: SavedItem, at: string): RealtimeEvent[
   ]
 }
 
-/** Sends a scheduled message as its author; the reason it can't be sent, if it can't. */
-function sendScheduled(data: DbData, item: ScheduledMessage): { events: RealtimeEvent[] } | { failure: string } {
+/** Sends a scheduled message as its author, marking it sent; the reason it can't be sent, if it can't. */
+export function sendScheduled(data: DbData, item: ScheduledMessage): { row: ChatMessage | ThreadReply; events: RealtimeEvent[] } | { failure: string } {
   try {
     return asUser(data, item.userId, () => {
       const input = { content: item.content, body: item.body }
-      if (item.rootId) {
-        const { reply, notified } = writeReply(data, { ...input, messageId: item.rootId })
-        item.sentId = reply.id
-        return { events: [{ type: 'replyReceived' as const, reply: clone(reply) }, ...notified.map((userId) => ({ type: 'notificationCreated' as const, userId }))] }
-      }
-      const { message, mentioned } = writeMessage(data, { ...input, channelId: item.channelId })
-      item.sentId = message.id
-      return { events: [{ type: 'messageReceived' as const, message: clone(message) }, ...mentioned.map((userId) => ({ type: 'notificationCreated' as const, userId }))] }
+      const sent: { row: ChatMessage | ThreadReply; events: RealtimeEvent[] } = item.rootId
+        ? (({ reply, notified }) => ({
+            row: reply,
+            events: [{ type: 'replyReceived' as const, reply: clone(reply) }, ...notified.map((userId) => ({ type: 'notificationCreated' as const, userId }))],
+          }))(writeReply(data, { ...input, messageId: item.rootId }))
+        : (({ message, mentioned }) => ({
+            row: message,
+            events: [{ type: 'messageReceived' as const, message: clone(message) }, ...mentioned.map((userId) => ({ type: 'notificationCreated' as const, userId }))],
+          }))(writeMessage(data, { ...input, channelId: item.channelId }))
+      item.status = 'sent'
+      item.sentId = sent.row.id
+      item.failure = null
+      return { row: sent.row, events: [...sent.events, { type: 'scheduledChanged' as const, userId: item.userId }] }
     })
   } catch (error) {
     return { failure: error instanceof ApiError ? (error.detail ?? error.message) : (error as Error).message }
@@ -124,9 +129,8 @@ export function fireDue(data: DbData, now: Date): { handled: number; events: Rea
       item.status = 'failed'
       item.failure = sent.failure
       const line = `Your scheduled message to ${destination(data, item)} wasn’t sent. ${sent.failure}`
-      events.push(...tell(data, item.workspaceId, item.userId, line, { kind: 'scheduleFailed', scheduledId: item.id }))
+      events.push(...tell(data, item.workspaceId, item.userId, line, { kind: 'scheduleFailed', scheduledId: item.id }), { type: 'scheduledChanged', userId: item.userId })
     } else {
-      item.status = 'sent'
       events.push(...sent.events)
     }
     handled++
