@@ -1,9 +1,9 @@
 import type { User } from '@/api/types'
-import { can, type Action, type ProjectRef, type ProjectScoped } from '@/lib/permissions'
+import { can, grantsOf, type Action, type Permission, type ProjectRef, type ProjectScoped } from '@/lib/permissions'
 import { ApiError } from '@/lib/apiError'
 import { plainText } from '@/lib/mentions'
 
-export type Thing = 'Workspace' | 'User' | 'Channel' | 'Message' | 'Reply' | 'Comment' | 'Time entry' | 'Project' | 'Ticket' | 'File' | 'Phase' | 'Deliverable' | 'Invitation' | 'Saved item' | 'Scheduled message' | 'Bookmark'
+export type Thing = 'Workspace' | 'User' | 'Channel' | 'Message' | 'Reply' | 'Comment' | 'Time entry' | 'Project' | 'Ticket' | 'File' | 'Phase' | 'Deliverable' | 'Invitation' | 'Saved item' | 'Scheduled message' | 'Bookmark' | 'Role'
 
 /** The 404 the mock throws for an unknown id or key. */
 export function notFound(thing: Thing, id: string): ApiError {
@@ -65,7 +65,7 @@ export const isDate = (value: unknown): boolean => typeof value === 'string' && 
 
 /** Throws 403 unless the current user may do `action` (on `project` when it is about one). */
 export function requireCan(
-  data: { currentUserId: string; users: User[]; projects: (ProjectRef & { managerId: string })[] },
+  data: { currentUserId: string; users: User[]; projects: (ProjectRef & { managerId: string })[]; roles: { id: string; grants: readonly Permission[] }[] },
   action: Action,
   project?: ProjectRef,
   extra: { taskAssigneeId?: string | null; managesAny?: boolean } = {},
@@ -73,7 +73,7 @@ export function requireCan(
   const me = currentUser(data)
   const ok = can(action as Exclude<Action, ProjectScoped>, {
     userId: me.id,
-    role: me.role,
+    grants: grantsOf(me.roleIds, data.roles),
     project,
     userTeamIds: me.teamIds,
     managesAny: data.projects.some((p) => p.managerId === me.id),

@@ -14,6 +14,7 @@ import { useNow } from '@/lib/useNow'
 import { rateAt } from '@/lib/rates'
 import { taskLabel } from '@/lib/taskLabel'
 import { useCanLog } from '@/lib/useCanLog'
+import { usePermission } from '@/lib/usePermission'
 import { useRole } from '@/lib/useRole'
 import { AddTimeSheet } from '@/pages/time/AddTimeSheet'
 import { EntryRowExtras } from '@/pages/time/EntryRowExtras'
@@ -30,8 +31,9 @@ export function TimeTab({ project, people }: { project: ProjectSummary; people: 
   const now = useNow(60_000)
   const [adding, setAdding] = useState(false)
   const canLog = useCanLog()(project)
-  const { persona, loading } = useRole()
-  const everyone = persona.role === 'admin' || project.managerId === persona.id
+  const { loading } = useRole()
+  const check = usePermission()
+  const everyone = check('time.seeTeam', { project })
   const addBar = (
     <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
       {showPrivacyNote(everyone, loading) && <p className="me-auto text-sm text-fg-muted">Only you and the project's manager see your entries.</p>}

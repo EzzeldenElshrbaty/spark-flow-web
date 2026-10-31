@@ -29,7 +29,7 @@ vi.mock('@/api/chat', () => ({
 vi.mock('@/api/users', () => ({ useUsers: () => ({ data: [], isLoading: false }) }))
 vi.mock('@/api/projects', () => ({ useProjectSummaries: () => ({ data: [] }) }))
 vi.mock('@/layout/useCurrentWorkspace', () => ({ useCurrentWorkspace: () => ({ workspace: { id: 'ws-eng', slug: 'engineering' } }) }))
-vi.mock('@/lib/useRole', () => ({ useRole: () => ({ persona: { id: 'u-2', role: 'member' } }) }))
+vi.mock('@/lib/useRole', () => ({ useRole: () => ({ persona: { id: 'u-2', roleIds: ['member'], grants: [] } }) }))
 vi.mock('@/pages/chat/useCanPost', () => ({ useCanPost: () => null, useCanWrite: () => null, useReadOnlyLine: () => '' }))
 vi.mock('@/pages/chat/useBodyContext', () => ({ useBodyContext: () => ({ users: [], tasks: new Map(), projectKeys: new Set(), ws: 'engineering', workspaceId: 'ws-eng' }), useProjectKeys: () => new Set() }))
 vi.mock('@/pages/chat/useReplyFocus', () => ({ useReplyFocus: () => undefined }))

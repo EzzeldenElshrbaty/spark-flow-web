@@ -10,6 +10,7 @@ import type { MockHub } from './realtime'
 import { buildReport } from './report'
 import { ApiError } from '@/lib/apiError'
 import { badRequest, clone, currentUser, newId, notFound, requireCan } from './shared'
+import { grantsFor } from './roles'
 
 const HOUR = 3_600_000
 const MAX_PLAN = 500
@@ -50,7 +51,7 @@ function stopRunning(data: DbData, userId: string, at: string) {
 function checkOn(data: DbData, projectId: string) {
   const me = currentUser(data)
   const project = findProject(data, projectId)
-  if (!can('time.logOn', { userId: me.id, role: me.role, project, userTeamIds: me.teamIds }))
+  if (!can('time.logOn', { userId: me.id, grants: grantsFor(data, me), project, userTeamIds: me.teamIds }))
     throw new ApiError({ title: 'Forbidden', status: 403, detail: "You're not on this project." })
 }
 
@@ -98,7 +99,7 @@ function changeableEntry(data: DbData, id: string): TimeEntry {
   const me = currentUser(data)
   const entry = data.timeEntries.find((e) => e.id === id)
   if (!entry) throw notFound('Time entry', id)
-  if (entry.userId !== me.id && me.role !== 'admin') throw new ApiError({ title: 'Forbidden', status: 403, detail: 'You can only change your own time.' })
+  if (entry.userId !== me.id && !can('time.editOthers', { userId: me.id, grants: grantsFor(data, me) })) throw new ApiError({ title: 'Forbidden', status: 403, detail: 'You can only change your own time.' })
   if (entry.endedAt === null) throw badRequest('Stop the timer first.')
   // An archived project's time stays as it is: not edited, moved off it or deleted.
   openProject(data, entry.projectId)
@@ -130,11 +131,11 @@ export function timeApi(db: MockDb, hub: MockHub, now: () => Date): Api['time'] 
       const project = findProject(data, projectId)
       const me = currentUser(data)
       // Entry times are personal (spec §1): Admins and the project's manager see everyone's, others only their own.
-      const everyone = me.role === 'admin' || project.managerId === me.id
+      const everyone = can('time.seeTeam', { userId: me.id, grants: grantsFor(data, me), project })
       const entries = data.timeEntries
         .filter((e) => e.projectId === projectId && (everyone || e.userId === me.id))
         .sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1))
-      const rates = can('timeCost.view', { userId: me.id, role: me.role }) ? data.rates : null
+      const rates = can('timeCost.view', { userId: me.id, grants: grantsFor(data, me) }) ? data.rates : null
       return clone({ entries, rates })
     },
 

@@ -29,6 +29,7 @@ import { parseMentions, parseTicketKeys } from './text'
 import { parseBody } from '@/lib/messageBody'
 import type { StoredMemberState } from './db'
 import { projectPeopleIds } from '@/lib/projectPeople'
+import { builtInRoles } from './roles'
 
 // ── Builders and derived-field helpers ────────────────────────────────────
 // Everything below is pure: the same `now` always gives the same data (no Math.random, no Date.now).
@@ -182,15 +183,15 @@ export function seed(now: Date): SeedResult {
 
   // ── Users ───────────────────────────────────────────────────────────────
   const users: User[] = [
-    { id: 'u-1', name: 'Youssef Abdelrahman', email: 'youssef.abdelrahman@spark-sys.com', title: 'Managing Director', role: 'admin', teamIds: [], presence: 'active' },
-    { id: 'u-2', name: 'Nour El-Sayed', email: 'nour.elsayed@spark-sys.com', title: 'Project Manager · Backend', role: 'pm', teamIds: ['t-backend'], presence: 'active' },
-    { id: 'u-3', name: 'Mariam Fathy', email: 'mariam.fathy@spark-sys.com', title: 'Frontend Engineer', role: 'member', teamIds: ['t-frontend'], presence: 'active' },
-    { id: 'u-4', name: 'Ahmed Shawky', email: 'ahmed.shawky@spark-sys.com', title: 'Project Manager · Mobile', role: 'pm', teamIds: ['t-mobile'], presence: 'away' },
-    { id: 'u-5', name: 'Salma Ibrahim', email: 'salma.ibrahim@spark-sys.com', title: 'QA Engineer', role: 'member', teamIds: ['t-qa'], presence: 'active' },
-    { id: 'u-6', name: 'Hossam Gaber', email: 'hossam.gaber@spark-sys.com', title: 'DevOps Engineer', role: 'member', teamIds: ['t-backend'], presence: 'offline' },
-    { id: 'u-7', name: 'Dina Mansour', email: 'dina.mansour@spark-sys.com', title: 'Product Designer', role: 'member', teamIds: ['t-frontend'], presence: 'away' },
-    { id: 'u-8', name: 'Tarek Lotfy', email: 'tarek.lotfy@spark-sys.com', title: 'Android Engineer', role: 'member', teamIds: ['t-mobile'], presence: 'offline' },
-    { id: 'u-9', name: 'Karim Hassan', email: 'karim.hassan@spark-sys.com', title: 'Sales Manager', role: 'sales', teamIds: [], presence: 'active' },
+    { id: 'u-1', name: 'Youssef Abdelrahman', email: 'youssef.abdelrahman@spark-sys.com', title: 'Managing Director', roleIds: ['admin'], teamIds: [], presence: 'active' },
+    { id: 'u-2', name: 'Nour El-Sayed', email: 'nour.elsayed@spark-sys.com', title: 'Project Manager · Backend', roleIds: ['pm'], teamIds: ['t-backend'], presence: 'active' },
+    { id: 'u-3', name: 'Mariam Fathy', email: 'mariam.fathy@spark-sys.com', title: 'Frontend Engineer', roleIds: ['member'], teamIds: ['t-frontend'], presence: 'active' },
+    { id: 'u-4', name: 'Ahmed Shawky', email: 'ahmed.shawky@spark-sys.com', title: 'Project Manager · Mobile', roleIds: ['pm'], teamIds: ['t-mobile'], presence: 'away' },
+    { id: 'u-5', name: 'Salma Ibrahim', email: 'salma.ibrahim@spark-sys.com', title: 'QA Engineer', roleIds: ['member'], teamIds: ['t-qa'], presence: 'active' },
+    { id: 'u-6', name: 'Hossam Gaber', email: 'hossam.gaber@spark-sys.com', title: 'DevOps Engineer', roleIds: ['member'], teamIds: ['t-backend'], presence: 'offline' },
+    { id: 'u-7', name: 'Dina Mansour', email: 'dina.mansour@spark-sys.com', title: 'Product Designer', roleIds: ['member'], teamIds: ['t-frontend'], presence: 'away' },
+    { id: 'u-8', name: 'Tarek Lotfy', email: 'tarek.lotfy@spark-sys.com', title: 'Android Engineer', roleIds: ['member'], teamIds: ['t-mobile'], presence: 'offline' },
+    { id: 'u-9', name: 'Karim Hassan', email: 'karim.hassan@spark-sys.com', title: 'Sales Manager', roleIds: ['sales'], teamIds: [], presence: 'active' },
   ]
 
   const teams: Team[] = [
@@ -557,6 +558,7 @@ export function seed(now: Date): SeedResult {
     bookmarks: [],
     sidebarOrders: [],
     notificationPrefs: [],
+    roles: builtInRoles(),
     activity: tickets
       .map((t) => ({ id: `act-${t.id}`, projectId: t.projectId, taskKey: t.key, actorId: t.reporterId, at: t.createdAt, kind: 'task.created' as const, changes: [] }))
       .sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0)),

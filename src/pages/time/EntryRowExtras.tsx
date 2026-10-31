@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import type { TimeEntry } from '@/api/types'
 import { capped } from '@/lib/hours'
+import { usePermission } from '@/lib/usePermission'
 import { useRole } from '@/lib/useRole'
 import { canChangeEntry, EntryActions } from '@/pages/time/EntryActions'
 
 /** What a time entry row ends with: the "stopped at 12 h" fix link and the ⋯ menu, for whoever may change it. */
 export function EntryRowExtras({ entry, compact = false }: { entry: TimeEntry; compact?: boolean }) {
   const { persona } = useRole()
+  const check = usePermission()
   const [fixing, setFixing] = useState(false)
-  if (!canChangeEntry(entry, persona)) return null
+  if (!canChangeEntry(entry, persona.id, check('time.editOthers'))) return null
   return (
     <span className="flex shrink-0 items-center gap-1">
       {capped(entry) && (

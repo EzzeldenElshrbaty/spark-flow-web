@@ -173,6 +173,25 @@ describe('18 → 19', () => {
   })
 })
 
+describe('23 → 24 (roles become records)', () => {
+  it('stores the four built-in roles with today’s rights, and each person holds the role they had', () => {
+    const out = migrate(
+      { version: 23, currentUserId: 'u-1', users: [{ id: 'u-1', role: 'admin' }, { id: 'u-2', role: 'sales' }, { id: 'u-3', role: 'pm' }, { id: 'u-4', role: 'odd' }, { id: 'u-5' }] },
+      24,
+    ) as { roles: { id: string; builtIn: boolean; grants: string[] }[]; users: Record<string, unknown>[] }
+    expect(out.roles.map((r) => [r.id, r.builtIn])).toEqual([['admin', true], ['sales', true], ['pm', true], ['member', true]])
+    expect(out.roles.find((r) => r.id === 'sales')!.grants).toEqual(['dashboard.all', 'projects.create', 'projects.editAll', 'projects.postAll'])
+    expect(out.users.map((u) => u.roleIds)).toEqual([['admin'], ['sales'], ['pm'], ['member'], ['member']])
+    expect(out.users.every((u) => !('role' in u))).toBe(true)
+  })
+
+  it('keeps the four roles as they were on that day, whatever later permissions add, and roles already given', () => {
+    const out = migrate({ version: 23, currentUserId: 'u-1', users: [{ id: 'u-1', roleIds: ['sales', 'pm'] }] }, 24) as { roles: { id: string; grants: string[] }[]; users: Record<string, unknown>[] }
+    expect(out.users[0].roleIds).toEqual(['sales', 'pm'])
+    expect(out.roles.find((r) => r.id === 'admin')!.grants).toHaveLength(19)
+  })
+})
+
 describe('22 → 23', () => {
   it('no preferences yet; a channel level equal to its old default now follows the default', () => {
     const out = migrate(

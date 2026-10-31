@@ -3,6 +3,7 @@ import { renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { Channel, ProjectSummary } from '@/api/types'
 import { useChannelProject, useChannelRights } from '@/pages/chat/ChannelActions'
+import { ALL_PERMISSIONS } from '@/lib/permissions'
 
 let active: ProjectSummary[] | undefined = []
 let archived: ProjectSummary[] | undefined = []
@@ -10,7 +11,7 @@ vi.mock('@/api/projects', () => ({
   useProjectSummaries: () => ({ data: active }),
   useArchivedProjects: (_: string, enabled: boolean) => ({ data: enabled ? archived : undefined }),
 }))
-vi.mock('@/lib/useRole', () => ({ useRole: () => ({ persona: { id: 'u-1', role: 'admin' } }) }))
+vi.mock('@/lib/useRole', () => ({ useRole: () => ({ persona: { id: 'u-1', roleIds: ['admin'], grants: ALL_PERMISSIONS } }) }))
 
 const channel = { id: 'c-nex', workspaceId: 'ws-eng', kind: 'channel', name: 'nexus-core', isPrivate: false, memberIds: ['u-1'], whoCanPost: 'everyone' } as Channel
 const nexus = { id: 'p-nex', key: 'NEX', name: 'Nexus Core', channelId: 'c-nex' } as ProjectSummary

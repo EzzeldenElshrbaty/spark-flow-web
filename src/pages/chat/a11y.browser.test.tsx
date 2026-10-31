@@ -43,6 +43,7 @@ import { SnippetDialog } from '@/pages/chat/snippets/SnippetDialog'
 import { UploadTray } from '@/pages/chat/uploads/UploadTray'
 import type { Upload } from '@/pages/chat/uploads/useUploads'
 import type { BodyContext } from '@/pages/chat/MessageBody'
+import { ALL_PERMISSIONS } from '@/lib/permissions'
 
 // Spec 10: every text and control pair meets the 3.2 contrast, checked automatically in CI. These render the chat's
 // surfaces in both themes with the app's CSS and run axe over the page (portals included).
@@ -50,8 +51,8 @@ import type { BodyContext } from '@/pages/chat/MessageBody'
 afterEach(cleanup)
 
 const users = [
-  { id: 'u-1', name: 'Youssef Abdelrahman', title: 'Managing Director', email: 'y@spark-sys.com', presence: 'active', role: 'admin' },
-  { id: 'u-2', name: 'Nour El-Sayed', title: 'Backend lead', email: 'n@spark-sys.com', presence: 'away', role: 'pm' },
+  { id: 'u-1', name: 'Youssef Abdelrahman', title: 'Managing Director', email: 'y@spark-sys.com', presence: 'active', roleIds: ['admin'] },
+  { id: 'u-2', name: 'Nour El-Sayed', title: 'Backend lead', email: 'n@spark-sys.com', presence: 'away', roleIds: ['pm'] },
 ] as User[]
 const task: TaskRef = { key: 'NEX-103', title: 'Rate limit the search API', status: 'inReview', statusLabel: 'In review', category: 'inProgress', projectKey: 'NEX', projectName: 'Nexus Core', assigneeId: 'u-2' }
 const ctx: BodyContext = { users, tasks: new Map([[task.key, task]]), projectKeys: new Set(['NEX']), ws: 'engineering', workspaceId: 'ws-eng' }
@@ -94,7 +95,7 @@ const details = (over: Partial<Parameters<typeof ChannelDetails>[0]> = {}) => (
     {...over}
   />
 )
-const mariam = { id: 'u-3', name: 'Mariam Fathy', title: 'Designer', email: 'mariam.fathy@spark-sys.com', presence: 'offline', role: 'member' } as User
+const mariam = { id: 'u-3', name: 'Mariam Fathy', title: 'Designer', email: 'mariam.fathy@spark-sys.com', presence: 'offline', roleIds: ['member'] } as User
 const sentInvite = { id: 'inv-1', email: 'lina@partner.io', invitedBy: 'u-1', workspaceId: 'ws-eng', channelId: 'c-backend', role: 'guest' as const, status: 'pending' as const, createdAt: '2026-10-28T08:00:00.000Z' }
 const scope: Attachment = {
   id: 'a-scope', name: 'scope.pdf', title: 'Release scope', description: 'What ships in 2.4.', mimeType: 'application/pdf', size: 188_416, createdAt: '2026-10-28T09:00:00.000Z',
@@ -106,7 +107,7 @@ const uploadOf = (name: string, over: Partial<Upload> = {}): Upload => ({
 })
 /** The API calls the file windows and the File details panel make, answered here. */
 function fileSpies() {
-  vi.spyOn(api.users, 'me').mockResolvedValue(users[0])
+  vi.spyOn(api.users, 'me').mockResolvedValue({ ...users[0], grants: [...ALL_PERMISSIONS] })
   vi.spyOn(api.users, 'list').mockResolvedValue(users)
   vi.spyOn(api.workspaces, 'list').mockResolvedValue([{ id: 'ws-eng', slug: 'engineering', name: 'Spark Engineering' }])
   vi.spyOn(api.chat, 'channels').mockResolvedValue([channel, { ...channel, id: 'c-general', name: 'general' }])
@@ -588,7 +589,7 @@ describe('the message toolbar (spec 6.4) and the ⋯ on a phone (spec 10: every 
 
   it('in the thread panel (384px) it never covers the author name or the time', async () => {
     await page.viewport(1280, 800)
-    const people = [...users, { id: 'u-3', name: 'Abdelrahman Mostafa Elshazly', title: 'QA lead', email: 'a@spark-sys.com', presence: 'active', role: 'member' } as User]
+    const people = [...users, { id: 'u-3', name: 'Abdelrahman Mostafa Elshazly', title: 'QA lead', email: 'a@spark-sys.com', presence: 'active', roleIds: ['member'] } as User]
     const wide = { ...ctx, users: people }
     const row = (content: string, over: Partial<ChatMessage> = {}) => (
       <ChannelMessage message={message(content, { senderId: 'u-3', ...over })} users={people} ctx={wide} meId="u-1" canPost continuation={false} showThread={false} compact />
@@ -799,7 +800,7 @@ describe('Channel details on a phone (spec 10, 6.16)', () => {
 describe('Channel details on a phone: the rest of its controls (review)', () => {
   const more = [
     ...users,
-    { id: 'u-3', name: 'Mariam Fathy', title: 'Designer', email: 'm@spark-sys.com', presence: 'offline', role: 'member' },
+    { id: 'u-3', name: 'Mariam Fathy', title: 'Designer', email: 'm@spark-sys.com', presence: 'offline', roleIds: ['member'] },
   ] as User[]
   /** Whether a touch 21px above and below the middle of `el` lands on it. */
   const answers = (el: Element) => {
@@ -839,8 +840,8 @@ describe('Channel details on a phone: the rest of its controls (review)', () => 
 describe('Esc in Channel details, with real key presses (spec 10, review)', () => {
   const more = [
     ...users,
-    { id: 'u-3', name: 'Mariam Fathy', title: 'Designer', email: 'm@spark-sys.com', presence: 'offline', role: 'member' },
-    { id: 'u-4', name: 'Omar Hassan', title: 'QA', email: 'o@spark-sys.com', presence: 'active', role: 'member' },
+    { id: 'u-3', name: 'Mariam Fathy', title: 'Designer', email: 'm@spark-sys.com', presence: 'offline', roleIds: ['member'] },
+    { id: 'u-4', name: 'Omar Hassan', title: 'QA', email: 'o@spark-sys.com', presence: 'active', roleIds: ['member'] },
   ] as User[]
 
   it('in the Add people suggestions it closes the list and keeps the picks; then Add people; then the details', async () => {

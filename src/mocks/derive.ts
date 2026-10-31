@@ -1,8 +1,8 @@
 import { rateAt } from '@/lib/rates'
-import type { Phase, Project, ProjectSummary, Rate, Role, StatusCategory, TaskView, Ticket, TimeEntry } from '@/api/types'
+import type { Phase, Project, ProjectSummary, Rate, StatusCategory, TaskView, Ticket, TimeEntry } from '@/api/types'
 import { categoryOf } from '@/lib/boardColumns'
 import { entryHours } from '@/lib/hours'
-import { can } from '@/lib/permissions'
+import { can, type Permission } from '@/lib/permissions'
 import { isPastDue } from '@/lib/dates'
 
 // What the server works out and never stores (spec §3). Pure: the same data and `now` always give the same answer.
@@ -35,7 +35,7 @@ export function taskView(task: Ticket, data: Pick<Source, 'timeEntries' | 'proje
 
 const latest = (...isoTimes: string[]) => isoTimes.reduce((a, b) => (new Date(a).getTime() >= new Date(b).getTime() ? a : b))
 
-export function summarize(project: Project, data: Source, now: Date, viewer: { userId: string; role: Role }): ProjectSummary {
+export function summarize(project: Project, data: Source, now: Date, viewer: { userId: string; grants: readonly Permission[] }): ProjectSummary {
   // Archived tasks are out of the counts and progress; their time still counts in hours and cost (entries below).
   const tasks = data.tickets.filter((t) => t.projectId === project.id && !t.archivedAt).map((t) => taskView(t, data, now, project))
   const entries = data.timeEntries.filter((e) => e.projectId === project.id)

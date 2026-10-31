@@ -15,6 +15,7 @@ import { CODE_LANGUAGES } from '@/lib/codeTokens'
 import { fileKind } from '@/lib/fileTypes'
 import { filePlace } from './saved'
 import { badRequest, clone, currentUser, newId, notFound, requireCan } from './shared'
+import { grantsFor } from './roles'
 
 /** The upload rules (empty, too big, a type we don't take), with the sentence the form shows. */
 /** The workspaces a file is in: those of the channels and projects it's shared in. */
@@ -77,7 +78,7 @@ export function fileRecord(file: { name: string; type: string; size: number }, u
 const onProject = (data: DbData, projectId: string) => {
   const me = currentUser(data)
   const project = data.projects.find((p) => p.id === projectId)
-  return Boolean(project) && can('collab.post', { userId: me.id, role: me.role, project: { ...project!, archivedAt: null }, userTeamIds: me.teamIds })
+  return Boolean(project) && can('collab.post', { userId: me.id, grants: grantsFor(data, me), project: { ...project!, archivedAt: null }, userTeamIds: me.teamIds })
 }
 
 /** Where a file is, as I may see it: messages and replies in channels I can read, task comments and project files. */
@@ -112,7 +113,7 @@ function visibleFile(data: DbData, fileId: string): Attachment {
 /** Whoever uploaded it, or an Admin (spec §9). */
 function requireFileManage(data: DbData, file: Attachment) {
   const me = currentUser(data)
-  if (!can('file.manage', { userId: me.id, role: me.role, uploadedBy: file.uploadedBy })) {
+  if (!can('file.manage', { userId: me.id, grants: grantsFor(data, me), uploadedBy: file.uploadedBy })) {
     throw new ApiError({ title: 'Forbidden', status: 403, detail: 'Only whoever uploaded it, or an admin, can change this file.' })
   }
 }
@@ -210,7 +211,7 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
         if (!record) throw notFound('File', fileId)
         const project = openProject(data, record.projectId)
         const me = currentUser(data)
-        if (record.uploadedBy !== me.id && !can('phase.manage', { userId: me.id, role: me.role, project, userTeamIds: me.teamIds }))
+        if (record.uploadedBy !== me.id && !can('phase.manage', { userId: me.id, grants: grantsFor(data, me), project, userTeamIds: me.teamIds }))
           throw new ApiError({ title: 'Forbidden', status: 403, detail: 'You can only remove files you added.' })
         const name = data.attachments.find((a) => a.id === record.attachmentId)?.name ?? 'a file'
         data.projectFiles = data.projectFiles.filter((f) => f !== record)
@@ -278,7 +279,7 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
       const needle = q.trim().toLowerCase()
       return clone(
         data.attachments
-          .filter((a) => !a.deletedAt && a.scanStatus === 'clean' && (a.uploadedBy === me.id || me.role === 'admin'))
+          .filter((a) => !a.deletedAt && a.scanStatus === 'clean' && can('file.manage', { userId: me.id, grants: grantsFor(data, me), uploadedBy: a.uploadedBy }))
           .filter((a) => !needle || a.title.toLowerCase().includes(needle) || a.name.toLowerCase().includes(needle))
           .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
           .flatMap((file): ShareableFile[] => {
@@ -343,7 +344,7 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
         const file = visibleFile(data, id)
         // Only whoever uploaded it, or an Admin: nobody else carries a file from where it is to a wider channel.
         const me = currentUser(data)
-        if (!can('file.manage', { userId: me.id, role: me.role, uploadedBy: file.uploadedBy })) {
+        if (!can('file.manage', { userId: me.id, grants: grantsFor(data, me), uploadedBy: file.uploadedBy })) {
           throw new ApiError({ title: 'Forbidden', status: 403, detail: 'Only whoever uploaded it, or an admin, can share this file.' })
         }
         if (file.scanStatus !== 'clean') throw badRequest(file.scanStatus === 'blocked' ? 'This file was blocked.' : 'This file is still being checked.')

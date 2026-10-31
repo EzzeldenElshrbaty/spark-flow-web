@@ -65,6 +65,8 @@ describe('validSavedPlace', () => {
     expect(validSavedPlace('/w/engineering/c/c-general', engineering, engineeringProjects)).toBe(true)
     expect(validSavedPlace('/w/engineering/settings/rates', engineering, engineeringProjects)).toBe(true)
     expect(paths.rates('engineering')).toBe('/w/engineering/settings/rates')
+    expect(paths.roles('engineering')).toBe('/w/engineering/settings/roles')
+    expect(validSavedPlace('/w/engineering/settings/roles', engineering, engineeringProjects)).toBe(true)
     expect(paths.home('engineering')).toBe('/w/engineering')
     expect(paths.dashboard('engineering')).toBe('/w/engineering/dashboard')
     expect(validSavedPlace(paths.saved('engineering'), engineering, engineeringProjects)).toBe(true)

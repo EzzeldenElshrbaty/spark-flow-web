@@ -22,7 +22,7 @@ describe('modeOf', () => {
   })
 
   it('leaves Settings, search and unknown pages to the side you were on', () => {
-    for (const path of ['/w/engineering/settings', '/w/engineering/settings/rates', '/w/engineering/search', '/w/engineering/preferences', '/', '/w/engineering/nope', '/dev/ui']) {
+    for (const path of ['/w/engineering/settings', '/w/engineering/settings/rates', '/w/engineering/settings/roles', '/w/engineering/search', '/w/engineering/preferences', '/', '/w/engineering/nope', '/dev/ui']) {
       expect(modeOf(path), path).toBeNull()
     }
   })

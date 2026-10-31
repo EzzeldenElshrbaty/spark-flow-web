@@ -362,7 +362,7 @@ export function SidebarContent({
   collapsed?: boolean
   onNavigate?: () => void
 }) {
-  const { role, persona } = useRole()
+  const { grants, persona } = useRole()
   const check = usePermission()
   const { workspace, starred, channels, dms, apps, projects, mentions, activityUnread, threadsUnread, customOrder, savedInProgress, draftsAndScheduled, chatLoading, projectsLoading, failed } = useSidebarGroups()
   const slug = workspace?.slug
@@ -528,7 +528,7 @@ export function SidebarContent({
           <p className="sf-meta mt-3 px-2 text-sf-sidebar-text-muted">Some of this list didn’t load. Refresh to try again.</p>
         )}
       </nav>
-      {slug && canSee(settingsItem, role) && (
+      {slug && canSee(settingsItem, grants) && (
         <div className="flex-none border-t border-sf-sidebar-hover pt-2">
           <SideLink to={paths.settings(slug)} label={settingsItem.label} icon={IconSettings} {...row} />
         </div>

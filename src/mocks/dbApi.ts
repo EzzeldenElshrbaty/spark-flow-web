@@ -4,12 +4,14 @@ import type { MockDb } from './db'
 import { delay } from './latency'
 import type { MockHub } from './realtime'
 import { currentUser, forbidden } from './shared'
+import { grantsFor } from './roles'
 
 /** The Database page's actions: admins only. A reset or reload tells every other tab its data is out of date. */
 export function dbApi(db: MockDb, hub: MockHub): Api['db'] {
   const allowed = async () => {
-    const me = currentUser(await db.read())
-    if (!can('database.manage', { userId: me.id, role: me.role })) throw forbidden('the database')
+    const data = await db.read()
+    const me = currentUser(data)
+    if (!can('database.manage', { userId: me.id, grants: grantsFor(data, me) })) throw forbidden('the database')
   }
   return {
     async export() {

@@ -8,6 +8,7 @@ import { logActivity, statusChange } from './activity'
 import { entryEnd } from '@/lib/hours'
 import { stopTimersOn } from './timers'
 import { badRequest, clone, currentUser, isDate, newId, notFound, pickPatch, requireCan, text } from './shared'
+import { grantsFor } from './roles'
 import { CHANNEL_NAME } from '@/lib/channelForm'
 import { projectPeopleIds } from '@/lib/projectPeople'
 
@@ -170,7 +171,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
     const viewer = currentUser(data)
     return data.projects
       .filter((p) => p.workspaceId === workspaceId && (opts?.all || Boolean(p.archivedAt) === Boolean(opts?.archived)))
-      .map((p) => summarize(p, data, now(), { userId: viewer.id, role: viewer.role }))
+      .map((p) => summarize(p, data, now(), { userId: viewer.id, grants: grantsFor(data, viewer) }))
   }
   /** Archives or restores a project with its channel, in one write; archiving stops the timers on its tasks. */
   const setArchived = async (id: string, archive: boolean) => {

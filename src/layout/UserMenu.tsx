@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { IconAdjustmentsHorizontal, IconChevronDown, IconKey, IconLogout, IconMoon, IconSun } from '@tabler/icons-react'
 import { useNavigate } from 'react-router'
 import { useDndEnd } from '@/api/preferences'
+import { useRoleNames } from '@/api/roles'
 import type { User } from '@/api/types'
 import { useUsers, useViewAs } from '@/api/users'
 import { Avatar } from '@/components/sf/Avatar'
@@ -11,7 +12,6 @@ import { Menu, MenuHeading, MenuItem, MenuSeparator, useCloseMenu } from '@/comp
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { backendOn } from '@/lib/api'
 import { paths } from '@/lib/paths'
-import { roleLabels } from '@/lib/roles'
 import { useRole } from '@/lib/useRole'
 import { useTheme } from '@/lib/useTheme'
 
@@ -25,6 +25,7 @@ export function UserMenu() {
   const { theme, setTheme } = useTheme()
   const { workspace } = useCurrentWorkspace()
   const people = useUsers(backendOn ? undefined : workspace?.id)
+  const roleNames = useRoleNames()
   const viewAs = useViewAs()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
@@ -97,7 +98,7 @@ export function UserMenu() {
         <div className="min-w-0">
           <p className="sf-ui-medium m-0 truncate text-sf-text">{persona.name}</p>
           <p className="sf-meta m-0 truncate text-sf-text-muted">
-            {roleLabels[persona.role]} · {persona.title}
+            {[roleNames(persona.roleIds), persona.title].filter(Boolean).join(' · ')}
           </p>
         </div>
       </div>
@@ -124,7 +125,7 @@ export function UserMenu() {
             </p>
           )}
           {people.data.map((person) => (
-            <ViewAsItem key={person.id} person={person} current={person.id === persona.id} pending={viewAs.isPending} onPick={switchTo} />
+            <ViewAsItem key={person.id} person={person} roles={roleNames(person.roleIds)} current={person.id === persona.id} pending={viewAs.isPending} onPick={switchTo} />
           ))}
         </>
       )}
@@ -140,11 +141,11 @@ export function UserMenu() {
 }
 
 /** A View as row: picking someone else keeps the menu open until the switch lands; picking myself just closes it. */
-function ViewAsItem({ person, current, pending, onPick }: { person: User; current: boolean; pending: boolean; onPick: (userId: string, close: () => void) => void }) {
+function ViewAsItem({ person, roles, current, pending, onPick }: { person: User; roles: string; current: boolean; pending: boolean; onPick: (userId: string, close: () => void) => void }) {
   const close = useCloseMenu()
   return (
     <MenuItem checked={current} disabled={pending} keepOpen={!current} onSelect={() => !current && onPick(person.id, close)}>
-      {person.name} <span className="text-sf-text-muted">· {roleLabels[person.role]}</span>
+      {person.name} <span className="text-sf-text-muted">· {roles}</span>
     </MenuItem>
   )
 }

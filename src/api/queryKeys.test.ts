@@ -68,5 +68,7 @@ describe('keysForEvent (M10)', () => {
     // Threads (spec 6.12) sit under one prefix, so one key reaches every workspace's pages.
     expect(qk.threads('ws1')).toEqual([...qk.threadsAll(), 'ws1'])
     expect(keysForEvent({ type: 'dataReset' })).toEqual([[]])
+    // Roles changed: anyone's rights, so everything (slice 1).
+    expect(keysForEvent({ type: 'rolesChanged' })).toEqual([[]])
   })
 })

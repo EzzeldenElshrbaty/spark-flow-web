@@ -50,6 +50,7 @@ export const qk = {
   activityAll: () => ['activity'],                       // prefix of every workspace's Activity
   activity: (workspaceId: string) => ['activity', workspaceId],
   preferences: () => ['preferences', 'me'],
+  roles: () => ['roles'],
   sidebarOrderAll: () => ['sidebar-order'],
   sidebarOrder: (workspaceId: string) => ['sidebar-order', workspaceId],
   searchAll: () => ['search'],
@@ -120,6 +121,9 @@ export function keysForEvent(event: RealtimeEvent): QueryKey[] {
       // The default level is every channel's level that isn't its own; keywords are mentions, Activity and so
       // Threads' unread replies.
       return [qk.preferences(), qk.channelsAll(), qk.everyChannel(), qk.mentions(), qk.activityAll(), qk.threadsAll()]
+    case 'rolesChanged':
+      // Anyone's rights may have changed: what every page may show, and me.
+      return [[]]
     case 'scheduledChanged':
       return [qk.scheduledAll(), qk.sentAll()]
     case 'dataReset':

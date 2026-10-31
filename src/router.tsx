@@ -25,6 +25,7 @@ const MyTasksPage = page(() => import('@/pages/tasks/MyTasksPage'), 'MyTasksPage
 const SettingsPage = page(() => import('@/pages/settings/SettingsPage'), 'SettingsPage')
 const DatabasePage = page(() => import('@/pages/settings/DatabasePage'), 'DatabasePage')
 const RatesPage = page(() => import('@/pages/settings/RatesPage'), 'RatesPage')
+const RolesPage = page(() => import('@/pages/settings/RolesPage'), 'RolesPage')
 const ActivityPage = page(() => import('@/pages/chat/ActivityPage'), 'ActivityPage')
 const ThreadsPage = page(() => import('@/pages/chat/threads/ThreadsPage'), 'ThreadsPage')
 const SearchPage = page(() => import('@/pages/chat/search/SearchPage'), 'SearchPage')
@@ -91,6 +92,7 @@ export const router = createBrowserRouter([
           { path: 'settings', element: <SettingsPage /> },
           { path: 'settings/database', element: <DatabasePage /> },
           { path: 'settings/rates', element: <RatesPage /> },
+          { path: 'settings/roles', element: <RolesPage /> },
         ],
       },
       // Old or mistyped links say so, with the way home.

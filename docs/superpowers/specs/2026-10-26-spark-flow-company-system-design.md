@@ -32,6 +32,7 @@ browser run.
 | Scope for Thursday | All four modules: projects + phases + tasks; check-in + time + cost; manager dashboard; chat + mentions + comments | Smaller slice — user chose all four; a cut line (§8) protects the date |
 | Mock storage | **IndexedDB**: one readwrite transaction per write (browser-serialised across tabs), files as Blobs, memory fallback | localStorage key-per-record (same-record edits still clash); single writer tab (leader election, more parts) |
 | Roles | **Admin, Sales, PM, Member** + a demo-only "View as" switcher | Spark CRM sales roles (don't fit); no roles (salaries exposed) |
+| Roles (amended 31 Oct 2026, Admin and help slice 1) | **Roles are records an Admin edits** (name and permissions), and a person holds one or more, getting every permission of each. Admin, Sales, Project manager and Member are seeded with exactly the rights above and can't be deleted | Fixed roles in code (asked for editable ones, as in the CRM) |
 | Time logging | **Timer + manual entry**; one running timer per user; switching task stops the last | Timer only; manual only |
 | Way of working | Projects have **phases** (waterfall); `methodology: 'agile'` adds optional sprints | Sprints for everyone (manager: "I want it flexible… waterfall") |
 | Tasks vs tickets | Keep the `Ticket` contract renamed to **Task**, same `NEX-101` keys, plus `phaseId`, `type`, `dueAt`, `estimateHours` | New entity (would break Phases 1+2 code and routes) |
@@ -115,6 +116,29 @@ export type Mention = { kind: 'user' | 'project' | 'task' | 'all'; id: string } 
 HTTP paths follow the Phases 1+2 style (`POST /api/projects`, `POST /api/time/start`, …) and are listed in the plan.
 
 ### 4.3 Permissions (enforced in the mock API — 403 `ApiError` — and mirrored in the UI)
+
+**Amended 31 Oct 2026 (Admin and help slice 1):** the table below is now the four built-in roles' starting grants,
+not code. Roles are records (`Role { id, name, builtIn, grants, holders }`), people hold `roleIds`, and `can()` in
+`src/lib/permissions.ts` answers from the permissions their roles grant (`PERMISSION_GROUPS`, 19 of them) plus the
+rules that depend on the record: whoever a project names as manager has PM rights on it, authors edit their own
+messages, a private channel's members manage it, and an archived project is frozen for everyone. A test checks the
+built-in roles give the old table's answers in every case. Routes:
+
+| Call | Route | Notes |
+|---|---|---|
+| Roles | `GET /api/roles` | Everyone signed in. `holders` is worked out on read. |
+| Add | `POST /api/roles` `{ name, copyFrom? }` | Name 1–40 characters, unique ignoring case; `copyFrom` copies another role's permissions. |
+| Rename | `PATCH /api/roles/:id` `{ name }` | Any role, built-in ones too. |
+| Delete | `DELETE /api/roles/:id` | Only a role nobody holds, never a built-in one (`400` with the reason). |
+| Save permissions | `PUT /api/roles/grants` `{ changes: [{ roleId, add, remove }] }` | Every changed role in one write. Each change is applied to the role as the server has it, so another Admin's change to other permissions of that role in the meantime is kept. Unknown roles are `404`, unknown permissions `400`, and nothing is kept. An empty list changes nothing and sends no event. |
+| Me | `GET /api/users/me` | Now with `grants`: every permission of every role I hold, worked out by the server. |
+
+- Changing roles needs "Change settings, users and roles" (`settings.manage`); anyone else gets `403`.
+- No change may leave nobody holding `settings.manage`: `400` "At least one person must be able to change settings,
+  users and roles."
+- Every change sends `rolesChanged` to everyone: anyone's rights may have changed, so clients read everything again.
+- The one behaviour change: while it isn't known yet whether someone manages a project, the Project manager role no
+  longer stands in for it (the Dashboard link waits for the projects to load).
 
 | | Admin | Sales | PM (projects they manage) | Member |
 |---|---|---|---|---|

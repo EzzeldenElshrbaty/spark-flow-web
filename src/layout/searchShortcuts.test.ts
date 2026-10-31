@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Channel, TaskView } from '@/api/types'
 import { opensSearch, peopleShortcuts, shortcutsFor, taskShortcuts, workspaceShortcuts } from '@/layout/searchShortcuts'
 import { seed } from '@/mocks/seed'
+import { BUILT_IN_ROLES } from '@/lib/permissions'
 
 const data = seed(new Date('2026-10-26T09:00:00Z')).data
 const ws = data.workspaces.find((w) => w.slug === 'engineering')!
@@ -33,12 +34,20 @@ describe('workspaceShortcuts', () => {
 })
 
 describe('pages, tasks and people', () => {
-  const titles = (role: Parameters<typeof shortcutsFor>[0]) => shortcutsFor(role, 'engineering').pages.map((p) => p.title)
+  const grants = (role: string) => BUILT_IN_ROLES.find((r) => r.id === role)!.grants
+  const titles = (role: string) => shortcutsFor(grants(role), 'engineering').pages.map((p) => p.title)
 
-  it('a member finds Home, Projects, My tasks and Teams; an admin also Dashboard, Time & cost, Rates and Database', () => {
+  it('a member finds Home, Projects, My tasks and Teams; an admin also Dashboard, Time & cost, Roles and permissions, Rates and Database', () => {
     expect(titles('member')).toEqual(['Home', 'Projects', 'My tasks', 'Teams'])
-    expect(titles('admin')).toEqual(['Home', 'Projects', 'My tasks', 'Teams', 'Dashboard', 'Time & cost', 'Settings', 'Rates', 'Database'])
-    expect(shortcutsFor('member', 'engineering').pages[0]!.link).toBe('/w/engineering')
+    expect(titles('admin')).toEqual(['Home', 'Projects', 'My tasks', 'Teams', 'Dashboard', 'Time & cost', 'Settings', 'Roles and permissions', 'Rates', 'Database'])
+    expect(shortcutsFor(grants('member'), 'engineering').pages[0]!.link).toBe('/w/engineering')
+  })
+
+  it('whoever manages a project finds the Dashboard, whatever their roles (as the sidebar shows it)', () => {
+    const pages = (role: string, managesAny: boolean) => shortcutsFor(grants(role), 'engineering', { managesAny }).pages.map((p) => p.title)
+    expect(pages('pm', true)).toContain('Dashboard')
+    expect(pages('member', true)).toContain('Dashboard')
+    expect(pages('pm', false)).not.toContain('Dashboard')
   })
 
   it('NEX-1 finds NEX-1 then NEX-10 in key order; a title word finds tasks; at most 5', () => {

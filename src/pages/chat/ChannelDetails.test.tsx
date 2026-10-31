@@ -14,10 +14,10 @@ const backend: Channel = {
   lastMessageAt: null, description: '', whoCanPost: 'everyone', isDefault: false, unreadCount: 0, lastSeq: 9, lastReadSeq: 9, starred: false, muted: false, notifyLevel: 'mentions', notifyLevelOwn: false,
 }
 const people = [
-  { id: 'u-1', name: 'Youssef Abdelrahman', email: 'youssef.abdelrahman@spark-sys.com', title: 'Managing Director', presence: 'active', role: 'admin' },
-  { id: 'u-2', name: 'Nour El-Sayed', email: 'nour.elsayed@spark-sys.com', title: 'Backend lead', presence: 'away', role: 'pm' },
-  { id: 'u-3', name: 'Mariam Fathy', email: 'mariam.fathy@spark-sys.com', title: 'Designer', presence: 'offline', role: 'member' },
-  { id: 'u-4', name: 'Omar Hassan', email: 'omar.hassan@spark-sys.com', title: 'QA', presence: 'active', role: 'member' },
+  { id: 'u-1', name: 'Youssef Abdelrahman', email: 'youssef.abdelrahman@spark-sys.com', title: 'Managing Director', presence: 'active', roleIds: ['admin'] },
+  { id: 'u-2', name: 'Nour El-Sayed', email: 'nour.elsayed@spark-sys.com', title: 'Backend lead', presence: 'away', roleIds: ['pm'] },
+  { id: 'u-3', name: 'Mariam Fathy', email: 'mariam.fathy@spark-sys.com', title: 'Designer', presence: 'offline', roleIds: ['member'] },
+  { id: 'u-4', name: 'Omar Hassan', email: 'omar.hassan@spark-sys.com', title: 'QA', presence: 'active', roleIds: ['member'] },
 ] as User[]
 
 type Props = ComponentProps<typeof ChannelDetails>

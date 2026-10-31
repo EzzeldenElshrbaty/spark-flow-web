@@ -251,6 +251,13 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
       get: () => get('/api/me/preferences'),
       update: (patch) => send('PATCH', '/api/me/preferences', patch),
     },
+    roles: {
+      list: () => get('/api/roles'),
+      create: (input) => send('POST', '/api/roles', input),
+      rename: (id, name) => send('PATCH', `/api/roles/${enc(id)}`, { name }),
+      remove: (id) => send<void>('DELETE', `/api/roles/${enc(id)}`),
+      saveGrants: (changes) => send('PUT', '/api/roles/grants', { changes }),
+    },
     sidebar: {
       order: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/sidebar-order`),
       setOrder: (workspaceId, section, ids) => send<void>('PUT', `/api/workspaces/${enc(workspaceId)}/sidebar-order`, { section, ids }),

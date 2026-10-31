@@ -17,9 +17,10 @@ let dndEnd: string | null = null
 vi.mock('react-router', async (original) => ({ ...(await original<typeof import('react-router')>()), useNavigate: () => navigate }))
 vi.mock('@tanstack/react-query', async (original) => ({ ...(await original<typeof import('@tanstack/react-query')>()), useQueryClient: () => ({ clear: vi.fn() }) }))
 vi.mock('@/lib/useTheme', () => ({ useTheme: () => ({ theme: 'light', setTheme }) }))
-vi.mock('@/lib/useRole', () => ({ useRole: () => ({ persona: { id: 'u-1', name: 'Youssef Abdelrahman', title: 'Managing Director', role: 'admin' } }) }))
+vi.mock('@/lib/useRole', () => ({ useRole: () => ({ persona: { id: 'u-1', name: 'Youssef Abdelrahman', title: 'Managing Director', roleIds: ['admin'], grants: [] } }) }))
+vi.mock('@/api/roles', () => ({ useRoleNames: () => (ids: string[]) => ids.map((id) => ({ admin: 'Admin', pm: 'Project manager' })[id]).join(', ') }))
 vi.mock('@/api/users', () => ({
-  useUsers: () => ({ data: [{ id: 'u-1', name: 'Youssef Abdelrahman', role: 'admin', presence: 'active' }, { id: 'u-2', name: 'Nour El-Sayed', role: 'pm', presence: 'away' }] }),
+  useUsers: () => ({ data: [{ id: 'u-1', name: 'Youssef Abdelrahman', roleIds: ['admin'], presence: 'active' }, { id: 'u-2', name: 'Nour El-Sayed', roleIds: ['pm'], presence: 'away' }] }),
   useViewAs: () => ({ mutate: viewAs, isPending: false, isError: false }),
 }))
 vi.mock('@/layout/useCurrentWorkspace', () => ({

@@ -5,13 +5,13 @@ import { IconHash, IconLayoutKanban, IconListCheck, IconLock, IconMessage, IconU
 import type { Channel, Project, TaskView, User, Workspace } from '@/api/types'
 import { channelLabel, isArchived } from '@/lib/channels'
 import { paths } from '@/lib/paths'
-import type { Role } from '@/lib/roles'
+import type { Permission } from '@/lib/permissions'
 import type { WorkspaceMode } from '@/lib/workspaceMode'
 import { allNavItems, canSee, settingsItem } from '@/navigation'
 
 export type Shortcut = { id: string; title: string; subtitle: string; link: string; icon?: TablerIcon; keywords: string[] }
 
-type ActionDef = { title: string; link: string; keywords?: string[]; roles?: Role[] }
+type ActionDef = { title: string; link: string; keywords?: string[]; permission?: Permission }
 
 /** Actions by the page they're done on; each also needs that page in the role's menu. Add them as pages are built. */
 const actionsByPage: Record<string, ActionDef[]> = {}
@@ -19,22 +19,22 @@ const actionsByPage: Record<string, ActionDef[]> = {}
 /** Pages live inside a workspace, so they have a link only when one is open. */
 const pathOf = (item: (typeof allNavItems)[number], workspaceSlug: string | null) => (item.link ? (workspaceSlug ? item.link(workspaceSlug) : null) : item.path)
 
-/** Every page and action this role can use, in menu order. */
-export function shortcutsFor(role: Role, workspaceSlug: string | null): { pages: Shortcut[]; actions: Shortcut[] } {
+/** Every page and action these permissions allow, in menu order. */
+export function shortcutsFor(grants: readonly Permission[], workspaceSlug: string | null, extra: { managesAny?: boolean } = {}): { pages: Shortcut[]; actions: Shortcut[] } {
   const pages: Shortcut[] = []
   const actions: Shortcut[] = []
   for (const item of allNavItems) {
     const path = pathOf(item, workspaceSlug)
-    if (!canSee(item, role) || path === null) continue
+    if (!canSee(item, grants, extra) || path === null) continue
     pages.push({ id: path, title: item.label, subtitle: item.description ?? '', link: path, icon: item.icon, keywords: [] })
     for (const action of actionsByPage[item.path] ?? []) {
-      if (action.roles && !action.roles.includes(role)) continue
+      if (action.permission && !grants.includes(action.permission)) continue
       actions.push({ id: action.link, title: action.title, subtitle: item.label, link: action.link, icon: item.icon, keywords: [item.label, ...(action.keywords ?? [])] })
     }
     if (item === settingsItem) {
       for (const section of item.children ?? []) {
         const sectionPath = pathOf(section, workspaceSlug)
-        if (!canSee(section, role) || sectionPath === null) continue
+        if (!canSee(section, grants, extra) || sectionPath === null) continue
         pages.push({ id: sectionPath, title: section.label, subtitle: 'Settings', link: sectionPath, icon: item.icon, keywords: ['settings'] })
       }
     }

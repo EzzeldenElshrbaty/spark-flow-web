@@ -13,6 +13,7 @@ import { delay } from './latency'
 import type { MockHub } from './realtime'
 import { ApiError } from '@/lib/apiError'
 import { badRequest, clone, currentUser, newId, notFound, requireCan, stamp } from './shared'
+import { grantsFor } from './roles'
 import { parseMentions, parseTicketKeys } from './text'
 import { bodyTaskKeys, bodyText, mentionsOf, parseBody, validBody, type Body } from '@/lib/messageBody'
 import { linkPreviewFor } from './linkPreviews'
@@ -145,7 +146,7 @@ export function readableChannel(data: DbData, id: string): StoredChannel {
 /** Who may change a channel (spec §4.3, channel.manage): its members, or an Admin for a public one. */
 function requireManage(data: DbData, channel: StoredChannel) {
   const me = currentUser(data)
-  if (!can('channel.manage', { userId: me.id, role: me.role, channel })) throw new ApiError({ title: 'Forbidden', status: 403, detail: 'Only its members can change this channel.' })
+  if (!can('channel.manage', { userId: me.id, grants: grantsFor(data, me), channel })) throw new ApiError({ title: 'Forbidden', status: 403, detail: 'Only its members can change this channel.' })
   return me
 }
 
@@ -194,9 +195,10 @@ function attachFiles(data: DbData, ids: string[] | undefined, userId: string): A
   return unique.map((id) => {
     const file = data.attachments.find((a) => a.id === id)
     if (!file || file.deletedAt) throw notFound('File', id)
-    // Mine, or (as Share, spec 6.9) an Admin's pick of a file they can see where it is.
-    const admin = data.users.find((u) => u.id === userId)?.role === 'admin'
-    if (file.uploadedBy !== userId && !(admin && filePlace(data, file.id, userId))) throw new ApiError({ title: 'Forbidden', status: 403, detail: 'You can only send files you uploaded.' })
+    // Mine, or (as Share, spec 6.9) the pick of someone who may manage anyone's files, of one they can see where it is.
+    const user = data.users.find((u) => u.id === userId)
+    const anyFile = Boolean(user) && can('file.manage', { userId, grants: grantsFor(data, user!), uploadedBy: file.uploadedBy })
+    if (file.uploadedBy !== userId && !(anyFile && filePlace(data, file.id, userId))) throw new ApiError({ title: 'Forbidden', status: 403, detail: 'You can only send files you uploaded.' })
     if (file.scanStatus === 'blocked') throw badRequest(`${file.title} was blocked.`)
     if (file.scanStatus !== 'clean') throw badRequest(`${file.title} is still being checked.`)
     return clone(file)
@@ -223,7 +225,7 @@ export function checkCanPost(data: DbData, channel: StoredChannel) {
 export function checkCanWrite(data: DbData, channel: StoredChannel) {
   const me = checkCanPost(data, channel)
   if (isFlowbotDm(channel)) throw new ApiError({ title: 'Forbidden', status: 403, detail: FLOWBOT_READ_ONLY })
-  if (!can('channel.post', { userId: me.id, role: me.role, channel })) {
+  if (!can('channel.post', { userId: me.id, grants: grantsFor(data, me), channel })) {
     throw new ApiError({ title: 'Forbidden', status: 403, detail: onlyAdminsLine(channel) })
   }
   return me
@@ -320,7 +322,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       if (data.projects.some((p) => p.channelId === id)) throw badRequest('This channel follows its project.')
       const me = requireManage(data, channel)
       // Archiving (and restoring) is for Admins (spec 6.1).
-      if (!can('channel.archive', { userId: me.id, role: me.role, channel })) throw new ApiError({ title: 'Forbidden', status: 403, detail: 'Only admins can archive channels.' })
+      if (!can('channel.archive', { userId: me.id, grants: grantsFor(data, me), channel })) throw new ApiError({ title: 'Forbidden', status: 403, detail: 'Only admins can archive channels.' })
       // Already so: nothing changes and nothing is sent.
       if (Boolean(channel.archivedAt) === archive) return { channel: withUnread(data, channel), same: true }
       channel.archivedAt = archive ? new Date().toISOString() : null
@@ -400,14 +402,14 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         // Checked when it's sent: a value stored before can't block an edit that leaves it alone.
         if (patch.whoCanPost !== undefined && !WHO_CAN_POST.includes(patch.whoCanPost)) throw badRequest('Choose Everyone or Only admins.')
         const whoCanPost = patch.whoCanPost ?? channel.whoCanPost
-        if (whoCanPost !== channel.whoCanPost && !can('channel.restrictPosting', { userId: me.id, role: me.role, channel })) {
+        if (whoCanPost !== channel.whoCanPost && !can('channel.restrictPosting', { userId: me.id, grants: grantsFor(data, me), channel })) {
           throw new ApiError({ title: 'Forbidden', status: 403, detail: 'Only admins can change who can post.' })
         }
         // A default channel is one new people join (spec 6.10): an Admin's choice, and never a private channel.
         if (patch.isDefault !== undefined && typeof patch.isDefault !== 'boolean') throw badRequest('Turn the default channel on or off.')
         const isDefault = patch.isDefault ?? channel.isDefault
         if (isDefault !== channel.isDefault) {
-          if (!can('channel.setDefault', { userId: me.id, role: me.role, channel })) throw new ApiError({ title: 'Forbidden', status: 403, detail: 'Only admins can choose default channels.' })
+          if (!can('channel.setDefault', { userId: me.id, grants: grantsFor(data, me), channel })) throw new ApiError({ title: 'Forbidden', status: 403, detail: 'Only admins can choose default channels.' })
           if (isDefault && channel.isPrivate) throw badRequest("A private channel can't be a default channel.")
         }
         const posted: ChatMessage[] = []
@@ -434,7 +436,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         // The email of someone in the workspace adds that person; the rest are invites, which only Admins send.
         const userByEmail = new Map(data.users.map((u) => [u.email.toLowerCase(), u.id]))
         const strangers = typed.filter((email) => !userByEmail.has(email))
-        if (strangers.length && !can('channel.inviteByEmail', { userId: me.id, role: me.role, channel })) {
+        if (strangers.length && !can('channel.inviteByEmail', { userId: me.id, grants: grantsFor(data, me), channel })) {
           throw new ApiError({ title: 'Forbidden', status: 403, detail: 'Only admins can invite people by email.' })
         }
         const picked = [...new Set([...userIds, ...typed.flatMap((email) => userByEmail.get(email) ?? [])])]
@@ -472,7 +474,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         if (!invite) throw notFound('Invitation', invitationId)
         readableChannel(data, invite.channelId)
         const me = currentUser(data)
-        if (!can('invitation.revoke', { userId: me.id, role: me.role, invitedBy: invite.invitedBy })) {
+        if (!can('invitation.revoke', { userId: me.id, grants: grantsFor(data, me), invitedBy: invite.invitedBy })) {
           throw new ApiError({ title: 'Forbidden', status: 403, detail: 'Only whoever invited them, or an admin, can revoke this.' })
         }
         // An archived channel is read-only until it's restored, its invites included.
@@ -522,7 +524,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       const result = await db.update((data) => {
         const { row, channel, messageId } = findTarget(data, target)
         const me = checkCanPost(data, channel)
-        if (!can('message.edit', { userId: me.id, role: me.role, authorId: row.senderId })) throw forbiddenOwn()
+        if (!can('message.edit', { userId: me.id, grants: grantsFor(data, me), authorId: row.senderId })) throw forbiddenOwn()
         checkPlain(row)
         // A message with a file may lose its text, as one can be sent with files alone.
         const optional = row.attachments.some((a) => !a.deletedAt)
@@ -550,7 +552,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         const { row, channel, messageId } = findTarget(data, target)
         const me = checkCanPost(data, channel)
         // The author, or an Admin (spec §9: delete is author or admin).
-        if (!can('message.delete', { userId: me.id, role: me.role, authorId: row.senderId })) throw forbiddenOwn()
+        if (!can('message.delete', { userId: me.id, grants: grantsFor(data, me), authorId: row.senderId })) throw forbiddenOwn()
         checkPlain(row)
         const now = Date.now()
         // What the delete takes is kept for Undo, and only that long; older entries go now.

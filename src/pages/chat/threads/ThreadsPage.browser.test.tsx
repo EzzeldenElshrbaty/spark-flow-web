@@ -9,12 +9,13 @@ import { ToastProvider } from '@/components/sf/Toast'
 import { api } from '@/lib/api'
 import { parseBody } from '@/lib/messageBody'
 import { ThreadsPage } from './ThreadsPage'
+import { ALL_PERMISSIONS } from '@/lib/permissions'
 
 // The view with its cards, read on screen, Unfollow and Show more; the server is faked with spies.
 
 const users = [
-  { id: 'u-1', name: 'Youssef Abdelrahman', title: 'Managing Director', email: 'y@spark-sys.com', presence: 'active', role: 'admin', teamIds: [] },
-  { id: 'u-2', name: 'Nour El-Sayed', title: 'Backend lead', email: 'n@spark-sys.com', presence: 'away', role: 'pm', teamIds: [] },
+  { id: 'u-1', name: 'Youssef Abdelrahman', title: 'Managing Director', email: 'y@spark-sys.com', presence: 'active', roleIds: ['admin'], teamIds: [] },
+  { id: 'u-2', name: 'Nour El-Sayed', title: 'Backend lead', email: 'n@spark-sys.com', presence: 'away', roleIds: ['pm'], teamIds: [] },
 ] as unknown as User[]
 const backend: Channel = {
   id: 'c-backend', workspaceId: 'ws-eng', kind: 'channel', name: 'backend', topic: '', memberIds: ['u-1', 'u-2'], isPrivate: false, lastMessageAt: null, description: '', whoCanPost: 'everyone', isDefault: false,
@@ -35,7 +36,7 @@ const card = (id: string, unreadCount: number, minute: number, extra: Partial<Th
 let server: ThreadCard[]
 beforeEach(() => {
   server = [card('a', 2, 30), card('b', 0, 40)]
-  vi.spyOn(api.users, 'me').mockResolvedValue(users[0])
+  vi.spyOn(api.users, 'me').mockResolvedValue({ ...users[0], grants: [...ALL_PERMISSIONS] })
   vi.spyOn(api.users, 'list').mockResolvedValue(users)
   vi.spyOn(api.workspaces, 'list').mockResolvedValue([{ id: 'ws-eng', slug: 'engineering', name: 'Spark Engineering' }])
   vi.spyOn(api.chat, 'channels').mockResolvedValue([backend])

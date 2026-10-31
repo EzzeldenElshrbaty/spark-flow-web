@@ -13,7 +13,7 @@ import { QueryError } from '@/components/ui/QueryError'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { formatHours, formatMoney, formatTime } from '@/lib/format'
 import { paths } from '@/lib/paths'
-import { useAccess } from '@/lib/usePermission'
+import { useAccess, usePermission } from '@/lib/usePermission'
 import { useNow } from '@/lib/useNow'
 import { useRole } from '@/lib/useRole'
 import { cardFacts } from './dashboardCard'
@@ -123,7 +123,11 @@ function CheckedInList({ list, people, taskLabel }: { list: CheckedInNow[]; peop
 export function DashboardPage() {
   const { workspace } = useCurrentWorkspace()
   const { persona } = useRole()
-  const broad = persona.role === 'admin' || persona.role === 'sales'
+  const check = usePermission()
+  // Every project, not only the ones I manage (Admin and Sales to start with).
+  const broad = check('dashboard.everyProject')
+  // Who's checked in: everyone, or the people on projects I manage; Sales neither (spec §1).
+  const seesCheckIns = check('checkins.view')
   // Someone checked in may be working on a project outside this dashboard's scope: name their task from any project.
   const summaries = useProjectSummaries(workspace?.id)
   const everyProject = summaries.data ?? []
@@ -189,7 +193,7 @@ export function DashboardPage() {
             {showCost ? (
               <Tile label="Cost to date" value={formatMoney(Math.round(cost))} sub="Hours × hourly cost" />
             ) : (
-              <Tile label="Checked in now" value={persona.role === 'sales' ? '—' : String(checkedIn.data?.length ?? 0)} />
+              <Tile label="Checked in now" value={seesCheckIns ? String(checkedIn.data?.length ?? 0) : '—'} />
             )}
           </div>
           <div className="flex flex-col gap-5 xl:flex-row">
@@ -200,7 +204,7 @@ export function DashboardPage() {
                 list.map((p) => <ProjectCard key={p.id} ws={ws} project={p} people={people} now={now} />)
               )}
             </div>
-            {persona.role !== 'sales' && (
+            {seesCheckIns && (
               <Card className="xl:w-80 xl:shrink-0 xl:self-start">
                 <CardHeader title="Checked in now" />
                 {checkedIn.isError ? (

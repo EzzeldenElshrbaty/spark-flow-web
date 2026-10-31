@@ -31,19 +31,20 @@ type Group = { kind: string; label: string; icon: TablerIcon; total: number; hit
 /** The last group: one row that opens Search for the words (spec 6.12). */
 const SEARCH_KIND = 'search'
 
-/** Pages and actions this role can use, plus the open workspace's channels, DMs and projects, as soon as something is typed. */
+/** Pages and actions my permissions allow, plus the open workspace's channels, DMs and projects, as soon as something is typed. */
 function useSearch(term: string) {
-  const { role, persona } = useRole()
+  const { grants, persona } = useRole()
   const { workspace } = useCurrentWorkspace()
   const channels = useChannels(workspace?.id).data
   const projects = useProjects(workspace?.id).data
   const users = useUsers(workspace?.id).data
   const tasks = useTasksOf((projects ?? []).map((p) => p.id)).data
   const all = useMemo(() => {
-    const base = shortcutsFor(role, workspace?.slug ?? null)
+    // Managing a project opens the Dashboard whatever my roles, as the sidebar decides it.
+    const base = shortcutsFor(grants, workspace?.slug ?? null, { managesAny: projects?.some((p) => p.managerId === persona.id) })
     if (!workspace) return base
     return { ...base, pages: [...base.pages, ...workspaceShortcuts(workspace, channels ?? [], projects ?? [], users ?? [], persona.id)] }
-  }, [role, workspace, channels, projects, users, persona.id])
+  }, [grants, workspace, channels, projects, users, persona.id])
   const typed = term.trim()
   const long = typed.length >= minSearchLength
   const taskHits = useMemo(() => (long && workspace ? taskShortcuts(workspace.slug, tasks, projects ?? [], typed) : []), [long, workspace, tasks, projects, typed])

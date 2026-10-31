@@ -1,8 +1,7 @@
 // Side menu of Spark Flow. Add each section here as its feature is built; `permission` (the can() table) limits who sees an item.
 import { IconClock, IconHome, IconLayoutDashboard, IconLayoutKanban, IconListCheck, IconSettings, IconUsers, type TablerIcon } from '@tabler/icons-react'
 import { paths } from '@/lib/paths'
-import { can, type Action, type ProjectScoped } from '@/lib/permissions'
-import type { Role } from '@/lib/roles'
+import { can, type Action, type Permission, type ProjectScoped } from '@/lib/permissions'
 
 export type NavItem = {
   path: string
@@ -45,11 +44,13 @@ export const navGroups: NavGroup[] = [
 export const settingsItem: NavItem = {
   path: '/settings',
   label: 'Settings',
-  permission: 'database.manage', // Settings only holds the Database and Rates pages so far
+  // Anyone with something to change there: roles and permissions, hourly costs or the demo data.
+  permission: 'settings.open',
   icon: IconSettings,
-  description: 'Demo data and hourly costs.',
+  description: 'Roles and permissions, hourly costs and demo data.',
   link: paths.settings,
   children: [
+    { path: 'roles', label: 'Roles and permissions', permission: 'settings.manage', link: paths.roles },
     { path: 'rates', label: 'Rates', permission: 'rates.view', link: paths.rates },
     { path: 'database', label: 'Database', permission: 'database.manage', link: paths.database },
   ],
@@ -57,6 +58,10 @@ export const settingsItem: NavItem = {
 
 export const allNavItems: NavItem[] = [...navGroups.flatMap((group) => group.items), settingsItem]
 
-export function canSee(item: NavItem, role: Role) {
-  return !item.permission || can(item.permission, { userId: '', role })
+/**
+ * Whether someone with these permissions sees a menu item. `managesAny`: whether they manage a project, which opens
+ * the Dashboard whatever their roles (unknown while projects load).
+ */
+export function canSee(item: NavItem, grants: readonly Permission[], extra: { managesAny?: boolean } = {}) {
+  return !item.permission || can(item.permission, { userId: '', grants, ...extra })
 }

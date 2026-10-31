@@ -8,10 +8,11 @@ import type { Channel, SearchRequest, SearchResults, User } from '@/api/types'
 import { ToastProvider } from '@/components/sf/Toast'
 import { api } from '@/lib/api'
 import { SearchPage } from './SearchPage'
+import { ALL_PERMISSIONS } from '@/lib/permissions'
 
 const users = [
-  { id: 'u-1', name: 'Youssef Abdelrahman', email: 'youssef.abdelrahman@spark-sys.com', title: 'Managing Director', presence: 'active', role: 'admin', teamIds: [] },
-  { id: 'u-2', name: 'Nour El-Sayed', email: 'nour.elsayed@spark-sys.com', title: 'Backend lead', presence: 'away', role: 'pm', teamIds: [] },
+  { id: 'u-1', name: 'Youssef Abdelrahman', email: 'youssef.abdelrahman@spark-sys.com', title: 'Managing Director', presence: 'active', roleIds: ['admin'], teamIds: [] },
+  { id: 'u-2', name: 'Nour El-Sayed', email: 'nour.elsayed@spark-sys.com', title: 'Backend lead', presence: 'away', roleIds: ['pm'], teamIds: [] },
 ] as unknown as User[]
 const channel = (id: string, name: string | null, kind: 'channel' | 'dm' = 'channel', memberIds = ['u-1', 'u-2']): Channel => ({
   id, workspaceId: 'ws-eng', kind, name, topic: 'APIs', memberIds, isPrivate: kind === 'dm', lastMessageAt: null, description: '', whoCanPost: 'everyone', isDefault: false,
@@ -28,7 +29,7 @@ const results = (n = 2): SearchResults => ({
 
 let run: ReturnType<typeof vi.fn>
 beforeEach(() => {
-  vi.spyOn(api.users, 'me').mockResolvedValue(users[0])
+  vi.spyOn(api.users, 'me').mockResolvedValue({ ...users[0], grants: [...ALL_PERMISSIONS] })
   vi.spyOn(api.users, 'list').mockResolvedValue(users)
   vi.spyOn(api.workspaces, 'list').mockResolvedValue([{ id: 'ws-eng', slug: 'engineering', name: 'Spark Engineering' }])
   vi.spyOn(api.chat, 'channels').mockResolvedValue([channel('c-backend', 'backend'), channel('c-dm-1', null, 'dm')])

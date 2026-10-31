@@ -4,12 +4,13 @@ import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Sidebar, SidebarContent, SidebarHeader } from '@/layout/Sidebar'
 import { initialUiState, useUiStore } from '@/lib/uiStore'
+import { ALL_PERMISSIONS } from '@/lib/permissions'
 
 const workspace = { id: 'ws-eng', slug: 'engineering', name: 'Spark Engineering' }
 const channel = (id: string, name: string) => ({ channel: { id, name, kind: 'channel', isPrivate: false, unreadCount: 0, muted: false, starred: false, notifyLevel: 'mentions', memberIds: [] }, label: name, presence: 'offline', group: false, otherId: '', draft: false })
 
 vi.mock('@/layout/useCurrentWorkspace', () => ({ useCurrentWorkspace: () => ({ workspace }) }))
-vi.mock('@/lib/useRole', () => ({ useRole: () => ({ role: 'admin', persona: { id: 'u-1', role: 'admin' } }) }))
+vi.mock('@/lib/useRole', () => ({ useRole: () => ({ grants: ALL_PERMISSIONS, persona: { id: 'u-1', roleIds: ['admin'], grants: ALL_PERMISSIONS } }) }))
 vi.mock('@/lib/usePermission', () => ({ usePermission: () => () => true }))
 vi.mock('@/layout/NewTaskButton', () => ({ NewTaskButton: () => <button type="button">New task</button> }))
 vi.mock('@/layout/useGoToMode', () => ({ useGoToMode: () => () => true }))

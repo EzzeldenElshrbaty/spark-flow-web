@@ -8,7 +8,7 @@ afterEach(() => vi.restoreAllMocks())
 const emptyData = (): DbData => ({
   version: DB_VERSION,
   currentUserId: 'u1',
-  users: [{ id: 'u1', name: 'Ada', email: 'ada@example.com', title: 'Engineer', role: 'admin', presence: 'active', teamIds: [] }],
+  users: [{ id: 'u1', name: 'Ada', email: 'ada@example.com', title: 'Engineer', roleIds: ['admin'], presence: 'active', teamIds: [] }],
   workspaces: [],
   projects: [],
   sprints: [],
@@ -40,6 +40,7 @@ const emptyData = (): DbData => ({
   bookmarks: [],
   sidebarOrders: [],
   notificationPrefs: [],
+  roles: [],
   counters: {},
 })
 
@@ -240,6 +241,15 @@ describe('createDb', () => {
     const db = createDb(createMemoryStore(), fakeSeed)
     const data = { ...(await db.exportAll()).data, threadFollows: [{ userId: 'u1', following: true }] }
     await expect(db.importAll({ app: 'spark-flow', version: DB_VERSION, exportedAt: 'T', data })).rejects.toMatchObject({ status: 400 })
+  })
+
+  it('a person without a list of roles, or a role without a list of permissions, is refused on import', async () => {
+    const db = createDb(createMemoryStore(), fakeSeed)
+    const base = (await db.exportAll()).data
+    const noRoles = { ...base, users: base.users.map((u) => ({ ...u, roleIds: undefined })) }
+    await expect(db.importAll({ app: 'spark-flow', version: DB_VERSION, exportedAt: 'T', data: noRoles })).rejects.toMatchObject({ status: 400 })
+    const noGrants = { ...base, roles: [{ id: 'admin', name: 'Admin', builtIn: true }] }
+    await expect(db.importAll({ app: 'spark-flow', version: DB_VERSION, exportedAt: 'T', data: noGrants })).rejects.toMatchObject({ status: 400 })
   })
 
   it('export while viewing as someone keeps the default person', async () => {

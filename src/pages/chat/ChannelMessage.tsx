@@ -28,6 +28,7 @@ import { useComposerDirectory } from '@/pages/chat/useComposerDirectory'
 import { FlowbotReminder } from '@/pages/chat/saved/FlowbotReminder'
 import { useSaveTarget } from '@/pages/chat/saved/useSaveTarget'
 import { replyState } from '@/pages/chat/useReplyFocus'
+import { useRole } from '@/lib/useRole'
 
 /** "A", "A and B", "A, B and C". */
 const listOf = (names: string[]) => (names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`)
@@ -138,8 +139,8 @@ export function ChannelMessage({
       : paths.message(ctx.ws, message.channelId, message.id),
     window.location.origin,
   ).href
-  const admin = ctx.users.find((u) => u.id === meId)?.role === 'admin'
-  const can = actionsFor(message, meId, canPost, admin)
+  const { grants } = useRole()
+  const can = actionsFor(message, meId, canPost, grants)
   // What U or L did, said under the message (no toasts outside Undo) and read out through the app's live region.
   const [note, setNote] = useState<{ text: string; error: boolean } | null>(null)
   const say = (text: string, error = false) => {

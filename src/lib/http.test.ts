@@ -200,6 +200,11 @@ describe('createHttpApi', () => {
     await api.inbox.markRead('w1')
     await api.preferences.get()
     await api.preferences.update({ desktop: true })
+    await api.roles.list()
+    await api.roles.create({ name: 'QA lead', copyFrom: 'member' })
+    await api.roles.rename('r 1', 'QA')
+    await api.roles.remove('r 1')
+    await api.roles.saveGrants([{ roleId: 'member', add: ['projects.create'], remove: [] }])
     await api.sidebar.order('w1')
     await api.sidebar.setOrder('w1', 'channels', ['c2', 'c1'])
     await api.threads.list('w1')
@@ -244,6 +249,11 @@ describe('createHttpApi', () => {
       'POST /api/workspaces/w1/activity/read undefined',
       'GET /api/me/preferences undefined',
       'PATCH /api/me/preferences {"desktop":true}',
+      'GET /api/roles undefined',
+      'POST /api/roles {"name":"QA lead","copyFrom":"member"}',
+      'PATCH /api/roles/r%201 {"name":"QA"}',
+      'DELETE /api/roles/r%201 undefined',
+      'PUT /api/roles/grants {"changes":[{"roleId":"member","add":["projects.create"],"remove":[]}]}',
       'GET /api/workspaces/w1/sidebar-order undefined',
       'PUT /api/workspaces/w1/sidebar-order {"section":"channels","ids":["c2","c1"]}',
       'GET /api/workspaces/w1/threads undefined',

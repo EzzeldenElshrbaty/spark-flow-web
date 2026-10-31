@@ -1477,3 +1477,257 @@ Rulings (cost if wrong):
   - **Pinning the default from the bell** isn't possible, and neither is going back to following the default once a level is picked. `notifyLevelOwn` is in the API for that. This is a question for you.
   - "Until tomorrow at 9:00 AM" pressed after midnight means the next day's 9:00. Keyword matching uses Search's word-start rule, so "PR" matches "project".
 
+
+# Admin and help: Users, Roles and permissions, Audit log, Archived records, Attendance, Help — 31 Oct 2026, approved ("yes")
+
+Decided (31 Oct): roles are editable and a person may hold several; check-in records IP, device and location; archived
+channels are only restored, never deleted for good; help chapters carry screenshots taken by a script.
+
+Asked (31 Oct, with screenshots of the Oasis CRM Settings, Audit log, Roles and permissions, User attendance and
+activities, Archived records, the page help panel, the user menu and the Help page): "I want to manage Users, Audit log
+with chain of events, Roles and permissions, Archived records, User attendance and activities, Help for each page, help
+center. Plan those first." AA (the chat clean-up) waits until these are done.
+
+Today: Settings has Hourly cost and Database only. Roles are four fixed values in code (spec §2, §4.3), one per person.
+Nothing records who changed what. Projects, tasks and channels can be archived, but there's no one place to find them.
+Check-in records the time only. There is no help.
+
+```mermaid
+flowchart LR
+  S[Settings home] --> U[Users]
+  S --> R[Roles and permissions]
+  S --> L[Audit log]
+  S --> A[Archived records]
+  S --> T[Attendance and activities]
+  R -->|grants| C["can() — mock 403s, UI hides"]
+  U -->|roles| C
+  W[every write: data, status, settings, exports, sign-ins, 403s] -->|same transaction| E[(audit events, hash chain)]
+  E --> L
+  L -->|Tamper check| V{chain intact?}
+  K[check-in / out · app use] --> T
+  Q["? in the top bar"] --> P[help for this page] --> H[Help centre]
+```
+
+## Order (each its own slice: plan items, test first, review, commit, onto your branch)
+
+1. **Roles and permissions** first: every other page decides who may open it through these permissions.
+2. **Audit log** second, so users, archives and attendance settings are recorded from the day they exist.
+3. **Users.**
+4. **Archived records.**
+5. **User attendance and activities.**
+6. **Help**, last, so it describes the finished pages.
+
+The Settings home is redone in slice 1 like the CRM's (count tiles, then "People and access" and "Data" groups of
+cards). Each card shows only to people who may open it, and new cards join as their slice lands. These pages use the
+Projects side's tokens and `components/ui` (they're CRM-style pages, as in the screenshots), not the chat's `sf` set.
+
+## Slice 1: Roles and permissions
+
+Rulings (cost if wrong):
+- **Roles become records** `{ id, name, builtIn, grants }`. A person holds one or more (`User.roleIds`) and gets every
+  permission of every role they hold, as in the CRM. This changes spec §2 ("Roles: Admin, Sales, PM, Member") and §4.3;
+  I'll amend both.
+- **Nobody's rights change on the day:** Admin, Sales, Project manager and Member are seeded with exactly today's
+  rights. DB v24 turns `role` into `roleIds`. A test runs every action against every seeded case under the old table
+  and the new one and expects the same answer.
+- **Permissions are a fixed list** in `lib/permissions.ts`, grouped (General, Projects and tasks, Time and cost, Chat,
+  Settings and data), each with a sentence ("See rates and cost", "Archive or restore projects"…). New ones for these
+  pages: "Change settings, users and roles", "See the audit log", "See everyone's check-ins and app use", "Manage
+  archived records".
+- **What stays in code:** the rules that depend on the record, not the role. The manager of a project has PM rights on
+  it, authors edit their own messages, a private channel's members manage it, and an archived project is frozen.
+  `can()` keeps them; only "is an Admin / Sales…" becomes "holds a role with this permission". The 14 places outside
+  `permissions.ts` that check `role === …` move to permissions.
+- **The page** is the CRM's matrix: permissions down the side, roles across with how many people hold each. Changes
+  collect until **Save changes**, the one red button. **Add role** takes a name and a role to copy. Renaming works for
+  any role. Deleting works only for a role nobody holds; the four built-in roles can't be deleted.
+  - On a phone a 5+ column matrix doesn't fit, so you pick one role and its permissions show as a list of switches.
+- **Guard rail:** the server refuses a change that leaves nobody able to change settings, users and roles.
+- Who: "Change settings, users and roles" (Admins today). The user menu's View as lists each person's roles under
+  their name.
+
+Plan:
+- [x] 1.1 **API and mock:** `Role`, `api.roles` (list, create, rename, delete, save grants), DB v24, a grants-based
+  `can()`. Tests: the old-vs-new equivalence test, the guard rail, the mock's 403s, migration, HTTP.
+- [x] 1.2 **Callers:** the persona carries roles and grants, `usePermission` reads them, role labels come from data, and
+  the 14 direct checks go. Tests: the existing permission and page tests stay green.
+- [x] 1.3 **Pages:** the new Settings home and Roles and permissions with Add role. Tests: jsdom, axe in both themes,
+  390px.
+- [x] 1.4 **Close:** contract, spec §2/§4.3, CLAUDE.md; tsc, lint, unit, browser, build, app check, review, commit,
+  onto your branch.
+
+### Review (slice 1)
+
+- **Checks:**
+  - Unit 1,674 and browser 240 pass, and tsc, lint and build:prototype are clean. One known composer timing flake passed when run alone.
+  - Settings and Roles and permissions have an axe check in light and dark (with a change waiting and a role's menu open) and a 390px check.
+  - App check: Member given "Create projects" and saved, then View as Mariam showed New project and was refused the Roles page. Taking "Change settings, users and roles" from Admin was refused with the guard rail's sentence. A QA lead role copied from Member was added and deleted. Both themes and 390px were checked.
+- **Nobody's rights changed:** `permissionsLegacy.test.ts` keeps the old table and compares 93,312 cases for the four built-in roles. A mutation (Sales without "Comment… on any project") fails it. The one change is that the PM role no longer stands in while it isn't known yet whether someone manages a project.
+- **Test-first:** the equivalence test, the page and Settings tests, and the review fixes were run red first. The roles API and the migration were written just before their tests, then mutation-checked: the guard rail, the held-role rule and the 403s each fail a test when removed.
+- **Changed from the plan:**
+  - Save changes sends what changed in each role (`add`, `remove`), not whole lists. Another Admin's change to the same role in the meantime is then kept.
+  - The Settings home counts People, Roles and Teams; the CRM's pipeline and price tiles have no Flow equivalent.
+- **Review fixes:**
+  - Project managers find Dashboard in search again. Managing a project now counts there as in the sidebar.
+  - The ticks lock while saving, so a tick can't be lost or a save sent twice.
+  - A changed tick says "Not saved yet" to screen readers. The phone's role picker marks roles with unsaved changes, and checkbox names read "Member: Create projects".
+  - The v24 migration keeps a frozen copy of the four roles, so a permission added later can't reach old documents by accident.
+  - Import refuses people without a list of roles and roles without a list of permissions. A `/me` without `grants` counts as no permissions.
+  - An empty save sends no event. Name errors show under Name.
+  - The dashboard's scope goes through `can()` (`dashboard.everyProject`). Copy was fixed, and an unused helper removed.
+- **Left as is:** message rows each read who I am (`useRole`) for "Delete anyone's messages", like their Saved lookup. "See everyone who is checked in" only shows on the Dashboard until attendance (slice 5).
+
+## Slice 2: Audit log, with a chain of events
+
+Rulings (cost if wrong):
+- **What's recorded,** in the CRM's five groups:
+  - **Data changes:** projects, phases, tasks, deliverables, teams, channel settings and members, time entries and
+    hourly cost, with each field's old and new value.
+  - **Status and archive:** project status, archive and restore of projects, tasks and channels, and deleting for
+    good.
+  - **Sign-in and access:** sign-ins, failed sign-ins, and refused requests (every 403, as "Access denied").
+  - **Settings and users:** roles, permissions, people, retention and working hours.
+  - **Exports and downloads:** Database export, the Time and cost CSV, file downloads and the audit export itself.
+- **Not recorded:** messages, reactions, reads, drafts and personal preferences. The exception is someone deleting
+  another person's message (spec §11: "Audit log for admin actions").
+- **Each event:** a number (#341), the server's time, who (or the email that was tried), the action, the record (type,
+  id, name), the field changes, the result (done, refused, failed), IP, device and a request id.
+- **The chain:** each event stores the hash of the one before it, and its own hash covers that plus the event
+  (SHA-256 over a fixed field order). **Tamper check** walks the chain and names the first event that doesn't match:
+  an edited field, a removed event or a reordered one.
+  - Honest limit, written into the contract: whoever can rewrite the whole table can rebuild the chain. The backend
+    must keep the log append-only and anchor the latest hash where the app server can't change it (a separate key or
+    store).
+  - In the prototype the log lives in the browser's demo database, so the check shows how it works rather than
+    protecting anything.
+- **Written in the same transaction as the change** by the mock's write layer, never after it. A coverage test lists
+  every write in the API and fails when one of the recorded kinds doesn't log.
+- **Sign-ins in the prototype:** there's no sign-in yet (spec §10), so View as is recorded as "Signed in · Demo user
+  switcher (prototype only)", as the CRM prototype does. The seed carries a few failed sign-ins so the page has
+  something to show.
+- **The page** is the CRM's:
+  - Tiles: Events today, Data changes, Sign-ins, Failed sign-ins, Access denied, Tamper check.
+  - **Needs a look** (last 7 days): 3 or more failed sign-ins from one IP within 10 minutes, 3 or more refusals for
+    one person within 10 minutes, role or permission changes, and someone's roles changed.
+  - Filters: search, period, person, record type and result, plus the five groups as chips with counts.
+  - The table runs newest first, 50 a page. A row opens a sheet with the field changes and its hash.
+  - **Export** downloads a CSV that Excel opens (the same way as the Time and cost export), and the export is itself
+    recorded.
+- Who: "See the audit log" (Admins). There's no way to change or remove an entry, for anyone.
+
+Plan:
+- [ ] 2.1 **`lib/auditChain.ts`:** canonical form, hash, verify. Tests: an intact chain, an edited field, a removed
+  event and a reordered one.
+- [ ] 2.2 **Mock:** the `audit` collection (DB v25), events from every write listed above and from 403s, and
+  `api.audit` (list, counts, needs-a-look, verify, export). Tests: the coverage test, filters and paging, and the
+  rules.
+- [ ] 2.3 **Page and detail sheet.** Tests: jsdom, axe in both themes, 390px.
+- [ ] 2.4 **Close,** as in 1.4.
+
+## Slice 3: Users
+
+Rulings (cost if wrong):
+- **The list:** search; filters for role, team and status; columns for name and title, email, roles, teams, last
+  active and status.
+- **Add person** (a sheet): name, email (unique), title, one or more roles, and teams. **Edit** uses the same form.
+- **Deactivate,** with an optional reason:
+  - They leave every picker and View as. Their running timer stops and their check-in closes.
+  - Their work, time and messages stay.
+  - The server refuses to deactivate yourself or the last person who can change settings, users and roles.
+  - **Reactivate** brings them back.
+- **Sign-in, invitations and passwords wait for the backend** (spec §10 keeps sign-in out of the prototype). A new
+  person can be tried through View as. "Change password" stays as it is.
+- People are company-wide, not per workspace. Teams are still edited on Teams, and hourly cost on Hourly cost; the
+  row links there for Admins.
+- Who: "Change settings, users and roles". Every change is recorded in the audit log.
+
+Plan:
+- [ ] 3.1 **API and mock:** `api.users` create, update, deactivate and reactivate, and what deactivating does to
+  timers, check-ins and pickers. Tests: the rules, refusals, audit events and HTTP.
+- [ ] 3.2 **Page and person sheet.** Tests: jsdom, axe in both themes, 390px.
+- [ ] 3.3 **Close.**
+
+## Slice 4: Archived records
+
+Rulings (cost if wrong):
+- **One list of everything archived** in Spark Flow: projects, tasks and channels. It has search (names and reasons),
+  type chips with counts, and columns Record, Type, Archived (when, by whom), Why, and Can be deleted.
+- **Archiving asks "Why?"** (optional, at most 200 characters), as the CRM does. Existing archives show "—".
+- **Restore** follows each type's existing rights and rules.
+- **Keep archived records for N days** (default 365, Admins). After that the record can be deleted for good, except:
+  - **always kept:** a project or task with time logged on it, since its hours and cost stay in reports, like the
+    CRM's "records that were quoted, ordered or approved are always kept".
+  - **channels:** restored only, never deleted for good, until message retention (OPEN in the chat spec, §13 item 8)
+    is decided. Their "Can be deleted" column reads "Restore only".
+- Deleting for good asks first (a Sheet naming what goes with it: its tasks, files and so on) and is recorded in the
+  audit log.
+- Who: "Manage archived records" (Admins).
+
+Plan:
+- [ ] 4.1 **API and mock:** `api.archive` (list, retention, delete for good) and `reason` on archive. Tests: who sees
+  what, the always-kept rule, retention dates and audit.
+- [ ] 4.2 **Page,** plus the "Why?" field in the three archive dialogs. Tests: jsdom, axe, 390px.
+- [ ] 4.3 **Close.**
+
+## Slice 5: User attendance and activities
+
+Rulings (cost if wrong):
+- **Check-in and check-out record** the server's time, IP, device and location. Location is latitude, longitude and
+  accuracy from the browser: "Location blocked" when refused, "No location" when the device
+  has none. Before the first check-in the button says what's recorded.
+  - This changes the spec's §1 assumption ("check-in is for tracking work, not surveillance"); I'll amend it.
+- **App use:** while Flow is on screen and was used in the last 5 minutes, it reports once a minute (the CRM's
+  `ActivityTracker`). It's stored as visits (start, end, minutes, IP, device) per person per day.
+- **The page,** with the CRM's tabs:
+  - **Check-ins:** one row per check-in or check-out. Amber marks an IP or device that differs from that person's
+    previous one, and the location opens Google Maps in a new tab.
+  - **Day view:** one day, a row per person with in, out, hours checked in and app time.
+  - **Activity log:** the visits.
+  - **Report:** per person for a period: days in, average in and out, late arrivals and early leaves, hours checked in
+    and app time.
+  - Filters: person and period on every tab.
+- **Working hours** for late and early: Sunday to Thursday, 09:00–17:00, Africa/Cairo, a setting on this page
+  (Admins). Holidays come later.
+- **Who sees whom:**
+  - "See everyone's check-ins and app use": Admins see everyone.
+  - The manager of a project sees the people on it (as "Checked in now" does today).
+  - Everyone can open the page for themselves.
+- **In the prototype:** the browser can't know its public IP, so the mock keeps a made-up one per browser, and Help
+  says so. The device comes from the browser; the server records the real IP.
+
+Plan:
+- [ ] 5.1 **API and mock:** check-in and check-out take device and location; visits; working hours; the four views as
+  queries; who sees whom. Tests: the rules, amber detection, late and early, and visibility.
+- [ ] 5.2 **`layout/ActivityTracker.tsx`,** from the CRM. Tests: visible and used counts, hidden or idle doesn't.
+- [ ] 5.3 **Page and the check-in button's notice.** Tests: jsdom, axe, 390px.
+- [ ] 5.4 **Close.**
+
+## Slice 6: Help for each page, and the Help centre
+
+Rulings (cost if wrong):
+- **The round ? in the top bar** (beside the bell) opens help for the page you're on, as `design/02-app-shell.md` §7
+  and the CRM screenshot show. It sits beside the page on the widest screens, slides over it below that, and rises from
+  the bottom on phones. It doesn't dim the page and stays open as you move between pages. At its foot is "Open the help
+  centre →". The user menu gets **Help** too.
+- **The Help centre** (`/w/:ws/help`):
+  - Chapters grouped like the sidebar, with search, topic chips and sections.
+  - The header reads "shown for your roles: …". A chapter names the permission it needs, so people only see help for
+    what they can use.
+- **The content** is Markdown files in `src/help/`, one per chapter, shown as elements (never as HTML).
+  `lib/pageHelp.ts` maps each route to its chapter, or to some of its sub-headings, and a test fails when a route has
+  no help and isn't listed as having none.
+- **The chapters:**
+  - Getting started: the screen, search, help, your menu, lists, phone, light or dark.
+  - Home and My day, Projects, the project page, Board and tasks, Time, Dashboard, Time and cost, Teams.
+  - Chat: channels, messages, threads, search, Saved, Activity, Drafts and Preferences.
+  - One chapter for each Settings page.
+  - Written in the house voice and checked once against the pages.
+- **Screenshots in help:** `npm run help:shots` takes them from the demo build with Playwright (light theme, seeded
+  data) into `public/help/`. Each has alt text and a caption; rerun it when a page changes.
+
+Plan:
+- [ ] 6.1 **Help panel and button,** from the CRM's `PageHelpPanel`. Tests: opens for the page, stays open across
+  pages, phone sheet, axe.
+- [ ] 6.2 **Help centre and search.** Tests: jsdom, axe, 390px; the every-route-has-help test.
+- [ ] 6.3 **The chapters and their screenshots** (`npm run help:shots`).
+- [ ] 6.4 **Close.**

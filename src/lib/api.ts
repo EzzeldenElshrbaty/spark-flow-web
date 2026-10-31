@@ -43,6 +43,7 @@ export const api: Api = {
   get search() { return resolve().search },
   get sidebar() { return resolve().sidebar },
   get preferences() { return resolve().preferences },
+  get roles() { return resolve().roles },
   get folders() { return resolve().folders },
   get bookmarks() { return resolve().bookmarks },
   get dashboard() { return resolve().dashboard },

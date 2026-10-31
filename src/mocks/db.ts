@@ -10,6 +10,7 @@ import type {
   ExportBundle,
   Invitation,
   Phase,
+  Role,
   Project,
   ProjectFile,
   Rate,
@@ -36,7 +37,7 @@ import { memoryActor, type Actor } from './actor'
 import { migrate } from './migrations'
 import type { MockStore } from './store'
 
-export const DB_VERSION = 23 // 2: the company-system document (spec §3); 3: mention read state; 4: channel reads per person; 5: typed columns, history; 6: rate history; 7: message seq, channel member state; 8: message bodies; 9: drafts; 10: deleted messages kept for Undo; 11: thread follows; 12: activity items, channel levels; 13: channel description, who can post; 14: email invites, default channels; 15: file details (uploader, title, description, scan); 16: reminders, scheduled messages; 17: reminders on saved items; 18: text snippets; 19: /remind notes; 20: pins, folders, bookmarks; 21: sidebar order; 22: sidebar order ids (projects too); 23: notification preferences, levels that follow the default
+export const DB_VERSION = 24 // 2: the company-system document (spec §3); 3: mention read state; 4: channel reads per person; 5: typed columns, history; 6: rate history; 7: message seq, channel member state; 8: message bodies; 9: drafts; 10: deleted messages kept for Undo; 11: thread follows; 12: activity items, channel levels; 13: channel description, who can post; 14: email invites, default channels; 15: file details (uploader, title, description, scan); 16: reminders, scheduled messages; 17: reminders on saved items; 18: text snippets; 19: /remind notes; 20: pins, folders, bookmarks; 21: sidebar order; 22: sidebar order ids (projects too); 23: notification preferences, levels that follow the default; 24: roles as records, people with roleIds
 /** Phase 1+2 kept the mock database in localStorage under keys starting with this. */
 const LEGACY_PREFIX = 'spark-flow.mockdb.v1'
 
@@ -100,7 +101,12 @@ export type DbData = {
   sidebarOrders: StoredSidebarOrder[]
   /** Each person's notification preferences (spec 6.11, §7 NotificationPref); id is the person's. */
   notificationPrefs: StoredPreferences[]
+  /** Roles and what each grants (slice 1); who holds them is on each user (`roleIds`). */
+  roles: StoredRole[]
 }
+
+/** A role as stored: how many hold it is worked out on read. */
+export type StoredRole = Omit<Role, 'holders'>
 
 /** A person's state in a channel as stored: `notifyLevel` null follows their default (spec 6.11). */
 export type StoredMemberState = Omit<ChannelMemberState, 'notifyLevel' | 'notifyLevelOwn'> & { notifyLevel: NotifyLevel | null }
@@ -140,7 +146,7 @@ export interface MockDb {
 
 const COLLECTIONS = [
   'users', 'workspaces', 'projects', 'sprints', 'tickets', 'channels', 'messages', 'replies',
-  'teams', 'phases', 'deliverables', 'comments', 'attachments', 'projectFiles', 'timeEntries', 'checkIns', 'rates', 'activity', 'drafts', 'trash', 'threadFollows', 'notifications', 'invitations', 'saved', 'scheduled', 'pins', 'folders', 'bookmarks', 'sidebarOrders', 'notificationPrefs',
+  'teams', 'phases', 'deliverables', 'comments', 'attachments', 'projectFiles', 'timeEntries', 'checkIns', 'rates', 'activity', 'drafts', 'trash', 'threadFollows', 'notifications', 'invitations', 'saved', 'scheduled', 'pins', 'folders', 'bookmarks', 'sidebarOrders', 'notificationPrefs', 'roles',
 ] as const
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -168,9 +174,13 @@ function hasUsableRecords(data: DbData): boolean {
   const keyOf = (name: (typeof COLLECTIONS)[number], item: Record<string, unknown>) =>
     name === 'threadFollows' ? typeof item.userId === 'string' && typeof item.rootId === 'string' : typeof item.id === 'string'
   const keyed = (name: (typeof COLLECTIONS)[number]) => (data[name] as unknown[]).every((item) => isRecord(item) && keyOf(name, item))
+  const strings = (value: unknown) => Array.isArray(value) && value.every((v) => typeof v === 'string')
   return (
     COLLECTIONS.every(keyed) &&
-    data.users.some((user) => user.id === data.currentUserId)
+    data.users.some((user) => user.id === data.currentUserId) &&
+    // Permissions are worked out from these on every request (slice 1).
+    data.users.every((user) => strings(user.roleIds)) &&
+    data.roles.every((role) => strings(role.grants))
   )
 }
 

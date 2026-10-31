@@ -3,12 +3,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { User } from '@/api/types'
+import type { Me } from '@/api/types'
 import { api } from '@/lib/api'
 import { DesktopSearch } from '@/layout/GlobalSearch'
+import { ALL_PERMISSIONS } from '@/lib/permissions'
 
 window.matchMedia ??= ((media: string) => ({ matches: false, media, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia
-const me = { id: 'u-1', name: 'Youssef Abdelrahman', email: 'y@spark-sys.com', role: 'admin', teamIds: [] } as unknown as User
+const me = { id: 'u-1', name: 'Youssef Abdelrahman', email: 'y@spark-sys.com', roleIds: ['admin'], grants: [...ALL_PERMISSIONS], teamIds: [] } as unknown as Me
 
 beforeEach(() => {
   vi.spyOn(api.users, 'me').mockResolvedValue(me)

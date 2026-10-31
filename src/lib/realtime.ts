@@ -39,6 +39,8 @@ export interface RealtimeClient {
   onSavedChanged(cb: (event: { userId: string }) => void): () => void
   onSidebarChanged(cb: (event: { userId: string }) => void): () => void
   onPreferencesChanged(cb: (event: { userId: string }) => void): () => void
+  /** Roles or what they grant changed (slice 1): anyone's rights may have, so everything is read again. */
+  onRolesChanged(cb: () => void): () => void
   /** My scheduled messages changed: one was made, changed, sent or failed (spec §8 scheduled.sent). */
   onScheduledChanged(cb: (event: { userId: string }) => void): () => void
   /** One of my drafts changed (in another tab or device): the sidebar's pencils follow. */
@@ -67,6 +69,7 @@ export type RealtimeEvent =
   | { type: 'savedChanged'; userId: string }
   | { type: 'sidebarChanged'; userId: string }
   | { type: 'preferencesChanged'; userId: string }
+  | { type: 'rolesChanged' }
   | { type: 'scheduledChanged'; userId: string }
   | { type: 'dataReset' }
 
@@ -103,6 +106,7 @@ function createUnconnectedClient(): RealtimeClient {
     onSavedChanged: () => noop,
     onSidebarChanged: () => noop,
     onPreferencesChanged: () => noop,
+    onRolesChanged: () => noop,
     onScheduledChanged: () => noop,
     onDataReset: () => noop,
   }

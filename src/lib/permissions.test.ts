@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import type { Role } from '@/api/types'
-import { accessOf, can, type Action, type PermissionContext, type ProjectRef, type ProjectScoped } from './permissions'
+import { accessOf, BUILT_IN_ROLES, can, grantsOf, type Action, type PermissionContext, type ProjectRef, type ProjectScoped } from './permissions'
+
+type BuiltIn = 'admin' | 'sales' | 'pm' | 'member'
+/** A built-in role's permissions, as everyone holding only that role gets them. */
+const grantsFor = (role: BuiltIn) => BUILT_IN_ROLES.find((r) => r.id === role)!.grants
 
 const project = { managerId: 'u-pm', memberIds: ['u-pm', 'u-m'], teamIds: ['t-qa'] }
 const other = { managerId: 'u-x', memberIds: ['u-x'], teamIds: [] }
 // For loops over mixed actions: every call passes a project, so any action is allowed to type-check.
 const canWith = (action: Action, ctx: PermissionContext & { project: ProjectRef }) => can(action as ProjectScoped, ctx)
-const as = <E extends Partial<PermissionContext> = {}>(role: Role, userId = `u-${role}`, extra: E = {} as E): PermissionContext & E => ({ role, userId, ...extra })
+const as = <E extends Partial<PermissionContext> = {}>(role: BuiltIn, userId = `u-${role}`, extra: E = {} as E): PermissionContext & E => ({ grants: grantsFor(role), userId, ...extra })
 
 describe('can (spec §4.3)', () => {
   it('admin can do everything', () => {
@@ -17,7 +20,7 @@ describe('can (spec §4.3)', () => {
   it('nothing on an archived project can be changed, even by Admins', () => {
     const archived = { ...project, archivedAt: '2026-10-01T00:00:00.000Z' }
     for (const action of ['project.edit', 'phase.manage', 'task.manage', 'task.updateOwnStatus', 'time.logOn', 'collab.post'] as const)
-      for (const who of [as('admin', 'u-a'), as('pm', 'u-pm')]) expect(canWith(action, { ...who, project: archived, taskAssigneeId: 'u-pm' }), `${who.role} ${action}`).toBe(false)
+      for (const who of [as('admin', 'u-a'), as('pm', 'u-pm')]) expect(canWith(action, { ...who, project: archived, taskAssigneeId: 'u-pm' }), `${who.userId} ${action}`).toBe(false)
     expect(can('project.archive', as('admin', 'u-a'))).toBe(true)
   })
 
@@ -70,7 +73,7 @@ describe('can (spec §4.3)', () => {
   })
 
   it('project-scoped actions require a project (type-level)', () => {
-    const withoutProject: PermissionContext = { userId: 'u-pm', role: 'pm' }
+    const withoutProject: PermissionContext = { userId: 'u-pm', grants: grantsFor('pm') }
     // @ts-expect-error a PM's rights are per project: without one, task.manage must not compile
     expect(can('task.manage', withoutProject)).toBe(false) // and at run time it is refused
     expect(can('task.manage', as('pm', 'u-pm', { project }))).toBe(true)
@@ -99,13 +102,13 @@ describe('accessOf', () => {
 describe('time.logOn', () => {
   const project = { managerId: 'pm', memberIds: ['m'], teamIds: ['t1'] }
   it('time.logOn needs the project: admin, manager, member or team, not anyone else', () => {
-    expect(can('time.logOn', { userId: 'a', role: 'admin', project })).toBe(true)
-    expect(can('time.logOn', { userId: 'pm', role: 'pm', project })).toBe(true)
-    expect(can('time.logOn', { userId: 'm', role: 'member', project })).toBe(true)
-    expect(can('time.logOn', { userId: 'x', role: 'member', project, userTeamIds: ['t1'] })).toBe(true)
-    expect(can('time.logOn', { userId: 's', role: 'sales', project })).toBe(false)
-    expect(can('time.logOn', { userId: 'o', role: 'member', project })).toBe(false)
-    expect(can('time.logOn', { userId: 'p2', role: 'pm', project })).toBe(false)
+    expect(can('time.logOn', { userId: 'a', grants: grantsFor('admin'), project })).toBe(true)
+    expect(can('time.logOn', { userId: 'pm', grants: grantsFor('pm'), project })).toBe(true)
+    expect(can('time.logOn', { userId: 'm', grants: grantsFor('member'), project })).toBe(true)
+    expect(can('time.logOn', { userId: 'x', grants: grantsFor('member'), project, userTeamIds: ['t1'] })).toBe(true)
+    expect(can('time.logOn', { userId: 's', grants: grantsFor('sales'), project })).toBe(false)
+    expect(can('time.logOn', { userId: 'o', grants: grantsFor('member'), project })).toBe(false)
+    expect(can('time.logOn', { userId: 'p2', grants: grantsFor('pm'), project })).toBe(false)
   })
 })
 
@@ -159,8 +162,8 @@ describe('a file (spec §9: delete file is uploader or admin)', () => {
 })
 
 describe('messages and channel archive (spec §9, 6.1)', () => {
-  const admin = { userId: 'u-1', role: 'admin' as const }
-  const member = { userId: 'u-3', role: 'member' as const }
+  const admin = { userId: 'u-1', grants: grantsFor('admin') }
+  const member = { userId: 'u-3', grants: grantsFor('member') }
   it('message.edit is the author’s only, an Admin’s included', () => {
     expect(can('message.edit', { ...member, authorId: 'u-3' })).toBe(true)
     expect(can('message.edit', { ...member, authorId: 'u-2' })).toBe(false)
@@ -176,5 +179,39 @@ describe('messages and channel archive (spec §9, 6.1)', () => {
     expect(can('channel.archive', { ...member, channel: open })).toBe(false)
     expect(can('channel.archive', { ...admin, channel: open })).toBe(true)
     expect(can('channel.archive', { ...admin, channel: { isPrivate: true, memberIds: ['u-3'] } })).toBe(false)
+  })
+})
+
+describe('roles as records (slice 1)', () => {
+  it('a person gets every permission of every role they hold, and nothing from a role that is gone', () => {
+    const roles = [
+      { id: 'sales', grants: ['dashboard.all', 'projects.create'] as const },
+      { id: 'r-hr', grants: ['checkins.all'] as const },
+    ]
+    expect(grantsOf(['sales', 'r-hr'], roles)).toEqual(['dashboard.all', 'checkins.all', 'projects.create'])
+    expect(grantsOf(['r-gone'], roles)).toEqual([])
+    expect(can('project.create', { userId: 'u-s', grants: grantsOf(['member', 'sales'], [...roles, { id: 'member', grants: [] }]) })).toBe(true)
+  })
+
+  it('Settings opens for whoever may change settings, hourly costs or the demo data', () => {
+    expect(can('settings.open', as('admin'))).toBe(true)
+    for (const role of ['sales', 'pm', 'member'] as const) expect(can('settings.open', as(role)), role).toBe(false)
+    expect(can('settings.open', { userId: 'u', grants: ['rates.manage'] })).toBe(true)
+    expect(can('settings.manage', { userId: 'u', grants: ['rates.manage'] })).toBe(false)
+  })
+
+  it('who’s checked in: everyone with checkins.all; their projects’ people with checkins.managed; Sales neither (as before)', () => {
+    expect(can('checkins.view', as('admin'))).toBe(true)
+    expect(can('checkins.view', as('pm'))).toBe(true)
+    expect(can('checkins.view', as('member'))).toBe(true)
+    expect(can('checkins.view', as('sales'))).toBe(false)
+  })
+
+  it('other people’s time: a project’s manager sees it there; changing it, and seeing it everywhere, is Admin’s (as before)', () => {
+    expect(can('time.seeTeam', as('pm', 'u-pm', { project }))).toBe(true)
+    expect(can('time.seeTeam', as('pm', 'u-pm', { project: other }))).toBe(false)
+    expect(can('time.seeTeam', as('admin', 'u-a', { project: other }))).toBe(true)
+    expect(can('time.editOthers', as('admin'))).toBe(true)
+    for (const role of ['sales', 'pm', 'member'] as const) expect(can('time.editOthers', as(role)), role).toBe(false)
   })
 })

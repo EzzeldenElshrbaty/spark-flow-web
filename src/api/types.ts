@@ -1,12 +1,25 @@
 import type { FileKind } from '@/lib/fileTypes'
-import type { Role } from '@/lib/roles'
+import type { Permission } from '@/lib/permissions'
 import type { Body } from '@/lib/messageBody'
 
-export type { Role }
+export type { Permission }
 
 // ── Relational (PostgreSQL) ───────────────────────────────────────────────
 export type Presence = 'active' | 'away' | 'offline'
-export type User = { id: string; name: string; email: string; title: string; role: Role; presence: Presence; teamIds: string[] }
+/** A person. `roleIds`: the roles they hold, one or more; they get every permission of each (slice 1). */
+export type User = { id: string; name: string; email: string; title: string; roleIds: string[]; presence: Presence; teamIds: string[] }
+/** Me, with every permission my roles give me, worked out by the server on each read. */
+export type Me = User & { grants: Permission[] }
+/**
+ * A role (slice 1, spec §4.3): what it may do (`grants`) and how many people hold it (`holders`, worked out on read).
+ * The four built-in roles ('admin', 'sales', 'pm', 'member') can be renamed and changed but not deleted.
+ */
+export type Role = { id: string; name: string; builtIn: boolean; grants: Permission[]; holders: number }
+/**
+ * What Save changes changed in one role: permissions to give and to take away, applied to the role as the server has
+ * it, so another Admin's change to the same role in the meantime is kept.
+ */
+export type RoleChange = { roleId: string; add: Permission[]; remove: Permission[] }
 export type Team = { id: string; workspaceId: string; name: string; memberIds: string[] }
 
 export type Workspace = { id: string; slug: string; name: string }
@@ -534,10 +547,24 @@ export type ExportBundle = { app: 'spark-flow'; version: number; exportedAt: str
 export interface Api {
   workspaces: { list(): Promise<Workspace[]> }
   users: {
-    me(): Promise<User>
+    me(): Promise<Me>
     list(workspaceId: string): Promise<User[]>
     /** Demo only: act as another seeded person. Hidden when backendOn. */
     viewAs(userId: string): Promise<User>
+  }
+  /**
+   * Roles and what each may do (slice 1). Everyone signed in may list them; changing them needs "Change settings,
+   * users and roles", and no change may leave nobody with it.
+   */
+  roles: {
+    list(): Promise<Role[]>
+    /** A new role, with no permissions or a copy of another role's. */
+    create(input: { name: string; copyFrom?: string | null }): Promise<Role>
+    rename(id: string, name: string): Promise<Role>
+    /** Only a role nobody holds, and never a built-in one. */
+    remove(id: string): Promise<void>
+    /** Every changed role at once (the page's Save changes). */
+    saveGrants(changes: RoleChange[]): Promise<Role[]>
   }
   chat: {
     channels(workspaceId: string): Promise<Channel[]>

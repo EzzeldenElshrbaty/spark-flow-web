@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ChatMessage } from '@/api/types'
 import { actionsFor, deleteNeedsConfirm, lastEditable } from './messageRights'
+import { ALL_PERMISSIONS } from '@/lib/permissions'
 
 const m = (over: Partial<ChatMessage>): ChatMessage => ({ id: 'm1', senderId: 'me', content: 'hi', ...over }) as ChatMessage
 
@@ -25,9 +26,9 @@ describe('actionsFor', () => {
 
 describe('actionsFor an Admin (spec §9: delete is author or admin)', () => {
   it('may delete someone else’s plain message, not edit it; never a card or a system message', () => {
-    expect(actionsFor(m({ senderId: 'other' }), 'me', true, true)).toEqual({ react: true, edit: false, remove: true })
-    expect(actionsFor(m({ senderId: 'other', commentId: 'k' }), 'me', true, true)).toEqual({ react: true, edit: false, remove: false })
-    expect(actionsFor(m({ system: { kind: 'joined' } }), 'me', true, true)).toEqual({ react: false, edit: false, remove: false })
+    expect(actionsFor(m({ senderId: 'other' }), 'me', true, ALL_PERMISSIONS)).toEqual({ react: true, edit: false, remove: true })
+    expect(actionsFor(m({ senderId: 'other', commentId: 'k' }), 'me', true, ALL_PERMISSIONS)).toEqual({ react: true, edit: false, remove: false })
+    expect(actionsFor(m({ system: { kind: 'joined' } }), 'me', true, ALL_PERMISSIONS)).toEqual({ react: false, edit: false, remove: false })
   })
 })
 

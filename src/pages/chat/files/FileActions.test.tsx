@@ -7,7 +7,7 @@ import type { Attachment, Channel, ChatMessage } from '@/api/types'
 import { api } from '@/lib/api'
 import { FileActionsProvider, useFileActions } from '@/pages/chat/files/FileActions'
 
-vi.mock('@/lib/useRole', () => ({ useRole: () => ({ persona: { id: 'u-1', role: 'member' } }) }))
+vi.mock('@/lib/useRole', () => ({ useRole: () => ({ persona: { id: 'u-1', roleIds: ['member'], grants: [] } }) }))
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()

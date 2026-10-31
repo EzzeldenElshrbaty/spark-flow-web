@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Phase, Project, Rate, Ticket, TimeEntry } from '@/api/types'
 import { entryHours, isOverdue, loggedHours, summarize, taskView } from './derive'
+import { ALL_PERMISSIONS, BUILT_IN_ROLES } from '@/lib/permissions'
 
 const now = new Date('2026-10-26T12:00:00Z')
 const iso = (hoursFromNow: number) => new Date(now.getTime() + hoursFromNow * 3_600_000).toISOString()
@@ -50,8 +51,8 @@ describe('overdue edge cases', () => {
 })
 
 describe('summarize', () => {
-  const admin = { userId: 'u-1', role: 'admin' as const }
-  const sales = { userId: 'u-9', role: 'sales' as const }
+  const admin = { userId: 'u-1', grants: ALL_PERMISSIONS }
+  const sales = { userId: 'u-9', grants: BUILT_IN_ROLES.find((r) => r.id === 'sales')!.grants }
 
   it('progress is done / all, 0 with no tasks', () => {
     expect(summarize(project, data({}), now, admin).progress).toBe(0)
@@ -98,7 +99,7 @@ describe('done follows the column type', () => {
     const view = taskView(t, { timeEntries: [], projects: [p] }, now)
     expect(view.category).toBe('done')
     expect(view.overdue).toBe(false)
-    expect(summarize(p, data({ tickets: [t] }), now, { userId: 'u-1', role: 'admin' }).progress).toBe(1)
+    expect(summarize(p, data({ tickets: [t] }), now, { userId: 'u-1', grants: ALL_PERMISSIONS }).progress).toBe(1)
   })
 
   it('a column named Done with type In progress counts as open', () => {
@@ -106,6 +107,6 @@ describe('done follows the column type', () => {
     const view = taskView(t, { timeEntries: [], projects: [p] }, now)
     expect(view.category).toBe('inProgress')
     expect(view.overdue).toBe(true)
-    expect(summarize(p, data({ tickets: [t] }), now, { userId: 'u-1', role: 'admin' }).progress).toBe(0)
+    expect(summarize(p, data({ tickets: [t] }), now, { userId: 'u-1', grants: ALL_PERMISSIONS }).progress).toBe(0)
   })
 })

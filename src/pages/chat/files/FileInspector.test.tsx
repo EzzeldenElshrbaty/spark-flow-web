@@ -23,7 +23,7 @@ const details: FileDetails = {
   projectIds: ['p-nex'],
 }
 let state: { data?: FileDetails; error: Error | null } = { data: details, error: null }
-let me = { id: 'u-2', role: 'pm' }
+let me = { id: 'u-2', roleIds: ['pm'], grants: [] as string[] }
 const channels = [
   { id: 'c-backend', kind: 'channel', name: 'backend', isPrivate: false, memberIds: ['u-2'] },
   { id: 'c-release', kind: 'channel', name: 'release-v2', isPrivate: true, memberIds: ['u-2'] },
@@ -79,11 +79,11 @@ describe('File details panel (spec 6.9)', () => {
     expect(screen.getByRole('dialog', { name: 'Edit file details' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Share' })).toBeTruthy()
     cleanup()
-    me = { id: 'u-3', role: 'member' }
+    me = { id: 'u-3', roleIds: ['member'], grants: [] }
     show()
     expect(screen.queryByRole('button', { name: 'Share' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Edit file details' })).toBeNull()
-    me = { id: 'u-2', role: 'pm' }
+    me = { id: 'u-2', roleIds: ['pm'], grants: [] }
   })
 
   it('a file that’s gone, or that I can’t see, says so with a way back', () => {

@@ -5,6 +5,24 @@ import { DEFAULT_COLUMNS } from '@/lib/statuses'
  * Steps that bring an older saved document up to date, keyed by the version each upgrades from. A step changes the
  * document in place; it only runs on a copy, inside the transaction that then saves it.
  */
+/**
+ * The four roles as they were when roles became records (v24), frozen here: a permission added later must reach old
+ * documents through its own step, as it does documents already at v24.
+ */
+const V24_ROLES = [
+  {
+    id: 'admin', name: 'Admin', builtIn: true,
+    grants: [
+      'dashboard.all', 'checkins.all', 'checkins.managed', 'projects.create', 'projects.editAll', 'projects.runAll', 'projects.postAll',
+      'projects.archive', 'time.logAll', 'time.othersAll', 'cost.view', 'rates.manage', 'channels.manageAll', 'channels.settings',
+      'channels.invite', 'messages.deleteAll', 'files.manageAll', 'settings.manage', 'database.manage',
+    ],
+  },
+  { id: 'sales', name: 'Sales', builtIn: true, grants: ['dashboard.all', 'projects.create', 'projects.editAll', 'projects.postAll'] },
+  { id: 'pm', name: 'Project manager', builtIn: true, grants: ['checkins.managed'] },
+  { id: 'member', name: 'Member', builtIn: true, grants: ['checkins.managed'] },
+]
+
 export const migrations: Record<number, (doc: Record<string, unknown>) => void> = {
   // 4: channel read state per person. What was read so far is everyone's starting point, so nobody's chat turns unread.
   3: (doc) => {
@@ -137,6 +155,16 @@ export const migrations: Record<number, (doc: Record<string, unknown>) => void> 
     const reminders = Array.isArray(doc.reminders) ? (doc.reminders as Record<string, unknown>[]).filter(Boolean) : []
     doc.saved = reminders.map((r) => ({ id: r.id, userId: r.userId, workspaceId: r.workspaceId, target: r.target, status: 'inProgress', remindAt: r.remindAt, firedAt: r.firedAt ?? null, savedAt: r.remindAt }))
     delete doc.reminders
+  },
+  // 24: roles become records (slice 1). The four built-in roles are stored with the rights they had, and each person
+  // holds the one role they had; an unknown role reads as Member, as the old code treated it.
+  23: (doc) => {
+    if (!Array.isArray(doc.roles)) doc.roles = structuredClone(V24_ROLES)
+    const known = new Set(['admin', 'sales', 'pm', 'member'])
+    for (const user of Array.isArray(doc.users) ? (doc.users as Record<string, unknown>[]).filter(Boolean) : []) {
+      if (!Array.isArray(user.roleIds)) user.roleIds = [typeof user.role === 'string' && known.has(user.role) ? user.role : 'member']
+      delete user.role
+    }
   },
   // 23: notification preferences (spec 6.11), none yet; a channel level equal to the default it had (a channel:
   // mentions, a DM: all) now follows the default, so it moves with the person's new default level.

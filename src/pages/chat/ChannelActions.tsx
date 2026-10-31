@@ -19,8 +19,8 @@ export function useChannelRights(channel: Channel): { manage: boolean; leave: bo
   const { known, project } = useChannelProject(channel)
   const own = channel.kind === 'channel' && known && !project
   return {
-    manage: own && can('channel.manage', { userId: persona.id, role: persona.role, channel }),
-    archive: own && can('channel.archive', { userId: persona.id, role: persona.role, channel }),
+    manage: own && can('channel.manage', { userId: persona.id, grants: persona.grants, channel }),
+    archive: own && can('channel.archive', { userId: persona.id, grants: persona.grants, channel }),
     leave: own && !isArchived(channel) && channel.memberIds.includes(persona.id),
   }
 }

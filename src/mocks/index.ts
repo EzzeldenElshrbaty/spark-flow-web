@@ -5,6 +5,7 @@ import { threadsApi } from './threads'
 import { searchApi } from './search'
 import { sidebarApi } from './sidebarOrder'
 import { preferencesApi } from './preferences'
+import { rolesApi } from './roles'
 import type { Api, ChatMessage, NewTicket, ThreadReply, Ticket, TicketPatch } from '@/api/types'
 import { addReply, chatApi, sendMessage, type AddReplyInput, type SendMessageInput } from './chat'
 import { sessionActor } from './actor'
@@ -73,6 +74,7 @@ export function createMockApi(db: MockDb, hub: MockHub, now: () => Date = () => 
     search: searchApi(db),
     sidebar: sidebarApi(db, hub),
     preferences: preferencesApi(db, hub),
+    roles: rolesApi(db, hub),
     folders: foldersApi(db),
     bookmarks: bookmarksApi(db, hub),
     dashboard: dashboardApi(db, now),
