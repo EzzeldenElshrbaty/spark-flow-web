@@ -253,6 +253,15 @@ describe('createDb', () => {
     await expect(db.importAll({ app: 'spark-flow', version: DB_VERSION, exportedAt: 'T', data: noGrants })).rejects.toMatchObject({ status: 400 })
   })
 
+  it('a deactivation that isn’t one (slice 3) is refused on import', async () => {
+    const db = createDb(createMemoryStore(), fakeSeed)
+    const base = (await db.exportAll()).data
+    const odd = { ...base, users: base.users.map((u) => ({ ...u, deactivated: 'yes' })) }
+    await expect(db.importAll({ app: 'spark-flow', version: DB_VERSION, exportedAt: 'T', data: odd })).rejects.toMatchObject({ status: 400 })
+    const fine = { ...base, users: [...base.users, { ...base.users[0]!, id: 'u-off', email: 'off@x.com', deactivated: { at: 'T', by: base.users[0]!.id, reason: null } }] }
+    await expect(db.importAll({ app: 'spark-flow', version: DB_VERSION, exportedAt: 'T', data: fine })).resolves.toBeUndefined()
+  })
+
   it('export while viewing as someone keeps the default person', async () => {
     const db = createDb(createMemoryStore(), fakeSeed)
     await db.update((d) => {

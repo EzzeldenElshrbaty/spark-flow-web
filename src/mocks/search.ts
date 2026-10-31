@@ -121,7 +121,8 @@ export function searchApi(db: MockDb): Api['search'] {
             .filter((c) => c.kind === 'channel' && readable.has(c.id) && matches(`${c.name ?? ''} ${c.topic ?? ''}`, q))
             .map((c) => ({ kind: 'channel' as const, channel: withUnread(data, c) }))
         : []
-      const people: SearchHit[] = worded ? data.users.filter((u) => matches(`${u.name} ${u.title ?? ''}`, q)).map((user) => ({ kind: 'person' as const, user })) : []
+      // Nobody deactivated (slice 3): there's no starting a conversation with them.
+      const people: SearchHit[] = worded ? data.users.filter((u) => !u.deactivated && matches(`${u.name} ${u.title ?? ''}`, q)).map((user) => ({ kind: 'person' as const, user })) : []
 
       const all: Record<SearchTab, SearchHit[]> = { messages, files, tasks, channels, people }
       const counts = Object.fromEntries(TABS.map((t) => [t, all[t].length])) as Record<SearchTab, number>

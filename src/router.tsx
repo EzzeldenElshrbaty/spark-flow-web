@@ -26,6 +26,7 @@ const SettingsPage = page(() => import('@/pages/settings/SettingsPage'), 'Settin
 const DatabasePage = page(() => import('@/pages/settings/DatabasePage'), 'DatabasePage')
 const RatesPage = page(() => import('@/pages/settings/RatesPage'), 'RatesPage')
 const RolesPage = page(() => import('@/pages/settings/RolesPage'), 'RolesPage')
+const UsersPage = page(() => import('@/pages/settings/UsersPage'), 'UsersPage')
 const AuditLogPage = page(() => import('@/pages/settings/AuditLogPage'), 'AuditLogPage')
 const ActivityPage = page(() => import('@/pages/chat/ActivityPage'), 'ActivityPage')
 const ThreadsPage = page(() => import('@/pages/chat/threads/ThreadsPage'), 'ThreadsPage')
@@ -93,6 +94,7 @@ export const router = createBrowserRouter([
           { path: 'settings', element: <SettingsPage /> },
           { path: 'settings/database', element: <DatabasePage /> },
           { path: 'settings/rates', element: <RatesPage /> },
+          { path: 'settings/users', element: <UsersPage /> },
           { path: 'settings/roles', element: <RolesPage /> },
           { path: 'settings/audit', element: <AuditLogPage /> },
         ],

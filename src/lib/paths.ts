@@ -24,6 +24,8 @@ export const paths = {
   settings: (ws: string) => `/w/${ws}/settings`,
   database: (ws: string) => `/w/${ws}/settings/database`,
   rates: (ws: string) => `/w/${ws}/settings/rates`,
+  /** Everyone in the company (slice 3); `person` opens someone, 'new' Add person. */
+  users: (ws: string, person?: string) => `/w/${ws}/settings/users${person ? `?person=${encodeURIComponent(person)}` : ''}`,
   /** Roles and what each may do (slice 1). */
   roles: (ws: string) => `/w/${ws}/settings/roles`,
   /** The audit log (slice 2); `entry` opens one entry. */
@@ -63,7 +65,7 @@ export function landingPath(workspaceSlug: string, lastVisited: Record<string, s
   return target ? paths.channel(workspaceSlug, target.id) : paths.settings(workspaceSlug)
 }
 
-const PLACE = /^\/w\/[^/]+\/(?:c\/([^/]+)|p\/([^/]+)\/([^/?]+)(?:\?.*)?|settings(?:\/(?:database|rates|roles|audit))?|projects|tasks|dashboard|time|teams|activity|threads|preferences|saved|drafts)$/
+const PLACE = /^\/w\/[^/]+\/(?:c\/([^/]+)|p\/([^/]+)\/([^/?]+)(?:\?.*)?|settings(?:\/(?:database|rates|roles|audit|users))?|projects|tasks|dashboard|time|teams|activity|threads|preferences|saved|drafts)$/
 
 /**
  * Whether a saved place still leads somewhere: a channel that is still in the list, a project that still exists on

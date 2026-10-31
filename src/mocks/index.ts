@@ -56,9 +56,9 @@ declare global {
  */
 export function createMockApi(db: MockDb, hub: MockHub, now: () => Date = () => new Date()): Api {
   const projectParts = projectsApi(db, hub, now)
-  return recordRefusals(db, {
+  return guardRequests(db, {
     workspaces: workspacesApi(db),
-    users: usersApi(db),
+    users: usersApi(db, hub, now),
     chat: chatApi(db, hub),
     tickets: ticketsApi(db, now),
     ...projectParts,
@@ -87,12 +87,22 @@ export function createMockApi(db: MockDb, hub: MockHub, now: () => Date = () => 
   })
 }
 
+/** What a signed-out session (a deactivated person, slice 3) may still do: list people and switch to someone. */
+const OPEN_WHEN_SIGNED_OUT = new Set(['users.viewAs', 'users.list', 'workspaces.list'])
+
+/** A deactivated person's session is signed out: 401 before the call runs, whatever it reads or writes. */
+async function refuseSignedOut(db: MockDb) {
+  const data = await db.read()
+  if (data.users.find((u) => u.id === data.currentUserId)?.deactivated) throw new ApiError({ title: 'Signed out', status: 401, detail: 'This account was deactivated.' })
+}
+
 /**
- * Every call the server refuses for want of a permission (403) goes in the audit log as "denied", in a write of its
- * own (the refused one saved nothing), and the refusal still reaches the caller. The request is named by its route in
- * the Api, `tickets.update`, say.
+ * What the server does around every call. A deactivated person gets 401 (slice 3), except for switching person.
+ * Every call refused for want of a permission (403) goes in the audit log as "denied", in a write of its own (the
+ * refused one saved nothing), and the refusal still reaches the caller. The request is named by its route in the Api,
+ * `tickets.update`, say.
  */
-function recordRefusals(db: MockDb, api: Api): Api {
+function guardRequests(db: MockDb, api: Api): Api {
   const wrapped: Record<string, Record<string, unknown>> = {}
   for (const [ns, part] of Object.entries(api) as [string, Record<string, unknown>][]) {
     wrapped[ns] = {}
@@ -101,12 +111,13 @@ function recordRefusals(db: MockDb, api: Api): Api {
         wrapped[ns][method] = value
         continue
       }
+      const id = `${ns}.${method}`
       wrapped[ns][method] = async (...args: unknown[]) => {
+        if (!OPEN_WHEN_SIGNED_OUT.has(id)) await refuseSignedOut(db)
         try {
           return await value.apply(part, args)
         } catch (error) {
           if (error instanceof ApiError && error.status === 403) {
-            const id = `${ns}.${method}`
             await db
               .update((data) => {
                 audit(data, { action: 'denied', group: 'access', record: { type: 'request', id, name: id }, result: 'refused', detail: error.detail ?? error.title })

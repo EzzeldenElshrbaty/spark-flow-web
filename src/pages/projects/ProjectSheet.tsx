@@ -5,6 +5,7 @@ import { useCreateProject, useTeams, useUpdateProject } from '@/api/projects'
 import { useTickets } from '@/api/tickets'
 import type { Project, ProjectStatus, ProjectSummary } from '@/api/types'
 import { useUsers } from '@/api/users'
+import { pickable } from '@/lib/people'
 import { Button } from '@/components/ui/Button'
 import { Field, inputClass, selectClass } from '@/components/ui/Field'
 import { Sheet } from '@/components/ui/Sheet'
@@ -60,6 +61,10 @@ export function ProjectSheet({
   onSaved: (project: Project) => void
 }) {
   const people = useUsers(workspaceId).data ?? []
+  // Who may be chosen: nobody deactivated (slice 3), unless the project already has them in that place.
+  const managers = pickable(people, [project?.managerId])
+  const members = pickable(people, project?.memberIds ?? [])
+  const named = (u: (typeof people)[number]) => (u.deactivated ? `${u.name} (deactivated)` : u.name)
   const teams = useTeams(workspaceId).data ?? []
   const create = useCreateProject()
   const update = useUpdateProject()
@@ -209,9 +214,9 @@ export function ProjectSheet({
         <Field label="Project manager" required error={errors.managerId} hint={canPeople ? undefined : 'The project manager or Admin assigns people and teams.'}>
           <select className={selectClass} value={values.managerId} disabled={!canPeople} aria-invalid={Boolean(errors.managerId)} onChange={(e) => set('managerId', e.target.value)}>
             <option value="">Choose…</option>
-            {people.map((u) => (
+            {managers.map((u) => (
               <option key={u.id} value={u.id}>
-                {u.name} · {u.title}
+                {named(u)} · {u.title}
               </option>
             ))}
           </select>
@@ -220,10 +225,10 @@ export function ProjectSheet({
         <fieldset>
           <legend className="mb-1.5 text-sm font-medium text-fg-secondary">People</legend>
           <div className="grid max-h-44 gap-1 overflow-y-auto rounded-lg border border-line p-2 sm:grid-cols-2">
-            {people.map((u) => (
+            {members.map((u) => (
               <label key={u.id} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-fg-secondary hover:bg-surface-muted">
                 <input type="checkbox" disabled={!canPeople} checked={values.memberIds.includes(u.id)} onChange={() => toggle('memberIds', u.id)} className="accent-brand-500" />
-                <span className="truncate">{u.name}</span>
+                <span className="truncate">{named(u)}</span>
               </label>
             ))}
           </div>

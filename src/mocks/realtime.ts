@@ -85,6 +85,7 @@ export function createMockRealtimeClient(hub: MockHub): RealtimeClient {
     onSidebarChanged: (cb) => on(hub, 'sidebarChanged', (e) => cb({ userId: e.userId })),
     onPreferencesChanged: (cb) => on(hub, 'preferencesChanged', (e) => cb({ userId: e.userId })),
     onRolesChanged: (cb) => on(hub, 'rolesChanged', () => cb()),
+    onPeopleChanged: (cb) => on(hub, 'peopleChanged', () => cb()),
     onScheduledChanged: (cb) => on(hub, 'scheduledChanged', (e) => cb({ userId: e.userId })),
     onDataReset: (cb) => on(hub, 'dataReset', () => cb()),
   }

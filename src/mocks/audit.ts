@@ -175,6 +175,7 @@ export function shown(data: DbData, field: string, value: unknown): string | nul
     if (value.length === 0) return null
     if (field === 'memberIds' || field === 'userIds') return value.map((id) => person(String(id))).join(', ')
     if (field === 'teamIds') return value.map((id) => data.teams.find((t) => t.id === id)?.name ?? 'A team').join(', ')
+    if (field === 'roleIds') return value.map((id) => data.roles.find((r) => r.id === id)?.name ?? 'A role').join(', ')
     if (field === 'links') return value.map((l) => (l as { label?: string }).label || 'Link').join(', ')
     return value.map(String).join(', ')
   }
@@ -196,7 +197,7 @@ export function shown(data: DbData, field: string, value: unknown): string | nul
 /** "dueDate" → "Due date"; "managerId" → "Manager". */
 export function fieldLabel(field: string): string {
   const named: Record<string, string> = {
-    managerId: 'Manager', assigneeId: 'Assignee', memberIds: 'Members', teamIds: 'Teams', phaseId: 'Phase', sprintId: 'Sprint', userIds: 'People',
+    managerId: 'Manager', assigneeId: 'Assignee', memberIds: 'Members', teamIds: 'Teams', roleIds: 'Roles', phaseId: 'Phase', sprintId: 'Sprint', userIds: 'People',
     dueAt: 'Due', estimateHours: 'Estimate (hours)', storyPoints: 'Story points', whoCanPost: 'Who can post', isDefault: 'Default channel',
     isPrivate: 'Private', clientName: 'Client', doneAt: 'Done', hourlyCost: 'Hourly cost (EGP)', startedAt: 'Start', endedAt: 'End',
     projectId: 'Project', taskId: 'Task', folderId: 'Folder', logoFileId: 'Logo', userId: 'Person',

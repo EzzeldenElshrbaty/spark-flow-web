@@ -9,6 +9,7 @@ import { Icon } from '@/components/sf/Icon'
 import { useChannels, useOpenDm } from '@/api/chat'
 import { useProjects, useTasksOf } from '@/api/tickets'
 import { useUsers } from '@/api/users'
+import { isActive } from '@/lib/people'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { useRole } from '@/lib/useRole'
 import { findShortcuts, opensSearch, peopleShortcuts, searchPlaceholder, shortcutsFor, taskShortcuts, workspaceShortcuts } from '@/layout/searchShortcuts'
@@ -48,7 +49,8 @@ function useSearch(term: string) {
   const typed = term.trim()
   const long = typed.length >= minSearchLength
   const taskHits = useMemo(() => (long && workspace ? taskShortcuts(workspace.slug, tasks, projects ?? [], typed) : []), [long, workspace, tasks, projects, typed])
-  const peopleHits = useMemo(() => (long ? peopleShortcuts(users ?? [], persona.id, typed) : []), [long, users, persona.id, typed])
+  // Deactivated people (slice 3) aren't offered: there's no starting a conversation with them.
+  const peopleHits = useMemo(() => (long ? peopleShortcuts((users ?? []).filter(isActive), persona.id, typed) : []), [long, users, persona.id, typed])
   const groups = useMemo(() => {
     const found = typed.length >= minSearchLength ? findShortcuts(all, typed) : { pages: [], actions: [] }
     return [

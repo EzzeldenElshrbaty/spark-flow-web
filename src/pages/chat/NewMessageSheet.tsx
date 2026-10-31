@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useOpenDm } from '@/api/chat'
 import { useMe, useUsers } from '@/api/users'
+import { isActive } from '@/lib/people'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { inputClass } from '@/components/ui/Field'
@@ -14,7 +15,8 @@ const MAX_OTHERS = 8
 export function NewMessageSheet({ workspaceId, workspaceSlug, onClose }: { workspaceId: string; workspaceSlug: string; onClose: () => void }) {
   const navigate = useNavigate()
   const me = useMe().data
-  const people = (useUsers(workspaceId).data ?? []).filter((u) => u.id !== me?.id)
+  // Not me, and nobody deactivated (slice 3).
+  const people = (useUsers(workspaceId).data ?? []).filter((u) => u.id !== me?.id && isActive(u))
   const open = useOpenDm()
   const [picked, setPicked] = useState<string[]>([])
   const [filter, setFilter] = useState('')

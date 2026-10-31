@@ -1,4 +1,5 @@
 import clsx from 'clsx'
+import { isActive } from '@/lib/people'
 import { useQueryClient } from '@tanstack/react-query'
 import { IconAdjustmentsHorizontal, IconChevronDown, IconKey, IconLogout, IconMoon, IconSun } from '@tabler/icons-react'
 import { useNavigate } from 'react-router'
@@ -124,7 +125,8 @@ export function UserMenu() {
               Switching didn't work. Try again.
             </p>
           )}
-          {people.data.map((person) => (
+          {/* Nobody deactivated (slice 3): they can't act. */}
+          {people.data.filter(isActive).map((person) => (
             <ViewAsItem key={person.id} person={person} roles={roleNames(person.roleIds)} current={person.id === persona.id} pending={viewAs.isPending} onPick={switchTo} />
           ))}
         </>

@@ -25,6 +25,8 @@ export const ACTIONS: Record<AuditAction, { label: string; tone: BadgeTone }> = 
   downloaded: { label: 'Downloaded', tone: 'brand' },
   imported: { label: 'Imported', tone: 'warning' },
   reset: { label: 'Reset', tone: 'warning' },
+  deactivated: { label: 'Deactivated', tone: 'warning' },
+  reactivated: { label: 'Reactivated', tone: 'success' },
 }
 
 export const RESULTS: Record<AuditResult, { label: string; tone: BadgeTone }> = {

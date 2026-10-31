@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { ChevronRight, Database, ScrollText, ShieldCheck, Wallet, type LucideIcon } from 'lucide-react'
+import { ChevronRight, Database, ScrollText, ShieldCheck, Users, Wallet, type LucideIcon } from 'lucide-react'
 import { useId, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router'
 import { useTeams } from '@/api/projects'
@@ -61,7 +61,7 @@ function Group({ title, tone, children }: { title: string; tone: Tone; children:
 
 /**
  * Settings (slice 1, as the CRM's): a few counts, then what can be changed, grouped. Each card shows only to whoever
- * may open its page; the pages to come (Users, Archived records, attendance) join as they're built.
+ * may open its page; the pages to come (Archived records, attendance) join as they're built.
  */
 export function SettingsPage() {
   const { ws = '' } = useParams()
@@ -72,7 +72,12 @@ export function SettingsPage() {
   const teamsQuery = useTeams(workspace?.id)
   const roles = rolesQuery.data
 
+  const people = peopleQuery.data
+  const off = people?.filter((p) => p.deactivated).length ?? 0
   const access: Entry[] = [
+    ...(check('settings.manage')
+      ? [{ to: paths.users(ws), icon: Users, title: 'Users', about: 'Who works here: their roles, teams and whether they’re active', chips: people ? [`${people.length - off} active`, ...(off ? [`${off} deactivated`] : [])] : [] }]
+      : []),
     ...(check('settings.manage') ? [{ to: paths.roles(ws), icon: ShieldCheck, title: 'Roles and permissions', about: 'What each role may do', chips: roles ? [`${roles.length} roles`] : [] }] : []),
     ...(check('audit.view') ? [{ to: paths.audit(ws), icon: ScrollText, title: 'Audit log', about: 'Who did what, when and from where' }] : []),
   ]

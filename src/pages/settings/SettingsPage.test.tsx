@@ -33,6 +33,10 @@ describe('Settings home (slice 1, as the CRM’s)', () => {
     const counts = screen.getByRole('list', { name: 'At a glance' })
     expect(within(counts).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['People9', 'Roles4', 'Teams4'])
     const access = screen.getByRole('region', { name: 'People and access' })
+    // Users first (slice 3): who is active and who isn't.
+    const users = within(access).getByRole('link', { name: /Users/ })
+    expect(users.getAttribute('href')).toBe('/w/engineering/settings/users')
+    expect(users.textContent).toContain('9 active')
     const roles = within(access).getByRole('link', { name: /Roles and permissions/ })
     expect(roles.getAttribute('href')).toBe('/w/engineering/settings/roles')
     expect(roles.textContent).toContain('4 roles')

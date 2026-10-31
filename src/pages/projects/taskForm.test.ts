@@ -58,6 +58,15 @@ describe('assigneeOptions', () => {
     expect(assigneeOptions([nour], users, 'u-gone')[0]).toEqual({ id: 'u-gone', label: 'Unknown person (not on this project)' })
     expect(assigneeOptions([nour], users, null)).toEqual([{ id: 'u-2', label: 'Nour El-Sayed' }])
   })
+
+  it('nobody deactivated is offered, unless the task is theirs already (slice 3)', () => {
+    const off = { ...mariam, deactivated: { at: '2026-10-31T10:00:00.000Z', by: 'u-1', reason: null } }
+    expect(assigneeOptions([nour, off], [...users, off], null)).toEqual([{ id: 'u-2', label: 'Nour El-Sayed' }])
+    expect(assigneeOptions([nour, off], [...users, off], 'u-3')).toEqual([
+      { id: 'u-2', label: 'Nour El-Sayed' },
+      { id: 'u-3', label: 'Mariam Fathy (deactivated)' },
+    ])
+  })
 })
 
 describe('tasksLeftWith', () => {

@@ -44,8 +44,21 @@ function myDay(data: DbData, userId: string, now: Date): MyDay {
   })
 }
 
+/**
+ * Closes a check-in left open: today's at `at`; an earlier day's when that day's last entry ended (else when it began),
+ * so a forgotten check-out doesn't count the nights in between.
+ */
+export function closeCheckIn(data: DbData, checkIn: DbData['checkIns'][number], at: Date) {
+  if (checkIn.day >= localDay(at)) {
+    checkIn.checkedOutAt = at.toISOString()
+    return
+  }
+  const ends = data.timeEntries.filter((e) => e.userId === checkIn.userId && e.endedAt && localDay(new Date(e.startedAt)) === checkIn.day).map((e) => e.endedAt!)
+  checkIn.checkedOutAt = [checkIn.checkedInAt, ...ends].sort().at(-1)!
+}
+
 /** Closes my running entry (if any) at `at`, or 12 hours after it started if it was forgotten that long. */
-function stopRunning(data: DbData, userId: string, at: string) {
+export function stopRunning(data: DbData, userId: string, at: string) {
   const running = data.timeEntries.find((e) => e.userId === userId && e.endedAt === null)
   if (running) running.endedAt = new Date(entryEnd(running, new Date(at))).toISOString()
   return running
@@ -169,10 +182,7 @@ export function timeApi(db: MockDb, hub: MockHub, now: () => Date): Api['time'] 
         if (data.checkIns.some((c) => c.userId === me.id && c.day === day)) throw badRequest("You've already checked in today.")
         const iso = at.toISOString()
         // A check-in left open on an earlier day closes when its last entry of that day ended (else when it began).
-        for (const old of data.checkIns.filter((c) => c.userId === me.id && c.checkedOutAt === null && c.day < day)) {
-          const ends = data.timeEntries.filter((e) => e.userId === me.id && e.endedAt && localDay(new Date(e.startedAt)) === old.day).map((e) => e.endedAt!)
-          old.checkedOutAt = [old.checkedInAt, ...ends].sort().at(-1)!
-        }
+        for (const old of data.checkIns.filter((c) => c.userId === me.id && c.checkedOutAt === null && c.day < day)) closeCheckIn(data, old, at)
         // A timer left running from an earlier day stops where it stopped counting (12 hours in).
         const running = data.timeEntries.find((e) => e.userId === me.id && e.endedAt === null)
         if (running && localDay(new Date(running.startedAt)) < day) stopRunning(data, me.id, iso)

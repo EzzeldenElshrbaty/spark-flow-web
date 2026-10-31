@@ -1677,10 +1677,40 @@ Rulings (cost if wrong):
 - Who: "Change settings, users and roles". Every change is recorded in the audit log.
 
 Plan:
-- [ ] 3.1 **API and mock:** `api.users` create, update, deactivate and reactivate, and what deactivating does to
+- [x] 3.1 **API and mock:** `api.users` create, update, deactivate and reactivate, and what deactivating does to
   timers, check-ins and pickers. Tests: the rules, refusals, audit events and HTTP.
-- [ ] 3.2 **Page and person sheet.** Tests: jsdom, axe in both themes, 390px.
-- [ ] 3.3 **Close.**
+- [x] 3.2 **Page and person sheet.** Tests: jsdom, axe in both themes, 390px.
+- [x] 3.3 **Close.**
+
+### Review (slice 3)
+
+- **Checks:**
+  - Unit 1,802 and browser 246 pass, and tsc, lint and build:prototype are clean.
+  - Users has an axe check in light and dark (the list, Edit of someone deactivated, and Deactivate) and a 390px check.
+  - App check:
+    - Laila Hamdy was added after the taken email was refused under Email.
+    - Mariam was deactivated with a reason. She left View as and the dashboard's "Checked in now", and the log had both entries.
+    - Reactivate brought her back.
+    - A second tab acting as Mariam reloaded to "You're signed out" and switched back to someone else through View as.
+    - Both themes and 390px were checked.
+- **Test-first:** the mock's rules and the page were written just before their tests. The review fixes were run red first. Mutation-checked: without the sign-out guard, or without Edit waiting for the teams, a test fails.
+- **Changed from the plan:**
+  - A row opens Edit, which holds Deactivate, Reactivate and the links to Teams and Hourly cost. A ⋯ menu inside a table cell was cut off by the cell (the browser test caught it).
+  - Rows show their actions only in Edit, so the phone list is one 44px button per person.
+  - New `peopleChanged` event. A change to anyone's name, roles or status reloads every page, as a role change does.
+  - The conversation someone deactivated was already in still opens, to read. A new one with them is refused.
+- **Review fixes:**
+  - A deactivated person's session is refused on every call (401), except listing people and View as. Before, chat reads, read marks and stars still went through.
+  - Edit opens once the teams have loaded. Before, opening it by link could save someone off their teams.
+  - Deactivating closes a check-in forgotten on an earlier day at that day's last entry, as checking in does, not at the moment of deactivating. It also sets them offline, so @here no longer reaches them.
+  - "Last active" counts starts, not the server closing a timer or check-in.
+  - Chat search's People leaves deactivated people out. The project sheet's manager and People lists each keep only their own chosen people, marked "(deactivated)".
+  - Add people refuses only those it would add.
+  - In the prototype, "You're signed out" points to View as instead of a sign-in page that doesn't exist.
+  - The person form shows its own sentence for a bad email, not the browser's, and errors are linked to their fields.
+- **Left as is:**
+  - A deactivated person's scheduled messages stay. The scheduler fails each one when it's due, and Flowbot says so.
+  - Another Admin can deactivate the prototype's default person. Fresh tabs then show "You're signed out" and View as gets them back.
 
 ## Slice 4: Archived records
 

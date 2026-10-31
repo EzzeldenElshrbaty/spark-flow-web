@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useChannels, useCreateChannel } from '@/api/chat'
 import { useMe, useUsers } from '@/api/users'
+import { isActive } from '@/lib/people'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { Field, inputClass } from '@/components/ui/Field'
@@ -17,7 +18,8 @@ import { paths } from '@/lib/paths'
 export function ChannelSheet({ workspaceId, workspaceSlug, onClose }: { workspaceId: string; workspaceSlug: string; onClose: () => void }) {
   const navigate = useNavigate()
   const me = useMe().data
-  const people = (useUsers(workspaceId).data ?? []).filter((u) => u.id !== me?.id)
+  // Not me, and nobody deactivated (slice 3).
+  const people = (useUsers(workspaceId).data ?? []).filter((u) => u.id !== me?.id && isActive(u))
   const taken = (useChannels(workspaceId).data ?? []).filter((c) => c.kind === 'channel').map((c) => c.name ?? '')
   const create = useCreateChannel()
   const [values, setValues] = useState<ChannelValues>({ name: '', topic: '', isPrivate: false, memberIds: [] })

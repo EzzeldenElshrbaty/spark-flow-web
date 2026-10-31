@@ -7,7 +7,17 @@ export type { Permission }
 // ── Relational (PostgreSQL) ───────────────────────────────────────────────
 export type Presence = 'active' | 'away' | 'offline'
 /** A person. `roleIds`: the roles they hold, one or more; they get every permission of each (slice 1). */
-export type User = { id: string; name: string; email: string; title: string; roleIds: string[]; presence: Presence; teamIds: string[] }
+/**
+ * A person, company-wide. `deactivated` (slice 3) says when, by whom and why they were turned off; absent or null while
+ * they're active. Their work, time and messages stay; they leave every picker and can't act.
+ */
+export type User = { id: string; name: string; email: string; title: string; roleIds: string[]; presence: Presence; teamIds: string[]; deactivated?: Deactivation | null }
+export type Deactivation = { at: string; by: string; reason: string | null }
+/** A person as Settings → Users lists them (slice 3): with when they last did anything, worked out on read. */
+export type PersonRow = User & { lastActiveAt: string | null }
+/** Add person (slice 3); Edit sends any of the same fields. Teams are the person's in every workspace. */
+export type NewPerson = { name: string; email: string; title: string; roleIds: string[]; teamIds: string[] }
+export type PersonPatch = Partial<NewPerson>
 /** Me, with every permission my roles give me, worked out by the server on each read. */
 export type Me = User & { grants: Permission[] }
 /**
@@ -21,6 +31,7 @@ export type AuditAction =
   | 'created' | 'changed' | 'deleted' | 'archived' | 'restored'
   | 'signedIn' | 'signInFailed' | 'denied'
   | 'exported' | 'downloaded' | 'imported' | 'reset'
+  | 'deactivated' | 'reactivated'
 export type AuditResult = 'done' | 'refused' | 'failed'
 /** What an event is about, named as it was at the time. `type` is the kind of record ('project', 'role', 'request'…). */
 export type AuditRecord = { type: string; id: string; name: string }
@@ -617,6 +628,16 @@ export interface Api {
     list(workspaceId: string): Promise<User[]>
     /** Demo only: act as another seeded person. Hidden when backendOn. */
     viewAs(userId: string): Promise<User>
+    /**
+     * Settings → Users (slice 3), all needing "Change settings, users and roles": everyone, active or not, with when
+     * each was last active; add and edit; deactivate (not yourself, nor the last person who can change settings) and
+     * reactivate. Each change sends `peopleChanged` and goes in the audit log.
+     */
+    directory(): Promise<PersonRow[]>
+    create(input: NewPerson): Promise<User>
+    update(id: string, patch: PersonPatch): Promise<User>
+    deactivate(id: string, reason: string): Promise<User>
+    reactivate(id: string): Promise<User>
   }
   /**
    * The audit log (slice 2). Reading and exporting it needs "See the audit log"; the export is recorded too. The two

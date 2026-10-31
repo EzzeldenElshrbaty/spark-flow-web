@@ -44,9 +44,9 @@ function checkGrants(value: unknown): Permission[] {
   return ALL_PERMISSIONS.filter((p) => value.includes(p))
 }
 
-/** The rule no change may break: someone can still change settings, users and roles. */
-function keepsAnAdmin(data: DbData) {
-  if (!data.users.some((u) => grantsFor(data, u).includes('settings.manage')))
+/** The rule no change may break: someone active can still change settings, users and roles (slices 1 and 3). */
+export function keepsAnAdmin(data: DbData) {
+  if (!data.users.some((u) => !u.deactivated && grantsFor(data, u).includes('settings.manage')))
     throw badRequest('At least one person must be able to change settings, users and roles.')
 }
 

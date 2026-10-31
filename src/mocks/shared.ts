@@ -32,11 +32,26 @@ export function forbidden(thing: string): ApiError {
   return new ApiError({ title: 'Forbidden', status: 403, detail: `You don't have access to ${thing}.` })
 }
 
-/** The current user, as the mock backend sees them. */
+/**
+ * The current user, as the mock backend sees them. A deactivated person (slice 3) is signed out: a tab still acting
+ * as them gets 401 on everything that asks who is acting.
+ */
 export function currentUser(data: { currentUserId: string; users: User[] }): User {
   const me = data.users.find((u) => u.id === data.currentUserId)
   if (!me) throw notFound('User', data.currentUserId)
+  if (me.deactivated) throw new ApiError({ title: 'Signed out', status: 401, detail: 'This account was deactivated.' })
   return me
+}
+
+/**
+ * Refuses people who are deactivated (slice 3) where someone is being added: an assignee, a project's people, a
+ * channel's or a conversation's. People who already were there stay.
+ */
+export function requireActive(data: { users: User[] }, ids: Iterable<string | null | undefined>): void {
+  for (const id of ids) {
+    const person = id ? data.users.find((u) => u.id === id) : undefined
+    if (person?.deactivated) throw badRequest(`${person.name} is deactivated.`)
+  }
 }
 
 /** The 400 the mock throws for input it can't accept, with the sentence the form shows. */

@@ -187,6 +187,8 @@ function hasUsableRecords(data: DbData): boolean {
     data.users.some((user) => user.id === data.currentUserId) &&
     // Permissions are worked out from these on every request (slice 1).
     data.users.every((user) => strings(user.roleIds)) &&
+    // Deactivated people are signed out on every request (slice 3).
+    data.users.every((user) => user.deactivated == null || (isRecord(user.deactivated) && typeof user.deactivated.at === 'string')) &&
     data.roles.every((role) => strings(role.grants))
   )
 }

@@ -13,7 +13,7 @@ import { audit, changesBetween, recordOf } from './audit'
 import { delay } from './latency'
 import type { MockHub } from './realtime'
 import { ApiError } from '@/lib/apiError'
-import { badRequest, clone, currentUser, newId, notFound, requireCan, stamp } from './shared'
+import { badRequest, clone, currentUser, newId, notFound, requireActive, requireCan, stamp } from './shared'
 import { grantsFor } from './roles'
 import { parseMentions, parseTicketKeys } from './text'
 import { bodyTaskKeys, bodyText, mentionsOf, parseBody, validBody, type Body } from '@/lib/messageBody'
@@ -377,6 +377,8 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
           (c) => c.workspaceId === workspaceId && c.kind === 'dm' && c.memberIds.length === members.length && [...c.memberIds].sort().every((id, i) => id === members[i]),
         )
         if (same) return { channel: withUnread(data, same), created: false }
+        // A conversation that exists stays open to read; nobody deactivated is in a new one.
+        requireActive(data, others)
         const dm: StoredChannel = { id: newId('c'), workspaceId, kind: 'dm', name: null, topic: '', description: '', whoCanPost: 'everyone', isDefault: false, memberIds: [me.id, ...others], isPrivate: true, lastMessageAt: null }
         data.channels.push(dm)
         return { channel: withUnread(data, dm), created: true }
@@ -393,6 +395,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         const topic = input.topic.trim()
         const others = [...new Set(input.memberIds)].filter((id) => id !== me.id)
         checkChannel(data, { workspaceId: input.workspaceId, name, topic, isPrivate: input.isPrivate, others })
+        requireActive(data, others)
         const created: StoredChannel = { id: newId('c'), workspaceId: input.workspaceId, kind: 'channel', name, topic, description: '', whoCanPost: 'everyone', isDefault: false, memberIds: [me.id, ...others], isPrivate: input.isPrivate, lastMessageAt: null }
         data.channels.push(created)
         audit(data, { action: 'created', group: 'data', record: recordOf.channel(created), changes: changesBetween(data, {}, created, CHANNEL_LOGGED) })
@@ -460,6 +463,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         const unknown = picked.find((userId) => !data.users.some((u) => u.id === userId))
         if (unknown) throw notFound('User', unknown)
         const added = picked.filter((userId) => !channel.memberIds.includes(userId))
+        requireActive(data, added)
         const invited = strangers.filter((email) => !data.invitations.some((i) => i.channelId === id && i.email === email && i.status === 'pending'))
         if (!added.length && !invited.length) {
           throw badRequest(typed.length ? `Everyone you picked is already in #${channel.name} or invited.` : `Everyone you picked is already in #${channel.name}.`)

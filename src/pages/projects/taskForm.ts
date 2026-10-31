@@ -1,4 +1,5 @@
 import type { Project, TaskView, TicketPatch, User } from '@/api/types'
+import { pickable } from '@/lib/people'
 import { categoryOf } from '@/lib/boardColumns'
 
 /**
@@ -23,7 +24,8 @@ export function savePatch(opened: TaskView, fields: TicketPatch, canManage: bool
  * that a save doesn't quietly unassign someone taken off the project.
  */
 export function assigneeOptions(people: User[], users: User[], currentId: string | null): { id: string; label: string }[] {
-  const options = people.map((u) => ({ id: u.id, label: u.name }))
+  // Nobody deactivated (slice 3), unless the task is theirs already: it stays with them until it's reassigned.
+  const options = pickable(people, [currentId]).map((u) => ({ id: u.id, label: u.deactivated ? `${u.name} (deactivated)` : u.name }))
   if (!currentId || people.some((u) => u.id === currentId)) return options
   const name = users.find((u) => u.id === currentId)?.name ?? 'Unknown person'
   return [{ id: currentId, label: `${name} (not on this project)` }, ...options]

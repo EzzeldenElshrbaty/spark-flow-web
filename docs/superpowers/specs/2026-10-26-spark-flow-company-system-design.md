@@ -250,6 +250,32 @@ and the IP is a made-up one per browser.
 
 Events: no event of its own; any event whose write the server logged also refreshes the log's queries (`keysForEvent`).
 
+### 4.6 People (amended 31 Oct 2026, Admin and help slice 3)
+
+People are company-wide records, edited on Settings → Users by whoever holds "Change settings, users and roles"
+(`settings.manage`); anyone else gets `403` (recorded as a refusal). Everyone signed in still reads the people list.
+
+| Call | Route | Notes |
+|---|---|---|
+| Directory | `GET /api/users` | Everyone, active or not, each with `lastActiveAt`: the latest thing the server saw them do (a message, reply, comment, time entry, check-in or out, or any audit entry), null if nothing. |
+| Add | `POST /api/users` `{ name, email, title, roleIds, teamIds }` | Name 1–80 characters (`Give their name.`), email valid (`That isn’t an email address.`) and unique ignoring case (`Mariam Fathy has that email already.`), title up to 80, at least one role (`Give them at least one role.`), roles and teams that exist. Stored tidied: trimmed, email lowercased, roles and teams in their own order. A new person is `offline` and can be tried at once through View as. |
+| Edit | `PATCH /api/users/:id` with any of the same fields | Same rules; their own email is no clash. No edit may leave nobody active who holds `settings.manage` (`At least one person must be able to change settings, users and roles.`). An edit that changes nothing records nothing and sends nothing. |
+| Deactivate | `POST /api/users/:id/deactivate` `{ reason }` | Not yourself (`You can't deactivate yourself.`), which also means someone who can change settings always stays. Reason optional, up to 200 characters. Sets `deactivated { at, by, reason }`, stops their running timer and closes an open check-in, in the same write. Someone already deactivated: nothing changes or is sent. |
+| Reactivate | `POST /api/users/:id/reactivate` | Clears `deactivated`. |
+
+- **Teams agree both ways:** a person's `teamIds` and each team's `memberIds` are written together.
+- **A deactivated person** stays in the people list (their name still shows on what they did) but leaves every
+  picker: View as, an assignee, a project's manager or members, a new channel's or conversation's people, Add people,
+  `@` mentions and search's people. The server refuses to add them (`Mariam Fathy is deactivated.`); people who
+  were already there stay, and a task stays with them until it's reassigned. A session acting as them gets `401`
+  (`This account was deactivated.`) on every request that asks who is acting.
+- **Events:** each change sends `peopleChanged` (clients read everything again: names, roles and pickers show
+  everywhere); deactivating also sends `timeLogged` for a stopped timer.
+- **Audit log** (group "Settings and users"): `created`, `changed` (each field, roles and teams by name),
+  `deactivated` (with the reason as its detail) and `reactivated`.
+- **Not here yet:** sign-in, invitations and passwords wait for the backend (§10). The backend must also end a
+  deactivated person's sessions.
+
 ## 5. Screens (copy the named Spark CRM screen in `design/screenshots/`)
 
 Sidebar groups: **WORK** Home, Projects, My tasks · **TEAM** Chat, Teams · **MANAGE** Dashboard, Time & cost ·

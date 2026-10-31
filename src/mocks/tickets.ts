@@ -5,7 +5,7 @@ import { delay } from './latency'
 import type { MockHub } from './realtime'
 import { categoryOf, columnLabel, columnOf, columnsOf, startColumn } from '@/lib/boardColumns'
 import { entryEnd } from '@/lib/hours'
-import { badRequest, clone, isDate, notFound, pickPatch, requireCan, stamp, text } from './shared'
+import { badRequest, clone, isDate, notFound, pickPatch, requireActive, requireCan, stamp, text } from './shared'
 import { projectPeopleIds } from '@/lib/projectPeople'
 
 /** In board order (the project's columns), then by rank within a column; a column that's gone sorts last. */
@@ -97,8 +97,10 @@ function checkTaskInput(data: DbData, projectId: string, input: Partial<TicketPa
   if (input.description !== undefined) text(input.description, 'Description')
   if (input.priority !== undefined && !PRIORITIES.includes(input.priority)) throw badRequest("That isn't a priority.")
   if (input.type !== undefined && !TYPES.includes(input.type)) throw badRequest("That isn't a task type.")
-  if (input.assigneeId != null && input.assigneeId !== ticket?.assigneeId && !projectPeopleIds(project, data.users).has(input.assigneeId))
-    throw badRequest('Pick someone on the project.')
+  if (input.assigneeId != null && input.assigneeId !== ticket?.assigneeId) {
+    requireActive(data, [input.assigneeId])
+    if (!projectPeopleIds(project, data.users).has(input.assigneeId)) throw badRequest('Pick someone on the project.')
+  }
   if (input.sprintId != null && data.sprints.find((s) => s.id === input.sprintId)?.projectId !== projectId) throw badRequest('That sprint belongs to another project.')
   if (input.storyPoints != null && (!Number.isFinite(input.storyPoints) || input.storyPoints < 0)) throw badRequest('Story points are a number, 0 or more.')
   if (input.dueAt != null && !isDate(input.dueAt)) throw badRequest('Pick a due date.')

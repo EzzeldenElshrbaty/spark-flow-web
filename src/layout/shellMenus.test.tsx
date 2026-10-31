@@ -20,7 +20,13 @@ vi.mock('@/lib/useTheme', () => ({ useTheme: () => ({ theme: 'light', setTheme }
 vi.mock('@/lib/useRole', () => ({ useRole: () => ({ persona: { id: 'u-1', name: 'Youssef Abdelrahman', title: 'Managing Director', roleIds: ['admin'], grants: [] } }) }))
 vi.mock('@/api/roles', () => ({ useRoleNames: () => (ids: string[]) => ids.map((id) => ({ admin: 'Admin', pm: 'Project manager' })[id]).join(', ') }))
 vi.mock('@/api/users', () => ({
-  useUsers: () => ({ data: [{ id: 'u-1', name: 'Youssef Abdelrahman', roleIds: ['admin'], presence: 'active' }, { id: 'u-2', name: 'Nour El-Sayed', roleIds: ['pm'], presence: 'away' }] }),
+  useUsers: () => ({
+    data: [
+      { id: 'u-1', name: 'Youssef Abdelrahman', roleIds: ['admin'], presence: 'active' },
+      { id: 'u-2', name: 'Nour El-Sayed', roleIds: ['pm'], presence: 'away' },
+      { id: 'u-3', name: 'Mariam Fathy', roleIds: ['member'], presence: 'offline', deactivated: { at: '2026-10-31T10:00:00.000Z', by: 'u-1', reason: null } },
+    ],
+  }),
   useViewAs: () => ({ mutate: viewAs, isPending: false, isError: false }),
 }))
 vi.mock('@/layout/useCurrentWorkspace', () => ({
@@ -66,6 +72,8 @@ describe('UserMenu (spec 5.2: the account menu)', () => {
     expect(menu.textContent).toContain('Admin · Managing Director')
     expect(screen.getByRole('menuitemradio', { name: /Light/ }).getAttribute('aria-checked')).toBe('true')
     expect(screen.getByRole('menuitemradio', { name: /Nour El-Sayed/ }).getAttribute('aria-checked')).toBe('false')
+    // Nobody deactivated is offered (slice 3).
+    expect(screen.queryByRole('menuitemradio', { name: /Mariam Fathy/ })).toBeNull()
     expect(screen.getByRole('menuitem', { name: /Change password/ }).getAttribute('aria-disabled')).toBe('true')
     expect(screen.getByRole('menuitem', { name: /Log out/ }).getAttribute('aria-disabled')).toBe('true')
     expectSf(menu)

@@ -80,5 +80,7 @@ describe('keysForEvent (M10)', () => {
     expect(keysForEvent({ type: 'dataReset' })).toEqual([[]])
     // Roles changed: anyone's rights, so everything (slice 1).
     expect(keysForEvent({ type: 'rolesChanged' })).toEqual([[]])
+    // Someone added, edited or deactivated (slice 3): names and pickers show everywhere.
+    expect(keysForEvent({ type: 'peopleChanged' })).toEqual([[]])
   })
 })

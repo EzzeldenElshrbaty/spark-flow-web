@@ -7,7 +7,7 @@ import type { MockHub } from './realtime'
 import { logActivity, statusChange } from './activity'
 import { entryEnd } from '@/lib/hours'
 import { stopTimersOn } from './timers'
-import { badRequest, clone, currentUser, isDate, newId, notFound, pickPatch, requireCan, text } from './shared'
+import { badRequest, clone, currentUser, isDate, newId, notFound, pickPatch, requireActive, requireCan, text } from './shared'
 import { grantsFor } from './roles'
 import { CHANNEL_NAME } from '@/lib/channelForm'
 import { projectPeopleIds } from '@/lib/projectPeople'
@@ -233,6 +233,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
             // Unique across workspaces: task keys (NEX-101) are looked up by key alone.
             if (data.projects.some((p) => p.key === input.key)) throw badRequest(`Key ${input.key} is already used.`)
             if (!data.users.some((u) => u.id === input.managerId)) throw badRequest('Pick a project manager.')
+            requireActive(data, [input.managerId, ...input.memberIds])
             checkDates(input.startDate, input.dueDate)
 
             const id = freeId(`p-${input.key.toLowerCase()}`, data.projects, 'p')
@@ -268,6 +269,8 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
             requireCan(data, 'project.edit', project)
             const next = { ...project, ...pickPatch(patch, PROJECT_FIELDS) } as Project
             checkProjectRefs(data, next)
+            // Someone deactivated who is already there stays; nobody deactivated joins.
+            requireActive(data, [next.managerId !== project.managerId ? next.managerId : null, ...next.memberIds.filter((id) => !project.memberIds.includes(id))])
             // Assigning people and teams is the manager's (and Admin's), not Sales' (spec §4.3).
             const same = (x: string[], y: string[]) => [...x].sort().join() === [...y].sort().join()
             if (next.managerId !== project.managerId || !same(next.memberIds, project.memberIds) || !same(next.teamIds, project.teamIds)) {

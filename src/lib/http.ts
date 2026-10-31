@@ -112,6 +112,11 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
       me: () => get('/api/users/me'),
       list: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/users`),
       viewAs: () => mockOnly('Viewing as another person'),
+      directory: () => get('/api/users'),
+      create: (input) => send('POST', '/api/users', input),
+      update: (id, patch) => send('PATCH', `/api/users/${enc(id)}`, patch),
+      deactivate: (id, reason) => send('POST', `/api/users/${enc(id)}/deactivate`, { reason }),
+      reactivate: (id) => send('POST', `/api/users/${enc(id)}/reactivate`),
     },
     chat: {
       channels: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/channels`),

@@ -1,4 +1,5 @@
 import { IconEye, IconMail, IconUserPlus } from '@tabler/icons-react'
+import { isActive } from '@/lib/people'
 import { useEffect, useId, useRef, useState } from 'react'
 import type { Channel, ChannelPatch, Invitation, Team, User } from '@/api/types'
 import { Avatar } from '@/components/sf/Avatar'
@@ -12,7 +13,7 @@ import { timeAgo } from '@/lib/format'
 import { inviteHelp, isEmail, normalEmail, notAnEmailLine, splitAddresses } from '@/lib/invites'
 import { errorText, usePicked } from '@/pages/chat/usePicked'
 
-export type Person = Pick<User, 'id' | 'name' | 'email' | 'title' | 'presence'>
+export type Person = Pick<User, 'id' | 'name' | 'email' | 'title' | 'presence' | 'deactivated'>
 export type PeopleChange = { userIds: string[]; emails: string[] }
 
 /** manage: Add people and Remove; invite: invite emails as guests (Admins); setDefault: the default-channel switch (Admins). */
@@ -290,8 +291,9 @@ function AddPeople({
   const [pending, setPending] = useState(false)
   const needle = normalEmail(query)
   const inChannel = (id: string) => channel.memberIds.includes(id)
-  // Never me: Join is the way into a channel I'm not in.
-  const free = (id: string, chosen = tokens) => id !== meId && !inChannel(id) && !chosen.some((t) => t.id === id)
+  // Never me: Join is the way into a channel I'm not in. Never someone deactivated (slice 3).
+  const active = new Set(people.filter(isActive).map((p) => p.id))
+  const free = (id: string, chosen = tokens) => id !== meId && active.has(id) && !inChannel(id) && !chosen.some((t) => t.id === id)
   const owner = (email: string) => people.find((p) => p.email.toLowerCase() === email)
   const invitable = rights.invite && isEmail(needle) && !owner(needle) && !tokens.some((t) => t.id === needle) && !invitedEmails.includes(needle)
   const suggestions: Suggestion[] = needle

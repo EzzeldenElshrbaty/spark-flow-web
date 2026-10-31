@@ -12,6 +12,7 @@ import { chainEvent, GENESIS } from '@/lib/auditChain'
 import { ALL_PERMISSIONS, BUILT_IN_ROLES } from '@/lib/permissions'
 import { AuditLogPage } from './AuditLogPage'
 import { RolesPage } from './RolesPage'
+import { UsersPage } from './UsersPage'
 import { SettingsPage } from './SettingsPage'
 
 // Spec 10 and CLAUDE.md: Settings and Roles and permissions read well in light and dark (axe, contrast included) and
@@ -61,6 +62,13 @@ beforeEach(() => {
   vi.spyOn(api.roles, 'list').mockResolvedValue(roles)
   vi.spyOn(api.workspaces, 'list').mockResolvedValue([{ id: 'ws-eng', slug: 'engineering', name: 'Spark Engineering' }])
   vi.spyOn(api.users, 'list').mockResolvedValue([])
+  const ago = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString()
+  vi.spyOn(api.users, 'directory').mockResolvedValue([
+    { id: 'u-1', name: 'Youssef Abdelrahman', email: 'youssef.abdelrahman@spark-sys.com', title: 'Managing Director', roleIds: ['admin'], teamIds: [], presence: 'active', lastActiveAt: ago(1) },
+    { id: 'u-3', name: 'Mariam Fathy', email: 'mariam.fathy@spark-sys.com', title: 'Frontend Engineer', roleIds: ['member', 'pm'], teamIds: ['t-frontend'], presence: 'active', lastActiveAt: ago(3) },
+    { id: 'u-2', name: 'Nour El-Sayed', email: 'nour.elsayed@spark-sys.com', title: 'Project Manager · Backend', roleIds: ['pm'], teamIds: ['t-backend'], presence: 'away', lastActiveAt: null },
+    { id: 'u-6', name: 'Hossam Gaber', email: 'hossam.gaber@spark-sys.com', title: 'DevOps Engineer', roleIds: ['member'], teamIds: ['t-backend'], presence: 'offline', lastActiveAt: ago(30), deactivated: { at: ago(20), by: 'u-1', reason: 'Left the company' } },
+  ])
   vi.spyOn(api.teams, 'list').mockResolvedValue([])
 })
 afterEach(async () => {
@@ -80,6 +88,7 @@ function mount(path: string, element: ReactNode, dark: boolean) {
             <Route path="/w/:ws/settings" element={element} />
             <Route path="/w/:ws/settings/roles" element={element} />
             <Route path="/w/:ws/settings/audit" element={element} />
+            <Route path="/w/:ws/settings/users" element={element} />
           </Routes>
         </main>
       </MemoryRouter>
@@ -133,6 +142,26 @@ describe.each([
   })
 })
 
+describe.each([
+  ['light', false],
+  ['dark', true],
+])('Users in %s (slice 3, spec 10)', (_theme, dark) => {
+  it('the list, Edit of someone deactivated, and Deactivate have no axe violations', async () => {
+    await page.viewport(1280, 900)
+    mount('/w/engineering/settings/users', <UsersPage />, dark)
+    await screen.findByRole('table', { name: 'People' })
+    expect(await violations()).toEqual([])
+    await userEvent.click(screen.getByRole('table', { name: 'People' }).querySelectorAll('tbody tr')[3]!)
+    await screen.findByRole('dialog', { name: 'Edit Hossam Gaber' })
+    expect(await violations()).toEqual([])
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    await userEvent.click(screen.getByRole('button', { name: /^Mariam Fathy Frontend/ }))
+    await userEvent.click((await screen.findByRole('dialog', { name: 'Edit Mariam Fathy' })).querySelector('button.ms-auto')!)
+    await screen.findByRole('dialog', { name: 'Deactivate Mariam Fathy?' })
+    expect(await violations()).toEqual([])
+  })
+})
+
 describe('Settings on a 390px phone', () => {
   it('the home and the roles page fit without sideways scrolling; the roles page shows one role at a time', async () => {
     await page.viewport(390, 844)
@@ -149,6 +178,22 @@ describe('Settings on a 390px phone', () => {
     // Each permission row is a 44px touch target.
     const row = screen.getByRole('checkbox', { name: 'Create projects' }).closest('label')!
     expect(row.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
+    expect(await violations()).toEqual([])
+  })
+
+  it('Users fits: a list instead of the table, 44px rows and boxes, and the person sheet takes the screen', async () => {
+    await page.viewport(390, 844)
+    mount('/w/engineering/settings/users', <UsersPage />, false)
+    const list = await screen.findByRole('list', { name: 'People' })
+    expect(screen.queryByRole('table', { name: 'People' })).toBeNull()
+    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(390)
+    for (const button of list.querySelectorAll('button')) expect(button.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
+    // Add person keeps its name for screen readers when only its icon shows.
+    await userEvent.click(screen.getByRole('button', { name: 'Add person' }))
+    const sheet = await screen.findByRole('dialog', { name: 'Add person' })
+    expect(sheet.getBoundingClientRect().width).toBeLessThanOrEqual(390)
+    for (const box of sheet.querySelectorAll('input[type=checkbox]')) expect(box.closest('label')!.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
+    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(390)
     expect(await violations()).toEqual([])
   })
 

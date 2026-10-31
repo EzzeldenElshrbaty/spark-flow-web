@@ -51,6 +51,7 @@ export const qk = {
   activity: (workspaceId: string) => ['activity', workspaceId],
   preferences: () => ['preferences', 'me'],
   roles: () => ['roles'],
+  people: () => ['people'],                              // Settings → Users (slice 3)
   auditAll: () => ['audit'],                             // prefix of the audit log's pages and summary
   auditList: (filter: unknown) => ['audit', 'list', filter],
   auditSummary: (todayFrom: string) => ['audit', 'summary', todayFrom],
@@ -135,6 +136,9 @@ function dataKeysFor(event: RealtimeEvent): QueryKey[] {
       return [qk.preferences(), qk.channelsAll(), qk.everyChannel(), qk.mentions(), qk.activityAll(), qk.threadsAll()]
     case 'rolesChanged':
       // Anyone's rights may have changed: what every page may show, and me.
+      return [[]]
+    case 'peopleChanged':
+      // Names, roles and who is active show everywhere (slice 3): every page reads again, the log too.
       return [[]]
     case 'scheduledChanged':
       return [qk.scheduledAll(), qk.sentAll()]

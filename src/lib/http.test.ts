@@ -140,6 +140,23 @@ describe('createHttpApi', () => {
     expect(JSON.parse(String(calls[5].init?.body))).toEqual({ what: 'timeCost', detail: 'Last 7 days · All projects' })
   })
 
+  it('maps the people calls (slice 3)', async () => {
+    const { calls, fetchFn } = recordingFetch()
+    const api = createHttpApi(fetchFn)
+    await api.users.directory()
+    await api.users.create({ name: 'Laila Hamdy', email: 'laila@spark-sys.com', title: '', roleIds: ['member'], teamIds: [] })
+    await api.users.update('u 3', { title: 'Lead' })
+    await api.users.deactivate('u 3', 'Left')
+    await api.users.reactivate('u 3')
+    expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url} ${c.init?.body ?? ''}`.trim())).toEqual([
+      'GET /api/users',
+      'POST /api/users {"name":"Laila Hamdy","email":"laila@spark-sys.com","title":"","roleIds":["member"],"teamIds":[]}',
+      'PATCH /api/users/u%203 {"title":"Lead"}',
+      'POST /api/users/u%203/deactivate {"reason":"Left"}',
+      'POST /api/users/u%203/reactivate',
+    ])
+  })
+
   it('a refused audit export fails as an ApiError, like any call', async () => {
     const api = createHttpApi(fetchReturning(403, { title: 'Forbidden', detail: "You don't have access to the audit log." }))
     await expect(api.audit.export({})).rejects.toMatchObject({ status: 403, detail: "You don't have access to the audit log." })

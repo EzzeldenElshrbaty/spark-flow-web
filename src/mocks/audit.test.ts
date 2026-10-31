@@ -46,6 +46,10 @@ const exports = (action: AuditAction, type: string) => ({ action, group: 'export
 
 const RECORDED: Record<string, Recorded> = {
   'users.viewAs': r({ action: 'signedIn', group: 'access', type: 'user' }, (a) => a.users.viewAs('u-2')),
+  'users.create': r(settings('created', 'user'), (a) => a.users.create({ name: 'Laila Hamdy', email: 'laila@spark-sys.com', title: '', roleIds: ['member'], teamIds: [] })),
+  'users.update': r(settings('changed', 'user'), (a) => a.users.update('u-3', { title: 'Lead' })),
+  'users.deactivate': r(settings('deactivated', 'user'), (a) => a.users.deactivate('u-3', 'Left')),
+  'users.reactivate': r(settings('reactivated', 'user'), (a) => a.users.reactivate('u-3'), (a) => a.users.deactivate('u-3', '')),
   'chat.createChannel': r(data('created', 'channel'), (a) => a.chat.createChannel({ workspaceId: 'ws-eng', name: 'audit-ops', topic: 'Ops', isPrivate: false, memberIds: ['u-2'] })),
   'chat.updateChannel': r(data('changed', 'channel'), (a) => a.chat.updateChannel('c-backend', { topic: 'APIs and jobs' })),
   'chat.addMembers': r(data('changed', 'channel'), (a) => a.chat.addMembers('c-backend', ['u-9'], ['guest@example.com'])),
@@ -115,6 +119,7 @@ const NOT_RECORDED: Record<string, string> = {
   'workspaces.list': READ,
   'users.me': READ,
   'users.list': READ,
+  'users.directory': READ,
   'chat.openDm': 'a conversation is made by its first message, and messages aren’t in the log',
   'chat.join': `${MINE}; joining a public channel gives no access the workspace didn’t have`,
   'chat.leave': MINE,
