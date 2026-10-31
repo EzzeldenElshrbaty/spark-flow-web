@@ -23,7 +23,18 @@ const sizeText = (sizeKb?: number) => (sizeKb === undefined ? '' : sizeKb >= 102
  * Full-screen preview of a file inside the CRM: images, PDFs, text and CSV. Other types show a card to download.
  * With several files (one upload), arrows and the keyboard's left and right keys step through them.
  */
-export function FileViewer({ files, start = 0, onClose }: { files: ViewedFile[]; start?: number; onClose: () => void }) {
+export function FileViewer({
+  files,
+  start = 0,
+  onClose,
+  onDownload,
+}: {
+  files: ViewedFile[]
+  start?: number
+  onClose: () => void
+  /** Download was chosen for the file at this index (the audit log notes it, slice 2). */
+  onDownload?: (index: number) => void
+}) {
   const [index, setIndex] = useState(start)
   const shown = files[index]
   // Only same-origin, https and blob: addresses are opened at all; anything else gets no preview and no link.
@@ -49,7 +60,16 @@ export function FileViewer({ files, start = 0, onClose }: { files: ViewedFile[];
   }, [onClose, files.length])
 
   return createPortal(
-    <div className="fixed inset-0 z-[60] flex flex-col bg-black/85" role="dialog" aria-modal="true" aria-label={file.name}>
+    // Any Download inside (the bar's, or a preview's own when it can't show the file) is one download of this file.
+    <div
+      className="fixed inset-0 z-[60] flex flex-col bg-black/85"
+      role="dialog"
+      aria-modal="true"
+      aria-label={file.name}
+      onClick={(event) => {
+        if (onDownload && (event.target as Element).closest('a[download]')) onDownload(index)
+      }}
+    >
       <div className="flex items-center gap-2 px-3 py-2 text-white sm:px-4">
         <p className="min-w-0 flex-1 truncate text-sm font-medium">{file.name}</p>
         {many && (

@@ -3,6 +3,7 @@ import type { MockDb } from './db'
 import { delay } from './latency'
 import { grantsFor } from './roles'
 import { notFound } from './shared'
+import { audit, recordOf } from './audit'
 
 export function usersApi(db: MockDb): Api['users'] {
   return {
@@ -27,6 +28,10 @@ export function usersApi(db: MockDb): Api['users'] {
       if (!user) throw notFound('User', userId)
       // This tab only: other tabs keep acting as their own person.
       db.actAs(user.id)
+      // The prototype's sign-in (spec §10 has none yet), recorded as the person now acting.
+      await db.update((data) => {
+        audit(data, { action: 'signedIn', group: 'access', record: recordOf.user(user), detail: 'Demo user switcher (prototype only)' })
+      })
       return user
     },
   }

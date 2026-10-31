@@ -11,6 +11,7 @@ import { badRequest, clone, currentUser, isDate, newId, notFound, pickPatch, req
 import { grantsFor } from './roles'
 import { CHANNEL_NAME } from '@/lib/channelForm'
 import { projectPeopleIds } from '@/lib/projectPeople'
+import { audit, changesBetween, humanize, recordOf } from './audit'
 
 const KEY = /^[A-Z]{2,5}$/
 
@@ -20,6 +21,8 @@ const PROJECT_FIELDS = [
 ] as const satisfies readonly (keyof ProjectPatch)[]
 const PHASE_FIELDS = ['name', 'startDate', 'dueDate', 'status'] as const satisfies readonly (keyof PhasePatch)[]
 const DELIVERABLE_FIELDS = ['phaseId', 'title', 'dueDate', 'doneAt'] as const satisfies readonly (keyof DeliverablePatch)[]
+/** What the audit log records of a project's edit, besides its status (which is the "status" group's). */
+const PROJECT_LOGGED = PROJECT_FIELDS.filter((f) => f !== 'status')
 const PROJECT_STATUSES: readonly ProjectStatus[] = ['planned', 'active', 'onHold', 'delivered']
 const PHASE_STATUSES: readonly PhaseStatus[] = ['notStarted', 'inProgress', 'done']
 
@@ -63,6 +66,9 @@ function checkDates(startDate: string, dueDate: string) {
   if (Number.isNaN(Date.parse(startDate)) || Number.isNaN(Date.parse(dueDate))) throw badRequest('Pick a start and a due date.')
   if (new Date(dueDate).getTime() < new Date(startDate).getTime()) throw badRequest('The due date is before the start date.')
 }
+
+/** A board as the audit log shows it: "To do (Todo), Review (In progress), Done (Done)". */
+const boardText = (columns: BoardColumn[]) => columns.map((c) => `${c.label} (${humanize(c.category)})`).join(', ')
 
 /** `wanted` when nothing uses it yet, else a fresh id. */
 const freeId = (wanted: string, taken: { id: string }[], prefix: string) => (taken.some((x) => x.id === wanted) ? newId(prefix) : wanted)
@@ -193,6 +199,8 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
       const channel = data.channels.find((c) => c.id === project.channelId)
       if (channel) channel.archivedAt = project.archivedAt
       logActivity(data, { projectId: id, taskKey: null, kind: archive ? 'project.archived' : 'project.restored', changes: [] }, at.toISOString())
+      const timers = stopped.length === 1 ? '1 timer stopped' : `${stopped.length} timers stopped`
+      audit(data, { action: archive ? 'archived' : 'restored', group: 'status', record: recordOf.project(project), detail: `With its channel${stopped.length ? ` · ${timers}` : ''}` })
       return { project: clone(project), stopped, same: false }
     })
     if (same) return project
@@ -248,6 +256,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
             syncProjectChannel(data, project, true)
             data.phases.push(...splitPhases(id, input.methodology === 'waterfall' ? WATERFALL : ['Build'], input.startDate, input.dueDate))
             data.counters[id] = 101
+            audit(data, { action: 'created', group: 'data', record: recordOf.project(project), changes: changesBetween(data, {}, project, ['key', 'methodology', ...PROJECT_FIELDS]) })
             return project
           })
       },
@@ -271,6 +280,10 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
             checkDates(next.startDate, next.dueDate)
             const changed = JSON.stringify({ ...project, ...next }) !== JSON.stringify(project)
             const renamed = next.name !== project.name
+            const edits = changesBetween(data, project, next, PROJECT_LOGGED)
+            const status = changesBetween(data, project, next, ['status'])
+            if (edits.length) audit(data, { action: 'changed', group: 'data', record: recordOf.project(next), changes: edits })
+            if (status.length) audit(data, { action: 'changed', group: 'status', record: recordOf.project(next), changes: status })
             Object.assign(project, next)
             channelChanged = syncProjectChannel(data, project, renamed)
             if (changed) logActivity(data, { projectId: project.id, taskKey: null, kind: 'project.changed', changes: [] }, now().toISOString())
@@ -291,6 +304,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
           const board = [...columns.slice(0, at), added, ...columns.slice(at)]
           const problem = columnErrors(board)
           if (problem) throw badRequest(problem)
+          audit(data, { action: 'changed', group: 'data', record: recordOf.project(project), changes: [{ field: 'Board columns', from: boardText(columns), to: boardText(board) }], detail: `Added ${added.label}` })
           project.board = board
           logActivity(data, { projectId: project.id, taskKey: null, kind: 'column.added', subject: added.label, changes: [{ field: 'category', from: null, to: added.category }] }, now().toISOString())
           return project
@@ -322,6 +336,9 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
           // Moved into a Done-type column: their timers stop, as on any move to Done.
           const intoDone = columns.find((c) => c.id === moveTo)?.category === 'done' && gone.category !== 'done'
           const stopped = intoDone ? stopTimersOn(data, moved.map((t) => t.id), now()) : []
+          const tasks = moved.length === 1 ? '1 task' : `${moved.length} tasks`
+          const target = columns.find((c) => c.id === moveTo)!.label
+          audit(data, { action: 'changed', group: 'data', record: recordOf.project(project), changes: [{ field: 'Board columns', from: boardText(columns), to: boardText(board) }], detail: `Deleted ${gone.label} · ${tasks} moved to ${target}` })
           project.board = board
           return { project: clone(project), moved: clone(moved), stopped }
         })
@@ -347,6 +364,8 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
             const turnedDone = board.filter((c) => c.category === 'done' && columnsOf(project).find((o) => o.id === c.id)?.category !== 'done').map((c) => c.id)
             const ids = data.tickets.filter((t) => t.projectId === project.id && turnedDone.includes(t.status)).map((t) => t.id)
             stoppedOnBoard = stopTimersOn(data, ids, now())
+            const was = boardText(columnsOf(project))
+            if (was !== boardText(board)) audit(data, { action: 'changed', group: 'data', record: recordOf.project(project), changes: [{ field: 'Board columns', from: was, to: boardText(board) }] })
             project.board = board
             return project
           })
@@ -373,6 +392,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
             const order = Math.max(0, ...data.phases.filter((p) => p.projectId === project.id).map((p) => p.order)) + 1
             const phase: Phase = { ...input, name: input.name.trim(), id: newId('ph'), order, status: 'notStarted' }
             data.phases.push(phase)
+            audit(data, { action: 'created', group: 'data', record: recordOf.phase(phase, project), changes: changesBetween(data, {}, phase, PHASE_FIELDS) })
             logActivity(data, { projectId: project.id, taskKey: null, kind: 'phase.added', subject: phase.name, changes: [] }, now().toISOString())
             return phase
           })
@@ -386,7 +406,10 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
             if (!text(next.name, 'Name')) throw badRequest('Give the phase a name.')
             if (!PHASE_STATUSES.includes(next.status)) throw badRequest("That isn't a phase status.")
             checkDates(next.startDate, next.dueDate)
-            checkPhaseInProject(findProject(data, phase.projectId), next.startDate, next.dueDate)
+            const project = findProject(data, phase.projectId)
+            checkPhaseInProject(project, next.startDate, next.dueDate)
+            const edits = changesBetween(data, phase, next, PHASE_FIELDS)
+            if (edits.length) audit(data, { action: 'changed', group: 'data', record: recordOf.phase(next, project), changes: edits })
             Object.assign(phase, next)
             logActivity(data, { projectId: phase.projectId, taskKey: null, kind: 'phase.changed', subject: phase.name, changes: [] }, now().toISOString())
             return phase
@@ -396,7 +419,10 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
         await delay()
         await write((projectId: string) => projectId, (data) => {
           const phase = findPhase(data, id)
-          requireCan(data, 'phase.manage', openProject(data, phase.projectId))
+          const project = openProject(data, phase.projectId)
+          requireCan(data, 'phase.manage', project)
+          const tasks = data.tickets.filter((t) => t.phaseId === id).length
+          audit(data, { action: 'deleted', group: 'data', record: recordOf.phase(phase, project), detail: tasks ? `${tasks === 1 ? '1 task' : `${tasks} tasks`} left without a phase` : null })
           data.phases = data.phases.filter((p) => p.id !== id)
           logActivity(data, { projectId: phase.projectId, taskKey: null, kind: 'phase.removed', subject: phase.name, changes: [] }, now().toISOString())
           for (const t of data.tickets) {
@@ -417,7 +443,10 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
             const own = data.phases.filter((p) => p.projectId === projectId)
             if (ids.length !== own.length || new Set(ids).size !== ids.length || !ids.every((id) => own.some((p) => p.id === id)))
               throw badRequest('The phase order must list every phase of the project once.')
+            const order = (list: Phase[]) => [...list].sort((a, b) => a.order - b.order).map((p) => p.name).join(', ')
+            const was = order(own)
             ids.forEach((id, i) => (own.find((p) => p.id === id)!.order = i + 1))
+            if (order(own) !== was) audit(data, { action: 'changed', group: 'data', record: recordOf.project(project), changes: [{ field: 'Phase order', from: was, to: order(own) }] })
             return own.sort((a, b) => a.order - b.order)
           })
       },
@@ -440,6 +469,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
             if (input.phaseId) phaseOf(data, input.phaseId, project.id)
             const deliverable: Deliverable = { ...input, title: input.title.trim(), id: newId('d'), doneAt: null }
             data.deliverables.push(deliverable)
+            audit(data, { action: 'created', group: 'data', record: recordOf.deliverable(deliverable, project), changes: changesBetween(data, {}, deliverable, DELIVERABLE_FIELDS) })
             logActivity(data, { projectId: project.id, taskKey: null, kind: 'deliverable.added', subject: deliverable.title, changes: [] }, now().toISOString())
             return deliverable
           })
@@ -449,12 +479,15 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
         return write((d) => d.projectId, (data) => {
             const deliverable = data.deliverables.find((d) => d.id === id)
             if (!deliverable) throw notFound('Deliverable', id)
-            requireCan(data, 'project.edit', openProject(data, deliverable.projectId))
+            const project = openProject(data, deliverable.projectId)
+            requireCan(data, 'project.edit', project)
             const next = { ...deliverable, ...pickPatch(patch, DELIVERABLE_FIELDS) } as Deliverable
             if (!text(next.title, 'Title')) throw badRequest('Give the deliverable a title.')
             if (next.phaseId) phaseOf(data, next.phaseId, deliverable.projectId)
             if (!isDate(next.dueDate)) throw badRequest('Pick a due date.')
             if (next.doneAt !== null && !isDate(next.doneAt)) throw badRequest('Pick a done date.')
+            const edits = changesBetween(data, deliverable, next, DELIVERABLE_FIELDS)
+            if (edits.length) audit(data, { action: 'changed', group: 'data', record: recordOf.deliverable(next, project), changes: edits })
             Object.assign(deliverable, next)
             logActivity(data, { projectId: deliverable.projectId, taskKey: null, kind: 'deliverable.changed', subject: deliverable.title, changes: [] }, now().toISOString())
             return deliverable
@@ -465,7 +498,9 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
         await write((projectId: string) => projectId, (data) => {
           const deliverable = data.deliverables.find((d) => d.id === id)
           if (!deliverable) throw notFound('Deliverable', id)
-          requireCan(data, 'project.edit', openProject(data, deliverable.projectId))
+          const project = openProject(data, deliverable.projectId)
+          requireCan(data, 'project.edit', project)
+          audit(data, { action: 'deleted', group: 'data', record: recordOf.deliverable(deliverable, project) })
           data.deliverables = data.deliverables.filter((d) => d.id !== id)
           logActivity(data, { projectId: deliverable.projectId, taskKey: null, kind: 'deliverable.removed', subject: deliverable.title, changes: [] }, now().toISOString())
           return deliverable.projectId

@@ -15,6 +15,72 @@ export type Me = User & { grants: Permission[] }
  * The four built-in roles ('admin', 'sales', 'pm', 'member') can be renamed and changed but not deleted.
  */
 export type Role = { id: string; name: string; builtIn: boolean; grants: Permission[]; holders: number }
+/** The audit log's five groups (slice 2), as its chips name them. */
+export type AuditGroup = 'data' | 'status' | 'access' | 'settings' | 'exports'
+export type AuditAction =
+  | 'created' | 'changed' | 'deleted' | 'archived' | 'restored'
+  | 'signedIn' | 'signInFailed' | 'denied'
+  | 'exported' | 'downloaded' | 'imported' | 'reset'
+export type AuditResult = 'done' | 'refused' | 'failed'
+/** What an event is about, named as it was at the time. `type` is the kind of record ('project', 'role', 'request'…). */
+export type AuditRecord = { type: string; id: string; name: string }
+/** One field's change, both sides as people read them then ("Nour El-Sayed", "8 Nov 2026"); null is empty. */
+export type AuditChange = { field: string; from: string | null; to: string | null }
+/**
+ * One entry of the audit log (slice 2): who did what to which record, when and from where. Entries are never changed
+ * or removed. `hash` is SHA-256 over the entry and `prevHash` (the entry before it), so a changed, removed or
+ * reordered entry breaks the chain (`lib/auditChain.ts`).
+ */
+export type AuditEvent = {
+  seq: number
+  at: string
+  /** Null for someone not signed in (a failed sign-in). */
+  actorId: string | null
+  /** Their name then, or the email that was tried. */
+  actorName: string
+  /** Their roles then ("Admin, Sales"); "" when not signed in. */
+  actorRoles: string
+  action: AuditAction
+  group: AuditGroup
+  record: AuditRecord | null
+  changes: AuditChange[]
+  result: AuditResult
+  /** What else there is to say: "Wrong password", the refusal's sentence, "Demo user switcher (prototype only)". */
+  detail: string | null
+  ip: string | null
+  /** "Chrome 130 · macOS". */
+  device: string | null
+  requestId: string
+  prevHash: string
+  hash: string
+}
+
+/** What the audit log's list is narrowed to; `since` is an ISO time (the period's start), null for everything. */
+export type AuditFilter = {
+  q?: string
+  since?: string | null
+  actorId?: string | null
+  recordType?: string | null
+  result?: AuditResult | null
+  group?: AuditGroup | null
+}
+/** A page of the log, newest first, 50 at a time; `counts` are the filter's totals per group (all groups for 'all'). */
+export type AuditPage = { items: AuditEvent[]; nextCursor: string | null; counts: Record<'all' | AuditGroup, number> }
+/** Something in the last 7 days worth a look: red for sign-in trouble and refusals, amber for rights and exports. */
+export type AuditAlert = { tone: 'red' | 'amber'; text: string; at: string; seq: number }
+/** The tamper check: the whole chain walked, and the first entry that doesn't fit when it's broken. */
+export type AuditChainState =
+  | { intact: true; checked: number }
+  | { intact: false; checked: number; brokenAt: number; reason: 'edited' | 'removed' | 'reordered' }
+/** The page's top: today's counts (from `todayFrom`), what needs a look, the chain, and what the filters offer. */
+export type AuditSummary = {
+  today: { events: number; data: number; signIns: number; failedSignIns: number; denied: number }
+  needsALook: AuditAlert[]
+  chain: AuditChainState
+  people: { id: string; name: string }[]
+  recordTypes: { id: string; label: string }[]
+}
+
 /**
  * What Save changes changed in one role: permissions to give and to take away, applied to the role as the server has
  * it, so another Admin's change to the same role in the meantime is kept.
@@ -551,6 +617,21 @@ export interface Api {
     list(workspaceId: string): Promise<User[]>
     /** Demo only: act as another seeded person. Hidden when backendOn. */
     viewAs(userId: string): Promise<User>
+  }
+  /**
+   * The audit log (slice 2). Reading and exporting it needs "See the audit log"; the export is recorded too. The two
+   * notes record what the page hands out itself: in the prototype a file download and the Time and cost CSV; with the
+   * backend on only the CSV, since the backend records a download when it serves the file.
+   */
+  audit: {
+    list(filter: AuditFilter, cursor?: string): Promise<AuditPage>
+    /** One entry by its number, for a link to it (#341); 404 when there's none. */
+    get(seq: number): Promise<AuditEvent>
+    summary(todayFrom: string): Promise<AuditSummary>
+    /** The filtered log as CSV text, newest first; `downloadCsv` saves it with the BOM Excel needs. */
+    export(filter: AuditFilter): Promise<string>
+    noteDownload(fileId: string): Promise<void>
+    noteExport(what: 'timeCost', detail: string): Promise<void>
   }
   /**
    * Roles and what each may do (slice 1). Everyone signed in may list them; changing them needs "Change settings,

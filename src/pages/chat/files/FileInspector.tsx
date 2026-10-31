@@ -1,6 +1,7 @@
 import { IconDownload, IconEye, IconFileText, IconFileTypePdf, IconShare3 } from '@tabler/icons-react'
 import { useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router'
+import { noteDownload } from '@/api/audit'
 import { useChannels } from '@/api/chat'
 import { useFileDetails } from '@/api/files'
 import { useProjectSummaries } from '@/api/projects'
@@ -80,7 +81,17 @@ function Details({ details, ws, users, channels, projects, folders, meId }: { de
         <span className="sf-small text-sf-text-secondary">{fileSubline(file.name, file.size)}</span>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" touch icon={IconDownload} disabled={!url} onClick={() => url && download(url, file.name)}>
+        <Button
+          size="sm"
+          touch
+          icon={IconDownload}
+          disabled={!url}
+          onClick={() => {
+            if (!url) return
+            download(url, file.name)
+            noteDownload(file.id)
+          }}
+        >
           Download
         </Button>
         {actions && manage && (
@@ -146,7 +157,7 @@ function Details({ details, ws, users, channels, projects, folders, meId }: { de
           </Button>
         </div>
       )}
-      {viewing && viewed && <FileViewer files={[viewed]} onClose={() => setViewing(false)} />}
+      {viewing && viewed && <FileViewer files={[viewed]} onClose={() => setViewing(false)} onDownload={() => noteDownload(file.id)} />}
     </div>
   )
 }

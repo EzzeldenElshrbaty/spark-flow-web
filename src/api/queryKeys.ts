@@ -51,6 +51,10 @@ export const qk = {
   activity: (workspaceId: string) => ['activity', workspaceId],
   preferences: () => ['preferences', 'me'],
   roles: () => ['roles'],
+  auditAll: () => ['audit'],                             // prefix of the audit log's pages and summary
+  auditList: (filter: unknown) => ['audit', 'list', filter],
+  auditSummary: (todayFrom: string) => ['audit', 'summary', todayFrom],
+  auditEntry: (seq: number) => ['audit', 'entry', seq],
   sidebarOrderAll: () => ['sidebar-order'],
   sidebarOrder: (workspaceId: string) => ['sidebar-order', workspaceId],
   searchAll: () => ['search'],
@@ -67,8 +71,16 @@ export const qk = {
   checkedIn: (workspaceId: string) => ['dashboard', 'checked-in', workspaceId],
 } as const
 
+/** The events whose write the server also put in the audit log (slice 2); refusals and sign-ins publish none. */
+const LOGGED = new Set<RealtimeEvent['type']>(['ticketUpdated', 'timeLogged', 'messageChanged', 'projectChanged', 'channelChanged', 'ratesChanged', 'filesChanged', 'fileChanged'])
+
 /** The queries a live update makes stale. Typing is not data, so it touches none. */
 export function keysForEvent(event: RealtimeEvent): QueryKey[] {
+  const keys = dataKeysFor(event)
+  return LOGGED.has(event.type) ? [...keys, qk.auditAll()] : keys
+}
+
+function dataKeysFor(event: RealtimeEvent): QueryKey[] {
   switch (event.type) {
     case 'messageReceived': {
       const { channelId } = event.message

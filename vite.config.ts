@@ -37,6 +37,8 @@ export default defineConfig(({ mode }) => {
             include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
             exclude: ['src/**/*.browser.test.tsx'],
             // *.test.tsx render components: they opt into jsdom with a `// @vitest-environment jsdom` first line.
+            // Days are the company's (Cairo), so tests that build "today" from local midnight read the same anywhere.
+            env: { TZ: 'Africa/Cairo' },
           },
         },
         {

@@ -48,5 +48,6 @@ export const api: Api = {
   get bookmarks() { return resolve().bookmarks },
   get dashboard() { return resolve().dashboard },
   get files() { return resolve().files },
+  get audit() { return resolve().audit },
   get db() { return resolve().db },
 }

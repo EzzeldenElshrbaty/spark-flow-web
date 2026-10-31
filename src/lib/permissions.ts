@@ -49,6 +49,7 @@ export const PERMISSION_GROUPS = [
     label: 'Settings and data',
     permissions: [
       { id: 'settings.manage', label: 'Change settings, users and roles' },
+      { id: 'audit.view', label: 'See the audit log' },
       { id: 'database.manage', label: 'Export, reload or reset the demo data' },
     ],
   },
@@ -84,6 +85,8 @@ export type Action =
   | 'channel.archive' | 'message.edit' | 'message.delete'
   // Slice 1: Settings itself, who's checked in, and other people's time.
   | 'settings.manage' | 'settings.open' | 'checkins.view' | 'time.seeTeam' | 'time.editOthers' | 'dashboard.everyProject'
+  // Slice 2.
+  | 'audit.view'
 
 export type ProjectRef = Pick<Project, 'managerId' | 'memberIds' | 'teamIds'> & { archivedAt?: string | null }
 
@@ -196,7 +199,9 @@ export function can(action: Action, ctx: PermissionContext): boolean {
       return has(ctx, 'settings.manage')
     // Settings opens for anyone with something to change there.
     case 'settings.open':
-      return has(ctx, 'settings.manage') || has(ctx, 'rates.manage') || has(ctx, 'database.manage')
+      return has(ctx, 'settings.manage') || has(ctx, 'rates.manage') || has(ctx, 'database.manage') || has(ctx, 'audit.view')
+    case 'audit.view':
+      return has(ctx, 'audit.view')
   }
 }
 

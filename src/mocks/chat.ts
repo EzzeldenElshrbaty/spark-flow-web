@@ -9,6 +9,7 @@ import { isOneEmoji } from '@/lib/emojiText'
 import { MAX_DISTINCT_REACTIONS, setReaction } from '@/lib/reactions'
 import { filePlace } from './saved'
 import type { DbData, MockDb, StoredMemberState } from './db'
+import { audit, changesBetween, recordOf } from './audit'
 import { delay } from './latency'
 import type { MockHub } from './realtime'
 import { ApiError } from '@/lib/apiError'
@@ -260,6 +261,15 @@ function findTarget(data: DbData, target: ChatTarget): { row: Row; channel: Stor
   return { row, channel: findChannel(data, row.channelId), messageId: row.messageId }
 }
 
+/** The channel fields the audit log records (spec 6.10's details; people have their own entries). */
+const CHANNEL_LOGGED = ['name', 'topic', 'description', 'isPrivate', 'whoCanPost', 'isDefault', 'memberIds'] as const
+
+/** A message or reply as the audit log names it: where it was, never what it said. */
+function messageRecord(row: Row, channel: StoredChannel) {
+  const where = channel.kind === 'dm' ? 'a direct message' : recordOf.channel(channel).name
+  return { type: 'message', id: row.id, name: `${'messageId' in row ? 'A reply' : 'A message'} in ${where}` }
+}
+
 const forbiddenOwn = () => new ApiError({ title: 'Forbidden', status: 403, detail: 'You can only change your own messages.' })
 
 /** Cards (a comment's, a task event's), system messages and deleted rows stay as they are. */
@@ -326,6 +336,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       // Already so: nothing changes and nothing is sent.
       if (Boolean(channel.archivedAt) === archive) return { channel: withUnread(data, channel), same: true }
       channel.archivedAt = archive ? new Date().toISOString() : null
+      audit(data, { action: archive ? 'archived' : 'restored', group: 'status', record: recordOf.channel(channel) })
       return { channel: withUnread(data, channel), same: false }
     })
     if (result.same) return clone(result.channel)
@@ -384,6 +395,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         checkChannel(data, { workspaceId: input.workspaceId, name, topic, isPrivate: input.isPrivate, others })
         const created: StoredChannel = { id: newId('c'), workspaceId: input.workspaceId, kind: 'channel', name, topic, description: '', whoCanPost: 'everyone', isDefault: false, memberIds: [me.id, ...others], isPrivate: input.isPrivate, lastMessageAt: null }
         data.channels.push(created)
+        audit(data, { action: 'created', group: 'data', record: recordOf.channel(created), changes: changesBetween(data, {}, created, CHANNEL_LOGGED) })
         return withUnread(data, created)
       })
       hub.publish({ type: 'channelChanged', channelId: channel.id })
@@ -415,6 +427,9 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         const posted: ChatMessage[] = []
         if (channel.name && name !== channel.name) posted.push(postSystem(data, id, { kind: 'renamed', from: channel.name, to: name }))
         if (topic !== channel.topic) posted.push(postSystem(data, id, { kind: 'topic', to: topic }))
+        const next = { ...channel, name, topic, description, whoCanPost, isDefault }
+        const edits = changesBetween(data, channel, next, CHANNEL_LOGGED)
+        if (edits.length) audit(data, { action: 'changed', group: 'data', record: recordOf.channel(next), changes: edits })
         Object.assign(channel, { name, topic, description, whoCanPost, isDefault })
         return { channel: withUnread(data, channel), posted }
       })
@@ -449,6 +464,14 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         if (!added.length && !invited.length) {
           throw badRequest(typed.length ? `Everyone you picked is already in #${channel.name} or invited.` : `Everyone you picked is already in #${channel.name}.`)
         }
+        const nameOf = (id: string) => data.users.find((u) => u.id === id)?.name ?? 'Someone'
+        audit(data, {
+          action: 'changed',
+          group: 'data',
+          record: recordOf.channel(channel),
+          changes: [...(added.length ? [{ field: 'Members', from: null, to: added.map(nameOf).join(', ') }] : []), ...(invited.length ? [{ field: 'Invited', from: null, to: invited.join(', ') }] : [])],
+          detail: [added.length && `Added ${added.length === 1 ? '1 person' : `${added.length} people`}`, invited.length && `Invited ${invited.length === 1 ? '1 email' : `${invited.length} emails`}`].filter(Boolean).join(' · '),
+        })
         channel.memberIds = [...channel.memberIds, ...added]
         const at = new Date().toISOString()
         for (const email of invited) {
@@ -482,6 +505,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         if (invite.status === 'revoked') throw badRequest('This invitation was revoked already.')
         if (invite.status === 'accepted') throw badRequest('They joined already.')
         invite.status = 'revoked'
+        audit(data, { action: 'changed', group: 'data', record: recordOf.channel(findChannel(data, invite.channelId)), changes: [{ field: 'Invited', from: invite.email, to: null }], detail: 'Invitation revoked' })
         return invite.channelId
       })
       hub.publish({ type: 'channelChanged', channelId })
@@ -493,6 +517,8 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         if (userId === me.id) throw badRequest('Leave the channel instead.')
         if (!channel.memberIds.includes(userId)) throw badRequest(`They’re not in #${channel.name}.`)
         channel.memberIds = channel.memberIds.filter((m) => m !== userId)
+        const name = data.users.find((u) => u.id === userId)?.name ?? 'Someone'
+        audit(data, { action: 'changed', group: 'data', record: recordOf.channel(channel), changes: [{ field: 'Members', from: name, to: null }], detail: `Removed ${name}` })
         return { channel: withUnread(data, channel), posted: postSystem(data, id, { kind: 'removed', userId }) }
       })
       hub.publish({ type: 'messageReceived', message: clone(posted) })
@@ -554,6 +580,8 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         // The author, or an Admin (spec §9: delete is author or admin).
         if (!can('message.delete', { userId: me.id, grants: grantsFor(data, me), authorId: row.senderId })) throw forbiddenOwn()
         checkPlain(row)
+        // Messages aren't in the audit log, but someone else's deleted is an admin action (spec §11).
+        if (row.senderId !== me.id) audit(data, { action: 'deleted', group: 'data', record: messageRecord(row, channel), detail: `Written by ${data.users.find((u) => u.id === row.senderId)?.name ?? 'someone'}` })
         const now = Date.now()
         // What the delete takes is kept for Undo, and only that long; older entries go now.
         data.trash = data.trash.filter((t) => now - Date.parse(t.at) < UNDO_MS && t.id !== row.id)
@@ -589,6 +617,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         // Its files as they are now: renamed or deleted since, the restored copy says so.
         const files = entry.snapshot.attachments.map((a) => clone(data.attachments.find((current) => current.id === a.id) ?? a))
         Object.assign(row, entry.snapshot, { attachments: files, deletedAt: null })
+        if (row.senderId !== me.id) audit(data, { action: 'restored', group: 'data', record: messageRecord(row, channel), detail: 'Undo' })
         data.trash = data.trash.filter((t) => t !== entry)
         return { channelId: channel.id, messageId }
       })

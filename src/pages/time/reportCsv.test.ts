@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { TimeReport } from '@/api/types'
-import { reportRows } from './reportCsv'
+import { exportDetail, reportRows } from './reportCsv'
 
 const report = {
   totals: { hours: 3, cost: 900, people: 1 },
@@ -18,5 +18,12 @@ describe('reportRows', () => {
     // A week starts at local midnight; in Cairo that's the evening before in UTC.
     const local = { ...report, byWeek: [{ weekStart: new Date(2026, 9, 25).toISOString(), hours: 1, cost: 1 }] } as TimeReport
     expect(reportRows(local, 'week', names)[1]![0]).toBe('2026-10-25')
+  })
+})
+
+describe('exportDetail (slice 2)', () => {
+  it('names the period, the grouping and the project for the audit log', () => {
+    expect(exportDetail(30, 'By project', null)).toBe('30 days · By project · All projects')
+    expect(exportDetail(7, 'By person', 'Nexus Core')).toBe('7 days · By person · Nexus Core')
   })
 })

@@ -31,19 +31,29 @@ describe('keysForEvent', () => {
     expect(keysForEvent({ type: 'commentAdded', taskKey: 'NEX-1', projectId: 'p1' })).toEqual([qk.comments('NEX-1'), qk.mentions(), qk.activityAll(), qk.taskHistory('NEX-1'), qk.projectHistory('p1')])
     expect(keysForEvent({ type: 'ticketUpdated', ticket: { ...t, projectId: 'p1', key: 'NEX-1' } })).toEqual([
       qk.tickets('p1'), qk.archivedTickets('p1'), qk.ticket('NEX-1'), qk.taskHistory('NEX-1'), qk.projectHistory('p1'),
-      ['tickets', 'projects'], ['tickets', 'project'], ['dashboard'], qk.taskRefsAll(),
+      ['tickets', 'projects'], ['tickets', 'project'], ['dashboard'], qk.taskRefsAll(), qk.auditAll(),
     ])
-    expect(keysForEvent({ type: 'timeLogged', userId: 'u1', projectId: 'p1' })).toEqual([qk.myDay(), ['tickets'], ['projects', 'time'], ['dashboard'], ['time', 'report']])
+    expect(keysForEvent({ type: 'timeLogged', userId: 'u1', projectId: 'p1' })).toEqual([qk.myDay(), ['tickets'], ['projects', 'time'], ['dashboard'], ['time', 'report'], qk.auditAll()])
     expect(keysForEvent({ type: 'userTyping', channelId: 'c1', userId: 'u2' })).toEqual([])
-    expect(keysForEvent({ type: 'messageChanged', channelId: 'c1', messageId: 'm1' })).toEqual([qk.messages('c1'), qk.message('m1'), qk.replies('m1'), qk.mentions(), qk.activityAll(), qk.sentAll(), qk.pins('c1'), qk.channelFiles('c1'), qk.threadsAll()])
+    expect(keysForEvent({ type: 'messageChanged', channelId: 'c1', messageId: 'm1' })).toEqual([qk.messages('c1'), qk.message('m1'), qk.replies('m1'), qk.mentions(), qk.activityAll(), qk.sentAll(), qk.pins('c1'), qk.channelFiles('c1'), qk.threadsAll(), qk.auditAll()])
     // Leaving, removal, archiving and privacy decide what my mentions and Activity may show.
     // Inviting and revoking change the channel's Invited list (spec 6.10) too.
-    expect(keysForEvent({ type: 'channelChanged', channelId: 'c1' })).toEqual([qk.channelsAll(), qk.channel('c1'), qk.mentions(), qk.activityAll(), qk.invitations('c1'), qk.pins('c1'), qk.bookmarks('c1'), qk.threadsAll()])
+    expect(keysForEvent({ type: 'channelChanged', channelId: 'c1' })).toEqual([qk.channelsAll(), qk.channel('c1'), qk.mentions(), qk.activityAll(), qk.invitations('c1'), qk.pins('c1'), qk.bookmarks('c1'), qk.threadsAll(), qk.auditAll()])
     // Activity (spec 6.12) refreshes when something is stored for me, a mention included, not on every new message.
     expect(keysForEvent({ type: 'notificationCreated', userId: 'u1' })).toEqual([qk.activityAll()])
     // A file's title, description or deletion changes its details; the messages showing it get messageChanged too.
-    expect(keysForEvent({ type: 'fileChanged', fileId: 'a1' })).toEqual([qk.fileDetails('a1'), ['chat', 'files'], ['folders']])
-    expect(keysForEvent({ type: 'projectChanged', projectId: 'p1' })).toEqual([['tickets'], ['projects'], ['dashboard'], qk.projectHistory('p1')])
+    expect(keysForEvent({ type: 'fileChanged', fileId: 'a1' })).toEqual([qk.fileDetails('a1'), ['chat', 'files'], ['folders'], qk.auditAll()])
+    expect(keysForEvent({ type: 'projectChanged', projectId: 'p1' })).toEqual([['tickets'], ['projects'], ['dashboard'], qk.projectHistory('p1'), qk.auditAll()])
+  })
+})
+
+describe('keysForEvent and the audit log (Admin and help, slice 2)', () => {
+  it('a write the server logs refreshes the log; a message, a read or typing does not', () => {
+    expect(keysForEvent({ type: 'projectChanged', projectId: 'p1' })).toContainEqual(qk.auditAll())
+    expect(keysForEvent({ type: 'messageReceived', message: { ...m, channelId: 'c1' } })).not.toContainEqual(qk.auditAll())
+    expect(keysForEvent({ type: 'readChanged', userId: 'u1' })).not.toContainEqual(qk.auditAll())
+    expect(qk.auditList({ q: 'x' }).slice(0, 1)).toEqual(qk.auditAll())
+    expect(qk.auditSummary('2026-10-31T00:00:00.000Z').slice(0, 1)).toEqual(qk.auditAll())
   })
 })
 
@@ -54,8 +64,8 @@ describe('keysForEvent (M10)', () => {
   })
   it('rates, files, read state and a reset name what they make stale', () => {
     // Project summaries' cost (under 'tickets') too.
-    expect(keysForEvent({ type: 'ratesChanged' })).toEqual([qk.rates(), ['time', 'report'], ['dashboard'], qk.timeAll(), ['tickets']])
-    expect(keysForEvent({ type: 'filesChanged', projectId: 'p1' })).toEqual([qk.files('p1')])
+    expect(keysForEvent({ type: 'ratesChanged' })).toEqual([qk.rates(), ['time', 'report'], ['dashboard'], qk.timeAll(), ['tickets'], qk.auditAll()])
+    expect(keysForEvent({ type: 'filesChanged', projectId: 'p1' })).toEqual([qk.files('p1'), qk.auditAll()])
     expect(keysForEvent({ type: 'readChanged', userId: 'u1' })).toEqual([qk.channelsAll(), qk.mentions(), qk.activityAll(), qk.threadsAll()])
     // The empty key matches every query.
     // My preferences changed: the default level (every channel's own level), keywords (mentions, Activity).

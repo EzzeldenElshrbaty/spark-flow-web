@@ -44,13 +44,14 @@ export const navGroups: NavGroup[] = [
 export const settingsItem: NavItem = {
   path: '/settings',
   label: 'Settings',
-  // Anyone with something to change there: roles and permissions, hourly costs or the demo data.
+  // Anyone with something to change or read there: roles and permissions, the audit log, hourly costs or the demo data.
   permission: 'settings.open',
   icon: IconSettings,
-  description: 'Roles and permissions, hourly costs and demo data.',
+  description: 'Roles and permissions, the audit log, hourly costs and demo data.',
   link: paths.settings,
   children: [
     { path: 'roles', label: 'Roles and permissions', permission: 'settings.manage', link: paths.roles },
+    { path: 'audit', label: 'Audit log', permission: 'audit.view', link: paths.audit },
     { path: 'rates', label: 'Rates', permission: 'rates.view', link: paths.rates },
     { path: 'database', label: 'Database', permission: 'database.manage', link: paths.database },
   ],

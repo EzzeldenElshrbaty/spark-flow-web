@@ -119,7 +119,7 @@ HTTP paths follow the Phases 1+2 style (`POST /api/projects`, `POST /api/time/st
 
 **Amended 31 Oct 2026 (Admin and help slice 1):** the table below is now the four built-in roles' starting grants,
 not code. Roles are records (`Role { id, name, builtIn, grants, holders }`), people hold `roleIds`, and `can()` in
-`src/lib/permissions.ts` answers from the permissions their roles grant (`PERMISSION_GROUPS`, 19 of them) plus the
+`src/lib/permissions.ts` answers from the permissions their roles grant (`PERMISSION_GROUPS`, 20 of them since slice 2 added "See the audit log") plus the
 rules that depend on the record: whoever a project names as manager has PM rights on it, authors edit their own
 messages, a private channel's members manage it, and an archived project is frozen for everyone. A test checks the
 built-in roles give the old table's answers in every case. Routes:
@@ -195,6 +195,60 @@ built-in roles give the old table's answers in every case. Routes:
 - **M12:** a channel name clash reads `That name is taken.` (hidden channels included, so it reveals nothing). `files.url` serves a file only to people who can post in its project (read isn't frozen for archived projects). **Import data** (`db.import`, Admin) replaces everything with an export; a bad file is `Import failed` and writes nothing. Phases lie inside their project's dates (`A phase can't start before the project.`, `A phase can't end after the project's due date.`); a new deliverable needs a due date. Tasks are read at `GET /api/projects/:id/tasks` and `GET /api/tasks/:key`. The dashboard's "checked in now" shows what someone runs only on projects it covers, and "manages a project" is per workspace.
 
 - **M13:** `tasks.moveTo(key, status, index, visibleKeys?)` places a task and renumbers its column (1000, 2000, …) in one write, with a status change's rights, so a member's drop never needs to patch other cards. Retyping a column to Done, or deleting one into a Done column, stops the timers on its tasks. Archiving or restoring something already so changes nothing and sends nothing. Import also clears stored file bytes; an export carries none. Time logged before a person's first rate is priced at that first rate; a changed rate never rewrites past cost. Mentions carry `authorName`.
+
+### 4.5 Audit log (amended 31 Oct 2026, Admin and help slice 2)
+
+One entry per recorded write, appended **in the same transaction as the change** (a refused or failed write records
+nothing of itself), and one per refusal. Nobody can change or remove an entry. Reading needs "See the audit log"
+(`audit.view`, the built-in Admin); anyone else gets `403`, and that refusal is itself an entry.
+
+**An entry** (`AuditEvent`): `seq` (#341, one more than the last), `at` (the server's time, never before the last),
+`actorId` (null for a failed sign-in), `actorName` (or the email that was tried) and `actorRoles` as they were then,
+`action` (`created, changed, deleted, archived, restored, signedIn, signInFailed, denied, exported, downloaded,
+imported, reset`), `group`, `record { type, id, name }` or null, `changes [{ field, from, to }]` as people read them
+(names for ids, dates without times, "On"/"Off", choices in words, text cut at 80 characters, null for empty),
+`result` (`done, refused, failed`), `detail`, `ip`, `device` ("Chrome 130 · macOS"), `requestId`, `prevHash`, `hash`.
+
+**What is recorded**, by group (`src/mocks/audit.test.ts` lists every `Api` method as recorded or not, with why):
+
+| Group | Entries |
+|---|---|
+| `data` Data changes | Projects (fields, board columns, phase order), phases, tasks (fields; not a move within a column), deliverables, project files (added, removed, edited, deleted), channels (created, details, people added or removed, invitations sent or revoked), time entries added, edited or deleted by hand, hourly cost, and someone else's message deleted or restored (where and whose, never what it said) |
+| `status` Status and archive | A project's status, a task's column, archiving and restoring projects, tasks and channels |
+| `access` Sign-in and access | Sign-ins and failed sign-ins (in the prototype, View as: "Demo user switcher (prototype only)"), and every `403` as "Access denied" with the request (`projects.create`) and the reason |
+| `settings` Settings and users | Roles added, renamed or deleted, and each permission turned on or off ("Create projects: Off → On"); importing or resetting the demo data |
+| `exports` Exports and downloads | The Database export, the Time and cost CSV (with its period, grouping and project), a file downloaded, and the audit log's own export |
+
+Not recorded: messages, replies, comments, reactions, pins, bookmarks, folders, scheduled messages, reads, drafts,
+saved items and personal preferences; joining or leaving a channel; timers and check-ins (attendance is slice 5's).
+Every refusal is an entry, including a refused read a page asks for again (on focus, or after a change elsewhere);
+the client hides what someone may not do, so in normal use that's rare.
+
+**Reset and import (prototype only)** replace the demo data, not the log: the log as it was goes back in, with the
+reset's or import's own entry, and the file's or the seed's log is left out.
+
+**The chain:** `hash = SHA-256(canonical)`, where `canonical` is the JSON array of `seq, at, actorId, actorName,
+actorRoles, action, group, [record.type, record.id, record.name] | null, [[field, from, to]…], result, detail, ip,
+device, requestId, prevHash`; the first entry's `prevHash` is 64 zeros (`src/lib/auditChain.ts`, tested against
+Node's SHA-256). The text must be byte for byte what `JSON.stringify` writes, so a .NET backend can't use
+System.Text.Json's default encoder: no spaces, strings escape only `"`, `\` and control characters (Arabic and emoji
+stay as UTF-8, as RFC 8785 says), `null` for empty, `seq` as an integer, and `at` exactly as `toISOString()` writes it
+(`2026-10-31T12:00:00.000Z`, milliseconds and `Z`). The hash is lowercase hex of SHA-256 over that text's UTF-8. The tamper check walks the log oldest first and names the first entry that doesn't fit: `edited`
+(its hash doesn't match), `removed` (a number is missing) or `reordered`. **Honest limit:** whoever can rewrite the
+whole table can rebuild the chain. The backend must keep the log append-only (no UPDATE or DELETE grant for the app's
+database user) and anchor the latest hash where the app server can't change it (a separate key or store). In the
+prototype the log lives in the browser's demo data, so the check shows how it works rather than protecting anything,
+and the IP is a made-up one per browser.
+
+| Call | Route | Notes |
+|---|---|---|
+| List | `GET /api/audit?q=&since=&actor=&recordType=&result=&group=&cursor=` | Newest first, 50 a page; `cursor` is the last `seq` shown. `q` matches names, records, ids, IPs, devices, request ids, details, changes and `#341`. `counts` per group apply every filter but the group. |
+| One | `GET /api/audit/:seq` | `404` when there's none. |
+| Summary | `GET /api/audit/summary?todayFrom=` | Today's counts from the start of my day; **Needs a look** (last 7 days, newest first, at most 10): 3 or more failed sign-ins from one IP within 10 minutes, 3 or more refusals for one person within 10 minutes, role and permission changes, someone's roles changed, and full data exports; the tamper check; who and what the log names, for the filters. |
+| Export | `GET /api/audit/export?…` (`Accept: text/csv`) | The filtered log as CSV, newest first, formulas kept as text; the client saves it with a BOM. Taking it is itself an entry. |
+| Note an export | `POST /api/audit/exports` `{ what: 'timeCost', detail }` | The Time and cost CSV is made in the page, so the page reports it; needs `timeCost.view`. A download is recorded by the backend when it serves the file (the prototype's page reports it). |
+
+Events: no event of its own; any event whose write the server logged also refreshes the log's queries (`keysForEvent`).
 
 ## 5. Screens (copy the named Spark CRM screen in `design/screenshots/`)
 

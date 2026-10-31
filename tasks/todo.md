@@ -1616,13 +1616,48 @@ Rulings (cost if wrong):
 - Who: "See the audit log" (Admins). There's no way to change or remove an entry, for anyone.
 
 Plan:
-- [ ] 2.1 **`lib/auditChain.ts`:** canonical form, hash, verify. Tests: an intact chain, an edited field, a removed
+- [x] 2.1 **`lib/auditChain.ts`:** canonical form, hash, verify. Tests: an intact chain, an edited field, a removed
   event and a reordered one.
-- [ ] 2.2 **Mock:** the `audit` collection (DB v25), events from every write listed above and from 403s, and
+- [x] 2.2 **Mock:** the `audit` collection (DB v25), events from every write listed above and from 403s, and
   `api.audit` (list, counts, needs-a-look, verify, export). Tests: the coverage test, filters and paging, and the
   rules.
-- [ ] 2.3 **Page and detail sheet.** Tests: jsdom, axe in both themes, 390px.
-- [ ] 2.4 **Close,** as in 1.4.
+- [x] 2.3 **Page and detail sheet.** Tests: jsdom, axe in both themes, 390px.
+- [x] 2.4 **Close,** as in 1.4.
+
+### Review (slice 2)
+
+- **Checks:**
+  - Unit 1,770 and browser 243 pass, and tsc, lint and build:prototype are clean.
+  - The audit log page has an axe check in light and dark (with a broken chain and an entry open) and a 390px check.
+  - App check:
+    - A role change, View as Mariam (refused the page) and back each landed in the log and in Needs a look.
+    - Browsing as a Member raised no refusals.
+    - The Sign-in and access chip with "Mariam" narrowed the list and the address.
+    - Export CSV saved `audit-log-<day>.csv` with a BOM, and the export was then in the log.
+    - The Time and cost CSV and a project file's download were each recorded.
+    - Both themes and 390px were checked.
+- **Coverage:** `mocks/audit.test.ts` lists all 143 `Api` methods as recorded (with a call that must log) or not (with why).
+  - A new method fails it until someone decides.
+  - Mutation-checked: removing the rates entry, or one listed method, fails it.
+- **Test-first:** the review fixes were run red first. The chain, the SHA-256 and the page were written just before their tests.
+- **Changed from the plan:**
+  - A table row shows its result under the action only when it isn't Done, so the table fits at 1440px.
+  - `audit.get(seq)` was added, so a link to #341 or a Needs a look line opens an entry that isn't on screen.
+  - The prototype's reset and import keep the log as it was. The log isn't demo data, and nothing removes an entry.
+  - Unit tests run in Cairo time (`TZ` in the vitest config), so "today" reads the same on any machine.
+- **Review fixes:**
+  - A burst is any 3 within 10 minutes, with the window sliding one entry at a time. Before, 9, 11 and 12 minutes in was missed.
+  - An empty value staying empty is no change: a new project no longer lists "Teams: — → —".
+  - A task's due date shows without a time. Text that only starts like a time stays text.
+  - Reset and import no longer replace the log. The entry names whoever did it, and every tab reloads even if the entry fails.
+  - A linked entry isn't fetched before access is known. A Member opening `?entry=2` no longer adds a refusal.
+  - Imported entries must have a list of changes.
+  - The CSV injection test now fails without the guard.
+  - A test checks that messages, replies, comments, reactions and pins stay out of the log, and what they say too.
+  - Spec §4.5 names the exact JSON and time format a .NET backend must hash.
+- **Left as is:**
+  - Every refusal is an entry, even a refused read that a page asks for again. The client hides what someone may not do, so this is rare (spec §4.5).
+  - A download from a video player's own controls isn't noted.
 
 ## Slice 3: Users
 

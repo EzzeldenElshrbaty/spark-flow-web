@@ -156,6 +156,12 @@ export const migrations: Record<number, (doc: Record<string, unknown>) => void> 
     doc.saved = reminders.map((r) => ({ id: r.id, userId: r.userId, workspaceId: r.workspaceId, target: r.target, status: 'inProgress', remindAt: r.remindAt, firedAt: r.firedAt ?? null, savedAt: r.remindAt }))
     delete doc.reminders
   },
+  // 25: the audit log (slice 2) starts empty, and the built-in Admin role may read it, as Admins could see everything.
+  24: (doc) => {
+    if (!Array.isArray(doc.audit)) doc.audit = []
+    const admin = Array.isArray(doc.roles) ? (doc.roles as { id?: string; builtIn?: boolean; grants?: unknown }[]).find((r) => r?.id === 'admin' && r.builtIn) : undefined
+    if (admin && Array.isArray(admin.grants) && !admin.grants.includes('audit.view')) admin.grants.push('audit.view')
+  },
   // 24: roles become records (slice 1). The four built-in roles are stored with the rights they had, and each person
   // holds the one role they had; an unknown role reads as Member, as the old code treated it.
   23: (doc) => {

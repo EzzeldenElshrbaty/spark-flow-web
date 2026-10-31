@@ -1,6 +1,7 @@
 import clsx from 'clsx'
 import { FileText, Trash2, Upload, X } from 'lucide-react'
 import { useRef, useState } from 'react'
+import { noteDownload } from '@/api/audit'
 import { openFile, useProjectFiles, useRemoveFile, useUploadFile } from '@/api/projects'
 import type { StoredFile, User } from '@/api/types'
 import { useMe } from '@/api/users'
@@ -28,7 +29,7 @@ export function ProjectFiles({ projectId, people, canUpload, canManage }: { proj
   const meId = useMe().data?.id
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
-  const [viewing, setViewing] = useState<{ name: string; url: string; sizeKb: number } | null>(null)
+  const [viewing, setViewing] = useState<{ id: string; name: string; url: string; sizeKb: number } | null>(null)
   const [openError, setOpenError] = useState<string | null>(null)
   const [removing, setRemoving] = useState<StoredFile | null>(null)
   const [rows, setRows] = useState<UploadRow[]>([])
@@ -88,7 +89,7 @@ export function ProjectFiles({ projectId, people, canUpload, canManage }: { proj
     setOpenError(null)
     try {
       const url = await openFile(f.attachment.id)
-      setViewing({ name: f.attachment.name, url, sizeKb: Math.round(f.attachment.size / 1024) })
+      setViewing({ id: f.attachment.id, name: f.attachment.name, url, sizeKb: Math.round(f.attachment.size / 1024) })
     } catch {
       setOpenError(`${f.attachment.name} couldn't be opened. Try again.`)
     }
@@ -191,7 +192,7 @@ export function ProjectFiles({ projectId, people, canUpload, canManage }: { proj
           </div>
         )}
       </div>
-      {viewing && <FileViewer files={[viewing]} onClose={close} />}
+      {viewing && <FileViewer files={[viewing]} onClose={close} onDownload={() => noteDownload(viewing.id)} />}
       <ConfirmDeleteSheet
         open={removing !== null}
         title={`Remove ${removing?.attachment.name ?? 'file'}?`}

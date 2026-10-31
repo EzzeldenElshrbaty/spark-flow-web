@@ -11,6 +11,10 @@ import { buildReport } from './report'
 import { ApiError } from '@/lib/apiError'
 import { badRequest, clone, currentUser, newId, notFound, requireCan } from './shared'
 import { grantsFor } from './roles'
+import { audit, changesBetween, recordOf } from './audit'
+
+/** The fields of a time entry the audit log records. */
+const ENTRY_LOGGED = ['userId', 'projectId', 'taskId', 'startedAt', 'endedAt', 'note'] as const
 
 const HOUR = 3_600_000
 const MAX_PLAN = 500
@@ -213,6 +217,7 @@ export function timeApi(db: MockDb, hub: MockHub, now: () => Date): Api['time'] 
         checkOn(data, projectId)
         const entry: TimeEntry = { id: newId('te'), userId: me.id, projectId, taskId, startedAt: new Date(start).toISOString(), endedAt: new Date(end).toISOString(), source: 'manual', note }
         data.timeEntries.push(entry)
+        audit(data, { action: 'created', group: 'data', record: recordOf.timeEntry(data, entry), changes: changesBetween(data, {}, entry, ENTRY_LOGGED) })
         return clone(entry)
       })
       hub.publish({ type: 'timeLogged', userId: stored.userId, projectId: stored.projectId })
@@ -232,7 +237,10 @@ export function timeApi(db: MockDb, hub: MockHub, now: () => Date): Api['time'] 
         const checked = checkEntry(data, entry.userId, { start, end, note: patch.note ?? entry.note, target }, now().getTime(), entry)
         // Moving it to another project needs to be on that one; fixing it where it is doesn't.
         if (checked.projectId !== was) checkOn(data, checked.projectId)
+        const before = clone(entry)
         Object.assign(entry, { ...checked, startedAt: new Date(start).toISOString(), endedAt: new Date(end).toISOString() })
+        const edits = changesBetween(data, before, entry, ENTRY_LOGGED)
+        if (edits.length) audit(data, { action: 'changed', group: 'data', record: recordOf.timeEntry(data, entry), changes: edits })
         return { entry: clone(entry), was }
       })
       hub.publish({ type: 'timeLogged', userId: entry.userId, projectId: entry.projectId })
@@ -245,6 +253,7 @@ export function timeApi(db: MockDb, hub: MockHub, now: () => Date): Api['time'] 
       const gone = await db.update((data) => {
         requireCan(data, 'time.logOwn')
         const entry = changeableEntry(data, id)
+        audit(data, { action: 'deleted', group: 'data', record: recordOf.timeEntry(data, entry), changes: changesBetween(data, entry, {}, ENTRY_LOGGED) })
         data.timeEntries = data.timeEntries.filter((e) => e.id !== id)
         return entry
       })

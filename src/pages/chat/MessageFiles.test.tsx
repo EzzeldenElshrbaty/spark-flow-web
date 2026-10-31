@@ -2,6 +2,7 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Attachment, ChatMessage } from '@/api/types'
+import { api } from '@/lib/api'
 import { FileActionsContext, type FileActions } from '@/pages/chat/files/FileActions'
 import { MessageFiles } from '@/pages/chat/MessageFiles'
 
@@ -31,16 +32,19 @@ describe('MessageFiles (spec 6.9 file card)', () => {
     expect([...actions.querySelectorAll('button')].map((b) => b.getAttribute('aria-label'))).toEqual(['Download', 'More file actions'])
   })
 
-  it('Download saves the file under its name', () => {
+  it('Download saves the file under its name, and the audit log hears of it (slice 2)', () => {
     const clicked: HTMLAnchorElement[] = []
     const spy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
       clicked.push(this)
     })
+    const noted = vi.spyOn(api.audit, 'noteDownload').mockResolvedValue()
     render(<MessageFiles attachments={[pdf]} link={link} />)
     fireEvent.click(screen.getByRole('button', { name: 'Download' }))
     expect(clicked[0].download).toBe('Scope v3.pdf')
     expect(clicked[0].href).toBe('blob:http://localhost/file-1')
+    expect(noted).toHaveBeenCalledWith('a1')
     spy.mockRestore()
+    noted.mockRestore()
   })
 
   it('More → Copy link to file copies the message permalink and says so', async () => {

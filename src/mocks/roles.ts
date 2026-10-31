@@ -1,5 +1,6 @@
 import type { Api, Role, RoleChange, User } from '@/api/types'
-import { ALL_PERMISSIONS, BUILT_IN_ROLES, can, grantsOf, type Permission } from '@/lib/permissions'
+import { ALL_PERMISSIONS, BUILT_IN_ROLES, can, grantsOf, PERMISSION_GROUPS, type Permission } from '@/lib/permissions'
+import { audit, recordOf } from './audit'
 import type { DbData, MockDb, StoredRole } from './db'
 import { delay } from './latency'
 import type { MockHub } from './realtime'
@@ -25,6 +26,17 @@ function checkName(data: DbData, value: unknown, exceptId?: string): string {
   if (name.length > MAX_NAME) throw badRequest(`A role's name has at most ${MAX_NAME} characters.`)
   if (data.roles.some((r) => r.id !== exceptId && r.name.toLowerCase() === name.toLowerCase())) throw badRequest(`There's a role called ${name} already.`)
   return name
+}
+
+const LABEL = new Map<string, string>(PERMISSION_GROUPS.flatMap((g) => g.permissions.map((p) => [p.id, p.label] as const)))
+
+/** Each permission a role gained or lost, as the audit log shows it: "Create projects: Off → On". */
+function grantChanges(before: readonly Permission[], after: readonly Permission[]) {
+  return ALL_PERMISSIONS.filter((p) => before.includes(p) !== after.includes(p)).map((p) => ({
+    field: LABEL.get(p) ?? p,
+    from: before.includes(p) ? 'On' : 'Off',
+    to: after.includes(p) ? 'On' : 'Off',
+  }))
 }
 
 function checkGrants(value: unknown): Permission[] {
@@ -58,6 +70,7 @@ export function rolesApi(db: MockDb, hub: MockHub): Api['roles'] {
         if (copyFrom && !source) throw notFound('Role', copyFrom)
         const stored: StoredRole = { id: newId('role'), name: checkName(data, name), builtIn: false, grants: source ? [...source.grants] : [] }
         data.roles.push(stored)
+        audit(data, { action: 'created', group: 'settings', record: recordOf.role(stored), changes: grantChanges([], stored.grants), detail: source ? `Copied from ${source.name}` : 'With no permissions' })
         return withHolders(data, stored)
       })
       changed()
@@ -69,7 +82,9 @@ export function rolesApi(db: MockDb, hub: MockHub): Api['roles'] {
         requireManage(data)
         const stored = data.roles.find((r) => r.id === id)
         if (!stored) throw notFound('Role', id)
+        const was = stored.name
         stored.name = checkName(data, name, id)
+        if (stored.name !== was) audit(data, { action: 'changed', group: 'settings', record: recordOf.role(stored), changes: [{ field: 'Name', from: was, to: stored.name }] })
         return withHolders(data, stored)
       })
       changed()
@@ -84,6 +99,7 @@ export function rolesApi(db: MockDb, hub: MockHub): Api['roles'] {
         if (stored.builtIn) throw badRequest(`${stored.name} is built in, so it can't be deleted.`)
         const holders = data.users.filter((u) => u.roleIds.includes(id)).length
         if (holders) throw badRequest(`${holders === 1 ? '1 person holds' : `${holders} people hold`} ${stored.name}. Give them another role first.`)
+        audit(data, { action: 'deleted', group: 'settings', record: recordOf.role(stored), changes: grantChanges(stored.grants, []) })
         data.roles = data.roles.filter((r) => r.id !== id)
       })
       changed()
@@ -108,7 +124,11 @@ export function rolesApi(db: MockDb, hub: MockHub): Api['roles'] {
           // Applied to the role as it is now: someone else's change to other permissions stays.
           return { stored, grants: ALL_PERMISSIONS.filter((p) => !remove.includes(p) && (add.includes(p) || stored.grants.includes(p))) }
         })
-        for (const { stored, grants } of next) stored.grants = grants
+        for (const { stored, grants } of next) {
+          const changes = grantChanges(stored.grants, grants)
+          if (changes.length) audit(data, { action: 'changed', group: 'settings', record: recordOf.role(stored), changes })
+          stored.grants = grants
+        }
         keepsAnAdmin(data)
         return data.roles.map((role) => withHolders(data, role))
       })

@@ -1,5 +1,6 @@
 import { FileText } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { noteDownload } from '@/api/audit'
 import { openFile } from '@/api/projects'
 import type { Attachment } from '@/api/types'
 import { FileViewer } from '@/components/ui/FileViewer'
@@ -40,7 +41,7 @@ function One({ attachment }: { attachment: Attachment }) {
   // Images the browser shows (not HEIC), and videos it can play; anything else is a file row that opens to download.
   const playable = attachment.mimeType.startsWith('video/') && typeof document !== 'undefined' && document.createElement('video').canPlayType(attachment.mimeType) !== ''
   const kind = previewOf(attachment.name) === 'image' ? 'image' : playable ? 'video' : 'file'
-  const viewer = viewing && url && <FileViewer files={[{ name: attachment.name, url, sizeKb: Math.round(attachment.size / 1024) }]} onClose={() => setViewing(false)} />
+  const viewer = viewing && url && <FileViewer files={[{ name: attachment.name, url, sizeKb: Math.round(attachment.size / 1024) }]} onClose={() => setViewing(false)} onDownload={() => noteDownload(attachment.id)} />
 
   if (failed) return <p className="text-xs text-red-600 dark:text-red-400">{attachment.name} couldn't be opened.</p>
   if (kind === 'image')

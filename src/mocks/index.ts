@@ -6,6 +6,9 @@ import { searchApi } from './search'
 import { sidebarApi } from './sidebarOrder'
 import { preferencesApi } from './preferences'
 import { rolesApi } from './roles'
+import { audit } from './audit'
+import { auditApi } from './auditApi'
+import { ApiError } from '@/lib/apiError'
 import type { Api, ChatMessage, NewTicket, ThreadReply, Ticket, TicketPatch } from '@/api/types'
 import { addReply, chatApi, sendMessage, type AddReplyInput, type SendMessageInput } from './chat'
 import { sessionActor } from './actor'
@@ -53,7 +56,7 @@ declare global {
  */
 export function createMockApi(db: MockDb, hub: MockHub, now: () => Date = () => new Date()): Api {
   const projectParts = projectsApi(db, hub, now)
-  return {
+  return recordRefusals(db, {
     workspaces: workspacesApi(db),
     users: usersApi(db),
     chat: chatApi(db, hub),
@@ -79,8 +82,43 @@ export function createMockApi(db: MockDb, hub: MockHub, now: () => Date = () => 
     bookmarks: bookmarksApi(db, hub),
     dashboard: dashboardApi(db, now),
     files: filesApi(db, hub, now),
+    audit: auditApi(db, now),
     db: dbApi(db, hub),
+  })
+}
+
+/**
+ * Every call the server refuses for want of a permission (403) goes in the audit log as "denied", in a write of its
+ * own (the refused one saved nothing), and the refusal still reaches the caller. The request is named by its route in
+ * the Api, `tickets.update`, say.
+ */
+function recordRefusals(db: MockDb, api: Api): Api {
+  const wrapped: Record<string, Record<string, unknown>> = {}
+  for (const [ns, part] of Object.entries(api) as [string, Record<string, unknown>][]) {
+    wrapped[ns] = {}
+    for (const [method, value] of Object.entries(part)) {
+      if (typeof value !== 'function') {
+        wrapped[ns][method] = value
+        continue
+      }
+      wrapped[ns][method] = async (...args: unknown[]) => {
+        try {
+          return await value.apply(part, args)
+        } catch (error) {
+          if (error instanceof ApiError && error.status === 403) {
+            const id = `${ns}.${method}`
+            await db
+              .update((data) => {
+                audit(data, { action: 'denied', group: 'access', record: { type: 'request', id, name: id }, result: 'refused', detail: error.detail ?? error.title })
+              })
+              .catch(() => undefined) // the refusal is what the caller needs; a log that can't be written doesn't replace it
+          }
+          throw error
+        }
+      }
+    }
   }
+  return wrapped as unknown as Api
 }
 
 /** Reading these browser properties can throw when storage is blocked; then they count as missing. */

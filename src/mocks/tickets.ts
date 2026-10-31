@@ -1,9 +1,9 @@
-import type { Api, NewTicket, Priority, TaskType, Ticket, TicketPatch } from '@/api/types'
+import type { Api, NewTicket, Priority, Project, TaskType, Ticket, TicketPatch } from '@/api/types'
 import { taskView } from './derive'
 import type { DbData, MockDb } from './db'
 import { delay } from './latency'
 import type { MockHub } from './realtime'
-import { categoryOf, columnOf, columnsOf, startColumn } from '@/lib/boardColumns'
+import { categoryOf, columnLabel, columnOf, columnsOf, startColumn } from '@/lib/boardColumns'
 import { entryEnd } from '@/lib/hours'
 import { badRequest, clone, isDate, notFound, pickPatch, requireCan, stamp, text } from './shared'
 import { projectPeopleIds } from '@/lib/projectPeople'
@@ -20,6 +20,15 @@ import { findProject, openProject } from './projects'
 import { logActivity, logTaskUpdate } from './activity'
 import { postTaskEvents } from './taskEvents'
 import { stopTimersOn } from './timers'
+import { audit, changesBetween, recordOf } from './audit'
+
+/** What the audit log records of a task's edit: everything but its place in a column; the column is "status". */
+const TASK_LOGGED = ['title', 'description', 'priority', 'storyPoints', 'assigneeId', 'sprintId', 'phaseId', 'type', 'dueAt', 'estimateHours'] as const
+
+/** A task's column change as the log shows it, by the columns' names; none when it stayed. */
+function statusChanges(project: Project, from: string | null, to: string) {
+  return from === to ? [] : [{ field: 'Status', from: from === null ? null : columnLabel(project, from), to: columnLabel(project, to) }]
+}
 
 function findTicket(data: DbData, key: string): Ticket {
   const ticket = data.tickets.find((t) => t.key === key)
@@ -120,6 +129,7 @@ export function tasksApi(db: MockDb, hub: MockHub, now: () => Date): Api['tasks'
           stopped.push(e.userId)
         }
       }
+      if (Boolean(ticket.archivedAt) !== archive) audit(data, { action: archive ? 'archived' : 'restored', group: 'status', record: recordOf.task(ticket) })
       ticket.archivedAt = archive ? at.toISOString() : null
       ticket.updatedAt = stamp(ticket.updatedAt)
       logActivity(data, { projectId: ticket.projectId, taskKey: ticket.key, kind: archive ? 'task.archived' : 'task.restored', changes: [] }, at.toISOString())
@@ -233,6 +243,7 @@ export async function createTicket(db: MockDb, hub: MockHub, input: NewTicket, c
     data.tickets.push(created)
     data.counters[project.id] = number + 1
     logActivity(data, { projectId: project.id, taskKey: key, kind: 'task.created', changes: [] }, clock().toISOString())
+    audit(data, { action: 'created', group: 'data', record: recordOf.task(created), changes: [...statusChanges(project, null, status), ...changesBetween(data, {}, created, TASK_LOGGED)] })
     // The message it was made from names it from now on (its task chip).
     const source = created.linkedMessageId ? data.messages.find((m) => m.id === created.linkedMessageId) : undefined
     if (source && !source.linkedTicketKeys.includes(key)) source.linkedTicketKeys.push(key)
@@ -271,6 +282,10 @@ export async function updateTicket(
     logTaskUpdate(data, before, ticket, now().toISOString())
     // Done (any Done-type column, whatever it's called): the timers running on it stop, as no more time goes on it.
     const project = findProject(data, ticket.projectId)
+    const edits = changesBetween(data, before, ticket, TASK_LOGGED)
+    const moved = statusChanges(project, before.status, ticket.status)
+    if (edits.length) audit(data, { action: 'changed', group: 'data', record: recordOf.task(ticket), changes: edits })
+    if (moved.length) audit(data, { action: 'changed', group: 'status', record: recordOf.task(ticket), changes: moved })
     const intoDone = patch.status !== undefined && categoryOf(project, ticket.status) === 'done' && categoryOf(project, before.status) !== 'done'
     const stopped = intoDone ? stopTimersOn(data, [ticket.id], now()) : []
     // The change, its history and its cards in the project's chat are one write.

@@ -3,6 +3,7 @@ import { Download, Wallet } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router'
 import { useArchivedProjects, useProjectSummaries } from '@/api/projects'
 import { useTimeReport } from '@/api/time'
+import { noteExport } from '@/api/audit'
 import type { ReportPeriod, TimeReport, User } from '@/api/types'
 import { useUsers } from '@/api/users'
 import { ChartCard } from '@/components/charts/ChartCard'
@@ -18,7 +19,7 @@ import { useAccess } from '@/lib/usePermission'
 import { downloadCsv, toCsv } from '@/lib/csv'
 import { selectClass } from '@/components/ui/Field'
 import { Button } from '@/components/ui/Button'
-import { reportRows } from './reportCsv'
+import { exportDetail, reportRows } from './reportCsv'
 import { missingRateLine } from './missingRates'
 
 const periods: [ReportPeriod, string][] = [
@@ -155,6 +156,8 @@ export function TimeCostPage() {
     if (!report.data) return
     const names = { project: (id: string) => allProjects.find((p) => p.id === id)?.name ?? 'Unknown project', person: (id: string) => people.find((u) => u.id === id)?.name ?? 'Unknown person' }
     downloadCsv(`time-${by}-${days}d.csv`, toCsv(reportRows(report.data, by, names)))
+    // What the file held, for the audit log (slice 2): "30 days · By project · All projects".
+    noteExport('timeCost', exportDetail(days, groupings.find(([g]) => g === by)![1], projectId ? names.project(projectId) : null))
   }
 
   const header = (

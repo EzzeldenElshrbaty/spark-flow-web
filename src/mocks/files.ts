@@ -16,6 +16,7 @@ import { fileKind } from '@/lib/fileTypes'
 import { filePlace } from './saved'
 import { badRequest, clone, currentUser, newId, notFound, requireCan } from './shared'
 import { grantsFor } from './roles'
+import { audit, changesBetween, recordOf } from './audit'
 
 /** The upload rules (empty, too big, a type we don't take), with the sentence the form shows. */
 /** The workspaces a file is in: those of the channels and projects it's shared in. */
@@ -101,7 +102,7 @@ const everSent = (data: DbData, fileId: string) =>
   [...data.messages, ...data.replies, ...data.trash.map((t) => t.snapshot)].some((row) => row.attachments?.some((a) => a.id === fileId))
 
 /** A file I may see somewhere (or uploaded and haven't sent yet), not deleted: anything else is not found. */
-function visibleFile(data: DbData, fileId: string): Attachment {
+export function visibleFile(data: DbData, fileId: string): Attachment {
   const file = data.attachments.find((a) => a.id === fileId)
   if (!file || file.deletedAt) throw notFound('File', fileId)
   const places = placesOf(data, fileId)
@@ -194,10 +195,12 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
         // Cancelled while the bytes were saved: withSavedBytes throws them away.
         throwIfCancelled(signal)
         return db.update((data) => {
-          const me = requireCan(data, 'collab.post', openProject(data, projectId))
+          const project = openProject(data, projectId)
+          const me = requireCan(data, 'collab.post', project)
           const record: ProjectFile = { id: newId('pf'), projectId, attachmentId: attachment.id, uploadedBy: me.id, createdAt: at }
           data.attachments.push(attachment)
           data.projectFiles.push(record)
+          audit(data, { action: 'created', group: 'data', record: recordOf.file(attachment), detail: `Added to ${project.name}` })
           return { ...record, attachment }
         })
       })
@@ -213,7 +216,9 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
         const me = currentUser(data)
         if (record.uploadedBy !== me.id && !can('phase.manage', { userId: me.id, grants: grantsFor(data, me), project, userTeamIds: me.teamIds }))
           throw new ApiError({ title: 'Forbidden', status: 403, detail: 'You can only remove files you added.' })
-        const name = data.attachments.find((a) => a.id === record.attachmentId)?.name ?? 'a file'
+        const attachment = data.attachments.find((a) => a.id === record.attachmentId)
+        const name = attachment?.name ?? 'a file'
+        audit(data, { action: 'deleted', group: 'data', record: recordOf.file(attachment ?? { id: fileId, name }), detail: `Removed from ${project.name}` })
         data.projectFiles = data.projectFiles.filter((f) => f !== record)
         // Its bytes go too, unless something else (a comment, a message) still points at them.
         const inChat = [...data.messages, ...data.replies].some((row) => row.attachments.some((a) => a.id === fileId))
@@ -316,6 +321,8 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
           if (!folder) throw badRequest('That folder doesn’t exist.')
           if (!fileWorkspaces(data, id).includes(folder.workspaceId)) throw badRequest('That folder is in another workspace.')
         }
+        const edits = changesBetween(data, file, { title, description, folderId }, ['title', 'description', 'folderId'])
+        if (edits.length) audit(data, { action: 'changed', group: 'data', record: recordOf.file({ ...file, title }), changes: edits })
         const changed = changeEverywhere(data, id, { title, description, folderId })
         return { file: clone(file), changed }
       })
@@ -330,6 +337,7 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
         requireFileManage(data, file)
         requireUnfrozen(data, id)
         const projectIds = data.projectFiles.filter((f) => f.attachmentId === id).map((f) => f.projectId)
+        audit(data, { action: 'deleted', group: 'data', record: recordOf.file(file), detail: 'Removed everywhere it was shared' })
         // The record stays, marked, so where it was shared can say it was deleted; the bytes go.
         return { changed: changeEverywhere(data, id, { deletedAt: now().toISOString() }), projectIds }
       })

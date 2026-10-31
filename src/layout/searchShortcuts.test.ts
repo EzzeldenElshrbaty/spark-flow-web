@@ -37,9 +37,9 @@ describe('pages, tasks and people', () => {
   const grants = (role: string) => BUILT_IN_ROLES.find((r) => r.id === role)!.grants
   const titles = (role: string) => shortcutsFor(grants(role), 'engineering').pages.map((p) => p.title)
 
-  it('a member finds Home, Projects, My tasks and Teams; an admin also Dashboard, Time & cost, Roles and permissions, Rates and Database', () => {
+  it('a member finds Home, Projects, My tasks and Teams; an admin also Dashboard, Time & cost, Roles and permissions, Audit log, Rates and Database', () => {
     expect(titles('member')).toEqual(['Home', 'Projects', 'My tasks', 'Teams'])
-    expect(titles('admin')).toEqual(['Home', 'Projects', 'My tasks', 'Teams', 'Dashboard', 'Time & cost', 'Settings', 'Roles and permissions', 'Rates', 'Database'])
+    expect(titles('admin')).toEqual(['Home', 'Projects', 'My tasks', 'Teams', 'Dashboard', 'Time & cost', 'Settings', 'Roles and permissions', 'Audit log', 'Rates', 'Database'])
     expect(shortcutsFor(grants('member'), 'engineering').pages[0]!.link).toBe('/w/engineering')
   })
 

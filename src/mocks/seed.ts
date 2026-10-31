@@ -30,6 +30,7 @@ import { parseBody } from '@/lib/messageBody'
 import type { StoredMemberState } from './db'
 import { projectPeopleIds } from '@/lib/projectPeople'
 import { builtInRoles } from './roles'
+import { seedAuditHistory } from './audit'
 
 // ── Builders and derived-field helpers ────────────────────────────────────
 // Everything below is pure: the same `now` always gives the same data (no Math.random, no Date.now).
@@ -559,6 +560,7 @@ export function seed(now: Date): SeedResult {
     sidebarOrders: [],
     notificationPrefs: [],
     roles: builtInRoles(),
+    audit: [],
     activity: tickets
       .map((t) => ({ id: `act-${t.id}`, projectId: t.projectId, taskKey: t.key, actorId: t.reporterId, at: t.createdAt, kind: 'task.created' as const, changes: [] }))
       .sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0)),
@@ -566,5 +568,6 @@ export function seed(now: Date): SeedResult {
   // The bell starts with the last day's mentions only: everything older counts as read.
   const dayAgo = new Date(now.getTime() - 24 * 3_600_000).toISOString()
   for (const user of users) data.mentionReads[user.id] = mentionsFor(data, user.id).filter((m) => m.createdAt < dayAgo).map((m) => m.id)
+  seedAuditHistory(data, now)
   return { data, files: Object.fromEntries(files.map((f) => [f.attachment.id, f.bytes])) }
 }

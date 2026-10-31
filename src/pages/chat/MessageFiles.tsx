@@ -20,6 +20,7 @@ import {
 } from '@tabler/icons-react'
 import clsx from 'clsx'
 import { useEffect, useState } from 'react'
+import { noteDownload } from '@/api/audit'
 import type { Attachment, ChatMessage, ThreadReply } from '@/api/types'
 import { useFileUrl } from '@/components/AttachmentView'
 import { IconButton } from '@/components/sf/Button'
@@ -93,7 +94,11 @@ function FileActionsPill({
     const timer = setTimeout(() => setSaid(''), COPIED_MS)
     return () => clearTimeout(timer)
   }, [said])
-  const save = () => url && download(url, attachment.name)
+  const save = () => {
+    if (!url) return
+    download(url, attachment.name)
+    noteDownload(attachment.id)
+  }
   const [newFolder, setNewFolder] = useState(false)
   // Add to folder ▸ (spec 6.9): whoever may edit the file's details files it; a refusal is said beside the pill.
   const fileIn = (folderId: string | null) => actions?.folders?.set(attachment, folderId).catch((e: Error) => setSaid(e.message || "Couldn't file it. Try again."))
@@ -246,7 +251,7 @@ function Live({ attachment, link, message, pending }: { attachment: Attachment; 
   const open = () => setViewing(true)
   // An office file opens through the preview the backend converted it to (spec 6.9); Download still saves the file.
   const viewed = viewedFile(attachment, url)
-  const viewer = viewing && viewed && <FileViewer files={[viewed]} onClose={() => setViewing(false)} />
+  const viewer = viewing && viewed && <FileViewer files={[viewed]} onClose={() => setViewing(false)} onDownload={() => noteDownload(attachment.id)} />
 
   // The type label above the card folds it away and back (spec 6.9 "PDF ▾"); its name says which file.
   const label = (

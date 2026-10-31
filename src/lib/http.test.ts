@@ -113,6 +113,38 @@ describe('createHttpApi', () => {
     expect(JSON.parse(String(calls[1].init?.body))).toEqual({ hourlyCost: 320 })
   })
 
+  it('maps the audit log: its filter as query parameters, the export as text, and only the CSV note (slice 2)', async () => {
+    const calls: Call[] = []
+    const fetchFn = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ url: String(input), init })
+      return String(input).includes('/export?') ? new Response('#,When\r\n', { headers: { 'Content-Type': 'text/csv' } }) : Response.json({})
+    }) as typeof fetch
+    const api = createHttpApi(fetchFn)
+    await api.audit.list({ q: '  nexus ', since: '2026-10-24T00:00:00.000Z', actorId: 'u 1', recordType: null, result: 'refused', group: 'access' }, '340')
+    await api.audit.list({})
+    await api.audit.summary('2026-10-31T00:00:00.000Z')
+    await api.audit.get(341)
+    expect(await api.audit.export({ group: 'exports' })).toBe('#,When\r\n')
+    await api.audit.noteDownload('a1')
+    await api.audit.noteExport('timeCost', 'Last 7 days · All projects')
+    expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url}`)).toEqual([
+      'GET /api/audit?q=nexus&since=2026-10-24T00%3A00%3A00.000Z&actor=u+1&result=refused&group=access&cursor=340',
+      'GET /api/audit',
+      'GET /api/audit/summary?todayFrom=2026-10-31T00%3A00%3A00.000Z',
+      'GET /api/audit/341',
+      'GET /api/audit/export?group=exports',
+      // The backend records a download when it serves the file, so the note sends nothing.
+      'POST /api/audit/exports',
+    ])
+    expect(new Headers(calls[4].init?.headers).get('Accept')).toBe('text/csv')
+    expect(JSON.parse(String(calls[5].init?.body))).toEqual({ what: 'timeCost', detail: 'Last 7 days · All projects' })
+  })
+
+  it('a refused audit export fails as an ApiError, like any call', async () => {
+    const api = createHttpApi(fetchReturning(403, { title: 'Forbidden', detail: "You don't have access to the audit log." }))
+    await expect(api.audit.export({})).rejects.toMatchObject({ status: 403, detail: "You don't have access to the audit log." })
+  })
+
   it('maps the M1 writes to their routes, methods and bodies', async () => {
     const { calls, fetchFn } = recordingFetch()
     const api = createHttpApi(fetchFn)

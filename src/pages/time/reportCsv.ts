@@ -9,3 +9,8 @@ export function reportRows(report: TimeReport, by: 'project' | 'person' | 'week'
   if (by === 'person') return [['Person', 'Rate (EGP/h)', 'Hours', 'Cost (EGP)'], ...report.byPerson.map((r) => [names.person(r.userId), r.rate, tenth(r.hours), Math.round(r.cost)])]
   return [['Week of', 'Hours', 'Cost (EGP)'], ...report.byWeek.map((r) => [localDay(new Date(r.weekStart)), tenth(r.hours), Math.round(r.cost)])]
 }
+
+/** What an export held, for the audit log (slice 2): "30 days · By project · All projects". */
+export function exportDetail(days: number, grouping: string, projectName: string | null): string {
+  return [`${days} days`, grouping, projectName ?? 'All projects'].join(' · ')
+}

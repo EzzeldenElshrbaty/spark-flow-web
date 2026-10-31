@@ -1,4 +1,4 @@
-import type { Api, ChatTarget, ProblemDetails } from '@/api/types'
+import type { Api, AuditFilter, ChatTarget, ProblemDetails } from '@/api/types'
 import { apiUrl } from '@/lib/api'
 import { ApiError } from '@/lib/apiError'
 
@@ -18,19 +18,25 @@ async function toApiError(res: Response): Promise<ApiError> {
   })
 }
 
-/** One call to the backend. Resolves with the JSON body (undefined when there is none); fails with an ApiError. */
-export async function request<T>(path: string, init?: RequestInit, fetchFn: typeof fetch = fetch): Promise<T> {
+/** One call to the backend, as its successful response; a refusal or no answer fails with an ApiError. */
+async function respond(path: string, init: RequestInit | undefined, fetchFn: typeof fetch, accept: string): Promise<Response> {
   let res: Response
   try {
     // The session is a cookie on the backend's own origin (assumed with the .NET team), so cross-origin calls carry it.
     // The person's zone: "today", check-ins and report weeks are worked out in it (spec §4.4).
     const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
-    res = await fetchFn(apiUrl(path), { credentials: 'include', ...init, headers: { Accept: 'application/json', 'X-Time-Zone': zone, ...init?.headers } })
+    res = await fetchFn(apiUrl(path), { credentials: 'include', ...init, headers: { Accept: accept, 'X-Time-Zone': zone, ...init?.headers } })
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') throw error // cancelled on purpose, not a failure
     throw new ApiError({ title: "Couldn't reach the server", status: 0 })
   }
   if (!res.ok) throw await toApiError(res)
+  return res
+}
+
+/** One call to the backend. Resolves with the JSON body (undefined when there is none); fails with an ApiError. */
+export async function request<T>(path: string, init?: RequestInit, fetchFn: typeof fetch = fetch): Promise<T> {
+  const res = await respond(path, init, fetchFn, 'application/json')
   const text = await res.text()
   if (!text) return undefined as T
   try {
@@ -40,12 +46,27 @@ export async function request<T>(path: string, init?: RequestInit, fetchFn: type
   }
 }
 
+/** A GET whose body is text as served (a CSV export), not JSON. */
+export async function requestText(path: string, accept: string, fetchFn: typeof fetch = fetch): Promise<string> {
+  return (await respond(path, undefined, fetchFn, accept)).text()
+}
+
 const enc = encodeURIComponent
 /** `?a=1&b=2` from the set values, or '' when none are. */
 const query = (values: Record<string, string | undefined>) => {
   const set = Object.entries(values).filter((entry): entry is [string, string] => Boolean(entry[1]))
   return set.length ? `?${new URLSearchParams(set).toString()}` : ''
 }
+
+/** The audit log's filter as query parameters (spec: GET /api/audit). */
+const auditQuery = (f: AuditFilter) => ({
+  q: f.q?.trim() || undefined,
+  since: f.since ?? undefined,
+  actor: f.actorId ?? undefined,
+  recordType: f.recordType ?? undefined,
+  result: f.result ?? undefined,
+  group: f.group ?? undefined,
+})
 
 const targetPath = (target: ChatTarget) => `/api/${target.kind === 'reply' ? 'replies' : 'messages'}/${enc(target.id)}`
 
@@ -250,6 +271,15 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
     preferences: {
       get: () => get('/api/me/preferences'),
       update: (patch) => send('PATCH', '/api/me/preferences', patch),
+    },
+    audit: {
+      list: (filter, cursor) => get(`/api/audit${query({ ...auditQuery(filter), cursor })}`),
+      get: (seq) => get(`/api/audit/${seq}`),
+      summary: (todayFrom) => get(`/api/audit/summary${query({ todayFrom })}`),
+      export: (filter) => requestText(`/api/audit/export${query(auditQuery(filter))}`, 'text/csv', fetchFn),
+      // The backend records a download when it serves the file; only the Time and cost CSV is made in the page.
+      noteDownload: () => Promise.resolve(),
+      noteExport: (what, detail) => send<void>('POST', '/api/audit/exports', { what, detail }),
     },
     roles: {
       list: () => get('/api/roles'),

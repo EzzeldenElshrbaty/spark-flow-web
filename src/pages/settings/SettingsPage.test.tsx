@@ -36,6 +36,8 @@ describe('Settings home (slice 1, as the CRM’s)', () => {
     const roles = within(access).getByRole('link', { name: /Roles and permissions/ })
     expect(roles.getAttribute('href')).toBe('/w/engineering/settings/roles')
     expect(roles.textContent).toContain('4 roles')
+    // The audit log (slice 2) sits with access: who did what.
+    expect(within(access).getByRole('link', { name: /Audit log/ }).getAttribute('href')).toBe('/w/engineering/settings/audit')
     const data = screen.getByRole('region', { name: 'Data' })
     expect(within(data).getAllByRole('link').map((a) => a.getAttribute('href'))).toEqual(['/w/engineering/settings/rates', '/w/engineering/settings/database'])
   })
@@ -45,5 +47,11 @@ describe('Settings home (slice 1, as the CRM’s)', () => {
     show()
     expect(screen.queryByRole('region', { name: 'People and access' })).toBeNull()
     expect(within(screen.getByRole('region', { name: 'Data' })).getAllByRole('link').map((a) => a.textContent)).toEqual([expect.stringContaining('Hourly cost')])
+  })
+
+  it('the audit log shows to whoever may read it, even without changing settings', () => {
+    grants = ['audit.view']
+    show()
+    expect(within(screen.getByRole('region', { name: 'People and access' })).getAllByRole('link').map((a) => a.getAttribute('href'))).toEqual(['/w/engineering/settings/audit'])
   })
 })

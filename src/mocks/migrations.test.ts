@@ -173,6 +173,15 @@ describe('18 → 19', () => {
   })
 })
 
+describe('24 → 25 (the audit log)', () => {
+  it('starts an empty log, and the built-in Admin role may read it', () => {
+    const out = migrate({ version: 24, currentUserId: 'u-1', roles: [{ id: 'admin', builtIn: true, grants: ['settings.manage'] }, { id: 'sales', builtIn: true, grants: [] }] }, 25) as { audit: unknown[]; roles: { grants: string[] }[] }
+    expect(out.audit).toEqual([])
+    expect(out.roles[0].grants).toEqual(['settings.manage', 'audit.view'])
+    expect(out.roles[1].grants).toEqual([])
+  })
+})
+
 describe('23 → 24 (roles become records)', () => {
   it('stores the four built-in roles with today’s rights, and each person holds the role they had', () => {
     const out = migrate(

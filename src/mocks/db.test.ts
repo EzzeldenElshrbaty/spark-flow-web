@@ -41,6 +41,7 @@ const emptyData = (): DbData => ({
   sidebarOrders: [],
   notificationPrefs: [],
   roles: [],
+  audit: [],
   counters: {},
 })
 

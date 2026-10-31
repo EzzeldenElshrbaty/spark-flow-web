@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
-import { toCsv } from './csv'
+// @vitest-environment jsdom
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { downloadCsv, toCsv } from './csv'
 
 describe('toCsv', () => {
   it('quotes commas, quotes and newlines; BOM; CRLF', () => {
@@ -13,3 +14,23 @@ describe('toCsv', () => {
   })
 })
 
+
+describe('downloadCsv', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  /** The bytes of the file that would be saved. */
+  async function saved(csv: string) {
+    let blob: Blob | undefined
+    URL.createObjectURL = vi.fn((b: Blob) => ((blob = b), 'blob:x'))
+    URL.revokeObjectURL = vi.fn()
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    downloadCsv('log.csv', csv)
+    return new Uint8Array(await blob!.arrayBuffer())
+  }
+
+  it('starts the file with one BOM, whether or not the text had it (fetch drops a server CSV’s)', async () => {
+    for (const csv of ['\uFEFFa,b', 'a,b']) {
+      expect([...(await saved(csv))]).toEqual([0xef, 0xbb, 0xbf, 0x61, 0x2c, 0x62])
+    }
+  })
+})
