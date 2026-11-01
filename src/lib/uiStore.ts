@@ -22,6 +22,7 @@ type UiState = {
   lastProjectView: Record<string, ProjectView>   // project key → board or list on its Tasks tab
   lastFilters: Record<string, { phase?: string; sprint?: string }> // project key → its Tasks tab's last phase and sprint
   typing: Record<string, Typer[]>                // channel id → who is typing; never persisted
+  helpOpen: boolean                              // the page help panel (slice 6): kept across pages, not reloads
 }
 
 type UiActions = {
@@ -35,6 +36,7 @@ type UiActions = {
   setProjectView: (key: string, view: ProjectView) => void
   setProjectFilters: (key: string, filters: { phase?: string; sprint?: string }) => void
   addTyper: (channelId: string, userId: string, now?: number) => void
+  setHelpOpen: (open: boolean) => void
 }
 
 export const initialUiState: UiState = {
@@ -48,6 +50,7 @@ export const initialUiState: UiState = {
   lastProjectView: {},
   lastFilters: {},
   typing: {},
+  helpOpen: false,
 }
 
 /** Who is still typing in a channel at `now`. Pure, so it can be tested and called from render. */
@@ -121,6 +124,7 @@ export const useUiStore = create<UiState & UiActions>()(
             }),
           }
         }),
+      setHelpOpen: (open) => set({ helpOpen: open }),
       forgetPlaces: () => set({ lastWorkspace: null, lastVisited: {}, lastByMode: {}, lastMode: {} }),
       setProjectView: (key, view) => set((state) => ({ lastProjectView: { ...state.lastProjectView, [key]: view } })),
       setProjectFilters: (key, filters) => set((state) => ({ lastFilters: { ...state.lastFilters, [key]: filters } })),
@@ -136,7 +140,7 @@ export const useUiStore = create<UiState & UiActions>()(
     {
       name: 'spark-flow.ui',
       storage: createJSONStorage(() => createUiStorage(browserStorage())),
-      partialize: ({ typing: _typing, ...persisted }) => persisted,
+      partialize: ({ typing: _typing, helpOpen: _helpOpen, ...persisted }) => persisted,
     },
   ),
 )

@@ -6,6 +6,7 @@ import { Outlet, useMatches } from 'react-router'
 import { ActivityTracker } from '@/layout/ActivityTracker'
 import { DesktopNotifier } from '@/layout/DesktopNotifier'
 import { Inspector } from '@/layout/Inspector'
+import { PageHelpPanel } from '@/layout/PageHelpPanel'
 import { PageSkeleton } from '@/layout/PageSkeleton'
 import { MobileBottomBar, MobileDrawer } from '@/layout/MobileNav'
 import { RealtimeBridge } from '@/layout/RealtimeBridge'
@@ -81,6 +82,8 @@ export function AppLayout() {
         {/* Thread or ticket beside the content (xl), over it (sm–lg) or as a bottom sheet (phones); driven by the URL.
             Not without an account: nothing in it could load either. */}
         {!account.error && <Inspector />}
+        {/* Help for the page: beside the card from 1536px, over it narrower, rising from the bottom on phones. */}
+        {!account.error && <PageHelpPanel />}
         <PhoneTimerBar />
         <TimerAnnouncer />
         <MobileBottomBar onOpenMore={() => setDrawerOpen(true)} />

@@ -343,6 +343,25 @@ which for Spark Systems is Cairo. The backend should cut days in `workHours.time
 that zone too; until then a viewer outside Cairo sees in and out times in their own zone, while averages and late and
 early use Cairo's.
 
+### 4.9 Help (amended 1 Nov 2026, Admin and help slice 6)
+
+Help is content in the app's bundle, not an API: one Markdown file per chapter in `src/help/`, loaded as one chunk the
+first time help opens. Front matter: `title`, `group` (Getting started, Work, Chat, Manage, Settings), `order`,
+`summary` and optionally `needs` (a `can()` action; the chapter shows only to whoever may, and says "For people who can
+…"). The body allows `##` sections, paragraphs, `-` and `1.` lists, `**bold**`, `` `keys` ``, `> ` tips, links to a
+chapter (`help:id#section`) or to https, and `![alt](name.jpg "caption")` from `public/help/`. It's parsed into blocks
+(`lib/helpMarkdown.ts`) and rendered as elements, never HTML.
+
+- **The "?"** beside the bell shows on pages with help this person may read (`lib/pageHelp.ts`: route → chapter and
+  maybe `##` sections; `NO_HELP` lists the rest with why, and a test fails on a route in neither). Its panel sits beside
+  the card from 1536px, over the page from 640px, and rises from the bottom on phones; it doesn't dim the page, stays
+  open across pages (not reloads), follows links inside with "Back to this page", and Escape closes it unless a sheet or
+  menu is open.
+- **The help centre** is `/w/:ws/help/:chapter?` (the user menu's **Help**, or the panel's "Open the help centre").
+- **Screenshots:** `npm run help:shots` builds the prototype and takes each chapter's pictures with Playwright at
+  1280×800, light, on the seed (`HELP_SHOTS_CHROME` points at a Chromium of your own). A test fails on a picture that
+  isn't there.
+
 ## 5. Screens (copy the named Spark CRM screen in `design/screenshots/`)
 
 Sidebar groups: **WORK** Home, Projects, My tasks · **TEAM** Chat, Teams · **MANAGE** Dashboard, Time & cost ·

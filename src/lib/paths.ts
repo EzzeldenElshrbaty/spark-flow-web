@@ -22,6 +22,7 @@ export const paths = {
   tasks: (ws: string) => `/w/${ws}/tasks`,
   project: (ws: string, key: string, tab: ProjectTab = 'overview', q?: TasksQuery) => `/w/${ws}/p/${key}/${tab}${query(q)}`,
   settings: (ws: string) => `/w/${ws}/settings`,
+  help: (ws: string, chapter?: string, section?: string | null) => `/w/${ws}/help${chapter ? `/${chapter}` : ''}${section ? `#${section}` : ''}`,
   database: (ws: string) => `/w/${ws}/settings/database`,
   rates: (ws: string) => `/w/${ws}/settings/rates`,
   /** Everyone in the company (slice 3); `person` opens someone, 'new' Add person. */

@@ -1866,8 +1866,67 @@ Rulings (cost if wrong):
   data) into `public/help/`. Each has alt text and a caption; rerun it when a page changes.
 
 Plan:
-- [ ] 6.1 **Help panel and button,** from the CRM's `PageHelpPanel`. Tests: opens for the page, stays open across
+Design (1 Nov, within the rulings):
+- **Content:** `src/help/<id>.md`, front matter `title`, `group` (Getting started, Work, Chat, Manage, Settings, as the
+  sidebar), `order`, `summary` and, when it needs one, `needs` (a `can()` action such as `audit.view`). Body: `##`
+  sections, paragraphs, `-` and `1.` lists, `**bold**`, `` `keys` ``, `> ` tips, links to a chapter
+  (`[Time](help:time)`, `help:time#section`) or to https, and `![alt](shot.jpg "caption")`. `lib/helpMarkdown.ts`
+  parses it into blocks; `pages/help/HelpDoc.tsx` renders elements. Anything else stays plain text.
+- **Loading:** the chapters are one lazy chunk (`src/help/index.ts`, `import.meta.glob`), loaded when help first opens.
+- **Who sees which chapter:** `needs` through `can()`; the header says "Shown for your roles: Admin, Member"; a chapter
+  with `needs` names it ("For people who can see the audit log").
+- **Page → help:** `lib/pageHelp.ts` maps each route under `/w/:ws` (project tabs one by one) to a chapter and, if it
+  covers more than the page, some of its `##` sections; `NO_HELP` lists routes without, each with why. A test reads the
+  router's routes and fails on one that's in neither.
+- **Panel:** `layout/PageHelpPanel.tsx`, open state in `uiStore` (kept across pages, not reloads). Beside the card from
+  1536px, over the page from 640px, a bottom sheet on phones; no dimming; Escape closes it unless a sheet is open.
+  "Back to this page" after following a link inside. Foot: "Open the help centre →".
+- **Help centre:** `/w/:ws/help/:chapter?`, keeping the last side like Settings. Chapters by group on the left (a select
+  on phones), group chips, search over titles and text with a snippet, "On this page" on wide screens, Previous / Next.
+- **Screenshots:** `npm run help:shots` (Playwright on the prototype build, 1280×800, light, seeded data, JPEG) into
+  `public/help/`.
+
+- [x] 6.1 **Help panel and button,** from the CRM's `PageHelpPanel`. Tests: opens for the page, stays open across
   pages, phone sheet, axe.
-- [ ] 6.2 **Help centre and search.** Tests: jsdom, axe, 390px; the every-route-has-help test.
-- [ ] 6.3 **The chapters and their screenshots** (`npm run help:shots`).
-- [ ] 6.4 **Close.**
+- [x] 6.2 **Help centre and search.** Tests: jsdom, axe, 390px; the every-route-has-help test.
+- [x] 6.3 **The chapters and their screenshots** (`npm run help:shots`).
+- [x] 6.4 **Close.**
+
+### Review (slice 6)
+
+- **Checks:**
+  - Unit 1,897 and browser 257 pass, and tsc, lint and build:prototype are clean. In one full browser run, two chat
+    browser test files (untouched) failed under load; they passed alone and on the next full run.
+  - Help has axe checks in light and dark (the help centre on a chapter with a picture and a tip, the panel) and a 390px
+    check (chapter picker, the panel as a bottom sheet with a 44px close).
+  - App check on `npm run dev`:
+    - On a project's Tasks tab, "?" opened "Board and tasks" beside the card at 1600px.
+    - Moving to Time & cost switched it to "Time and cost"; a link inside opened "Hourly cost".
+    - "Open the help centre" opened that chapter. A dark 390px phone had no sideways scroll; no console errors.
+- **Test-first:** the parser, the page-help coverage test and the help centre and panel tests were written before their
+  code; HelpDoc and the screenshot script before theirs were run. The review fixes' tests were written first.
+- **Changed from the plan:**
+  - 24 chapters: Getting started; Home, Projects, the project page, Board and tasks, Time and Teams; five for Chat;
+    Dashboard and Time and cost; one per Settings page.
+  - Group chips are the "topic chips"; sections are each chapter's `##` headings, with "On this page" from 1280px.
+  - `router.tsx` exports `workspacePages`, so the coverage test reads the real routes.
+  - Pictures are JPEG (about 90 kB each).
+  - Checked against the pages: the screenshots corrected several claims (phases and sprints on the board, the channel's
+    tabs, "Drafts & sent", "Export CSV", "Add role").
+- **Review fixes:**
+  - Project managers now get the Dashboard chapter, as the sidebar gives them the page (`managesAny`).
+  - Escape leaves the panel open while typing, or while a menu, picker or dialog is open (the Inspector's rule).
+  - A link to a chapter the reader can't open reads as text.
+  - Help and a thread, task or file panel no longer overlap: opening one closes the other.
+  - Nothing reads "not in your help" while the account loads. The "?" decides from the page map alone, without loading
+    the chapters.
+  - A followed link is forgotten on Back, on a new page or on closing. Focus goes to the panel's title, or back to "?".
+  - Sections are h3 under the chapter's h2. Help-centre links are real links.
+  - Text fixes: who sees cost, the shortcuts' caveats, `Ctrl` + `K` in the composer, and permissions instead of "Admins".
+  - The parser takes Windows line ends and wrapped list items, and refuses an order that isn't a number.
+  - A broken `#` in the address no longer crashes the page.
+  - The screenshot script waits for the server, stops if the port is taken, and always closes the browser and server.
+- **Left as is:**
+  - The panel slides in from the end; beside the card (1536px and up) it fades in.
+  - Pictures are taken in light only.
+

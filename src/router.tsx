@@ -1,6 +1,6 @@
 import { NotFound } from '@/pages/NotFound'
 import { lazy, Suspense, type ComponentType } from 'react'
-import { createBrowserRouter, Navigate, useLocation, useParams } from 'react-router'
+import { createBrowserRouter, Navigate, useLocation, useParams, type RouteObject } from 'react-router'
 import { AppLayout } from '@/layout/AppLayout'
 import { LastVisitRedirect } from '@/layout/LastVisitRedirect'
 import { WorkspaceGate } from '@/layout/WorkspaceGate'
@@ -36,6 +36,7 @@ const SearchPage = page(() => import('@/pages/chat/search/SearchPage'), 'SearchP
 const PreferencesPage = page(() => import('@/pages/preferences/PreferencesPage'), 'PreferencesPage')
 const SavedPage = page(() => import('@/pages/chat/saved/SavedPage'), 'SavedPage')
 const DraftsPage = page(() => import('@/pages/chat/outbox/DraftsPage'), 'DraftsPage')
+const HelpPage = page(() => import('@/pages/help/HelpPage'), 'HelpPage')
 
 /** `/w/:ws/p/:projectKey` has no page of its own: it opens the Overview tab. */
 function ProjectOverviewRedirect() {
@@ -67,6 +68,36 @@ function devRoutes() {
   ]
 }
 
+/** The pages inside a workspace (`/w/:ws/...`); `lib/pageHelp.test.ts` checks each has help or says why not. */
+export const workspacePages: RouteObject[] = [
+  { index: true, element: <HomePage /> },
+  // A pane: the channel fills the main card and scrolls its own message list (spec 5.3).
+  { path: 'c/:channelId', element: <ChannelPage />, handle: { pane: true } },
+  { path: 'activity', element: <ActivityPage />, handle: { pane: true } },
+  { path: 'threads', element: <ThreadsPage />, handle: { pane: true } },
+  { path: 'search', element: <SearchPage />, handle: { pane: true } },
+  { path: 'preferences', element: <PreferencesPage />, handle: { pane: true } },
+  { path: 'saved', element: <SavedPage />, handle: { pane: true } },
+  { path: 'drafts', element: <DraftsPage />, handle: { pane: true } },
+  { path: 'projects', element: <ProjectsPage /> },
+  { path: 'tasks', element: <MyTasksPage /> },
+  { path: 'dashboard', element: <DashboardPage /> },
+  { path: 'time', element: <TimeCostPage /> },
+  { path: 'teams', element: <TeamsPage /> },
+  { path: 'p/:projectKey', element: <ProjectOverviewRedirect /> },
+  { path: 'p/:projectKey/:tab', element: <ProjectTabRoute /> },
+  { path: 'settings', element: <SettingsPage /> },
+  { path: 'settings/database', element: <DatabasePage /> },
+  { path: 'settings/rates', element: <RatesPage /> },
+  { path: 'settings/users', element: <UsersPage /> },
+  { path: 'settings/roles', element: <RolesPage /> },
+  { path: 'settings/audit', element: <AuditLogPage /> },
+  { path: 'settings/archived', element: <ArchivedPage /> },
+  { path: 'settings/attendance', element: <AttendancePage /> },
+  { path: 'help', element: <HelpPage /> },
+  { path: 'help/:chapter', element: <HelpPage /> },
+]
+
 export const router = createBrowserRouter([
   ...devRoutes(),
   {
@@ -76,32 +107,7 @@ export const router = createBrowserRouter([
       {
         path: '/w/:ws',
         element: <WorkspaceGate />,
-        children: [
-          { index: true, element: <HomePage /> },
-          // A pane: the channel fills the main card and scrolls its own message list (spec 5.3).
-          { path: 'c/:channelId', element: <ChannelPage />, handle: { pane: true } },
-          { path: 'activity', element: <ActivityPage />, handle: { pane: true } },
-          { path: 'threads', element: <ThreadsPage />, handle: { pane: true } },
-          { path: 'search', element: <SearchPage />, handle: { pane: true } },
-          { path: 'preferences', element: <PreferencesPage />, handle: { pane: true } },
-          { path: 'saved', element: <SavedPage />, handle: { pane: true } },
-          { path: 'drafts', element: <DraftsPage />, handle: { pane: true } },
-          { path: 'projects', element: <ProjectsPage /> },
-          { path: 'tasks', element: <MyTasksPage /> },
-          { path: 'dashboard', element: <DashboardPage /> },
-          { path: 'time', element: <TimeCostPage /> },
-          { path: 'teams', element: <TeamsPage /> },
-          { path: 'p/:projectKey', element: <ProjectOverviewRedirect /> },
-          { path: 'p/:projectKey/:tab', element: <ProjectTabRoute /> },
-          { path: 'settings', element: <SettingsPage /> },
-          { path: 'settings/database', element: <DatabasePage /> },
-          { path: 'settings/rates', element: <RatesPage /> },
-          { path: 'settings/users', element: <UsersPage /> },
-          { path: 'settings/roles', element: <RolesPage /> },
-          { path: 'settings/audit', element: <AuditLogPage /> },
-          { path: 'settings/archived', element: <ArchivedPage /> },
-          { path: 'settings/attendance', element: <AttendancePage /> },
-        ],
+        children: workspacePages,
       },
       // Old or mistyped links say so, with the way home.
       { path: '*', element: <NotFound what="page" backTo="/" backLabel="Back to Home" /> },

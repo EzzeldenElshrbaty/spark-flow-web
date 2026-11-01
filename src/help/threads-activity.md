@@ -1,0 +1,17 @@
+---
+title: Threads and Activity
+group: Chat
+order: 2
+summary: Replies in threads, the threads you follow, and everything that happened to you.
+---
+A thread is a message with its replies. Replying in a thread keeps the channel tidy; **Also send to #channel** posts your reply in the channel too.
+
+## Threads
+
+Threads (in the Chat side's menu, or `Ctrl` + `Shift` + `T` where the browser lets it through) lists the threads you follow, newest reply first, with what's new in each. You follow a thread when you wrote its first message, replied, or were mentioned in it.
+
+To follow one yourself, choose **Get notified about replies** in the message's ⋯ menu or the thread panel's. **Unfollow** on a card stops it.
+
+## Activity
+
+Activity (in the Chat side's menu, or `Ctrl` + `Shift` + `A`) lists what happened to you: mentions, replies in threads you follow, reactions to your messages and reminders. Opening an item reads it; **Mark all read** reads them all.

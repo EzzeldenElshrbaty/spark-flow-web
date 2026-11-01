@@ -10,7 +10,8 @@
     "lint": "oxlint",
     "test": "vitest run",
     "preview": "vite preview",
-    "preview:prototype": "vite preview --mode prototype"
+    "preview:prototype": "vite preview --mode prototype",
+    "help:shots": "npm run build:prototype && node scripts/help-shots.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "6.3.1",
