@@ -1,9 +1,10 @@
-import { lazy, type ComponentType } from 'react'
-import { createBrowserRouter, Navigate, useParams } from 'react-router'
+import { NotFound } from '@/pages/NotFound'
+import { lazy, Suspense, type ComponentType } from 'react'
+import { createBrowserRouter, Navigate, useLocation, useParams, type RouteObject } from 'react-router'
 import { AppLayout } from '@/layout/AppLayout'
 import { LastVisitRedirect } from '@/layout/LastVisitRedirect'
 import { WorkspaceGate } from '@/layout/WorkspaceGate'
-import { paths } from '@/lib/paths'
+import { legacyProjectPath, paths, projectTabs } from '@/lib/paths'
 
 /**
  * A page whose code downloads the first time it's opened, so the first visit only loads what it shows.
@@ -15,15 +16,90 @@ function page<K extends string>(load: () => Promise<Record<K, ComponentType>>, n
 
 const ChannelPage = page(() => import('@/pages/chat/ChannelPage'), 'ChannelPage')
 const ProjectPage = page(() => import('@/pages/projects/ProjectPage'), 'ProjectPage')
+const HomePage = page(() => import('@/pages/home/HomePage'), 'HomePage')
+const DashboardPage = page(() => import('@/pages/dashboard/DashboardPage'), 'DashboardPage')
+const TimeCostPage = page(() => import('@/pages/time/TimeCostPage'), 'TimeCostPage')
+const TeamsPage = page(() => import('@/pages/teams/TeamsPage'), 'TeamsPage')
+const ProjectsPage = page(() => import('@/pages/projects/ProjectsPage'), 'ProjectsPage')
+const MyTasksPage = page(() => import('@/pages/tasks/MyTasksPage'), 'MyTasksPage')
 const SettingsPage = page(() => import('@/pages/settings/SettingsPage'), 'SettingsPage')
+const DatabasePage = page(() => import('@/pages/settings/DatabasePage'), 'DatabasePage')
+const RatesPage = page(() => import('@/pages/settings/RatesPage'), 'RatesPage')
+const RolesPage = page(() => import('@/pages/settings/RolesPage'), 'RolesPage')
+const UsersPage = page(() => import('@/pages/settings/UsersPage'), 'UsersPage')
+const ArchivedPage = page(() => import('@/pages/settings/ArchivedPage'), 'ArchivedPage')
+const AttendancePage = page(() => import('@/pages/settings/AttendancePage'), 'AttendancePage')
+const AuditLogPage = page(() => import('@/pages/settings/AuditLogPage'), 'AuditLogPage')
+const ActivityPage = page(() => import('@/pages/chat/ActivityPage'), 'ActivityPage')
+const ThreadsPage = page(() => import('@/pages/chat/threads/ThreadsPage'), 'ThreadsPage')
+const SearchPage = page(() => import('@/pages/chat/search/SearchPage'), 'SearchPage')
+const PreferencesPage = page(() => import('@/pages/preferences/PreferencesPage'), 'PreferencesPage')
+const SavedPage = page(() => import('@/pages/chat/saved/SavedPage'), 'SavedPage')
+const DraftsPage = page(() => import('@/pages/chat/outbox/DraftsPage'), 'DraftsPage')
+const HelpPage = page(() => import('@/pages/help/HelpPage'), 'HelpPage')
 
-/** `/w/:ws/p/:projectKey` has no page of its own: it opens the board. */
-function ProjectBoardRedirect() {
+/** `/w/:ws/p/:projectKey` has no page of its own: it opens the Overview tab. */
+function ProjectOverviewRedirect() {
   const { ws = '', projectKey = '' } = useParams()
   return <Navigate to={paths.project(ws, projectKey)} replace />
 }
 
+/** A project tab; old board/backlog links (and unknown tabs) are sent to the tab they now live on. */
+function ProjectTabRoute() {
+  const { ws = '', projectKey = '', tab = '' } = useParams()
+  const { pathname } = useLocation()
+  if ((projectTabs as readonly string[]).includes(tab)) return <ProjectPage />
+  return <Navigate to={legacyProjectPath(pathname) ?? paths.project(ws, projectKey)} replace />
+}
+
+/** The Flow chat primitives gallery: dev server and prototype builds only (production drops the code). */
+function devRoutes() {
+  if (import.meta.env.MODE === 'production') return []
+  const UiGallery = page(() => import('@/pages/dev/UiGallery'), 'UiGallery')
+  return [
+    {
+      path: '/dev/ui',
+      element: (
+        <Suspense>
+          <UiGallery />
+        </Suspense>
+      ),
+    },
+  ]
+}
+
+/** The pages inside a workspace (`/w/:ws/...`); `lib/pageHelp.test.ts` checks each has help or says why not. */
+export const workspacePages: RouteObject[] = [
+  { index: true, element: <HomePage /> },
+  // A pane: the channel fills the main card and scrolls its own message list (spec 5.3).
+  { path: 'c/:channelId', element: <ChannelPage />, handle: { pane: true } },
+  { path: 'activity', element: <ActivityPage />, handle: { pane: true } },
+  { path: 'threads', element: <ThreadsPage />, handle: { pane: true } },
+  { path: 'search', element: <SearchPage />, handle: { pane: true } },
+  { path: 'preferences', element: <PreferencesPage />, handle: { pane: true } },
+  { path: 'saved', element: <SavedPage />, handle: { pane: true } },
+  { path: 'drafts', element: <DraftsPage />, handle: { pane: true } },
+  { path: 'projects', element: <ProjectsPage /> },
+  { path: 'tasks', element: <MyTasksPage /> },
+  { path: 'dashboard', element: <DashboardPage /> },
+  { path: 'time', element: <TimeCostPage /> },
+  { path: 'teams', element: <TeamsPage /> },
+  { path: 'p/:projectKey', element: <ProjectOverviewRedirect /> },
+  { path: 'p/:projectKey/:tab', element: <ProjectTabRoute /> },
+  { path: 'settings', element: <SettingsPage /> },
+  { path: 'settings/database', element: <DatabasePage /> },
+  { path: 'settings/rates', element: <RatesPage /> },
+  { path: 'settings/users', element: <UsersPage /> },
+  { path: 'settings/roles', element: <RolesPage /> },
+  { path: 'settings/audit', element: <AuditLogPage /> },
+  { path: 'settings/archived', element: <ArchivedPage /> },
+  { path: 'settings/attendance', element: <AttendancePage /> },
+  { path: 'help', element: <HelpPage /> },
+  { path: 'help/:chapter', element: <HelpPage /> },
+]
+
 export const router = createBrowserRouter([
+  ...devRoutes(),
   {
     element: <AppLayout />,
     children: [
@@ -31,16 +107,10 @@ export const router = createBrowserRouter([
       {
         path: '/w/:ws',
         element: <WorkspaceGate />,
-        children: [
-          { index: true, element: <LastVisitRedirect /> },
-          { path: 'c/:channelId', element: <ChannelPage /> },
-          { path: 'p/:projectKey', element: <ProjectBoardRedirect /> },
-          { path: 'p/:projectKey/:view', element: <ProjectPage /> },
-          { path: 'settings', element: <SettingsPage /> },
-        ],
+        children: workspacePages,
       },
-      // Old or mistyped links go to where you were last.
-      { path: '*', element: <Navigate to="/" replace /> },
+      // Old or mistyped links say so, with the way home.
+      { path: '*', element: <NotFound what="page" backTo="/" backLabel="Back to Home" /> },
     ],
   },
 ])

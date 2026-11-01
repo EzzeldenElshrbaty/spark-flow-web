@@ -6,7 +6,7 @@ export function workspacesApi(db: MockDb): Api['workspaces'] {
   return {
     async list() {
       await delay()
-      return db.read().workspaces
+      return (await db.read()).workspaces
     },
   }
 }

@@ -48,6 +48,15 @@ export function formatWhen(iso: string, now = new Date()) {
   return `${date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}, ${time}`
 }
 
+/** When a thread's last reply came (spec 6.7): "today at 9:41 AM", "yesterday at 11:05 PM", or "5 days ago". */
+export function lastReplyWhen(iso: string, now = new Date()) {
+  const date = new Date(iso)
+  const days = Math.round((new Date(now).setHours(0, 0, 0, 0) - new Date(date).setHours(0, 0, 0, 0)) / (24 * HOUR))
+  if (days <= 0) return `today at ${formatTime(date)}`
+  if (days === 1) return `yesterday at ${formatTime(date)}`
+  return `${days} days ago`
+}
+
 export function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
@@ -78,3 +87,16 @@ export const isPast = (iso: string, now = Date.now()) => new Date(iso).getTime()
 
 /** Whether a time falls on today's date. */
 export const isToday = (iso: string, now = new Date()) => new Date(iso).toDateString() === now.toDateString()
+
+/** How long a running timer has run: always from its start, so a reload or a sleeping laptop shows the true time. */
+export const elapsedMs = (startedAt: string, now: Date) => Math.max(0, now.getTime() - new Date(startedAt).getTime())
+
+/** A running clock: "1:05:09". */
+export function formatClock(ms: number) {
+  const total = Math.floor(ms / 1000)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${Math.floor(total / 3600)}:${pad(Math.floor((total % 3600) / 60))}:${pad(total % 60)}`
+}
+
+/** Hours with one decimal: "7.5h", "115h", "0h". */
+export const formatHours = (hours: number) => `${Math.round(hours * 10) / 10}h`

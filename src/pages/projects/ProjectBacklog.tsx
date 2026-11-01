@@ -1,32 +1,14 @@
-import type { Sprint, Ticket, User } from '@/api/types'
+import type { BoardColumn, Phase, TaskView, User } from '@/api/types'
 import { Badge } from '@/components/ui/Badge'
 import { Card } from '@/components/ui/Card'
 import { formatDate } from '@/lib/format'
 import { TicketRow } from '@/pages/projects/TicketRow'
-import { statuses } from '@/pages/projects/ticketPills'
+import { groupByPhase } from './taskFilters'
+import { columnLabel, columnsOf } from '@/lib/boardColumns'
 
-type Group = { id: string; sprint: Sprint | null; tickets: Ticket[] }
+const phaseBadge = { notStarted: { tone: 'neutral', label: 'Not started' }, inProgress: { tone: 'info', label: 'In progress' }, done: { tone: 'success', label: 'Done' } } as const
 
-const stateOrder: Record<Sprint['state'], number> = { active: 0, planned: 1, closed: 2 }
-const statusOrder = (ticket: Ticket) => statuses.findIndex((s) => s.status === ticket.status)
-
-/**
- * Sprints in the order work happens (active, then planned), then the tickets without a sprint. A closed sprint is
- * only listed while it still holds tickets, so none of them go missing.
- */
-function groupBySprint(tickets: Ticket[], sprints: Sprint[]): Group[] {
-  const sorted = [...tickets].sort((a, b) => statusOrder(a) - statusOrder(b) || a.rank - b.rank)
-  const known = new Set(sprints.map((s) => s.id))
-  const groups = [...sprints]
-    .sort((a, b) => stateOrder[a.state] - stateOrder[b.state] || a.startDate.localeCompare(b.startDate))
-    .map((sprint) => ({ id: sprint.id, sprint, tickets: sorted.filter((t) => t.sprintId === sprint.id) }))
-    .filter((group) => group.sprint.state !== 'closed' || group.tickets.length > 0)
-  return [...groups, { id: 'none', sprint: null, tickets: sorted.filter((t) => !t.sprintId || !known.has(t.sprintId)) }]
-}
-
-const stateBadge = { active: { tone: 'success', label: 'Active' }, planned: { tone: 'info', label: 'Planned' }, closed: { tone: 'neutral', label: 'Closed' } } as const
-
-/** Pulse rows while the backlog loads. */
+/** Pulse rows while the list loads. */
 export function BacklogSkeleton() {
   return (
     <div className="space-y-3" aria-busy="true">
@@ -37,43 +19,45 @@ export function BacklogSkeleton() {
   )
 }
 
-/** The backlog, read-only: tickets grouped by sprint, each row with key, title, status, priority, assignee and points. */
-export function ProjectBacklog({ tickets, sprints, users }: { tickets: Ticket[]; sprints: Sprint[]; users: User[] }) {
+/** The List view: tasks grouped by phase in phase order, then those without a phase. Empty phases are left out. */
+export function ProjectBacklog({ tasks, phases, users, board }: { tasks: TaskView[]; phases: Phase[]; users: User[]; board?: BoardColumn[] }) {
   const nameOf = (id: string | null) => (id ? (users.find((u) => u.id === id)?.name ?? 'Unknown person') : null)
+  // In board order: the project's columns, then by rank within one.
+  const ids = columnsOf({ board }).map((c) => c.id)
+  const statusOrder = (task: TaskView) => ids.indexOf(task.status)
+  const sorted = [...tasks].sort((a, b) => statusOrder(a) - statusOrder(b) || a.rank - b.rank)
+  const groups = groupByPhase(sorted, phases).filter((g) => g.tasks.length > 0)
+  if (groups.length === 0) return <p className="rounded-xl border border-dashed border-line-strong p-10 text-center text-sm text-fg-secondary">No tasks here.</p>
+
   return (
     <div className="space-y-6">
-      {groupBySprint(tickets, sprints).map(({ id, sprint, tickets: items }) => {
-        const points = items.reduce((sum, t) => sum + (t.storyPoints ?? 0), 0)
+      {groups.map(({ phase, tasks: items }) => {
+        const hours = Math.round(items.reduce((sum, t) => sum + t.loggedHours, 0) * 10) / 10
+        const overdue = items.filter((t) => t.overdue).length
         return (
-          <Card key={id} className="relative overflow-hidden">
+          <Card key={phase?.id ?? 'none'} className="relative overflow-hidden">
             <div className="border-b border-line-subtle px-4 py-3.5 sm:px-5">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <h2 className="text-sm font-semibold text-fg">{sprint?.name ?? 'No sprint'}</h2>
-                {sprint && <Badge tone={stateBadge[sprint.state].tone}>{stateBadge[sprint.state].label}</Badge>}
+                <h2 className="text-sm font-semibold text-fg">{phase?.name ?? 'No phase'}</h2>
+                {phase && <Badge tone={phaseBadge[phase.status].tone}>{phaseBadge[phase.status].label}</Badge>}
                 <span className="ms-auto text-xs tabular-nums text-fg-muted">
-                  {items.length} {items.length === 1 ? 'ticket' : 'tickets'} · {points} {points === 1 ? 'point' : 'points'}
+                  {items.length} {items.length === 1 ? 'task' : 'tasks'} · {hours}h logged
+                  {overdue > 0 && <span className="text-red-600 dark:text-red-400"> · {overdue} overdue</span>}
                 </span>
               </div>
-              {sprint && (
-                <p className="mt-1 text-xs text-fg-muted">
-                  <span className="tabular-nums">
-                    {formatDate(sprint.startDate)} – {formatDate(sprint.endDate)}
-                  </span>
-                  {sprint.goal && ` · ${sprint.goal}`}
+              {phase && (
+                <p className="mt-1 text-xs tabular-nums text-fg-muted">
+                  {formatDate(phase.startDate)} – {formatDate(phase.dueDate)}
                 </p>
               )}
             </div>
-            {items.length === 0 ? (
-              <p className="px-4 py-6 text-center text-sm text-fg-muted sm:px-5">{sprint ? 'No tickets in this sprint yet.' : 'Every ticket is in a sprint.'}</p>
-            ) : (
-              <ul className="divide-y divide-line-subtle">
-                {items.map((ticket) => (
-                  <li key={ticket.id}>
-                    <TicketRow ticket={ticket} assignee={nameOf(ticket.assigneeId)} variant="row" />
-                  </li>
-                ))}
-              </ul>
-            )}
+            <ul className="divide-y divide-line-subtle">
+              {items.map((task) => (
+                <li key={task.id}>
+                  <TicketRow ticket={task} assignee={nameOf(task.assigneeId)} variant="row" statusName={board && columnLabel({ board }, task.status)} statusCategory={task.category} />
+                </li>
+              ))}
+            </ul>
           </Card>
         )
       })}

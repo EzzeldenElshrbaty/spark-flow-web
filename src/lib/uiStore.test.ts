@@ -17,17 +17,52 @@ describe('uiStore', () => {
     expect(useUiStore.getState().typing.c1).toEqual([{ userId: 'u2', until: 4_000 }])
   })
 
+  it('toggleSection collapses and reopens one sidebar section, and is kept with the other preferences', () => {
+    useUiStore.getState().toggleSection('channels')
+    useUiStore.getState().toggleSection('starred')
+    useUiStore.getState().toggleSection('starred')
+    expect(useUiStore.getState().collapsedSections).toEqual(['channels'])
+    useUiStore.getState().forgetPlaces()
+    expect(useUiStore.getState().collapsedSections).toEqual(['channels'])
+  })
+
+  it('setSidebarWidth keeps the sidebar between 200 and 420px, and 260 is the default', () => {
+    expect(initialUiState.sidebarWidth).toBe(260)
+    useUiStore.getState().setSidebarWidth(320.6)
+    expect(useUiStore.getState().sidebarWidth).toBe(321)
+    useUiStore.getState().setSidebarWidth(90)
+    expect(useUiStore.getState().sidebarWidth).toBe(200)
+    useUiStore.getState().setSidebarWidth(900)
+    expect(useUiStore.getState().sidebarWidth).toBe(420)
+  })
+
   it('visit records last place per workspace', () => {
     useUiStore.getState().visit('engineering', '/w/engineering/c/c-backend')
     expect(useUiStore.getState()).toMatchObject({ lastWorkspace: 'engineering', lastVisited: { engineering: '/w/engineering/c/c-backend' } })
   })
 
+  it('visit also keeps the last place and the last side per workspace, Home included (spec 5.5)', () => {
+    const { visit } = useUiStore.getState()
+    visit('engineering', '/w/engineering/c/c-backend')
+    visit('engineering', '/w/engineering/p/NEX/tasks')
+    visit('engineering', '/w/engineering/settings')
+    expect(useUiStore.getState()).toMatchObject({
+      lastByMode: { engineering: { chat: '/w/engineering/c/c-backend', projects: '/w/engineering/p/NEX/tasks' } },
+      lastMode: { engineering: 'projects' },
+      lastVisited: { engineering: '/w/engineering/settings' },
+    })
+    visit('engineering', '/w/engineering')
+    expect(useUiStore.getState().lastByMode.engineering.projects).toBe('/w/engineering')
+    // Home is the workspace's own address: it doesn't replace the last place opened inside it.
+    expect(useUiStore.getState().lastVisited.engineering).toBe('/w/engineering/settings')
+  })
+
   it('forgetPlaces clears the last places but keeps other preferences', () => {
     useUiStore.getState().visit('engineering', '/w/engineering/c/c-backend')
-    useUiStore.getState().setProjectView('NEX', 'backlog')
+    useUiStore.getState().setProjectView('NEX', 'list')
     useUiStore.getState().toggleSidebar()
     useUiStore.getState().forgetPlaces()
-    expect(useUiStore.getState()).toMatchObject({ lastWorkspace: null, lastVisited: {}, lastProjectView: { NEX: 'backlog' }, sidebarCollapsed: true })
+    expect(useUiStore.getState()).toMatchObject({ lastWorkspace: null, lastVisited: {}, lastByMode: {}, lastMode: {}, lastProjectView: { NEX: 'list' }, sidebarCollapsed: true })
   })
 
   it('toggleSidebar flips the collapsed flag', () => {
@@ -38,8 +73,8 @@ describe('uiStore', () => {
   })
 
   it('setProjectView remembers the view per project', () => {
-    useUiStore.getState().setProjectView('p1', 'backlog')
-    expect(useUiStore.getState().lastProjectView).toEqual({ p1: 'backlog' })
+    useUiStore.getState().setProjectView('p1', 'list')
+    expect(useUiStore.getState().lastProjectView).toEqual({ p1: 'list' })
   })
 
   it('does not persist typing', () => {
@@ -65,3 +100,21 @@ describe('uiStore storage', () => {
     expect(storage.getItem('k')).toBeNull()
   })
 })
+
+describe('typers expire from the store', () => {
+  it('addTyper forgets typers whose time is up', () => {
+    useUiStore.setState({ typing: {} })
+    useUiStore.getState().addTyper('c1', 'u1', 0)
+    useUiStore.getState().addTyper('c1', 'u2', 5000)
+    expect(useUiStore.getState().typing.c1!.map((t) => t.userId)).toEqual(['u2'])
+  })
+})
+
+describe('task filters', () => {
+  it('the last phase and sprint filters are remembered per project', () => {
+    useUiStore.getState().setProjectFilters('NEX', { phase: 'ph1', sprint: undefined })
+    expect(useUiStore.getState().lastFilters.NEX).toEqual({ phase: 'ph1', sprint: undefined })
+    expect(useUiStore.getState().lastFilters.MOB).toBeUndefined()
+  })
+})
+

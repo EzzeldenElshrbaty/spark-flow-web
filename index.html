@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <!-- Behave like an app on phones: no pinch or double-tap zoom, and draw under the notch / home bar (see safe-area padding). -->
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <!-- Pinch zoom stays on (unlike Spark CRM); draw under the notch / home bar (see safe-area padding). Double-tap zoom is off in src/index.css. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <!-- Home screen: open full-screen with the Spark icon and name, on Android (manifest) and iPhone (apple-* tags). -->
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -13,6 +13,7 @@
     <meta name="apple-mobile-web-app-title" content="Spark Flow" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="format-detection" content="telephone=no" />
+    <!-- Inter for every module but the shell and chat, which self-host Readex Pro (src/styles/flow-tokens.css). -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -23,10 +24,9 @@
       try {
         var dark = localStorage.getItem('spark-flow.theme') === 'dark'
         document.documentElement.classList.toggle('dark', dark)
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light'
         document.querySelector('meta[name=theme-color]').setAttribute('content', dark ? '#1c1c1d' : '#ffffff')
       } catch (e) {}
-      // iPhone Safari ignores user-scalable=no, so block its pinch gesture directly.
-      document.addEventListener('gesturestart', function (e) { e.preventDefault() }, { passive: false })
     </script>
     <title>Spark Flow</title>
   </head>

@@ -1,5 +1,6 @@
+import { NotFound } from '@/pages/NotFound'
 import { useEffect } from 'react'
-import { Navigate, Outlet, useLocation, useParams } from 'react-router'
+import { Outlet, useLocation, useParams } from 'react-router'
 import { useWorkspaces } from '@/api/workspaces'
 import { PageSkeleton } from '@/layout/PageSkeleton'
 import { paths } from '@/lib/paths'
@@ -14,12 +15,12 @@ export function WorkspaceGate() {
   const known = workspaces?.some((w) => w.slug === ws) ?? false
 
   useEffect(() => {
-    // The bare workspace address only redirects; remembering it would overwrite the real last place.
-    if (ws && known && pathname.startsWith(`${paths.workspace(ws)}/`)) visit(ws, pathname)
+    // The store keeps Home for its side only, so the last place inside the workspace isn't overwritten by it.
+    if (ws && known && (pathname === paths.workspace(ws) || pathname.startsWith(`${paths.workspace(ws)}/`))) visit(ws, pathname)
   }, [ws, known, pathname, visit])
 
   if (isPending) return <PageSkeleton />
   if (isError) return <p className="text-sm text-fg-muted">Spark Flow couldn’t load your workspaces. Refresh to try again.</p>
-  if (!known) return <Navigate to="/" replace />
+  if (!known) return <NotFound what="workspace" backTo="/" backLabel="Back to Home" />
   return <Outlet />
 }

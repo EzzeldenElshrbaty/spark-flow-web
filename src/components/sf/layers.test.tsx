@@ -1,0 +1,482 @@
+// @vitest-environment jsdom
+import { IconBell, IconBookmark, IconClock, IconDots, IconTrash } from '@tabler/icons-react'
+import { act, cleanup, createEvent, fireEvent, render, screen } from '@testing-library/react'
+import { useState } from 'react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { Button, IconButton } from './Button'
+import { Menu, MenuItem, MenuSeparator, Submenu } from './Menu'
+import { Modal } from './Modal'
+import { Popover } from './Popover'
+import { TOAST_MS, ToastProvider, ToastRegion, useToast } from './Toast'
+import { TokenInput, type Suggestion, type Token } from './TokenInput'
+
+afterEach(cleanup)
+
+function MessageMenu({ onSave = () => {}, onRemind = () => {} }: { onSave?: () => void; onRemind?: () => void }) {
+  return (
+    <Menu label="Message actions" trigger={(props) => <IconButton label="More actions" icon={IconDots} {...props} />}>
+      <MenuItem icon={IconBookmark} hint="S" onSelect={onSave}>
+        Save
+      </MenuItem>
+      <Submenu icon={IconClock} label="Remind me">
+        <MenuItem onSelect={onRemind}>In 20 minutes</MenuItem>
+        <MenuItem>In 1 hour</MenuItem>
+      </Submenu>
+      <MenuSeparator />
+      <MenuItem icon={IconTrash} danger>
+        Delete message
+      </MenuItem>
+    </Menu>
+  )
+}
+
+const focused = () => document.activeElement?.textContent
+
+describe('Menu', () => {
+  it('opens on the trigger, moves with the arrow keys and wraps', () => {
+    render(<MessageMenu />)
+    const trigger = screen.getByRole('button', { name: 'More actions' })
+    expect(trigger.getAttribute('aria-haspopup')).toBe('menu')
+    fireEvent.click(trigger)
+    expect(trigger.getAttribute('aria-expanded')).toBe('true')
+    expect(screen.getByRole('menu', { name: 'Message actions' })).toBeTruthy()
+    expect(focused()).toBe('SaveS')
+    fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' })
+    expect(focused()).toBe('Remind me')
+    fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' })
+    fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' })
+    expect(focused()).toBe('SaveS')
+    fireEvent.keyDown(document.activeElement!, { key: 'End' })
+    expect(focused()).toBe('Delete message')
+  })
+
+  it('focuses the first item only once the panel is placed (a hidden panel cannot take focus)', () => {
+    render(<MessageMenu />)
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }))
+    const menu = screen.getByRole('menu', { name: 'Message actions' })
+    expect(menu.style.visibility).not.toBe('hidden')
+    expect(menu.contains(document.activeElement)).toBe(true)
+  })
+
+  it('jumps to the item that starts with a typed letter', () => {
+    render(<MessageMenu />)
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }))
+    fireEvent.keyDown(document.activeElement!, { key: 'd' })
+    expect(focused()).toBe('Delete message')
+  })
+
+  it('a letter that is an item’s shortcut picks that item; other letters still jump', () => {
+    const onSave = vi.fn()
+    render(
+      <Menu label="Message actions" trigger={(props) => <IconButton label="More actions" icon={IconDots} {...props} />}>
+        <MenuItem onSelect={() => {}}>Share</MenuItem>
+        <MenuItem shortcut="S" onSelect={onSave}>
+          Save
+        </MenuItem>
+        <MenuItem>Delete message</MenuItem>
+      </Menu>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }))
+    const save = screen.getByRole('menuitem', { name: 'Save' })
+    expect(save.getAttribute('aria-keyshortcuts')).toBe('S')
+    expect(save.textContent).toBe('SaveS')
+    fireEvent.keyDown(document.activeElement!, { key: 'd' })
+    expect(focused()).toBe('Delete message')
+    fireEvent.keyDown(document.activeElement!, { key: 'S' })
+    expect(onSave).toHaveBeenCalledOnce()
+    expect(screen.queryByRole('menu')).toBeNull()
+  })
+
+  it('typing on toward an item ("de" for Delete) keeps jumping, though E is Edit’s key', () => {
+    const onEdit = vi.fn()
+    render(
+      <Menu label="Message actions" trigger={(props) => <IconButton label="More actions" icon={IconDots} {...props} />}>
+        <MenuItem shortcut="E" onSelect={onEdit}>
+          Edit message
+        </MenuItem>
+        <MenuItem>Delete message</MenuItem>
+      </Menu>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }))
+    fireEvent.keyDown(document.activeElement!, { key: 'd' })
+    fireEvent.keyDown(document.activeElement!, { key: 'e' })
+    expect(focused()).toBe('Delete message')
+    expect(onEdit).not.toHaveBeenCalled()
+  })
+
+  it('opens a submenu with ArrowRight and closes it with ArrowLeft, then Escape closes the menu to the trigger', () => {
+    render(<MessageMenu />)
+    const trigger = screen.getByRole('button', { name: 'More actions' })
+    fireEvent.click(trigger)
+    fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' })
+    fireEvent.keyDown(document.activeElement!, { key: 'ArrowRight' })
+    expect(screen.getByRole('menu', { name: 'Remind me' })).toBeTruthy()
+    expect(focused()).toBe('In 20 minutes')
+    fireEvent.keyDown(document.activeElement!, { key: 'ArrowLeft' })
+    expect(screen.queryByRole('menu', { name: 'Remind me' })).toBeNull()
+    expect(focused()).toBe('Remind me')
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('menu')).toBeNull()
+    expect(document.activeElement).toBe(trigger)
+  })
+
+  it('Escape in a submenu closes only the submenu', () => {
+    render(<MessageMenu />)
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }))
+    fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' })
+    fireEvent.keyDown(document.activeElement!, { key: 'ArrowRight' })
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('menu', { name: 'Remind me' })).toBeNull()
+    expect(screen.getByRole('menu', { name: 'Message actions' })).toBeTruthy()
+  })
+
+  it('selecting an item, also in a submenu, runs it and closes every level', () => {
+    const onRemind = vi.fn()
+    render(<MessageMenu onRemind={onRemind} />)
+    const trigger = screen.getByRole('button', { name: 'More actions' })
+    fireEvent.click(trigger)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Remind me' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'In 20 minutes' }))
+    expect(onRemind).toHaveBeenCalledOnce()
+    expect(screen.queryByRole('menu')).toBeNull()
+    expect(document.activeElement).toBe(trigger)
+  })
+
+  it('keeps Tab inside and closes on a press outside', () => {
+    render(<MessageMenu />)
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }))
+    fireEvent.keyDown(document.activeElement!, { key: 'Tab', shiftKey: true })
+    expect(focused()).toBe('Delete message')
+    fireEvent.pointerDown(document.body)
+    expect(screen.queryByRole('menu')).toBeNull()
+  })
+})
+
+function InviteModal() {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <Button onClick={() => setOpen(true)}>Add people</Button>
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Add people to #backend"
+        description="They can read everything in the channel."
+        footer={<Button variant="primary">Add</Button>}
+      >
+        <input aria-label="Names or emails" />
+      </Modal>
+    </>
+  )
+}
+
+describe('Modal', () => {
+  it('is a named modal dialog that focuses its first field and traps Tab', () => {
+    render(<InviteModal />)
+    fireEvent.click(screen.getByRole('button', { name: 'Add people' }))
+    const dialog = screen.getByRole('dialog', { name: 'Add people to #backend' })
+    expect(dialog.getAttribute('aria-modal')).toBe('true')
+    expect(screen.getByRole('dialog', { description: 'They can read everything in the channel.' })).toBe(dialog)
+    expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Names or emails' }))
+    screen.getByRole('button', { name: 'Add' }).focus()
+    fireEvent.keyDown(document.activeElement!, { key: 'Tab' })
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Close' }))
+  })
+
+  it('closes on Escape and gives focus back to the opener; a scrim click does not close it', () => {
+    render(<InviteModal />)
+    const opener = screen.getByRole('button', { name: 'Add people' })
+    opener.focus()
+    fireEvent.click(opener)
+    fireEvent.pointerDown(screen.getByRole('dialog').parentElement!)
+    fireEvent.click(screen.getByRole('dialog').parentElement!)
+    expect(screen.getByRole('dialog')).toBeTruthy()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(document.activeElement).toBe(opener)
+  })
+
+  it('its × has a tooltip like every icon-only button (spec 10)', async () => {
+    render(<InviteModal />)
+    fireEvent.click(screen.getByRole('button', { name: 'Add people' }))
+    fireEvent.pointerEnter(screen.getByRole('button', { name: 'Close' }))
+    expect((await screen.findByRole('tooltip', { hidden: true }, { timeout: 2000 })).textContent).toBe('Close')
+  })
+
+  it('a press on the scrim or a bare part of the dialog keeps focus inside it (spec 10)', () => {
+    render(<InviteModal />)
+    fireEvent.click(screen.getByRole('button', { name: 'Add people' }))
+    const dialog = screen.getByRole('dialog')
+    const press = createEvent.mouseDown(dialog.parentElement!)
+    fireEvent(dialog.parentElement!, press)
+    // Held, so the browser doesn't move focus to the page's body.
+    expect(press.defaultPrevented).toBe(true)
+    // The dialog itself can take focus, so a press on its padding lands on it, not on the body.
+    expect(dialog.tabIndex).toBe(-1)
+    // From there, Tab and Shift+Tab still stay inside.
+    dialog.focus()
+    fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true })
+    expect(dialog.contains(document.activeElement) && document.activeElement !== dialog).toBe(true)
+    dialog.focus()
+    fireEvent.keyDown(dialog, { key: 'Tab' })
+    expect(dialog.contains(document.activeElement) && document.activeElement !== dialog).toBe(true)
+  })
+})
+
+function DeleteWithUndo({ onUndo }: { onUndo: () => void }) {
+  const show = useToast()
+  return (
+    <div style={{ position: 'relative' }}>
+      <Button onClick={() => show({ message: 'Message deleted', icon: IconBell, action: { label: 'Undo', onAction: onUndo } })}>
+        Delete
+      </Button>
+      <ToastRegion />
+    </div>
+  )
+}
+
+describe('Toast', () => {
+  it('announces in a status region, runs Undo and closes after 5s unless hovered', () => {
+    vi.useFakeTimers()
+    const onUndo = vi.fn()
+    render(
+      <ToastProvider>
+        <DeleteWithUndo onUndo={onUndo} />
+      </ToastProvider>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    const region = screen.getByRole('status')
+    expect(region.textContent).toContain('Message deleted')
+    fireEvent.pointerEnter(screen.getByText('Message deleted').parentElement!)
+    act(() => vi.advanceTimersByTime(TOAST_MS * 2))
+    expect(region.textContent).toContain('Message deleted')
+    fireEvent.pointerLeave(screen.getByText('Message deleted').parentElement!)
+    act(() => vi.advanceTimersByTime(TOAST_MS - 1))
+    expect(region.textContent).toContain('Message deleted')
+    act(() => vi.advanceTimersByTime(1))
+    expect(region.textContent).toBe('')
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(onUndo).toHaveBeenCalledOnce()
+    expect(region.textContent).toBe('')
+    vi.useRealTimers()
+  })
+})
+
+const people: Suggestion[] = [
+  { id: 'u-1', label: 'Hossam Gaber', kind: 'person' as const },
+  { id: 'u-2', label: 'Hala Nabil', kind: 'person' as const },
+]
+
+function Invite({ onCommit = () => {} }: { onCommit?: (t: string) => void }) {
+  const [tokens, setTokens] = useState<Token[]>([{ id: 'u-3', label: 'Sara Adel', kind: 'person' as const }])
+  const [query, setQuery] = useState('')
+  return (
+    <TokenInput
+      label="Names or emails"
+      tokens={tokens}
+      onRemove={(id) => setTokens((t) => t.filter((x) => x.id !== id))}
+      onAdd={(s) => setTokens((t) => [...t, { id: s.id, label: s.label, kind: 'person' }])}
+      onCommit={onCommit}
+      query={query}
+      onQueryChange={setQuery}
+      suggestions={people.filter((p) => p.label.toLowerCase().startsWith(query.toLowerCase()))}
+    />
+  )
+}
+
+describe('TokenInput', () => {
+  it('suggests through a listbox with aria-activedescendant and adds the highlighted one on Enter', () => {
+    render(<Invite />)
+    const field = screen.getByRole('combobox', { name: 'Names or emails' })
+    fireEvent.focus(field)
+    fireEvent.change(field, { target: { value: 'h' } })
+    expect(field.getAttribute('aria-expanded')).toBe('true')
+    fireEvent.keyDown(field, { key: 'ArrowDown' })
+    const active = document.getElementById(field.getAttribute('aria-activedescendant')!)!
+    expect(active.textContent).toContain('Hala Nabil')
+    expect(active.getAttribute('aria-selected')).toBe('true')
+    fireEvent.keyDown(field, { key: 'Enter' })
+    expect(screen.getByRole('button', { name: 'Remove Hala Nabil' })).toBeTruthy()
+    expect((field as HTMLInputElement).value).toBe('')
+  })
+
+  it('commits typed text with no match, and Backspace in an empty field removes the last chip', () => {
+    const onCommit = vi.fn()
+    render(<Invite onCommit={onCommit} />)
+    const field = screen.getByRole('combobox')
+    fireEvent.focus(field)
+    fireEvent.change(field, { target: { value: 'x@y.com' } })
+    fireEvent.keyDown(field, { key: 'Enter' })
+    expect(onCommit).toHaveBeenCalledWith('x@y.com')
+    fireEvent.keyDown(field, { key: 'Backspace' })
+    expect(screen.queryByRole('button', { name: 'Remove Sara Adel' })).toBeNull()
+  })
+})
+
+describe('Popover (a small card that is not a menu: the profile card)', () => {
+  function Card() {
+    return (
+      <>
+        <button type="button">Before</button>
+        <Popover label="Nour El-Sayed" trigger={(props) => <button type="button" {...props}>Nour El-Sayed</button>}>
+          {(close) => (
+            <>
+              <p>Backend lead</p>
+              <Button onClick={close}>Message</Button>
+              <a href="mailto:nour@spark-sys.com">nour@spark-sys.com</a>
+            </>
+          )}
+        </Popover>
+      </>
+    )
+  }
+
+  it('opens as a labelled dialog on its trigger and focuses the first control', () => {
+    render(<Card />)
+    const trigger = screen.getByRole('button', { name: 'Nour El-Sayed' })
+    expect(trigger.getAttribute('aria-haspopup')).toBe('dialog')
+    fireEvent.click(trigger)
+    expect(trigger.getAttribute('aria-expanded')).toBe('true')
+    const dialog = screen.getByRole('dialog', { name: 'Nour El-Sayed' })
+    expect(trigger.getAttribute('aria-controls')).toBe(dialog.id)
+    expect(document.activeElement?.textContent).toBe('Message')
+  })
+
+  it('keeps Tab inside, and Escape closes it and gives focus back to the trigger', () => {
+    render(<Card />)
+    const trigger = screen.getByRole('button', { name: 'Nour El-Sayed' })
+    trigger.focus()
+    fireEvent.click(trigger)
+    const link = screen.getByRole('link', { name: 'nour@spark-sys.com' })
+    link.focus()
+    fireEvent.keyDown(link, { key: 'Tab' })
+    expect(document.activeElement?.textContent).toBe('Message')
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(document.activeElement).toBe(trigger)
+  })
+
+  it('a press outside closes it; one inside does not', () => {
+    render(<Card />)
+    fireEvent.click(screen.getByRole('button', { name: 'Nour El-Sayed' }))
+    fireEvent.pointerDown(screen.getByText('Backend lead'))
+    expect(screen.getByRole('dialog')).toBeTruthy()
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Before' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('its content can close it', () => {
+    render(<Card />)
+    fireEvent.click(screen.getByRole('button', { name: 'Nour El-Sayed' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Message' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+})
+
+describe('Escape a field has already used (spec 10: Esc closes the top-most layer)', () => {
+  it('closes no layer when the field it was pressed in handled it (a suggestion list, an edit)', () => {
+    const onClose = vi.fn()
+    render(
+      <Modal open onClose={onClose} title="Add people">
+        <input aria-label="Names" onKeyDown={(event) => event.key === 'Escape' && event.preventDefault()} />
+        <input aria-label="Other" />
+      </Modal>,
+    )
+    fireEvent.keyDown(screen.getByRole('textbox', { name: 'Names' }), { key: 'Escape' })
+    expect(onClose).not.toHaveBeenCalled()
+    fireEvent.keyDown(screen.getByRole('textbox', { name: 'Other' }), { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+})
+
+describe('Modal focus with header actions (review)', () => {
+  it('with no field, focus goes to the first control after ×, not to an action beside the title', () => {
+    render(
+      <Modal open onClose={() => {}} title="backend" actions={<Button>Mentions and keywords</Button>}>
+        <Button>About</Button>
+      </Modal>,
+    )
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'About' }))
+  })
+
+  it('on close, focus goes to the fallback when what opened it is gone', () => {
+    function Opener() {
+      const [open, setOpen] = useState(false)
+      const [shown, setShown] = useState(true)
+      return (
+        <>
+          <Button>backend</Button>
+          {shown && <Button onClick={() => setOpen(true)}>Add a topic</Button>}
+          <Modal open={open} onClose={() => setOpen(false)} title="backend" fallbackFocus={() => screen.getByRole('button', { name: 'backend' })}>
+            <Button onClick={() => setShown(false)}>Save</Button>
+          </Modal>
+        </>
+      )
+    }
+    render(<Opener />)
+    const opener = screen.getByRole('button', { name: 'Add a topic' })
+    opener.focus()
+    fireEvent.click(opener)
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'backend' }))
+  })
+})
+
+describe('TokenInput errors (review)', () => {
+  it('says an error in an alert, so a screen reader hears it; help text stays quiet', () => {
+    const props = { label: 'Names', tokens: [], onRemove: () => {}, onAdd: () => {}, query: '', onQueryChange: () => {}, help: 'People in Spark Systems' }
+    const { rerender } = render(<TokenInput {...props} />)
+    expect(screen.queryByRole('alert')).toBeNull()
+    rerender(<TokenInput {...props} error="Everyone you picked is already in #backend." />)
+    expect(screen.getByRole('alert').textContent).toBe('Everyone you picked is already in #backend.')
+    expect(screen.getByRole('combobox').getAttribute('aria-describedby')).toBe(screen.getByRole('alert').id)
+  })
+})
+
+describe('focusables (review)', () => {
+  it('leaves out controls inside a hidden part (a tab panel kept mounted behind another)', () => {
+    render(
+      <Modal open onClose={() => {}} title="backend">
+        <div hidden>
+          <Button>Edit topic</Button>
+        </div>
+        <Button>Remove Nour El-Sayed</Button>
+      </Modal>,
+    )
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Remove Nour El-Sayed' }))
+    fireEvent.keyDown(document.activeElement!, { key: 'Tab' })
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Close' }))
+  })
+})
+
+describe('TokenInput chips and suggestions by kind (spec 6.10, slice 5)', () => {
+  const base = { label: 'Names or emails', onRemove: () => {}, onAdd: () => {}, onQueryChange: () => {} }
+
+  it('an email chip shows a mail icon, the email and a Guest tag; a person chip an avatar', () => {
+    render(<TokenInput {...base} query="" tokens={[{ id: 'u-1', label: 'Hossam Gaber', kind: 'person' }, { id: 'sam@client.com', label: 'sam@client.com', kind: 'email' }]} />)
+    const email = screen.getByRole('button', { name: 'Remove sam@client.com' }).parentElement!
+    expect(email.textContent).toBe('sam@client.comGuest')
+    expect(email.querySelector('svg')).toBeTruthy()
+    const person = screen.getByRole('button', { name: 'Remove Hossam Gaber' }).parentElement!
+    expect(person.querySelector('[aria-hidden="true"]')?.textContent).toBe('HG')
+  })
+
+  it('a suggestion says what it is: a team with how many people, an email to invite', () => {
+    render(
+      <TokenInput
+        {...base}
+        tokens={[]}
+        query="b"
+        suggestions={[
+          { id: 'team:t-backend', label: 'Backend', description: '2 people', kind: 'group' },
+          { id: 'email:b@client.com', label: 'b@client.com', description: 'Invite as a guest', kind: 'email' },
+        ]}
+      />,
+    )
+    fireEvent.focus(screen.getByRole('combobox'))
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Backend2 people', 'b@client.comInvite as a guest'])
+    for (const option of screen.getAllByRole('option')) expect(option.querySelector('svg')).toBeTruthy()
+  })
+})

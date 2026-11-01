@@ -8,10 +8,47 @@ export interface RealtimeClient {
   stop(): Promise<void>
   joinChannel(channelId: string): void                  // SignalR group later
   leaveChannel(channelId: string): void
+  /** Tells the channel's other readers I'm typing (the page sends it at most every 2 s). */
+  sendTyping(channelId: string, userId: string): void
   onMessageReceived(cb: (message: ChatMessage) => void): () => void
   onReplyReceived(cb: (reply: ThreadReply) => void): () => void
   onTicketUpdated(cb: (ticket: Ticket) => void): () => void
   onUserTyping(cb: (event: { channelId: string; userId: string }) => void): () => void
+  onTimeLogged(cb: (event: { userId: string; projectId: string | null }) => void): () => void
+  onCommentAdded(cb: (event: { taskKey: string; projectId: string }) => void): () => void
+  /** A message or reply changed (reaction, edit, delete); messageId is the message, or a reply's parent. */
+  onMessageChanged(cb: (event: { channelId: string; messageId: string }) => void): () => void
+  /** A channel was opened or its name, topic or members changed. */
+  onChannelChanged(cb: (event: { channelId: string }) => void): () => void
+  /** A project's details, phases, deliverables or board changed. */
+  onProjectChanged(cb: (event: { projectId: string }) => void): () => void
+  /** Someone's hourly cost changed: cost everywhere follows. */
+  onRatesChanged(cb: () => void): () => void
+  /** A file was added to a project. */
+  onFilesChanged(cb: (event: { projectId: string }) => void): () => void
+  /** A file's details changed, or it was deleted or shared (spec §8 file.updated, file.deleted, file.shared). */
+  onFileChanged(cb: (event: { fileId: string }) => void): () => void
+  /**
+   * Someone read a channel or mentions, or changed their own state in a channel (star, mute): their badges and bell
+   * follow, in each of their tabs. `channelId` is set for a channel, `seq` for a new read marker.
+   */
+  onReadChanged(cb: (event: { userId: string; channelId?: string; seq?: number }) => void): () => void
+  /** Something new for this person's Activity (spec 6.12): a reaction to theirs, a reply in a thread they follow. */
+  onNotificationCreated(cb: (event: { userId: string }) => void): () => void
+  /** My saved items or their reminders changed (another tab or device, or a reminder fired). */
+  onSavedChanged(cb: (event: { userId: string }) => void): () => void
+  onSidebarChanged(cb: (event: { userId: string }) => void): () => void
+  onPreferencesChanged(cb: (event: { userId: string }) => void): () => void
+  /** Roles or what they grant changed (slice 1): anyone's rights may have, so everything is read again. */
+  onRolesChanged(cb: () => void): () => void
+  /** Someone was added, edited, deactivated or reactivated (slice 3): names, roles and pickers anywhere may change. */
+  onPeopleChanged(cb: () => void): () => void
+  /** My scheduled messages changed: one was made, changed, sent or failed (spec §8 scheduled.sent). */
+  onScheduledChanged(cb: (event: { userId: string }) => void): () => void
+  /** One of my drafts changed (in another tab or device): the sidebar's pencils follow. */
+  onDraftChanged(cb: (event: { userId: string; channelId: string }) => void): () => void
+  /** The demo data was reset or reloaded: everything on screen is out of date. */
+  onDataReset(cb: () => void): () => void
 }
 
 /** One live update, as the mock hub carries it between tabs. */
@@ -20,6 +57,24 @@ export type RealtimeEvent =
   | { type: 'replyReceived'; reply: ThreadReply }
   | { type: 'ticketUpdated'; ticket: Ticket }
   | { type: 'userTyping'; channelId: string; userId: string }
+  | { type: 'timeLogged'; userId: string; projectId: string | null }
+  | { type: 'commentAdded'; taskKey: string; projectId: string }
+  | { type: 'messageChanged'; channelId: string; messageId: string }
+  | { type: 'channelChanged'; channelId: string }
+  | { type: 'projectChanged'; projectId: string }
+  | { type: 'ratesChanged' }
+  | { type: 'filesChanged'; projectId: string }
+  | { type: 'fileChanged'; fileId: string }
+  | { type: 'readChanged'; userId: string; channelId?: string; seq?: number }
+  | { type: 'draftChanged'; userId: string; channelId: string }
+  | { type: 'notificationCreated'; userId: string }
+  | { type: 'savedChanged'; userId: string }
+  | { type: 'sidebarChanged'; userId: string }
+  | { type: 'preferencesChanged'; userId: string }
+  | { type: 'rolesChanged' }
+  | { type: 'peopleChanged' }
+  | { type: 'scheduledChanged'; userId: string }
+  | { type: 'dataReset' }
 
 const noop = () => {}
 
@@ -35,14 +90,39 @@ function createUnconnectedClient(): RealtimeClient {
     async stop() {},
     joinChannel: noop,
     leaveChannel: noop,
+    sendTyping: noop,
     onMessageReceived: () => noop,
     onReplyReceived: () => noop,
     onTicketUpdated: () => noop,
     onUserTyping: () => noop,
+    onTimeLogged: () => noop,
+    onCommentAdded: () => noop,
+    onMessageChanged: () => noop,
+    onChannelChanged: () => noop,
+    onProjectChanged: () => noop,
+    onRatesChanged: () => noop,
+    onFilesChanged: () => noop,
+    onFileChanged: () => noop,
+    onReadChanged: () => noop,
+    onDraftChanged: () => noop,
+    onNotificationCreated: () => noop,
+    onSavedChanged: () => noop,
+    onSidebarChanged: () => noop,
+    onPreferencesChanged: () => noop,
+    onRolesChanged: () => noop,
+    onPeopleChanged: () => noop,
+    onScheduledChanged: () => noop,
+    onDataReset: () => noop,
   }
 }
 
 /** The real-time client for this build: the mock hub in the prototype, SignalR with the backend. */
 export function createRealtimeClient(): RealtimeClient {
   return backendOn ? createUnconnectedClient() : createMockRealtimeClient(mockHub)
+}
+
+let shared: RealtimeClient | null = null
+/** The app's one realtime client (one SignalR connection with the backend): RealtimeBridge starts it, pages join and send on it. */
+export function useRealtime(): RealtimeClient {
+  return (shared ??= createRealtimeClient())
 }

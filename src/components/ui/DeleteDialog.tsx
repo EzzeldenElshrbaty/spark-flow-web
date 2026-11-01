@@ -17,6 +17,8 @@ export function DeleteDialog({
   removes,
   onDelete,
   onClose,
+  actionLabel = 'Delete for good',
+  pendingLabel = 'Deleting…',
 }: {
   title: string
   description: string
@@ -27,6 +29,9 @@ export function DeleteDialog({
   /** Calls the API, then leaves the page (before everything reloads, so the deleted record isn't fetched again). */
   onDelete: (confirm: string) => Promise<unknown>
   onClose: () => void
+  /** The confirm button, verb first; defaults to the delete wording. */
+  actionLabel?: string
+  pendingLabel?: string
 }) {
   const [typed, setTyped] = useState('')
   const remove = useMutation({ mutationFn: () => onDelete(typed.trim()) })
@@ -43,7 +48,7 @@ export function DeleteDialog({
             Cancel
           </Button>
           <Button type="submit" variant="danger" form="delete-form" disabled={!matches || remove.isPending}>
-            {remove.isPending ? 'Deleting…' : 'Delete for good'}
+            {remove.isPending ? pendingLabel : actionLabel}
           </Button>
         </>
       }

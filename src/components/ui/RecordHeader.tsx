@@ -88,7 +88,7 @@ export function RecordHeader({
       {/* Phones: the main action and "⋯" pinned above the bottom navigation. */}
       {hasActions && (
         <>
-          <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-20 flex gap-2 border-t border-line bg-surface/95 px-4 py-2.5 backdrop-blur sm:hidden">
+          <div className="fixed inset-x-0 bottom-[calc(3.5rem+var(--timer-bar,0px)+env(safe-area-inset-bottom))] z-20 flex gap-2 border-t border-line bg-surface/95 px-4 py-2.5 backdrop-blur sm:hidden">
             {primary && (
               <Button className="flex-1" onClick={primary.onSelect}>
                 <primary.icon className="size-4" /> {primary.label}
@@ -104,7 +104,7 @@ export function RecordHeader({
 
 /** Put at the end of a record page that has a RecordHeader, so the phone action bar doesn't cover the last content. */
 export function RecordActionBarSpacer() {
-  return <div className="h-16 sm:hidden" aria-hidden />
+  return <div className="h-[calc(4rem+var(--timer-bar,0px))] sm:hidden" aria-hidden />
 }
 
 export function MoreMenu({ actions }: { actions: RecordAction[] }) {

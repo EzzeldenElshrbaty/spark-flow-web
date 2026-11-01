@@ -1,0 +1,46 @@
+import { rateAt } from '@/lib/rates'
+import type { Rate, TimeEntry } from '@/api/types'
+import { formatMoney } from '@/lib/format'
+import { entryHours } from '@/lib/hours'
+
+export type PersonTotal = { userId: string; hours: number; cost: number | null }
+
+const tenth = (n: number) => Math.round(n * 10) / 10
+
+/** Hours (and, with rates, cost) per person, most hours first, plus the project totals. A running entry counts up to now. */
+export function totalsByPerson(entries: TimeEntry[], rates: Rate[] | null, now: Date) {
+  const hours = new Map<string, number>()
+  const costs = new Map<string, number>()
+  for (const e of entries) {
+    const h = entryHours(e, now)
+    hours.set(e.userId, (hours.get(e.userId) ?? 0) + h)
+    // At the rate in effect when the entry started.
+    if (rates) costs.set(e.userId, (costs.get(e.userId) ?? 0) + h * rateAt(rates, e.userId, e.startedAt))
+  }
+  const people: PersonTotal[] = [...hours]
+    // Unrounded, so the parts add up to the total; the screen rounds (formatMoney, a tenth of an hour).
+    .map(([userId, h]) => ({ userId, hours: h, cost: rates ? (costs.get(userId) ?? 0) : null }))
+    .sort((a, b) => b.hours - a.hours)
+  return {
+    people,
+    hours: [...hours.values()].reduce((a, b) => a + b, 0),
+    cost: rates ? people.reduce((sum, p) => sum + (p.cost ?? 0), 0) : null,
+  }
+}
+
+/** The Time tab's card title: the project's total for who sees everyone's entries; for anyone else, their share of it. */
+export function timeHeading(everyone: boolean, shown: { hours: number; cost: number | null }, projectHours: number): string {
+  if (!everyone) return `Your time · ${tenth(shown.hours)}h of ${tenth(projectHours)}h logged`
+  return `${tenth(shown.hours)}h logged${shown.cost !== null ? ` · ${formatMoney(shown.cost)}` : ''}`
+}
+
+/** What an empty Time tab says: when only your own entries show, the project may still have time from others. */
+export function emptyTimeText(everyone: boolean, projectHours: number): string {
+  if (everyone || projectHours <= 0) return 'No time logged yet.'
+  return `You haven't logged time here. The project has ${tenth(projectHours)}h logged.`
+}
+
+/** The "only you and the manager" line: for people who see only their own entries, once the account is known. */
+export function showPrivacyNote(everyone: boolean, loading: boolean): boolean {
+  return !loading && !everyone
+}

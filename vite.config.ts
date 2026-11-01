@@ -2,6 +2,7 @@
 import { fileURLToPath } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
+import { playwright } from '@vitest/browser-playwright'
 import { defineConfig, loadEnv } from 'vite'
 
 // https://vite.dev/config/
@@ -27,8 +28,32 @@ export default defineConfig(({ mode }) => {
       },
     },
     test: {
-      environment: 'node',
-      include: ['src/**/*.test.ts'],
+      projects: [
+        {
+          extends: true,
+          test: {
+            name: 'unit',
+            environment: 'node',
+            include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+            exclude: ['src/**/*.browser.test.tsx'],
+            // *.test.tsx render components: they opt into jsdom with a `// @vitest-environment jsdom` first line.
+            // Days are the company's (Cairo), so tests that build "today" from local midnight read the same anywhere.
+            env: { TZ: 'Africa/Cairo' },
+          },
+        },
+        {
+          // What needs real layout (scrolling, sizes) runs in headless Chromium: `npx playwright install
+          // chromium-headless-shell` once per machine.
+          extends: true,
+          test: {
+            name: 'browser',
+            include: ['src/**/*.browser.test.tsx'],
+            // One file at a time: they share one browser tab, and focus (which editors and scrolling need) is one too.
+            fileParallelism: false,
+            browser: { enabled: true, headless: true, provider: playwright(), instances: [{ browser: 'chromium' }] },
+          },
+        },
+      ],
     },
   }
 })

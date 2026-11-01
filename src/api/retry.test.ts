@@ -12,6 +12,14 @@ describe('retryUnlessNotFound', () => {
     expect(retryUnlessNotFound(0, new ApiError({ title: 'Not found', status: 404 }))).toBe(false)
   })
 
+  it('never retries a 403: asking again does not let you in', () => {
+    expect(retryUnlessNotFound(0, new ApiError({ title: 'Forbidden', status: 403 }))).toBe(false)
+  })
+
+  it('never retries a 401: signing in again is the way back', () => {
+    expect(retryUnlessNotFound(0, new ApiError({ title: 'Unauthorized', status: 401 }))).toBe(false)
+  })
+
   it('retries other errors, such as a network failure', () => {
     expect(retryUnlessNotFound(0, new TypeError('Failed to fetch'))).toBe(true)
   })

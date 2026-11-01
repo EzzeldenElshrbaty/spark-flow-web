@@ -4,3 +4,6 @@ dist
 *.tsbuildinfo
 .DS_Store
 .superpowers/
+
+# Vitest browser-mode failure screenshots
+.vitest/

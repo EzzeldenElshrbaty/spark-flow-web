@@ -1,10 +1,7 @@
 import clsx from 'clsx'
-import { Check } from 'lucide-react'
-import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import type { Workspace } from '@/api/types'
-import { MenuPanel } from '@/components/ui/Menu'
-import { roundButtonClass, roundButtonFill } from '@/components/ui/styles'
+import { Menu, MenuHeading, MenuItem } from '@/components/sf/Menu'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { paths } from '@/lib/paths'
 
@@ -18,66 +15,38 @@ const initialsOf = (name: string) =>
     .slice(0, 2)
     .toUpperCase()
 
-function Initials({ workspace, className }: { workspace: Workspace; className: string }) {
-  return (
-    <span className={clsx('inline-flex items-center justify-center rounded-full bg-surface-muted font-semibold tracking-tight text-fg-secondary', className)} aria-hidden>
-      {initialsOf(workspace.name)}
-    </span>
-  )
-}
+/** The top bar's round buttons (spec 5.2): 36px, a hairline ring, the surface on hover. */
+const round = 'sf-focus inline-grid size-sf-control flex-none place-items-center rounded-sf-full border border-sf-line'
 
 /** Round workspace button in the top bar; its menu lists the workspaces, with a check on the open one. */
 export function WorkspaceSwitcher() {
   const { workspace, workspaces } = useCurrentWorkspace()
   const navigate = useNavigate()
-  const [open, setOpen] = useState(false)
-  const triggerRef = useRef<HTMLButtonElement>(null)
 
   // Until the list arrives, a pulse circle holds the button's place.
-  if (!workspace) return <span className={clsx(roundButtonClass, 'animate-pulse bg-surface-strong')} aria-hidden />
+  if (!workspace) return <span className={clsx(round, 'animate-pulse bg-sf-surface-hover')} aria-hidden />
 
-  const pick = (target: Workspace) => {
-    setOpen(false)
-    triggerRef.current?.focus()
-    if (target.slug === workspace.slug) return
-    // The workspace's own landing route checks the place last visited there (it may be gone) and falls back to #general.
-    navigate(paths.workspace(target.slug))
-  }
+  // The workspace's own landing route checks the place last visited there (it may be gone) and falls back to #general.
+  const pick = (target: Workspace) => target.slug !== workspace.slug && navigate(paths.workspace(target.slug))
 
   return (
-    <div className="relative shrink-0">
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label={`Workspace: ${workspace.name}`}
-        title={`Workspace: ${workspace.name}`}
-        className={clsx(roundButtonClass, roundButtonFill)}
-      >
-        <Initials workspace={workspace} className="size-6 text-[10px]" />
-      </button>
-      <MenuPanel open={open} onClose={() => setOpen(false)} triggerRef={triggerRef} label="Workspace" className="p-1.5 sm:w-64">
-        <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-fg-muted">Workspace</p>
-        {workspaces.map((item) => {
-          const current = item.slug === workspace.slug
-          return (
-            <button
-              key={item.id}
-              type="button"
-              role="menuitemradio"
-              aria-checked={current}
-              onClick={() => pick(item)}
-              className={clsx('flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start text-sm hover:bg-surface-muted', current ? 'font-medium text-fg' : 'text-fg-secondary')}
-            >
-              <Initials workspace={item} className="size-5 shrink-0 text-[9px]" />
-              <span className="flex-1 truncate">{item.name}</span>
-              {current && <Check className="size-4 text-accent" />}
-            </button>
-          )
-        })}
-      </MenuPanel>
-    </div>
+    <Menu
+      label="Workspace"
+      trigger={(props) => (
+        <button type="button" {...props} title={`Workspace: ${workspace.name}`} className={clsx(round, 'cursor-pointer text-sf-text-secondary hover:bg-sf-surface-hover hover:text-sf-text')}>
+          <span aria-hidden className="font-sf text-[11px]/none font-semibold tracking-tight">
+            {initialsOf(workspace.name)}
+          </span>
+          <span className="sr-only">Workspace: {workspace.name}</span>
+        </button>
+      )}
+    >
+      <MenuHeading>Workspace</MenuHeading>
+      {workspaces.map((item) => (
+        <MenuItem key={item.id} checked={item.slug === workspace.slug} onSelect={() => pick(item)}>
+          {item.name}
+        </MenuItem>
+      ))}
+    </Menu>
   )
 }

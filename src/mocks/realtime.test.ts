@@ -9,15 +9,17 @@ const sampleTicket: Ticket = {
   assigneeId: null, reporterId: 'u1', sprintId: null, rank: 1,
   linkedChannelId: null, linkedMessageId: null,
   createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
+  phaseId: null, type: 'task', dueAt: null, estimateHours: null,
 }
 const sampleMessage: ChatMessage = {
-  id: 'm1', channelId: 'c1', senderId: 'u1', content: 'hi',
+  id: 'm1', channelId: 'c1', seq: 1, senderId: 'u1', content: 'hi',
   attachments: [], reactions: [], threadCount: 0, lastReplyAt: null,
-  linkedTicketKeys: [], editedAt: null, createdAt: '2026-01-01T00:00:00.000Z',
+  linkedTicketKeys: [], mentions: [], body: [], editedAt: null, createdAt: '2026-01-01T00:00:00.000Z',
 }
 const sampleReply: ThreadReply = {
-  id: 'r1', messageId: 'm1', channelId: 'c1', senderId: 'u2', content: 'yo',
+  id: 'r1', messageId: 'm1', channelId: 'c1', senderId: 'u2', content: 'yo', body: [],
   attachments: [], reactions: [], createdAt: '2026-01-01T00:00:00.000Z',
+  mentions: [],
 }
 
 // A unique channel name per test, so hubs from different tests never hear each other.
@@ -167,3 +169,15 @@ describe('createMockHub', () => {
     expect(handler).not.toHaveBeenCalled()
   })
 })
+
+describe('sending typing', () => {
+  it('sendTyping publishes userTyping for the channel and person', () => {
+    const hub = createMockHub(`test-typing-${Math.random()}`, null)
+    const seen: unknown[] = []
+    hub.subscribe((e) => seen.push(e))
+    createMockRealtimeClient(hub).sendTyping('c1', 'u1')
+    expect(seen).toEqual([{ type: 'userTyping', channelId: 'c1', userId: 'u1' }])
+    hub.close()
+  })
+})
+

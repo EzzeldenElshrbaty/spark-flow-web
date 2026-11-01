@@ -3,8 +3,19 @@ import { ChevronLeft, ChevronRight, Download, FileText, Minus, Plus, X } from 'l
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { downloadUrl, previewOf } from '@/lib/fileTypes'
+import { fetchCredentials, type ViewedFile } from '@/lib/fileView'
+import { isPdf } from '@/lib/pdfSignature'
+import { safeFileUrl } from '@/lib/safeFileUrl'
 
-type ViewedFile = { name: string; url: string; sizeKb?: number }
+// ViewedFile (lib/fileView): `preview` is how to show it when its name doesn't say (an office file's converted PDF
+// preview); `download` is what Download saves when that isn't what's shown (the file itself); null hides Download.
+
+/** What Download saves for a shown file, through safeFileUrl, or null. */
+function savedAs(file: ViewedFile): { url: string; name: string } | null {
+  const target = file.download === undefined ? (file.url ? { url: file.url, name: file.name } : null) : file.download
+  const url = target && safeFileUrl(target.url)
+  return url ? { url, name: target.name } : null
+}
 
 const sizeText = (sizeKb?: number) => (sizeKb === undefined ? '' : sizeKb >= 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${sizeKb} KB`)
 
@@ -12,10 +23,24 @@ const sizeText = (sizeKb?: number) => (sizeKb === undefined ? '' : sizeKb >= 102
  * Full-screen preview of a file inside the CRM: images, PDFs, text and CSV. Other types show a card to download.
  * With several files (one upload), arrows and the keyboard's left and right keys step through them.
  */
-export function FileViewer({ files, start = 0, onClose }: { files: ViewedFile[]; start?: number; onClose: () => void }) {
+export function FileViewer({
+  files,
+  start = 0,
+  onClose,
+  onDownload,
+}: {
+  files: ViewedFile[]
+  start?: number
+  onClose: () => void
+  /** Download was chosen for the file at this index (the audit log notes it, slice 2). */
+  onDownload?: (index: number) => void
+}) {
   const [index, setIndex] = useState(start)
-  const file = files[index]
-  const preview = previewOf(file.name)
+  const shown = files[index]
+  // Only same-origin, https and blob: addresses are opened at all; anything else gets no preview and no link.
+  const url = safeFileUrl(shown.url)
+  const file = { ...shown, url: url ?? '' }
+  const preview = url ? (shown.preview ?? previewOf(file.name)) : 'none'
   const many = files.length > 1
   const step = (by: number) => setIndex((current) => (current + by + files.length) % files.length)
 
@@ -35,7 +60,16 @@ export function FileViewer({ files, start = 0, onClose }: { files: ViewedFile[];
   }, [onClose, files.length])
 
   return createPortal(
-    <div className="fixed inset-0 z-[60] flex flex-col bg-black/85" role="dialog" aria-modal="true" aria-label={file.name}>
+    // Any Download inside (the bar's, or a preview's own when it can't show the file) is one download of this file.
+    <div
+      className="fixed inset-0 z-[60] flex flex-col bg-black/85"
+      role="dialog"
+      aria-modal="true"
+      aria-label={file.name}
+      onClick={(event) => {
+        if (onDownload && (event.target as Element).closest('a[download]')) onDownload(index)
+      }}
+    >
       <div className="flex items-center gap-2 px-3 py-2 text-white sm:px-4">
         <p className="min-w-0 flex-1 truncate text-sm font-medium">{file.name}</p>
         {many && (
@@ -43,13 +77,15 @@ export function FileViewer({ files, start = 0, onClose }: { files: ViewedFile[];
             {index + 1} of {files.length}
           </span>
         )}
-        <a
-          href={downloadUrl(file.url)}
-          download={file.name}
-          className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-white ring-1 ring-white/30 hover:bg-white/10"
-        >
-          <Download className="size-4" /> Download
-        </a>
+        {savedAs(file) && (
+          <a
+            href={downloadUrl(savedAs(file)!.url)}
+            download={savedAs(file)!.name}
+            className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-white ring-1 ring-white/30 hover:bg-white/10"
+          >
+            <Download className="size-4" /> Download
+          </a>
+        )}
         <button type="button" onClick={onClose} className="rounded-full p-2 text-white hover:bg-white/10" aria-label="Close">
           <X className="size-5" />
         </button>
@@ -66,9 +102,9 @@ export function FileViewer({ files, start = 0, onClose }: { files: ViewedFile[];
           </>
         )}
         {preview === 'image' && <ImageView key={file.url} file={file} />}
-        {preview === 'pdf' && <iframe src={file.url} title={file.name} className="size-full rounded-md bg-white" />}
+        {preview === 'pdf' && <PdfView key={file.url} file={file} />}
         {(preview === 'text' || preview === 'csv') && <TextView key={file.url} file={file} csv={preview === 'csv'} />}
-        {preview === 'none' && <NoPreview file={file} />}
+        {preview === 'none' && <NoPreview file={file} message={url ? undefined : "This file can't be opened from here."} />}
       </div>
     </div>,
     document.body,
@@ -100,6 +136,36 @@ function ImageView({ file }: { file: ViewedFile }) {
       </div>
     </div>
   )
+}
+
+/**
+ * A PDF is shown only once its bytes start with %PDF-, from a blob: address typed application/pdf, so a renamed HTML
+ * page can never run as a page here. Chrome won't show PDFs in a sandboxed frame, which is why the check comes first.
+ */
+function PdfView({ file }: { file: ViewedFile }) {
+  const [blobUrl, setBlobUrl] = useState<string | null>(null)
+  const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    let current = true
+    let made: string | null = null
+    fetch(file.url, { credentials: fetchCredentials(file.url) })
+      .then((response) => (response.ok ? response.arrayBuffer() : Promise.reject(new Error(String(response.status)))))
+      .then((buffer) => {
+        if (!current) return
+        if (!isPdf(new Uint8Array(buffer))) return setFailed(true)
+        made = URL.createObjectURL(new Blob([buffer], { type: 'application/pdf' }))
+        setBlobUrl(made)
+      })
+      .catch(() => current && setFailed(true))
+    return () => {
+      current = false
+      if (made) URL.revokeObjectURL(made)
+    }
+  }, [file.url])
+
+  if (failed) return <NoPreview file={file} message="This file can't be previewed. Download it instead." />
+  if (!blobUrl) return <p className="self-center text-sm text-white/80">Opening…</p>
+  return <iframe src={blobUrl} title={file.name} className="size-full rounded-md bg-white" />
 }
 
 /** Splits CSV text into rows, with quoted cells ("a, b" and "" for a quote). Excel in some languages separates with ";". */
@@ -139,7 +205,7 @@ function TextView({ file, csv }: { file: ViewedFile; csv: boolean }) {
   const [failed, setFailed] = useState(false)
   useEffect(() => {
     let current = true
-    fetch(file.url, { credentials: 'include' })
+    fetch(file.url, { credentials: fetchCredentials(file.url) })
       .then((response) => (response.ok ? response.text() : Promise.reject(new Error(String(response.status)))))
       .then((body) => current && setText(body))
       .catch(() => current && setFailed(true))
@@ -183,13 +249,15 @@ function NoPreview({ file, message = "This type of file can't be previewed. Down
         {file.sizeKb !== undefined && <p className="text-xs text-fg-muted">{sizeText(file.sizeKb)}</p>}
       </div>
       <p className="text-sm text-fg-secondary">{message}</p>
-      <a
-        href={downloadUrl(file.url)}
-        download={file.name}
-        className="inline-flex items-center gap-1.5 rounded-md bg-brand-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-600"
-      >
-        <Download className="size-4" /> Download
-      </a>
+      {savedAs(file) && (
+        <a
+          href={downloadUrl(savedAs(file)!.url)}
+          download={savedAs(file)!.name}
+          className="inline-flex items-center gap-1.5 rounded-md bg-brand-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-600"
+        >
+          <Download className="size-4" /> Download
+        </a>
+      )}
     </div>
   )
 }

@@ -1,0 +1,38 @@
+---
+title: Getting started
+group: Getting started
+order: 1
+summary: The screen, the two sides of Flow, search, help and your menu.
+---
+Spark Flow runs Spark Systems' projects and its chat in one place. This chapter covers what's around every page.
+
+## The two sides
+
+The menu on the left shows one side at a time: **Projects** (your day, projects, tasks, time) or **Chat** (channels, messages and threads). Switch with the toggle under the logo, or press `G` then `P` for Projects and `G` then `C` for Chat. Each side reopens where you left it.
+
+## Search
+
+The box at the top finds projects, tasks, people and pages as you type. Press `Ctrl` + `K` (`⌘` + `K` on a Mac) to jump to it, unless you're writing a message, where it adds a link. Its last row searches messages and files; see [Search](help:search).
+
+## Help
+
+The round **?** beside the bell opens help for the page you're on. It stays open as you move between pages, so you can read and work at once. At its foot, **Open the help centre** shows every chapter, with search.
+
+## Your menu
+
+Your name at the top right opens:
+
+- **Preferences**: notifications, keywords and Do Not Disturb. See [Preferences](help:preferences).
+- **My attendance**: your check-ins and time in Flow. See [Attendance](help:attendance).
+- **Help**: the help centre.
+- **Light** or **Dark**: how Flow looks on this device.
+
+> In the prototype, **View as** lets you try Flow as someone else, to see what their roles allow.
+
+## Lists and tables
+
+Drag a column's edge to make it wider; double-click to reset it. Click a header to sort. Filters and searches stay in the address, so a link you share opens the same view.
+
+## On a phone
+
+The bar at the bottom holds Home, Projects, Chat and More. Tables become lists, and sheets fill the screen. Everything else works the same.

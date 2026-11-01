@@ -1,49 +1,100 @@
 import clsx from 'clsx'
-import { LayoutGrid, Search, X, Zap, type LucideIcon } from 'lucide-react'
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { useNavigate } from 'react-router'
-import { roundButtonClass, roundButtonFill } from '@/components/ui/styles'
-import { useChannels } from '@/api/chat'
-import { useProjects } from '@/api/tickets'
+import { useLocation, useNavigate, useSearchParams } from 'react-router'
+import { IconBolt, IconLayoutGrid, IconListCheck, IconSearch, IconUser, IconX, type TablerIcon } from '@tabler/icons-react'
+import { Kbd } from '@/components/sf/Badge'
+import { Button, IconButton } from '@/components/sf/Button'
+import { Icon } from '@/components/sf/Icon'
+import { useChannels, useOpenDm } from '@/api/chat'
+import { useProjects, useTasksOf } from '@/api/tickets'
 import { useUsers } from '@/api/users'
+import { isActive } from '@/lib/people'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { useRole } from '@/lib/useRole'
-import { findShortcuts, shortcutsFor, workspaceShortcuts } from '@/layout/searchShortcuts'
+import { findShortcuts, opensSearch, peopleShortcuts, searchPlaceholder, shortcutsFor, taskShortcuts, workspaceShortcuts } from '@/layout/searchShortcuts'
+import { useWorkspaceMode } from '@/layout/useWorkspaceMode'
+import { paths } from '@/lib/paths'
+import { useFocusOnArrival } from '@/lib/openSearch'
 
-// TODO(api): search messages and tickets on the server too, as Spark CRM's GlobalSearch does for its records
-// (design/reference-code/src/layout/GlobalSearch.tsx). For now it finds pages and the open workspace's channels, DMs and projects.
+// It jumps to pages, channels, DMs, projects, tasks and people; its last row (and ⌘/Ctrl+Enter) opens Search, which
+// looks through what people wrote (spec 6.12).
 
 /** Fewer letters than this match too much to be useful. */
 const minSearchLength = 2
 
-const searchLabel = 'Search pages, channels and projects'
+const searchLabel = 'Search pages, tasks, people and channels'
 
-type Hit = { id: string; title: string; subtitle: string; link: string; icon?: LucideIcon }
+type Hit = { id: string; title: string; subtitle: string; link: string; icon?: TablerIcon }
 /** A block of results: pages or actions. */
-type Group = { kind: string; label: string; icon: LucideIcon; total: number; hits: Hit[] }
+type Group = { kind: string; label: string; icon: TablerIcon; total: number; hits: Hit[] }
 
-/** Pages and actions this role can use, plus the open workspace's channels, DMs and projects, as soon as something is typed. */
+/** The last group: one row that opens Search for the words (spec 6.12). */
+const SEARCH_KIND = 'search'
+
+/** Pages and actions my permissions allow, plus the open workspace's channels, DMs and projects, as soon as something is typed. */
 function useSearch(term: string) {
-  const { role, persona } = useRole()
+  const { grants, persona } = useRole()
   const { workspace } = useCurrentWorkspace()
   const channels = useChannels(workspace?.id).data
   const projects = useProjects(workspace?.id).data
   const users = useUsers(workspace?.id).data
+  const tasks = useTasksOf((projects ?? []).map((p) => p.id)).data
   const all = useMemo(() => {
-    const base = shortcutsFor(role, workspace?.slug ?? null)
+    // Managing a project opens the Dashboard whatever my roles, as the sidebar decides it.
+    const base = shortcutsFor(grants, workspace?.slug ?? null, { managesAny: projects?.some((p) => p.managerId === persona.id) })
     if (!workspace) return base
     return { ...base, pages: [...base.pages, ...workspaceShortcuts(workspace, channels ?? [], projects ?? [], users ?? [], persona.id)] }
-  }, [role, workspace, channels, projects, users, persona.id])
+  }, [grants, workspace, channels, projects, users, persona.id])
   const typed = term.trim()
+  const long = typed.length >= minSearchLength
+  const taskHits = useMemo(() => (long && workspace ? taskShortcuts(workspace.slug, tasks, projects ?? [], typed) : []), [long, workspace, tasks, projects, typed])
+  // Deactivated people (slice 3) aren't offered: there's no starting a conversation with them.
+  const peopleHits = useMemo(() => (long ? peopleShortcuts((users ?? []).filter(isActive), persona.id, typed) : []), [long, users, persona.id, typed])
   const groups = useMemo(() => {
     const found = typed.length >= minSearchLength ? findShortcuts(all, typed) : { pages: [], actions: [] }
     return [
-      ...(found.pages.length ? [{ kind: 'pages', label: 'Go to', icon: LayoutGrid, total: found.pages.length, hits: found.pages }] : []),
-      ...(found.actions.length ? [{ kind: 'actions', label: 'Actions', icon: Zap, total: found.actions.length, hits: found.actions }] : []),
+      ...(found.pages.length ? [{ kind: 'pages', label: 'Go to', icon: IconLayoutGrid, total: found.pages.length, hits: found.pages }] : []),
+      ...(found.actions.length ? [{ kind: 'actions', label: 'Actions', icon: IconBolt, total: found.actions.length, hits: found.actions }] : []),
+      ...(taskHits.length ? [{ kind: 'tasks', label: 'Tasks', icon: IconListCheck, total: taskHits.length, hits: taskHits }] : []),
+      ...(peopleHits.length ? [{ kind: 'people', label: 'People', icon: IconUser, total: peopleHits.length, hits: peopleHits }] : []),
+      ...(typed && workspace
+        ? [{ kind: SEARCH_KIND, label: 'Search', icon: IconSearch, total: 1, hits: [{ id: 'all', title: `Search messages and files for “${typed}”`, subtitle: 'Messages, files, tasks, channels and people', link: paths.search(workspace.slug, typed), icon: IconSearch }] }]
+        : []),
     ]
-  }, [all, typed])
+  }, [all, typed, taskHits, peopleHits, workspace])
   return { groups, term: typed }
+}
+
+/**
+ * Going to a result: a page or channel link, or `dm:<userId>` for a person, which opens your conversation with them.
+ * `failed` is the sentence to show near the box when that didn't work.
+ */
+function useGo(after: (link: string) => void) {
+  const navigate = useNavigate()
+  const { workspace } = useCurrentWorkspace()
+  const openDm = useOpenDm()
+  const [failed, setFailed] = useState<string | null>(null)
+  const go = (link: string) => {
+    setFailed(null)
+    if (!link.startsWith('dm:')) {
+      navigate(link)
+      after(link)
+      return
+    }
+    if (!workspace) return
+    openDm.mutate(
+      { workspaceId: workspace.id, userIds: [link.slice(3)] },
+      {
+        onSuccess: (dm) => {
+          navigate(paths.channel(workspace.slug, dm.id))
+          after(link)
+        },
+        onError: () => setFailed("Couldn't open the conversation."),
+      },
+    )
+  }
+  return { go, failed }
 }
 
 /** The search term in bold wherever it appears. */
@@ -53,7 +104,7 @@ function Highlight({ text, term }: { text: string; term: string }) {
   return (
     <>
       {text.slice(0, index)}
-      <mark className="bg-transparent font-semibold text-fg">{text.slice(index, index + term.length)}</mark>
+      <mark className="bg-transparent font-semibold text-sf-text">{text.slice(index, index + term.length)}</mark>
       {text.slice(index + term.length)}
     </>
   )
@@ -67,30 +118,28 @@ function Results({ groups, term, active, onPick, listId }: { groups: Group[]; te
   return (
     <div id={listId} role="listbox" aria-label="Search results" className="py-1">
       {groups.map((group) => {
-        const Icon = group.icon
         return (
           <div key={group.kind} role="group" aria-label={group.label} className="py-1">
-            <p className="flex items-center gap-2 px-4 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-fg-muted">
-              <Icon className="size-3.5" /> {group.label}
-              <span className="font-medium normal-case tracking-normal text-fg-subtle">{group.total}</span>
+            <p className="sf-label m-0 flex items-center gap-2 px-4 pt-2 pb-1 text-sf-text-muted">
+              <Icon icon={group.icon} size={14} /> {group.label}
+              <span className="sf-meta normal-case tracking-normal text-sf-text-muted">{group.total}</span>
             </p>
             {group.hits.map((hit) => {
               const key = `${group.kind}:${hit.id}`
-              const HitIcon = hit.icon
               return (
                 <Option key={key} id={`${listId}-${key}`} active={active === key} onPick={() => onPick(hit.link)}>
-                  {HitIcon && (
-                    <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-surface-muted text-fg-tertiary">
-                      <HitIcon className="size-3.5" />
+                  {hit.icon && (
+                    <span className="grid size-7 flex-none place-items-center rounded-sf-md bg-sf-surface-sunken text-sf-text-secondary">
+                      <Icon icon={hit.icon} size={16} />
                     </span>
                   )}
                   <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-1.5 truncate text-sm text-fg-secondary">
+                    <span className="sf-ui flex items-center gap-1.5 truncate text-sf-text">
                       <span className="truncate">
                         <Highlight text={hit.title} term={term} />
                       </span>
                     </span>
-                    <span className="block truncate text-xs text-fg-muted">{hit.subtitle}</span>
+                    <span className="sf-meta block truncate text-sf-text-muted">{hit.subtitle}</span>
                   </span>
                 </Option>
               )
@@ -112,7 +161,7 @@ function Option({ id, active, onPick, children }: { id: string; active: boolean;
       // Keep focus in the input on desktop so typing carries on.
       onMouseDown={(event) => event.preventDefault()}
       onClick={onPick}
-      className={clsx('flex w-full items-center gap-2 px-4 py-2 text-start hover:bg-surface-muted', active && 'bg-surface-muted')}
+      className={clsx('flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-start hover:bg-sf-surface-hover', active && 'bg-sf-surface-hover')}
     >
       {children}
     </button>
@@ -120,8 +169,8 @@ function Option({ id, active, onPick, children }: { id: string; active: boolean;
 }
 
 function Status({ term, empty }: { term: string; empty: boolean }) {
-  if (term.trim().length < minSearchLength) return <p className="px-4 py-6 text-center text-sm text-fg-muted">Search pages, channels and projects.</p>
-  if (empty) return <p className="px-4 py-6 text-center text-sm text-fg-muted">Nothing matches “{term.trim()}”.</p>
+  if (term.trim().length < minSearchLength) return <p className="sf-small m-0 px-4 py-6 text-center text-sf-text-muted">Search pages, channels and projects.</p>
+  if (empty) return <p className="sf-small m-0 px-4 py-6 text-center text-sf-text-muted">Nothing matches “{term.trim()}”.</p>
   return null
 }
 
@@ -136,6 +185,12 @@ function useKeyboard(groups: Group[], open: (link: string) => void, close: () =>
       if (!flat.length) return
       const next = event.key === 'ArrowDown' ? (current + 1) % flat.length : (current - 1 + flat.length) % flat.length
       setActive(flat[next].key)
+    } else if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+      const search = groups.find((g) => g.kind === SEARCH_KIND)?.hits[0]
+      if (search) {
+        event.preventDefault()
+        open(search.link)
+      }
     } else if (event.key === 'Enter') {
       const pick = flat[current] ?? flat[0]
       if (pick) open(pick.link)
@@ -147,30 +202,51 @@ function useKeyboard(groups: Group[], open: (link: string) => void, close: () =>
 }
 
 /** The search box in the top bar (tablets and up). Ctrl+K or / jumps to it. */
+/** ⌘ on Apple keyboards, Ctrl elsewhere (both work). */
+const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
+
+/** On Search, the box shows its query (spec 5.2); elsewhere it starts empty. */
+function useSearchTerm() {
+  const { pathname } = useLocation()
+  const [params] = useSearchParams()
+  const onSearch = /^\/w\/[^/]+\/search\/?$/.test(pathname)
+  const query = onSearch ? (params.get('q') ?? '') : ''
+  const [term, setTerm] = useState(query)
+  // A new query in the address (Search opened, a chip, Back) replaces what the box holds.
+  const [shown, setShown] = useState(query)
+  if (query !== shown) {
+    setShown(query)
+    setTerm(query)
+  }
+  return [term, setTerm] as const
+}
+
 export function DesktopSearch() {
-  const [term, setTerm] = useState('')
+  const side = useWorkspaceMode()
+  const [term, setTerm] = useSearchTerm()
   const [open, setOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const boxRef = useRef<HTMLDivElement>(null)
   const listId = useId()
-  const navigate = useNavigate()
   const { groups, term: shownTerm } = useSearch(term)
 
   const close = () => {
     setOpen(false)
     inputRef.current?.blur()
   }
-  const go = (link: string) => {
-    navigate(link)
-    setTerm('')
+  // Opening Search keeps the words in the box (it shows the query there); anywhere else the box empties.
+  const { go, failed } = useGo((link) => {
+    if (!/^\/w\/[^/]+\/search(\?|$)/.test(link)) setTerm('')
     close()
-  }
+  })
   const keys = useKeyboard(groups, go, close)
+
+  // Sent here by the channel's 🔍, ⌘F or /search: the caret goes in the box, after the query.
+  useFocusOnArrival(inputRef)
 
   useEffect(() => {
     const onKey = (event: globalThis.KeyboardEvent) => {
-      const typing = event.target instanceof HTMLElement && (event.target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName))
-      if ((event.key === 'k' && (event.metaKey || event.ctrlKey)) || (event.key === '/' && !typing)) {
+      if (opensSearch(event)) {
         event.preventDefault()
         inputRef.current?.focus()
       }
@@ -187,8 +263,8 @@ export function DesktopSearch() {
   }, [])
 
   return (
-    <div ref={boxRef} className="relative hidden max-w-md flex-1 md:block">
-      <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-fg-subtle" />
+    <div ref={boxRef} className="relative hidden w-full max-w-[440px] min-w-0 md:block">
+      <Icon icon={IconSearch} size={18} className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-sf-text-muted" />
       <input
         ref={inputRef}
         type="text"
@@ -198,6 +274,7 @@ export function DesktopSearch() {
         aria-controls={listId}
         aria-activedescendant={keys.active ? `${listId}-${keys.active}` : undefined}
         aria-label={searchLabel}
+        aria-keyshortcuts="Meta+K Control+K"
         value={term}
         onChange={(event) => {
           setTerm(event.target.value)
@@ -206,13 +283,37 @@ export function DesktopSearch() {
         }}
         onFocus={() => setOpen(true)}
         onKeyDown={keys.onKeyDown}
-        placeholder="Search pages, channels, projects…"
-        className="w-full rounded-lg border border-line bg-surface-sunken py-2 ps-9 pe-3 text-sm placeholder:text-fg-subtle focus:border-brand-500 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent-soft"
+        placeholder={searchPlaceholder(side)}
+        className="sf-ui h-sf-input w-full truncate rounded-sf-md border border-sf-line bg-sf-surface-sunken ps-9 pe-16 text-sf-text outline-none placeholder:text-sf-text-muted focus:border-sf-focus focus:shadow-[0_0_0_3px_var(--surface-mention)]"
       />
+      <span className="absolute end-2 top-1/2 flex -translate-y-1/2 items-center gap-1">
+        {term ? (
+          <IconButton
+            label="Clear search"
+            icon={IconX}
+            size="xs"
+            onClick={() => {
+              setTerm('')
+              keys.reset()
+              inputRef.current?.focus()
+            }}
+          />
+        ) : (
+          <span aria-hidden className="flex gap-1">
+            <Kbd>{isMac ? '⌘' : 'Ctrl'}</Kbd>
+            <Kbd>K</Kbd>
+          </span>
+        )}
+      </span>
       {open && term.trim() && (
-        <div className="absolute inset-x-0 top-full z-50 mt-2 max-h-[70vh] overflow-y-auto rounded-xl border border-line bg-surface shadow-xl motion-safe:animate-pop-in">
+        <div className="absolute inset-x-0 top-full z-[var(--z-menu)] mt-2 max-h-[70vh] overflow-y-auto rounded-sf-lg bg-sf-surface-raised py-1 shadow-sf-menu">
           <Status term={term} empty={!groups.length} />
           {groups.length > 0 && <Results groups={groups} term={shownTerm} active={keys.active} onPick={go} listId={listId} />}
+          {failed && (
+            <p role="alert" className="sf-small m-0 px-4 py-2 text-sf-error">
+              {failed}
+            </p>
+          )}
         </div>
       )}
     </div>
@@ -223,8 +324,13 @@ export function DesktopSearch() {
 export function PhoneSearch({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   return (
     <>
-      <button type="button" onClick={() => onOpenChange(true)} className={clsx(roundButtonClass, roundButtonFill, 'text-fg-tertiary md:hidden')} aria-label="Search" title="Search">
-        <Search className="size-[18px]" />
+      <button
+        type="button"
+        onClick={() => onOpenChange(true)}
+        aria-label="Search"
+        className="sf-focus inline-grid size-sf-control flex-none cursor-pointer place-items-center rounded-sf-full border border-sf-line text-sf-text-secondary hover:bg-sf-surface-hover hover:text-sf-text md:hidden"
+      >
+        <Icon icon={IconSearch} />
       </button>
       {open && createPortal(<SearchScreen onClose={() => onOpenChange(false)} />, document.body)}
     </>
@@ -235,12 +341,8 @@ function SearchScreen({ onClose }: { onClose: () => void }) {
   const [term, setTerm] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const listId = useId()
-  const navigate = useNavigate()
   const { groups, term: shownTerm } = useSearch(term)
-  const go = (link: string) => {
-    navigate(link)
-    onClose()
-  }
+  const { go, failed } = useGo(onClose)
   const keys = useKeyboard(groups, go, onClose)
 
   useEffect(() => {
@@ -248,10 +350,11 @@ function SearchScreen({ onClose }: { onClose: () => void }) {
   }, [])
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-surface motion-safe:animate-fade-in md:hidden" role="dialog" aria-modal="true" aria-label="Search">
-      <div className="flex shrink-0 items-center gap-2 border-b border-line-subtle px-3 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))]">
+    // Portaled to the page's end, so it brings the chat tokens with it.
+    <div className="sf fixed inset-0 z-[var(--z-modal)] flex flex-col bg-sf-surface text-sf-text md:hidden" role="dialog" aria-modal="true" aria-label="Search">
+      <div className="flex flex-none items-center gap-2 border-b border-sf-line px-3 pt-[calc(0.5rem+env(safe-area-inset-top))] pb-2">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-fg-subtle" />
+          <Icon icon={IconSearch} size={18} className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-sf-text-muted" />
           <input
             ref={inputRef}
             type="text"
@@ -268,21 +371,26 @@ function SearchScreen({ onClose }: { onClose: () => void }) {
             }}
             onKeyDown={keys.onKeyDown}
             placeholder="Search"
-            className="w-full rounded-lg border border-line bg-surface-sunken py-2.5 ps-9 pe-9 text-base placeholder:text-fg-subtle focus:border-brand-500 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent-soft"
+            className="h-11 w-full rounded-sf-md border border-sf-line bg-sf-surface-sunken ps-9 pe-11 text-[16px] text-sf-text outline-none placeholder:text-sf-text-muted focus:border-sf-focus focus:bg-sf-surface focus:shadow-[0_0_0_3px_var(--surface-mention)]"
           />
           {term && (
-            <button type="button" onClick={() => setTerm('')} className="absolute end-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-fg-muted hover:text-fg" aria-label="Clear search">
-              <X className="size-4" />
-            </button>
+            <span className="absolute end-0 top-1/2 -translate-y-1/2">
+              <IconButton label="Clear search" icon={IconX} size="sm" tone="muted" className="size-11" onClick={() => setTerm('')} />
+            </span>
           )}
         </div>
-        <button type="button" onClick={onClose} className="shrink-0 px-2 py-2 text-sm font-medium text-accent">
+        <Button variant="ghost" touch onClick={onClose}>
           Cancel
-        </button>
+        </Button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto pb-[env(safe-area-inset-bottom)]">
         <Status term={term} empty={!groups.length} />
         {groups.length > 0 && <Results groups={groups} term={shownTerm} active={keys.active} onPick={go} listId={listId} />}
+          {failed && (
+            <p role="alert" className="sf-small m-0 px-4 py-2 text-sf-error">
+              {failed}
+            </p>
+          )}
       </div>
     </div>
   )
