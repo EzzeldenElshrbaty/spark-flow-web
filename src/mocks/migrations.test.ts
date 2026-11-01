@@ -173,6 +173,19 @@ describe('18 → 19', () => {
   })
 })
 
+describe('26 → 27 (attendance)', () => {
+  it('starts with no visits and Sunday to Thursday, 9 to 5, Cairo time; old check-ins stay as they were', () => {
+    const out = migrate({ version: 26, currentUserId: 'u-1', settings: { archiveRetentionDays: 90 }, checkIns: [{ id: 'ci-1' }] }, 27) as {
+      settings: Record<string, unknown>
+      visits: unknown[]
+      checkIns: unknown[]
+    }
+    expect(out.visits).toEqual([])
+    expect(out.settings).toEqual({ archiveRetentionDays: 90, workHours: { days: [0, 1, 2, 3, 4], start: '09:00', end: '17:00', timeZone: 'Africa/Cairo' } })
+    expect(out.checkIns).toEqual([{ id: 'ci-1' }])
+  })
+})
+
 describe('25 → 26 (archived records)', () => {
   it('keeps archived records a year by default, and the built-in Admin role may manage them', () => {
     const out = migrate({ version: 25, currentUserId: 'u-1', roles: [{ id: 'admin', builtIn: true, grants: ['audit.view'] }, { id: 'member', builtIn: true, grants: [] }] }, 26) as {

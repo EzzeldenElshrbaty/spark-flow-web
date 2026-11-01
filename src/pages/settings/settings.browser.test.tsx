@@ -14,6 +14,7 @@ import { AuditLogPage } from './AuditLogPage'
 import { RolesPage } from './RolesPage'
 import { UsersPage } from './UsersPage'
 import { ArchivedPage } from './ArchivedPage'
+import { AttendancePage } from './AttendancePage'
 import { SettingsPage } from './SettingsPage'
 
 // Spec 10 and CLAUDE.md: Settings and Roles and permissions read well in light and dark (axe, contrast included) and
@@ -80,6 +81,19 @@ beforeEach(() => {
     { id: 'u-6', name: 'Hossam Gaber', email: 'hossam.gaber@spark-sys.com', title: 'DevOps Engineer', roleIds: ['member'], teamIds: ['t-backend'], presence: 'offline', lastActiveAt: ago(30), deactivated: { at: ago(20), by: 'u-1', reason: 'Left the company' } },
   ])
   vi.spyOn(api.teams, 'list').mockResolvedValue([])
+  // Attendance (slice 5): a late check-in from a new IP and device, a blocked place, one closed by Flow.
+  vi.spyOn(api.attendance, 'scope').mockResolvedValue({ userIds: ['u-1', 'u-3'] })
+  const check = { userId: 'u-3', ip: '41.233.18.9', device: 'Chrome 130 · Windows', location: { lat: 30.0626, lng: 31.3409, accuracy: 12 }, byFlow: false, newIp: false, newDevice: false, offHours: false }
+  vi.spyOn(api.attendance, 'checkIns').mockResolvedValue([
+    { ...check, id: 'a:out', kind: 'out', at: ago(2), location: 'blocked', offHours: true },
+    { ...check, id: 'a:in', kind: 'in', at: ago(9), ip: '197.48.112.6', device: 'Chrome 130 · Android', newIp: true, newDevice: true, offHours: true },
+    { ...check, id: 'b:out', kind: 'out', at: ago(30), ip: null, device: null, location: null, byFlow: true },
+  ])
+  vi.spyOn(api.attendance, 'day').mockResolvedValue([
+    { userId: 'u-3', checkedInAt: ago(9), checkedOutAt: ago(2), byFlow: false, hours: 7, appMinutes: 380, late: true, early: true },
+    { userId: 'u-1', checkedInAt: null, checkedOutAt: null, byFlow: false, hours: 0, appMinutes: 0, late: false, early: false },
+  ])
+  vi.spyOn(api.attendance, 'workHours').mockResolvedValue({ days: [0, 1, 2, 3, 4], start: '09:00', end: '17:00', timeZone: 'Africa/Cairo' })
 })
 afterEach(async () => {
   cleanup()
@@ -100,6 +114,7 @@ function mount(path: string, element: ReactNode, dark: boolean) {
             <Route path="/w/:ws/settings/audit" element={element} />
             <Route path="/w/:ws/settings/users" element={element} />
             <Route path="/w/:ws/settings/archived" element={element} />
+            <Route path="/w/:ws/settings/attendance" element={element} />
           </Routes>
         </main>
       </MemoryRouter>
@@ -188,6 +203,24 @@ describe.each([
   })
 })
 
+describe.each([
+  ['light', false],
+  ['dark', true],
+])('Attendance in %s (slice 5, spec 10)', (_theme, dark) => {
+  it('check-ins with a new IP and device, the day view, and the working hours sheet have no axe violations', async () => {
+    await page.viewport(1280, 900)
+    mount('/w/engineering/settings/attendance', <AttendancePage />, dark)
+    await screen.findByRole('table', { name: 'Check-ins' })
+    expect(await violations()).toEqual([])
+    await userEvent.click(screen.getByRole('link', { name: 'Day view' }))
+    await screen.findByRole('table', { name: 'Day view' })
+    expect(await violations()).toEqual([])
+    await userEvent.click(screen.getByRole('button', { name: 'Change working hours' }))
+    await screen.findByRole('dialog', { name: 'Working hours' })
+    expect(await violations()).toEqual([])
+  })
+})
+
 describe('Settings on a 390px phone', () => {
   it('the home and the roles page fit without sideways scrolling; the roles page shows one role at a time', async () => {
     await page.viewport(390, 844)
@@ -231,6 +264,23 @@ describe('Settings on a 390px phone', () => {
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(390)
     for (const button of list.querySelectorAll('button')) expect(button.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
     expect(await violations()).toEqual([])
+  })
+
+  it('Attendance fits: lists instead of tables, the views scroll inside their strip, the day toggles are 44px', async () => {
+    await page.viewport(390, 844)
+    mount('/w/engineering/settings/attendance', <AttendancePage />, false)
+    await screen.findByRole('list', { name: 'Check-ins' })
+    expect(screen.queryByRole('table', { name: 'Check-ins' })).toBeNull()
+    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(390)
+    await userEvent.click(screen.getByRole('link', { name: 'Day view' }))
+    await screen.findByRole('list', { name: 'Day view' })
+    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(390)
+    await userEvent.click(screen.getByRole('button', { name: 'Change working hours' }))
+    const sheet = await screen.findByRole('dialog', { name: 'Working hours' })
+    // Measured once the sheet has finished rising.
+    expect(await violations()).toEqual([])
+    for (const day of sheet.querySelectorAll('button[aria-pressed]')) expect(day.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
+    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(390)
   })
 
   it('the audit log fits: a list instead of the table, the kinds scroll inside their strip, rows and alerts are 44px', async () => {

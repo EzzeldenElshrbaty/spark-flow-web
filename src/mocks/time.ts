@@ -1,4 +1,4 @@
-import type { Api, MyDay, TimeEntry, TimeTarget } from '@/api/types'
+import type { Api, CheckLocation, CheckSource, GeoFix, MyDay, TimeEntry, TimeTarget } from '@/api/types'
 import { categoryOf } from '@/lib/boardColumns'
 import { localDay } from '@/lib/dates'
 import { entryEnd, MAX_ENTRY_HOURS } from '@/lib/hours'
@@ -11,7 +11,7 @@ import { buildReport } from './report'
 import { ApiError } from '@/lib/apiError'
 import { badRequest, clone, currentUser, newId, notFound, requireCan } from './shared'
 import { grantsFor } from './roles'
-import { audit, changesBetween, recordOf } from './audit'
+import { audit, changesBetween, recordOf, requestFrom } from './audit'
 
 /** The fields of a time entry the audit log records. */
 const ENTRY_LOGGED = ['userId', 'projectId', 'taskId', 'startedAt', 'endedAt', 'note'] as const
@@ -41,6 +41,8 @@ function myDay(data: DbData, userId: string, now: Date): MyDay {
     openCheckIn: data.checkIns.filter((c) => c.userId === userId && c.day < day && c.checkedOutAt === null).sort((a, b) => (a.checkedInAt < b.checkedInAt ? 1 : -1))[0] ?? null,
     running: mine.find((e) => e.endedAt === null) ?? null,
     entries: mine.filter((e) => localDay(new Date(e.startedAt)) === day).sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1)),
+    // Check-ins from before Attendance recorded nothing, so their owner still gets the notice once.
+    firstCheckIn: !data.checkIns.some((c) => c.userId === userId && c.inFrom),
   })
 }
 
@@ -49,12 +51,36 @@ function myDay(data: DbData, userId: string, now: Date): MyDay {
  * so a forgotten check-out doesn't count the nights in between.
  */
 export function closeCheckIn(data: DbData, checkIn: DbData['checkIns'][number], at: Date) {
+  // Nobody checked out: Attendance shows it as Flow's, with no place, and never as leaving early.
+  checkIn.closedByFlow = true
+  checkIn.outFrom = null
   if (checkIn.day >= localDay(at)) {
     checkIn.checkedOutAt = at.toISOString()
     return
   }
   const ends = data.timeEntries.filter((e) => e.userId === checkIn.userId && e.endedAt && localDay(new Date(e.startedAt)) === checkIn.day).map((e) => e.endedAt!)
   checkIn.checkedOutAt = [checkIn.checkedInAt, ...ends].sort().at(-1)!
+}
+
+/** Where a check-in or check-out comes from: the request's IP and device, and the place the browser sent. */
+function sourceOf(location: unknown): CheckSource {
+  return { ...requestFrom(), location: checkLocation(location) }
+}
+
+/** The browser's place, as sent: a fix on Earth, 'blocked', or 'none' (also when nothing was sent). */
+function checkLocation(value: unknown): CheckLocation {
+  if (value === undefined || value === 'none') return 'none'
+  if (value === 'blocked') return 'blocked'
+  const fix = value as Partial<GeoFix> | null
+  const ok =
+    typeof fix === 'object' && fix !== null &&
+    typeof fix.lat === 'number' && Math.abs(fix.lat) <= 90 &&
+    typeof fix.lng === 'number' && Math.abs(fix.lng) <= 180 &&
+    typeof fix.accuracy === 'number' && fix.accuracy >= 0 && Number.isFinite(fix.accuracy)
+  if (!ok) throw badRequest("That location can't be right.")
+  const round = (n: number) => Math.round(n * 100_000) / 100_000
+  // To 5 decimals, about a metre: no more than the browser's own accuracy says.
+  return { lat: round(fix.lat!), lng: round(fix.lng!), accuracy: Math.round(fix.accuracy!) }
 }
 
 /** Closes my running entry (if any) at `at`, or 12 hours after it started if it was forgotten that long. */
@@ -173,8 +199,9 @@ export function timeApi(db: MockDb, hub: MockHub, now: () => Date): Api['time'] 
       return myDay(data, currentUser(data).id, now())
     },
 
-    checkIn: ({ plan, target }) =>
+    checkIn: ({ plan, target, location }) =>
       write((data, me, at) => {
+        const inFrom = sourceOf(location)
         const text = plan.trim()
         if (!text) throw badRequest("Write a line about today's plan.")
         if (text.length > MAX_PLAN) throw badRequest(`Keep the plan under ${MAX_PLAN} characters.`)
@@ -186,17 +213,27 @@ export function timeApi(db: MockDb, hub: MockHub, now: () => Date): Api['time'] 
         // A timer left running from an earlier day stops where it stopped counting (12 hours in).
         const running = data.timeEntries.find((e) => e.userId === me.id && e.endedAt === null)
         if (running && localDay(new Date(running.startedAt)) < day) stopRunning(data, me.id, iso)
-        data.checkIns.push({ id: newId('ci'), userId: me.id, day, checkedInAt: iso, checkedOutAt: null, plan: text })
+        data.checkIns.push({ id: newId('ci'), userId: me.id, day, checkedInAt: iso, checkedOutAt: null, plan: text, inFrom, outFrom: null })
         return target ? startTimer(data, me.id, target, iso) : null
       }),
 
-    checkOut: () =>
+    checkOut: (input) =>
       write((data, me, at) => {
+        const outFrom = sourceOf(input?.location)
         // The latest open check-in from any day: someone who forgot yesterday can still close it.
         const open = data.checkIns.filter((c) => c.userId === me.id && c.checkedOutAt === null).sort((a, b) => (a.checkedInAt < b.checkedInAt ? 1 : -1))[0]
         if (!open) throw badRequest("You haven't checked in today.")
         const iso = at.toISOString()
+        if (open.day < localDay(at)) {
+          // Forgotten on an earlier day: its timer stops where it stopped counting, and the check-in ends with that
+          // day's last entry, as Flow (not now, which would count the night and read as leaving early).
+          const stopped = stopRunning(data, me.id, iso)
+          closeCheckIn(data, open, at)
+          return stopped?.projectId ?? null
+        }
         open.checkedOutAt = iso
+        open.outFrom = outFrom
+        open.closedByFlow = false
         return stopRunning(data, me.id, iso)?.projectId ?? null
       }),
 
@@ -205,6 +242,8 @@ export function timeApi(db: MockDb, hub: MockHub, now: () => Date): Api['time'] 
         const today = data.checkIns.find((c) => c.userId === me.id && c.day === localDay(at) && c.checkedOutAt !== null)
         if (!today) throw badRequest("You haven't checked out today.")
         today.checkedOutAt = null
+        today.outFrom = null
+        today.closedByFlow = false
         return null
       }),
 

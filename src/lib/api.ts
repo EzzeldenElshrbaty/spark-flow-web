@@ -50,5 +50,6 @@ export const api: Api = {
   get files() { return resolve().files },
   get audit() { return resolve().audit },
   get archive() { return resolve().archive },
+  get attendance() { return resolve().attendance },
   get db() { return resolve().db },
 }

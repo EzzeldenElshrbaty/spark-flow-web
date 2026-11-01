@@ -1,7 +1,7 @@
 import clsx from 'clsx'
 import { isActive } from '@/lib/people'
 import { useQueryClient } from '@tanstack/react-query'
-import { IconAdjustmentsHorizontal, IconChevronDown, IconKey, IconLogout, IconMoon, IconSun } from '@tabler/icons-react'
+import { IconAdjustmentsHorizontal, IconChevronDown, IconClockHour4, IconKey, IconLogout, IconMoon, IconSun } from '@tabler/icons-react'
 import { useNavigate } from 'react-router'
 import { useDndEnd } from '@/api/preferences'
 import { useRoleNames } from '@/api/roles'
@@ -17,7 +17,8 @@ import { useRole } from '@/lib/useRole'
 import { useTheme } from '@/lib/useTheme'
 
 /**
- * The account menu behind the avatar: who you are, Preferences, and Change password / Log out (once sign-in exists).
+ * The account menu behind the avatar: who you are, Preferences, My attendance, and Change password / Log out (once
+ * sign-in exists).
  * The redesign's menu (spec 5.2): a dropdown on desktop, a bottom sheet on phones.
  */
 export function UserMenu() {
@@ -107,6 +108,11 @@ export function UserMenu() {
       {workspace && (
         <MenuItem icon={IconAdjustmentsHorizontal} onSelect={() => navigate(paths.preferences(workspace.slug))}>
           Preferences
+        </MenuItem>
+      )}
+      {workspace && (
+        <MenuItem icon={IconClockHour4} onSelect={() => navigate(`${paths.attendance(workspace.slug)}?person=${encodeURIComponent(persona.id)}`)}>
+          My attendance
         </MenuItem>
       )}
       <MenuHeading>Theme</MenuHeading>

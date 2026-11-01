@@ -3,6 +3,7 @@ import { Suspense, useState } from 'react'
 import { Announcer } from '@/components/sf/Announcer'
 import { ToastProvider, ToastRegion } from '@/components/sf/Toast'
 import { Outlet, useMatches } from 'react-router'
+import { ActivityTracker } from '@/layout/ActivityTracker'
 import { DesktopNotifier } from '@/layout/DesktopNotifier'
 import { Inspector } from '@/layout/Inspector'
 import { PageSkeleton } from '@/layout/PageSkeleton'
@@ -43,6 +44,7 @@ export function AppLayout() {
         <div aria-hidden className="sf fixed inset-0 -z-10 hidden bg-sf-app-frame lg:block" />
         <RealtimeBridge />
         <DesktopNotifier />
+        <ActivityTracker />
         <Announcer />
         <Sidebar collapsed={collapsed} />
         {/* The main card (spec 5.3); the top bar stays put and the page scrolls under it. */}

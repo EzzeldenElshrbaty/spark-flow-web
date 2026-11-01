@@ -49,6 +49,9 @@ function demoIp(): string {
 
 let requestInfo: () => RequestInfo = () => ({ ip: typeof navigator === 'undefined' ? null : demoIp(), device: deviceOf(globalThis.navigator?.userAgent) })
 
+/** Where this request comes from: its IP and device, as the server sees them. */
+export const requestFrom = (): RequestInfo => requestInfo()
+
 /** Tests fix where requests come from. */
 export function setRequestInfo(info: () => RequestInfo) {
   requestInfo = info

@@ -42,7 +42,8 @@ const emptyData = (): DbData => ({
   notificationPrefs: [],
   roles: [],
   audit: [],
-  settings: { archiveRetentionDays: 365 },
+  settings: { archiveRetentionDays: 365, workHours: { days: [0, 1, 2, 3, 4], start: '09:00', end: '17:00', timeZone: 'Africa/Cairo' } },
+  visits: [],
   counters: {},
 })
 
@@ -252,6 +253,20 @@ describe('createDb', () => {
     await expect(db.importAll({ app: 'spark-flow', version: DB_VERSION, exportedAt: 'T', data: noRoles })).rejects.toMatchObject({ status: 400 })
     const noGrants = { ...base, roles: [{ id: 'admin', name: 'Admin', builtIn: true }] }
     await expect(db.importAll({ app: 'spark-flow', version: DB_VERSION, exportedAt: 'T', data: noGrants })).rejects.toMatchObject({ status: 400 })
+  })
+
+  it('working hours that can’t be read (slice 5) are refused on import; a file from before Attendance gets the defaults', async () => {
+    const db = createDb(createMemoryStore(), fakeSeed)
+    const base = (await db.exportAll()).data
+    for (const workHours of [{}, { days: [0], start: '17:00', end: '09:00', timeZone: 'Africa/Cairo' }, { days: [0], start: '09:00', end: '17:00', timeZone: 'Mars/Olympus' }]) {
+      const odd = { ...base, settings: { ...base.settings, workHours } }
+      await expect(db.importAll({ app: 'spark-flow', version: DB_VERSION, exportedAt: 'T', data: odd as never })).rejects.toMatchObject({ status: 400 })
+    }
+    const { visits: _visits, ...older } = { ...base, version: 26, settings: { archiveRetentionDays: 90 } }
+    await db.importAll({ app: 'spark-flow', version: 26, exportedAt: 'T', data: older as never })
+    const data = await db.read()
+    expect(data.visits).toEqual([])
+    expect(data.settings).toEqual({ archiveRetentionDays: 90, workHours: { days: [0, 1, 2, 3, 4], start: '09:00', end: '17:00', timeZone: 'Africa/Cairo' } })
   })
 
   it('a deactivation that isn’t one (slice 3) is refused on import', async () => {

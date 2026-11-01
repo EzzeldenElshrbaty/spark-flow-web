@@ -204,7 +204,44 @@ export type TimeEntry = {
   startedAt: string; endedAt: string | null              // null = running
   source: 'timer' | 'manual'; note: string
 }
-export type CheckIn = { id: string; userId: string; day: string /* YYYY-MM-DD local */; checkedInAt: string; checkedOutAt: string | null; plan: string }
+/** Where the browser said it was, to within `accuracy` metres. */
+export type GeoFix = { lat: number; lng: number; accuracy: number }
+/** A check's place: the browser's fix, 'blocked' when the person refused, 'none' when the device has none. */
+export type CheckLocation = GeoFix | 'blocked' | 'none'
+/** Where a check-in or check-out came from (slice 5): the server's IP and device, and the browser's place. */
+export type CheckSource = { ip: string | null; device: string | null; location: CheckLocation }
+export type CheckIn = {
+  id: string; userId: string; day: string /* YYYY-MM-DD local */; checkedInAt: string; checkedOutAt: string | null; plan: string
+  /** Absent on check-ins from before slice 5. */
+  inFrom?: CheckSource | null
+  outFrom?: CheckSource | null
+  /** Flow closed it (a check-out forgotten on an earlier day, or deactivating): never counts as leaving early. */
+  closedByFlow?: boolean
+}
+/** Time using Flow (slice 5): pings a minute apart, from one IP and device on one day, make one visit. */
+export type Visit = { id: string; userId: string; day: string; startedAt: string; endedAt: string; minutes: number; ip: string | null; device: string | null }
+/** What "late" and "left early" mean: working days (0 = Sunday), HH:MM start and end, in a time zone. */
+export type WorkHours = { days: number[]; start: string; end: string; timeZone: string }
+export type AttendancePeriod = 1 | 7 | 30 | 90
+/** A period ending today, for one person or everyone the viewer may see. */
+export type AttendanceQuery = { days: AttendancePeriod; userId?: string }
+/** One check-in or check-out on Attendance. `newIp`/`newDevice`: different from that person's previous check. */
+export type CheckEvent = {
+  id: string; userId: string; kind: 'in' | 'out'; at: string
+  ip: string | null; device: string | null; location: CheckLocation | null
+  byFlow: boolean; newIp: boolean; newDevice: boolean
+  /** In late or out early, by the working hours. */
+  offHours: boolean
+}
+export type AttendanceDayRow = {
+  userId: string; checkedInAt: string | null; checkedOutAt: string | null; byFlow: boolean
+  hours: number; appMinutes: number; late: boolean; early: boolean
+}
+/** Per person for a period; average in and out are minutes after midnight in the working hours' time zone. */
+export type AttendanceReportRow = {
+  userId: string; daysIn: number; avgIn: number | null; avgOut: number | null
+  late: number; early: number; hours: number; appMinutes: number
+}
 /** One hourly cost from `effectiveFrom` on (admin only); a person's rows are their rate's history. */
 export type Rate = { id: string; userId: string; hourlyCost: number; currency: 'EGP'; effectiveFrom: string }
 
@@ -643,7 +680,11 @@ export type TimeTarget = { taskId: string } | { projectId: string }
  * My day: today's check-in, a check-in still open from an earlier day (forgot to check out), my running entry (from
  * any day) and my entries that started today, newest first.
  */
-export type MyDay = { day: string; checkIn: CheckIn | null; openCheckIn: CheckIn | null; running: TimeEntry | null; entries: TimeEntry[] }
+export type MyDay = {
+  day: string; checkIn: CheckIn | null; openCheckIn: CheckIn | null; running: TimeEntry | null; entries: TimeEntry[]
+  /** Never checked in yet: the card says what checking in records. */
+  firstCheckIn: boolean
+}
 export type NewManualEntry = TimeTarget & { startedAt: string; endedAt: string; note: string }
 /** A change to a closed entry; `target` moves it to another task or project. */
 export type TimeEntryPatch = Partial<Pick<NewManualEntry, 'startedAt' | 'endedAt' | 'note'>> & { target?: TimeTarget }
@@ -830,13 +871,34 @@ export interface Api {
     restore(key: string): Promise<TaskView>
   }
   teams: { list(workspaceId: string): Promise<Team[]> }
+  /**
+   * User attendance and activities (slice 5). Everyone sees their own; "See everyone’s check-ins and app use" everyone;
+   * "…of the people on projects they manage" those people. Asking for someone else is a 403.
+   */
+  attendance: {
+    /** Whose attendance I may see, me first. */
+    scope(): Promise<{ userIds: string[] }>
+    /** Check-ins and check-outs, newest first. */
+    checkIns(query: AttendanceQuery): Promise<CheckEvent[]>
+    /** One local day (YYYY-MM-DD): a row per person, absent ones too. */
+    day(day: string, userId?: string): Promise<AttendanceDayRow[]>
+    /** Visits, newest first. */
+    visits(query: AttendanceQuery): Promise<Visit[]>
+    report(query: AttendanceQuery): Promise<AttendanceReportRow[]>
+    workHours(): Promise<WorkHours>
+    /** "Change settings, users and roles"; the time zone stays. */
+    setWorkHours(input: { days: number[]; start: string; end: string }): Promise<WorkHours>
+    /** About once a minute while Flow is on screen and in use (layout/ActivityTracker). */
+    ping(): Promise<void>
+  }
   time: {
     list(projectId: string): Promise<ProjectTime>
     today(): Promise<MyDay>
     /** Once per day; with a target it starts a timer too. */
-    checkIn(input: { plan: string; target?: TimeTarget }): Promise<MyDay>
+    /** The server records its time, IP and device; the browser sends its place. */
+    checkIn(input: { plan: string; target?: TimeTarget; location?: CheckLocation }): Promise<MyDay>
     /** Closes the latest open check-in and stops the running timer. */
-    checkOut(): Promise<MyDay>
+    checkOut(input?: { location?: CheckLocation }): Promise<MyDay>
     /** Reopens today's check-in after a check-out by mistake; the stopped timer stays stopped. */
     undoCheckOut(): Promise<MyDay>
     /** One running timer per person: starting stops the last. */

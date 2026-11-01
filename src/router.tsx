@@ -28,6 +28,7 @@ const RatesPage = page(() => import('@/pages/settings/RatesPage'), 'RatesPage')
 const RolesPage = page(() => import('@/pages/settings/RolesPage'), 'RolesPage')
 const UsersPage = page(() => import('@/pages/settings/UsersPage'), 'UsersPage')
 const ArchivedPage = page(() => import('@/pages/settings/ArchivedPage'), 'ArchivedPage')
+const AttendancePage = page(() => import('@/pages/settings/AttendancePage'), 'AttendancePage')
 const AuditLogPage = page(() => import('@/pages/settings/AuditLogPage'), 'AuditLogPage')
 const ActivityPage = page(() => import('@/pages/chat/ActivityPage'), 'ActivityPage')
 const ThreadsPage = page(() => import('@/pages/chat/threads/ThreadsPage'), 'ThreadsPage')
@@ -99,6 +100,7 @@ export const router = createBrowserRouter([
           { path: 'settings/roles', element: <RolesPage /> },
           { path: 'settings/audit', element: <AuditLogPage /> },
           { path: 'settings/archived', element: <ArchivedPage /> },
+          { path: 'settings/attendance', element: <AttendancePage /> },
         ],
       },
       // Old or mistyped links say so, with the way home.

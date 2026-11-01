@@ -1787,11 +1787,60 @@ Rulings (cost if wrong):
   says so. The device comes from the browser; the server records the real IP.
 
 Plan:
-- [ ] 5.1 **API and mock:** check-in and check-out take device and location; visits; working hours; the four views as
+Design (1 Nov, within the rulings):
+- **Where:** Settings → Attendance (`/w/:ws/settings/attendance`), listed for whoever sees others' check-ins; the user
+  menu gets **My attendance** so everyone reaches their own. Tabs in the address (`?tab=checkins|day|activity|report`).
+- **Who sees whom** reuses the two permissions "Checked in now" has, relabelled: `checkins.all` "See everyone’s
+  check-ins and app use", `checkins.managed` "See check-ins and app use of the people on projects they manage". No new
+  permission. Working hours need "Change settings, users and roles".
+- **Contract** (`api.attendance`): `scope()` (whose I can see), `checkIns({days, userId})`, `day(day, userId)`,
+  `visits({days, userId})`, `report({days, userId})`, `workHours()`, `setWorkHours()`, `ping()`. Periods are Today,
+  7, 30 and 90 days. `time.checkIn` and `checkOut` take `location` (`{lat, lng, accuracy}`, `'blocked'` or `'none'`);
+  the server adds IP and device. A check-in Flow closed (a forgotten day, deactivating) is marked "by Flow" and never
+  counts as leaving early.
+- **Amber** = this event's IP or device differs from the same person's previous check-in or check-out that had one.
+- **Late / left early:** on a working day, in the working hours' time zone, in after the start or out before the end.
+- **Visits:** a ping within 5 minutes of my last visit's end, same IP and device and day, extends it by a minute;
+  anything else starts a new one. Pings aren't audited (too many; Attendance is their record) and send no event; the
+  page refreshes app time once a minute.
+- DB v27: `visits`, `settings.workHours`; seed adds IPs, devices, places, a few late and early days and visits.
+
+- [x] 5.1 **API and mock:** check-in and check-out take device and location; visits; working hours; the four views as
   queries; who sees whom. Tests: the rules, amber detection, late and early, and visibility.
-- [ ] 5.2 **`layout/ActivityTracker.tsx`,** from the CRM. Tests: visible and used counts, hidden or idle doesn't.
-- [ ] 5.3 **Page and the check-in button's notice.** Tests: jsdom, axe, 390px.
-- [ ] 5.4 **Close.**
+- [x] 5.2 **`layout/ActivityTracker.tsx`,** from the CRM. Tests: visible and used counts, hidden or idle doesn't.
+- [x] 5.3 **Page and the check-in button's notice.** Tests: jsdom, axe, 390px.
+- [x] 5.4 **Close.**
+
+### Review (slice 5)
+
+- **Checks:**
+  - Unit 1,875 and browser 252 pass, and tsc, lint and build:prototype are clean.
+  - Attendance has an axe check in light and dark (check-ins with a new IP and device, the day view, the working hours
+    sheet) and a 390px check.
+  - App check on `npm run dev`, with the browser's place allowed:
+    - Home showed the notice before the first check-in. Checking in recorded the IP, browser and place, which links to Google Maps.
+    - All four views loaded with the seed's late day, early day and blocked place.
+    - Working hours changed to 8:30 and the audit log shows "Starts: 9:00 AM → 8:30 AM".
+    - A fresh phone tab at 390px in dark had no sideways scroll, and its app time started at once. No console errors.
+- **Test-first:** the mock's rules, `workHours`, `geo`, the tracker and the page were written just before their tests;
+  the check-in notice just before its test. The review fixes' tests were written before the fixes.
+- **Changed from the plan:**
+  - No new permission: the two that "Checked in now" uses are relabelled. "Settings" now opens for whoever sees others'
+    check-ins, so Project managers and Members find Attendance there; everyone also has **My attendance** in the user menu.
+  - The seed checks people in at 5:50 UTC. Cairo was on summer time (UTC+3) until 29 October, so the old 6:50 read as late.
+  - Check-ins Flow closes are marked "By Flow" and are never "left early".
+- **Review fixes:**
+  - People who checked in before this slice now get the notice once. Before, only brand-new people did.
+  - Checking out a check-in forgotten on an earlier day ends it with that day's last entry, as Flow. Before, it counted the night and read as leaving early.
+  - A check-out after midnight is never early. Early is judged against the check-in's own day.
+  - A second ping within 50 seconds (another tab, or the tick right after coming back) adds nothing. The tracker skips that tick too, and each device keeps its own visit.
+  - An import with unreadable working hours is refused. A file from before Attendance gets the defaults (tested).
+  - The amber mark also says "new" in text, not only in colour.
+  - On an earlier day, an open check-in reads "Not checked out".
+  - The server rounds a place to 5 decimals, and periods count calendar days.
+- **Left as is (spec §4.8, Open):**
+  - A "day" is the browser's local day in the prototype. The backend should cut days in the working hours' time zone.
+  - Changing working hours sends no event, and the date box uses the browser's date format.
 
 ## Slice 6: Help for each page, and the Help centre
 

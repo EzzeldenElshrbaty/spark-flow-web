@@ -163,6 +163,33 @@ describe('createHttpApi', () => {
     ])
   })
 
+  it('maps the attendance calls, and the place sent with a check-in and check-out (slice 5)', async () => {
+    const { calls, fetchFn } = recordingFetch()
+    const api = createHttpApi(fetchFn)
+    await api.attendance.scope()
+    await api.attendance.checkIns({ days: 7 })
+    await api.attendance.day('2026-10-26', 'u 5')
+    await api.attendance.visits({ days: 30, userId: 'u-2' })
+    await api.attendance.report({ days: 90 })
+    await api.attendance.workHours()
+    await api.attendance.setWorkHours({ days: [0, 1], start: '09:00', end: '17:00' })
+    await api.attendance.ping()
+    await api.time.checkIn({ plan: 'Reviews', location: { lat: 30, lng: 31, accuracy: 20 } })
+    await api.time.checkOut()
+    expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url} ${c.init?.body ?? ''}`.trim())).toEqual([
+      'GET /api/attendance/scope',
+      'GET /api/attendance/check-ins?days=7',
+      'GET /api/attendance/day?day=2026-10-26&userId=u%205',
+      'GET /api/attendance/visits?days=30&userId=u-2',
+      'GET /api/attendance/report?days=90',
+      'GET /api/settings/work-hours',
+      'PUT /api/settings/work-hours {"days":[0,1],"start":"09:00","end":"17:00"}',
+      'POST /api/attendance/ping',
+      'POST /api/time/check-in {"plan":"Reviews","location":{"lat":30,"lng":31,"accuracy":20}}',
+      'POST /api/time/check-out {"location":"none"}',
+    ])
+  })
+
   it('maps the people calls (slice 3)', async () => {
     const { calls, fetchFn } = recordingFetch()
     const api = createHttpApi(fetchFn)

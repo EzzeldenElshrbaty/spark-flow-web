@@ -2,6 +2,9 @@ import type {
   Attachment,
   ChatMessage,
   CheckIn,
+  CheckLocation,
+  CheckSource,
+  Visit,
   Comment,
   Deliverable,
   Phase,
@@ -24,6 +27,7 @@ import type {
 import { DB_VERSION, type SeedResult } from './db'
 import { checklistTxt, screenshotPng, scopePdf } from './seedFiles'
 import { localDay } from '@/lib/dates'
+import { DEFAULT_WORK_HOURS } from '@/lib/workHours'
 import { mentionsFor } from './mentions'
 import { parseMentions, parseTicketKeys } from './text'
 import { parseBody } from '@/lib/messageBody'
@@ -468,9 +472,28 @@ export function seed(now: Date): SeedResult {
   ]
   const checkIns: CheckIn[] = []
   const timeEntries: TimeEntry[] = []
+  const visits: Visit[] = []
+  // Where checks come from (slice 5): the office network and each person's laptop, with a few exceptions so Attendance
+  // has something to show: Salma in late from her phone at home one day, Tarek leaving early, Omar's place blocked.
+  const office = '41.233.18.9'
+  const laptop: Record<string, string> = { 'u-2': 'Chrome 130 · macOS', 'u-3': 'Chrome 130 · Windows', 'u-4': 'Edge 130 · Windows', 'u-5': 'Chrome 130 · Windows', 'u-6': 'Firefox 131 · Linux', 'u-7': 'Safari 18 · macOS', 'u-8': 'Chrome 130 · Windows' }
+  const desk = (userId: string): CheckLocation => (userId === 'u-8' ? 'blocked' : { lat: (3_005_710 + Number(userId.slice(2))) / 100_000, lng: 31.2272, accuracy: 25 })
+  const from = (userId: string): CheckSource => ({ ip: office, device: laptop[userId] ?? null, location: desk(userId) })
   days.forEach((day, d) => {
     for (const [userId, morning, afternoon] of workPlan) {
-      checkIns.push({ id: `ci-${userId}-${d}`, userId, day: day.toISOString().slice(0, 10), checkedInAt: at(day, 6, 50), checkedOutAt: at(day, 15, 5), plan: `${morning} in the morning, ${afternoon} after lunch.` })
+      const late = userId === 'u-5' && d === 1
+      const early = userId === 'u-7' && d === 3
+      // Cairo is UTC+2, or +3 in summer time (late April to late October): 5:50 UTC is 7:50 or 8:50 there, on time
+      // either way; 7:40 is late and 13:30 early either way.
+      const inAt = late ? at(day, 7, 40) : at(day, 5, 50)
+      const outAt = early ? at(day, 13, 30) : at(day, 15, 5)
+      const inFrom = late ? { ip: '197.48.112.6', device: 'Chrome 130 · Android', location: { lat: 30.0626, lng: 31.3409, accuracy: 12 } } : from(userId)
+      checkIns.push({ id: `ci-${userId}-${d}`, userId, day: day.toISOString().slice(0, 10), checkedInAt: inAt, checkedOutAt: outAt, plan: `${morning} in the morning, ${afternoon} after lunch.`, inFrom, outFrom: from(userId) })
+      const device = laptop[userId] ?? null
+      visits.push(
+        { id: `v-${userId}-${d}-a`, userId, day: day.toISOString().slice(0, 10), startedAt: inAt, endedAt: at(day, 11), minutes: late ? 170 : 205, ip: inFrom.ip, device: inFrom.device },
+        { id: `v-${userId}-${d}-b`, userId, day: day.toISOString().slice(0, 10), startedAt: at(day, 11, 30), endedAt: outAt, minutes: early ? 110 : 190, ip: office, device },
+      )
       timeEntries.push(
         { id: `te-${userId}-${d}-a`, userId, projectId: taskProject.get(morning) ?? '', taskId: `t-${morning.toLowerCase()}`, startedAt: at(day, 7), endedAt: at(day, 11), source: 'timer', note: '' },
         { id: `te-${userId}-${d}-b`, userId, projectId: taskProject.get(afternoon) ?? '', taskId: `t-${afternoon.toLowerCase()}`, startedAt: at(day, 11, 30), endedAt: at(day, 15), source: d === 2 ? 'manual' : 'timer', note: d === 2 ? 'Added after the fact: forgot the timer.' : '' },
@@ -484,7 +507,9 @@ export function seed(now: Date): SeedResult {
   const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
   const shift = (ms: number) => new Date(Math.max(now.getTime() - ms, midnight)).toISOString()
   for (const [userId, taskKey] of [['u-2', 'NEX-101'], ['u-3', 'NEX-106'], ['u-6', 'NEX-107']] as const) {
-    checkIns.push({ id: `ci-${userId}-now`, userId, day: localDay(now), checkedInAt: shift(3 * 3_600_000), checkedOutAt: null, plan: `${taskKey} first, then reviews.` })
+    checkIns.push({ id: `ci-${userId}-now`, userId, day: localDay(now), checkedInAt: shift(3 * 3_600_000), checkedOutAt: null, plan: `${taskKey} first, then reviews.`, inFrom: from(userId) })
+    const [start, end] = [shift(3 * 3_600_000), shift(60_000)]
+    visits.push({ id: `v-${userId}-now`, userId, day: localDay(now), startedAt: start, endedAt: end, minutes: Math.round((Date.parse(end) - Date.parse(start)) / 70_000), ip: office, device: laptop[userId] ?? null })
     timeEntries.push({ id: `te-${userId}-now`, userId, projectId: 'p-nex', taskId: `t-${taskKey.toLowerCase()}`, startedAt: shift(3_600_000), endedAt: null, source: 'timer', note: '' })
   }
 
@@ -561,7 +586,8 @@ export function seed(now: Date): SeedResult {
     notificationPrefs: [],
     roles: builtInRoles(),
     audit: [],
-    settings: { archiveRetentionDays: 365 },
+    settings: { archiveRetentionDays: 365, workHours: { ...DEFAULT_WORK_HOURS, days: [...DEFAULT_WORK_HOURS.days] } },
+    visits: visits.sort((a, b) => (a.startedAt < b.startedAt ? -1 : 1)),
     activity: tickets
       .map((t) => ({ id: `act-${t.id}`, projectId: t.projectId, taskKey: t.key, actorId: t.reporterId, at: t.createdAt, kind: 'task.created' as const, changes: [] }))
       .sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0)),

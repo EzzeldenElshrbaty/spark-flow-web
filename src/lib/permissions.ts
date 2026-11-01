@@ -12,8 +12,8 @@ export const PERMISSION_GROUPS = [
     label: 'General',
     permissions: [
       { id: 'dashboard.all', label: 'See the dashboard for every project' },
-      { id: 'checkins.all', label: 'See everyone who is checked in' },
-      { id: 'checkins.managed', label: 'See who is checked in on projects they manage' },
+      { id: 'checkins.all', label: 'See everyone’s check-ins and app use' },
+      { id: 'checkins.managed', label: 'See check-ins and app use of the people on projects they manage' },
     ],
   },
   {
@@ -200,7 +200,7 @@ export function can(action: Action, ctx: PermissionContext): boolean {
       return has(ctx, 'settings.manage')
     // Settings opens for anyone with something to change there.
     case 'settings.open':
-      return has(ctx, 'settings.manage') || has(ctx, 'rates.manage') || has(ctx, 'database.manage') || has(ctx, 'audit.view') || has(ctx, 'archive.manage')
+      return has(ctx, 'settings.manage') || has(ctx, 'rates.manage') || has(ctx, 'database.manage') || has(ctx, 'audit.view') || has(ctx, 'archive.manage') || can('checkins.view', ctx)
     case 'audit.view':
       return has(ctx, 'audit.view')
     case 'archive.manage':

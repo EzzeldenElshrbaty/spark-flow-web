@@ -54,6 +54,8 @@ export const qk = {
   people: () => ['people'],                              // Settings → Users (slice 3)
   archiveAll: () => ['archive'],                         // prefix of every workspace's archived records (slice 4)
   archive: (workspaceId: string) => ['archive', workspaceId],
+  attendanceAll: () => ['attendance'],                   // prefix of every Attendance view (slice 5)
+  attendance: (view: string, ...params: (string | number)[]) => ['attendance', view, ...params],
   auditAll: () => ['audit'],                             // prefix of the audit log's pages and summary
   auditList: (filter: unknown) => ['audit', 'list', filter],
   auditSummary: (todayFrom: string) => ['audit', 'summary', todayFrom],
@@ -104,8 +106,9 @@ function dataKeysFor(event: RealtimeEvent): QueryKey[] {
         ['tickets', 'projects'], ['tickets', 'project'], ['dashboard'], qk.taskRefsAll(),
       ]
     case 'timeLogged':
-      // Hours change everywhere: my day, every task and project summary (under 'tickets'), and the Time tabs.
-      return [qk.myDay(), ['tickets'], qk.timeAll(), ['dashboard'], ['time', 'report']]
+      // Hours change everywhere: my day, every task and project summary (under 'tickets'), the Time tabs, and
+      // Attendance (a check-in or check-out sends this too).
+      return [qk.myDay(), ['tickets'], qk.timeAll(), ['dashboard'], ['time', 'report'], qk.attendanceAll()]
     case 'messageChanged':
       return [qk.messages(event.channelId), qk.message(event.messageId), qk.replies(event.messageId), qk.mentions(), qk.activityAll(), qk.sentAll(), qk.pins(event.channelId), qk.channelFiles(event.channelId), qk.threadsAll()]
     case 'projectChanged':

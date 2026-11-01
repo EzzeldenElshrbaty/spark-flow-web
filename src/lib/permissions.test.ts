@@ -193,9 +193,11 @@ describe('roles as records (slice 1)', () => {
     expect(can('project.create', { userId: 'u-s', grants: grantsOf(['member', 'sales'], [...roles, { id: 'member', grants: [] }]) })).toBe(true)
   })
 
-  it('Settings opens for whoever may change settings, hourly costs or the demo data', () => {
+  it('Settings opens for whoever may change settings, hourly costs or the demo data, or see others’ attendance', () => {
     expect(can('settings.open', as('admin'))).toBe(true)
-    for (const role of ['sales', 'pm', 'member'] as const) expect(can('settings.open', as(role)), role).toBe(false)
+    expect(can('settings.open', as('sales'))).toBe(false)
+    // Project managers and Members see the check-ins of people on projects they manage (Attendance, slice 5).
+    for (const role of ['pm', 'member'] as const) expect(can('settings.open', as(role)), role).toBe(true)
     expect(can('settings.open', { userId: 'u', grants: ['rates.manage'] })).toBe(true)
     expect(can('settings.manage', { userId: 'u', grants: ['rates.manage'] })).toBe(false)
   })

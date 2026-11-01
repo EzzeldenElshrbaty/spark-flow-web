@@ -22,7 +22,9 @@ browser run.
 - Thursday is a working **demo on mock data** (IndexedDB in the browser), not a production release. The .NET + SignalR
   backend comes later behind the existing `lib/api.ts` switch.
 - "Teams" are named groups of users. Hourly cost is per person, entered by an Admin, visible to Admins only.
-- Check-in is for tracking work, not surveillance; it is shown to the person and to managers of their projects.
+- Check-in is for tracking work; it is shown to the person and to managers of their projects. (Amended 1 Nov 2026,
+  Admin and help slice 5: check-in and check-out also record IP, device and, if the person allows it, location, and
+  Flow records time using it. The card says so before the first check-in; see §4.8.)
 - Waterfall is the default way of working; sprints are optional per project.
 
 ## 2. Decisions
@@ -292,6 +294,54 @@ Settings → Archived records needs "Manage archived records" (`archive.manage`,
 | Delete for good | `DELETE /api/archive/:type/:id` | Only an archived record (`Only archived records can be deleted for good.`), past its date (`It can be deleted for good from 31 Oct 2027.`), with no time logged (`It has time logged on it, so it’s kept: its hours and cost stay in reports.`), never a channel (`Channels are restored, not deleted for good.`, until message retention is decided, chat spec §13 item 8). A project goes with its tasks, comments, phases, deliverables, sprints, project files (and their bytes when nothing else uses them) and history; its channel stays, archived, as a channel of its own. A task goes with its comments and history. A deleted project's key is retired (`settings.retiredKeys`): a new project can't take it (`Key PIL belonged to a project deleted for good, so it can’t be used again.`), since the log and old links still name its tasks. Logged as `deleted` in "Status and archive", with what went. Sends `projectChanged`. |
 
 Restoring uses each type's own call and rights; the list shows `restoreBlocked` in place of Restore. Archiving or restoring what is already so changes nothing and sends nothing; the reason is checked after access. Changing the retention sends no event (another open tab sees the new dates on its next load), and "Can be deleted" compares with the browser's clock (the server checks again on delete).
+
+### 4.8 Attendance (amended 1 Nov 2026, Admin and help slice 5)
+
+Check-in and check-out record the server's time, IP and device (the browser's user agent), and the browser's place:
+`location` is `{ lat, lng, accuracy }` (5 decimals, metres), `'blocked'` when refused, `'none'` when the device has none
+or doesn't answer in 8 seconds (`That location can't be right.` for anything else). Stored on the check-in as `inFrom` and
+`outFrom` (`{ ip, device, location }`); a check-in Flow closed (forgotten on an earlier day, deactivating) has
+`closedByFlow` and no `outFrom`. Checking out a check-in left open on an earlier day stops its timer and ends it with
+that day's last entry, as Flow, not at the moment of clicking. The server keeps a place to 5 decimals. Before someone's
+first check-in that recorded where it came from (`MyDay.firstCheckIn`, so people with older check-ins see it once too)
+the card says what is recorded and who sees it. In the prototype the IP is made up per browser.
+
+App use: `layout/ActivityTracker.tsx` (the CRM's) pings about once a minute while Flow is on screen and was used in the
+last 5 minutes. A ping within 5 minutes of my last visit's end, from the same IP and device on the same local day, adds a
+minute to it, unless it comes under 50 seconds after that visit's last counted minute (another tab), which adds nothing;
+anything else starts a visit `{ day, startedAt, endedAt, minutes, ip, device }`. Each IP and device keeps its own
+visit. Pings aren't audited and send no event.
+
+Working hours (`settings.workHours`, DB v27): days (0 = Sunday), `HH:MM` start and end, time zone; default Sunday to
+Thursday, 09:00–17:00, Africa/Cairo. Late = in after the start on a working day; left early = out before the end of the
+check-in's own working day (a check-out after midnight never is), never when Flow closed it. An import whose working
+hours break these rules, or name an unknown time zone, is refused. Changing them needs `settings.manage` and is logged (`Working days`, `Starts`,
+`Ends`). Refusals: `Pick at least one working day.`, `Pick days from Sunday to Saturday.`, `Times are HH:MM, such as
+09:00.`, `The day ends after it starts.`
+
+Who sees whom: yourself always; `checkins.all` ("See everyone’s check-ins and app use") everyone; `checkins.managed`
+("…of the people on projects they manage") the people on projects you manage that aren't archived. Anyone else: 403
+`You don't have access to their attendance.` `settings.open` now includes `checkins.view`, so Project managers and
+Members find Settings → Attendance; the user menu has **My attendance** for everyone.
+
+| Call | Route | Notes |
+|---|---|---|
+| Scope | `GET /api/attendance/scope` | `{ userIds }`, me first. |
+| Check-ins | `GET /api/attendance/check-ins?days=&userId=` | Newest first; each with `ip`, `device`, `location`, `byFlow`, `newIp` / `newDevice` (differs from that person's previous check that had one), `offHours` (late or left early). |
+| Day | `GET /api/attendance/day?day=YYYY-MM-DD&userId=` | A row per person shown (active ones, plus deactivated ones with a check-in that day): in, out, hours checked in (until now while today's is open), app minutes, late, early. `Pick a day.` |
+| Visits | `GET /api/attendance/visits?days=&userId=` | Newest first. |
+| Report | `GET /api/attendance/report?days=&userId=` | Per person: days in, average in and out (minutes after midnight in the hours' zone), late, early, hours, app minutes. |
+| Working hours | `GET` / `PUT /api/settings/work-hours` `{ days, start, end }` | |
+| Ping | `POST /api/attendance/ping` | |
+| Check-in / out | `POST /api/time/check-in` `{ plan, target?, location }`, `/check-out` `{ location }` | As before, plus the place. |
+
+`days` is 1, 7, 30 or 90 (`Pick 1, 7, 30 or 90 days.`), ending today. A check-in or check-out sends `timeLogged`, which
+also refreshes Attendance; app time refreshes once a minute on the page. Changing working hours sends no event.
+
+Open: a "day" (`CheckIn.day`, `Visit.day`, periods, the Day view) is the local day of the browser in the prototype,
+which for Spark Systems is Cairo. The backend should cut days in `workHours.timeZone`, and times on the page then read in
+that zone too; until then a viewer outside Cairo sees in and out times in their own zone, while averages and late and
+early use Cairo's.
 
 ## 5. Screens (copy the named Spark CRM screen in `design/screenshots/`)
 

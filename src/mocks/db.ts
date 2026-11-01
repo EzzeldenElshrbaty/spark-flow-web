@@ -1,3 +1,4 @@
+import { checkWorkHours } from '@/lib/workHours'
 import type {
   ChannelMemberState,
   Draft,
@@ -26,6 +27,8 @@ import type {
   TimeEntry,
   User,
   Workspace,
+  Visit,
+  WorkHours,
   Pin,
   Folder,
   Bookmark,
@@ -38,7 +41,7 @@ import { memoryActor, type Actor } from './actor'
 import { migrate } from './migrations'
 import type { MockStore } from './store'
 
-export const DB_VERSION = 26 // 2: the company-system document (spec §3); 3: mention read state; 4: channel reads per person; 5: typed columns, history; 6: rate history; 7: message seq, channel member state; 8: message bodies; 9: drafts; 10: deleted messages kept for Undo; 11: thread follows; 12: activity items, channel levels; 13: channel description, who can post; 14: email invites, default channels; 15: file details (uploader, title, description, scan); 16: reminders, scheduled messages; 17: reminders on saved items; 18: text snippets; 19: /remind notes; 20: pins, folders, bookmarks; 21: sidebar order; 22: sidebar order ids (projects too); 23: notification preferences, levels that follow the default; 24: roles as records, people with roleIds; 25: the audit log; 26: settings (archive retention), Manage archived records for Admin
+export const DB_VERSION = 27 // 2: the company-system document (spec §3); 3: mention read state; 4: channel reads per person; 5: typed columns, history; 6: rate history; 7: message seq, channel member state; 8: message bodies; 9: drafts; 10: deleted messages kept for Undo; 11: thread follows; 12: activity items, channel levels; 13: channel description, who can post; 14: email invites, default channels; 15: file details (uploader, title, description, scan); 16: reminders, scheduled messages; 17: reminders on saved items; 18: text snippets; 19: /remind notes; 20: pins, folders, bookmarks; 21: sidebar order; 22: sidebar order ids (projects too); 23: notification preferences, levels that follow the default; 24: roles as records, people with roleIds; 25: the audit log; 26: settings (archive retention), Manage archived records for Admin; 27: visits, working hours
 /** Phase 1+2 kept the mock database in localStorage under keys starting with this. */
 const LEGACY_PREFIX = 'spark-flow.mockdb.v1'
 
@@ -107,7 +110,15 @@ export type DbData = {
   /** The audit log, oldest first, chained (slice 2). Only ever appended to. */
   audit: AuditEvent[]
   /** Company settings (slice 4): how many days archived records are kept before they may be deleted for good. */
-  settings: { archiveRetentionDays: number; /** Keys of projects deleted for good, never used again. */ retiredKeys?: string[] }
+  settings: {
+    archiveRetentionDays: number
+    /** Keys of projects deleted for good, never used again. */
+    retiredKeys?: string[]
+    /** What late and early mean on Attendance (slice 5). */
+    workHours: WorkHours
+  }
+  /** Time using Flow (slice 5), oldest first. */
+  visits: Visit[]
 }
 
 /** A role as stored: how many hold it is worked out on read. */
@@ -151,7 +162,7 @@ export interface MockDb {
 
 const COLLECTIONS = [
   'users', 'workspaces', 'projects', 'sprints', 'tickets', 'channels', 'messages', 'replies',
-  'teams', 'phases', 'deliverables', 'comments', 'attachments', 'projectFiles', 'timeEntries', 'checkIns', 'rates', 'activity', 'drafts', 'trash', 'threadFollows', 'notifications', 'invitations', 'saved', 'scheduled', 'pins', 'folders', 'bookmarks', 'sidebarOrders', 'notificationPrefs', 'roles', 'audit',
+  'teams', 'phases', 'deliverables', 'comments', 'attachments', 'projectFiles', 'timeEntries', 'checkIns', 'rates', 'activity', 'drafts', 'trash', 'threadFollows', 'notifications', 'invitations', 'saved', 'scheduled', 'pins', 'folders', 'bookmarks', 'sidebarOrders', 'notificationPrefs', 'roles', 'audit', 'visits',
 ] as const
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -168,7 +179,8 @@ function hasShape(value: unknown): value is DbData {
     isRecord(value.channelState) &&
     isRecord(value.mentionReads) &&
     isRecord(value.settings) &&
-    typeof value.settings.archiveRetentionDays === 'number'
+    typeof value.settings.archiveRetentionDays === 'number' &&
+    isRecord(value.settings.workHours)
   )
 }
 
@@ -193,8 +205,21 @@ function hasUsableRecords(data: DbData): boolean {
     data.users.every((user) => strings(user.roleIds)) &&
     // Deactivated people are signed out on every request (slice 3).
     data.users.every((user) => user.deactivated == null || (isRecord(user.deactivated) && typeof user.deactivated.at === 'string')) &&
-    data.roles.every((role) => strings(role.grants))
+    data.roles.every((role) => strings(role.grants)) &&
+    // Late and early are read from these on every Attendance call (slice 5).
+    checkWorkHours(data.settings.workHours) === null &&
+    knownTimeZone(data.settings.workHours.timeZone)
   )
+}
+
+function knownTimeZone(value: unknown): boolean {
+  if (typeof value !== 'string') return false
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: value })
+    return true
+  } catch {
+    return false
+  }
 }
 
 type Condition = 'ok' | 'missing' | 'outdated' | 'newer'

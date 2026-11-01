@@ -41,8 +41,8 @@ function TaskSelect({ tasks, projects, value, onChange, label, empty }: { tasks:
   )
 }
 
-/** Not checked in yet: today's plan and, if you like, the task to start on. */
-function CheckInForm({ tasks, projects }: { tasks: TaskView[]; projects: LoggableProject[] }) {
+/** Not checked in yet: today's plan and, if you like, the task to start on; the first time, what checking in records. */
+function CheckInForm({ tasks, projects, first }: { tasks: TaskView[]; projects: LoggableProject[]; first: boolean }) {
   const checkIn = useCheckIn()
   const [plan, setPlan] = useState('')
   const [taskId, setTaskId] = useState('')
@@ -59,6 +59,11 @@ function CheckInForm({ tasks, projects }: { tasks: TaskView[]; projects: Loggabl
       </Field>
       <TaskSelect tasks={tasks} projects={projects} value={taskId} onChange={setTaskId} label="Start the timer on" empty="Pick later" />
       {errorText(checkIn.error)}
+      {first && (
+        <p className="text-xs text-fg-muted">
+          Checking in and out records the time, this device’s IP address and browser, and your location if you allow it. You, the managers of your projects and Admins can see them in Attendance.
+        </p>
+      )}
       <div className="flex justify-end">
         <Button type="submit" disabled={checkIn.isPending}>
           {checkIn.isPending ? 'Checking in…' : 'Check in'}
@@ -158,7 +163,7 @@ export function CheckInCard({ day, tasks, projects = [], label }: { day: MyDay; 
             <TimerRow day={day} tasks={tasks} projects={projects} label={label} />
           </div>
         )}
-        <CheckInForm tasks={tasks} projects={projects} />
+        <CheckInForm tasks={tasks} projects={projects} first={day.firstCheckIn} />
       </Card>
     )
   }

@@ -1,4 +1,4 @@
-import type { Api, AuditFilter, ChatTarget, ProblemDetails } from '@/api/types'
+import type { Api, AttendanceQuery, AuditFilter, ChatTarget, ProblemDetails } from '@/api/types'
 import { apiUrl } from '@/lib/api'
 import { ApiError } from '@/lib/apiError'
 
@@ -52,6 +52,8 @@ export async function requestText(path: string, accept: string, fetchFn: typeof 
 }
 
 const enc = encodeURIComponent
+/** A period ending today, for one person or everyone the viewer may see (Attendance, slice 5). */
+const attendanceQuery = (q: AttendanceQuery) => `?days=${q.days}${q.userId ? `&userId=${enc(q.userId)}` : ''}`
 /** `?a=1&b=2` from the set values, or '' when none are. */
 const query = (values: Record<string, string | undefined>) => {
   const set = Object.entries(values).filter((entry): entry is [string, string] => Boolean(entry[1]))
@@ -203,11 +205,21 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
       restore: (key) => send('POST', `/api/tasks/${enc(key)}/restore`),
     },
     teams: { list: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/teams`) },
+    attendance: {
+      scope: () => get('/api/attendance/scope'),
+      checkIns: (q) => get(`/api/attendance/check-ins${attendanceQuery(q)}`),
+      day: (day, userId) => get(`/api/attendance/day?day=${enc(day)}${userId ? `&userId=${enc(userId)}` : ''}`),
+      visits: (q) => get(`/api/attendance/visits${attendanceQuery(q)}`),
+      report: (q) => get(`/api/attendance/report${attendanceQuery(q)}`),
+      workHours: () => get('/api/settings/work-hours'),
+      setWorkHours: (input) => send('PUT', '/api/settings/work-hours', input),
+      ping: () => send<void>('POST', '/api/attendance/ping'),
+    },
     time: {
       list: (projectId) => get(`/api/projects/${enc(projectId)}/time`),
       today: () => get('/api/time/today'),
       checkIn: (input) => send('POST', '/api/time/check-in', input),
-      checkOut: () => send('POST', '/api/time/check-out'),
+      checkOut: (input) => send('POST', '/api/time/check-out', { location: input?.location ?? 'none' }),
       undoCheckOut: () => send('POST', '/api/time/check-out/undo'),
       start: (target) => send('POST', '/api/time/start', target),
       stop: () => send('POST', '/api/time/stop'),

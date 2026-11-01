@@ -1,3 +1,4 @@
+import { DEFAULT_WORK_HOURS } from '@/lib/workHours'
 import { parseBody } from '@/lib/messageBody'
 import { DEFAULT_COLUMNS } from '@/lib/statuses'
 
@@ -24,6 +25,13 @@ const V24_ROLES = [
 ]
 
 export const migrations: Record<number, (doc: Record<string, unknown>) => void> = {
+  // 27: attendance (slice 5): no visits yet, and working hours of Sunday to Thursday, 9 to 5, Cairo time. Check-ins
+  // from before have no IP, device or place, and show "—".
+  26: (doc) => {
+    if (!Array.isArray(doc.visits)) doc.visits = []
+    const settings = typeof doc.settings === 'object' && doc.settings !== null ? (doc.settings as Record<string, unknown>) : {}
+    doc.settings = { ...settings, workHours: settings.workHours ?? { ...DEFAULT_WORK_HOURS, days: [...DEFAULT_WORK_HOURS.days] } }
+  },
   // 26: company settings, keeping archived records a year before they may be deleted for good (slice 4), and the
   // built-in Admin role may manage them.
   25: (doc) => {
