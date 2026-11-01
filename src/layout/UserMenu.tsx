@@ -37,9 +37,9 @@ export function UserMenu() {
     try {
       await signOut.mutateAsync()
     } finally {
+      // Sign in first (it checks afresh, so nothing cached counts), then nothing of mine stays cached.
       navigate('/signin', { replace: true })
-      // After the shell has gone, so nothing on screen refetches what's being dropped.
-      setTimeout(() => queryClient.clear(), 0)
+      queryClient.clear()
     }
   }
   const queryClient = useQueryClient()

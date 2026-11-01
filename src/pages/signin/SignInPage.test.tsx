@@ -34,9 +34,9 @@ function Where() {
   return <output data-testid="where">{pathname + search}</output>
 }
 
-function mount(path = '/signin') {
+function mount(path = '/signin', client = new QueryClient({ defaultOptions: { queries: { retry: false } } })) {
   render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <QueryClientProvider client={client}>
       <ThemeProvider>
         <MemoryRouter initialEntries={[path]}>
           <Routes>
@@ -94,6 +94,14 @@ describe('the sign-in page', () => {
   it('after a deactivation, says why I was signed out', async () => {
     mount('/signin?why=deactivated')
     expect(screen.getByText('Your account was deactivated. Ask an Admin to reactivate it.')).toBeTruthy()
+  })
+
+  it('an account still cached from before Log out doesn’t count: the page stays (it went blank, bouncing to the shell)', async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    client.setQueryData(['users', 'me'], nour)
+    mount('/signin', client)
+    expect(await screen.findByRole('list', { name: 'Demo people' })).toBeTruthy()
+    expect(screen.queryByTestId('where')).toBeNull()
   })
 
   it('already signed in, it goes straight on', async () => {

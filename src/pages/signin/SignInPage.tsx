@@ -1,14 +1,13 @@
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import clsx from 'clsx'
 import { CalendarCheck, Clock, Layers, MessageSquare, Moon, Sun } from 'lucide-react'
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router'
 import { useDemoPeople, useSignIn } from '@/api/auth'
-import { useMe } from '@/api/users'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { Field, inputClass } from '@/components/ui/Field'
-import { backendOn } from '@/lib/api'
+import { api, backendOn } from '@/lib/api'
 import { DEMO_PASSWORD } from '@/lib/demo'
 import { useTheme } from '@/lib/useTheme'
 
@@ -26,14 +25,16 @@ export function SignInPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const me = useMe()
+  // Asked afresh each time the page opens: an account cached from before signing out must not count as signed in, or
+  // the page and the shell would send each other back and forth (the blank page after Log out).
+  const me = useQuery({ queryKey: ['auth', 'check'], queryFn: () => api.users.me(), staleTime: 0, gcTime: 0, retry: false })
   const signIn = useSignIn()
   const demo = useDemoPeople(!backendOn)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const returnTo = safeReturn(params.get('returnTo'))
 
-  if (me.data) return <Navigate to={returnTo} replace />
+  if (me.isSuccess) return <Navigate to={returnTo} replace />
 
   const go = (values: { email: string; password: string }) =>
     signIn.mutate(values, {
