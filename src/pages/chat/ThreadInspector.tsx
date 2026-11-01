@@ -104,6 +104,7 @@ export function ThreadInspector({ messageId, onClose, closeTo }: { messageId: st
     <ThreadMenu
       messageId={message.data.id}
       following={Boolean(message.data.following)}
+      muted={Boolean(message.data.threadMuted)}
       link={new URL(`${paths.channel(workspace.slug, channel.data.id)}?thread=${encodeURIComponent(message.data.id)}`, window.location.origin).href}
     />
   )

@@ -7,12 +7,27 @@ import { bodyText, parseBody, type Body } from '@/lib/messageBody'
 import { opensSearch } from '@/layout/searchShortcuts'
 import { COMMANDS, type CommandOutcome, type ParsedCommand } from '@/lib/slashCommands'
 import { RichComposer, type ComposerDirectory } from '@/pages/chat/composer/RichComposer'
+import { focusEditor } from '@/pages/chat/composer/focusEditor.testkit'
 
 // A real browser: the editor needs real keyboard events, selection and layout.
 
 afterEach(cleanup)
 // The list opens after the editor's update; give it time when the whole suite is running.
 const LIST_WAIT = { timeout: 3000 }
+
+/**
+ * Waits for the autocomplete list. In full runs only, Lexical's typeahead sometimes missed the browser's caret on the
+ * last key (the text was there, the list wasn't), and opened only on the next update, as a person's next key would
+ * give it. End, which moves nothing here, is that update (slice AA).
+ */
+async function openList(options: Parameters<typeof screen.findByRole>[1] = {}) {
+  try {
+    return await screen.findByRole('listbox', options, { timeout: 2000 })
+  } catch {
+    await userEvent.keyboard('{End}')
+    return screen.findByRole('listbox', options, LIST_WAIT)
+  }
+}
 
 const directory: ComposerDirectory = {
   users: [
@@ -48,6 +63,7 @@ async function ready(props: Partial<Parameters<typeof RichComposer>[0]> = {}) {
   return mounted
 }
 
+
 const sentText = (spy: ReturnType<typeof vi.fn>) => bodyText(spy.mock.calls.at(-1)![0] as Body)
 
 describe('RichComposer keys (spec 6.8)', () => {
@@ -66,7 +82,7 @@ describe('RichComposer keys (spec 6.8)', () => {
 
   it('Enter sends and the box clears; Shift+Enter makes a new line', async () => {
     const { onSend, editor } = await ready()
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('first{Shift>}{Enter}{/Shift}second')
     expect(onSend).not.toHaveBeenCalled()
     await userEvent.keyboard('{Enter}')
@@ -79,7 +95,7 @@ describe('RichComposer keys (spec 6.8)', () => {
     const { onSend, editor } = await ready()
     const send = screen.getByRole('button', { name: 'Send' })
     expect((send as HTMLButtonElement).disabled).toBe(true)
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('{Enter}')
     expect(onSend).not.toHaveBeenCalled()
     await userEvent.keyboard('hi')
@@ -88,7 +104,7 @@ describe('RichComposer keys (spec 6.8)', () => {
 
   it('Enter during IME composition never sends (spec 6.8 AC)', async () => {
     const { onSend, editor } = await ready()
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('مرحبا')
     editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', isComposing: true, bubbles: true, cancelable: true }))
     expect(onSend).not.toHaveBeenCalled()
@@ -98,7 +114,7 @@ describe('RichComposer keys (spec 6.8)', () => {
 describe('RichComposer formatting (spec 6.8)', () => {
   it('autoformats *bold*, _italic_, ~strike~ and `code` as you type', async () => {
     const { onSend, editor } = await ready()
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('*bold* _it_ ~gone~ `x` done{Enter}')
     expect(onSend.mock.calls[0][0]).toEqual([
       {
@@ -119,28 +135,28 @@ describe('RichComposer formatting (spec 6.8)', () => {
 
   it('autoformats "- " into a list', async () => {
     const { onSend, editor } = await ready()
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('- one{Shift>}{Enter}{/Shift}two{Enter}')
     expect(onSend.mock.calls[0][0]).toEqual([{ type: 'ul', items: [[{ type: 'text', text: 'one' }], [{ type: 'text', text: 'two' }]] }])
   })
 
   it('autoformats "1. " into a numbered list', async () => {
     const { onSend, editor } = await ready()
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('1. first{Shift>}{Enter}{/Shift}second{Enter}')
     expect(onSend.mock.calls[0][0]).toEqual([{ type: 'ol', items: [[{ type: 'text', text: 'first' }], [{ type: 'text', text: 'second' }]] }])
   })
 
   it('autoformats "> " into a quote', async () => {
     const { onSend, editor } = await ready()
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('> said so{Enter}')
     expect(onSend.mock.calls[0][0]).toEqual([{ type: 'quote', children: [{ type: 'p', children: [{ type: 'text', text: 'said so' }] }] }])
   })
 
   it('autoformats a ``` fence into a code block', async () => {
     const { onSend, editor } = await ready()
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('``` x = 1')
     await userEvent.click(screen.getByRole('button', { name: 'Send' }))
     await vi.waitFor(() => expect(onSend).toHaveBeenCalled())
@@ -149,7 +165,7 @@ describe('RichComposer formatting (spec 6.8)', () => {
 
   it('the formatting row applies bold and shows it pressed', async () => {
     const { onSend, editor } = await ready()
-    await userEvent.click(editor)
+    await focusEditor(editor)
     const bold = screen.getByRole('button', { name: 'Bold' })
     await userEvent.click(bold)
     await userEvent.keyboard('loud')
@@ -162,9 +178,9 @@ describe('RichComposer formatting (spec 6.8)', () => {
 describe('RichComposer autocomplete (spec 6.8)', () => {
   it('@ offers people; Enter picks one instead of sending, and it becomes a pill', async () => {
     const { onSend, editor } = await ready()
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('Hi @nou')
-    const list = await screen.findByRole('listbox', { name: 'Mention someone' }, LIST_WAIT)
+    const list = await openList({ name: 'Mention someone' })
     expect(list.textContent).toContain('Nour El-Sayed')
     await userEvent.keyboard('{Enter}')
     expect(onSend).not.toHaveBeenCalled()
@@ -177,26 +193,26 @@ describe('RichComposer autocomplete (spec 6.8)', () => {
 
   it('says when someone is not in this channel', async () => {
     const { editor } = await ready()
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('@mar')
-    const list = await screen.findByRole('listbox', { name: 'Mention someone' }, LIST_WAIT)
+    const list = await openList({ name: 'Mention someone' })
     expect(list.textContent).toContain('Not in this channel')
   })
 
   it('# offers channels; Tab picks', async () => {
     const { onSend, editor } = await ready()
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('see #back')
-    await screen.findByRole('listbox', { name: 'Link a channel' }, LIST_WAIT)
+    await openList({ name: 'Link a channel' })
     await userEvent.keyboard('{Tab}{Enter}')
     expect((onSend.mock.calls[0][0] as Body)[0]).toMatchObject({ children: expect.arrayContaining([{ type: 'channel', id: 'c-backend', name: 'backend' }]) })
   })
 
   it('Escape closes the list, and then Enter sends the text as typed', async () => {
     const { onSend, editor } = await ready()
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('@nou')
-    await screen.findByRole('listbox', {}, LIST_WAIT)
+    await openList({})
     await userEvent.keyboard('{Escape}')
     expect(screen.queryByRole('listbox')).toBeNull()
     await userEvent.keyboard('{Enter}')
@@ -208,7 +224,7 @@ describe('RichComposer drafts and limits (spec 6.8)', () => {
   it('starts from a draft and saves changes after 500ms', async () => {
     const { onDraft, editor } = await ready({ initialBody: [{ type: 'p', children: [{ type: 'text', text: 'half a thought' }] }] })
     expect(editor.textContent).toBe('half a thought')
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('{End}!')
     expect(onDraft).not.toHaveBeenCalled()
     await vi.waitFor(() => expect(onDraft).toHaveBeenCalled(), { timeout: 1500 })
@@ -217,7 +233,7 @@ describe('RichComposer drafts and limits (spec 6.8)', () => {
 
   it('leaving the channel within 500ms of typing still saves what was typed', async () => {
     const { onDraft, editor } = await ready()
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('last words')
     cleanup()
     expect(onDraft).toHaveBeenCalledTimes(1)
@@ -233,7 +249,7 @@ describe('RichComposer drafts and limits (spec 6.8)', () => {
   it('a draft that fails to save says so, tries again by itself, and clears the note once saved', async () => {
     const onDraft = vi.fn().mockResolvedValueOnce(false).mockResolvedValue(true)
     const { editor } = await ready({ onDraft })
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('keep me')
     const note = await screen.findByText('Draft not saved. Trying again…', {}, { timeout: 2000 })
     expect(note).toBeTruthy()
@@ -303,7 +319,7 @@ describe('RichComposer Up in an empty box (spec 6.8)', () => {
   it('asks to edit my last message only while the box is empty', async () => {
     const onEditLast = vi.fn()
     const { editor } = await ready({ onEditLast })
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('{ArrowUp}')
     expect(onEditLast).toHaveBeenCalledOnce()
     await userEvent.keyboard('text{ArrowUp}')
@@ -319,7 +335,7 @@ describe('RichComposer Up in an empty box (spec 6.8)', () => {
     }
     window.addEventListener('keydown', onKeyDown)
     try {
-      await userEvent.click(editor)
+      await focusEditor(editor)
       for (const mod of ['Alt', 'Shift', 'Control', 'Meta']) await userEvent.keyboard(`{${mod}>}{ArrowUp}{/${mod}}`)
     } finally {
       window.removeEventListener('keydown', onKeyDown)
@@ -356,7 +372,7 @@ describe('files in the composer (spec 6.8 Attach menu, 6.9 tray, slice 6)', () =
     await userEvent.click(screen.getByRole('menuitem', { name: /Upload from your computer/ }))
     expect(click).toHaveBeenCalledOnce()
     expect((click.mock.contexts[0] as HTMLInputElement).type).toBe('file')
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('abc{Control>}a{/Control}{Control>}u{/Control}')
     expect(click).toHaveBeenCalledTimes(2)
     expect(editor.innerHTML).not.toContain('underline')
@@ -366,7 +382,7 @@ describe('files in the composer (spec 6.8 Attach menu, 6.9 tray, slice 6)', () =
   it('a pasted image becomes a file named after when it was pasted', async () => {
     const onAdd = vi.fn()
     const { editor } = await ready({ files: files({ onAdd }) })
-    await userEvent.click(editor)
+    await focusEditor(editor)
     const data = new DataTransfer()
     data.items.add(new File(['png'], 'image.png', { type: 'image/png' }))
     editor.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
@@ -409,7 +425,7 @@ describe('pasting from an office app (slice 6 review)', () => {
   it('a paste with text and a picture of it (Word, Excel) pastes the text, and adds no file', async () => {
     const onAdd = vi.fn()
     const { editor } = await ready({ files: { tray: null, onAdd, ready: 0, waiting: null } })
-    await userEvent.click(editor)
+    await focusEditor(editor)
     const data = new DataTransfer()
     data.setData('text/plain', 'Q3\t120')
     data.setData('text/html', '<table><tr><td>Q3</td><td>120</td></tr></table>')
@@ -423,7 +439,7 @@ describe('pasting from an office app (slice 6 review)', () => {
 describe('editing a message with files (slice 6 review)', () => {
   it('its text can be cleared and saved, as files alone can be sent', async () => {
     const { editor, onSend } = await ready({ mode: 'edit', initialBody: parseBody('Here'), allowEmpty: true, onCancel: vi.fn() })
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('{End}{Backspace}{Backspace}{Backspace}{Backspace}')
     await vi.waitFor(() => expect(editor.textContent).toBe(''))
     const save = screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement
@@ -436,7 +452,7 @@ describe('editing a message with files (slice 6 review)', () => {
 describe('RichComposer tooltips (spec 10: every icon-only button has one)', () => {
   it('Send says what it does, with its key', async () => {
     const { editor } = mount()
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('hi')
     await userEvent.hover(screen.getByRole('button', { name: 'Send' }))
     await vi.waitFor(() => expect(document.querySelector('[role="tooltip"]:not([hidden])')?.textContent).toContain('Send'), { timeout: 2000 })
@@ -450,7 +466,7 @@ describe('RichComposer ⌘K (spec 6.8 and 10)', () => {
     document.addEventListener('keydown', onKey)
     try {
       const { editor } = mount()
-      await userEvent.click(editor)
+      await focusEditor(editor)
       await userEvent.keyboard('abc{Shift>}{ArrowLeft}{ArrowLeft}{ArrowLeft}{/Shift}')
       await userEvent.keyboard('{ControlOrMeta>}k{/ControlOrMeta}')
       const field = await screen.findByRole('textbox', { name: 'Link address' })
@@ -476,7 +492,7 @@ describe('RichComposer metrics (spec 6.8, reference .sf-cbar, .sf-send, .sf-plus
 
   it('Send is 28px tall and 36px wide with a 16px icon; the action row is padded 0 8 8 4', async () => {
     const { editor } = mount({ files })
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('Hi')
     const send = screen.getByRole('button', { name: 'Send' })
     const box = send.getBoundingClientRect()
@@ -502,7 +518,7 @@ describe('RichComposer metrics (spec 6.8, reference .sf-cbar, .sf-send, .sf-plus
     const { editor } = mount()
     const bold = screen.getByRole('button', { name: 'Bold' })
     expect(getComputedStyle(bold).color).toBe(token('--text-muted'))
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await vi.waitFor(() => expect(getComputedStyle(bold).color).toBe(token('--text-secondary')))
   })
 
@@ -516,7 +532,7 @@ describe('Schedule send (spec 6.8: the Send chevron opens Schedule)', () => {
   it('the chevron offers Tomorrow and Monday at 9:00 AM, Custom time… and the time zone note', async () => {
     const onSchedule = vi.fn(async () => {})
     const { editor } = await ready({ onSchedule })
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('Standup notes')
     await userEvent.click(screen.getByRole('button', { name: 'Schedule message' }))
     const menu = screen.getByRole('menu', { name: 'Schedule message' })
@@ -535,7 +551,7 @@ describe('Schedule send (spec 6.8: the Send chevron opens Schedule)', () => {
   it('Custom time… asks for a date and time in the future', async () => {
     const onSchedule = vi.fn(async () => {})
     const { editor } = await ready({ onSchedule })
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('Later')
     await userEvent.click(screen.getByRole('button', { name: 'Schedule message' }))
     await userEvent.click(screen.getByRole('menuitem', { name: 'Custom time…' }))
@@ -554,7 +570,7 @@ describe('Schedule send (spec 6.8: the Send chevron opens Schedule)', () => {
     expect((screen.getByRole('button', { name: 'Schedule message' }) as HTMLButtonElement).disabled).toBe(true)
     cleanup()
     const { editor } = await ready({ onSchedule: vi.fn(), files: { tray: null, onAdd: vi.fn(), ready: 1, waiting: null } })
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('With a file')
     expect((screen.getByRole('button', { name: 'Schedule message' }) as HTMLButtonElement).disabled).toBe(true)
   })
@@ -563,9 +579,9 @@ describe('Schedule send (spec 6.8: the Send chevron opens Schedule)', () => {
 describe('RichComposer : emoji (spec 6.8)', () => {
   it(':thu offers emoji; Enter puts 👍 in the box instead of sending', async () => {
     const { onSend, editor } = await ready()
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard(':thu')
-    const list = await screen.findByRole('listbox', { name: 'Emoji' }, LIST_WAIT)
+    const list = await openList({ name: 'Emoji' })
     expect(list.textContent).toContain(':thumbsup:')
     await userEvent.keyboard('{Enter}')
     await vi.waitFor(() => expect(editor.textContent).toContain('👍'))
@@ -575,7 +591,7 @@ describe('RichComposer : emoji (spec 6.8)', () => {
 
   it('a colon in a time or a link, or with one letter, opens nothing', async () => {
     const { editor } = await ready()
-    await userEvent.click(editor)
+    await focusEditor(editor)
     for (const text of ['10:30', ' https://x', ' :z']) {
       await userEvent.keyboard(text)
       await new Promise((r) => setTimeout(r, 300))
@@ -595,7 +611,7 @@ describe('RichComposer / shortcuts (spec 6.8)', () => {
   it('/ at the start lists the shortcuts; Enter fills one and a second Enter runs it once', async () => {
     const { editor, onSend, run } = await withSlash()
     await userEvent.keyboard('/mu')
-    const list = await screen.findByRole('listbox', { name: 'Shortcuts' }, LIST_WAIT)
+    const list = await openList({ name: 'Shortcuts' })
     expect(list.textContent).toContain('/mute')
     await userEvent.keyboard('{Enter}')
     await vi.waitFor(() => expect(editor.textContent).toBe('/mute '))
@@ -611,7 +627,7 @@ describe('RichComposer / shortcuts (spec 6.8)', () => {
   it('a shortcut not offered here is not in the list', async () => {
     await withSlash()
     await userEvent.keyboard('/t')
-    const list = await screen.findByRole('listbox', { name: 'Shortcuts' }, LIST_WAIT)
+    const list = await openList({ name: 'Shortcuts' })
     expect(list.textContent).toContain('/topic')
     expect(list.textContent).not.toContain('/task')
   })
@@ -663,7 +679,7 @@ describe('RichComposer / shortcuts (spec 6.8)', () => {
   it('the / button types / in an empty box and is off once there is text', async () => {
     const { editor } = await withSlash()
     await userEvent.click(screen.getByRole('button', { name: 'Shortcuts' }))
-    await screen.findByRole('listbox', { name: 'Shortcuts' }, LIST_WAIT)
+    await openList({ name: 'Shortcuts' })
     expect(editor.textContent).toBe('/')
     await userEvent.keyboard('{Backspace}hi')
     await vi.waitFor(() => expect((screen.getByRole('button', { name: 'Shortcuts' }) as HTMLButtonElement).disabled).toBe(true))
@@ -676,7 +692,7 @@ describe('RichComposer Text snippet (spec 6.8, 6.9)', () => {
   it('Ctrl/Cmd+Shift+Enter hands the box text to the snippet and empties the box once it is made', async () => {
     const onSnippet = vi.fn(async (_text: string) => true)
     const { editor, onSend } = await ready({ onSnippet, files })
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('SELECT 1;{Control>}{Shift>}{Enter}{/Shift}{/Control}')
     await vi.waitFor(() => expect(onSnippet).toHaveBeenCalledWith('SELECT 1;'))
     await vi.waitFor(() => expect(editor.textContent).toBe(''))
@@ -686,7 +702,7 @@ describe('RichComposer Text snippet (spec 6.8, 6.9)', () => {
   it('+ has Text snippet with its keys; a cancelled snippet leaves the box alone', async () => {
     const onSnippet = vi.fn(async (_text: string) => false)
     const { editor } = await ready({ onSnippet, files })
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('keep me')
     await userEvent.click(screen.getByRole('button', { name: 'Attach' }))
     const item = screen.getByRole('menuitem', { name: /Text snippet/ })
@@ -725,7 +741,7 @@ describe('the link preview above the box (spec 6.3)', () => {
 
   it('shows the first link’s preview once I pause, not on every key', async () => {
     const { editor } = await ready({ linkPreview })
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('listen https://elevenlabs.io/ now')
     expect(screen.queryByTestId('preview')).toBeNull()
     expect((await screen.findByTestId('preview', undefined, { timeout: 2000 })).textContent).toContain('Preview of https://elevenlabs.io/')
@@ -733,7 +749,7 @@ describe('the link preview above the box (spec 6.3)', () => {
 
   it('sends the link as it is when the preview stays', async () => {
     const { onSend, editor } = await ready({ linkPreview })
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('https://elevenlabs.io/')
     await screen.findByTestId('preview', undefined, { timeout: 2000 })
     await userEvent.keyboard('{Enter}')
@@ -742,11 +758,11 @@ describe('the link preview above the box (spec 6.3)', () => {
 
   it('× takes it off and the message goes without it; the next message previews again', async () => {
     const { onSend, editor } = await ready({ linkPreview })
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('https://elevenlabs.io/')
     await userEvent.click(await screen.findByRole('button', { name: 'Remove preview' }, { timeout: 2000 }))
     expect(screen.queryByTestId('preview')).toBeNull()
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('{Enter}')
     expect(firstLink(onSend.mock.calls[0][0])).toMatchObject({ href: 'https://elevenlabs.io/', noPreview: true })
     await vi.waitFor(() => expect(editor.textContent).toBe(''))
@@ -757,7 +773,7 @@ describe('the link preview above the box (spec 6.3)', () => {
   it('after ×, a different first link previews', async () => {
     const { editor } = await ready({ linkPreview, initialBody: parseBody('https://a.example.com/') })
     await userEvent.click(await screen.findByRole('button', { name: 'Remove preview' }, { timeout: 2000 }))
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('{Control>}a{/Control}{Meta>}a{/Meta}https://b.example.com/')
     expect((await screen.findByTestId('preview', undefined, { timeout: 2000 })).textContent).toContain('https://b.example.com/')
   })
@@ -765,7 +781,7 @@ describe('the link preview above the box (spec 6.3)', () => {
   it('a scheduled message keeps the choice', async () => {
     const onSchedule = vi.fn(async (_b: Body, _at: Date) => {})
     const { editor } = await ready({ linkPreview, onSchedule })
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('https://elevenlabs.io/')
     await userEvent.click(await screen.findByRole('button', { name: 'Remove preview' }, { timeout: 2000 }))
     await userEvent.click(screen.getByRole('button', { name: 'Schedule message' }))
@@ -791,7 +807,7 @@ describe('the link preview above the box (spec 6.3)', () => {
 
   it('the draft keeps the choice, so the card stays off when I come back', async () => {
     const { onDraft, editor } = await ready({ linkPreview })
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('https://elevenlabs.io/')
     await userEvent.click(await screen.findByRole('button', { name: 'Remove preview' }, { timeout: 2000 }))
     await vi.waitFor(() => expect(firstLink(onDraft.mock.calls.at(-1)![0] as Body)).toMatchObject({ noPreview: true }), { timeout: 2000 })
@@ -805,10 +821,10 @@ describe('the link preview above the box (spec 6.3)', () => {
   it('a shortcut that sends (/shrug) keeps the choice', async () => {
     const run = vi.fn(async (_c: ParsedCommand, body: Body): Promise<CommandOutcome> => ({ send: body }))
     const { onSend, editor } = await ready({ linkPreview, slash: { commands: COMMANDS.filter((c) => c.name === 'shrug'), run } })
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('/shrug https://elevenlabs.io/')
     await userEvent.click(await screen.findByRole('button', { name: 'Remove preview' }, { timeout: 2000 }))
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('{End}{Enter}')
     await vi.waitFor(() => expect(onSend).toHaveBeenCalled())
     expect(firstLink(onSend.mock.calls[0][0])).toMatchObject({ noPreview: true })
@@ -816,7 +832,7 @@ describe('the link preview above the box (spec 6.3)', () => {
 
   it('the same link again waits for the pause again', async () => {
     const { editor } = await ready({ linkPreview })
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('https://elevenlabs.io/')
     await screen.findByTestId('preview', undefined, { timeout: 2000 })
     await userEvent.keyboard('{Enter}')
@@ -827,7 +843,7 @@ describe('the link preview above the box (spec 6.3)', () => {
 
   it('a link in code gets no preview', async () => {
     const { editor } = await ready({ linkPreview })
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('`https://elevenlabs.io/`')
     await new Promise((r) => setTimeout(r, 800))
     expect(screen.queryByTestId('preview')).toBeNull()

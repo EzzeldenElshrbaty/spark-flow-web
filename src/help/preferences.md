@@ -8,7 +8,7 @@ Preferences (in your menu) decide what reaches you.
 
 ## Notifications
 
-Choose **All new messages**, **Mentions and keywords**, or **Nothing**. A channel can have its own level from its ⋯ menu.
+Choose **All new messages**, **Mentions and keywords**, or **Nothing**. A channel can have its own level from its bell; **Default** there goes back to following this one.
 
 **Keywords** count as mentions: a message with one of them reaches you as if it named you.
 

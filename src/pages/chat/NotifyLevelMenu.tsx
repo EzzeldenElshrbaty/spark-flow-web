@@ -14,15 +14,15 @@ export const NOTIFY_LEVELS: { level: NotifyLevel; label: string }[] = [
  * The way to my Preferences from the bell (spec 6.11: "Desktop, mobile and email…" and the note on Do Not Disturb):
  * `dndEnd` is when Do Not Disturb ends while it's on.
  */
-export type PreferencesLink = { dndEnd: string | null; onOpen: () => void }
+export type PreferencesLink = { dndEnd: string | null; onOpen: () => void; /** My default level, for "Default (…)" (slice AA). */ defaultLevel?: NotifyLevel }
 
 /** A level's name as the menu writes it. */
 export const levelLabel = (level: NotifyLevel) => NOTIFY_LEVELS.find((l) => l.level === level)!.label
 
 /**
- * "Notify me about" (spec 6.11): the three levels, the channel's own checked, then Mute, then the way to Preferences.
- * The header bell and the Channel details header open it from their own triggers. Picking the level already set
- * sends nothing.
+ * "Notify me about" (spec 6.11): "Default (…)" to follow my default (slice AA), the three levels, the one that
+ * applies checked, then Mute, then the way to Preferences. The header bell and the Channel details header open it from
+ * their own triggers. Picking what's already set sends nothing; `null` goes back to the default.
  */
 export function NotifyLevelMenu({
   channel,
@@ -32,11 +32,11 @@ export function NotifyLevelMenu({
   onNotifyLevel,
   onMute,
 }: {
-  channel: Pick<Channel, 'kind' | 'notifyLevel' | 'muted'>
+  channel: Pick<Channel, 'kind' | 'notifyLevel' | 'notifyLevelOwn' | 'muted'>
   label: string
   trigger: (props: MenuTriggerProps) => ReactNode
   preferences?: PreferencesLink
-  onNotifyLevel: (level: NotifyLevel) => void
+  onNotifyLevel: (level: NotifyLevel | null) => void
   onMute: (muted: boolean) => void
 }) {
   return (
@@ -53,17 +53,22 @@ export function NotifyLevelItems({
   onNotifyLevel,
   onMute,
 }: {
-  channel: Pick<Channel, 'kind' | 'notifyLevel' | 'muted'>
+  channel: Pick<Channel, 'kind' | 'notifyLevel' | 'notifyLevelOwn' | 'muted'>
   preferences?: PreferencesLink
-  onNotifyLevel: (level: NotifyLevel) => void
+  onNotifyLevel: (level: NotifyLevel | null) => void
   onMute: (muted: boolean) => void
 }) {
   const noun = channel.kind === 'channel' ? 'channel' : 'conversation'
+  // The level the channel follows without its own: a DM, every message; a channel, my default.
+  const fallback = !channel.notifyLevelOwn ? channel.notifyLevel : channel.kind === 'dm' ? 'all' : preferences?.defaultLevel
   return (
     <>
       <MenuHeading>Notify me about</MenuHeading>
+      <MenuItem checked={!channel.notifyLevelOwn} onSelect={() => channel.notifyLevelOwn && onNotifyLevel(null)}>
+        {fallback ? `Default (${levelLabel(fallback)})` : 'Default'}
+      </MenuItem>
       {NOTIFY_LEVELS.map(({ level, label: name }) => (
-        <MenuItem key={level} checked={channel.notifyLevel === level} onSelect={() => level !== channel.notifyLevel && onNotifyLevel(level)}>
+        <MenuItem key={level} checked={channel.notifyLevelOwn && channel.notifyLevel === level} onSelect={() => (!channel.notifyLevelOwn || level !== channel.notifyLevel) && onNotifyLevel(level)}>
           {name}
         </MenuItem>
       ))}

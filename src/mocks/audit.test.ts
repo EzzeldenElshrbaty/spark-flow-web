@@ -152,6 +152,7 @@ const NOT_RECORDED: Record<string, string> = {
   'chat.send': MESSAGE,
   'chat.reply': MESSAGE,
   'chat.setFollowing': MINE,
+  'chat.setThreadMuted': MINE,
   'chat.channels': READ,
   'chat.channel': READ,
   'chat.messages': READ,

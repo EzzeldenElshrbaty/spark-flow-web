@@ -73,6 +73,14 @@ describe('notifies (what reaches me outside the app, spec 6.11)', () => {
   const channel = (over: Record<string, unknown> = {}) => ({ kind: 'channel' as const, notifyLevel: 'mentions' as const, muted: false, ...over })
   const now = at('2026-10-28T12:00:00')
   const me = 'u-1'
+  it('a reply in a thread I muted reaches me only by a mention or keyword, even at All (slice AA)', () => {
+    const all = channel({ notifyLevel: 'all' })
+    expect(notifies(row('looks fine'), all, me, prefs(), now, { threadMuted: true })).toBe(false)
+    expect(notifies(row('hi', { mentions: [{ kind: 'user', id: me }] }), all, me, prefs(), now, { threadMuted: true })).toBe(true)
+    expect(notifies(row('the deploy is done'), all, me, prefs({ keywords: ['deploy'] }), now, { threadMuted: true })).toBe(true)
+    expect(notifies(row('looks fine'), all, me, prefs(), now)).toBe(true)
+  })
+
   it('at Mentions and keywords: a mention or a keyword, not anything else', () => {
     expect(notifies(row('hi', { mentions: [{ kind: 'user', id: me }] }), channel(), me, prefs(), now)).toBe(true)
     expect(notifies(row('the deploy is done'), channel(), me, prefs({ keywords: ['deploy'] }), now)).toBe(true)

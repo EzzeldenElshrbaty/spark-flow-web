@@ -1,10 +1,12 @@
-import { IconArrowUpRight, IconDotsVertical, IconLink } from '@tabler/icons-react'
+import { IconArrowUpRight, IconBellOff, IconDotsVertical, IconLink } from '@tabler/icons-react'
 import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import { Avatar } from '@/components/sf/Avatar'
 import { Tag } from '@/components/sf/Badge'
 import { Button, IconButton } from '@/components/sf/Button'
+import { Icon } from '@/components/sf/Icon'
 import { Menu, MenuItem } from '@/components/sf/Menu'
+import { MuteThreadItem } from '@/pages/chat/MessageActions'
 import { useCopyLink } from '@/pages/chat/useCopyLink'
 
 /** "Nour", "Nour and Mariam", "Nour, Mariam and Youssef". */
@@ -24,6 +26,8 @@ export function ThreadCardView({
   loadingMore,
   onShowMore,
   unfollowed,
+  muted,
+  onToggleMute,
   onUnfollow,
   onFollow,
   followError,
@@ -44,6 +48,9 @@ export function ThreadCardView({
   loadingMore: boolean
   onShowMore: () => void
   unfollowed: boolean
+  /** I muted it (slice AA): a bell-off "Muted" tag, and Unmute thread in ⋯. */
+  muted: boolean
+  onToggleMute: () => void
   onUnfollow: () => void
   onFollow: () => void
   followError: string | null
@@ -76,6 +83,11 @@ export function ThreadCardView({
           ))}
         </span>
         {newCount > 0 && !unfollowed && <Tag tone="accent">{newCount} new</Tag>}
+        {muted && !unfollowed && (
+          <Tag>
+            <Icon icon={IconBellOff} size={16} /> Muted
+          </Tag>
+        )}
         <span className="flex-1" />
         {!unfollowed && (
           <Button ref={followButton} size="sm" touch onClick={onUnfollow}>
@@ -90,6 +102,7 @@ export function ThreadCardView({
             <MenuItem icon={IconLink} onSelect={() => void copy()}>
               Copy link
             </MenuItem>
+            {!unfollowed && <MuteThreadItem muted={muted} onToggle={onToggleMute} />}
           </Menu>
           {note}
         </div>

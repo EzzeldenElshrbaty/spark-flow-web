@@ -112,7 +112,7 @@ export function ChannelDetails({
   onRemove: (userId: string) => Promise<unknown>
   onRevoke: (invitationId: string) => Promise<unknown>
   onStar: (starred: boolean) => void
-  onNotifyLevel: (level: NotifyLevel) => void
+  onNotifyLevel: (level: NotifyLevel | null) => void
   /** The bell's way to my Preferences and its Do Not Disturb note (spec 6.11). */
   preferences?: PreferencesLink
   onMute: (muted: boolean) => void

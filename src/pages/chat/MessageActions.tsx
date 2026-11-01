@@ -21,6 +21,15 @@ export function FollowItem({ following, onToggle }: Follow) {
   )
 }
 
+/** Mute or unmute a thread (slice AA): it stays followed; only mentions of me reach me. The same in every menu. */
+export function MuteThreadItem({ muted, onToggle }: { muted: boolean; onToggle: () => void }) {
+  return (
+    <MenuItem icon={muted ? IconBell : IconBellOff} onSelect={onToggle}>
+      {muted ? 'Unmute thread' : 'Mute thread'}
+    </MenuItem>
+  )
+}
+
 /** Remind me about this ▸ (spec 6.5): a preset's time, Custom… (the page's date picker), and Remove reminder when set. */
 export type RemindChoices = { onPick: (at: Date) => void; onCustom: () => void; onClear?: () => void }
 

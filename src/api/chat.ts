@@ -253,6 +253,10 @@ export function useRestoreChannel() {
   return useMutation({ mutationFn: (id: string) => api.chat.restoreChannel(id) })
 }
 /** Get notified about replies, or turn it off (spec 6.7), for a thread's root message. */
+/** Mutes or unmutes a thread for me (slice AA). */
+export function useSetThreadMuted() {
+  return useMutation({ mutationFn: ({ messageId, muted }: { messageId: string; muted: boolean }) => api.chat.setThreadMuted(messageId, muted) })
+}
 export function useSetFollowing() {
   return useMutation({ mutationFn: ({ messageId, following }: { messageId: string; following: boolean }) => api.chat.setFollowing(messageId, following) })
 }
@@ -276,7 +280,7 @@ export function useSetMuted() {
 }
 /** What a channel notifies me about (spec 6.11): All new messages, Mentions and keywords, or Nothing. */
 export function useSetNotifyLevel() {
-  return useMutation({ mutationFn: ({ id, level }: { id: string; level: NotifyLevel }) => api.chat.setNotifyLevel(id, level) })
+  return useMutation({ mutationFn: ({ id, level }: { id: string; level: NotifyLevel | null }) => api.chat.setNotifyLevel(id, level) })
 }
 
 const PREVIEW_STALE_MS = 60 * 60_000

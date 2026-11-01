@@ -1,5 +1,5 @@
 import { can } from '@/lib/permissions'
-import type { Api, Attachment, Channel, ChannelMemberState, ChatMessage, Mention, NotifyLevel, Page, SentItem, SystemEvent, ChatTarget, StoredChannel, ThreadReply, WhoCanPost } from '@/api/types'
+import type { Api, Attachment, Channel, ChatMessage, Mention, NotifyLevel, Page, SentItem, SystemEvent, ChatTarget, StoredChannel, ThreadReply, WhoCanPost } from '@/api/types'
 import { channelFormErrors, descriptionError } from '@/lib/channelForm'
 import { isEmail, MAX_INVITES, normalEmail, notAnEmailLine } from '@/lib/invites'
 import { MAX_MESSAGE_FILES } from '@/lib/fileDetails'
@@ -77,6 +77,9 @@ const namesUser = (row: ChatMessage | ThreadReply, userId: string) => row.mentio
  * Whether this person follows the thread (spec 6.7): their own choice, else the defaults: they wrote the message,
  * replied to it, or were mentioned by name in it or a reply.
  */
+/** Whether this person muted the thread (slice AA): its replies stop reaching them, unless they mention them. */
+export const mutedThread = (data: DbData, rootId: string, userId: string) => Boolean(data.threadFollows.find((f) => f.userId === userId && f.rootId === rootId)?.muted)
+
 export function follows(data: DbData, message: ChatMessage, replies: ThreadReply[], userId: string): boolean {
   const choice = data.threadFollows.find((f) => f.userId === userId && f.rootId === message.id)
   if (choice) return choice.following
@@ -117,6 +120,7 @@ export function withThread(data: DbData, message: ChatMessage): ChatMessage {
     ...message,
     replyUserIds: [...new Set(replies.map((r) => r.senderId))].slice(0, REPLY_FACES),
     following: follows(data, message, replies, data.currentUserId),
+    threadMuted: mutedThread(data, message.id, data.currentUserId),
     ...(pin && { pin: { by: pin.pinnedBy, at: pin.pinnedAt } }),
   }
 }
@@ -348,7 +352,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
   }
   const changed = (channelId: string, messageId: string) => hub.publish({ type: 'messageChanged', channelId, messageId })
   /** Sets one of my own flags on a channel I can read; only I am told (my other tabs follow). */
-  const setMine = async (id: string, patch: Partial<Pick<ChannelMemberState, 'starred' | 'muted' | 'notifyLevel'>>) => {
+  const setMine = async (id: string, patch: Partial<Pick<StoredMemberState, 'starred' | 'muted' | 'notifyLevel'>>) => {
     await delay()
     const result = await db.update((data) => {
       const channel = readableChannel(data, id)
@@ -664,7 +668,22 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         readableChannel(data, root.channelId)
         if (root.broadcast) throw badRequest('Threads are one level only.')
         const userId = data.currentUserId
-        data.threadFollows = [...data.threadFollows.filter((f) => !(f.userId === userId && f.rootId === root.id)), { userId, rootId: root.id, following }]
+        const muted = mutedThread(data, root.id, userId)
+        data.threadFollows = [...data.threadFollows.filter((f) => !(f.userId === userId && f.rootId === root.id)), { userId, rootId: root.id, following, ...(muted && { muted }) }]
+        return root
+      })
+      hub.publish({ type: 'messageChanged', channelId: message.channelId, messageId: message.id })
+    },
+    async setThreadMuted(messageId, muted) {
+      await delay()
+      const message = await db.update((data) => {
+        const root = findMessage(data, messageId)
+        readableChannel(data, root.channelId)
+        if (root.broadcast) throw badRequest('Threads are one level only.')
+        const userId = data.currentUserId
+        // Muting keeps whether I follow it as it reads now.
+        const following = follows(data, root, data.replies.filter((r) => r.messageId === root.id), userId)
+        data.threadFollows = [...data.threadFollows.filter((f) => !(f.userId === userId && f.rootId === root.id)), { userId, rootId: root.id, following, ...(muted && { muted }) }]
         return root
       })
       hub.publish({ type: 'messageChanged', channelId: message.channelId, messageId: message.id })
@@ -793,7 +812,8 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
     setStarred: (id, starred) => setMine(id, { starred }),
     setMuted: (id, muted) => setMine(id, { muted }),
     async setNotifyLevel(id, level) {
-      if (!NOTIFY_LEVELS.includes(level)) {
+      // null: back to following my default (slice AA).
+      if (level !== null && !NOTIFY_LEVELS.includes(level)) {
         await delay()
         throw badRequest('Choose All new messages, Mentions or Nothing.')
       }
@@ -887,12 +907,13 @@ export function postReply(data: DbData, input: AddReplyInput): ThreadReply {
   // Replying, or being mentioned in a reply, follows the thread again, whatever was chosen before.
   const named = new Set(created.mentions.flatMap((m) => (m.kind === 'user' ? [m.id] : [])))
   const again = new Set([created.senderId, ...named])
-  data.threadFollows = data.threadFollows.filter((f) => f.rootId !== parent.id || !again.has(f.userId))
+  // A mute stays: the row then only says "following".
+  data.threadFollows = data.threadFollows.flatMap((f) => (f.rootId !== parent.id || !again.has(f.userId) ? [f] : f.muted ? [{ ...f, following: true }] : []))
   // Everyone who follows it hears of the reply in Activity (spec 6.12): not the one who wrote it, not someone who can't
   // read the channel. Those it mentions see the mention instead, worked out as the reply reads now (activityFor).
   const replies = data.replies.filter((r) => r.messageId === parent.id)
   for (const user of data.users) {
-    if (user.id === created.senderId || !canRead(data, channel.id, user.id) || !follows(data, parent, replies, user.id)) continue
+    if (user.id === created.senderId || !canRead(data, channel.id, user.id) || !follows(data, parent, replies, user.id) || mutedThread(data, parent.id, user.id)) continue
     data.notifications.push({ id: newId('n'), userId: user.id, kind: 'thread', actorId: created.senderId, channelId: channel.id, messageId: parent.id, replyId: created.id, emoji: null, at: createdAt, read: false })
   }
   parent.threadCount += 1

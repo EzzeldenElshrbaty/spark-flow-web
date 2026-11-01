@@ -23,7 +23,7 @@ export type ChannelHeaderProps = {
   onStar: (starred: boolean) => void
   onMute: (muted: boolean) => void
   /** What the channel notifies me about (spec 6.11). */
-  onNotifyLevel: (level: NotifyLevel) => void
+  onNotifyLevel: (level: NotifyLevel | null) => void
   /** The bell's way to my Preferences and its Do Not Disturb note (spec 6.11). */
   preferences?: PreferencesLink
   onMarkRead: () => void

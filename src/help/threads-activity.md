@@ -12,6 +12,10 @@ Threads (in the Chat side's menu, or `Ctrl` + `Shift` + `T` where the browser le
 
 To follow one yourself, choose **Get notified about replies** in the message's ⋯ menu or the thread panel's. **Unfollow** on a card stops it.
 
+## Muting a thread
+
+**Mute thread**, in the thread panel's ⋮ or a card's ⋯, keeps following the thread but stops its replies from counting as new or reaching Activity, the bell and desktop notifications. A reply that mentions you still reaches you. The card shows **Muted**; **Unmute thread** undoes it. **Open in a new window**, in the thread panel's ⋮, opens the thread in its own tab.
+
 ## Activity
 
 Activity (in the Chat side's menu, or `Ctrl` + `Shift` + `A`) lists what happened to you: mentions, replies in threads you follow, reactions to your messages and reminders. Opening an item reads it; **Mark all read** reads them all.

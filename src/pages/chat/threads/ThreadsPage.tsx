@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
-import { useChannels, useDrafts, useSetFollowing, useThread } from '@/api/chat'
+import { useChannels, useDrafts, useSetFollowing, useSetThreadMuted, useThread } from '@/api/chat'
 import { useMarkThreadsRead, useThreads } from '@/api/threads'
 import type { Channel, ThreadCard, User } from '@/api/types'
 import { useUsers } from '@/api/users'
@@ -184,6 +184,8 @@ function ThreadItem({
       { messageId: rootId, following },
       { onSuccess: () => (setFollowError(null), onUnfollowed(!following)), onError: () => setFollowError('Couldn’t change that. Try again.') },
     )
+  const setMuted = useSetThreadMuted()
+  const toggleMute = () => setMuted.mutate({ messageId: rootId, muted: !card.muted }, { onSuccess: () => setFollowError(null), onError: () => setFollowError('Couldn’t change that. Try again.') })
   const canPost = useCanPost(channel) === true
   const projectKeys = useProjectKeys(workspaceId)
   const scope = useMemo(() => ({ users, projectKeys, ws, workspaceId }), [users, projectKeys, ws, workspaceId])
@@ -202,6 +204,8 @@ function ThreadItem({
         loadingMore={all && everything.isPending}
         onShowMore={() => setAll(true)}
         unfollowed={unfollowed}
+        muted={card.muted}
+        onToggleMute={toggleMute}
         onUnfollow={() => follow(false)}
         onFollow={() => follow(true)}
         followError={followError}

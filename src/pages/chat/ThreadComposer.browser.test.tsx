@@ -4,6 +4,7 @@ import { cleanup, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
+import { focusEditor } from '@/pages/chat/composer/focusEditor.testkit'
 import type { Channel } from '@/api/types'
 import { api } from '@/lib/api'
 import { bodyText, type Body } from '@/lib/messageBody'
@@ -53,7 +54,7 @@ describe('the thread composer (spec 6.7)', () => {
     // As a person does: the box is drawn, the input itself is out of sight.
     await userEvent.click(screen.getByText('Also send to #backend'))
     expect((also as HTMLInputElement).checked).toBe(true)
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('Shipped{Enter}')
     await vi.waitFor(() => expect(onSend).toHaveBeenCalledOnce())
     expect(bodyText(onSend.mock.calls[0][0])).toBe('Shipped')
@@ -63,14 +64,14 @@ describe('the thread composer (spec 6.7)', () => {
 
   it('without it, only the thread gets the reply', async () => {
     const { onSend, editor } = await mount()
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('Thanks{Enter}')
     await vi.waitFor(() => expect(onSend).toHaveBeenCalledWith(expect.anything(), false, []))
   })
 
   it('saves a draft per thread', async () => {
     const { editor } = await mount()
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('half a thought')
     await vi.waitFor(() => expect(api.chat.saveDraft).toHaveBeenCalledWith('c-backend', expect.anything(), 'm1'), { timeout: 2000 })
   })

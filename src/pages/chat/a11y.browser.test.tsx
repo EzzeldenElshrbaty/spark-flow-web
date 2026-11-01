@@ -6,6 +6,7 @@ import { useState, type ReactNode } from 'react'
 import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
+import { focusEditor } from '@/pages/chat/composer/focusEditor.testkit'
 import type { ActivityItem, Attachment, Channel, ChatMessage, TaskRef, User } from '@/api/types'
 import { ToastProvider } from '@/components/sf/Toast'
 import { api } from '@/lib/api'
@@ -260,6 +261,8 @@ const surfaces: [string, () => ReactNode][] = [
             newCount={2}
             hiddenCount={3}
             loadingMore={false}
+            muted={unfollowed}
+            onToggleMute={() => {}}
             onShowMore={() => {}}
             unfollowed={unfollowed}
             onUnfollow={() => {}}
@@ -453,9 +456,14 @@ describe.each([
     mount(surfaces[3][1](), dark)
     const editor = screen.getByRole('textbox', { name: 'Message #backend' })
     await vi.waitFor(() => expect(editor.getAttribute('data-lexical-editor')).toBe('true'))
-    await userEvent.click(editor)
+    await focusEditor(editor)
     await userEvent.keyboard('@no')
-    await screen.findByRole('listbox', { name: 'Mention someone' }, { timeout: 3000 })
+    // The list's choices, not only its frame: they come once the channel's people have loaded. End gives Lexical one
+    // more update if it missed the caret on the last key (full runs only, slice AA).
+    await screen.findByRole('option', { name: /Nour El-Sayed/ }, { timeout: 3000 }).catch(async () => {
+      await userEvent.keyboard('{End}')
+      return screen.findByRole('option', { name: /Nour El-Sayed/ }, { timeout: 3000 })
+    })
     expect(await violations()).toEqual([])
   })
 })
@@ -473,7 +481,7 @@ describe('composer autocomplete semantics (spec 10)', () => {
   })
 
   it('a mention query that matches no one leaves no empty list behind', async () => {
-    await userEvent.click(await editor())
+    await focusEditor(await editor())
     await userEvent.keyboard('@zzzz')
     await new Promise((r) => setTimeout(r, 300))
     expect(await violations()).toEqual([])

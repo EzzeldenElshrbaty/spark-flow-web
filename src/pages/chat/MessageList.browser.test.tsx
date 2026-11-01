@@ -234,12 +234,17 @@ describe('MessageList scrolling (spec 6.2)', () => {
   it('opens at the New line with the unread bar when the unread messages fill more than a screen', async () => {
     mount({ data: channel(80), newAfterSeq: 30, totalUnread: 50 })
     await vi.waitFor(() => expect(screen.getByText(/50 new messages since/)).toBeTruthy())
-    await settle()
-    const line = screen.getByRole('separator', { name: 'New messages' })
-    const top = line.getBoundingClientRect().top - list().getBoundingClientRect().top
-    // Just under the bar (which takes the top 40px), not scrolled away.
-    expect(top).toBeGreaterThanOrEqual(24)
-    expect(top).toBeLessThan(120)
+    // Waits for the scroll to land rather than a fixed pause: under a full run, layout can take longer (slice AA).
+    await vi.waitFor(
+      () => {
+        const line = screen.getByRole('separator', { name: 'New messages' })
+        const top = line.getBoundingClientRect().top - list().getBoundingClientRect().top
+        // Just under the bar (which takes the top 40px), not scrolled away.
+        expect(top).toBeGreaterThanOrEqual(24)
+        expect(top).toBeLessThan(120)
+      },
+      { timeout: 3000 },
+    )
   })
 
   it('on desktop the New line is inset 24px, like the rows (.sf-newdiv)', async () => {
@@ -288,10 +293,14 @@ describe('MessageList scrolling (spec 6.2)', () => {
     const data = channel(40)
     expect(data.messages.at(-1)!.senderId).toBe('u-1')
     mount({ data, focusSeq: 15 })
-    await vi.waitFor(() => expect(topOf(15)).not.toBeNull())
-    await settle()
-    expect(topOf(15)).toBeGreaterThanOrEqual(0)
-    expect(topOf(15)).toBeLessThan(120)
+    // Waits for the scroll to land rather than a fixed pause (slice AA: a full run can be slower).
+    await vi.waitFor(
+      () => {
+        expect(topOf(15)).toBeGreaterThanOrEqual(0)
+        expect(topOf(15)).toBeLessThan(120)
+      },
+      { timeout: 3000 },
+    )
   })
 
   it('the unread bar offers Mark as unread (opening the channel marked it read, spec 6.2): it puts back the first new message', async () => {
@@ -351,6 +360,8 @@ describe('MessageList sticky date (spec 6.2)', () => {
       .filter(({ r }) => r.bottom > box.top && r.top < box.top + band)
   }
   /** Scrolls up 6px at a time, from `from` (the end by default) to the top. */
+  /** A scan one frame per 6px: in a full run frames come slower, so these tests get a longer budget (slice AA). */
+  const SCAN = 60_000
   async function scrollThrough(check: (at: number) => void, from?: number) {
     const el = list()
     for (let y = from ?? el.scrollHeight; y >= 0; y -= 6) {
@@ -375,7 +386,7 @@ describe('MessageList sticky date (spec 6.2)', () => {
     })
     // A date sits at the top through the scroll, not only now and then.
     expect(pinned).toBeGreaterThan(50)
-  })
+  }, SCAN)
 
   it('with the unread bar open, the date sits under the bar and still shows each day once', async () => {
     mount({ data: channel(28, 3 * 3_600_000), newAfterSeq: 14, totalUnread: 14 })
@@ -399,5 +410,5 @@ describe('MessageList sticky date (spec 6.2)', () => {
       // Up from where it opened (at the New line): the bar stays until the end is reached.
     }, list().scrollTop)
     expect(underBar).toBeGreaterThan(0)
-  })
+  }, SCAN)
 })

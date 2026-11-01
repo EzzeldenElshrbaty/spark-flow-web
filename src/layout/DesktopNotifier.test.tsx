@@ -31,7 +31,9 @@ const lookups = {
     return channels[id]
   },
   people: async () => [{ id: 'u-1', name: 'Youssef Abdelrahman' }, { id: 'u-2', name: 'Nour El-Sayed' }],
+  root: async (id: string) => ({ id, threadMuted: mutedRoots.has(id) }),
 }
+let mutedRoots = new Set<string>()
 
 /** The browser's Notification, as far as the notifier uses it. */
 class FakeNotification {
@@ -84,6 +86,7 @@ beforeEach(() => {
     dndSchedule: { on: false, from: '18:00', to: '09:00', days: [0, 1, 2, 3, 4], tz: 'Africa/Cairo' },
   }
   channels = { 'c-backend': channel() }
+  mutedRoots = new Set()
 })
 afterEach(() => {
   cleanup()
@@ -112,6 +115,16 @@ describe('DesktopNotifier (spec 6.11 Delivery: desktop notifications)', () => {
     expect(note.title).toBe('Thread in #backend')
     note.onclick!()
     expect(navigate).toHaveBeenCalledWith('/w/engineering/c/c-backend?thread=m-1')
+  })
+
+  it('a reply in a thread I muted, at All: nothing unless it mentions me (slice AA)', async () => {
+    channels['c-backend'] = channel({ notifyLevel: 'all' })
+    mutedRoots = new Set(['m-1'])
+    render(<DesktopNotifier />)
+    await arrive(reply({ id: 'r-4', body: parseBody('looks fine'), mentions: [] }))
+    expect(FakeNotification.shown).toHaveLength(0)
+    await arrive(reply())
+    expect(FakeNotification.shown).toHaveLength(1)
   })
 
   it('a DM in another workspace: the person, then the text, and it opens there', async () => {

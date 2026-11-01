@@ -1,6 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { channelQuery } from '@/api/chat'
+import { qk } from '@/api/queryKeys'
+import { api } from '@/lib/api'
 import { preferencesQuery } from '@/api/preferences'
 import { meQuery, usersQuery } from '@/api/users'
 
@@ -18,6 +20,8 @@ export function useNotifyLookups() {
       // Every tab hears every live message in the prototype: one I can't read is answered once, not retried.
       channel: (id: string) => queryClient.fetchQuery({ ...channelQuery(id), retry: false }),
       people: (workspaceId: string) => queryClient.ensureQueryData(usersQuery(workspaceId)),
+      // A reply's thread: whether I muted it (slice AA).
+      root: (messageId: string) => queryClient.fetchQuery({ queryKey: qk.message(messageId), queryFn: () => api.chat.message(messageId), retry: false }),
     }),
     [queryClient],
   )

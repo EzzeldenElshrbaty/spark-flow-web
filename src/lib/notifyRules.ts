@@ -86,7 +86,8 @@ const reachesMe = (row: { mentions: Mention[]; hereIds?: string[] }, meId: strin
  * Whether a new message or reply should reach me outside the app (spec 6.11 delivery): one rule for desktop here and
  * for the backend's push and email, each of which also has its own switch. Never my own or what the channel itself
  * says, never in a muted channel or one at Nothing, never during Do Not Disturb; at All (a DM's default), every
- * message; at Mentions and keywords, a mention of me or one of my keywords in someone's own words (`keywordable`).
+ * message; at Mentions and keywords, a mention of me or one of my keywords in someone's own words (`keywordable`). A
+ * reply in a thread I muted counts as at Mentions and keywords whatever the level.
  */
 export function notifies(
   row: { senderId: string; body: Body; mentions: Mention[]; hereIds?: string[]; system?: unknown; taskEvent?: unknown; commentId?: unknown; broadcast?: unknown },
@@ -94,9 +95,11 @@ export function notifies(
   meId: string,
   prefs: Pick<Preferences, 'keywords' | 'dndUntil' | 'dndSchedule'>,
   now: Date,
+  thread: { threadMuted?: boolean } = {},
 ): boolean {
   if (row.senderId === meId || row.system || channel.muted || channel.notifyLevel === 'none' || dndState(prefs, now)) return false
-  if (channel.notifyLevel === 'all') return true
+  // A reply in a thread I muted (slice AA) reaches me only as a mention or keyword would.
+  if (channel.notifyLevel === 'all' && !thread.threadMuted) return true
   return reachesMe(row, meId) || (keywordable(row) && matchedKeyword(bodyText(row.body), prefs.keywords) !== null)
 }
 

@@ -33,8 +33,8 @@ export function DesktopNotifier(): null {
       // Asked first, so a message in a tab I'm looking at costs nothing.
       if (!mayShow()) return
       try {
-        const [me, prefs, channel] = await Promise.all([lookups.me(), lookups.preferences(), lookups.channel(row.channelId)])
-        if (!prefs.desktop || !channel.memberIds.includes(me.id) || !notifies(row, channel, me.id, prefs, new Date())) return
+        const [me, prefs, channel, root] = await Promise.all([lookups.me(), lookups.preferences(), lookups.channel(row.channelId), rootId ? lookups.root(rootId) : null])
+        if (!prefs.desktop || !channel.memberIds.includes(me.id) || !notifies(row, channel, me.id, prefs, new Date(), { threadMuted: root?.threadMuted })) return
         const ws = known.current.find((w) => w.id === channel.workspaceId)?.slug
         if (!ws) return
         const { title, body } = desktopNote(row, rootId !== null, channel, await lookups.people(channel.workspaceId))

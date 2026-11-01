@@ -22,7 +22,7 @@ The board and list of the project's tasks. See [Board and tasks](help:tasks).
 
 ## Chat
 
-The project's own channel, with everyone on the project. A task comment or bug also posts a card here, so the team sees it.
+The project's own channel, with everyone on the project. It works as it does in Chat: the same messages, composer, threads, files and pins. **Open in Chat** opens it there. A task comment or bug also posts a card here, so the team sees it.
 
 ## Time
 

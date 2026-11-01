@@ -1,5 +1,5 @@
 import type { Api, ThreadCard } from '@/api/types'
-import { follows, withThread } from './chat'
+import { follows, mutedThread, withThread } from './chat'
 import type { DbData, MockDb } from './db'
 import { delay } from './latency'
 import { silenced } from './membership'
@@ -46,7 +46,7 @@ export function threadCards(data: DbData, userId: string, workspaceId: string): 
     const participantIds = [...people.filter((id) => id !== root.senderId).slice(0, FACES - 1), root.senderId].slice(0, FACES)
     cards.push({
       root: withThread(data, root), channelId: root.channelId, replies: live.slice(-shown),
-      totalReplies: live.length, unreadCount, participantIds, lastReplyAt: live.at(-1)!.createdAt,
+      totalReplies: live.length, unreadCount, participantIds, lastReplyAt: live.at(-1)!.createdAt, muted: mutedThread(data, root.id, userId),
     })
   }
   return cards.sort((a, b) => Number(b.unreadCount > 0) - Number(a.unreadCount > 0) || newestFirst(a.lastReplyAt, b.lastReplyAt))

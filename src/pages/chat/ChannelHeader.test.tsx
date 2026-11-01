@@ -167,12 +167,12 @@ describe('the channel bell (spec 6.11)', () => {
   const openBell = () => fireEvent.click(screen.getByRole('button', { name: 'Channel notifications' }))
   const levels = () => screen.getAllByRole('menuitemradio').map((el) => [el.textContent, el.getAttribute('aria-checked')])
 
-  it('asks "Notify me about" with the three levels, the channel’s own checked, then Mute channel', () => {
+  it('asks "Notify me about" with Default (…) and the three levels, the one that applies checked, then Mute channel', () => {
     header()
     openBell()
     const menu = screen.getByRole('menu', { name: 'Channel notifications' })
     expect(menu.textContent).toMatch(/^Notify me about/)
-    expect(levels()).toEqual([['All new messages', 'false'], ['Mentions and keywords', 'true'], ['Nothing', 'false']])
+    expect(levels()).toEqual([['Default (Mentions and keywords)', 'true'], ['All new messages', 'false'], ['Mentions and keywords', 'false'], ['Nothing', 'false']])
     expect(menu.querySelector('[role="separator"]')).toBeTruthy()
     expect(screen.getAllByRole('menuitem').map((el) => el.textContent)).toEqual(['Mute channel'])
   })
@@ -184,8 +184,16 @@ describe('the channel bell (spec 6.11)', () => {
     expect(onNotifyLevel).toHaveBeenCalledWith('none')
     expect(screen.queryByRole('menu')).toBeNull()
     openBell()
-    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Mentions and keywords' }))
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Default (Mentions and keywords)' }))
     expect(onNotifyLevel).toHaveBeenCalledOnce()
+  })
+
+  it('a level of its own: that level is checked, and Default (…) goes back to my default (slice AA)', () => {
+    const { onNotifyLevel } = header({ channel: { ...backend, notifyLevel: 'all', notifyLevelOwn: true } })
+    openBell()
+    expect(levels()).toEqual([['Default', 'false'], ['All new messages', 'true'], ['Mentions and keywords', 'false'], ['Nothing', 'false']])
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Default' }))
+    expect(onNotifyLevel).toHaveBeenCalledWith(null)
   })
 
   it('Mute channel mutes it; a muted channel offers Unmute', () => {

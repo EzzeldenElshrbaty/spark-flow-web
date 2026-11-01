@@ -176,6 +176,11 @@ describe('notification level per channel (spec 6.11)', () => {
     expect((await api.chat.channel('c-backend')).notifyLevel).toBe('mentions')
   })
 
+  it('null goes back to following my default, which then decides (slice AA)', async () => {
+    expect((await api.chat.setNotifyLevel('c-backend', 'all')).notifyLevelOwn).toBe(true)
+    expect(await api.chat.setNotifyLevel('c-backend', null)).toMatchObject({ notifyLevel: 'mentions', notifyLevelOwn: false })
+  })
+
   it('refuses a level it doesn’t know', async () => {
     await expect(api.chat.setNotifyLevel('c-backend', 'loud' as never)).rejects.toMatchObject({ status: 400 })
   })

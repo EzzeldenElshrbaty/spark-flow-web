@@ -147,6 +147,7 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
           ...(clientId && { clientId }),
         }),
       setFollowing: (messageId, following) => send<void>(following ? 'PUT' : 'DELETE', `/api/messages/${enc(messageId)}/follow`),
+      setThreadMuted: (messageId, muted) => send<void>(muted ? 'PUT' : 'DELETE', `/api/messages/${enc(messageId)}/mute`),
       setNotifyLevel: (id, notifyLevel) => send('PATCH', `/api/channels/${enc(id)}/me`, { notifyLevel }),
       react: (target, emoji, on) => send<void>(on ? 'PUT' : 'DELETE', `${targetPath(target)}/reactions/${enc(emoji)}`),
       edit: (target, content, body) => send('PATCH', targetPath(target), body ? { content, body } : { content }),

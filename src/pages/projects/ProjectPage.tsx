@@ -229,7 +229,7 @@ export function ProjectPage() {
 
       {tab === 'overview' && <OverviewTab project={project} phases={phaseList} people={people} teams={teams} canEdit={canEdit} canPost={canPost} />}
       {tab === 'tasks' && <TasksTab project={project} people={people} phases={phaseList} />}
-      {tab === 'chat' && <ChatTab ws={ws} project={project} people={people} usersLoading={users.isLoading} />}
+      {tab === 'chat' && <ChatTab ws={ws} project={project} />}
       {tab === 'time' && <TimeTab project={project} people={people} />}
       {tab === 'history' && <HistoryTab project={project} people={people} phases={phaseList} />}
 

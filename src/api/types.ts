@@ -366,6 +366,8 @@ export type ChatMessage = {
    * replied to it, or was mentioned by name in it or a reply.
    */
   following?: boolean
+  /** Whether I muted its thread (slice AA), per person on read. */
+  threadMuted?: boolean
   /**
    * Set on a thread reply also sent to the channel (spec 6.7): it shows here with its root's first line. Its `id` is
    * the reply's, and its edits, deletes and reactions go to the reply (`/api/replies/:id`).
@@ -430,7 +432,8 @@ export type ScheduledMessage = {
 }
 
 /** A person's own choice to follow a thread or not (spec §7 ThreadFollow); without one, the defaults decide. */
-export type ThreadFollow = { userId: string; rootId: string; following: boolean }
+/** `muted` (slice AA): still followed, but its replies stop counting as new and reaching me, unless they mention me. */
+export type ThreadFollow = { userId: string; rootId: string; following: boolean; muted?: boolean }
 
 /** Text I started and haven't sent, kept on the server so it follows me between devices (spec 6.8). */
 export type Draft = { channelId: string; rootId: string | null; body: Body; updatedAt: string }
@@ -488,6 +491,8 @@ export type ActivityEntry = {
 export type ThreadCard = {
   root: ChatMessage; channelId: string; replies: ThreadReply[]
   totalReplies: number; unreadCount: number; participantIds: string[]; lastReplyAt: string
+  /** I muted it (slice AA): only mentions of me count as new. */
+  muted: boolean
 }
 /** A page of threads, unread first; `unreadThreads` counts every followed thread with unread replies (the sidebar's). */
 export type ThreadsPage = { items: ThreadCard[]; nextCursor: string | null; unreadThreads: number }
@@ -782,8 +787,11 @@ export interface Api {
     reply(messageId: string, content: string, body?: Body, alsoInChannel?: boolean, fileIds?: string[], clientId?: string): Promise<ThreadReply>
     /** Get notified about replies, or turn it off (spec 6.7): my own choice for a thread's root message. */
     setFollowing(messageId: string, following: boolean): Promise<void>
+    /** Mutes or unmutes a thread for me (slice AA); it stays followed. */
+    setThreadMuted(messageId: string, muted: boolean): Promise<void>
     /** What this channel tells me about (spec 6.11): all new messages, my mentions, or nothing. Mine only. */
-    setNotifyLevel(id: string, level: NotifyLevel): Promise<Channel>
+    /** `null` goes back to following my default (slice AA). */
+    setNotifyLevel(id: string, level: NotifyLevel | null): Promise<Channel>
     /** Adds the current user's reaction, or takes it back if it's there; only the emoji in REACTIONS. */
     /** Puts my reaction on (`on`) or takes it off: a set, so a retry changes nothing (spec §8). */
     react(target: ChatTarget, emoji: string, on: boolean): Promise<void>

@@ -25,6 +25,7 @@ vi.mock('@/api/chat', () => ({
   useThread: () => ({ data: [], isError: false, isPending: false }),
   useReply: () => ({ error: null }),
   useSetFollowing: () => ({ mutate: vi.fn(), isPending: false }),
+  useSetThreadMuted: () => ({ mutate: vi.fn(), isPending: false }),
 }))
 vi.mock('@/api/users', () => ({ useUsers: () => ({ data: [], isLoading: false }) }))
 vi.mock('@/api/projects', () => ({ useProjectSummaries: () => ({ data: [] }) }))

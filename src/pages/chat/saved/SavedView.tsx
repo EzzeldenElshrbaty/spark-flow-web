@@ -17,6 +17,9 @@ import { CustomReminder, RemindItems } from '@/pages/chat/saved/RemindMenu'
 
 type Patch = { status?: SavedStatus; remindAt?: string | null }
 
+/** The row's buttons are 44px touch targets on phones (spec 6.16). */
+const PHONE_44 = 'max-md:size-11'
+
 const TAB_LABELS: Record<SavedStatus, string> = { inProgress: 'In progress', archived: 'Archived', completed: 'Completed' }
 const EMPTY: Record<SavedStatus, string> = {
   inProgress: 'Nothing saved yet. Save a message with S or its ⋯ menu.',
@@ -114,7 +117,7 @@ export function SavedView({
             {item.status !== 'completed' && (
               <Menu
                 label={item.remindAt ? 'Change reminder' : 'Set reminder'}
-                trigger={(props) => <IconButton label={item.remindAt ? 'Change reminder' : 'Set reminder'} icon={IconAlarm} size="sm" {...props} />}
+                trigger={(props) => <IconButton label={item.remindAt ? 'Change reminder' : 'Set reminder'} icon={IconAlarm} size="sm" className={PHONE_44} {...props} />}
               >
                 <RemindItems
                   onPick={(at) => onUpdate(item.id, { remindAt: at.toISOString() })}
@@ -124,11 +127,11 @@ export function SavedView({
               </Menu>
             )}
             {item.status === 'archived' ? (
-              <IconButton label="Move to In progress" icon={IconArrowBackUp} size="sm" onClick={() => onUpdate(item.id, { status: 'inProgress' })} />
+              <IconButton label="Move to In progress" icon={IconArrowBackUp} size="sm" className={PHONE_44} onClick={() => onUpdate(item.id, { status: 'inProgress' })} />
             ) : (
-              <IconButton label="Archive" icon={IconArchive} size="sm" onClick={() => onUpdate(item.id, { status: 'archived' })} />
+              <IconButton label="Archive" icon={IconArchive} size="sm" className={PHONE_44} onClick={() => onUpdate(item.id, { status: 'archived' })} />
             )}
-            <Menu label="Saved item actions" trigger={(props) => <IconButton label="More actions" icon={IconDotsVertical} size="sm" {...props} />}>
+            <Menu label="Saved item actions" trigger={(props) => <IconButton label="More actions" icon={IconDotsVertical} size="sm" className={PHONE_44} {...props} />}>
               <MenuItem icon={IconTrash} danger onSelect={() => onRemove(item.id)}>
                 Remove from Saved
               </MenuItem>

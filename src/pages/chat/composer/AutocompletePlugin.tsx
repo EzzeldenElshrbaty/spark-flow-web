@@ -149,11 +149,13 @@ export function AutocompletePlugin({
       commandPriority={COMMAND_PRIORITY_LOW}
       menuRenderFn={(anchorElementRef, { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex }) => {
         const container = anchorElementRef.current
-        if (!container || options.length === 0) return null
-        const box = anchor.current?.getBoundingClientRect()
-        // Lexical's container is the listbox the editor points at (aria-controls, aria-activedescendant): name it.
+        if (!container) return null
+        // Lexical's container is the listbox the editor points at (aria-controls, aria-activedescendant): name it, even
+        // while its choices are still coming (slice AA: it read "Typeahead menu" until then).
         container.setAttribute('aria-label', trigger.current === '#' ? 'Link a channel' : trigger.current === ':' ? 'Emoji' : trigger.current === '/' ? 'Shortcuts' : 'Mention someone')
         container.id = 'typeahead-menu'
+        if (options.length === 0) return null
+        const box = anchor.current?.getBoundingClientRect()
         return createPortal(
           <div className="sf">
             <div

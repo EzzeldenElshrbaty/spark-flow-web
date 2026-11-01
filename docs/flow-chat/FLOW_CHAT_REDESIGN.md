@@ -391,6 +391,7 @@ Order, with separators shown as —:
   - On hover the meta text becomes "View thread ›" and the bar takes a `line` border on `surface-raised`.
 - **Panel (420px):**
   - Header: "Thread", "#channel", ⋮ (copy link, follow or unfollow, mute, open in a new window), close.
+  - Mute (built in slice AA, 1 Nov 2026): the thread stays followed and in Threads, but its replies stop counting as new and stop reaching Activity, the bell and desktop notifications; a reply that mentions me still does. Stored as `muted` on my thread follow (`PUT`/`DELETE /api/messages/:id/mute`); a message carries `threadMuted` for me; replying keeps it muted. A muted card shows "Muted" and offers Unmute thread in its ⋯.
   - Body: the parent message, a "N replies" divider, the replies, and a thread composer.
   - The thread composer has no formatting row by default and adds the "Also send to #channel" checkbox.
 - **Broadcast:**
@@ -515,6 +516,7 @@ Order, with separators shown as —:
 ### 6.11 Notifications popover (from the header bell)
 
 - "Notify me about": All new messages / Mentions and keywords / Nothing (radio items with a check).
+  - Amended 1 Nov 2026 (slice AA): first "Default (…)", checked while the channel follows my default; picking it sends `notifyLevel: null` and goes back to following it.
 - — Mute channel (moves the channel to the bottom; no badges).
 - Desktop, mobile and email…
 - — A note on Do Not Disturb with a link to Preferences.

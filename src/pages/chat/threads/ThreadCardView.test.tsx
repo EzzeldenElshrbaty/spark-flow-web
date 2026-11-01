@@ -21,6 +21,8 @@ function show(over: Partial<ComponentProps<typeof ThreadCardView>> = {}) {
     loadingMore: false,
     onShowMore: vi.fn(),
     unfollowed: false,
+    muted: false,
+    onToggleMute: vi.fn(),
     onUnfollow: vi.fn(),
     onFollow: vi.fn(),
     followError: null,
@@ -109,5 +111,14 @@ describe('ThreadCardView (spec 6.12 Threads)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Thread actions' }))
     expect(screen.getByRole('menuitem', { name: 'View in channel' })).toBeTruthy()
     expect(screen.getByRole('menuitem', { name: 'Copy link' })).toBeTruthy()
+  })
+
+  it('a muted thread says so, and ⋯ offers Unmute thread (slice AA)', async () => {
+    const onToggleMute = vi.fn()
+    show({ muted: true, onToggleMute })
+    expect(screen.getByText('Muted')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Thread actions' }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Unmute thread' }))
+    expect(onToggleMute).toHaveBeenCalled()
   })
 })

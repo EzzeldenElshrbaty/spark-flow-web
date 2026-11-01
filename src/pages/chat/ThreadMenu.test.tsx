@@ -27,7 +27,7 @@ function show(following = false) {
 describe('the thread panel’s ⋮ (spec 6.7)', () => {
   it('offers Copy link, following, and Open in a new window', () => {
     const menu = show()
-    expect(within(menu).getAllByRole('menuitem').map((el) => el.querySelector('span')?.textContent)).toEqual(['Copy link', 'Get notified about replies', 'Open in a new window'])
+    expect(within(menu).getAllByRole('menuitem').map((el) => el.querySelector('span')?.textContent)).toEqual(['Copy link', 'Get notified about replies', 'Mute thread', 'Open in a new window'])
   })
 
   it('following there is the same as in the message’s menu, both ways', async () => {
@@ -37,6 +37,13 @@ describe('the thread panel’s ⋮ (spec 6.7)', () => {
     cleanup()
     fireEvent.click(within(show(true)).getByRole('menuitem', { name: 'Turn off notifications for replies' }))
     await vi.waitFor(() => expect(setFollowing).toHaveBeenCalledWith('m1', false))
+  })
+
+  it('Mute thread mutes it and says what that means (slice AA)', async () => {
+    const setMuted = vi.spyOn(api.chat, 'setThreadMuted').mockResolvedValue()
+    fireEvent.click(within(show()).getByRole('menuitem', { name: 'Mute thread' }))
+    await vi.waitFor(() => expect(setMuted).toHaveBeenCalledWith('m1', true))
+    expect(await screen.findByText('Thread muted. Only mentions of you will reach you.', { selector: 'p' })).toBeTruthy()
   })
 
   it('Copy link copies the thread’s link and says so, on screen and read out', async () => {

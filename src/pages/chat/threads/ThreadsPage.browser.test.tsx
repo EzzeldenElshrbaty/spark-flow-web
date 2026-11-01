@@ -30,7 +30,7 @@ const reply = (id: string, messageId: string, text: string, minute: number): Thr
 })
 const card = (id: string, unreadCount: number, minute: number, extra: Partial<ThreadCard> = {}): ThreadCard => ({
   root: root(id, `Parent ${id}`), channelId: 'c-backend', replies: [reply(`${id}-r1`, id, `Reply one of ${id}`, minute - 1), reply(`${id}-r2`, id, `Reply two of ${id}`, minute)],
-  totalReplies: 2, unreadCount, participantIds: ['u-2', 'u-1'], lastReplyAt: `2026-10-30T09:${String(minute).padStart(2, '0')}:00.000Z`, ...extra,
+  totalReplies: 2, unreadCount, participantIds: ['u-2', 'u-1'], lastReplyAt: `2026-10-30T09:${String(minute).padStart(2, '0')}:00.000Z`, muted: false, ...extra,
 })
 
 let server: ThreadCard[]

@@ -199,7 +199,7 @@ describe('sendMessage', () => {
     const m = await sendMessage(db, hub, { channelId: 'c-backend', content: 'hi', attachments: [attachment] })
     expect(m).toMatchObject({ senderId: 'u-1', channelId: 'c-backend', threadCount: 0, lastReplyAt: null, editedAt: null, reactions: [] })
     expect(m.attachments).toEqual([attachment])
-    expect(await api.chat.message(m.id)).toEqual({ ...m, replyUserIds: [], following: true }) // who replied, and following, are worked out on read
+    expect(await api.chat.message(m.id)).toEqual({ ...m, replyUserIds: [], following: true, threadMuted: false }) // who replied, and following, are worked out on read
     expect((await api.chat.messages('c-backend')).items[0].id).toBe(m.id)
   })
 
@@ -1048,6 +1048,50 @@ describe('following a thread (spec 6.7)', () => {
     await expect(api.chat.setFollowing('m-nope', true)).rejects.toMatchObject({ status: 404 })
     await api.users.viewAs('u-3') // Mariam: not in #release-v2
     await expect(api.chat.setFollowing('m-r01', true)).rejects.toMatchObject({ status: 403 })
+  })
+})
+
+describe('muting a thread (spec 6.6 thread ⋮, slice AA)', () => {
+  const muted = async (id: string) => (await api.chat.message(id)).threadMuted
+  const threadItems = async (rootId: string) => (await api.inbox.list('ws-eng')).filter((i) => i.kind === 'thread' && i.messageId === rootId)
+
+  it('a muted thread stays followed and in Threads, but its replies don’t reach Activity or count as new; a mention still does', async () => {
+    const root = await api.chat.send('c-general', 'Release plan for 2.4')
+    await api.chat.setThreadMuted(root.id, true)
+    expect(await muted(root.id)).toBe(true)
+    expect((await api.chat.message(root.id)).following).toBe(true)
+    await api.users.viewAs('u-2')
+    await api.chat.reply(root.id, 'Looks fine')
+    await api.users.viewAs('u-1')
+    expect(await threadItems(root.id)).toEqual([])
+    const card = (await api.threads.list('ws-eng')).items.find((c) => c.root.id === root.id)!
+    expect(card).toMatchObject({ muted: true, unreadCount: 0 })
+    await api.users.viewAs('u-2')
+    await api.chat.reply(root.id, 'One question for @[Youssef Abdelrahman](u-1)')
+    await api.users.viewAs('u-1')
+    expect((await api.threads.list('ws-eng')).items.find((c) => c.root.id === root.id)!.unreadCount).toBe(1)
+  })
+
+  it('replying keeps it muted; unmuting brings replies back', async () => {
+    const root = await api.chat.send('c-general', 'Mine')
+    await api.chat.setThreadMuted(root.id, true)
+    await api.chat.reply(root.id, 'A note to self')
+    expect(await muted(root.id)).toBe(true)
+    await api.chat.setThreadMuted(root.id, false)
+    await api.users.viewAs('u-2')
+    await api.chat.reply(root.id, 'Back')
+    await api.users.viewAs('u-1')
+    expect(await threadItems(root.id)).toHaveLength(1)
+  })
+
+  it('only my own, on a message I can read; the change is published', async () => {
+    const root = await api.chat.send('c-general', 'Mine')
+    events = []
+    await api.chat.setThreadMuted(root.id, true)
+    expect(events).toContainEqual({ type: 'messageChanged', channelId: 'c-general', messageId: root.id })
+    await api.users.viewAs('u-2')
+    expect(await muted(root.id)).toBe(false)
+    await expect(api.chat.setThreadMuted('m-nope', true)).rejects.toMatchObject({ status: 404 })
   })
 })
 

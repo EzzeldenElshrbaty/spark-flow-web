@@ -1930,3 +1930,80 @@ Design (1 Nov, within the rulings):
   - The panel slides in from the end; beside the card (1536px and up) it fades in.
   - Pictures are taken in light only.
 
+
+# Slice AA: the chat clean-up — 1 Nov 2026, plan for approval
+
+Asked (31 Oct): "AA (the chat clean-up) waits until these are done." Approved to plan on 1 Nov. AA isn't written down
+anywhere else, so this plan collects what the chat slices left behind ("Not in this slice", "Left as is", deferred
+minors). Nothing new from the spec beyond the thread ⋮ items it already lists.
+
+Rulings (cost if wrong):
+- **Thread ⋮ menu** (spec 6.6, line 393: copy link, follow or unfollow, mute, open in a new window). It gets the two
+  missing items:
+  - **Mute** keeps the thread in Threads, but its replies stop counting as new, stop reaching Activity, the bell and
+    desktop notifications, and the card shows a bell-off "Muted". A mention of me still reaches me, as a muted channel
+    already works. **Unmute** undoes it. Stored on the thread follow (`muted`), DB v28.
+    Cost if wrong: one flag.
+  - **Open in a new window** opens the thread's own address in a new tab.
+- **Project Chat tab** shows the project's channel itself: the same feed, rich composer, threads and files as Chat,
+  instead of the old textarea. It's one channel, so nothing moves.
+- **Task comments** keep their textarea. Moving them to the rich editor would change how comments are stored (plain text
+  with mentions, not message bodies), so that waits for a decision of its own.
+  Cost if wrong: comments get Aa formatting later.
+- **The bell's level menu** gets "Default (…)" to go back to following the default, through `notifyLevelOwn`. This
+  answers slice Z's open question.
+- **Small debts:**
+  - Saved rows' buttons become 44px on phones (spec 6.16).
+  - A deleted thread's card leaves Threads at once.
+  - The empty `chatRedesign` flag and `lib/features.ts` go (the gallery toggle too).
+- **Flaky tests:** the chat browser tests that fail only under a full parallel run (MessageList scrolling, RichComposer
+  autocomplete, the dark mention-list axe check) get deterministic waits. One full browser run is not enough to clear
+  them: they must pass 3 full runs in a row.
+- **Not in this slice:**
+  - Forward, the emoji picker's Custom tab and skin tones (no flow in the spec).
+  - Scheduled messages with files.
+  - 🔍 in group DMs (`in:` can't name one yet).
+  - Recent and saved searches.
+
+Plan:
+- [x] AA1 **Mute a thread and Open in a new window.**
+  - API and mock: `threads.mute(rootId, muted)`, plus the effect on unread counts, Activity, notifications and Threads.
+  - DB v28 migration.
+  - Menu items in the thread panel and on the card.
+  - Tests: rules, migration, menu, card, notifier.
+- [x] AA2 **Project Chat tab on the channel's own view.**
+  - Retire `ChatTab`'s textarea path.
+  - Tests: the tab shows the feed and rich composer, a thread opens, a phone fits.
+- [x] AA3 **"Default (…)" in the level menu.** Tests: the menu and the saved preference.
+- [x] AA4 **Small debts:** 44px Saved buttons, a deleted thread's card, the flag removed. Tests: one each.
+- [x] AA5 **Flaky browser tests.** Find each cause (timing or focus), fix the waits, then 3 green full runs.
+- [x] AA6 **Close:** spec, CLAUDE.md, help chapters (threads, chat), gates, dev-server check, review, commit.
+
+### Review (slice AA)
+
+- **Checks:**
+  - Unit 1,905 pass; tsc, lint and build:prototype are clean.
+  - Browser 258 passed three full runs in a row, after the fixes below.
+  - App check on `npm run dev`:
+    - NEX's Chat tab shows #nexus-core with its tabs and the rich composer; a message sent there arrived.
+    - Mute thread on a Threads card showed "Muted".
+    - #general's bell lists "Default (Mentions and keywords)" first.
+    - No console errors.
+- **Test-first:** the mute rules (mock, delivery rule, notifier, menu, card), Default (…) and the 44px Saved buttons
+  had their tests written first; the 44px test was mutation-checked. The Chat tab test came with the change.
+- **Changed from the plan:**
+  - Mute needed no DB version: `muted` is optional on the thread follow.
+  - **Open in a new window** was already in the thread panel's ⋮; only Mute was missing.
+  - A deleted thread's card leaving Threads at once is **left as is**. It would take a fetch per card or a "gone" list
+    from the server, for a rare case.
+  - The Chat tab loads the channel's code with the tab, so the project page stays as small as before.
+- **Flaky tests, causes found:**
+  - MessageList: fixed pauses before measuring a scroll. They now wait for the scroll to land, and the day-pill scans
+    get 60 s.
+  - Composer lists: the typed text was there but Lexical's typeahead sometimes missed the caret on the last key, so the
+    list opened only on the next update. Tests type after `focusEditor` and give one End if the list hasn't opened.
+    For a person this is the list appearing a key later.
+  - The mention list's frame read "Typeahead menu" until its choices came. It is now named at once, a real
+    screen-reader fix.
+- **Left as is:** task comments keep the textarea (as planned).
+

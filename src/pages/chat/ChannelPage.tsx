@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useParams, useSearchParams } from 'react-rout
 import { useSchedule, viewerZone } from '@/api/scheduled'
 import { useAddMembers, useChannel, useChannels, useDrafts, useDraftSaver, useInvitations, useJumpTarget, useLeaveChannel, useMarkRead, useMessage, useMessages, useMessagesFrom, useRemoveMember, useRevokeInvitation, useSetMuted, useSetNotifyLevel, useSetStarred, useUpdateChannel } from '@/api/chat'
 import { useUsers } from '@/api/users'
-import { useDndEnd } from '@/api/preferences'
+import { useDndEnd, usePreferences } from '@/api/preferences'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
@@ -59,7 +59,16 @@ import { paneDrop, useUploads, type Uploads } from '@/pages/chat/uploads/useUplo
 
 /** A channel or DM: its header and tabs over its messages, newest at the bottom, filling the main card (spec 5.3, 6.1). */
 export function ChannelPage() {
-  const { ws = '', channelId } = useParams()
+  const { channelId } = useParams()
+  return <ChannelView channelId={channelId} />
+}
+
+/**
+ * A channel's whole view: header, tabs, messages and the rich composer. The channel page fills the card with it; a
+ * project's Chat tab shows its channel with it in a box (slice AA), so both behave the same.
+ */
+export function ChannelView({ channelId }: { channelId: string | undefined }) {
+  const { ws = '' } = useParams()
   const { workspace } = useCurrentWorkspace()
   const { persona } = useRole()
   const channel = useChannel(channelId)
@@ -265,7 +274,8 @@ function ChannelTop({
   const navigate = useNavigate()
   // The bell's way to Preferences, with the Do Not Disturb note while it's on (spec 6.11).
   const dndEnd = useDndEnd()
-  const preferences = { dndEnd, onOpen: () => navigate(paths.preferences(workspaceSlug)) }
+  const defaultLevel = usePreferences().data?.defaultLevel
+  const preferences = { dndEnd, defaultLevel, onOpen: () => navigate(paths.preferences(workspaceSlug)) }
   // An archived project's channel still names its project (review).
   const own = useChannelProject(channel).project
   const takenNames = (useChannels(channel.workspaceId).data ?? []).filter((c) => c.kind === 'channel' && c.id !== channel.id).map((c) => c.name ?? '')
