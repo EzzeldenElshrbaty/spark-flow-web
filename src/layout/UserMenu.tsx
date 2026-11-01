@@ -3,6 +3,7 @@ import { isActive } from '@/lib/people'
 import { useQueryClient } from '@tanstack/react-query'
 import { IconAdjustmentsHorizontal, IconChevronDown, IconClockHour4, IconLifebuoy, IconKey, IconLogout, IconMoon, IconSun } from '@tabler/icons-react'
 import { useNavigate } from 'react-router'
+import { useSignOut } from '@/api/auth'
 import { useDndEnd } from '@/api/preferences'
 import { useRoleNames } from '@/api/roles'
 import type { User } from '@/api/types'
@@ -17,8 +18,8 @@ import { useRole } from '@/lib/useRole'
 import { useTheme } from '@/lib/useTheme'
 
 /**
- * The account menu behind the avatar: who you are, Preferences, My attendance, Help, and Change password / Log out (once
- * sign-in exists).
+ * The account menu behind the avatar: who you are, Preferences, My attendance, Help, Change password (once
+ * the backend has passwords) and Log out (slice AB).
  * The redesign's menu (spec 5.2): a dropdown on desktop, a bottom sheet on phones.
  */
 export function UserMenu() {
@@ -29,6 +30,18 @@ export function UserMenu() {
   const people = useUsers(backendOn ? undefined : workspace?.id)
   const roleNames = useRoleNames()
   const viewAs = useViewAs()
+  // Signing out ends the session for this browser (slice AB) and opens Sign in, with nothing of mine left cached.
+  const signOut = useSignOut()
+  // Awaited here rather than through mutate's callbacks, which don't run once the menu has gone (it goes with the shell).
+  const logOut = async () => {
+    try {
+      await signOut.mutateAsync()
+    } finally {
+      navigate('/signin', { replace: true })
+      // After the shell has gone, so nothing on screen refetches what's being dropped.
+      setTimeout(() => queryClient.clear(), 0)
+    }
+  }
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   // While Do Not Disturb is on, a moon on my avatar says so (spec 6.11).
@@ -146,7 +159,7 @@ export function UserMenu() {
       <MenuItem icon={IconKey} disabled hint="Soon">
         Change password
       </MenuItem>
-      <MenuItem icon={IconLogout} disabled hint="Soon">
+      <MenuItem icon={IconLogout} disabled={signOut.isPending} onSelect={logOut}>
         Log out
       </MenuItem>
     </Menu>

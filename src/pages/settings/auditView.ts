@@ -20,6 +20,7 @@ export const ACTIONS: Record<AuditAction, { label: string; tone: BadgeTone }> = 
   restored: { label: 'Restored', tone: 'success' },
   signedIn: { label: 'Signed in', tone: 'neutral' },
   signInFailed: { label: 'Sign-in failed', tone: 'danger' },
+  signedOut: { label: 'Signed out', tone: 'neutral' },
   denied: { label: 'Access denied', tone: 'danger' },
   exported: { label: 'Exported', tone: 'brand' },
   downloaded: { label: 'Downloaded', tone: 'brand' },

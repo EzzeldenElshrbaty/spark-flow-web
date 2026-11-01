@@ -450,8 +450,24 @@ editing UI (teams stay seed-only).
   390px, RTL; a second tab; no console errors. Results recorded in `tasks/todo.md`.
 - **Reviews:** per task (spec + quality) and one whole-branch review per milestone; final review before Thursday.
 
+### 4.10 Signing in (amended 1 Nov 2026, Admin and help slice AB)
+
+`/signin` sits outside the shell, as the CRM's: a Spark Flow panel on wide screens, and email, password and **Sign in**.
+`returnTo` (a path inside the app only) is where it goes after; `why=deactivated` explains a deactivated account.
+Signed out, the shell sends any page there; **Log out** (account menu) ends the session. **Change password** waits for
+the backend.
+
+| Call | Route | Notes |
+|---|---|---|
+| Sign in | `POST /api/auth/sign-in` `{ email, password }` | Sets the session cookie and returns `me`. Refusals: `That email and password don't match.`, `This account is deactivated. Ask an Admin to reactivate it.` (400 both). Logged as `signedIn` or `signInFailed`. |
+| Sign out | `POST /api/auth/sign-out` | Logged as `signedOut`. |
+| Demo people | `GET /api/auth/demo-people` | Prototype only: active people with their role names (Admin, Project manager, Sales, Member order, then A–Z), to sign in as with the one demo password `flow2026`. The backend has none. |
+
+Every other call is a 401 while signed out. In the prototype the session is the browser's (localStorage), so a first
+visit opens on Sign in; View as still switches person in one tab.
+
 ## 10. Out of scope (later)
 
-Real .NET/SignalR backend and sign-in; email/push notifications; payroll beyond hourly cost; client portal;
+Real .NET/SignalR backend; email/push notifications; payroll beyond hourly cost; client portal;
 invoices; Gantt charts; recurring tasks; Arabic UI strings (layout stays RTL-ready); ZIP export of files (JSON export
 includes file metadata only on Thursday).

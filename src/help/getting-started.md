@@ -6,6 +6,14 @@ summary: The screen, the two sides of Flow, search, help and your menu.
 ---
 Spark Flow runs Spark Systems' projects and its chat in one place. This chapter covers what's around every page.
 
+## Signing in
+
+Sign in with your Spark email and password. Signed out, any link opens Sign in first, then the page it pointed to. **Log out** is in your menu.
+
+> In the prototype, everyone's password is `flow2026`, and the list under the form signs you in as anyone, by role, to try what each role can do.
+
+![The sign-in page](signin.jpg "Email and password, and the prototype's people by role")
+
 ## The two sides
 
 The menu on the left shows one side at a time: **Projects** (your day, projects, tasks, time) or **Chat** (channels, messages and threads). Switch with the toggle under the logo, or press `G` then `P` for Projects and `G` then `C` for Chat. Each side reopens where you left it.

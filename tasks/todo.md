@@ -2007,3 +2007,79 @@ Plan:
     screen-reader fix.
 - **Left as is:** task comments keep the textarea (as planned).
 
+
+# Slice AB: the sign-in page, with demo people to sign in as — 1 Nov 2026, approved ("yes first page is login")
+
+Asked (1 Nov, with the Oasis CRM's sign-in screenshot): "create login page with list of roles to join, something like
+that". Today the prototype has no sign-in: you start as Youssef, and switch with View as in the account menu. With the
+backend on, a 401 links to the backend's own `/signin` (spec §10 left sign-in out of the prototype; this changes it).
+
+Rulings (cost if wrong):
+- **`/signin`, outside the shell,** as the CRM's (two halves, one screen):
+  - **Left, the dark ink panel:** the white Spark logo with `FLOW`; "Spark Flow" in red; the headline "Projects, time
+    and chat in one place."; a line under it; four small cards:
+    - Phases at a glance (a phase bar);
+    - Time on every task (a running timer);
+    - Chat and threads (a message with a reply count);
+    - Who's in today (check-ins).
+    Then "Spark Systems · Cairo, Egypt" at the foot. Hidden on phones, where only the right half shows.
+  - **Right, on the page colour:**
+    - the Light / Dark switch at the top;
+    - "Welcome back" and "Sign in with your Spark email and password.";
+    - Email, Password and **Sign in** (the one red button);
+    - an error sentence under the form ("That email and password don't match.", "This account is deactivated. Ask an
+      Admin to reactivate it.");
+    - "Developed by Spark Systems" at the foot.
+- **The demo list (prototype only):** "Prototype: pick someone to sign in as (password `flow2026`)". It lists every
+  active person: avatar initials, name, and their **roles** (with the title after), so it reads as a list of roles to
+  join. Admin first, then Project manager, Sales and Member, A–Z within each. Picking a row signs in as them at once.
+  Cost if wrong: a row that only fills the form instead.
+- **Contract** (`api.auth`):
+  - `signIn(email, password)` sets the session.
+  - `signOut()` ends it.
+  - `demoPeople()` is the list above; prototype only, and a 404 on the backend.
+  - The backend: `POST /api/auth/sign-in` sets the cookie, `POST /api/auth/sign-out`; spec §10 is amended.
+  - The mock keeps `session: { userId } | null` (DB v28). Every other call gives 401 while signed out, and the
+    workspaces list too.
+  - Sign-ins and failed sign-ins go in the audit log (`signedIn`, `signInFailed`), as its seed already shows.
+- **Ways in and out:**
+  - Signed out, any page sends you to `/signin?returnTo=<where you were>`, and you come back there after signing in.
+    AccountState's 401 box goes; other errors keep Try again.
+  - The account menu's **Log out** stops being "Soon": it signs out and goes to `/signin`.
+  - View as stays, as a demo shortcut for switching without signing out.
+- **Change password** stays "Soon" (no passwords are stored in the prototype; one demo password for everyone).
+- **A first visit opens on Sign in** (decided 1 Nov: "yes first page is login"): the seed starts signed out. Someone
+  already using the demo stays signed in after the upgrade.
+
+Plan:
+- [x] AB1 **API and mock:** `api.auth`, the session (DB v28), 401 while signed out, audit, HTTP routes.
+  Tests: the rules, refusals, audit and coverage.
+- [x] AB2 **The page** (`pages/signin/SignInPage.tsx`) and its route, the redirect and returnTo, and Log out.
+  Tests: jsdom, axe in light and dark, 390px.
+- [x] AB3 **Close:**
+  - spec §10, CLAUDE.md, a help section ("Signing in" in Getting started) and its screenshot;
+  - gates, dev-server check, review, commit.
+
+### Review (slice AB)
+
+- **Checks:**
+  - Unit 1,918 and browser 261 pass (three full browser runs in a row before the last small fixes, one after); tsc,
+    lint and build:prototype are clean.
+  - Sign in has an axe check in light and dark and a 390px check.
+  - App check on `npm run dev`:
+    - A first visit to Attendance opened Sign in; a wrong password said so; picking Salma came back to Attendance.
+    - A second tab was signed in too. Log out opened Sign in, and the other tab went there on its next click.
+    - A dark 390px phone had no sideways scroll; no console errors.
+- **Found by the app check, fixed:**
+  - `useShownError` set and cleared its error on every render when a query failed over cached data ("Too many
+    re-renders" after signing out). Regression test checked red, then green.
+  - Any 401 now asks for my account again, so a tab signed out elsewhere goes to Sign in.
+  - Log out awaits the call itself; mutate's callbacks didn't run once the menu had gone.
+- **Changed from the plan:**
+  - No DB version: the session lives in the browser (localStorage), not the document.
+  - Someone already using the demo is signed out once by this change, as a first visit is.
+  - Tests start signed in through a setup file (`src/test/signedIn.ts`), so `vite.config.ts` changed.
+- **Left as is:**
+  - A person's title can repeat their role ("Project manager · Project Manager · Mobile").
+  - No separate review agent this time.
+

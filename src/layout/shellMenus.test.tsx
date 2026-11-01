@@ -36,6 +36,8 @@ vi.mock('@/layout/useCurrentWorkspace', () => ({
   }),
 }))
 vi.mock('@/api/preferences', () => ({ useDndEnd: () => dndEnd }))
+const signOut = vi.fn(async () => {})
+vi.mock('@/api/auth', () => ({ useSignOut: () => ({ mutateAsync: signOut, isPending: false }) }))
 vi.mock('@/api/workspaces', () => ({ useWorkspaces: () => ({ data: [{ id: 'ws-eng', slug: 'engineering', name: 'Spark Engineering' }] }) }))
 vi.mock('@/api/mentions', () => ({
   useMyMentions: () => ({ data: mentions, refetch: vi.fn(), isFetching: false, isError: false }),
@@ -65,7 +67,7 @@ function expectSf(panel: HTMLElement) {
 }
 
 describe('UserMenu (spec 5.2: the account menu)', () => {
-  it('names me, switches the theme, lists View as, and has Change password and Log out as coming soon', async () => {
+  it('names me, switches the theme, lists View as; Change password is coming soon, Log out works (slice AB)', async () => {
     show(<UserMenu />)
     await open(/Youssef Abdelrahman/)
     const menu = screen.getByRole('menu', { name: 'Account' })
@@ -75,10 +77,18 @@ describe('UserMenu (spec 5.2: the account menu)', () => {
     // Nobody deactivated is offered (slice 3).
     expect(screen.queryByRole('menuitemradio', { name: /Mariam Fathy/ })).toBeNull()
     expect(screen.getByRole('menuitem', { name: /Change password/ }).getAttribute('aria-disabled')).toBe('true')
-    expect(screen.getByRole('menuitem', { name: /Log out/ }).getAttribute('aria-disabled')).toBe('true')
+    expect(screen.getByRole('menuitem', { name: /Log out/ }).getAttribute('aria-disabled')).not.toBe('true')
     expectSf(menu)
     await act(async () => fireEvent.click(screen.getByRole('menuitemradio', { name: /Dark/ })))
     expect(setTheme).toHaveBeenCalledWith('dark')
+  })
+
+  it('Log out signs out and opens Sign in', async () => {
+    show(<UserMenu />)
+    await open(/Youssef Abdelrahman/)
+    await act(async () => fireEvent.click(screen.getByRole('menuitem', { name: /Log out/ })))
+    expect(signOut).toHaveBeenCalled()
+    expect(navigate).toHaveBeenCalledWith('/signin', { replace: true })
   })
 
   it('Preferences opens my notification preferences (spec 6.11)', async () => {

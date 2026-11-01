@@ -206,6 +206,12 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
       restore: (key) => send('POST', `/api/tasks/${enc(key)}/restore`),
     },
     teams: { list: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/teams`) },
+    auth: {
+      signIn: (email, password) => send('POST', '/api/auth/sign-in', { email, password }),
+      signOut: () => send<void>('POST', '/api/auth/sign-out'),
+      // The prototype's list; the backend has none.
+      demoPeople: () => get('/api/auth/demo-people'),
+    },
     attendance: {
       scope: () => get('/api/attendance/scope'),
       checkIns: (q) => get(`/api/attendance/check-ins${attendanceQuery(q)}`),

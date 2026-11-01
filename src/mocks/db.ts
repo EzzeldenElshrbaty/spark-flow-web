@@ -37,7 +37,8 @@ import type {
   Preferences,
 } from '@/api/types'
 import { ApiError } from '@/lib/apiError'
-import { memoryActor, type Actor } from './actor'
+import { memoryActor, memorySession, type Actor, type Session } from './actor'
+export { memorySession } from './actor'
 import { migrate } from './migrations'
 import type { MockStore } from './store'
 
@@ -158,6 +159,12 @@ export interface MockDb {
   importAll(bundle: unknown): Promise<void>
   /** Acts as this person from now on, in this db (this tab) only; the document's default person stays as it is. */
   actAs(userId: string): void
+  /** Whether someone is signed in (slice AB). */
+  signedIn(): boolean
+  /** Signs this person in, for the browser, and acts as them in this tab. */
+  signIn(userId: string): void
+  /** Ends the session; this tab's View as goes with it. */
+  signOut(): void
 }
 
 const COLLECTIONS = [
@@ -259,10 +266,11 @@ const badImport = (newer = false) =>
  * tabs writing at the same moment both keep their change. A missing, older or broken document is replaced by the
  * seed inside that same transaction, so two tabs starting together don't seed twice.
  */
-export function createDb(store: MockStore, seed: (now: Date) => SeedResult, now: () => Date = () => new Date(), actor: Actor = memoryActor()): MockDb {
+export function createDb(store: MockStore, seed: (now: Date) => SeedResult, now: () => Date = () => new Date(), actor: Actor = memoryActor(), session: Session = memorySession()): MockDb {
   /** The data as this tab's person sees it: currentUserId is the actor when they exist. Mutates `data`. */
   const asActor = (data: DbData) => {
-    const who = actor.get()
+    // This tab's View as first, then whoever signed in in this browser.
+    const who = actor.get() || session.get()
     if (who && data.users.some((u) => u.id === who)) data.currentUserId = who
     return data
   }
@@ -347,6 +355,15 @@ export function createDb(store: MockStore, seed: (now: Date) => SeedResult, now:
     },
     actAs(userId) {
       actor.set(userId)
+    },
+    signedIn: () => session.get() !== null,
+    signIn(userId) {
+      session.set(userId)
+      actor.set(userId)
+    },
+    signOut() {
+      session.set(null)
+      actor.clear()
     },
     putFile(id, blob) {
       return store.putFile(id, blob)

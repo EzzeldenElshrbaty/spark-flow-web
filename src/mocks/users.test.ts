@@ -62,7 +62,7 @@ describe('the acting person belongs to each db (tab)', () => {
 
   it('an actor naming a user who no longer exists falls back to the default', async () => {
     const store = createMemoryStore()
-    const db = createDb(store, seed, undefined, { get: () => 'u-gone', set: () => {} })
+    const db = createDb(store, seed, undefined, { get: () => 'u-gone', set: () => {}, clear: () => {} })
     expect((await createMockApi(db, hub).users.me()).id).toBe('u-1')
   })
 })

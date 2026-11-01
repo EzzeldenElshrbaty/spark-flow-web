@@ -19,6 +19,9 @@ export type PersonRow = User & { lastActiveAt: string | null }
 export type NewPerson = { name: string; email: string; title: string; roleIds: string[]; teamIds: string[] }
 export type PersonPatch = Partial<NewPerson>
 
+/** Someone to sign in as in the prototype (slice AB): their roles' names, Admin first. */
+export type DemoPerson = { id: string; name: string; email: string; title: string; roles: string[] }
+
 /** Archived records (slice 4): projects, tasks and channels. */
 export type ArchivedType = 'project' | 'task' | 'channel'
 /**
@@ -50,7 +53,7 @@ export type Role = { id: string; name: string; builtIn: boolean; grants: Permiss
 export type AuditGroup = 'data' | 'status' | 'access' | 'settings' | 'exports'
 export type AuditAction =
   | 'created' | 'changed' | 'deleted' | 'archived' | 'restored'
-  | 'signedIn' | 'signInFailed' | 'denied'
+  | 'signedIn' | 'signInFailed' | 'signedOut' | 'denied'
   | 'exported' | 'downloaded' | 'imported' | 'reset'
   | 'deactivated' | 'reactivated'
 export type AuditResult = 'done' | 'refused' | 'failed'
@@ -879,6 +882,15 @@ export interface Api {
     restore(key: string): Promise<TaskView>
   }
   teams: { list(workspaceId: string): Promise<Team[]> }
+  /**
+   * Signing in and out (slice AB). Every other call is a 401 while signed out. `demoPeople` is the prototype's list to
+   * sign in as; the backend has none (404).
+   */
+  auth: {
+    signIn(email: string, password: string): Promise<Me>
+    signOut(): Promise<void>
+    demoPeople(): Promise<DemoPerson[]>
+  }
   /**
    * User attendance and activities (slice 5). Everyone sees their own; "See everyone’s check-ins and app use" everyone;
    * "…of the people on projects they manage" those people. Asking for someone else is a 403.

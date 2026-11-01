@@ -33,6 +33,7 @@ export default defineConfig(({ mode }) => {
           extends: true,
           test: {
             name: 'unit',
+            setupFiles: ['src/test/signedIn.ts'],
             environment: 'node',
             include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
             exclude: ['src/**/*.browser.test.tsx'],
@@ -47,6 +48,7 @@ export default defineConfig(({ mode }) => {
           extends: true,
           test: {
             name: 'browser',
+            setupFiles: ['src/test/signedIn.ts'],
             include: ['src/**/*.browser.test.tsx'],
             // One file at a time: they share one browser tab, and focus (which editors and scrolling need) is one too.
             fileParallelism: false,

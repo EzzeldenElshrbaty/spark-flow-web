@@ -163,6 +163,17 @@ describe('createHttpApi', () => {
     ])
   })
 
+  it('maps signing in and out (slice AB)', async () => {
+    const { calls, fetchFn } = recordingFetch()
+    const api = createHttpApi(fetchFn)
+    await api.auth.signIn('nour.elsayed@spark-sys.com', 'secret')
+    await api.auth.signOut()
+    expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url} ${c.init?.body ?? ''}`.trim())).toEqual([
+      'POST /api/auth/sign-in {"email":"nour.elsayed@spark-sys.com","password":"secret"}',
+      'POST /api/auth/sign-out',
+    ])
+  })
+
   it('maps the attendance calls, and the place sent with a check-in and check-out (slice 5)', async () => {
     const { calls, fetchFn } = recordingFetch()
     const api = createHttpApi(fetchFn)

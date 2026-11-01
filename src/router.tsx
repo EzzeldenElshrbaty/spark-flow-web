@@ -37,6 +37,7 @@ const PreferencesPage = page(() => import('@/pages/preferences/PreferencesPage')
 const SavedPage = page(() => import('@/pages/chat/saved/SavedPage'), 'SavedPage')
 const DraftsPage = page(() => import('@/pages/chat/outbox/DraftsPage'), 'DraftsPage')
 const HelpPage = page(() => import('@/pages/help/HelpPage'), 'HelpPage')
+const SignInPage = page(() => import('@/pages/signin/SignInPage'), 'SignInPage')
 
 /** `/w/:ws/p/:projectKey` has no page of its own: it opens the Overview tab. */
 function ProjectOverviewRedirect() {
@@ -100,6 +101,15 @@ export const workspacePages: RouteObject[] = [
 
 export const router = createBrowserRouter([
   ...devRoutes(),
+  // Sign in (slice AB): outside the shell, which needs someone signed in.
+  {
+    path: '/signin',
+    element: (
+      <Suspense>
+        <SignInPage />
+      </Suspense>
+    ),
+  },
   {
     element: <AppLayout />,
     children: [

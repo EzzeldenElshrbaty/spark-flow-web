@@ -1,3 +1,4 @@
+import { ApiError } from '@/lib/apiError'
 import { useMe } from '@/api/users'
 import type { Permission } from '@/lib/permissions'
 import { useShownError } from '@/lib/useShownError'
@@ -17,5 +18,8 @@ export function useRole() {
   const persona: Persona = data ? { id: data.id, name: data.name, title: data.title, roleIds: data.roleIds ?? [], grants: data.grants ?? [] } : placeholder
   // loading: the persona is still the placeholder (no permissions), so it must not decide what is refused yet.
   // retrying: a failed account is being asked for again.
-  return { persona, grants: persona.grants, loading: !data && isPending, error, retry: () => void refetch(), retrying: !data && isFetching }
+  // Signed out (slice AB): a 401, even over an account loaded before (another tab signed out, or a session ended).
+  const signedOut = me.error instanceof ApiError && me.error.status === 401
+  const deactivated = signedOut && (me.error as ApiError).detail === 'This account was deactivated.'
+  return { persona, grants: persona.grants, loading: !data && isPending, error, signedOut, deactivated, retry: () => void refetch(), retrying: !data && isFetching }
 }

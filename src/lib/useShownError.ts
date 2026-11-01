@@ -16,7 +16,9 @@ export function useShownError(query: { data: unknown; error: unknown; isFetching
   const [last, setLast] = useState<Error | null>(null)
   const error = (query.error as Error | null) ?? null
   const hasData = query.data !== undefined
-  if (error && error !== last) setLast(error)
+  // Only while there's no data to show: an error over cached data (a 401 after signing out) set it then cleared it
+  // again on every render, forever (slice AB).
+  if (error && error !== last && !hasData) setLast(error)
   if (hasData && last) setLast(null)
   return shownError({ error, hasData, fetching: query.isFetching }, last)
 }

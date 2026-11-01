@@ -2,7 +2,7 @@ import clsx from 'clsx'
 import { Suspense, useState } from 'react'
 import { Announcer } from '@/components/sf/Announcer'
 import { ToastProvider, ToastRegion } from '@/components/sf/Toast'
-import { Outlet, useMatches } from 'react-router'
+import { Navigate, Outlet, useLocation, useMatches } from 'react-router'
 import { ActivityTracker } from '@/layout/ActivityTracker'
 import { DesktopNotifier } from '@/layout/DesktopNotifier'
 import { Inspector } from '@/layout/Inspector'
@@ -33,6 +33,8 @@ export function AppLayout() {
   useModeShortcuts()
   // Without an account nothing below can be decided: say why instead of refusing every page.
   const account = useRole()
+  const signedOut = account.signedOut
+  const location = useLocation()
   // A pane page (a channel) fills the card instead of scrolling inside the padded page column.
   const pane = useMatches().some((match) => (match.handle as { pane?: boolean } | undefined)?.pane)
 
@@ -68,7 +70,10 @@ export function AppLayout() {
               }
             >
               {/* Each page's code loads when it's first opened; this shows meanwhile (usually a blink). */}
-              {account.error ? (
+              {signedOut ? (
+                // Signed out (slice AB): Sign in, then back here. A deactivated account is told why.
+                <Navigate to={`/signin?returnTo=${encodeURIComponent(location.pathname + location.search + location.hash)}${account.deactivated ? '&why=deactivated' : ''}`} replace />
+              ) : account.error ? (
                 <AccountState error={account.error} onRetry={account.retry} retrying={account.retrying} />
               ) : (
                 <Suspense fallback={<PageSkeleton />}>

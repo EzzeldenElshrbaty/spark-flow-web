@@ -73,6 +73,14 @@ try {
   })
   await context.addInitScript(() => localStorage.setItem('spark-flow.theme', 'light'))
   const page = await context.newPage()
+  // A first visit opens on Sign in (slice AB): its picture first, then in as Youssef, the Admin, for the rest.
+  await page.goto(`http://localhost:${PORT}/signin`)
+  await page.getByRole('list', { name: 'Demo people' }).waitFor()
+  await page.waitForTimeout(800)
+  await page.screenshot({ path: `${OUT}/signin.jpg`, type: 'jpeg', quality: 80 })
+  console.log(`${OUT}/signin.jpg`)
+  await page.getByRole('button', { name: /Youssef Abdelrahman/ }).click()
+  await page.waitForURL(/\/w\//)
   for (const shot of SHOTS) {
     if (shot.before && shot.name !== 'home') await shot.before(page)
     await page.goto(`${BASE}${shot.path}`)

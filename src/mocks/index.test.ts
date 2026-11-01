@@ -1,5 +1,6 @@
 import { IDBFactory } from 'fake-indexeddb'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { DEMO_PASSWORD } from '@/lib/demo'
 
 // getMockApi caches its db, so each test loads a fresh copy of the module.
 async function load() {
@@ -42,6 +43,9 @@ describe('getMockApi', () => {
     const { getMockApi } = await load()
     const api = getMockApi()
     expect(getMockApi()).toBe(api)
+    // A first visit is signed out (slice AB).
+    await expect(api.users.me()).rejects.toMatchObject({ status: 401 })
+    await api.auth.signIn('youssef.abdelrahman@spark-sys.com', DEMO_PASSWORD)
     expect((await api.users.me()).id).toBe('u-1')
     expect([...storage.map.keys()]).toEqual(['spark-flow.theme'])
     const dev = win.__sparkFlowDev as NonNullable<Window['__sparkFlowDev']>
@@ -67,6 +71,7 @@ describe('getMockApi', () => {
     })
     const { getMockApi } = await load()
     const api = getMockApi()
+    await api.auth.signIn('youssef.abdelrahman@spark-sys.com', DEMO_PASSWORD)
     expect((await api.workspaces.list()).length).toBeGreaterThan(0)
     await api.chat.markRead('c-frontend')
     expect((await api.chat.channel('c-frontend')).unreadCount).toBe(0) // writes stick

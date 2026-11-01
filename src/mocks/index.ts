@@ -9,11 +9,12 @@ import { rolesApi } from './roles'
 import { audit } from './audit'
 import { auditApi } from './auditApi'
 import { archiveApi } from './archive'
+import { authApi } from './auth'
 import { attendanceApi } from './attendance'
 import { ApiError } from '@/lib/apiError'
 import type { Api, ChatMessage, NewTicket, ThreadReply, Ticket, TicketPatch } from '@/api/types'
 import { addReply, chatApi, sendMessage, type AddReplyInput, type SendMessageInput } from './chat'
-import { sessionActor } from './actor'
+import { localSession, sessionActor } from './actor'
 import { activityApi } from './activity'
 import { createDb, removeLegacyStorage, type MockDb } from './db'
 import { dbApi } from './dbApi'
@@ -60,6 +61,7 @@ export function createMockApi(db: MockDb, hub: MockHub, now: () => Date = () => 
   const projectParts = projectsApi(db, hub, now)
   return guardRequests(db, {
     workspaces: workspacesApi(db),
+    auth: authApi(db),
     users: usersApi(db, hub, now),
     chat: chatApi(db, hub),
     tickets: ticketsApi(db, now),
@@ -91,11 +93,16 @@ export function createMockApi(db: MockDb, hub: MockHub, now: () => Date = () => 
   })
 }
 
-/** What a signed-out session (a deactivated person, slice 3) may still do: list people and switch to someone. */
-const OPEN_WHEN_SIGNED_OUT = new Set(['users.viewAs', 'users.list', 'workspaces.list'])
+/** What anyone may do signed out (slice AB): sign in, sign out, and see the prototype's demo people. */
+const OPEN = new Set(['auth.signIn', 'auth.signOut', 'auth.demoPeople'])
+/** What a deactivated person's tab may still do (slice 3): list people and switch to someone. */
+const OPEN_WHEN_DEACTIVATED = new Set(['users.viewAs', 'users.list', 'workspaces.list'])
 
-/** A deactivated person's session is signed out: 401 before the call runs, whatever it reads or writes. */
-async function refuseSignedOut(db: MockDb) {
+/** Signed out, or a deactivated person's session: 401 before the call runs, whatever it reads or writes. */
+async function refuseSignedOut(db: MockDb, id: string) {
+  if (OPEN.has(id)) return
+  if (!db.signedIn()) throw new ApiError({ title: 'Signed out', status: 401, detail: 'Signed out' })
+  if (OPEN_WHEN_DEACTIVATED.has(id)) return
   const data = await db.read()
   if (data.users.find((u) => u.id === data.currentUserId)?.deactivated) throw new ApiError({ title: 'Signed out', status: 401, detail: 'This account was deactivated.' })
 }
@@ -117,7 +124,7 @@ function guardRequests(db: MockDb, api: Api): Api {
       }
       const id = `${ns}.${method}`
       wrapped[ns][method] = async (...args: unknown[]) => {
-        if (!OPEN_WHEN_SIGNED_OUT.has(id)) await refuseSignedOut(db)
+        await refuseSignedOut(db, id)
         try {
           return await value.apply(part, args)
         } catch (error) {
@@ -152,10 +159,11 @@ function safely<T>(read: () => T): T | undefined {
 function lazyDb(): MockDb {
   let opening: Promise<MockDb> | null = null
   const actor = sessionActor()
+  const session = localSession()
   const ready = () =>
     (opening ??= (async () => {
       removeLegacyStorage(safely(() => window.localStorage))
-      return createDb(await openStore(safely(() => globalThis.indexedDB)), seed, undefined, actor)
+      return createDb(await openStore(safely(() => globalThis.indexedDB)), seed, undefined, actor, session)
     })())
   return {
     read: () => ready().then((db) => db.read()),
@@ -167,6 +175,15 @@ function lazyDb(): MockDb {
     exportAll: () => ready().then((db) => db.exportAll()),
     importAll: (bundle) => ready().then((db) => db.importAll(bundle)),
     actAs: (userId) => actor.set(userId),
+    signedIn: () => session.get() !== null,
+    signIn: (userId) => {
+      session.set(userId)
+      actor.set(userId)
+    },
+    signOut: () => {
+      session.set(null)
+      actor.clear()
+    },
   }
 }
 
