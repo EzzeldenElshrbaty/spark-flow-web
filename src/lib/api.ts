@@ -49,5 +49,6 @@ export const api: Api = {
   get dashboard() { return resolve().dashboard },
   get files() { return resolve().files },
   get audit() { return resolve().audit },
+  get archive() { return resolve().archive },
   get db() { return resolve().db },
 }

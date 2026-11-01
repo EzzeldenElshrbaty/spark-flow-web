@@ -140,6 +140,29 @@ describe('createHttpApi', () => {
     expect(JSON.parse(String(calls[5].init?.body))).toEqual({ what: 'timeCost', detail: 'Last 7 days · All projects' })
   })
 
+  it('maps the archived records calls, and the "Why?" sent with an archive (slice 4)', async () => {
+    const calls: Call[] = []
+    const fetchFn = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ url: String(input), init })
+      return Response.json(String(input).includes('archive-retention') ? { days: 90 } : {})
+    }) as typeof fetch
+    const api = createHttpApi(fetchFn)
+    await api.archive.list('ws 1')
+    expect(await api.archive.setRetention(90)).toBe(90)
+    await api.archive.deleteForGood('task', 'NEX-1')
+    await api.projects.archive('p 1', 'Paused')
+    await api.tasks.archive('NEX-2')
+    await api.chat.archiveChannel('c 1', 'Done')
+    expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url} ${c.init?.body ?? ''}`.trim())).toEqual([
+      'GET /api/workspaces/ws%201/archive',
+      'PUT /api/settings/archive-retention {"days":90}',
+      'DELETE /api/archive/task/NEX-1',
+      'POST /api/projects/p%201/archive {"reason":"Paused"}',
+      'POST /api/tasks/NEX-2/archive {"reason":""}',
+      'POST /api/channels/c%201/archive {"reason":"Done"}',
+    ])
+  })
+
   it('maps the people calls (slice 3)', async () => {
     const { calls, fetchFn } = recordingFetch()
     const api = createHttpApi(fetchFn)

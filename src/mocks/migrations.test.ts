@@ -173,6 +173,18 @@ describe('18 → 19', () => {
   })
 })
 
+describe('25 → 26 (archived records)', () => {
+  it('keeps archived records a year by default, and the built-in Admin role may manage them', () => {
+    const out = migrate({ version: 25, currentUserId: 'u-1', roles: [{ id: 'admin', builtIn: true, grants: ['audit.view'] }, { id: 'member', builtIn: true, grants: [] }] }, 26) as {
+      settings: { archiveRetentionDays: number }
+      roles: { grants: string[] }[]
+    }
+    expect(out.settings).toEqual({ archiveRetentionDays: 365 })
+    expect(out.roles[0].grants).toEqual(['audit.view', 'archive.manage'])
+    expect(out.roles[1].grants).toEqual([])
+  })
+})
+
 describe('24 → 25 (the audit log)', () => {
   it('starts an empty log, and the built-in Admin role may read it', () => {
     const out = migrate({ version: 24, currentUserId: 'u-1', roles: [{ id: 'admin', builtIn: true, grants: ['settings.manage'] }, { id: 'sales', builtIn: true, grants: [] }] }, 25) as { audit: unknown[]; roles: { grants: string[] }[] }

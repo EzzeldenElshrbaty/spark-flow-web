@@ -39,7 +39,7 @@ describe('pages, tasks and people', () => {
 
   it('a member finds Home, Projects, My tasks and Teams; an admin also Dashboard, Time & cost, Users, Roles and permissions, Audit log, Rates and Database', () => {
     expect(titles('member')).toEqual(['Home', 'Projects', 'My tasks', 'Teams'])
-    expect(titles('admin')).toEqual(['Home', 'Projects', 'My tasks', 'Teams', 'Dashboard', 'Time & cost', 'Settings', 'Users', 'Roles and permissions', 'Audit log', 'Rates', 'Database'])
+    expect(titles('admin')).toEqual(['Home', 'Projects', 'My tasks', 'Teams', 'Dashboard', 'Time & cost', 'Settings', 'Users', 'Roles and permissions', 'Audit log', 'Archived records', 'Rates', 'Database'])
     expect(shortcutsFor(grants('member'), 'engineering').pages[0]!.link).toBe('/w/engineering')
   })
 

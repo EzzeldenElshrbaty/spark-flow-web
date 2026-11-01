@@ -146,6 +146,7 @@ export const RECORD_TYPES: Record<string, string> = {
   data: 'Demo data',
   report: 'Reports',
   auditLog: 'Audit log',
+  settings: 'Settings',
   request: 'Requests',
 }
 

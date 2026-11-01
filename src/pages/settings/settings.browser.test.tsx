@@ -13,6 +13,7 @@ import { ALL_PERMISSIONS, BUILT_IN_ROLES } from '@/lib/permissions'
 import { AuditLogPage } from './AuditLogPage'
 import { RolesPage } from './RolesPage'
 import { UsersPage } from './UsersPage'
+import { ArchivedPage } from './ArchivedPage'
 import { SettingsPage } from './SettingsPage'
 
 // Spec 10 and CLAUDE.md: Settings and Roles and permissions read well in light and dark (axe, contrast included) and
@@ -62,6 +63,15 @@ beforeEach(() => {
   vi.spyOn(api.roles, 'list').mockResolvedValue(roles)
   vi.spyOn(api.workspaces, 'list').mockResolvedValue([{ id: 'ws-eng', slug: 'engineering', name: 'Spark Engineering' }])
   vi.spyOn(api.users, 'list').mockResolvedValue([])
+  const none = { tasks: 0, files: 0, comments: 0, phases: 0, deliverables: 0 }
+  vi.spyOn(api.archive, 'list').mockResolvedValue({
+    retentionDays: 365,
+    items: [
+      { type: 'project', id: 'p-sel', name: 'Sela booking', ref: 'SEL', projectId: 'p-sel', archivedAt: '2025-09-01T10:00:00.000Z', archivedBy: 'u-1', reason: 'Client paused the booking work until next year', deletableFrom: '2026-09-01T10:00:00.000Z', keptBecause: null, includes: { tasks: 12, files: 3, comments: 0, phases: 5, deliverables: 1 }, restoreBlocked: null },
+      { type: 'task', id: 'NEX-101', name: 'Refresh-token rotation for the mobile clients', ref: 'NEX-101', projectId: 'p-nex', archivedAt: '2026-10-20T10:00:00.000Z', archivedBy: 'u-2', reason: null, deletableFrom: null, keptBecause: 'time', includes: none, restoreBlocked: null },
+      { type: 'channel', id: 'c-release', name: '#release-v2', ref: 'release-v2', projectId: null, archivedAt: '2026-10-10T10:00:00.000Z', archivedBy: null, reason: 'Shipped', deletableFrom: null, keptBecause: 'channel', includes: none, restoreBlocked: null },
+    ],
+  })
   const ago = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString()
   vi.spyOn(api.users, 'directory').mockResolvedValue([
     { id: 'u-1', name: 'Youssef Abdelrahman', email: 'youssef.abdelrahman@spark-sys.com', title: 'Managing Director', roleIds: ['admin'], teamIds: [], presence: 'active', lastActiveAt: ago(1) },
@@ -89,6 +99,7 @@ function mount(path: string, element: ReactNode, dark: boolean) {
             <Route path="/w/:ws/settings/roles" element={element} />
             <Route path="/w/:ws/settings/audit" element={element} />
             <Route path="/w/:ws/settings/users" element={element} />
+            <Route path="/w/:ws/settings/archived" element={element} />
           </Routes>
         </main>
       </MemoryRouter>
@@ -162,6 +173,21 @@ describe.each([
   })
 })
 
+describe.each([
+  ['light', false],
+  ['dark', true],
+])('Archived records in %s (slice 4, spec 10)', (_theme, dark) => {
+  it('the list and Delete for good have no axe violations', async () => {
+    await page.viewport(1280, 900)
+    mount('/w/engineering/settings/archived', <ArchivedPage />, dark)
+    await screen.findByRole('table', { name: 'Archived records' })
+    expect(await violations()).toEqual([])
+    await userEvent.click(screen.getAllByRole('button', { name: 'Delete Sela booking for good' })[0]!)
+    await screen.findByRole('dialog', { name: 'Delete Sela booking for good?' })
+    expect(await violations()).toEqual([])
+  })
+})
+
 describe('Settings on a 390px phone', () => {
   it('the home and the roles page fit without sideways scrolling; the roles page shows one role at a time', async () => {
     await page.viewport(390, 844)
@@ -194,6 +220,16 @@ describe('Settings on a 390px phone', () => {
     expect(sheet.getBoundingClientRect().width).toBeLessThanOrEqual(390)
     for (const box of sheet.querySelectorAll('input[type=checkbox]')) expect(box.closest('label')!.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(390)
+    expect(await violations()).toEqual([])
+  })
+
+  it('Archived records fits: a list with 44px actions instead of the table', async () => {
+    await page.viewport(390, 844)
+    mount('/w/engineering/settings/archived', <ArchivedPage />, false)
+    const list = await screen.findByRole('list', { name: 'Archived records' })
+    expect(screen.queryByRole('table', { name: 'Archived records' })).toBeNull()
+    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(390)
+    for (const button of list.querySelectorAll('button')) expect(button.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
     expect(await violations()).toEqual([])
   })
 

@@ -221,7 +221,7 @@ export function useUpdateChannel() {
   return useMutation({ mutationFn: ({ id, patch }: { id: string; patch: ChannelPatch }) => api.chat.updateChannel(id, patch) })
 }
 export function useArchiveChannel() {
-  return useMutation({ mutationFn: (id: string) => api.chat.archiveChannel(id) })
+  return useMutation({ mutationFn: ({ id, reason }: { id: string; reason?: string }) => api.chat.archiveChannel(id, reason) })
 }
 export function useJoinChannel() {
   return useMutation({ mutationFn: (id: string) => api.chat.join(id) })

@@ -245,7 +245,8 @@ export function ProjectPage() {
         description="It leaves the lists and the dashboard, and nothing in it can change until it's restored. Its time stays in reports."
         actionLabel="Archive project"
         pendingLabel="Archiving…"
-        onConfirm={() => archive.mutateAsync(project.id)}
+        askWhy
+        onConfirm={(reason) => archive.mutateAsync({ id: project.id, reason })}
         onClose={() => setSheet(null)}
       />
     </>

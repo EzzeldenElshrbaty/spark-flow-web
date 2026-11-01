@@ -561,6 +561,7 @@ export function seed(now: Date): SeedResult {
     notificationPrefs: [],
     roles: builtInRoles(),
     audit: [],
+    settings: { archiveRetentionDays: 365 },
     activity: tickets
       .map((t) => ({ id: `act-${t.id}`, projectId: t.projectId, taskKey: t.key, actorId: t.reporterId, at: t.createdAt, kind: 'task.created' as const, changes: [] }))
       .sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0)),

@@ -1729,10 +1729,36 @@ Rulings (cost if wrong):
 - Who: "Manage archived records" (Admins).
 
 Plan:
-- [ ] 4.1 **API and mock:** `api.archive` (list, retention, delete for good) and `reason` on archive. Tests: who sees
+- [x] 4.1 **API and mock:** `api.archive` (list, retention, delete for good) and `reason` on archive. Tests: who sees
   what, the always-kept rule, retention dates and audit.
-- [ ] 4.2 **Page,** plus the "Why?" field in the three archive dialogs. Tests: jsdom, axe, 390px.
-- [ ] 4.3 **Close.**
+- [x] 4.2 **Page,** plus the "Why?" field in the three archive dialogs. Tests: jsdom, axe, 390px.
+- [x] 4.3 **Close.**
+
+### Review (slice 4)
+
+- **Checks:**
+  - Unit 1,831 and browser 249 pass, and tsc, lint and build:prototype are clean. One chat-composer browser test
+    (shortcuts, untouched here) failed once under load and passed on reruns.
+  - Archived records has an axe check in light and dark and a 390px check.
+  - App check on `npm run dev` (per the new lesson):
+    - #release-v2 and Sela booking were archived with a "Why?", both listed with who, when and why.
+    - Sela booking reads "From 1 Nov 2027"; the channel reads "Restore only".
+    - Restore brought the channel back, and the log shows all three entries with the reasons.
+    - 390px has no sideways scroll; no console errors.
+- **Test-first:** the mock's rules and the page were written just before their tests. The review fixes were run red first.
+- **Changed from the plan:**
+  - DB v26 adds `settings` (the retention days) and gives the built-in Admin "Manage archived records".
+  - A project's channel is listed with its project, not alone. After the project is deleted for good, the channel stays,
+    archived, and shows on its own as "Restore only".
+- **Review fixes:**
+  - Archiving an archived task again changes nothing. Before, it wiped its reason and restarted its retention.
+  - A project deleted for good retires its key, so a new project can't take PIL and confuse the log and old links.
+  - A task takes no files with it: a comment's files stay on its project-chat card. Before, "Goes with its 2 files" overstated it.
+  - Each row says why this viewer can't restore it ("Restore its project first.", or their rights) instead of a Restore that fails.
+  - The reason's length is checked after access, so someone who can't archive hears that first.
+- **Left as is:**
+  - Changing the retention sends no event; another open tab sees the new dates on its next load.
+  - "Can be deleted: Now" compares with the browser's clock. The server checks again on delete.
 
 ## Slice 5: User attendance and activities
 

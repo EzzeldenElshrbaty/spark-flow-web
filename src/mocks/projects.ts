@@ -12,6 +12,7 @@ import { grantsFor } from './roles'
 import { CHANNEL_NAME } from '@/lib/channelForm'
 import { projectPeopleIds } from '@/lib/projectPeople'
 import { audit, changesBetween, humanize, recordOf } from './audit'
+import { archiveReason, setArchivedFields } from './archive'
 
 const KEY = /^[A-Z]{2,5}$/
 
@@ -180,13 +181,14 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
       .map((p) => summarize(p, data, now(), { userId: viewer.id, grants: grantsFor(data, viewer) }))
   }
   /** Archives or restores a project with its channel, in one write; archiving stops the timers on its tasks. */
-  const setArchived = async (id: string, archive: boolean) => {
+  const setArchived = async (id: string, archive: boolean, reason?: string) => {
     await delay()
     const { project, stopped, same } = await db.update((data) => {
-      requireCan(data, 'project.archive')
+      const me = requireCan(data, 'project.archive')
       const project = findProject(data, id)
       // Already so (a double click, two tabs): nothing changes, nothing is logged or sent.
       if (Boolean(project.archivedAt) === archive) return { project: clone(project), stopped: [] as string[], same: true }
+      const why = archive ? archiveReason(reason) : null
       const at = now()
       const stopped: string[] = []
       if (archive) {
@@ -195,12 +197,12 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
           stopped.push(e.userId)
         }
       }
-      project.archivedAt = archive ? at.toISOString() : null
+      setArchivedFields(project, archive, at.toISOString(), me.id, why)
       const channel = data.channels.find((c) => c.id === project.channelId)
-      if (channel) channel.archivedAt = project.archivedAt
+      if (channel) setArchivedFields(channel, archive, at.toISOString(), me.id, why)
       logActivity(data, { projectId: id, taskKey: null, kind: archive ? 'project.archived' : 'project.restored', changes: [] }, at.toISOString())
       const timers = stopped.length === 1 ? '1 timer stopped' : `${stopped.length} timers stopped`
-      audit(data, { action: archive ? 'archived' : 'restored', group: 'status', record: recordOf.project(project), detail: `With its channel${stopped.length ? ` · ${timers}` : ''}` })
+      audit(data, { action: archive ? 'archived' : 'restored', group: 'status', record: recordOf.project(project), detail: [why, 'With its channel', stopped.length ? timers : null].filter(Boolean).join(' · ') })
       return { project: clone(project), stopped, same: false }
     })
     if (same) return project
@@ -213,7 +215,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
   return {
     projects: {
       list: (workspaceId, opts) => summaries(workspaceId, opts),
-      archive: (id) => setArchived(id, true),
+      archive: (id, reason) => setArchived(id, true, reason),
       restore: (id) => setArchived(id, false),
       // An archived project still opens by its address.
       async get(workspaceId, key) {
@@ -232,6 +234,8 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
             if (!KEY.test(input.key)) throw badRequest('The key is 2 to 5 capital letters, such as NEX.')
             // Unique across workspaces: task keys (NEX-101) are looked up by key alone.
             if (data.projects.some((p) => p.key === input.key)) throw badRequest(`Key ${input.key} is already used.`)
+            // A project deleted for good keeps its key: the audit log and old links still name its tasks.
+            if (data.settings.retiredKeys?.includes(input.key)) throw badRequest(`Key ${input.key} belonged to a project deleted for good, so it can’t be used again.`)
             if (!data.users.some((u) => u.id === input.managerId)) throw badRequest('Pick a project manager.')
             requireActive(data, [input.managerId, ...input.memberIds])
             checkDates(input.startDate, input.dueDate)

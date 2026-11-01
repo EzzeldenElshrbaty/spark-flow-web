@@ -52,6 +52,8 @@ export const qk = {
   preferences: () => ['preferences', 'me'],
   roles: () => ['roles'],
   people: () => ['people'],                              // Settings → Users (slice 3)
+  archiveAll: () => ['archive'],                         // prefix of every workspace's archived records (slice 4)
+  archive: (workspaceId: string) => ['archive', workspaceId],
   auditAll: () => ['audit'],                             // prefix of the audit log's pages and summary
   auditList: (filter: unknown) => ['audit', 'list', filter],
   auditSummary: (todayFrom: string) => ['audit', 'summary', todayFrom],
@@ -75,10 +77,14 @@ export const qk = {
 /** The events whose write the server also put in the audit log (slice 2); refusals and sign-ins publish none. */
 const LOGGED = new Set<RealtimeEvent['type']>(['ticketUpdated', 'timeLogged', 'messageChanged', 'projectChanged', 'channelChanged', 'ratesChanged', 'filesChanged', 'fileChanged'])
 
+/** The events that archive, restore or delete a project, a task or a channel (slice 4). */
+const ARCHIVING = new Set<RealtimeEvent['type']>(['ticketUpdated', 'projectChanged', 'channelChanged'])
+
 /** The queries a live update makes stale. Typing is not data, so it touches none. */
+
 export function keysForEvent(event: RealtimeEvent): QueryKey[] {
   const keys = dataKeysFor(event)
-  return LOGGED.has(event.type) ? [...keys, qk.auditAll()] : keys
+  return [...keys, ...(LOGGED.has(event.type) ? [qk.auditAll()] : []), ...(ARCHIVING.has(event.type) ? [qk.archiveAll()] : [])]
 }
 
 function dataKeysFor(event: RealtimeEvent): QueryKey[] {

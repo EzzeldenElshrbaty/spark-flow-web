@@ -8,6 +8,7 @@ import { preferencesApi } from './preferences'
 import { rolesApi } from './roles'
 import { audit } from './audit'
 import { auditApi } from './auditApi'
+import { archiveApi } from './archive'
 import { ApiError } from '@/lib/apiError'
 import type { Api, ChatMessage, NewTicket, ThreadReply, Ticket, TicketPatch } from '@/api/types'
 import { addReply, chatApi, sendMessage, type AddReplyInput, type SendMessageInput } from './chat'
@@ -83,6 +84,7 @@ export function createMockApi(db: MockDb, hub: MockHub, now: () => Date = () => 
     dashboard: dashboardApi(db, now),
     files: filesApi(db, hub, now),
     audit: auditApi(db, now),
+    archive: archiveApi(db, hub, now),
     db: dbApi(db, hub),
   })
 }

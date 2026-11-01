@@ -32,7 +32,7 @@ export function useArchivedTasks(projectId: string | undefined, enabled: boolean
   return useQuery({ queryKey: qk.archivedTickets(projectId ?? ''), queryFn: () => api.tickets.list(projectId!, { archived: true }), retry, enabled: enabled && Boolean(projectId) })
 }
 export function useArchiveTask() {
-  return useMutation({ mutationFn: (key: string) => api.tasks.archive(key) })
+  return useMutation({ mutationFn: ({ key, reason }: { key: string; reason?: string }) => api.tasks.archive(key, reason) })
 }
 export function useRestoreTask() {
   return useMutation({ mutationFn: (key: string) => api.tasks.restore(key) })

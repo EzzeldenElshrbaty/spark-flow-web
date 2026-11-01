@@ -182,7 +182,8 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
           actionLabel="Archive task"
           pendingLabel="Archiving…"
           tone="primary"
-          onConfirm={() => archive.mutateAsync(t.key)}
+          askWhy
+          onConfirm={(reason) => archive.mutateAsync({ key: t.key, reason })}
           onClose={() => setArchiving(false)}
         />
         {!archived && canLog(project) && (

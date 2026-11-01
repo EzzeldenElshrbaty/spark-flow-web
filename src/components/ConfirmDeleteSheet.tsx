@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/Button'
+import { Field, inputClass } from '@/components/ui/Field'
 import { Sheet } from '@/components/ui/Sheet'
 
 /**
@@ -14,6 +15,7 @@ export function ConfirmDeleteSheet({
   actionLabel,
   pendingLabel = 'Deleting…',
   tone = 'danger',
+  askWhy = false,
   onConfirm,
   onClose,
 }: {
@@ -24,14 +26,20 @@ export function ConfirmDeleteSheet({
   pendingLabel?: string
   /** Red for what can't be undone; primary for what can (archiving). */
   tone?: 'danger' | 'primary'
-  onConfirm: () => Promise<unknown>
+  /** Asks "Why?" (optional, at most 200 characters), as archiving does (slice 4); onConfirm gets it. */
+  askWhy?: boolean
+  onConfirm: (reason: string) => Promise<unknown>
   onClose: () => void
 }) {
-  const run = useMutation({ mutationFn: onConfirm, onSuccess: onClose })
+  const [reason, setReason] = useState('')
+  const run = useMutation({ mutationFn: () => onConfirm(reason.trim()), onSuccess: onClose })
   const { reset } = run
-  // Each opening starts clean: an old failure doesn't greet the next try.
+  // Each opening starts clean: an old failure, or an old reason, doesn't greet the next try.
   useEffect(() => {
-    if (open) reset()
+    if (open) {
+      reset()
+      setReason('')
+    }
   }, [open, reset])
   // While it's working, it stays open (the ✕ and Cancel wait too).
   const close = () => {
@@ -54,6 +62,11 @@ export function ConfirmDeleteSheet({
         </>
       }
     >
+      {askWhy && (
+        <Field label="Why?" hint={`Optional. Shown in Archived records. ${reason.length}/200`}>
+          <textarea className={`${inputClass} min-h-20`} value={reason} maxLength={200} disabled={run.isPending} onChange={(e) => setReason(e.target.value)} />
+        </Field>
+      )}
       {run.error && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
           {run.error.message}

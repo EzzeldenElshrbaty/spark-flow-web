@@ -10,6 +10,7 @@ import { MAX_DISTINCT_REACTIONS, setReaction } from '@/lib/reactions'
 import { filePlace } from './saved'
 import type { DbData, MockDb, StoredMemberState } from './db'
 import { audit, changesBetween, recordOf } from './audit'
+import { archiveReason, setArchivedFields } from './archive'
 import { delay } from './latency'
 import type { MockHub } from './realtime'
 import { ApiError } from '@/lib/apiError'
@@ -324,7 +325,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
     return clone(channel)
   }
   /** Archives or restores a channel: Admins who may manage it (spec 6.1); a project's channel follows its project, a DM never is. */
-  const setArchived = async (id: string, archive: boolean) => {
+  const setArchived = async (id: string, archive: boolean, reason?: string) => {
     await delay()
     const result = await db.update((data) => {
       const channel = readableChannel(data, id)
@@ -335,8 +336,9 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       if (!can('channel.archive', { userId: me.id, grants: grantsFor(data, me), channel })) throw new ApiError({ title: 'Forbidden', status: 403, detail: 'Only admins can archive channels.' })
       // Already so: nothing changes and nothing is sent.
       if (Boolean(channel.archivedAt) === archive) return { channel: withUnread(data, channel), same: true }
-      channel.archivedAt = archive ? new Date().toISOString() : null
-      audit(data, { action: archive ? 'archived' : 'restored', group: 'status', record: recordOf.channel(channel) })
+      const why = archive ? archiveReason(reason) : null
+      setArchivedFields(channel, archive, new Date().toISOString(), me.id, why)
+      audit(data, { action: archive ? 'archived' : 'restored', group: 'status', record: recordOf.channel(channel), detail: why })
       return { channel: withUnread(data, channel), same: false }
     })
     if (result.same) return clone(result.channel)
@@ -529,7 +531,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       hub.publish({ type: 'channelChanged', channelId: id })
       return clone(channel)
     },
-    archiveChannel: (id) => setArchived(id, true),
+    archiveChannel: (id, reason) => setArchived(id, true, reason),
     restoreChannel: (id) => setArchived(id, false),
     async react(target, emoji, on) {
       await delay()

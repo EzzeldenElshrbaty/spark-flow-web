@@ -43,7 +43,7 @@ describe('Settings home (slice 1, as the CRM’s)', () => {
     // The audit log (slice 2) sits with access: who did what.
     expect(within(access).getByRole('link', { name: /Audit log/ }).getAttribute('href')).toBe('/w/engineering/settings/audit')
     const data = screen.getByRole('region', { name: 'Data' })
-    expect(within(data).getAllByRole('link').map((a) => a.getAttribute('href'))).toEqual(['/w/engineering/settings/rates', '/w/engineering/settings/database'])
+    expect(within(data).getAllByRole('link').map((a) => a.getAttribute('href'))).toEqual(['/w/engineering/settings/archived', '/w/engineering/settings/rates', '/w/engineering/settings/database'])
   })
 
   it('shows only what the person may change', () => {

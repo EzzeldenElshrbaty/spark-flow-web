@@ -27,6 +27,7 @@ const DatabasePage = page(() => import('@/pages/settings/DatabasePage'), 'Databa
 const RatesPage = page(() => import('@/pages/settings/RatesPage'), 'RatesPage')
 const RolesPage = page(() => import('@/pages/settings/RolesPage'), 'RolesPage')
 const UsersPage = page(() => import('@/pages/settings/UsersPage'), 'UsersPage')
+const ArchivedPage = page(() => import('@/pages/settings/ArchivedPage'), 'ArchivedPage')
 const AuditLogPage = page(() => import('@/pages/settings/AuditLogPage'), 'AuditLogPage')
 const ActivityPage = page(() => import('@/pages/chat/ActivityPage'), 'ActivityPage')
 const ThreadsPage = page(() => import('@/pages/chat/threads/ThreadsPage'), 'ThreadsPage')
@@ -97,6 +98,7 @@ export const router = createBrowserRouter([
           { path: 'settings/users', element: <UsersPage /> },
           { path: 'settings/roles', element: <RolesPage /> },
           { path: 'settings/audit', element: <AuditLogPage /> },
+          { path: 'settings/archived', element: <ArchivedPage /> },
         ],
       },
       // Old or mistyped links say so, with the way home.

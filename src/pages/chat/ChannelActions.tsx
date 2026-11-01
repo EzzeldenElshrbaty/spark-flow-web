@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { useArchiveChannel, useJoinChannel, useRestoreChannel } from '@/api/chat'
 import { useArchivedProjects, useProjectSummaries } from '@/api/projects'
 import type { Channel, ProjectSummary } from '@/api/types'
@@ -46,8 +46,13 @@ export function useCanManageChannel(channel: Channel): boolean {
 export function ArchiveChannelModal({ channel, open, onClose }: { channel: Channel; open: boolean; onClose: () => void }) {
   const archive = useArchiveChannel()
   const { reset } = archive
+  const [reason, setReason] = useState('')
+  const whyId = useId()
   useEffect(() => {
-    if (open) reset()
+    if (open) {
+      reset()
+      setReason('')
+    }
   }, [open, reset])
   return (
     <Modal
@@ -58,13 +63,26 @@ export function ArchiveChannelModal({ channel, open, onClose }: { channel: Chann
       footer={
         <>
           <SfButton onClick={onClose}>Cancel</SfButton>
-          <SfButton variant="primary" disabled={archive.isPending} onClick={() => archive.mutate(channel.id, { onSuccess: onClose })}>
+          <SfButton variant="primary" disabled={archive.isPending} onClick={() => archive.mutate({ id: channel.id, reason: reason.trim() }, { onSuccess: onClose })}>
             {archive.isPending ? 'Archiving…' : 'Archive channel'}
           </SfButton>
         </>
       }
     >
-      {archive.error && <p className="sf-small text-sf-error">{(archive.error as Error).message}</p>}
+      {/* Why? (slice 4): optional, shown in Settings → Archived records. */}
+      <label htmlFor={whyId} className="sf-ui mb-1 block text-sf-text-secondary">
+        Why? <span className="text-sf-text-muted">(optional)</span>
+      </label>
+      <textarea
+        id={whyId}
+        value={reason}
+        maxLength={200}
+        rows={3}
+        disabled={archive.isPending}
+        onChange={(e) => setReason(e.target.value)}
+        className="sf-ui w-full rounded-sf-md border border-sf-line-strong bg-sf-surface px-3 py-2 text-sf-text outline-none focus:border-sf-focus focus:shadow-[0_0_0_3px_var(--surface-mention)]"
+      />
+      {archive.error && <p className="sf-small mt-2 text-sf-error">{(archive.error as Error).message}</p>}
     </Modal>
   )
 }

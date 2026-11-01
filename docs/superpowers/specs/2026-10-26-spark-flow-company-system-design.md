@@ -119,7 +119,7 @@ HTTP paths follow the Phases 1+2 style (`POST /api/projects`, `POST /api/time/st
 
 **Amended 31 Oct 2026 (Admin and help slice 1):** the table below is now the four built-in roles' starting grants,
 not code. Roles are records (`Role { id, name, builtIn, grants, holders }`), people hold `roleIds`, and `can()` in
-`src/lib/permissions.ts` answers from the permissions their roles grant (`PERMISSION_GROUPS`, 20 of them since slice 2 added "See the audit log") plus the
+`src/lib/permissions.ts` answers from the permissions their roles grant (`PERMISSION_GROUPS`, 21 of them since slices 2 and 4 added "See the audit log" and "Manage archived records") plus the
 rules that depend on the record: whoever a project names as manager has PM rights on it, authors edit their own
 messages, a private channel's members manage it, and an archived project is frozen for everyone. A test checks the
 built-in roles give the old table's answers in every case. Routes:
@@ -275,6 +275,23 @@ People are company-wide records, edited on Settings → Users by whoever holds "
   `deactivated` (with the reason as its detail) and `reactivated`.
 - **Not here yet:** sign-in, invitations and passwords wait for the backend (§10). The backend must also end a
   deactivated person's sessions.
+
+### 4.7 Archived records (amended 1 Nov 2026, Admin and help slice 4)
+
+Archiving a project, task or channel asks **"Why?"** (optional, at most 200 characters: `Keep the reason under
+200 characters.`). Each record keeps `archivedBy` and `archiveReason` beside `archivedAt`; a project's channel takes its
+project's. Restoring clears all three. Archives made before this show "—".
+
+Settings → Archived records needs "Manage archived records" (`archive.manage`, the built-in Admin from DB v26).
+
+| Call | Route | Notes |
+|---|---|---|
+| Archive | `POST /api/projects/:id/archive`, `/api/tasks/:key/archive`, `/api/channels/:id/archive` `{ reason }` | As before, plus the reason. |
+| List | `GET /api/workspaces/:id/archive` | `{ items, retentionDays }`: archived projects, tasks (of the workspace's projects) and channels, newest first. A project's channel is listed with its project, not alone. Each item has `deletableFrom` (archived + retention days) or null with `keptBecause`: `time` (time logged on it) or `channel`; and `includes`, the counts deleting it takes (tasks, files, comments, phases, deliverables; a task takes no files, since a comment's files stay on its project-chat card). `restoreBlocked` says why this viewer can't restore it (`Restore its project first.`, `You can’t restore projects.`, `You can’t restore tasks in this project.`, `Only admins can restore channels.`) or is null. |
+| Keep for | `PUT /api/settings/archive-retention` `{ days }` | 30 to 3650 days (`Keep them between 30 and 3650 days.`); default 365. Logged as a settings change. |
+| Delete for good | `DELETE /api/archive/:type/:id` | Only an archived record (`Only archived records can be deleted for good.`), past its date (`It can be deleted for good from 31 Oct 2027.`), with no time logged (`It has time logged on it, so it’s kept: its hours and cost stay in reports.`), never a channel (`Channels are restored, not deleted for good.`, until message retention is decided, chat spec §13 item 8). A project goes with its tasks, comments, phases, deliverables, sprints, project files (and their bytes when nothing else uses them) and history; its channel stays, archived, as a channel of its own. A task goes with its comments and history. A deleted project's key is retired (`settings.retiredKeys`): a new project can't take it (`Key PIL belonged to a project deleted for good, so it can’t be used again.`), since the log and old links still name its tasks. Logged as `deleted` in "Status and archive", with what went. Sends `projectChanged`. |
+
+Restoring uses each type's own call and rights; the list shows `restoreBlocked` in place of Restore. Archiving or restoring what is already so changes nothing and sends nothing; the reason is checked after access. Changing the retention sends no event (another open tab sees the new dates on its next load), and "Can be deleted" compares with the browser's clock (the server checks again on delete).
 
 ## 5. Screens (copy the named Spark CRM screen in `design/screenshots/`)
 

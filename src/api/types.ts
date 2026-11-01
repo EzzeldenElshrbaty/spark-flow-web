@@ -18,6 +18,27 @@ export type PersonRow = User & { lastActiveAt: string | null }
 /** Add person (slice 3); Edit sends any of the same fields. Teams are the person's in every workspace. */
 export type NewPerson = { name: string; email: string; title: string; roleIds: string[]; teamIds: string[] }
 export type PersonPatch = Partial<NewPerson>
+
+/** Archived records (slice 4): projects, tasks and channels. */
+export type ArchivedType = 'project' | 'task' | 'channel'
+/**
+ * One archived record as Settings → Archived records lists it. `deletableFrom` is when it may be deleted for good
+ * (archived + the retention days), null when it never may: `keptBecause` says why (time logged on it, or a channel,
+ * which is restored only). `includes` counts what deleting it would take with it.
+ */
+export type ArchivedRecord = {
+  type: ArchivedType; id: string; name: string
+  /** The project's key, the task's key, or the channel's name. */
+  ref: string
+  projectId: string | null
+  archivedAt: string; archivedBy: string | null; reason: string | null
+  deletableFrom: string | null
+  keptBecause: 'time' | 'channel' | null
+  includes: { tasks: number; files: number; comments: number; phases: number; deliverables: number }
+  /** Why the viewer can't restore it from the list (their rights, or a task's project still archived); null when they can. */
+  restoreBlocked: string | null
+}
+export type ArchiveList = { items: ArchivedRecord[]; retentionDays: number }
 /** Me, with every permission my roles give me, worked out by the server on each read. */
 export type Me = User & { grants: Permission[] }
 /**
@@ -114,6 +135,9 @@ export type Project = {
   board?: BoardColumn[]
   /** Set while archived (Admins): out of the lists, read-only until restored; its time stays in reports. */
   archivedAt?: string | null
+  /** Who archived it and why (slice 4); absent on archives made before reasons were asked. */
+  archivedBy?: string | null
+  archiveReason?: string | null
 }
 
 /** What a board column means, whatever it is called: done-ness (progress, overdue, timers) follows this. */
@@ -156,6 +180,9 @@ export type Ticket = {
   dueAt: string | null; estimateHours: number | null     // either, both or neither; overdue is derived
   /** Set while archived: off the board, lists and totals; its time and cost stay on the project. */
   archivedAt?: string | null
+  /** Who archived it and why (slice 4); absent on archives made before reasons were asked. */
+  archivedBy?: string | null
+  archiveReason?: string | null
 }
 export type TaskType = 'task' | 'bug'
 /** The company system calls tickets tasks; the contract and keys (NEX-101) are the same. */
@@ -236,6 +263,9 @@ export type Channel = {
   lastMessageAt: string | null; unreadCount: number      // unreadCount is per the current user
   /** Set while archived: read-only until restored. A project's channel is archived with its project. */
   archivedAt?: string | null
+  /** Who archived it and why (slice 4); absent on archives made before reasons were asked. */
+  archivedBy?: string | null
+  archiveReason?: string | null
   /** The seq of the channel's newest message (0 when empty). */
   lastSeq: number
   /** What it's for, at most 250 characters ('' when not set; spec 6.10 About). */
@@ -655,6 +685,16 @@ export interface Api {
     noteExport(what: 'timeCost', detail: string): Promise<void>
   }
   /**
+   * Archived records (slice 4), all needing "Manage archived records": what's archived in a workspace, how many days
+   * records are kept before they may be deleted for good, and deleting one for good. Restoring uses each type's own
+   * call and rights.
+   */
+  archive: {
+    list(workspaceId: string): Promise<ArchiveList>
+    setRetention(days: number): Promise<number>
+    deleteForGood(type: ArchivedType, id: string): Promise<void>
+  }
+  /**
    * Roles and what each may do (slice 1). Everyone signed in may list them; changing them needs "Change settings,
    * users and roles", and no change may leave nobody with it.
    */
@@ -720,7 +760,8 @@ export interface Api {
     /** Its members and admins; not a project's channel or a DM. */
     updateChannel(id: string, patch: ChannelPatch): Promise<Channel>
     /** Its members and admins; not a project's channel (it follows its project) or a DM. Read-only until restored. */
-    archiveChannel(id: string): Promise<Channel>
+    /** `reason`: the optional "Why?" (slice 4), at most 200 characters. */
+    archiveChannel(id: string, reason?: string): Promise<Channel>
     restoreChannel(id: string): Promise<Channel>
     /** A public channel that isn't a project's: I become a member (it shows in my sidebar). */
     join(id: string): Promise<Channel>
@@ -763,7 +804,7 @@ export interface Api {
     /** Removes a column; its tasks move to `moveTo` in the same write. Each type keeps at least one column. */
     deleteColumn(projectId: string, columnId: string, moveTo: string): Promise<Project>
     /** Admins: archives the project and its channel and stops timers on its tasks; restore undoes both. */
-    archive(id: string): Promise<Project>
+    archive(id: string, reason?: string): Promise<Project>
     restore(id: string): Promise<Project>
   }
   phases: {
@@ -785,7 +826,7 @@ export interface Api {
     /** Into column `status` at `index` among `visibleKeys` (the cards shown), renumbering that column in the same write. */
     moveTo(key: string, status: string, index: number, visibleKeys?: string[]): Promise<TaskView>
     /** The project's manager (and Admins); a running timer on it stops. */
-    archive(key: string): Promise<TaskView>
+    archive(key: string, reason?: string): Promise<TaskView>
     restore(key: string): Promise<TaskView>
   }
   teams: { list(workspaceId: string): Promise<Team[]> }

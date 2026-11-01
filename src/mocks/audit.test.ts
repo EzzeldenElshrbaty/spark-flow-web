@@ -110,6 +110,20 @@ const RECORDED: Record<string, Recorded> = {
   'db.export': r(exports('exported', 'data'), (a) => a.db.export()),
   'db.import': r(settings('imported', 'data'), (a, bundle: unknown) => a.db.import(bundle), (a) => a.db.export()),
   'db.reset': r(settings('reset', 'data'), (a) => a.db.reset()),
+  'archive.setRetention': r(settings('changed', 'settings'), (a) => a.archive.setRetention(90)),
+  'archive.deleteForGood': r(
+    status('deleted', 'task'),
+    (a, key: string) => a.archive.deleteForGood('task', key),
+    async (a) => {
+      const t = await a.tasks.create({ projectId: 'p-nex', title: 'Old spike', description: '', status: '', priority: 'low', storyPoints: null, assigneeId: null, sprintId: null })
+      await a.tasks.archive(t.key)
+      // Archived two years ago: past the year it's kept.
+      await db.update((d) => {
+        d.tickets.find((x) => x.key === t.key)!.archivedAt = '2024-10-31T12:00:00.000Z'
+      })
+      return t.key
+    },
+  ),
 }
 
 const READ = 'a read'
@@ -120,6 +134,7 @@ const NOT_RECORDED: Record<string, string> = {
   'users.me': READ,
   'users.list': READ,
   'users.directory': READ,
+  'archive.list': READ,
   'chat.openDm': 'a conversation is made by its first message, and messages aren’t in the log',
   'chat.join': `${MINE}; joining a public channel gives no access the workspace didn’t have`,
   'chat.leave': MINE,

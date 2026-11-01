@@ -42,6 +42,7 @@ const emptyData = (): DbData => ({
   notificationPrefs: [],
   roles: [],
   audit: [],
+  settings: { archiveRetentionDays: 365 },
   counters: {},
 })
 

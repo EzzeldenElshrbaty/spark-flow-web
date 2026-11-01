@@ -26,7 +26,7 @@ export function useArchivedProjects(workspaceId: string | undefined, enabled: bo
   return useQuery({ queryKey: qk.archivedProjects(workspaceId ?? ''), queryFn: () => api.projects.list(workspaceId!, { archived: true }), retry, enabled: Boolean(workspaceId) && enabled })
 }
 export function useArchiveProject() {
-  return useMutation({ mutationFn: (id: string) => api.projects.archive(id) })
+  return useMutation({ mutationFn: ({ id, reason }: { id: string; reason?: string }) => api.projects.archive(id, reason) })
 }
 export function useRestoreProject() {
   return useMutation({ mutationFn: (id: string) => api.projects.restore(id) })

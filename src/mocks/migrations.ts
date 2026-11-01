@@ -24,6 +24,14 @@ const V24_ROLES = [
 ]
 
 export const migrations: Record<number, (doc: Record<string, unknown>) => void> = {
+  // 26: company settings, keeping archived records a year before they may be deleted for good (slice 4), and the
+  // built-in Admin role may manage them.
+  25: (doc) => {
+    const settings = typeof doc.settings === 'object' && doc.settings !== null ? (doc.settings as Record<string, unknown>) : {}
+    doc.settings = { ...settings, archiveRetentionDays: typeof settings.archiveRetentionDays === 'number' ? settings.archiveRetentionDays : 365 }
+    const admin = Array.isArray(doc.roles) ? (doc.roles as { id?: string; builtIn?: boolean; grants?: unknown }[]).find((r) => r?.id === 'admin' && r.builtIn) : undefined
+    if (admin && Array.isArray(admin.grants) && !admin.grants.includes('archive.manage')) admin.grants.push('archive.manage')
+  },
   // 4: channel read state per person. What was read so far is everyone's starting point, so nobody's chat turns unread.
   3: (doc) => {
     const reads = (doc.reads ?? {}) as Record<string, string>

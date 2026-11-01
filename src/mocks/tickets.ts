@@ -21,6 +21,7 @@ import { logActivity, logTaskUpdate } from './activity'
 import { postTaskEvents } from './taskEvents'
 import { stopTimersOn } from './timers'
 import { audit, changesBetween, recordOf } from './audit'
+import { archiveReason, setArchivedFields } from './archive'
 
 /** What the audit log records of a task's edit: everything but its place in a column; the column is "status". */
 const TASK_LOGGED = ['title', 'description', 'priority', 'storyPoints', 'assigneeId', 'sprintId', 'phaseId', 'type', 'dueAt', 'estimateHours'] as const
@@ -118,11 +119,14 @@ function checkTaskInput(data: DbData, projectId: string, input: Partial<TicketPa
 /** Task writes, checked against the permission table (spec §4.3). */
 export function tasksApi(db: MockDb, hub: MockHub, now: () => Date): Api['tasks'] {
   /** Archives or restores, in one write; archiving also stops the timers running on the task. */
-  const setArchived = async (key: string, archive: boolean) => {
+  const setArchived = async (key: string, archive: boolean, reason?: string) => {
     await delay()
-    const { ticket, stopped } = await db.update((data) => {
+    const { ticket, stopped, same } = await db.update((data) => {
       const ticket = findTicket(data, key)
-      requireCan(data, 'task.manage', openProject(data, ticket.projectId))
+      const me = requireCan(data, 'task.manage', openProject(data, ticket.projectId))
+      // Already so (a double click, two tabs): nothing changes, nothing is logged or sent.
+      if (Boolean(ticket.archivedAt) === archive) return { ticket: clone(ticket), stopped: [] as string[], same: true }
+      const why = archive ? archiveReason(reason) : null
       const at = now()
       const stopped: string[] = []
       if (archive) {
@@ -131,18 +135,19 @@ export function tasksApi(db: MockDb, hub: MockHub, now: () => Date): Api['tasks'
           stopped.push(e.userId)
         }
       }
-      if (Boolean(ticket.archivedAt) !== archive) audit(data, { action: archive ? 'archived' : 'restored', group: 'status', record: recordOf.task(ticket) })
-      ticket.archivedAt = archive ? at.toISOString() : null
+      audit(data, { action: archive ? 'archived' : 'restored', group: 'status', record: recordOf.task(ticket), detail: why })
+      setArchivedFields(ticket, archive, at.toISOString(), me.id, why)
       ticket.updatedAt = stamp(ticket.updatedAt)
       logActivity(data, { projectId: ticket.projectId, taskKey: ticket.key, kind: archive ? 'task.archived' : 'task.restored', changes: [] }, at.toISOString())
-      return { ticket: clone(ticket), stopped }
+      return { ticket: clone(ticket), stopped, same: false }
     })
+    if (same) return taskView(ticket, await db.read(), now())
     hub.publish({ type: 'ticketUpdated', ticket })
     for (const userId of stopped) hub.publish({ type: 'timeLogged', userId, projectId: ticket.projectId })
     return taskView(ticket, await db.read(), now())
   }
   return {
-    archive: (key) => setArchived(key, true),
+    archive: (key, reason) => setArchived(key, true, reason),
     restore: (key) => setArchived(key, false),
     async create(input) {
       await delay()

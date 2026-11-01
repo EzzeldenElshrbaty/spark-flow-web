@@ -153,7 +153,7 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
       openDm: (workspaceId, userIds) => send('POST', `/api/workspaces/${enc(workspaceId)}/dms`, { userIds }),
       createChannel: (input) => send('POST', `/api/workspaces/${enc(input.workspaceId)}/channels`, input),
       updateChannel: (id, patch) => send('PATCH', `/api/channels/${enc(id)}`, patch),
-      archiveChannel: (id) => send('POST', `/api/channels/${enc(id)}/archive`),
+      archiveChannel: (id, reason) => send('POST', `/api/channels/${enc(id)}/archive`, { reason: reason ?? '' }),
       restoreChannel: (id) => send('POST', `/api/channels/${enc(id)}/restore`),
       join: (id) => send('POST', `/api/channels/${enc(id)}/join`),
       leave: (id) => send('POST', `/api/channels/${enc(id)}/leave`),
@@ -176,7 +176,7 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
       get: (workspaceId, key) => get(`/api/workspaces/${enc(workspaceId)}/projects/${enc(key)}`),
       create: (input) => send('POST', `/api/workspaces/${enc(input.workspaceId)}/projects`, input),
       update: (id, patch) => send('PATCH', `/api/projects/${enc(id)}`, patch),
-      archive: (id) => send('POST', `/api/projects/${enc(id)}/archive`),
+      archive: (id, reason) => send('POST', `/api/projects/${enc(id)}/archive`, { reason: reason ?? '' }),
       restore: (id) => send('POST', `/api/projects/${enc(id)}/restore`),
       setBoard: (id, columns) => send('PUT', `/api/projects/${enc(id)}/board`, { columns }),
       addColumn: (projectId, input) => send('POST', `/api/projects/${enc(projectId)}/board/columns`, input),
@@ -199,7 +199,7 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
       create: (input) => send('POST', `/api/projects/${enc(input.projectId)}/tasks`, input),
       update: (key, patch) => send('PATCH', `/api/tasks/${enc(key)}`, patch),
       moveTo: (key, status, index, visibleKeys) => send('POST', `/api/tasks/${enc(key)}/move`, { status, index, visibleKeys }),
-      archive: (key) => send('POST', `/api/tasks/${enc(key)}/archive`),
+      archive: (key, reason) => send('POST', `/api/tasks/${enc(key)}/archive`, { reason: reason ?? '' }),
       restore: (key) => send('POST', `/api/tasks/${enc(key)}/restore`),
     },
     teams: { list: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/teams`) },
@@ -285,6 +285,11 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
       // The backend records a download when it serves the file; only the Time and cost CSV is made in the page.
       noteDownload: () => Promise.resolve(),
       noteExport: (what, detail) => send<void>('POST', '/api/audit/exports', { what, detail }),
+    },
+    archive: {
+      list: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/archive`),
+      setRetention: (days) => send('PUT', '/api/settings/archive-retention', { days }).then((r) => (r as { days: number }).days),
+      deleteForGood: (type, id) => send<void>('DELETE', `/api/archive/${enc(type)}/${enc(id)}`),
     },
     roles: {
       list: () => get('/api/roles'),
