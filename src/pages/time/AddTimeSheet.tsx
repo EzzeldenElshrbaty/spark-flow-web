@@ -1,15 +1,13 @@
 import { useState } from 'react'
-import { useProjectSummaries } from '@/api/projects'
-import { useArchivedTasks, useTickets } from '@/api/tickets'
+import { useArchivedTasks } from '@/api/tickets'
 import { useAddTime, useUpdateTime } from '@/api/time'
 import type { TimeEntry } from '@/api/types'
 import { Button } from '@/components/ui/Button'
 import { Field, inputClass, selectClass } from '@/components/ui/Field'
 import { Sheet } from '@/components/ui/Sheet'
-import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { localDay } from '@/lib/dates'
-import { useCanLog } from '@/lib/useCanLog'
 import { defaultTimes, manualEntryErrors, toManualEntry, toPatch, valuesOf, type ManualEntryErrors, type ManualEntryValues } from './manualEntry'
+import { useLogTargets } from './useLogTargets'
 
 /**
  * Add time after the fact: a task (or the project as a whole), the day, start and end, and a note. With an `entry`,
@@ -18,17 +16,14 @@ import { defaultTimes, manualEntryErrors, toManualEntry, toPatch, valuesOf, type
 export function AddTimeSheet({ projectId: forProject, taskId, entry, onClose }: { projectId?: string; taskId?: string; entry?: TimeEntry; onClose: () => void }) {
   // Editing keeps the entry's project; its task, day, times and note can change.
   const projectId = entry?.projectId ?? forProject
-  const { workspace } = useCurrentWorkspace()
-  const canLog = useCanLog()
-  // Only projects I'm on (or every one, for an Admin): the server refuses the others.
-  const projects = (useProjectSummaries(workspace?.id).data ?? []).filter((p) => canLog(p) || p.id === entry?.projectId)
   const add = useAddTime()
   const update = useUpdateTime()
   const saving = add.isPending || update.isPending
   const failure = (add.error ?? update.error) as Error | null
   const [values, setValues] = useState<ManualEntryValues>(() => (entry ? valuesOf(entry) : { ...defaultTimes(new Date()), note: '', taskId: taskId ?? null, projectId: projectId ?? '' }))
   const [errors, setErrors] = useState<ManualEntryErrors>({})
-  const listed = useTickets(values.projectId || undefined).data ?? []
+  // Only projects I'm on (or every one, for an Admin): the server refuses the others.
+  const { projects, tasks: listed } = useLogTargets(values.projectId, entry?.projectId)
   // An entry's own task stays pickable even once archived (the list leaves archived tasks out).
   const own = useArchivedTasks(values.projectId || undefined, Boolean(entry?.taskId)).data?.find((t) => t.id === entry?.taskId)
   const tasks = own ? [...listed, own] : listed

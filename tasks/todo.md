@@ -2244,16 +2244,25 @@ timers, and every role gets a dashboard with charts.
   task" passes `title="Switch task"`.
 
 **Steps:**
-- [ ] Write the failing tests:
+- [x] Write the failing tests:
   - `Task waits for a project; picking both and Start timer starts that target`
   - `the notice shows while firstStart`
   - `with no project to log on it says "You aren't on any projects you can log time on." and has no Start`
     (Review focus 5)
   - `a refused start shows its error in the dialog`
   - `axe light and dark; full screen at 390px`
-- [ ] Implement the dialog with `sf/Modal`, primary button **Start timer** ("Starting…" while pending), then run the
+- [x] Implement the dialog with `sf/Modal`, primary button **Start timer** ("Starting…" while pending), then run the
   tests. Expected: green.
-- [ ] Commit: `feat(time): Start timer dialog with project then task`.
+- [x] Commit: `feat(time): Start timer dialog with project then task`.
+- Rulings:
+  - `TargetFields` became the hook `useLogTargets(projectId, keepProjectId?)` (`pages/time/useLogTargets.ts`). The
+    dialog is `sf` and Add time is a `ui` Sheet with `Field`, so they share the lists, not the markup. Cost if wrong:
+    two small selects to keep in step.
+  - `sf/Modal` isn't full screen on phones: it is the screen less 16px a side, like every chat dialog. The spec said
+    full screen. The axe and 390px checks for the dialog run with T3's browser test.
+- Security (review of T1): `time.list`, MyDay and an edit's reply leave `startedFrom` out (7834ae0), so IP, device and
+  place reach only Attendance.
+- Done: 7 dialog tests, Add time's tests green.
 
 ### T3. Top bar button, pill states and the phone bar
 
