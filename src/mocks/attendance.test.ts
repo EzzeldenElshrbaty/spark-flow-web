@@ -8,8 +8,8 @@ import { createMockHub, type MockHub } from './realtime'
 import { seed } from './seed'
 import { createMemoryStore } from './store'
 
-// User attendance and activities (Admin and help, slice 5): what a check-in and check-out record, app use as visits,
-// working hours, the four views, and who sees whom.
+// User attendance and activities (Admin and help, slice 5; timer slice 3): days made from timer entries, app use as
+// visits, working hours, the four views, and who sees whom.
 
 const MIN = 60_000
 let db: MockDb
@@ -36,77 +36,78 @@ const detail = (promise: Promise<unknown>) => promise.then(() => '', (e: { detai
 const later = (minutes: number) => (clock = new Date(clock.getTime() + minutes * MIN))
 const place = { lat: 30.0444, lng: 31.2357, accuracy: 20 }
 
-describe('checking in and out records where from (slice 5)', () => {
-  it('the server’s time, IP and device, and the browser’s place; undoing a check-out forgets where it came from', async () => {
-    expect((await api.time.today()).firstCheckIn).toBe(true)
-    const day = await api.time.checkIn({ plan: 'Reviews', location: place })
-    expect(day.firstCheckIn).toBe(false)
-    expect(day.checkIn).toMatchObject({ checkedInAt: clock.toISOString(), inFrom: { ip: '10.1.2.3', device: 'Chrome 130 · macOS', location: place } })
-    later(30)
-    from = { ip: '10.9.9.9', device: 'Safari 18 · iOS' }
-    expect((await api.time.checkOut({ location: 'blocked' })).checkIn).toMatchObject({ outFrom: { ip: '10.9.9.9', device: 'Safari 18 · iOS', location: 'blocked' } })
-    expect((await api.time.undoCheckOut()).checkIn).toMatchObject({ checkedOutAt: null, outFrom: null })
-  })
+describe('attendance days from timer entries (timer slice 3)', () => {
+  const u1Days = async () => api.attendance.days({ days: 7, userId: 'u-1' })
 
-  it('someone whose check-ins came before Attendance still gets the notice once', async () => {
-    await db.update((d) => {
-      d.checkIns.push({ id: 'ci-old', userId: 'u-1', day: '2026-10-01', checkedInAt: '2026-10-01T06:00:00.000Z', checkedOutAt: '2026-10-01T14:00:00.000Z', plan: 'Old' })
+  it('a day is first timer start to last timer end; manual entries make no day', async () => {
+    const salma = await api.attendance.days({ days: 7, userId: 'u-5' })
+    expect(salma.map((d) => d.day)).toEqual(['2026-10-29', '2026-10-28', '2026-10-27', '2026-10-26', '2026-10-25'])
+    expect(salma.find((d) => d.day === '2026-10-26')).toEqual({
+      id: 'u-5:2026-10-26', userId: 'u-5', day: '2026-10-26', inAt: '2026-10-26T07:40:00.000Z', outAt: '2026-10-26T15:05:00.000Z',
+      hours: 415 / 60, from: { ip: '197.48.112.6', device: 'Chrome 130 · Android', location: { lat: 30.0626, lng: 31.3409, accuracy: 12 } },
+      endReason: 'stopped', newIp: true, newDevice: true, late: true, early: false,
     })
-    expect((await api.time.today()).firstCheckIn).toBe(true)
-  })
-
-  it('a place is kept to 5 decimals, about a metre', async () => {
-    expect((await api.time.checkIn({ plan: 'Reviews', location: { lat: 30.044412345, lng: 31.235712345, accuracy: 18.4 } })).checkIn?.inFrom?.location).toEqual({ lat: 30.04441, lng: 31.23571, accuracy: 18 })
-  })
-
-  it('checking out a check-in forgotten on an earlier day ends it with that day’s work, as Flow, never early', async () => {
-    clock = new Date('2026-11-02T07:00:00Z') // Monday 9:00 AM
-    await api.time.checkIn({ plan: 'Reviews', target: { taskId: 't-nex-101' }, location: place })
-    clock = new Date('2026-11-03T08:00:00Z') // Tuesday 10:00 AM: still checked in, the timer still running
-    await api.time.checkOut({ location: place })
-    const monday = (await db.read()).checkIns.find((c) => c.userId === 'u-1' && c.day === '2026-11-02')!
-    // The timer stops at its 12-hour limit, and the check-in ends with it.
-    expect(monday).toMatchObject({ checkedOutAt: '2026-11-02T19:00:00.000Z', closedByFlow: true, outFrom: null })
-    expect((await api.attendance.day('2026-11-02', 'u-1'))[0]).toMatchObject({ hours: 12, early: false, byFlow: true })
-  })
-
-  it('no place sent reads as none; a place that can’t be right is refused', async () => {
-    expect(await detail(api.time.checkIn({ plan: 'Reviews', location: { lat: 91, lng: 0, accuracy: 5 } }))).toBe("That location can't be right.")
-    expect(await detail(api.time.checkIn({ plan: 'Reviews', location: 'somewhere' as never }))).toBe("That location can't be right.")
-    expect((await api.time.checkIn({ plan: 'Reviews' })).checkIn?.inFrom?.location).toBe('none')
-  })
-})
-
-describe('the check-ins view (slice 5)', () => {
-  it('lists each check-in and check-out newest first, marking a new IP or device and late or early', async () => {
-    const rows = await api.attendance.checkIns({ days: 7, userId: 'u-5' })
-    expect(rows).toHaveLength(10)
-    expect(rows.map((r) => r.at)).toEqual(rows.map((r) => r.at).sort().reverse())
-    // Monday 26: in late from her phone at home, then back on the office laptop to check out.
-    const monday = rows.filter((r) => r.at.startsWith('2026-10-26'))
-    expect(monday.map((r) => [r.kind, r.ip, r.newIp, r.newDevice, r.offHours])).toEqual([
-      ['out', '41.233.18.9', true, true, false],
-      ['in', '197.48.112.6', true, true, true],
+    // Tuesday's manual entry (9:00 to 11:00) adds no hours to the day and doesn't move its in or out.
+    expect(salma.find((d) => d.day === '2026-10-27')).toMatchObject({ inAt: '2026-10-27T05:50:00.000Z', outAt: '2026-10-27T15:05:00.000Z', hours: 405 / 60 })
+    await api.time.addManual({ projectId: 'p-nex', startedAt: '2026-10-31T08:00:00.000Z', endedAt: '2026-10-31T09:00:00.000Z', note: '' })
+    expect(await u1Days()).toEqual([])
+    await api.time.start({ taskId: 't-nex-101' }, place)
+    later(30)
+    await api.time.stop()
+    expect(await u1Days()).toEqual([
+      expect.objectContaining({ day: '2026-10-31', inAt: '2026-10-31T12:00:00.000Z', outAt: '2026-10-31T12:30:00.000Z', hours: 0.5, endReason: 'stopped', from: { ...from, location: place } }),
     ])
-    // The first check of all has nothing to differ from.
-    expect(rows.at(-1)).toMatchObject({ kind: 'in', newIp: false, newDevice: false })
-    expect(rows.filter((r) => r.newIp)).toHaveLength(2)
   })
 
-  it('a check-out Flow made is marked, never early, and has no place', async () => {
-    // Tarek checked in now (seed) and forgets to check out; tomorrow's check-in closes it.
-    await api.users.viewAs('u-3')
-    clock = new Date('2026-11-01T07:30:00Z')
-    await api.time.checkIn({ plan: 'Next', location: 'none' })
-    const out = (await api.attendance.checkIns({ days: 7 })).find((r) => r.kind === 'out' && r.at.startsWith('2026-10-31'))!
-    expect(out).toMatchObject({ byFlow: true, offHours: false, ip: null, location: null })
+  it("late from the first start; early from the last end; never early after 'flow' or 'timeout', or today while a timer runs or is paused", async () => {
+    // Monday 2 November, Cairo on winter time (UTC+2): 8:00 UTC is 10:00 AM, late.
+    clock = new Date('2026-11-02T08:00:00Z')
+    await api.time.start({ taskId: 't-nex-101' })
+    later(60)
+    await api.time.pause()
+    const today = async () => (await u1Days()).find((d) => d.day === '2026-11-02')!
+    expect(await today()).toMatchObject({ late: true, early: false, outAt: '2026-11-02T09:00:00.000Z', endReason: 'paused' })
+    await api.time.resume()
+    expect(await today()).toMatchObject({ early: false, outAt: null, endReason: null })
+    later(30)
+    await api.time.stop()
+    expect(await today()).toMatchObject({ early: true, outAt: '2026-11-02T09:30:00.000Z', hours: 1.5 })
+    // Out at 10:00 AM Cairo each day, ended three ways.
+    await db.update((d) => {
+      for (const [day, endReason] of [['03', 'timeout'], ['04', 'flow'], ['05', 'stopped']] as const)
+        d.timeEntries.push({ id: `te-x-${day}`, userId: 'u-1', projectId: 'p-nex', taskId: null, startedAt: `2026-11-${day}T06:30:00.000Z`, endedAt: `2026-11-${day}T08:00:00.000Z`, source: 'timer', note: '', endReason })
+    })
+    clock = new Date('2026-11-06T10:00:00Z')
+    expect((await u1Days()).map((d) => [d.day, d.endReason, d.late, d.early])).toEqual([
+      ['2026-11-05', 'stopped', false, true],
+      ['2026-11-04', 'flow', false, false],
+      ['2026-11-03', 'timeout', false, false],
+      ['2026-11-02', 'stopped', true, true],
+    ])
+  })
+
+  it('days carry from, newIp and newDevice against the same person’s day before', async () => {
+    const salma = (await api.attendance.days({ days: 7, userId: 'u-5' })).reverse()
+    // Monday 26: in late from her phone at home; Tuesday back on the office laptop, which differs from Monday.
+    expect(salma.map((d) => [d.day, d.from?.ip, d.newIp, d.newDevice])).toEqual([
+      ['2026-10-25', '41.233.18.9', false, false],
+      ['2026-10-26', '197.48.112.6', true, true],
+      ['2026-10-27', '41.233.18.9', true, true],
+      ['2026-10-28', '41.233.18.9', false, false],
+      ['2026-10-29', '41.233.18.9', false, false],
+    ])
   })
 
   it('the period counts back from today', async () => {
     await db.read() // seeded on Saturday 31 October
     clock = new Date('2026-11-04T12:00:00Z')
-    expect((await api.attendance.checkIns({ days: 7, userId: 'u-5' })).map((r) => r.at.slice(0, 10))).toEqual(['2026-10-29', '2026-10-29'])
-    expect(await api.attendance.checkIns({ days: 1, userId: 'u-5' })).toEqual([])
+    expect((await api.attendance.days({ days: 7, userId: 'u-5' })).map((d) => d.day)).toEqual(['2026-10-29'])
+    expect(await api.attendance.days({ days: 1, userId: 'u-5' })).toEqual([])
+  })
+
+  it('the check-in calls are gone', () => {
+    for (const name of ['checkIn', 'checkOut', 'undoCheckOut']) expect(name in api.time).toBe(false)
+    expect('checkIns' in api.attendance).toBe(false)
   })
 })
 
@@ -118,8 +119,8 @@ describe('who sees whom (slice 5)', () => {
     expect(pm[0]).toBe('u-2')
     expect(pm).toEqual(expect.arrayContaining(['u-3', 'u-5', 'u-6']))
     expect(pm).not.toContain('u-9') // only on Sela booking, which Nour doesn't manage
-    expect(await detail(api.attendance.checkIns({ days: 7, userId: 'u-9' }))).toBe("You don't have access to their attendance.")
-    const seen = new Set((await api.attendance.checkIns({ days: 7 })).map((r) => r.userId))
+    expect(await detail(api.attendance.days({ days: 7, userId: 'u-9' }))).toBe("You don't have access to their attendance.")
+    const seen = new Set((await api.attendance.days({ days: 7 })).map((r) => r.userId))
     expect([...seen].every((id) => pm.includes(id))).toBe(true)
     expect(seen.has('u-5')).toBe(true)
     // On Nexus Core through its Frontend team, not as a member.
@@ -139,21 +140,20 @@ describe('who sees whom (slice 5)', () => {
 })
 
 describe('the day view (slice 5)', () => {
-  it('a row per person, absent ones too, with in, out, hours checked in, app time and late or early', async () => {
+  it('a row per person, absent ones too, with in, out, timer hours, app time and late or early', async () => {
     const rows = await api.attendance.day('2026-10-26')
     expect(rows).toHaveLength(9)
     expect(rows.find((r) => r.userId === 'u-5')).toEqual({
-      userId: 'u-5', checkedInAt: '2026-10-26T07:40:00.000Z', checkedOutAt: '2026-10-26T15:05:00.000Z', byFlow: false,
-      hours: 445 / 60, appMinutes: 360, late: true, early: false,
+      userId: 'u-5', inAt: '2026-10-26T07:40:00.000Z', outAt: '2026-10-26T15:05:00.000Z', hours: 415 / 60, appMinutes: 360, late: true, early: false,
     })
-    expect(rows.find((r) => r.userId === 'u-1')).toEqual({ userId: 'u-1', checkedInAt: null, checkedOutAt: null, byFlow: false, hours: 0, appMinutes: 0, late: false, early: false })
+    expect(rows.find((r) => r.userId === 'u-1')).toEqual({ userId: 'u-1', inAt: null, outAt: null, hours: 0, appMinutes: 0, late: false, early: false })
     expect((await api.attendance.day('2026-10-28', 'u-7'))[0]).toMatchObject({ early: true, late: false })
     expect(await detail(api.attendance.day('28 Oct'))).toBe('Pick a day.')
   })
 
-  it('a check-in still open counts hours until now', async () => {
+  it('a day with a timer running counts hours until now, with no out', async () => {
     const [row] = await api.attendance.day('2026-10-31', 'u-2')
-    expect(row).toMatchObject({ checkedOutAt: null, hours: 3 })
+    expect(row).toMatchObject({ inAt: '2026-10-31T11:00:00.000Z', outAt: null, hours: 1 })
   })
 })
 
@@ -205,11 +205,11 @@ describe('app use (slice 5)', () => {
 })
 
 describe('the report (slice 5)', () => {
-  it('per person: days in, average in and out, late and early, hours checked in and app time', async () => {
+  it('per person: days in, average in and out, late and early, timer hours and app time', async () => {
     const [salma] = await api.attendance.report({ days: 7, userId: 'u-5' })
     // That week Cairo was on summer time (UTC+3): in at 8:50 four days and 10:40 once, 9:12 on average; out at 6:05 PM.
     expect(salma).toMatchObject({ userId: 'u-5', daysIn: 5, avgIn: 9 * 60 + 12, avgOut: 18 * 60 + 5, late: 1, early: 0, appMinutes: 4 * 395 + 360 })
-    expect(salma!.hours).toBeCloseTo(4 * (9 + 15 / 60) + 445 / 60)
+    expect(salma!.hours).toBeCloseTo((3 * 525 + 405 + 415) / 60)
     const everyone = await api.attendance.report({ days: 7 })
     expect(everyone).toHaveLength(9)
     expect(everyone.find((r) => r.userId === 'u-7')).toMatchObject({ early: 1, late: 0 })

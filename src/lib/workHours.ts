@@ -23,15 +23,15 @@ export function zoned(iso: string, timeZone: string): { date: string; weekday: n
 }
 
 /** In after the start, on a working day. */
-export function isLate(checkedInAt: string, hours: WorkHours): boolean {
-  const { weekday, minutes } = zoned(checkedInAt, hours.timeZone)
+export function isLate(inAt: string, hours: WorkHours): boolean {
+  const { weekday, minutes } = zoned(inAt, hours.timeZone)
   return hours.days.includes(weekday) && minutes > minutesOf(hours.start)
 }
 
-/** Out before the end of the check-in's own working day; a check-out after midnight is never early. */
-export function isEarly(checkedInAt: string, checkedOutAt: string, hours: WorkHours): boolean {
-  const start = zoned(checkedInAt, hours.timeZone)
-  const out = zoned(checkedOutAt, hours.timeZone)
+/** Out before the end of the day's own working hours (the day of its first start); an out after midnight is never early. */
+export function isEarly(inAt: string, outAt: string, hours: WorkHours): boolean {
+  const start = zoned(inAt, hours.timeZone)
+  const out = zoned(outAt, hours.timeZone)
   return hours.days.includes(start.weekday) && out.date === start.date && out.minutes < minutesOf(hours.end)
 }
 

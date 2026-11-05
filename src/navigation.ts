@@ -25,7 +25,7 @@ export const navGroups: NavGroup[] = [
   {
     label: 'Work',
     items: [
-      { path: 'home', label: 'Home', icon: IconHome, description: 'Your day: check-in, timer and mentions', link: paths.home },
+      { path: 'home', label: 'Home', icon: IconHome, description: 'Your day: timer, today’s time and mentions', link: paths.home },
       { path: 'projects', label: 'Projects', icon: IconLayoutKanban, description: 'Every project in the workspace', link: paths.projects },
       { path: 'tasks', label: 'My tasks', icon: IconListCheck, description: 'Your open tasks, overdue first', link: paths.tasks },
       { path: 'teams', label: 'Teams', icon: IconUsers, description: 'Teams and who is in them', link: paths.teams },
@@ -34,7 +34,7 @@ export const navGroups: NavGroup[] = [
   {
     label: 'Manage',
     items: [
-      { path: 'dashboard', label: 'Dashboard', icon: IconLayoutDashboard, permission: 'dashboard.view', description: 'Projects, hours and who is checked in', link: paths.dashboard },
+      { path: 'dashboard', label: 'Dashboard', icon: IconLayoutDashboard, permission: 'dashboard.view', description: 'Projects, hours and who is working now', link: paths.dashboard },
       { path: 'time', label: 'Time & cost', icon: IconClock, permission: 'timeCost.view', description: 'Hours and cost by project, person and week', link: paths.timeCost },
     ],
   },

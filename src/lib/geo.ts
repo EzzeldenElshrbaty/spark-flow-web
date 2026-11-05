@@ -1,10 +1,10 @@
 import type { CheckLocation } from '@/api/types'
 
-/** How long a check-in waits for the browser's place before going without it. */
+/** How long a timer start waits for the browser's place before going without it. */
 const WAIT_MS = 8000
 
 /**
- * The browser's place for a check-in or check-out (Admin and help, slice 5): to 5 decimals (about a metre) with its
+ * The browser's place for a timer start or resume (Admin and help, slice 5): to 5 decimals (about a metre) with its
  * accuracy in metres; 'blocked' when the person refused; 'none' when the device has none or doesn't answer in time.
  */
 export function currentLocation(waitMs = WAIT_MS): Promise<CheckLocation> {

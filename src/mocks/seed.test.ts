@@ -119,7 +119,7 @@ describe('seed', () => {
   })
 
   it('has unique ids and keys numbered from 101 per project', () => {
-    for (const list of [data.users, data.projects, data.phases, data.tickets, data.channels, data.messages, data.replies, data.comments, data.timeEntries, data.checkIns]) {
+    for (const list of [data.users, data.projects, data.phases, data.tickets, data.channels, data.messages, data.replies, data.comments, data.timeEntries]) {
       expect(new Set(list.map((x) => x.id)).size).toBe(list.length)
     }
     for (const p of data.projects) {
@@ -156,10 +156,9 @@ describe('seed', () => {
   })
 
   it('logs a working week: Sun–Thu only, no overlaps, nothing running, all before now', () => {
-    // The past week; today's live check-ins and running timers ('-now') have their own test below.
-    const pastCheckIns = data.checkIns.filter((c) => !c.id.endsWith('-now'))
+    // The past week; today's running timers ('-now') have their own test below.
     const past = data.timeEntries.filter((e) => !e.id.endsWith('-now'))
-    expect(new Set(pastCheckIns.map((c) => c.day)).size).toBe(5)
+    expect(new Set(past.map((e) => e.startedAt.slice(0, 10))).size).toBe(5)
     for (const e of past) {
       expect(e.endedAt).not.toBeNull()
       expect(e.endedAt! <= now.toISOString()).toBe(true)
@@ -170,7 +169,17 @@ describe('seed', () => {
       for (let i = 1; i < mine.length; i++) expect(mine[i - 1].endedAt! <= mine[i].startedAt).toBe(true)
     }
     expect(past.some((e) => e.source === 'manual')).toBe(true)
-    for (const c of data.checkIns) expect(data.checkIns.filter((x) => x.userId === c.userId && x.day === c.day)).toHaveLength(1)
+  })
+
+  it('has no check-ins: Attendance days come from timer entries that say where they started (timer slice 3)', () => {
+    expect(data).not.toHaveProperty('checkIns')
+    const timers = data.timeEntries.filter((e) => e.source === 'timer')
+    expect(timers.every((e) => e.startedFrom?.ip)).toBe(true)
+    expect(data.timeEntries.filter((e) => e.source === 'manual').every((e) => !e.startedFrom)).toBe(true)
+    // Each person's working day starts on time (before 9 AM in Cairo) and ends after 5 PM, but for the two exceptions
+    // Attendance shows: Salma in late one day, Dina out early another.
+    expect(timers.filter((e) => e.startedAt.endsWith('T07:40:00.000Z')).map((e) => e.userId)).toEqual(['u-5'])
+    expect(timers.filter((e) => e.endedAt?.endsWith('T13:30:00.000Z')).map((e) => e.userId)).toEqual(['u-7'])
   })
 
   it('has rates for everyone, between 180 and 650 EGP an hour', () => {
@@ -198,22 +207,17 @@ describe('seed', () => {
 })
 
 describe('demo story for now', () => {
-  it('seed has three people checked in now, each with one running timer', () => {
+  it('seed has three people working now, each with one running timer that says where it started', () => {
     const now = new Date()
     const { data } = seed(now)
-    const today = localDay(now)
-    for (const userId of ['u-2', 'u-3', 'u-6']) {
-      expect(data.checkIns.some((c) => c.userId === userId && c.day === today && c.checkedOutAt === null)).toBe(true)
-      expect(data.timeEntries.filter((e) => e.userId === userId && e.endedAt === null)).toHaveLength(1)
-    }
-    expect(data.timeEntries.filter((e) => e.endedAt === null).map((e) => e.userId).sort()).toEqual(['u-2', 'u-3', 'u-6'])
-    for (const userId of ['u-1', 'u-4', 'u-5', 'u-8']) expect(data.checkIns.some((c) => c.userId === userId && c.day === today)).toBe(false)
+    const running = data.timeEntries.filter((e) => e.endedAt === null)
+    expect(running.map((e) => e.userId).sort()).toEqual(['u-2', 'u-3', 'u-6'])
+    for (const e of running) expect(e.startedFrom?.ip).toBeTruthy()
   })
 
-  it('just after midnight the live check-ins still fall on today', () => {
+  it('just after midnight the running timers still start today', () => {
     const early = new Date(2026, 9, 28, 0, 40)
     const { data } = seed(early)
-    for (const c of data.checkIns.filter((x) => x.id.endsWith('-now'))) expect(localDay(new Date(c.checkedInAt))).toBe(c.day)
     for (const e of data.timeEntries.filter((x) => x.id.endsWith('-now'))) expect(localDay(new Date(e.startedAt))).toBe(localDay(early))
   })
 })

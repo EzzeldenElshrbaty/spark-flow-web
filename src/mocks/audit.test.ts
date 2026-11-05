@@ -138,7 +138,7 @@ const NOT_RECORDED: Record<string, string> = {
   'users.directory': READ,
   'archive.list': READ,
   'attendance.scope': READ,
-  'attendance.checkIns': READ,
+  'attendance.days': READ,
   'attendance.day': READ,
   'attendance.visits': READ,
   'attendance.report': READ,
@@ -187,9 +187,6 @@ const NOT_RECORDED: Record<string, string> = {
   'time.list': READ,
   'time.report': READ,
   'time.today': READ,
-  'time.checkIn': 'attendance: slice 5 keeps its own record of check-ins, with IP, device and place',
-  'time.checkOut': 'attendance, as checkIn',
-  'time.undoCheckOut': 'attendance, as checkIn',
   'time.start': 'a person’s own running clock; a manual entry, an edit or a delete is recorded',
   'time.stop': 'as start',
   'time.pause': 'as start',
@@ -233,7 +230,7 @@ const NOT_RECORDED: Record<string, string> = {
   'bookmarks.update': 'as bookmarks.add',
   'bookmarks.remove': 'as bookmarks.add',
   'dashboard.projects': READ,
-  'dashboard.checkedIn': READ,
+  'dashboard.workingNow': READ,
   'files.url': 'a read that previews use too; the page records a download through audit.noteDownload',
   'files.list': READ,
   'files.uploadForChat': `${MESSAGE}; a chat file goes out in a message`,
@@ -296,7 +293,7 @@ describe('the entries say what changed, as people read it', () => {
     await api.roles.saveGrants([{ roleId: 'member', add: ['projects.create', 'audit.view'], remove: ['checkins.managed'] }])
     expect(await last()).toMatchObject({ group: 'settings', record: { type: 'role', id: 'member', name: 'Member' } })
     expect((await last()).changes).toEqual([
-      { field: 'See check-ins and app use of the people on projects they manage', from: 'On', to: 'Off' },
+      { field: 'See timers and app use of the people on projects they manage', from: 'On', to: 'Off' },
       { field: 'Create projects', from: 'Off', to: 'On' },
       { field: 'See the audit log', from: 'Off', to: 'On' },
     ])

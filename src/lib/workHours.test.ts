@@ -18,7 +18,7 @@ describe('working hours', () => {
     expect(isEarly(sunday, '2026-11-01T14:59:00.000Z', DEFAULT_WORK_HOURS)).toBe(true) // 4:59 PM
     expect(isEarly(sunday, '2026-11-01T15:00:00.000Z', DEFAULT_WORK_HOURS)).toBe(false)
     expect(isEarly('2026-11-07T07:00:00.000Z', '2026-11-07T10:00:00.000Z', DEFAULT_WORK_HOURS)).toBe(false) // Saturday
-    // Worked past midnight into Monday: out at 12:30 AM is late, not early; nor is Friday's check-out of Thursday's day.
+    // Worked past midnight into Monday: out at 12:30 AM is late, not early; nor is Friday's out of Thursday's day.
     expect(isEarly(sunday, '2026-11-01T22:30:00.000Z', DEFAULT_WORK_HOURS)).toBe(false)
     expect(isEarly('2026-11-05T07:00:00.000Z', '2026-11-06T08:00:00.000Z', DEFAULT_WORK_HOURS)).toBe(false)
   })

@@ -1,7 +1,6 @@
 import type {
   Attachment,
   ChatMessage,
-  CheckIn,
   CheckLocation,
   CheckSource,
   Visit,
@@ -457,11 +456,11 @@ export function seed(now: Date): SeedResult {
   const channels = buildChannels(rawChannels, messages, replies)
   const tickets = buildTickets(rawTickets)
 
-  // ── Work: check-ins and time on the last 5 working days (Sun–Thu), 07:00–15:00 UTC ──
+  // ── Work: timers on the last 5 working days (Sun–Thu), 05:50–15:05 UTC: Attendance's days come from them ──
   const days = workingDaysBefore(now, 5)
   const at = (day: Date, h: number, m = 0) => new Date(day.getTime() + (h * 60 + m) * 60_000).toISOString()
   const taskProject = new Map(tickets.map((t) => [t.key, t.projectId]))
-  // Who works on what: two tasks each, morning and afternoon. MOB-104 ends past its 16-hour estimate (5 × 4 h).
+  // Who works on what: two tasks each, morning and afternoon. MOB-104 ends past its 16-hour estimate (5 × 5 h 10 min).
   const workPlan: [userId: string, morning: string, afternoon: string][] = [
     ['u-2', 'NEX-101', 'NEX-102'],
     ['u-3', 'NEX-105', 'NEX-106'],
@@ -471,11 +470,11 @@ export function seed(now: Date): SeedResult {
     ['u-7', 'BRD-101', 'BRD-103'],
     ['u-8', 'MOB-104', 'MOB-102'],
   ]
-  const checkIns: CheckIn[] = []
   const timeEntries: TimeEntry[] = []
   const visits: Visit[] = []
-  // Where checks come from (slice 5): the office network and each person's laptop, with a few exceptions so Attendance
-  // has something to show: Salma in late from her phone at home one day, Tarek leaving early, Omar's place blocked.
+  // Where timers start from (slice 5, timer slice 3): the office network and each person's laptop, with a few exceptions
+  // so Attendance has something to show: Salma in late from her phone at home one day, Dina leaving early, Tarek's
+  // place blocked.
   const office = '41.233.18.9'
   const laptop: Record<string, string> = { 'u-2': 'Chrome 130 · macOS', 'u-3': 'Chrome 130 · Windows', 'u-4': 'Edge 130 · Windows', 'u-5': 'Chrome 130 · Windows', 'u-6': 'Firefox 131 · Linux', 'u-7': 'Safari 18 · macOS', 'u-8': 'Chrome 130 · Windows' }
   const desk = (userId: string): CheckLocation => (userId === 'u-8' ? 'blocked' : { lat: (3_005_710 + Number(userId.slice(2))) / 100_000, lng: 31.2272, accuracy: 25 })
@@ -489,29 +488,32 @@ export function seed(now: Date): SeedResult {
       const inAt = late ? at(day, 7, 40) : at(day, 5, 50)
       const outAt = early ? at(day, 13, 30) : at(day, 15, 5)
       const inFrom = late ? { ip: '197.48.112.6', device: 'Chrome 130 · Android', location: { lat: 30.0626, lng: 31.3409, accuracy: 12 } } : from(userId)
-      checkIns.push({ id: `ci-${userId}-${d}`, userId, day: day.toISOString().slice(0, 10), checkedInAt: inAt, checkedOutAt: outAt, plan: `${morning} in the morning, ${afternoon} after lunch.`, inFrom, outFrom: from(userId) })
       const device = laptop[userId] ?? null
       visits.push(
         { id: `v-${userId}-${d}-a`, userId, day: day.toISOString().slice(0, 10), startedAt: inAt, endedAt: at(day, 11), minutes: late ? 170 : 205, ip: inFrom.ip, device: inFrom.device },
         { id: `v-${userId}-${d}-b`, userId, day: day.toISOString().slice(0, 10), startedAt: at(day, 11, 30), endedAt: outAt, minutes: early ? 110 : 190, ip: office, device },
       )
+      const task = (key: string) => ({ projectId: taskProject.get(key) ?? '', taskId: `t-${key.toLowerCase()}` })
+      // The day's first timer starts it and its last ends it. On the third day the timer stopped at 9 and the rest of
+      // the morning was added by hand: it counts as time, not towards the day.
+      const forgot = d === 2
       timeEntries.push(
-        { id: `te-${userId}-${d}-a`, userId, projectId: taskProject.get(morning) ?? '', taskId: `t-${morning.toLowerCase()}`, startedAt: at(day, 7), endedAt: at(day, 11), source: 'timer', note: '', endReason: 'stopped' },
-        { id: `te-${userId}-${d}-b`, userId, projectId: taskProject.get(afternoon) ?? '', taskId: `t-${afternoon.toLowerCase()}`, startedAt: at(day, 11, 30), endedAt: at(day, 15), source: d === 2 ? 'manual' : 'timer', note: d === 2 ? 'Added after the fact: forgot the timer.' : '', endReason: d === 2 ? null : 'stopped' },
+        { id: `te-${userId}-${d}-a`, userId, ...task(morning), startedAt: inAt, endedAt: at(day, forgot ? 9 : 11), source: 'timer', note: '', endReason: 'stopped', startedFrom: inFrom },
+        ...(forgot ? [{ id: `te-${userId}-${d}-m`, userId, ...task(morning), startedAt: at(day, 9), endedAt: at(day, 11), source: 'manual' as const, note: 'Added after the fact: forgot the timer.', endReason: null }] : []),
+        { id: `te-${userId}-${d}-b`, userId, ...task(afternoon), startedAt: at(day, 11, 30), endedAt: outAt, source: 'timer', note: '', endReason: 'stopped', startedFrom: from(userId) },
       )
     }
   })
 
-  // Right now: three people checked in with a timer running, so the dashboard's "Checked in now" has a story. Admin,
-  // Ahmed, Salma and Tarek stay free to check in live during the demo.
-  // Never before today's midnight, so a seed made just after midnight still checks people in today.
+  // Right now: three people with a timer running, so the dashboard's "Working now" has a story. Admin, Ahmed, Salma and
+  // Tarek stay free to start one live during the demo.
+  // Never before today's midnight, so a seed made just after midnight still starts them today.
   const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
   const shift = (ms: number) => new Date(Math.max(now.getTime() - ms, midnight)).toISOString()
   for (const [userId, taskKey] of [['u-2', 'NEX-101'], ['u-3', 'NEX-106'], ['u-6', 'NEX-107']] as const) {
-    checkIns.push({ id: `ci-${userId}-now`, userId, day: localDay(now), checkedInAt: shift(3 * 3_600_000), checkedOutAt: null, plan: `${taskKey} first, then reviews.`, inFrom: from(userId) })
     const [start, end] = [shift(3 * 3_600_000), shift(60_000)]
     visits.push({ id: `v-${userId}-now`, userId, day: localDay(now), startedAt: start, endedAt: end, minutes: Math.round((Date.parse(end) - Date.parse(start)) / 70_000), ip: office, device: laptop[userId] ?? null })
-    timeEntries.push({ id: `te-${userId}-now`, userId, projectId: 'p-nex', taskId: `t-${taskKey.toLowerCase()}`, startedAt: shift(3_600_000), endedAt: null, source: 'timer', note: '', endReason: null })
+    timeEntries.push({ id: `te-${userId}-now`, userId, projectId: 'p-nex', taskId: `t-${taskKey.toLowerCase()}`, startedAt: shift(3_600_000), endedAt: null, source: 'timer', note: '', endReason: null, startedFrom: from(userId) })
   }
 
   // Hourly cost in EGP (Admin only)
@@ -564,7 +566,6 @@ export function seed(now: Date): SeedResult {
     attachments,
     projectFiles,
     timeEntries,
-    checkIns,
     rates,
     // Everyone starts with the same state, so each persona sees the demo's unread badges, a starred and a muted channel.
     channelState: Object.fromEntries(

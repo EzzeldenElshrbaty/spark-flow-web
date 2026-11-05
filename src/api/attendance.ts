@@ -14,8 +14,9 @@ export function useAttendanceScope() {
   return useQuery({ queryKey: qk.attendance('scope'), queryFn: () => api.attendance.scope(), retry })
 }
 
-export function useCheckEvents(query: AttendanceQuery, enabled = true) {
-  return useQuery({ queryKey: qk.attendance('checkIns', query.days, query.userId ?? ''), queryFn: () => api.attendance.checkIns(query), retry, enabled })
+/** People's days, made from their timer entries (timer slice 3); a running timer's day grows, so it looks again. */
+export function useAttendanceDays(query: AttendanceQuery, enabled = true) {
+  return useQuery({ queryKey: qk.attendance('days', query.days, query.userId ?? ''), queryFn: () => api.attendance.days(query), retry, enabled, refetchInterval: APP_TIME_MS })
 }
 
 export function useAttendanceDay(day: string, userId: string | undefined, enabled = true) {

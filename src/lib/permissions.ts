@@ -12,8 +12,8 @@ export const PERMISSION_GROUPS = [
     label: 'General',
     permissions: [
       { id: 'dashboard.all', label: 'See the dashboard for every project' },
-      { id: 'checkins.all', label: 'See everyone’s check-ins and app use' },
-      { id: 'checkins.managed', label: 'See check-ins and app use of the people on projects they manage' },
+      { id: 'checkins.all', label: 'See everyone’s timers and app use' },
+      { id: 'checkins.managed', label: 'See timers and app use of the people on projects they manage' },
     ],
   },
   {
@@ -84,7 +84,7 @@ export type Action =
   | 'time.logOwn' | 'time.logOn' | 'collab.post' | 'dashboard.view' | 'timeCost.view' | 'database.manage' | 'project.archive' | 'channel.manage'
   | 'channel.restrictPosting' | 'channel.post' | 'channel.inviteByEmail' | 'channel.setDefault' | 'invitation.revoke' | 'file.manage'
   | 'channel.archive' | 'message.edit' | 'message.delete'
-  // Slice 1: Settings itself, who's checked in, and other people's time.
+  // Slice 1: Settings itself, whose timers and attendance someone sees, and other people's time.
   | 'settings.manage' | 'settings.open' | 'checkins.view' | 'time.seeTeam' | 'time.editOthers' | 'dashboard.everyProject'
   // Slice 2.
   | 'audit.view' | 'archive.manage'

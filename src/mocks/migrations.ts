@@ -26,6 +26,10 @@ const V24_ROLES = [
 ]
 
 export const migrations: Record<number, (doc: Record<string, unknown>) => void> = {
+  // 30: check-in goes (timer slice 3): a person's attendance days come from their timer entries.
+  29: (doc) => {
+    delete doc.checkIns
+  },
   // 29: the timer timeout (timer slice 2): a running timer pauses after 4 hours unless the company says otherwise.
   28: (doc) => {
     const settings = typeof doc.settings === 'object' && doc.settings !== null ? (doc.settings as Record<string, unknown>) : {}

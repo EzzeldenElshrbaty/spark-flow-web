@@ -5,21 +5,11 @@ import { retryUnlessNotFound as retry } from '@/api/retry'
 import { api } from '@/lib/api'
 import { currentLocation } from '@/lib/geo'
 
-/** My day: today's check-in, my running timer and today's entries. Live events from other tabs refresh it. */
+/** My day: my timer and today's entries. Live events from other tabs refresh it. */
 export function useMyDay() {
   return useQuery({ queryKey: qk.myDay(), queryFn: () => api.time.today(), retry })
 }
 
-/** Checks in with the browser's place (or why there's none); the server adds the time, IP and device. */
-export function useCheckIn() {
-  return useMutation({ mutationFn: async (input: { plan: string; target?: TimeTarget }) => api.time.checkIn({ ...input, location: await currentLocation() }) })
-}
-export function useCheckOut() {
-  return useMutation({ mutationFn: async () => api.time.checkOut({ location: await currentLocation() }) })
-}
-export function useUndoCheckOut() {
-  return useMutation({ mutationFn: () => api.time.undoCheckOut() })
-}
 /** Starts a timer with the browser's place (or why there's none); the server adds the time, IP and device. */
 export function useStartTimer() {
   return useMutation({ mutationFn: async (target: TimeTarget) => api.time.start(target, await currentLocation()) })

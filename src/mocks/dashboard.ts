@@ -1,5 +1,4 @@
-import type { Api, CheckedInNow, DashboardProject } from '@/api/types'
-import { localDay } from '@/lib/dates'
+import type { Api, DashboardProject, WorkingNow } from '@/api/types'
 import { entryEnd, entryHours } from '@/lib/hours'
 import type { DbData, MockDb } from './db'
 import { summarize } from './derive'
@@ -42,9 +41,9 @@ function lastWeek(data: DbData, projectId: string, now: Date) {
 
 /**
  * The manager dashboard (spec §5): every project in scope with its phase, estimate and last 7 days, and who is
- * checked in right now. Cost follows summarize(): Admins only. Check-ins are shown to managers of the person's
- * projects (spec §1): checkins.all sees everyone (Admin), checkins.managed the people on projects they manage (PM,
- * Member), and without either nobody (Sales).
+ * working right now. Cost follows summarize(): Admins only. Working now (timer slice 3) lists running timers:
+ * checkins.all sees every one on this workspace's projects (Admin), checkins.managed those on projects they manage
+ * (PM, Member), and without either none (Sales).
  */
 export function dashboardApi(db: MockDb, now: () => Date): Api['dashboard'] {
   return {
@@ -72,28 +71,19 @@ export function dashboardApi(db: MockDb, now: () => Date): Api['dashboard'] {
       )
     },
 
-    async checkedIn(workspaceId) {
+    async workingNow(workspaceId) {
       await delay()
       const data = await db.read()
-      const { me, grants, managed, projects } = inScope(data, workspaceId)
-      const everyone = grants.includes('checkins.all')
+      const { me, grants, managed } = inScope(data, workspaceId)
       if (!can('checkins.view', { userId: me.id, grants })) return []
-      const team = (projectId: string) => {
-        const p = data.projects.find((x) => x.id === projectId)!
-        return [p.managerId, ...p.memberIds, ...data.users.filter((u) => u.teamIds.some((t) => p.teamIds.includes(t))).map((u) => u.id)]
-      }
-      const visible = everyone ? null : new Set(managed.flatMap((p) => team(p.id)))
-      const today = localDay(now())
+      // A timer on a project the viewer doesn't manage stays theirs to see only with checkins.all.
+      const everyone = grants.includes('checkins.all')
+      const shown = new Set((everyone ? data.projects.filter((p) => p.workspaceId === workspaceId && !p.archivedAt) : managed).map((p) => p.id))
       return clone(
-        data.checkIns
-          .filter((c) => c.day === today && c.checkedOutAt === null && (!visible || visible.has(c.userId)))
-          .sort((a, b) => (a.checkedInAt < b.checkedInAt ? 1 : -1))
-          .map((c): CheckedInNow => {
-            const running = data.timeEntries.find((e) => e.userId === c.userId && e.endedAt === null)
-            // What they're running shows only when it's on a project this dashboard covers.
-            const shown = running && (everyone || projects.some((p) => p.id === running.projectId))
-            return { userId: c.userId, since: c.checkedInAt, running: shown ? { taskId: running.taskId, projectId: running.projectId, startedAt: running.startedAt } : null }
-          }),
+        data.timeEntries
+          .filter((e) => e.endedAt === null && shown.has(e.projectId))
+          .sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1))
+          .map((e): WorkingNow => ({ userId: e.userId, taskId: e.taskId, projectId: e.projectId, startedAt: e.startedAt })),
       )
     },
   }

@@ -25,22 +25,19 @@ describe('createHttpApi', () => {
     const api = createHttpApi(fetchFn)
     const entry = { taskId: 't1', startedAt: 's', endedAt: 'e', note: '' }
     await api.time.today()
-    await api.time.checkIn({ plan: 'p', target: { taskId: 't1' } })
-    await api.time.checkOut()
     await api.time.start({ projectId: 'p1' })
     await api.time.stop()
     await api.time.addManual(entry)
     expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url}`)).toEqual([
       'GET /api/time/today',
-      'POST /api/time/check-in',
-      'POST /api/time/check-out',
       'POST /api/time/start',
       'POST /api/time/stop',
       'POST /api/time/entries',
     ])
-    expect(JSON.parse(String(calls[1].init?.body))).toEqual({ plan: 'p', target: { taskId: 't1' } })
-    expect(JSON.parse(String(calls[3].init?.body))).toEqual({ projectId: 'p1', location: 'none' })
-    expect(JSON.parse(String(calls[5].init?.body))).toEqual(entry)
+    expect(JSON.parse(String(calls[1].init?.body))).toEqual({ projectId: 'p1', location: 'none' })
+    expect(JSON.parse(String(calls[3].init?.body))).toEqual(entry)
+    // Check-in, check-out and undo went with timer slice 3.
+    for (const name of ['checkIn', 'checkOut', 'undoCheckOut']) expect(name in api.time).toBe(false)
   })
 
   it('maps the chat writes', async () => {
@@ -94,8 +91,8 @@ describe('createHttpApi', () => {
     const { calls, fetchFn } = recordingFetch()
     const api = createHttpApi(fetchFn)
     await api.dashboard.projects('w1')
-    await api.dashboard.checkedIn('w1')
-    expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url}`)).toEqual(['GET /api/workspaces/w1/dashboard', 'GET /api/workspaces/w1/dashboard/checked-in'])
+    await api.dashboard.workingNow('w1')
+    expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url}`)).toEqual(['GET /api/workspaces/w1/dashboard', 'GET /api/workspaces/w1/dashboard/working-now'])
   })
 
   it('maps the time report', async () => {
@@ -191,11 +188,11 @@ describe('createHttpApi', () => {
     ])
   })
 
-  it('maps the attendance calls, and the place sent with a check-in and check-out (slice 5)', async () => {
+  it('maps the attendance calls (slice 5; days in timer slice 3)', async () => {
     const { calls, fetchFn } = recordingFetch()
     const api = createHttpApi(fetchFn)
     await api.attendance.scope()
-    await api.attendance.checkIns({ days: 7 })
+    await api.attendance.days({ days: 7 })
     await api.attendance.day('2026-10-26', 'u 5')
     await api.attendance.visits({ days: 30, userId: 'u-2' })
     await api.attendance.report({ days: 90 })
@@ -204,11 +201,9 @@ describe('createHttpApi', () => {
     await api.attendance.timer()
     await api.attendance.setTimer({ timeoutHours: 3 })
     await api.attendance.ping()
-    await api.time.checkIn({ plan: 'Reviews', location: { lat: 30, lng: 31, accuracy: 20 } })
-    await api.time.checkOut()
     expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url} ${c.init?.body ?? ''}`.trim())).toEqual([
       'GET /api/attendance/scope',
-      'GET /api/attendance/check-ins?days=7',
+      'GET /api/attendance/days?days=7',
       'GET /api/attendance/day?day=2026-10-26&userId=u%205',
       'GET /api/attendance/visits?days=30&userId=u-2',
       'GET /api/attendance/report?days=90',
@@ -217,9 +212,8 @@ describe('createHttpApi', () => {
       'GET /api/settings/timer',
       'PUT /api/settings/timer {"timeoutHours":3}',
       'POST /api/attendance/ping',
-      'POST /api/time/check-in {"plan":"Reviews","location":{"lat":30,"lng":31,"accuracy":20}}',
-      'POST /api/time/check-out {"location":"none"}',
     ])
+    expect('checkIns' in api.attendance).toBe(false)
   })
 
   it('maps the people calls (slice 3)', async () => {
@@ -520,7 +514,7 @@ describe('time zone', () => {
   it('every request sends X-Time-Zone', async () => {
     const { calls, fetchFn } = recordingFetch()
     await request('/api/time/today', undefined, fetchFn)
-    await request('/api/time/check-in', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }, fetchFn)
+    await request('/api/time/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }, fetchFn)
     const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
     for (const c of calls) expect(new Headers(c.init?.headers).get('X-Time-Zone')).toBe(zone)
   })

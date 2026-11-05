@@ -217,16 +217,8 @@ export type TimeEntry = {
 export type GeoFix = { lat: number; lng: number; accuracy: number }
 /** A check's place: the browser's fix, 'blocked' when the person refused, 'none' when the device has none. */
 export type CheckLocation = GeoFix | 'blocked' | 'none'
-/** Where a check-in or check-out came from (slice 5): the server's IP and device, and the browser's place. */
+/** Where a timer start or resume came from (slice 5, timer slice 3): the server's IP and device, and the browser's place. */
 export type CheckSource = { ip: string | null; device: string | null; location: CheckLocation }
-export type CheckIn = {
-  id: string; userId: string; day: string /* YYYY-MM-DD local */; checkedInAt: string; checkedOutAt: string | null; plan: string
-  /** Absent on check-ins from before slice 5. */
-  inFrom?: CheckSource | null
-  outFrom?: CheckSource | null
-  /** Flow closed it (a check-out forgotten on an earlier day, or deactivating): never counts as leaving early. */
-  closedByFlow?: boolean
-}
 /** Time using Flow (slice 5): pings a minute apart, from one IP and device on one day, make one visit. */
 export type Visit = { id: string; userId: string; day: string; startedAt: string; endedAt: string; minutes: number; ip: string | null; device: string | null }
 /** What "late" and "left early" mean: working days (0 = Sunday), HH:MM start and end, in a time zone. */
@@ -234,16 +226,18 @@ export type WorkHours = { days: number[]; start: string; end: string; timeZone: 
 export type AttendancePeriod = 1 | 7 | 30 | 90
 /** A period ending today, for one person or everyone the viewer may see. */
 export type AttendanceQuery = { days: AttendancePeriod; userId?: string }
-/** One check-in or check-out on Attendance. `newIp`/`newDevice`: different from that person's previous check. */
-export type CheckEvent = {
-  id: string; userId: string; kind: 'in' | 'out'; at: string
-  ip: string | null; device: string | null; location: CheckLocation | null
-  byFlow: boolean; newIp: boolean; newDevice: boolean
-  /** In late or out early, by the working hours. */
-  offHours: boolean
+/**
+ * A person's day on Attendance (timer slice 3), made of their timer entries that started on that local day: in is the
+ * first start, out the last end (null while a timer runs), hours their sum. `from` is where the first start came
+ * from; `newIp` / `newDevice` say it differs from that person's day before. `endReason` is why the day's last entry
+ * ended (null while running). Never early when Flow or the timeout ended it, or today while a timer runs or is paused.
+ */
+export type AttendanceDay = {
+  id: string; userId: string; day: string; inAt: string; outAt: string | null; hours: number
+  from: CheckSource | null; endReason: EndReason | null; newIp: boolean; newDevice: boolean; late: boolean; early: boolean
 }
 export type AttendanceDayRow = {
-  userId: string; checkedInAt: string | null; checkedOutAt: string | null; byFlow: boolean
+  userId: string; inAt: string | null; outAt: string | null
   hours: number; appMinutes: number; late: boolean; early: boolean
 }
 /** Per person for a period; average in and out are minutes after midnight in the working hours' time zone. */
@@ -658,8 +652,8 @@ export type DashboardProject = ProjectSummary & {
   estimatedLoggedHours: number                    // hours logged on the tasks that have an estimate (what "over" compares)
   week: { userId: string; hours: number }[]       // the last 7 days, most hours first
 }
-/** Someone checked in today and not out yet, with their running timer. */
-export type CheckedInNow = { userId: string; since: string; running: { taskId: string | null; projectId: string; startedAt: string } | null }
+/** Someone with a timer running on a project the dashboard covers (timer slice 3). */
+export type WorkingNow = { userId: string; taskId: string | null; projectId: string; startedAt: string }
 /** One mention of me: a message, a thread reply or a task comment, with where it opens. */
 export type MentionItem = {
   id: string; source: 'message' | 'reply' | 'comment'; authorId: string; excerpt: string; createdAt: string; read: boolean
@@ -690,14 +684,9 @@ export type ActivityItem = {
 export type ProjectTime = { entries: TimeEntry[]; rates: Rate[] | null }
 /** What a timer or a manual entry is for: a task (its project follows), or a project as a whole. */
 export type TimeTarget = { taskId: string } | { projectId: string }
-/**
- * My day: today's check-in, a check-in still open from an earlier day (forgot to check out), my running entry (from
- * any day) and my entries that started today, newest first.
- */
+/** My day: my timer, and my entries that started today, newest first. */
 export type MyDay = {
-  day: string; checkIn: CheckIn | null; openCheckIn: CheckIn | null; entries: TimeEntry[]
-  /** Never checked in yet: the card says what checking in records. */
-  firstCheckIn: boolean
+  day: string; entries: TimeEntry[]
   /** My timer: running, or paused today and ready to resume; null when there's none. */
   timer: MyTimer | null
   /** I've never started a timer that recorded where it came from: Start timer says what it records. */
@@ -910,14 +899,14 @@ export interface Api {
     demoPeople(): Promise<DemoPerson[]>
   }
   /**
-   * User attendance and activities (slice 5). Everyone sees their own; "See everyone’s check-ins and app use" everyone;
+   * User attendance and activities (slice 5). Everyone sees their own; "See everyone’s timers and app use" everyone;
    * "…of the people on projects they manage" those people. Asking for someone else is a 403.
    */
   attendance: {
     /** Whose attendance I may see, me first. */
     scope(): Promise<{ userIds: string[] }>
-    /** Check-ins and check-outs, newest first. */
-    checkIns(query: AttendanceQuery): Promise<CheckEvent[]>
+    /** Days made from timer entries, newest first (timer slice 3). */
+    days(query: AttendanceQuery): Promise<AttendanceDay[]>
     /** One local day (YYYY-MM-DD): a row per person, absent ones too. */
     day(day: string, userId?: string): Promise<AttendanceDayRow[]>
     /** Visits, newest first. */
@@ -936,14 +925,10 @@ export interface Api {
   time: {
     list(projectId: string): Promise<ProjectTime>
     today(): Promise<MyDay>
-    /** Once per day; with a target it starts a timer too. */
-    /** The server records its time, IP and device; the browser sends its place. */
-    checkIn(input: { plan: string; target?: TimeTarget; location?: CheckLocation }): Promise<MyDay>
-    /** Closes the latest open check-in and stops the running timer. */
-    checkOut(input?: { location?: CheckLocation }): Promise<MyDay>
-    /** Reopens today's check-in after a check-out by mistake; the stopped timer stays stopped. */
-    undoCheckOut(): Promise<MyDay>
-    /** One running timer per person: starting stops the last, and ends a paused run. The browser sends its place. */
+    /**
+     * One running timer per person: starting stops the last, and ends a paused run. The server records its time, IP
+     * and device; the browser sends its place.
+     */
     start(target: TimeTarget, location?: CheckLocation): Promise<MyDay>
     /** Ends my running entry as 'paused'; the run waits to be resumed today. */
     pause(): Promise<MyDay>
@@ -1076,7 +1061,7 @@ export interface Api {
     note(channelId: string, text: string, remindAt: string): Promise<SavedView>
   }
   /** The manager dashboard (spec §5): Admin and Sales see every project, a PM the ones they manage. */
-  dashboard: { projects(workspaceId: string): Promise<DashboardProject[]>; checkedIn(workspaceId: string): Promise<CheckedInNow[]> }
+  dashboard: { projects(workspaceId: string): Promise<DashboardProject[]>; workingNow(workspaceId: string): Promise<WorkingNow[]> }
   /** Hourly cost per person: Admin only (spec §4.3). */
   rates: { list(): Promise<Rate[]>; update(userId: string, hourlyCost: number): Promise<Rate> }
   /** The Database page: mock only, hidden when backendOn. */

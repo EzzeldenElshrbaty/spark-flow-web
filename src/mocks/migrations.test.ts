@@ -285,3 +285,10 @@ describe('28 → 29', () => {
     expect(migrate({ version: 28, currentUserId: 'u-1', settings: { archiveRetentionDays: 90 } }, 29)).toMatchObject({ version: 29, settings: { archiveRetentionDays: 90, timerTimeoutHours: 4 } })
   })
 })
+
+describe('29 → 30', () => {
+  it('check-ins go (timer slice 3): attendance comes from timer entries', () => {
+    const out = migrate({ version: 29, currentUserId: 'u-1', checkIns: [{ id: 'ci-1' }], timeEntries: [{ id: 'te-1' }] }, 30)
+    expect(out).toEqual({ version: 30, currentUserId: 'u-1', timeEntries: [{ id: 'te-1' }] })
+  })
+})

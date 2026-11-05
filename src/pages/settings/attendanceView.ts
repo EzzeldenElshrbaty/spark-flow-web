@@ -3,7 +3,7 @@ import type { AttendancePeriod, CheckLocation, GeoFix } from '@/api/types'
 // How Settings → Attendance reads its numbers and places (Admin and help, slice 5).
 
 export const TABS = [
-  { id: 'checkins', label: 'Check-ins' },
+  { id: 'days', label: 'Days' },
   { id: 'day', label: 'Day view' },
   { id: 'activity', label: 'Activity log' },
   { id: 'report', label: 'Report' },
@@ -17,7 +17,8 @@ export const PERIODS: { days: AttendancePeriod; label: string }[] = [
   { days: 90, label: 'Last 90 days' },
 ]
 
-export const tabOf = (value: string | null): AttendanceTab => TABS.find((t) => t.id === value)?.id ?? 'checkins'
+/** The tab in the address; `checkins`, the Days tab's name before timer slice 3, still opens it. */
+export const tabOf = (value: string | null): AttendanceTab => TABS.find((t) => t.id === value)?.id ?? 'days'
 export const periodOf = (value: string | null): AttendancePeriod => PERIODS.find((p) => String(p.days) === value)?.days ?? 7
 
 /** App time: "3h 25m", "45m", "1h", or "—" for none. */

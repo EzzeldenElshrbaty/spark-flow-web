@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { currentLocation } from './geo'
 
-// Where a check-in comes from (Admin and help, slice 5): the browser's place, or why there's none.
+// Where a timer start comes from (Admin and help, slice 5): the browser's place, or why there's none.
 
 const stub = (geolocation: unknown) => Object.defineProperty(navigator, 'geolocation', { value: geolocation, configurable: true })
 afterEach(() => stub(undefined))

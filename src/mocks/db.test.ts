@@ -23,7 +23,6 @@ const emptyData = (): DbData => ({
   attachments: [],
   projectFiles: [],
   timeEntries: [],
-  checkIns: [],
   rates: [],
   channelState: {},
   mentionReads: {},
@@ -276,6 +275,15 @@ describe('createDb', () => {
       const odd = { ...base, settings: { ...base.settings, timerTimeoutHours } }
       await expect(db.importAll({ app: 'spark-flow', version: DB_VERSION, exportedAt: 'T', data: odd as never })).rejects.toMatchObject({ status: 400 })
     }
+  })
+
+  it('an import that still carries check-ins (timer slice 3) is accepted, and they are dropped', async () => {
+    const db = createDb(createMemoryStore(), fakeSeed)
+    const base = (await db.exportAll()).data
+    await db.importAll({ app: 'spark-flow', version: DB_VERSION, exportedAt: 'T', data: { ...base, checkIns: [{ id: 'ci-1' }] } as never })
+    expect(await db.read()).not.toHaveProperty('checkIns')
+    await db.importAll({ app: 'spark-flow', version: 29, exportedAt: 'T', data: { ...base, version: 29, checkIns: [{ id: 'ci-1' }] } as never })
+    expect(await db.read()).not.toHaveProperty('checkIns')
   })
 
   it('a deactivation that isn’t one (slice 3) is refused on import', async () => {

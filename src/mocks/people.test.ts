@@ -127,36 +127,20 @@ describe('deactivating and reactivating (slice 3)', () => {
     expect(events).toContain('peopleChanged')
   })
 
-  it('stops their timer and closes their check-in; their time stays', async () => {
-    // The seed has Mariam checked in, with a timer running on NEX-106.
+  it("stops their timer with 'flow'; their time stays", async () => {
+    // The seed has Mariam with a timer running on NEX-106.
     const before = await db.read()
-    expect(before.timeEntries.some((e) => e.userId === 'u-3' && e.endedAt === null)).toBe(true)
-    expect(before.checkIns.some((c) => c.userId === 'u-3' && c.checkedOutAt === null)).toBe(true)
+    const running = before.timeEntries.find((e) => e.userId === 'u-3' && e.endedAt === null)!
     await api.users.deactivate('u-3', '')
     const data = await db.read()
     expect(data.timeEntries.filter((e) => e.userId === 'u-3' && e.endedAt === null)).toEqual([])
-    expect(data.checkIns.filter((c) => c.userId === 'u-3' && c.checkedOutAt === null)).toEqual([])
+    expect(data.timeEntries.find((e) => e.id === running.id)!.endReason).toBe('flow')
     expect(data.timeEntries.some((e) => e.userId === 'u-3' && e.taskId === 't-nex-106')).toBe(true)
     expect(events).toContain('timeLogged')
     // Offline now, and the server's closing isn't counted as something she did.
     expect(data.users.find((u) => u.id === 'u-3')!.presence).toBe('offline')
     const row = (await api.users.directory()).find((p) => p.id === 'u-3')!
     expect(row.lastActiveAt! < row.deactivated!.at).toBe(true)
-  })
-
-  it('a check-in forgotten on an earlier day closes at that day’s last entry, not at the moment of deactivating', async () => {
-    const day = new Date(Date.now() - 4 * 86_400_000)
-    const iso = (h: number) => new Date(day.getFullYear(), day.getMonth(), day.getDate(), h).toISOString()
-    const dayKey = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`
-    await db.update((d) => {
-      // Only what this test puts on that day.
-      d.checkIns = d.checkIns.filter((c) => c.userId !== 'u-5')
-      d.timeEntries = d.timeEntries.filter((e) => !(e.userId === 'u-5' && e.startedAt >= iso(0) && e.startedAt < iso(24)))
-      d.checkIns.push({ id: 'ci-old', userId: 'u-5', day: dayKey, checkedInAt: iso(8), checkedOutAt: null, plan: 'QA' })
-      d.timeEntries.push({ id: 'te-old', userId: 'u-5', projectId: 'p-nex', taskId: null, startedAt: iso(9), endedAt: iso(13), source: 'manual', note: '', endReason: null })
-    })
-    await api.users.deactivate('u-5', '')
-    expect((await db.read()).checkIns.find((c) => c.id === 'ci-old')!.checkedOutAt).toBe(iso(13))
   })
 
   it('they stay in the list, marked, but nobody can switch to them, assign them, or start talking to them', async () => {

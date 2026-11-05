@@ -42,7 +42,7 @@ describe('Settings home (slice 1, as the CRM’s)', () => {
     expect(roles.textContent).toContain('4 roles')
     // The audit log (slice 2) sits with access: who did what.
     expect(within(access).getByRole('link', { name: /Audit log/ }).getAttribute('href')).toBe('/w/engineering/settings/audit')
-    // Attendance (slice 5) for whoever sees others' check-ins.
+    // Attendance (slice 5) for whoever sees others' timers.
     expect(within(access).getByRole('link', { name: /Attendance/ }).getAttribute('href')).toBe('/w/engineering/settings/attendance')
     const data = screen.getByRole('region', { name: 'Data' })
     expect(within(data).getAllByRole('link').map((a) => a.getAttribute('href'))).toEqual(['/w/engineering/settings/archived', '/w/engineering/settings/rates', '/w/engineering/settings/database'])

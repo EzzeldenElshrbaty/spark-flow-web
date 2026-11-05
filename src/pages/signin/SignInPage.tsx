@@ -191,7 +191,7 @@ function BrandPanel() {
           </Card>
           <Card icon={<CalendarCheck className="size-4" />} title="Who's in today">
             <p className={clsx(chip, 'flex justify-between')}>
-              <span>7 checked in</span>
+              <span>7 working now</span>
               <span>since 8:52 AM</span>
             </p>
           </Card>

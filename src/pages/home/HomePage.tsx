@@ -21,10 +21,10 @@ import { useRole } from '@/lib/useRole'
 import { loggableTasks, myOpenTasks } from '@/pages/projects/taskFilters'
 import { useCanLog } from '@/lib/useCanLog'
 import { OverduePill, TicketKey } from '@/pages/projects/ticketPills'
-import { CheckInCard } from './CheckInCard'
+import { TodayCard } from './TodayCard'
 import { dueTodayOrOverdue, greeting } from './myDay'
 
-/** Home / My day: check in and the running timer, then what is due today or overdue for me. */
+/** Home / My day: my timer and today's time, then what is due today or overdue for me. */
 export function HomePage() {
   const { workspace } = useCurrentWorkspace()
   const { persona } = useRole()
@@ -66,7 +66,7 @@ export function HomePage() {
           ) : loading ? (
             <div className="h-72 animate-pulse rounded-xl bg-surface-muted" aria-hidden />
           ) : (
-            <CheckInCard day={day.data} tasks={loggable} projects={(projects.data ?? []).filter((p) => canLog(p)).map((p) => ({ id: p.id, name: p.name }))} label={label} />
+            <TodayCard day={day.data} label={label} />
           )}
         </div>
         <div className="min-w-0 space-y-5">

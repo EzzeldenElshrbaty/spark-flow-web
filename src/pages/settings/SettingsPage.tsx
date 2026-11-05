@@ -80,7 +80,7 @@ export function SettingsPage() {
       : []),
     ...(check('settings.manage') ? [{ to: paths.roles(ws), icon: ShieldCheck, title: 'Roles and permissions', about: 'What each role may do', chips: roles ? [`${roles.length} roles`] : [] }] : []),
     ...(check('audit.view') ? [{ to: paths.audit(ws), icon: ScrollText, title: 'Audit log', about: 'Who did what, when and from where' }] : []),
-    ...(check('checkins.view') ? [{ to: paths.attendance(ws), icon: Clock, title: 'Attendance', about: 'Check-ins, where they came from, time using Flow, and working hours' }] : []),
+    ...(check('checkins.view') ? [{ to: paths.attendance(ws), icon: Clock, title: 'Attendance', about: 'Days from timers, where they started from, time using Flow, and working hours' }] : []),
   ]
   const data: Entry[] = [
     ...(check('archive.manage') ? [{ to: paths.archived(ws), icon: Archive, title: 'Archived records', about: 'Archived projects, tasks and channels: restore, or delete for good' }] : []),

@@ -475,7 +475,7 @@ function DeactivateSheet({ person, onClose }: { person: PersonRow; onClose: () =
       <div className="space-y-4">
         <ul className="m-0 list-disc space-y-1 ps-5 text-sm text-fg-secondary">
           <li>They're signed out and leave every picker and View as.</li>
-          <li>A timer they have running stops, and an open check-in closes.</li>
+          <li>A timer they have running stops.</li>
           <li>Their work, time and messages stay. You can reactivate them later.</li>
         </ul>
         <Field label="Reason" hint={`Optional. Kept in the audit log. ${reason.length}/${MAX_REASON}`} error={deactivate.error?.message}>

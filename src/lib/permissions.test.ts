@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { accessOf, BUILT_IN_ROLES, can, grantsOf, type Action, type PermissionContext, type ProjectRef, type ProjectScoped } from './permissions'
+import { accessOf, BUILT_IN_ROLES, can, grantsOf, PERMISSION_GROUPS, type Action, type PermissionContext, type ProjectRef, type ProjectScoped } from './permissions'
 
 type BuiltIn = 'admin' | 'sales' | 'pm' | 'member'
 /** A built-in role's permissions, as everyone holding only that role gets them. */
@@ -196,13 +196,20 @@ describe('roles as records (slice 1)', () => {
   it('Settings opens for whoever may change settings, hourly costs or the demo data, or see others’ attendance', () => {
     expect(can('settings.open', as('admin'))).toBe(true)
     expect(can('settings.open', as('sales'))).toBe(false)
-    // Project managers and Members see the check-ins of people on projects they manage (Attendance, slice 5).
+    // Project managers and Members see the attendance of people on projects they manage (Attendance, slice 5).
     for (const role of ['pm', 'member'] as const) expect(can('settings.open', as(role)), role).toBe(true)
     expect(can('settings.open', { userId: 'u', grants: ['rates.manage'] })).toBe(true)
     expect(can('settings.manage', { userId: 'u', grants: ['rates.manage'] })).toBe(false)
   })
 
-  it('who’s checked in: everyone with checkins.all; their projects’ people with checkins.managed; Sales neither (as before)', () => {
+  it('the attendance grants say timers, not check-ins (timer slice 3)', () => {
+    const all: readonly { id: string; label: string }[] = PERMISSION_GROUPS.flatMap((g) => [...g.permissions])
+    const label = (id: string) => all.find((p) => p.id === id)?.label
+    expect(label('checkins.all')).toBe('See everyone’s timers and app use')
+    expect(label('checkins.managed')).toBe('See timers and app use of the people on projects they manage')
+  })
+
+  it('who sees timers and attendance: everyone with checkins.all; their projects’ people with checkins.managed; Sales neither (as before)', () => {
     expect(can('checkins.view', as('admin'))).toBe(true)
     expect(can('checkins.view', as('pm'))).toBe(true)
     expect(can('checkins.view', as('member'))).toBe(true)

@@ -21,8 +21,10 @@ describe('reading attendance', () => {
 
   it('the address picks the tab and period; anything else falls back', () => {
     expect(tabOf('report')).toBe('report')
-    expect(tabOf('nope')).toBe('checkins')
-    expect(tabOf(null)).toBe('checkins')
+    expect(tabOf('nope')).toBe('days')
+    expect(tabOf(null)).toBe('days')
+    // Check-ins became Days (timer slice 3): an old link still opens it.
+    expect(tabOf('checkins')).toBe('days')
     expect(periodOf('30')).toBe(30)
     expect(periodOf('14')).toBe(7)
   })

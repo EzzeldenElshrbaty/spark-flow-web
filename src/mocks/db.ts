@@ -6,7 +6,6 @@ import type {
   ActivityEntry,
   Attachment,
   ChatMessage,
-  CheckIn,
   Comment,
   Deliverable,
   ExportBundle,
@@ -43,7 +42,7 @@ export { memorySession } from './actor'
 import { migrate } from './migrations'
 import type { MockStore } from './store'
 
-export const DB_VERSION = 29 // 2: the company-system document (spec §3); 3: mention read state; 4: channel reads per person; 5: typed columns, history; 6: rate history; 7: message seq, channel member state; 8: message bodies; 9: drafts; 10: deleted messages kept for Undo; 11: thread follows; 12: activity items, channel levels; 13: channel description, who can post; 14: email invites, default channels; 15: file details (uploader, title, description, scan); 16: reminders, scheduled messages; 17: reminders on saved items; 18: text snippets; 19: /remind notes; 20: pins, folders, bookmarks; 21: sidebar order; 22: sidebar order ids (projects too); 23: notification preferences, levels that follow the default; 24: roles as records, people with roleIds; 25: the audit log; 26: settings (archive retention), Manage archived records for Admin; 27: visits, working hours; 28: why a timer entry ended (pause, stop); 29: the timer timeout
+export const DB_VERSION = 30 // 2: the company-system document (spec §3); 3: mention read state; 4: channel reads per person; 5: typed columns, history; 6: rate history; 7: message seq, channel member state; 8: message bodies; 9: drafts; 10: deleted messages kept for Undo; 11: thread follows; 12: activity items, channel levels; 13: channel description, who can post; 14: email invites, default channels; 15: file details (uploader, title, description, scan); 16: reminders, scheduled messages; 17: reminders on saved items; 18: text snippets; 19: /remind notes; 20: pins, folders, bookmarks; 21: sidebar order; 22: sidebar order ids (projects too); 23: notification preferences, levels that follow the default; 24: roles as records, people with roleIds; 25: the audit log; 26: settings (archive retention), Manage archived records for Admin; 27: visits, working hours; 28: why a timer entry ended (pause, stop); 29: the timer timeout; 30: check-ins go, attendance comes from timer entries
 /** Phase 1+2 kept the mock database in localStorage under keys starting with this. */
 const LEGACY_PREFIX = 'spark-flow.mockdb.v1'
 
@@ -74,7 +73,6 @@ export type DbData = {
   attachments: Attachment[]
   projectFiles: ProjectFile[]
   timeEntries: TimeEntry[]
-  checkIns: CheckIn[]
   rates: Rate[]
   /** userId -> channelId -> their own state there (read marker, star, mute). Missing means the defaults. */
   channelState: Record<string, Record<string, StoredMemberState>>
@@ -172,7 +170,7 @@ export interface MockDb {
 
 const COLLECTIONS = [
   'users', 'workspaces', 'projects', 'sprints', 'tickets', 'channels', 'messages', 'replies',
-  'teams', 'phases', 'deliverables', 'comments', 'attachments', 'projectFiles', 'timeEntries', 'checkIns', 'rates', 'activity', 'drafts', 'trash', 'threadFollows', 'notifications', 'invitations', 'saved', 'scheduled', 'pins', 'folders', 'bookmarks', 'sidebarOrders', 'notificationPrefs', 'roles', 'audit', 'visits',
+  'teams', 'phases', 'deliverables', 'comments', 'attachments', 'projectFiles', 'timeEntries', 'rates', 'activity', 'drafts', 'trash', 'threadFollows', 'notifications', 'invitations', 'saved', 'scheduled', 'pins', 'folders', 'bookmarks', 'sidebarOrders', 'notificationPrefs', 'roles', 'audit', 'visits',
 ] as const
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -393,11 +391,13 @@ export function createDb(store: MockStore, seed: (now: Date) => SeedResult, now:
       // An export from an older version goes through the same migrations as an older saved document.
       const data = bundle.version < DB_VERSION ? upgraded(bundle.data) : bundle.data
       if (!hasShape(data) || data.version !== DB_VERSION || !hasUsableRecords(data)) throw badImport()
+      // A file from a build that still kept check-ins brings them along; attendance comes from timer entries now.
+      const { checkIns: _dropped, ...doc } = data as DbData & { checkIns?: unknown }
       // The file is good: everything goes, uploaded file bytes too (an export carries none), then its records come in.
       // An import replaces a newer build's document too (as Reset does), so this tab leaves memory and saves it.
       memory = null
       await store.clearAll()
-      await store.transact(() => ({ doc: data, result: null }))
+      await store.transact(() => ({ doc, result: null }))
     },
   }
 }

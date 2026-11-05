@@ -1,6 +1,6 @@
-import type { Api, AttendanceDayRow, AttendancePeriod, AttendanceQuery, AttendanceReportRow, CheckEvent, CheckIn, CheckSource, User, Visit } from '@/api/types'
+import type { Api, AttendanceDay, AttendanceDayRow, AttendancePeriod, AttendanceQuery, AttendanceReportRow, EndReason, TimeEntry, User, Visit } from '@/api/types'
 import { localDay } from '@/lib/dates'
-import { timeoutProblem } from '@/lib/hours'
+import { entryHours, timeoutProblem } from '@/lib/hours'
 import { isActive } from '@/lib/people'
 import { can } from '@/lib/permissions'
 import { projectPeopleIds } from '@/lib/projectPeople'
@@ -10,9 +10,10 @@ import type { DbData, MockDb } from './db'
 import { delay } from './latency'
 import { grantsFor } from './roles'
 import { badRequest, clone, currentUser, forbidden, newId } from './shared'
+import { currentTimer } from './time'
 
-// User attendance and activities (Admin and help, slice 5): check-ins with where they came from, app use as visits,
-// working hours, and who sees whom.
+// User attendance and activities (Admin and help, slice 5): days made from timer entries with where they started from
+// (timer slice 3), app use as visits, working hours, and who sees whom.
 
 const MINUTE = 60_000
 /** A ping this soon after a visit's last goes on the same visit (the tracker counts someone idle after 5 minutes). */
@@ -23,7 +24,7 @@ const PERIODS: readonly AttendancePeriod[] = [1, 7, 30, 90]
 const DAY_TEXT = /^\d{4}-\d{2}-\d{2}$/
 
 /**
- * Whose attendance someone may see, themselves first: everyone with "See everyone’s check-ins and app use"; the
+ * Whose attendance someone may see, themselves first: everyone with "See everyone’s timers and app use"; the
  * people on projects they manage with "…of the people on projects they manage"; otherwise only themselves.
  */
 export function visibleTo(data: DbData, me: User): string[] {
@@ -57,34 +58,54 @@ const shownPeople = (data: DbData, ids: string[], has: (id: string) => boolean) 
     return user && (isActive(user) || has(id))
   })
 
-/** A check-in's hours: until its check-out, or until now while today's is open; a past day left open counts nothing. */
-function hoursOf(c: CheckIn, now: Date): number {
-  const end = c.checkedOutAt ?? (c.day === localDay(now) ? now.toISOString() : null)
-  return end ? Math.max(0, Date.parse(end) - Date.parse(c.checkedInAt)) / 3_600_000 : 0
+/** Ends that never count as leaving early: Flow's (a Done task, an archive, deactivating, the 12-hour limit) and the timeout's. */
+const NOT_EARLY: readonly (EndReason | null)[] = ['flow', 'timeout']
+
+/** A day's out that says when they stopped: not Flow's or the timeout's, and not today's while a timer runs or waits. */
+function outCounts(data: DbData, d: Pick<AttendanceDay, 'userId' | 'day' | 'outAt' | 'endReason'>, now: Date): boolean {
+  return Boolean(d.outAt) && !NOT_EARLY.includes(d.endReason) && !(d.day === localDay(now) && currentTimer(data, d.userId, now))
 }
 
-/** Every check-in and check-out of these people, oldest first, each marked against the same person's previous one. */
-function eventsOf(data: DbData, ids: string[]): CheckEvent[] {
+/**
+ * People's days (timer slice 3): their timer entries grouped by person and the local day each started; manual entries
+ * make no day. Newest first, from `since` on; each day's first start is compared with the same person's day before.
+ */
+export function daysOf(data: DbData, userIds: string[], since: string, now: Date): AttendanceDay[] {
   const hours = data.settings.workHours
-  const raw: (Omit<CheckEvent, 'newIp' | 'newDevice'> & { source: CheckSource | null })[] = []
-  for (const c of data.checkIns.filter((c) => ids.includes(c.userId))) {
-    const inFrom = c.inFrom ?? null
-    raw.push({ id: `${c.id}:in`, userId: c.userId, kind: 'in', at: c.checkedInAt, source: inFrom, ip: inFrom?.ip ?? null, device: inFrom?.device ?? null, location: inFrom?.location ?? null, byFlow: false, offHours: isLate(c.checkedInAt, hours) })
-    if (c.checkedOutAt) {
-      const byFlow = Boolean(c.closedByFlow)
-      const outFrom = byFlow ? null : (c.outFrom ?? null)
-      raw.push({ id: `${c.id}:out`, userId: c.userId, kind: 'out', at: c.checkedOutAt, source: outFrom, ip: outFrom?.ip ?? null, device: outFrom?.device ?? null, location: outFrom?.location ?? null, byFlow, offHours: !byFlow && isEarly(c.checkedInAt, c.checkedOutAt, hours) })
-    }
+  const groups = new Map<string, TimeEntry[]>()
+  for (const e of data.timeEntries) {
+    if (e.source !== 'timer' || !userIds.includes(e.userId)) continue
+    const key = `${e.userId}:${localDay(new Date(e.startedAt))}`
+    groups.set(key, [...(groups.get(key) ?? []), e])
   }
-  raw.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : a.kind === 'in' ? -1 : 1))
-  const last = new Map<string, { ip: string | null; device: string | null }>()
-  return raw.map(({ source, ...event }) => {
-    const before = last.get(event.userId)
-    const newIp = Boolean(before?.ip && event.ip && before.ip !== event.ip)
-    const newDevice = Boolean(before?.device && event.device && before.device !== event.device)
-    if (source) last.set(event.userId, { ip: event.ip ?? before?.ip ?? null, device: event.device ?? before?.device ?? null })
-    return { ...event, newIp, newDevice }
+  const days = [...groups].map(([id, entries]) => {
+    const sorted = [...entries].sort((a, b) => (a.startedAt < b.startedAt ? -1 : 1))
+    const first = sorted[0]!
+    // Out is the last end; none while one of the day's entries still runs.
+    const last = sorted.some((e) => e.endedAt === null) ? null : sorted.reduce((a, e) => (e.endedAt! > a.endedAt! ? e : a))
+    const day = id.slice(first.userId.length + 1)
+    const outAt = last?.endedAt ?? null
+    const endReason = last?.endReason ?? null
+    return {
+      id, userId: first.userId, day, inAt: first.startedAt, outAt, endReason,
+      hours: sorted.reduce((sum, e) => sum + entryHours(e, now), 0),
+      from: first.startedFrom ?? null,
+      late: isLate(first.startedAt, hours),
+      early: outCounts(data, { userId: first.userId, day, outAt, endReason }, now) && isEarly(first.startedAt, outAt!, hours),
+    }
   })
+  days.sort((a, b) => (a.inAt < b.inAt ? -1 : 1))
+  const before = new Map<string, { ip: string | null; device: string | null }>()
+  const marked = days.map((d): AttendanceDay => {
+    const was = before.get(d.userId)
+    const ip = d.from?.ip ?? null
+    const device = d.from?.device ?? null
+    const newIp = Boolean(was?.ip && ip && was.ip !== ip)
+    const newDevice = Boolean(was?.device && device && was.device !== device)
+    if (d.from) before.set(d.userId, { ip: ip ?? was?.ip ?? null, device: device ?? was?.device ?? null })
+    return { ...d, newIp, newDevice }
+  })
+  return marked.filter((d) => d.day >= since).reverse()
 }
 
 const average = (values: number[]) => (values.length ? values.reduce((s, v) => s + v, 0) / values.length : null)
@@ -97,33 +118,30 @@ export function attendanceApi(db: MockDb, now: () => Date): Api['attendance'] {
       return { userIds: visibleTo(data, currentUser(data)) }
     },
 
-    async checkIns(query: AttendanceQuery) {
+    async days(query: AttendanceQuery) {
       await delay()
       const data = await db.read()
-      const ids = whoFor(data, query.userId)
-      const since = sinceOf(query.days, now())
-      return clone(eventsOf(data, ids).filter((e) => localDay(new Date(e.at)) >= since).reverse())
+      const at = now()
+      return clone(daysOf(data, whoFor(data, query.userId), sinceOf(query.days, at), at))
     },
 
     async day(day, userId) {
       await delay()
       const data = await db.read()
       if (typeof day !== 'string' || !DAY_TEXT.test(day)) throw badRequest('Pick a day.')
-      const at = now()
-      const hours = data.settings.workHours
-      const checkInOf = (id: string) => data.checkIns.find((c) => c.userId === id && c.day === day)
-      return shownPeople(data, whoFor(data, userId), (id) => Boolean(checkInOf(id))).map((id): AttendanceDayRow => {
-        const c = checkInOf(id)
-        const byFlow = Boolean(c?.closedByFlow)
+      const ids = whoFor(data, userId)
+      const days = daysOf(data, ids, day, now()).filter((d) => d.day === day)
+      const dayOf = (id: string) => days.find((d) => d.userId === id)
+      return shownPeople(data, ids, (id) => Boolean(dayOf(id))).map((id): AttendanceDayRow => {
+        const d = dayOf(id)
         return {
           userId: id,
-          checkedInAt: c?.checkedInAt ?? null,
-          checkedOutAt: c?.checkedOutAt ?? null,
-          byFlow,
-          hours: c ? hoursOf(c, at) : 0,
+          inAt: d?.inAt ?? null,
+          outAt: d?.outAt ?? null,
+          hours: d?.hours ?? 0,
           appMinutes: data.visits.filter((v) => v.userId === id && v.day === day).reduce((s, v) => s + v.minutes, 0),
-          late: Boolean(c && isLate(c.checkedInAt, hours)),
-          early: Boolean(c?.checkedOutAt && !byFlow && isEarly(c.checkedInAt, c.checkedOutAt, hours)),
+          late: d?.late ?? false,
+          early: d?.early ?? false,
         }
       })
     },
@@ -144,19 +162,20 @@ export function attendanceApi(db: MockDb, now: () => Date): Api['attendance'] {
       const since = sinceOf(query.days, at)
       const hours = data.settings.workHours
       const minutesOf = (iso: string) => zoned(iso, hours.timeZone).minutes
-      const checks = (id: string) => data.checkIns.filter((c) => c.userId === id && c.day >= since)
-      return shownPeople(data, ids, (id) => checks(id).length > 0).map((id): AttendanceReportRow => {
-        const mine = checks(id)
-        const outs = mine.filter((c) => c.checkedOutAt && !c.closedByFlow)
+      const all = daysOf(data, ids, since, at)
+      const daysFor = (id: string) => all.filter((d) => d.userId === id)
+      return shownPeople(data, ids, (id) => daysFor(id).length > 0).map((id): AttendanceReportRow => {
+        const mine = daysFor(id)
+        const outs = mine.filter((d) => outCounts(data, d, at))
         return {
           userId: id,
           daysIn: mine.length,
-          avgIn: average(mine.map((c) => minutesOf(c.checkedInAt))),
-          // A check-out after midnight averages as past midnight, not as early morning.
-          avgOut: average(outs.map((c) => minutesOf(c.checkedOutAt!) + (zoned(c.checkedOutAt!, hours.timeZone).date > zoned(c.checkedInAt, hours.timeZone).date ? 24 * 60 : 0))),
-          late: mine.filter((c) => isLate(c.checkedInAt, hours)).length,
-          early: outs.filter((c) => isEarly(c.checkedInAt, c.checkedOutAt!, hours)).length,
-          hours: mine.reduce((s, c) => s + hoursOf(c, at), 0),
+          avgIn: average(mine.map((d) => minutesOf(d.inAt))),
+          // An out after midnight averages as past midnight, not as early morning.
+          avgOut: average(outs.map((d) => minutesOf(d.outAt!) + (zoned(d.outAt!, hours.timeZone).date > zoned(d.inAt, hours.timeZone).date ? 24 * 60 : 0))),
+          late: mine.filter((d) => d.late).length,
+          early: mine.filter((d) => d.early).length,
+          hours: mine.reduce((s, d) => s + d.hours, 0),
           appMinutes: data.visits.filter((v) => v.userId === id && v.day >= since).reduce((s, v) => s + v.minutes, 0),
         }
       })

@@ -73,7 +73,7 @@ export const qk = {
   sentAll: () => ['sent'],                               // prefix of every workspace's Sent
   sent: (workspaceId: string) => ['sent', workspaceId],
   dashboard: (workspaceId: string) => ['dashboard', workspaceId],
-  checkedIn: (workspaceId: string) => ['dashboard', 'checked-in', workspaceId],
+  workingNow: (workspaceId: string) => ['dashboard', 'working-now', workspaceId],
 } as const
 
 /** The events whose write the server also put in the audit log (slice 2); refusals and sign-ins publish none. */
@@ -107,7 +107,7 @@ function dataKeysFor(event: RealtimeEvent): QueryKey[] {
       ]
     case 'timeLogged':
       // Hours change everywhere: my day, every task and project summary (under 'tickets'), the Time tabs, and
-      // Attendance (a check-in or check-out sends this too).
+      // Attendance (a timer start, pause, resume or stop sends this too).
       return [qk.myDay(), ['tickets'], qk.timeAll(), ['dashboard'], ['time', 'report'], qk.attendanceAll()]
     case 'messageChanged':
       return [qk.messages(event.channelId), qk.message(event.messageId), qk.replies(event.messageId), qk.mentions(), qk.activityAll(), qk.sentAll(), qk.pins(event.channelId), qk.channelFiles(event.channelId), qk.threadsAll()]

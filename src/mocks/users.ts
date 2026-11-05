@@ -6,7 +6,7 @@ import type { DbData, MockDb } from './db'
 import { delay } from './latency'
 import type { MockHub } from './realtime'
 import { grantsFor, keepsAnAdmin } from './roles'
-import { closeCheckIn, stopRunning } from './time'
+import { stopRunning } from './time'
 import { badRequest, clone, currentUser, forbidden, newId, notFound, pickPatch, text } from './shared'
 
 const MAX_NAME = 80
@@ -54,8 +54,8 @@ function setTeams(data: DbData, person: User, teamIds: string[]) {
 }
 
 /**
- * When someone last did anything the server saw: wrote, started time or checked in, or anything the log names them
- * for. Ends aren't counted: a timer or check-in the server closes (the 12-hour limit, deactivating) isn't their doing.
+ * When someone last did anything the server saw: wrote, started time, or anything the log names them for. Ends
+ * aren't counted: a timer the server closes (the 12-hour limit, the timeout, deactivating) isn't their doing.
  */
 function lastActive(data: DbData): Map<string, string> {
   const last = new Map<string, string>()
@@ -66,7 +66,6 @@ function lastActive(data: DbData): Map<string, string> {
   for (const r of data.replies) saw(r.senderId, r.createdAt)
   for (const c of data.comments) saw(c.authorId, c.createdAt)
   for (const e of data.timeEntries) saw(e.userId, e.startedAt)
-  for (const c of data.checkIns) saw(c.userId, c.checkedInAt)
   for (const e of data.audit) saw(e.actorId, e.at)
   return last
 }
@@ -158,10 +157,8 @@ export function usersApi(db: MockDb, hub: MockHub, now: () => Date = () => new D
         if (person.deactivated) return { person: clone(person), stopped: [] as string[], same: true }
         const at = now()
         person.deactivated = { at: at.toISOString(), by: me.id, reason: why || null }
-        // Their clock stops where it stopped counting; an open check-in closes as a forgotten one does (today's now,
-        // an earlier day's at that day's last entry). They show offline, and @here no longer reaches them.
+        // Their clock stops where it stopped counting, as Flow's. They show offline, and @here no longer reaches them.
         const stopped = stopRunning(data, id, at.toISOString(), 'flow')
-        for (const c of data.checkIns.filter((c) => c.userId === id && c.checkedOutAt === null)) closeCheckIn(data, c, at)
         person.presence = 'offline'
         keepsAnAdmin(data)
         audit(data, { action: 'deactivated', group: 'settings', record: recordOf.user(person), changes: [{ field: 'Status', from: 'Active', to: 'Deactivated' }], detail: why || null })

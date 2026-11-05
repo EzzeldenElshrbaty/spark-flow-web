@@ -2,8 +2,8 @@ import clsx from 'clsx'
 import { ArrowLeft, Clock, ExternalLink, Inbox } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
-import { useAttendanceDay, useAttendanceReport, useAttendanceScope, useCheckEvents, useSetTimerSetting, useSetWorkHours, useTimerSetting, useVisits, useWorkHours } from '@/api/attendance'
-import type { AttendanceDayRow, AttendanceReportRow, CheckEvent, CheckLocation, Visit, WorkHours } from '@/api/types'
+import { useAttendanceDay, useAttendanceDays, useAttendanceReport, useAttendanceScope, useSetTimerSetting, useSetWorkHours, useTimerSetting, useVisits, useWorkHours } from '@/api/attendance'
+import type { AttendanceDay, AttendanceDayRow, AttendanceReportRow, CheckLocation, EndReason, Visit, WorkHours } from '@/api/types'
 import { useUsers } from '@/api/users'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -22,9 +22,10 @@ import { describeWorkHours, formatDayMinutes, WEEKDAYS } from '@/lib/workHours'
 import { formatAppTime, isFix, mapsUrl, periodOf, PERIODS, placeText, tabOf, TABS, type AttendanceTab } from './attendanceView'
 
 /**
- * Settings → Attendance (Admin and help, slice 5, as the CRM's "User attendance and activities"): check-ins and
- * check-outs with where they came from, one day at a glance, app use, and a report per person. Everyone sees their own;
- * who else follows "See everyone’s check-ins and app use" or the projects they manage (the server decides).
+ * Settings → Attendance (Admin and help, slice 5, as the CRM's "User attendance and activities"): each person's days,
+ * made from their timers, with where the first one started from (timer slice 3); one day at a glance; app use; and a
+ * report per person. Everyone sees their own; who else follows "See everyone’s timers and app use" or the projects
+ * they manage (the server decides).
  */
 export function AttendancePage() {
   const { ws = '' } = useParams()
@@ -58,12 +59,12 @@ export function AttendancePage() {
           <ArrowLeft className="size-4 rtl:-scale-x-100" /> Settings
         </Link>
       )}
-      <PageHeader title="Attendance" subtitle="Check-ins and check-outs, where they came from, and time using Flow." />
+      <PageHeader title="Attendance" subtitle="Each day’s timers, where they started from, and time using Flow." />
       <HoursBox canChange={check('settings.manage')} onChange={() => setEditing(true)} />
       <nav aria-label="Attendance views" className="mb-3 flex gap-1 overflow-x-auto border-b border-line">
         {TABS.map((t) => {
           const next = new URLSearchParams(params)
-          if (t.id === 'checkins') next.delete('tab')
+          if (t.id === 'days') next.delete('tab')
           else next.set('tab', t.id)
           return (
             <Link
@@ -168,14 +169,14 @@ type ViewProps = { tab: AttendanceTab; params: URLSearchParams; person: string |
 
 function View({ tab, params, person, nameOf }: ViewProps) {
   const query = { days: periodOf(params.get('days')), userId: person }
-  const checks = useCheckEvents(query, tab === 'checkins')
+  const days = useAttendanceDays(query, tab === 'days')
   const day = useAttendanceDay(dayOf(params), person, tab === 'day')
   const visits = useVisits(query, tab === 'activity')
   const report = useAttendanceReport(query, tab === 'report')
-  if (tab === 'day') return <Loaded what="the day" query={day} empty="Nobody to show for this day." render={(rows) => <DayView rows={rows} past={dayOf(params) < localDay(new Date())} nameOf={nameOf} />} />
+  if (tab === 'day') return <Loaded what="the day" query={day} empty="Nobody to show for this day." render={(rows) => <DayView rows={rows} nameOf={nameOf} />} />
   if (tab === 'activity') return <Loaded what="app use" query={visits} empty="No time in Flow in this period." render={(rows) => <ActivityView rows={rows} nameOf={nameOf} />} />
   if (tab === 'report') return <Loaded what="the report" query={report} empty="Nobody to show for this period." render={(rows) => <ReportView rows={rows} nameOf={nameOf} />} />
-  return <Loaded what="check-ins" query={checks} empty="No check-ins in this period." render={(rows) => <ChecksView rows={rows} nameOf={nameOf} />} />
+  return <Loaded what="days" query={days} empty="No timers in this period." render={(rows) => <DaysView rows={rows} nameOf={nameOf} />} />
 }
 
 function Loaded<T>({ what, query, empty, render }: { what: string; query: { data?: T[]; isError: boolean; refetch: () => unknown }; empty: string; render: (rows: T[]) => ReactNode }) {
@@ -224,12 +225,12 @@ function Both<T>({ label, columns, rows, rowKey, card, storageKey }: { label: st
   )
 }
 
-/** An IP or device, in amber when it differs from that person's last check. */
+/** An IP or device, in amber when it differs from that person's day before. */
 function Seen({ value, fresh }: { value: string | null; fresh: boolean }) {
   if (!value) return <span className="text-fg-muted">—</span>
   if (!fresh) return <span className="block truncate text-fg-secondary">{value}</span>
   return (
-    <span title="Different from their last check-in or check-out" className="inline-block max-w-full truncate rounded-md bg-amber-50 px-1.5 py-0.5 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+    <span title="Different from their day before" className="inline-block max-w-full truncate rounded-md bg-amber-50 px-1.5 py-0.5 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
       {value}
       <span className="font-medium"> · new</span>
     </span>
@@ -250,77 +251,74 @@ function Place({ location }: { location: CheckLocation | null }) {
   )
 }
 
-function EventText({ e }: { e: CheckEvent }) {
+/** Why a day's last timer ended, when it wasn't Stop: Flow (a Done task, an archive, the 12-hour limit), the timeout, Pause. */
+const END_BADGE: Partial<Record<EndReason, string>> = { flow: 'By Flow', timeout: 'Timed out', paused: 'Paused' }
+
+/** In: the day's first timer start, Late when after the working hours' start. */
+function InText({ at, late, withDay = false }: { at: string; late: boolean; withDay?: boolean }) {
   return (
-    <span className="flex flex-wrap items-center gap-1.5">
-      <span className="text-fg">{e.kind === 'in' ? 'Checked in' : 'Checked out'}</span>
-      {e.offHours && <Badge tone="warning">{e.kind === 'in' ? 'Late' : 'Left early'}</Badge>}
-      {e.byFlow && <Badge>By Flow</Badge>}
+    <span className="flex flex-wrap items-center gap-1.5 tabular-nums">
+      {withDay ? formatWhen(at) : formatTime(at)}
+      {late && <Badge tone="warning">Late</Badge>}
     </span>
   )
 }
 
-function ChecksView({ rows, nameOf }: { rows: CheckEvent[]; nameOf: (id: string) => string }) {
-  const columns: Column<CheckEvent>[] = [
-    { id: 'person', header: 'Person', width: 180, cell: (e) => <span className="block truncate font-medium text-fg">{nameOf(e.userId)}</span> },
-    { id: 'event', header: 'Event', width: 170, cell: (e) => <EventText e={e} /> },
-    { id: 'when', header: 'When', width: 170, cell: (e) => <span className="block truncate text-fg-secondary tabular-nums">{formatWhen(e.at)}</span> },
-    { id: 'ip', header: 'IP', width: 140, cell: (e) => <Seen value={e.ip} fresh={e.newIp} /> },
-    { id: 'device', header: 'Device', width: 190, cell: (e) => <Seen value={e.device} fresh={e.newDevice} /> },
-    { id: 'place', header: 'Location', width: 250, cell: (e) => <Place location={e.location} /> },
+/** Out: the day's last timer end, Left early before the working hours' end, or "Timer running" while one still runs. */
+function OutText({ at, early, endReason }: { at: string | null; early: boolean; endReason?: EndReason | null }) {
+  if (!at) return <span className="text-fg-secondary">Timer running</span>
+  const badge = endReason ? END_BADGE[endReason] : undefined
+  return (
+    <span className="flex flex-wrap items-center gap-1.5 tabular-nums">
+      {formatTime(at)}
+      {early && <Badge tone="warning">Left early</Badge>}
+      {badge && <Badge>{badge}</Badge>}
+    </span>
+  )
+}
+
+function DaysView({ rows, nameOf }: { rows: AttendanceDay[]; nameOf: (id: string) => string }) {
+  const columns: Column<AttendanceDay>[] = [
+    { id: 'person', header: 'Person', width: 180, cell: (d) => <span className="block truncate font-medium text-fg">{nameOf(d.userId)}</span> },
+    { id: 'in', header: 'In', width: 200, cell: (d) => <InText at={d.inAt} late={d.late} withDay /> },
+    { id: 'out', header: 'Out', width: 180, cell: (d) => <OutText at={d.outAt} early={d.early} endReason={d.endReason} /> },
+    { id: 'hours', header: 'Hours', width: 90, align: 'right', cell: (d) => <span className="tabular-nums">{formatHours(d.hours)}</span> },
+    { id: 'ip', header: 'IP', width: 140, cell: (d) => <Seen value={d.from?.ip ?? null} fresh={d.newIp} /> },
+    { id: 'device', header: 'Device', width: 190, cell: (d) => <Seen value={d.from?.device ?? null} fresh={d.newDevice} /> },
+    { id: 'place', header: 'Location', width: 250, cell: (d) => <Place location={d.from?.location ?? null} /> },
   ]
   return (
     <Both
-      label="Check-ins"
+      label="Days"
       columns={columns}
       rows={rows}
-      rowKey={(e) => e.id}
-      storageKey="spark-flow.table.attendance.checkins"
-      card={(e) => ({
-        title: nameOf(e.userId),
+      rowKey={(d) => d.id}
+      storageKey="spark-flow.table.attendance.days"
+      card={(d) => ({
+        title: nameOf(d.userId),
         lines: [
           <>
-            <EventText e={e} /> <span className="tabular-nums">{formatWhen(e.at)}</span>
+            In <InText at={d.inAt} late={d.late} withDay /> · Out <OutText at={d.outAt} early={d.early} endReason={d.endReason} />
           </>,
           <>
-            <Seen value={e.ip} fresh={e.newIp} /> · <Seen value={e.device} fresh={e.newDevice} />
+            <span className="tabular-nums">{formatHours(d.hours)}</span> · <Seen value={d.from?.ip ?? null} fresh={d.newIp} /> · <Seen value={d.from?.device ?? null} fresh={d.newDevice} />
           </>,
-          <Place location={e.location} />,
+          <Place location={d.from?.location ?? null} />,
         ],
       })}
     />
   )
 }
 
-/** `past`: an earlier day, where a check-in still open was never checked out rather than still going. */
-function DayView({ rows, past, nameOf }: { rows: AttendanceDayRow[]; past: boolean; nameOf: (id: string) => string }) {
-  const inText = (r: AttendanceDayRow) =>
-    r.checkedInAt ? (
-      <span className="flex flex-wrap items-center gap-1.5 tabular-nums">
-        {formatTime(r.checkedInAt)}
-        {r.late && <Badge tone="warning">Late</Badge>}
-      </span>
-    ) : (
-      '—'
-    )
-  const outText = (r: AttendanceDayRow) =>
-    r.checkedOutAt ? (
-      <span className="flex flex-wrap items-center gap-1.5 tabular-nums">
-        {formatTime(r.checkedOutAt)}
-        {r.early && <Badge tone="warning">Left early</Badge>}
-        {r.byFlow && <Badge>By Flow</Badge>}
-      </span>
-    ) : r.checkedInAt ? (
-      past ? 'Not checked out' : 'Still in'
-    ) : (
-      '—'
-    )
-  const hours = (r: AttendanceDayRow) => (r.checkedInAt && (r.checkedOutAt || !past) ? formatHours(r.hours) : '—')
+function DayView({ rows, nameOf }: { rows: AttendanceDayRow[]; nameOf: (id: string) => string }) {
+  const inText = (r: AttendanceDayRow) => (r.inAt ? <InText at={r.inAt} late={r.late} /> : '—')
+  const outText = (r: AttendanceDayRow) => (r.inAt ? <OutText at={r.outAt} early={r.early} /> : '—')
+  const hours = (r: AttendanceDayRow) => (r.inAt ? formatHours(r.hours) : '—')
   const columns: Column<AttendanceDayRow>[] = [
     { id: 'person', header: 'Person', width: 200, cell: (r) => <span className="block truncate font-medium text-fg">{nameOf(r.userId)}</span> },
     { id: 'in', header: 'In', width: 150, cell: inText },
     { id: 'out', header: 'Out', width: 180, cell: outText },
-    { id: 'hours', header: 'Checked in', width: 120, align: 'right', cell: (r) => <span className="tabular-nums">{hours(r)}</span> },
+    { id: 'hours', header: 'Hours', width: 120, align: 'right', cell: (r) => <span className="tabular-nums">{hours(r)}</span> },
     { id: 'app', header: 'App time', width: 120, align: 'right', cell: (r) => <span className="tabular-nums">{formatAppTime(r.appMinutes)}</span> },
   ]
   return (
@@ -337,7 +335,7 @@ function DayView({ rows, past, nameOf }: { rows: AttendanceDayRow[]; past: boole
             In {inText(r)} · Out {outText(r)}
           </>,
           <>
-            Checked in {hours(r)} · App time {formatAppTime(r.appMinutes)}
+            Hours {hours(r)} · App time {formatAppTime(r.appMinutes)}
           </>,
         ],
       })}
@@ -387,7 +385,7 @@ function ReportView({ rows, nameOf }: { rows: AttendanceReportRow[]; nameOf: (id
     { id: 'avgOut', header: 'Average out', width: 120, align: 'right', cell: (r) => <span className="tabular-nums">{clock(r.avgOut)}</span> },
     { id: 'late', header: 'Late', width: 80, align: 'right', cell: (r) => num(r.late) },
     { id: 'early', header: 'Left early', width: 100, align: 'right', cell: (r) => num(r.early) },
-    { id: 'hours', header: 'Checked in', width: 110, align: 'right', cell: (r) => <span className="tabular-nums">{formatHours(r.hours)}</span> },
+    { id: 'hours', header: 'Hours', width: 110, align: 'right', cell: (r) => <span className="tabular-nums">{formatHours(r.hours)}</span> },
     { id: 'app', header: 'App time', width: 110, align: 'right', cell: (r) => <span className="tabular-nums">{formatAppTime(r.appMinutes)}</span> },
   ]
   return (
@@ -404,7 +402,7 @@ function ReportView({ rows, nameOf }: { rows: AttendanceReportRow[]; nameOf: (id
             {r.daysIn} days in · in {clock(r.avgIn)} · out {clock(r.avgOut)} on average
           </span>,
           <span className="tabular-nums">
-            {r.late} late · {r.early} left early · {formatHours(r.hours)} checked in · {formatAppTime(r.appMinutes)} in Flow
+            {r.late} late · {r.early} left early · {formatHours(r.hours)} on timers · {formatAppTime(r.appMinutes)} in Flow
           </span>,
         ],
       })}

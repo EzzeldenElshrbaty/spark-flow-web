@@ -11,7 +11,7 @@ const OUT = 'public/help'
 
 /** name → where, and what to wait for before the picture (a role and name, as Testing Library finds them). */
 const SHOTS = [
-  { name: 'home', path: '', ready: ['heading', 'Check in'], before: checkIn },
+  { name: 'home', path: '', ready: ['heading', 'Today · 0h'], before: startTimer },
   { name: 'projects', path: '/projects', ready: ['table', null] },
   { name: 'project-overview', path: '/p/NEX/overview', ready: ['heading', 'Nexus Core'] },
   { name: 'board', path: '/p/NEX/tasks', ready: ['button', 'New task'] },
@@ -21,15 +21,18 @@ const SHOTS = [
   { name: 'users', path: '/settings/users', ready: ['table', 'People'] },
   { name: 'roles', path: '/settings/roles', ready: ['table', 'Permissions by role'] },
   { name: 'audit-log', path: '/settings/audit', ready: ['heading', 'Audit log'] },
-  { name: 'attendance', path: '/settings/attendance', ready: ['table', 'Check-ins'] },
+  { name: 'attendance', path: '/settings/attendance', ready: ['table', 'Days'] },
   { name: 'archived', path: '/settings/archived', ready: ['heading', 'Archived records'], before: archiveOne },
 ]
 
-/** Home's picture is of a day under way: checked in, with the timer on a task. */
-async function checkIn(page) {
-  await page.getByPlaceholder('What will you work on today?').fill('Review the refresh-token rotation, then the release notes.')
-  await page.getByLabel('Start the timer on').selectOption({ index: 1 })
-  await page.getByRole('button', { name: 'Check in' }).click()
+/** Home's picture is of a day under way: the timer on a task, started from the Today card (timer slice 3). */
+async function startTimer(page) {
+  await page.getByRole('main').getByRole('button', { name: 'Start timer' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Start timer' })
+  await dialog.getByLabel('Project').selectOption({ label: 'Nexus Core' })
+  await dialog.getByLabel('Task').selectOption({ index: 1 })
+  await dialog.getByRole('button', { name: 'Start timer' }).click()
+  await dialog.waitFor({ state: 'detached' })
   await page.waitForTimeout(800)
 }
 

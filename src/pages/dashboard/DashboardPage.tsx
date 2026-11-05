@@ -1,9 +1,9 @@
 import clsx from 'clsx'
 import { Link } from 'react-router'
-import { useCheckedIn, useDashboard } from '@/api/dashboard'
+import { useDashboard, useWorkingNow } from '@/api/dashboard'
 import { useProjectSummaries } from '@/api/projects'
 import { useTasksOf } from '@/api/tickets'
-import type { CheckedInNow, DashboardProject, User } from '@/api/types'
+import type { DashboardProject, User, WorkingNow } from '@/api/types'
 import { useUsers } from '@/api/users'
 import { ProgressRing } from '@/components/charts/ProgressRing'
 import { Avatar } from '@/components/ui/Avatar'
@@ -11,7 +11,8 @@ import { Card, CardHeader } from '@/components/ui/Card'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
-import { formatHours, formatMoney, formatTime } from '@/lib/format'
+import { formatClock, formatHours, formatMoney, formatTime } from '@/lib/format'
+import { runningClock } from '@/lib/hours'
 import { paths } from '@/lib/paths'
 import { useAccess, usePermission } from '@/lib/usePermission'
 import { useNow } from '@/lib/useNow'
@@ -96,22 +97,27 @@ function ProjectCard({ ws, project, people, now }: { ws: string; project: Dashbo
   )
 }
 
-function CheckedInList({ list, people, taskLabel }: { list: CheckedInNow[]; people: User[]; taskLabel: (taskId: string | null, projectId: string) => string }) {
-  if (list.length === 0) return <p className="p-5 text-sm text-fg-muted">No one is checked in right now.</p>
+/** Working now (timer slice 3): who has a timer running on these projects, since when, on what, and its count. */
+function WorkingNowList({ list, people, taskLabel }: { list: WorkingNow[]; people: User[]; taskLabel: (taskId: string | null, projectId: string) => string }) {
+  const now = useNow(list.length ? 1000 : 0)
+  if (list.length === 0) return <p className="p-5 text-sm text-fg-muted">Nobody has a timer running.</p>
   return (
     <ul className="divide-y divide-line-subtle">
-      {list.map((c) => {
-        const name = people.find((u) => u.id === c.userId)?.name ?? 'Unknown person'
+      {list.map((w) => {
+        const name = people.find((u) => u.id === w.userId)?.name ?? 'Unknown person'
         return (
-          <li key={c.userId} className="flex items-center gap-3 px-5 py-3">
+          <li key={w.userId} className="flex items-center gap-3 px-5 py-3">
             <Avatar name={name} size="sm" />
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm text-fg">
-                {name} <span className="text-fg-muted">· since {formatTime(c.since)}</span>
+                {name} <span className="text-fg-muted">· since {formatTime(w.startedAt)}</span>
               </span>
-              <span className="block truncate text-xs text-fg-muted">{c.running ? taskLabel(c.running.taskId, c.running.projectId) : 'No timer running'}</span>
+              <span className="block truncate text-xs text-fg-muted">{taskLabel(w.taskId, w.projectId)}</span>
             </span>
-            {c.running && <span className="size-2 shrink-0 rounded-full bg-brand-500 motion-safe:animate-pulse" aria-label="Timer running" />}
+            <span role="timer" className="shrink-0 text-xs tabular-nums text-fg-secondary">
+              {formatClock(runningClock(w.startedAt, now).ms)}
+            </span>
+            <span role="img" className="size-2 shrink-0 rounded-full bg-brand-500 motion-safe:animate-pulse" aria-label="Timer running" />
           </li>
         )
       })}
@@ -119,25 +125,24 @@ function CheckedInList({ list, people, taskLabel }: { list: CheckedInNow[]; peop
   )
 }
 
-/** The manager dashboard: every project in scope at a glance, and who is checked in right now. */
+/** The manager dashboard: every project in scope at a glance, and who is working on them right now. */
 export function DashboardPage() {
   const { workspace } = useCurrentWorkspace()
   const { persona } = useRole()
   const check = usePermission()
   // Every project, not only the ones I manage (Admin and Sales to start with).
   const broad = check('dashboard.everyProject')
-  // Who's checked in: everyone, or the people on projects I manage; Sales neither (spec §1).
-  const seesCheckIns = check('checkins.view')
-  // Someone checked in may be working on a project outside this dashboard's scope: name their task from any project.
+  // Who's working: every timer, or those on projects I manage; Sales neither (spec §1, timer slice 3).
+  const seesWorking = check('checkins.view')
   const summaries = useProjectSummaries(workspace?.id)
   const everyProject = summaries.data ?? []
   const managesAny = summaries.data?.some((p) => p.managerId === persona.id)
   const access = useAccess('dashboard.view', { managesAny }, !broad && summaries.isPending)
   const allowed = access === 'allowed'
   const projects = useDashboard(workspace?.id, allowed)
-  const checkedIn = useCheckedIn(workspace?.id, allowed)
+  const working = useWorkingNow(workspace?.id, allowed)
   const people = useUsers(workspace?.id).data ?? []
-  const runningProjects = [...new Set((checkedIn.data ?? []).flatMap((c) => (c.running ? [c.running.projectId] : [])))]
+  const runningProjects = [...new Set((working.data ?? []).map((w) => w.projectId))]
   const tasks = useTasksOf(runningProjects).data
   const now = useNow(60_000)
   const ws = workspace?.slug ?? ''
@@ -193,7 +198,7 @@ export function DashboardPage() {
             {showCost ? (
               <Tile label="Cost to date" value={formatMoney(Math.round(cost))} sub="Hours × hourly cost" />
             ) : (
-              <Tile label="Checked in now" value={seesCheckIns ? String(checkedIn.data?.length ?? 0) : '—'} />
+              <Tile label="Working now" value={seesWorking ? String(working.data?.length ?? 0) : '—'} />
             )}
           </div>
           <div className="flex flex-col gap-5 xl:flex-row">
@@ -204,17 +209,17 @@ export function DashboardPage() {
                 list.map((p) => <ProjectCard key={p.id} ws={ws} project={p} people={people} now={now} />)
               )}
             </div>
-            {seesCheckIns && (
+            {seesWorking && (
               <Card className="xl:w-80 xl:shrink-0 xl:self-start">
-                <CardHeader title="Checked in now" />
-                {checkedIn.isError ? (
+                <CardHeader title="Working now" />
+                {working.isError ? (
                   <div className="p-5">
-                    <QueryError what="Check-ins" onRetry={() => void checkedIn.refetch()} />
+                    <QueryError what="Working now" onRetry={() => void working.refetch()} />
                   </div>
-                ) : checkedIn.isPending ? (
+                ) : working.isPending ? (
                   <div className="m-5 h-24 animate-pulse rounded-lg bg-surface-muted" aria-hidden />
                 ) : (
-                  <CheckedInList list={checkedIn.data} people={people} taskLabel={label} />
+                  <WorkingNowList list={working.data} people={people} taskLabel={label} />
                 )}
               </Card>
             )}

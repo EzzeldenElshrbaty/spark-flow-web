@@ -23,7 +23,7 @@ async function respond(path: string, init: RequestInit | undefined, fetchFn: typ
   let res: Response
   try {
     // The session is a cookie on the backend's own origin (assumed with the .NET team), so cross-origin calls carry it.
-    // The person's zone: "today", check-ins and report weeks are worked out in it (spec §4.4).
+    // The person's zone: "today", attendance days and report weeks are worked out in it (spec §4.4).
     const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
     res = await fetchFn(apiUrl(path), { credentials: 'include', ...init, headers: { Accept: accept, 'X-Time-Zone': zone, ...init?.headers } })
   } catch (error) {
@@ -214,7 +214,7 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
     },
     attendance: {
       scope: () => get('/api/attendance/scope'),
-      checkIns: (q) => get(`/api/attendance/check-ins${attendanceQuery(q)}`),
+      days: (q) => get(`/api/attendance/days${attendanceQuery(q)}`),
       day: (day, userId) => get(`/api/attendance/day?day=${enc(day)}${userId ? `&userId=${enc(userId)}` : ''}`),
       visits: (q) => get(`/api/attendance/visits${attendanceQuery(q)}`),
       report: (q) => get(`/api/attendance/report${attendanceQuery(q)}`),
@@ -227,9 +227,6 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
     time: {
       list: (projectId) => get(`/api/projects/${enc(projectId)}/time`),
       today: () => get('/api/time/today'),
-      checkIn: (input) => send('POST', '/api/time/check-in', input),
-      checkOut: (input) => send('POST', '/api/time/check-out', { location: input?.location ?? 'none' }),
-      undoCheckOut: () => send('POST', '/api/time/check-out/undo'),
       start: (target, location) => send('POST', '/api/time/start', { ...target, location: location ?? 'none' }),
       pause: () => send('POST', '/api/time/pause'),
       resume: (location) => send('POST', '/api/time/resume', { location: location ?? 'none' }),
@@ -257,7 +254,7 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
     },
     dashboard: {
       projects: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/dashboard`),
-      checkedIn: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/dashboard/checked-in`),
+      workingNow: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/dashboard/working-now`),
     },
     mentions: {
       mine: () => get('/api/mentions'),

@@ -33,7 +33,7 @@ describe('dashboard', () => {
     expect(keys(await api.dashboard.projects('ws-eng'))).toEqual(['ELM', 'NEX'])
     await as('u-5') // Salma, a Member
     await expect(api.dashboard.projects('ws-eng')).rejects.toMatchObject({ status: 403, detail: "You don't have access to the dashboard." })
-    await expect(api.dashboard.checkedIn('ws-eng')).rejects.toMatchObject({ status: 403, detail: "You don't have access to the dashboard." })
+    await expect(api.dashboard.workingNow('ws-eng')).rejects.toMatchObject({ status: 403, detail: "You don't have access to the dashboard." })
   })
 
   it('no cost for non-admins', async () => {
@@ -68,21 +68,26 @@ describe('dashboard', () => {
     expect(after3).toBeCloseTo(before3 + 2, 1) // yesterday counts, 10 days ago doesn't
   })
 
-  it('checked in now', async () => {
+  it('Working now lists running timers, newest first, by checkins.all and checkins.managed (timer slice 3)', async () => {
+    // The seed has Nour, Mariam and Hossam running a timer on Nexus Core.
+    expect((await api.dashboard.workingNow('ws-eng')).map((w) => w.userId).sort()).toEqual(['u-2', 'u-3', 'u-6'])
     await as('u-8')
-    await api.time.checkIn({ plan: 'x', target: { taskId: 't-mob-104' } })
+    await api.time.start({ taskId: 't-mob-104' })
     await as('u-1')
-    expect((await api.dashboard.checkedIn('ws-eng')).find((c) => c.userId === 'u-8')?.running?.taskId).toBe('t-mob-104')
+    const now = await api.dashboard.workingNow('ws-eng')
+    expect(now[0]).toEqual({ userId: 'u-8', taskId: 't-mob-104', projectId: 'p-mob', startedAt: expect.any(String) })
     await as('u-4') // manages MOB
-    expect((await api.dashboard.checkedIn('ws-eng')).some((c) => c.userId === 'u-8')).toBe(true)
+    expect((await api.dashboard.workingNow('ws-eng')).map((w) => w.userId)).toEqual(['u-8'])
     await as('u-2') // NEX and ELM only
-    expect((await api.dashboard.checkedIn('ws-eng')).some((c) => c.userId === 'u-8')).toBe(false)
+    expect((await api.dashboard.workingNow('ws-eng')).some((w) => w.userId === 'u-8')).toBe(false)
     await as('u-9') // Sales
-    expect(await api.dashboard.checkedIn('ws-eng')).toEqual([])
+    expect(await api.dashboard.workingNow('ws-eng')).toEqual([])
     await as('u-8')
-    await api.time.checkOut()
+    await api.time.pause()
     await as('u-1')
-    expect((await api.dashboard.checkedIn('ws-eng')).some((c) => c.userId === 'u-8')).toBe(false)
+    // Paused isn't working now.
+    expect((await api.dashboard.workingNow('ws-eng')).some((w) => w.userId === 'u-8')).toBe(false)
+    expect('checkedIn' in api.dashboard).toBe(false)
   })
 })
 
@@ -112,12 +117,11 @@ describe('last week, unrounded', () => {
 })
 
 describe('dashboard scope', () => {
-  it("a PM sees who's in, not what they run on projects outside their scope", async () => {
+  it("a PM doesn't see a timer running on a project outside their scope", async () => {
     await api.users.viewAs('u-5') // Salma: on Nexus Core and Mobile App
-    await api.time.checkIn({ plan: 'QA', target: { taskId: 't-mob-103' } })
+    await api.time.start({ taskId: 't-mob-103' })
     await api.users.viewAs('u-2') // Nour manages Nexus Core, not Mobile App
-    const salma = (await api.dashboard.checkedIn('ws-eng')).find((c) => c.userId === 'u-5')!
-    expect(salma.running).toBeNull()
+    expect((await api.dashboard.workingNow('ws-eng')).some((w) => w.userId === 'u-5')).toBe(false)
   })
   it('managing a project in another workspace opens no dashboard here', async () => {
     await api.users.viewAs('u-7') // Dina manages Brand Refresh (Spark Design) only

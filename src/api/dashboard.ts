@@ -7,6 +7,7 @@ import { api } from '@/lib/api'
 export function useDashboard(workspaceId: string | undefined, enabled: boolean) {
   return useQuery({ queryKey: qk.dashboard(workspaceId ?? ''), queryFn: () => api.dashboard.projects(workspaceId!), retry, enabled: enabled && Boolean(workspaceId) })
 }
-export function useCheckedIn(workspaceId: string | undefined, enabled: boolean) {
-  return useQuery({ queryKey: qk.checkedIn(workspaceId ?? ''), queryFn: () => api.dashboard.checkedIn(workspaceId!), retry, enabled: enabled && Boolean(workspaceId) })
+/** Who has a timer running on the dashboard's projects (timer slice 3). */
+export function useWorkingNow(workspaceId: string | undefined, enabled: boolean) {
+  return useQuery({ queryKey: qk.workingNow(workspaceId ?? ''), queryFn: () => api.dashboard.workingNow(workspaceId!), retry, enabled: enabled && Boolean(workspaceId) })
 }
