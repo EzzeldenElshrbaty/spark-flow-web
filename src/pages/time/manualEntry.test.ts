@@ -38,7 +38,7 @@ describe('defaultTimes', () => {
 })
 
 describe('editing an entry', () => {
-  const entry = (start: Date, end: Date, over: Partial<TimeEntry> = {}): TimeEntry => ({ id: 'te1', userId: 'u-1', projectId: 'p-nex', taskId: 't-nex-101', startedAt: start.toISOString(), endedAt: end.toISOString(), source: 'manual', note: 'pairing', ...over })
+  const entry = (start: Date, end: Date, over: Partial<TimeEntry> = {}): TimeEntry => ({ id: 'te1', userId: 'u-1', projectId: 'p-nex', taskId: 't-nex-101', startedAt: start.toISOString(), endedAt: end.toISOString(), source: 'manual', note: 'pairing', endReason: null, ...over })
 
   it("valuesOf gives back the entry's day, times and note", () => {
     const start = new Date(2026, 9, 27, 9, 15)

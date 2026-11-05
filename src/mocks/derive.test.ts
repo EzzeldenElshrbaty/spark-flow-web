@@ -13,7 +13,7 @@ const task = (over: Partial<Ticket> = {}): Ticket => ({
   createdAt: day(-10), updatedAt: day(-10), phaseId: null, type: 'task', dueAt: null, estimateHours: null, ...over,
 })
 const entry = (over: Partial<TimeEntry>): TimeEntry => ({
-  id: 'te', userId: 'u-1', projectId: 'p-1', taskId: 't-1', startedAt: iso(-2), endedAt: iso(-1), source: 'timer', note: '', ...over,
+  id: 'te', userId: 'u-1', projectId: 'p-1', taskId: 't-1', startedAt: iso(-2), endedAt: iso(-1), source: 'timer', note: '', endReason: null, ...over,
 })
 const phase = (over: Partial<Phase>): Phase => ({ id: 'ph', projectId: 'p-1', name: 'Build', order: 1, startDate: day(-10), dueDate: day(10), status: 'inProgress', ...over })
 const project: Project = {

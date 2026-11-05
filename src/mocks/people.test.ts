@@ -153,7 +153,7 @@ describe('deactivating and reactivating (slice 3)', () => {
       d.checkIns = d.checkIns.filter((c) => c.userId !== 'u-5')
       d.timeEntries = d.timeEntries.filter((e) => !(e.userId === 'u-5' && e.startedAt >= iso(0) && e.startedAt < iso(24)))
       d.checkIns.push({ id: 'ci-old', userId: 'u-5', day: dayKey, checkedInAt: iso(8), checkedOutAt: null, plan: 'QA' })
-      d.timeEntries.push({ id: 'te-old', userId: 'u-5', projectId: 'p-nex', taskId: null, startedAt: iso(9), endedAt: iso(13), source: 'manual', note: '' })
+      d.timeEntries.push({ id: 'te-old', userId: 'u-5', projectId: 'p-nex', taskId: null, startedAt: iso(9), endedAt: iso(13), source: 'manual', note: '', endReason: null })
     })
     await api.users.deactivate('u-5', '')
     expect((await db.read()).checkIns.find((c) => c.id === 'ci-old')!.checkedOutAt).toBe(iso(13))

@@ -264,3 +264,18 @@ describe('19 → 20', () => {
     expect(out.messages[0].attachments[0].folderId).toBeNull()
   })
 })
+
+describe('27 → 28', () => {
+  it("sets endReason 'stopped' on ended timer entries and null on running and manual ones", () => {
+    const out = migrate({
+      version: 27, currentUserId: 'u-1',
+      timeEntries: [
+        { id: 'a', source: 'timer', endedAt: '2026-11-01T10:00:00.000Z' },
+        { id: 'b', source: 'timer', endedAt: null },
+        { id: 'c', source: 'manual', endedAt: '2026-11-01T11:00:00.000Z' },
+      ],
+    }, 28) as { version: number; timeEntries: { id: string; endReason: unknown }[] }
+    expect(out.version).toBe(28)
+    expect(out.timeEntries.map((e) => [e.id, e.endReason])).toEqual([['a', 'stopped'], ['b', null], ['c', null]])
+  })
+})

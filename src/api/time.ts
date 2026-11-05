@@ -20,8 +20,15 @@ export function useCheckOut() {
 export function useUndoCheckOut() {
   return useMutation({ mutationFn: () => api.time.undoCheckOut() })
 }
+/** Starts a timer with the browser's place (or why there's none); the server adds the time, IP and device. */
 export function useStartTimer() {
-  return useMutation({ mutationFn: (target: TimeTarget) => api.time.start(target) })
+  return useMutation({ mutationFn: async (target: TimeTarget) => api.time.start(target, await currentLocation()) })
+}
+export function usePauseTimer() {
+  return useMutation({ mutationFn: () => api.time.pause() })
+}
+export function useResumeTimer() {
+  return useMutation({ mutationFn: async () => api.time.resume(await currentLocation()) })
 }
 export function useStopTimer() {
   return useMutation({ mutationFn: () => api.time.stop() })

@@ -25,6 +25,12 @@ const V24_ROLES = [
 ]
 
 export const migrations: Record<number, (doc: Record<string, unknown>) => void> = {
+  // 28: pause and stop (timer slice 1): a timer entry says why it ended. Older ones were stopped (or are running);
+  // manual ones never ran.
+  27: (doc) => {
+    for (const e of Array.isArray(doc.timeEntries) ? (doc.timeEntries as Record<string, unknown>[]) : [])
+      e.endReason = e.source === 'timer' && e.endedAt ? 'stopped' : null
+  },
   // 27: attendance (slice 5): no visits yet, and working hours of Sunday to Thursday, 9 to 5, Cairo time. Check-ins
   // from before have no IP, device or place, and show "—".
   26: (doc) => {

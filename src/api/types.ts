@@ -202,10 +202,16 @@ export type TaskRef = {
 export type TaskView = Task & { loggedHours: number; overdue: boolean; category: StatusCategory }
 
 // ── Time and cost ─────────────────────────────────────────────────────────
+/** Why a timer entry ended: Pause, Stop, the timer timeout, or Flow (the task went Done or was archived, the project archived, the person deactivated, the 12-hour limit). */
+export type EndReason = 'paused' | 'stopped' | 'timeout' | 'flow'
 export type TimeEntry = {
   id: string; userId: string; projectId: string; taskId: string | null
   startedAt: string; endedAt: string | null              // null = running
   source: 'timer' | 'manual'; note: string
+  /** Null while running and on manual entries. */
+  endReason: EndReason | null
+  /** Where a timer start or resume came from; absent on manual entries and older ones. */
+  startedFrom?: CheckSource | null
 }
 /** Where the browser said it was, to within `accuracy` metres. */
 export type GeoFix = { lat: number; lng: number; accuracy: number }
@@ -692,6 +698,18 @@ export type MyDay = {
   day: string; checkIn: CheckIn | null; openCheckIn: CheckIn | null; running: TimeEntry | null; entries: TimeEntry[]
   /** Never checked in yet: the card says what checking in records. */
   firstCheckIn: boolean
+  /** My timer: running, or paused today and ready to resume; null when there's none. */
+  timer: MyTimer | null
+  /** I've never started a timer that recorded where it came from: Start timer says what it records. */
+  firstStart: boolean
+}
+/**
+ * My timer (timer slice 1). A run is my newest timer entries on one target, back to one that ended 'stopped' or
+ * 'flow', or ended before today: `runMs` is their closed time, and a running one adds `now − startedAt`.
+ */
+export type MyTimer = {
+  state: 'running' | 'paused'; target: TimeTarget; entryId: string
+  runMs: number; startedAt: string | null; pausedBy: 'me' | 'timeout' | null
 }
 export type NewManualEntry = TimeTarget & { startedAt: string; endedAt: string; note: string }
 /** A change to a closed entry; `target` moves it to another task or project. */
@@ -921,8 +939,13 @@ export interface Api {
     checkOut(input?: { location?: CheckLocation }): Promise<MyDay>
     /** Reopens today's check-in after a check-out by mistake; the stopped timer stays stopped. */
     undoCheckOut(): Promise<MyDay>
-    /** One running timer per person: starting stops the last. */
-    start(target: TimeTarget): Promise<MyDay>
+    /** One running timer per person: starting stops the last, and ends a paused run. The browser sends its place. */
+    start(target: TimeTarget, location?: CheckLocation): Promise<MyDay>
+    /** Ends my running entry as 'paused'; the run waits to be resumed today. */
+    pause(): Promise<MyDay>
+    /** Carries the paused run on with a new entry on its target. */
+    resume(location?: CheckLocation): Promise<MyDay>
+    /** Ends the running entry, or the paused run, as 'stopped'. */
     stop(): Promise<MyDay>
     addManual(entry: NewManualEntry): Promise<TimeEntry>
     /** Mine (or anyone's, for an Admin), once stopped; checked like a new entry. */

@@ -190,6 +190,8 @@ const NOT_RECORDED: Record<string, string> = {
   'time.undoCheckOut': 'attendance, as checkIn',
   'time.start': 'a person’s own running clock; a manual entry, an edit or a delete is recorded',
   'time.stop': 'as start',
+  'time.pause': 'as start',
+  'time.resume': 'as start',
   'rates.list': READ,
   'comments.list': READ,
   'comments.create': `${MESSAGE}; a comment is a message on a task`,

@@ -4,7 +4,6 @@ import type { DbData, MockDb } from './db'
 import { delay } from './latency'
 import type { MockHub } from './realtime'
 import { categoryOf, columnLabel, columnOf, columnsOf, startColumn } from '@/lib/boardColumns'
-import { entryEnd } from '@/lib/hours'
 import { badRequest, clone, isDate, notFound, pickPatch, requireActive, requireCan, stamp, text } from './shared'
 import { projectPeopleIds } from '@/lib/projectPeople'
 
@@ -19,7 +18,7 @@ const ticketNumber = (t: Ticket) => Number(t.key.split('-')[1])
 import { findProject, openProject } from './projects'
 import { logActivity, logTaskUpdate } from './activity'
 import { postTaskEvents } from './taskEvents'
-import { stopTimersOn } from './timers'
+import { endEntry, stopTimersOn } from './timers'
 import { audit, changesBetween, recordOf } from './audit'
 import { archiveReason, setArchivedFields } from './archive'
 
@@ -131,7 +130,7 @@ export function tasksApi(db: MockDb, hub: MockHub, now: () => Date): Api['tasks'
       const stopped: string[] = []
       if (archive) {
         for (const e of data.timeEntries.filter((e) => e.taskId === ticket.id && e.endedAt === null)) {
-          e.endedAt = new Date(entryEnd(e, at)).toISOString()
+          endEntry(e, at, 'flow')
           stopped.push(e.userId)
         }
       }

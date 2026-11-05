@@ -160,7 +160,7 @@ export function usersApi(db: MockDb, hub: MockHub, now: () => Date = () => new D
         person.deactivated = { at: at.toISOString(), by: me.id, reason: why || null }
         // Their clock stops where it stopped counting; an open check-in closes as a forgotten one does (today's now,
         // an earlier day's at that day's last entry). They show offline, and @here no longer reaches them.
-        const stopped = stopRunning(data, id, at.toISOString())
+        const stopped = stopRunning(data, id, at.toISOString(), 'flow')
         for (const c of data.checkIns.filter((c) => c.userId === id && c.checkedOutAt === null)) closeCheckIn(data, c, at)
         person.presence = 'offline'
         keepsAnAdmin(data)

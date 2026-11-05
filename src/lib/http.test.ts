@@ -39,7 +39,7 @@ describe('createHttpApi', () => {
       'POST /api/time/entries',
     ])
     expect(JSON.parse(String(calls[1].init?.body))).toEqual({ plan: 'p', target: { taskId: 't1' } })
-    expect(JSON.parse(String(calls[3].init?.body))).toEqual({ projectId: 'p1' })
+    expect(JSON.parse(String(calls[3].init?.body))).toEqual({ projectId: 'p1', location: 'none' })
     expect(JSON.parse(String(calls[5].init?.body))).toEqual(entry)
   })
 
@@ -171,6 +171,23 @@ describe('createHttpApi', () => {
     expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url} ${c.init?.body ?? ''}`.trim())).toEqual([
       'POST /api/auth/sign-in {"email":"nour.elsayed@spark-sys.com","password":"secret"}',
       'POST /api/auth/sign-out',
+    ])
+  })
+
+  it('maps start, pause, resume and stop, with the place sent on start and resume (timer slice 1)', async () => {
+    const { calls, fetchFn } = recordingFetch()
+    const api = createHttpApi(fetchFn)
+    await api.time.start({ taskId: 't1' }, { lat: 30, lng: 31, accuracy: 20 })
+    await api.time.pause()
+    await api.time.resume('blocked')
+    await api.time.resume()
+    await api.time.stop()
+    expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url} ${c.init?.body ?? ''}`.trim())).toEqual([
+      'POST /api/time/start {"taskId":"t1","location":{"lat":30,"lng":31,"accuracy":20}}',
+      'POST /api/time/pause',
+      'POST /api/time/resume {"location":"blocked"}',
+      'POST /api/time/resume {"location":"none"}',
+      'POST /api/time/stop',
     ])
   })
 

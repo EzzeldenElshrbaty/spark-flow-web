@@ -94,7 +94,7 @@ describe('check-in, timer and manual time', () => {
   })
 
   it('stop', async () => {
-    await expect(api.time.stop()).rejects.toMatchObject({ detail: 'No timer is running.' })
+    await expect(api.time.stop()).rejects.toMatchObject({ detail: "There's no timer to stop." })
     const { running } = await api.time.start({ projectId: 'p-nex' })
     later(10)
     expect((await api.time.stop()).running).toBeNull()
@@ -366,3 +366,126 @@ describe('report filters', () => {
   })
 })
 
+
+describe('pause, resume and stop (timer slice 1)', () => {
+  const mine = async () => (await db.read()).timeEntries.filter((e) => e.userId === 'u-1')
+  const MIN = 60_000
+
+  it("pause ends my running entry with 'paused' and keeps it as my timer", async () => {
+    const started = await api.time.start({ taskId: 't-nex-101' })
+    later(30)
+    const day = await api.time.pause()
+    const entry = (await mine()).find((e) => e.id === started.timer!.entryId)!
+    expect(entry).toMatchObject({ endedAt: now.toISOString(), endReason: 'paused' })
+    expect(day.timer).toEqual({ state: 'paused', target: { taskId: 't-nex-101' }, entryId: entry.id, runMs: 30 * MIN, startedAt: null, pausedBy: 'me' })
+  })
+
+  it('resume starts a new entry on the paused target; runMs carries the paused time', async () => {
+    const first = (await api.time.start({ taskId: 't-nex-101' })).timer!.entryId
+    later(30)
+    await api.time.pause()
+    later(15)
+    const { timer } = await api.time.resume()
+    expect(timer).toMatchObject({ state: 'running', target: { taskId: 't-nex-101' }, runMs: 30 * MIN, startedAt: now.toISOString(), pausedBy: null })
+    expect(timer!.entryId).not.toBe(first)
+    expect((await mine()).filter((e) => e.taskId === 't-nex-101')).toHaveLength(2)
+  })
+
+  it("stop on a running timer ends it 'stopped'; on a paused one marks it 'stopped'; either way timer is null", async () => {
+    const running = (await api.time.start({ taskId: 't-nex-101' })).timer!.entryId
+    later(10)
+    expect((await api.time.stop()).timer).toBeNull()
+    expect((await mine()).find((e) => e.id === running)).toMatchObject({ endedAt: now.toISOString(), endReason: 'stopped' })
+
+    const paused = (await api.time.start({ taskId: 't-nex-102' })).timer!.entryId
+    later(10)
+    await api.time.pause()
+    const pausedAt = now.toISOString()
+    later(5)
+    expect((await api.time.stop()).timer).toBeNull()
+    expect((await mine()).find((e) => e.id === paused)).toMatchObject({ endedAt: pausedAt, endReason: 'stopped' })
+  })
+
+  it('start while paused ends the paused run and starts the new target from runMs 0', async () => {
+    const old = (await api.time.start({ taskId: 't-nex-101' })).timer!.entryId
+    later(20)
+    await api.time.pause()
+    const { timer } = await api.time.start({ taskId: 't-nex-102' })
+    expect(timer).toMatchObject({ state: 'running', target: { taskId: 't-nex-102' }, runMs: 0 })
+    expect((await mine()).find((e) => e.id === old)?.endReason).toBe('stopped')
+    // Starting the same task again is a new run too.
+    later(5)
+    await api.time.pause()
+    expect((await api.time.start({ taskId: 't-nex-102' })).timer?.runMs).toBe(0)
+  })
+
+  it('pause, resume and stop refuse with "Your timer isn\'t running." / "Nothing is paused." / "There\'s no timer to stop."', async () => {
+    await expect(api.time.pause()).rejects.toMatchObject({ status: 400, detail: "Your timer isn't running." })
+    await expect(api.time.resume()).rejects.toMatchObject({ status: 400, detail: 'Nothing is paused.' })
+    await expect(api.time.stop()).rejects.toMatchObject({ status: 400, detail: "There's no timer to stop." })
+    await api.time.start({ taskId: 't-nex-101' })
+    await expect(api.time.resume()).rejects.toMatchObject({ detail: 'Nothing is paused.' })
+  })
+
+  it('resume is refused like start when the task went Done while paused', async () => {
+    await api.time.start({ taskId: 't-nex-101' })
+    later(10)
+    await api.time.pause()
+    await db.update((d) => {
+      d.tickets.find((t) => t.id === 't-nex-101')!.status = 'done'
+    })
+    await expect(api.time.resume()).rejects.toMatchObject({ detail: 'That task is done. Reopen it to log time.' })
+  })
+
+  it("a run started 23:00 and paused 01:00 is today's paused timer with both parts in runMs", async () => {
+    now = at(23, 0, -1)
+    await api.time.start({ taskId: 't-nex-101' })
+    now = at(1, 0)
+    const { timer } = await api.time.pause()
+    expect(timer).toMatchObject({ state: 'paused', runMs: 120 * MIN })
+    expect((await api.time.today()).timer?.state).toBe('paused')
+  })
+
+  it("yesterday's paused run is not today's timer, and stop refuses", async () => {
+    now = at(15, 0, -1)
+    await api.time.start({ taskId: 't-nex-101' })
+    later(30)
+    await api.time.pause()
+    now = at(9, 0)
+    expect((await api.time.today()).timer).toBeNull()
+    await expect(api.time.stop()).rejects.toMatchObject({ detail: "There's no timer to stop." })
+  })
+
+  it('start and resume record startedFrom; firstStart is true until one does', async () => {
+    expect((await api.time.today()).firstStart).toBe(true)
+    const started = await api.time.start({ taskId: 't-nex-101' }, { lat: 30.044431, lng: 31.235712, accuracy: 20.4 })
+    expect(started.firstStart).toBe(false)
+    const first = (await mine()).find((e) => e.id === started.timer!.entryId)!
+    expect(first.startedFrom).toMatchObject({ location: { lat: 30.04443, lng: 31.23571, accuracy: 20 } })
+    expect(first.startedFrom).toHaveProperty('ip')
+    expect(first.startedFrom).toHaveProperty('device')
+    later(5)
+    await api.time.pause()
+    const resumed = await api.time.resume('blocked')
+    expect((await mine()).find((e) => e.id === resumed.timer!.entryId)?.startedFrom?.location).toBe('blocked')
+    await expect(api.time.start({ taskId: 't-nex-102' }, { lat: 200, lng: 0, accuracy: 1 })).rejects.toMatchObject({ detail: "That location can't be right." })
+  })
+
+  it("Flow's stops (task Done, deactivate, 12 h) write endReason 'flow'", async () => {
+    const onTask = (await api.time.start({ taskId: 't-nex-101' })).timer!.entryId
+    later(10)
+    await api.tasks.update('NEX-101', { status: 'done' })
+    expect((await mine()).find((e) => e.id === onTask)?.endReason).toBe('flow')
+
+    const forgotten = (await api.time.start({ taskId: 't-nex-102' })).timer!.entryId
+    later(13 * 60)
+    await api.time.stop()
+    expect((await mine()).find((e) => e.id === forgotten)?.endReason).toBe('flow')
+
+    await api.users.viewAs('u-3')
+    const theirs = (await api.time.today()).timer!.entryId
+    await api.users.viewAs('u-1')
+    await api.users.deactivate('u-3', 'Left')
+    expect((await db.read()).timeEntries.find((e) => e.id === theirs)?.endReason).toBe('flow')
+  })
+})

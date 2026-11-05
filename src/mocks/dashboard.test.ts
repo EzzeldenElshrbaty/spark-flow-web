@@ -95,7 +95,7 @@ describe('over estimate', () => {
     const expected = entries.filter((e) => e.taskId && estimated.has(e.taskId)).reduce((s, e) => s + entryHours(e, new Date()), 0)
     expect(card.estimatedLoggedHours).toBeCloseTo(expected, 1)
     // Two hours on the project but on no task: logged, not estimated.
-    await db.update((d) => void d.timeEntries.push({ id: 'te-extra', userId: 'u-3', projectId: 'p-nex', taskId: null, startedAt: '2026-10-01T08:00:00.000Z', endedAt: '2026-10-01T10:00:00.000Z', source: 'manual', note: '' }))
+    await db.update((d) => void d.timeEntries.push({ id: 'te-extra', userId: 'u-3', projectId: 'p-nex', taskId: null, startedAt: '2026-10-01T08:00:00.000Z', endedAt: '2026-10-01T10:00:00.000Z', source: 'manual', note: '', endReason: null }))
     const after = (await api.dashboard.projects('ws-eng')).find((p) => p.id === 'p-nex')!
     expect(after.loggedHours).toBeCloseTo(card.loggedHours + 2, 1)
     expect(after.estimatedLoggedHours).toBeCloseTo(card.estimatedLoggedHours, 1)
@@ -105,7 +105,7 @@ describe('over estimate', () => {
 describe('last week, unrounded', () => {
   it("last week's hours aren't rounded", async () => {
     const at = Date.now() - 3_600_000
-    await db.update((d) => void d.timeEntries.push({ id: 'te-20', userId: 'u-8', projectId: 'p-nex', taskId: null, startedAt: new Date(at).toISOString(), endedAt: new Date(at + 20 * 60_000).toISOString(), source: 'manual', note: '' }))
+    await db.update((d) => void d.timeEntries.push({ id: 'te-20', userId: 'u-8', projectId: 'p-nex', taskId: null, startedAt: new Date(at).toISOString(), endedAt: new Date(at + 20 * 60_000).toISOString(), source: 'manual', note: '', endReason: null }))
     const week = (await api.dashboard.projects('ws-eng')).find((p) => p.id === 'p-nex')!.week
     expect(week.find((w) => w.userId === 'u-8')!.hours).toBeCloseTo(1 / 3, 4)
   })

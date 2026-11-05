@@ -9,7 +9,7 @@ import { seed } from './seed'
 import { createMemoryStore } from './store'
 
 const at = (d: number, h: number, m = 0) => new Date(2026, 9, d, h, m) // October 2026, local time
-const e = (userId: string, projectId: string, start: Date, end: Date | null): TimeEntry => ({ id: Math.random().toString(), userId, projectId, taskId: null, startedAt: start.toISOString(), endedAt: end?.toISOString() ?? null, source: 'manual', note: '' })
+const e = (userId: string, projectId: string, start: Date, end: Date | null): TimeEntry => ({ id: Math.random().toString(), userId, projectId, taskId: null, startedAt: start.toISOString(), endedAt: end?.toISOString() ?? null, source: 'manual', note: '', endReason: null })
 const rates: Rate[] = [
   { id: 'r-a', userId: 'a', hourlyCost: 100, currency: 'EGP', effectiveFrom: '1970-01-01T00:00:00.000Z' },
   { id: 'r-b', userId: 'b', hourlyCost: 300, currency: 'EGP', effectiveFrom: '1970-01-01T00:00:00.000Z' },

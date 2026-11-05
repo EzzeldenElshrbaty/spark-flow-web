@@ -1,4 +1,4 @@
-import type { Api, CheckLocation, CheckSource, GeoFix, MyDay, TimeEntry, TimeTarget } from '@/api/types'
+import type { Api, CheckLocation, CheckSource, EndReason, GeoFix, MyDay, MyTimer, TimeEntry, TimeTarget } from '@/api/types'
 import { categoryOf } from '@/lib/boardColumns'
 import { localDay } from '@/lib/dates'
 import { entryEnd, MAX_ENTRY_HOURS } from '@/lib/hours'
@@ -12,6 +12,7 @@ import { ApiError } from '@/lib/apiError'
 import { badRequest, clone, currentUser, newId, notFound, requireCan } from './shared'
 import { grantsFor } from './roles'
 import { audit, changesBetween, recordOf, requestFrom } from './audit'
+import { endEntry } from './timers'
 
 /** The fields of a time entry the audit log records. */
 const ENTRY_LOGGED = ['userId', 'projectId', 'taskId', 'startedAt', 'endedAt', 'note'] as const
@@ -43,7 +44,59 @@ function myDay(data: DbData, userId: string, now: Date): MyDay {
     entries: mine.filter((e) => localDay(new Date(e.startedAt)) === day).sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1)),
     // Check-ins from before Attendance recorded nothing, so their owner still gets the notice once.
     firstCheckIn: !data.checkIns.some((c) => c.userId === userId && c.inFrom),
+    timer: currentTimer(data, userId, now),
+    firstStart: !data.timeEntries.some((e) => e.userId === userId && e.startedFrom),
   })
+}
+
+const targetOf = (entry: TimeEntry): TimeTarget => (entry.taskId ? { taskId: entry.taskId } : { projectId: entry.projectId })
+const sameTarget = (a: TimeEntry, b: TimeEntry) => a.projectId === b.projectId && a.taskId === b.taskId
+/** My timer entries, newest first. */
+const myTimerEntries = (data: DbData, userId: string) =>
+  data.timeEntries.filter((e) => e.userId === userId && e.source === 'timer').sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1))
+
+/** My paused run's last entry: my newest timer entry, if it ended 'paused' or 'timeout' today. */
+function pausedEntry(data: DbData, userId: string, now: Date): TimeEntry | null {
+  const newest = myTimerEntries(data, userId)[0]
+  const paused = newest?.endedAt && (newest.endReason === 'paused' || newest.endReason === 'timeout') && localDay(new Date(newest.endedAt)) === localDay(now)
+  return paused ? newest : null
+}
+
+/** Whether time can no longer go on an entry's target: its task is Done or archived, or its project archived. */
+function closedTarget(data: DbData, entry: TimeEntry): boolean {
+  const project = data.projects.find((p) => p.id === entry.projectId)
+  if (!project || project.archivedAt) return true
+  if (!entry.taskId) return false
+  const task = data.tickets.find((t) => t.id === entry.taskId)
+  return !task || Boolean(task.archivedAt) || categoryOf(project, task.status) === 'done'
+}
+
+/**
+ * My timer (timer slice 1): my running entry, or my paused run if it ended today on a target still open. Its run goes
+ * back over my timer entries on the same target until one ended 'stopped' or 'flow', or ended before today.
+ */
+export function currentTimer(data: DbData, userId: string, now: Date): MyTimer | null {
+  const mine = myTimerEntries(data, userId)
+  const newest = mine[0]
+  if (!newest) return null
+  const running = newest.endedAt === null
+  if (!running && (newest !== pausedEntry(data, userId, now) || closedTarget(data, newest))) return null
+  const day = localDay(now)
+  let runMs = 0
+  for (const e of mine) {
+    if (!sameTarget(e, newest)) break
+    if (e !== newest && e.endReason !== 'paused' && e.endReason !== 'timeout') break
+    if (e.endedAt && localDay(new Date(e.endedAt)) !== day) break
+    if (e.endedAt) runMs += Date.parse(e.endedAt) - Date.parse(e.startedAt)
+  }
+  return {
+    state: running ? 'running' : 'paused',
+    target: targetOf(newest),
+    entryId: newest.id,
+    runMs,
+    startedAt: running ? newest.startedAt : null,
+    pausedBy: running ? null : newest.endReason === 'timeout' ? 'timeout' : 'me',
+  }
 }
 
 /**
@@ -83,10 +136,10 @@ function checkLocation(value: unknown): CheckLocation {
   return { lat: round(fix.lat!), lng: round(fix.lng!), accuracy: Math.round(fix.accuracy!) }
 }
 
-/** Closes my running entry (if any) at `at`, or 12 hours after it started if it was forgotten that long. */
-export function stopRunning(data: DbData, userId: string, at: string) {
+/** Closes my running entry (if any) at `at` for `reason`, or at the 12-hour limit (as Flow) if it was forgotten that long. */
+export function stopRunning(data: DbData, userId: string, at: string, reason: EndReason) {
   const running = data.timeEntries.find((e) => e.userId === userId && e.endedAt === null)
-  if (running) running.endedAt = new Date(entryEnd(running, new Date(at))).toISOString()
+  if (running) endEntry(running, new Date(at), reason)
   return running
 }
 
@@ -98,16 +151,32 @@ function checkOn(data: DbData, projectId: string) {
     throw new ApiError({ title: 'Forbidden', status: 403, detail: "You're not on this project." })
 }
 
-/** Starts a timer on `target`, stopping the one that runs; the same target keeps its entry. Mutates `data`. */
-function startTimer(data: DbData, userId: string, target: TimeTarget, at: string): string {
+/** Where time on `target` goes, if it may: a project I'm on, and not a done task. */
+function loggable(data: DbData, target: TimeTarget): { projectId: string; taskId: string | null } {
   const { projectId, taskId, done } = resolveTarget(data, target)
   checkOn(data, projectId)
   if (done) throw badRequest('That task is done. Reopen it to log time.')
+  return { projectId, taskId }
+}
+
+/** A new timer entry on a target already checked by `loggable`. */
+function beginEntry(data: DbData, userId: string, on: { projectId: string; taskId: string | null }, at: string, from: CheckSource) {
+  data.timeEntries.push({ id: newId('te'), userId, ...on, startedAt: at, endedAt: null, source: 'timer', note: '', endReason: null, startedFrom: from })
+}
+
+/**
+ * Starts a timer on `target`: the running one stops and a paused run ends, so the new run counts from 0; the target
+ * that already runs keeps its entry. Mutates `data`.
+ */
+function startTimer(data: DbData, userId: string, target: TimeTarget, at: Date, from: CheckSource): string {
+  const on = loggable(data, target)
   const running = data.timeEntries.find((e) => e.userId === userId && e.endedAt === null)
-  if (running && running.projectId === projectId && running.taskId === taskId) return projectId
-  stopRunning(data, userId, at)
-  data.timeEntries.push({ id: newId('te'), userId, projectId, taskId, startedAt: at, endedAt: null, source: 'timer', note: '' })
-  return projectId
+  if (running && running.projectId === on.projectId && running.taskId === on.taskId) return on.projectId
+  stopRunning(data, userId, at.toISOString(), 'stopped')
+  const paused = pausedEntry(data, userId, at)
+  if (paused) paused.endReason = 'stopped'
+  beginEntry(data, userId, on, at.toISOString(), from)
+  return on.projectId
 }
 
 /**
@@ -212,9 +281,9 @@ export function timeApi(db: MockDb, hub: MockHub, now: () => Date): Api['time'] 
         for (const old of data.checkIns.filter((c) => c.userId === me.id && c.checkedOutAt === null && c.day < day)) closeCheckIn(data, old, at)
         // A timer left running from an earlier day stops where it stopped counting (12 hours in).
         const running = data.timeEntries.find((e) => e.userId === me.id && e.endedAt === null)
-        if (running && localDay(new Date(running.startedAt)) < day) stopRunning(data, me.id, iso)
+        if (running && localDay(new Date(running.startedAt)) < day) stopRunning(data, me.id, iso, 'flow')
         data.checkIns.push({ id: newId('ci'), userId: me.id, day, checkedInAt: iso, checkedOutAt: null, plan: text, inFrom, outFrom: null })
-        return target ? startTimer(data, me.id, target, iso) : null
+        return target ? startTimer(data, me.id, target, at, sourceOf(location)) : null
       }),
 
     checkOut: (input) =>
@@ -227,14 +296,14 @@ export function timeApi(db: MockDb, hub: MockHub, now: () => Date): Api['time'] 
         if (open.day < localDay(at)) {
           // Forgotten on an earlier day: its timer stops where it stopped counting, and the check-in ends with that
           // day's last entry, as Flow (not now, which would count the night and read as leaving early).
-          const stopped = stopRunning(data, me.id, iso)
+          const stopped = stopRunning(data, me.id, iso, 'flow')
           closeCheckIn(data, open, at)
           return stopped?.projectId ?? null
         }
         open.checkedOutAt = iso
         open.outFrom = outFrom
         open.closedByFlow = false
-        return stopRunning(data, me.id, iso)?.projectId ?? null
+        return stopRunning(data, me.id, iso, 'stopped')?.projectId ?? null
       }),
 
     undoCheckOut: () =>
@@ -247,13 +316,33 @@ export function timeApi(db: MockDb, hub: MockHub, now: () => Date): Api['time'] 
         return null
       }),
 
-    start: (target) => write((data, me, at) => startTimer(data, me.id, target, at.toISOString())),
+    start: (target, location) => write((data, me, at) => startTimer(data, me.id, target, at, sourceOf(location))),
+
+    pause: () =>
+      write((data, me, at) => {
+        const paused = stopRunning(data, me.id, at.toISOString(), 'paused')
+        if (!paused) throw badRequest("Your timer isn't running.")
+        return paused.projectId
+      }),
+
+    resume: (location) =>
+      write((data, me, at) => {
+        const from = sourceOf(location)
+        const paused = data.timeEntries.some((e) => e.userId === me.id && e.endedAt === null) ? null : pausedEntry(data, me.id, at)
+        if (!paused) throw badRequest('Nothing is paused.')
+        const on = loggable(data, targetOf(paused))
+        beginEntry(data, me.id, on, at.toISOString(), from)
+        return on.projectId
+      }),
 
     stop: () =>
       write((data, me, at) => {
-        const stopped = stopRunning(data, me.id, at.toISOString())
-        if (!stopped) throw badRequest('No timer is running.')
-        return stopped.projectId
+        const stopped = stopRunning(data, me.id, at.toISOString(), 'stopped')
+        if (stopped) return stopped.projectId
+        const paused = pausedEntry(data, me.id, at)
+        if (!paused) throw badRequest("There's no timer to stop.")
+        paused.endReason = 'stopped'
+        return paused.projectId
       }),
 
     async addManual(input) {
@@ -264,7 +353,7 @@ export function timeApi(db: MockDb, hub: MockHub, now: () => Date): Api['time'] 
         const end = new Date(input.endedAt).getTime()
         const { projectId, taskId, note } = checkEntry(data, me.id, { start, end, note: input.note, target: input }, now().getTime())
         checkOn(data, projectId)
-        const entry: TimeEntry = { id: newId('te'), userId: me.id, projectId, taskId, startedAt: new Date(start).toISOString(), endedAt: new Date(end).toISOString(), source: 'manual', note }
+        const entry: TimeEntry = { id: newId('te'), userId: me.id, projectId, taskId, startedAt: new Date(start).toISOString(), endedAt: new Date(end).toISOString(), source: 'manual', note, endReason: null }
         data.timeEntries.push(entry)
         audit(data, { action: 'created', group: 'data', record: recordOf.timeEntry(data, entry), changes: changesBetween(data, {}, entry, ENTRY_LOGGED) })
         return clone(entry)

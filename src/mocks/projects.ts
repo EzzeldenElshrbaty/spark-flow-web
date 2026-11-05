@@ -5,8 +5,7 @@ import { summarize } from './derive'
 import { delay } from './latency'
 import type { MockHub } from './realtime'
 import { logActivity, statusChange } from './activity'
-import { entryEnd } from '@/lib/hours'
-import { stopTimersOn } from './timers'
+import { endEntry, stopTimersOn } from './timers'
 import { badRequest, clone, currentUser, isDate, newId, notFound, pickPatch, requireActive, requireCan, text } from './shared'
 import { grantsFor } from './roles'
 import { CHANNEL_NAME } from '@/lib/channelForm'
@@ -193,7 +192,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
       const stopped: string[] = []
       if (archive) {
         for (const e of data.timeEntries.filter((e) => e.projectId === id && e.endedAt === null)) {
-          e.endedAt = new Date(entryEnd(e, at)).toISOString()
+          endEntry(e, at, 'flow')
           stopped.push(e.userId)
         }
       }

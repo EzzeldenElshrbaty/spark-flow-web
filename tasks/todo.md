@@ -2201,7 +2201,7 @@ timers, and every role gets a dashboard with charts.
     - Otherwise there's no timer.
 
 **Steps:**
-- [ ] Write the failing tests in `time.test.ts`:
+- [x] Write the failing tests in `time.test.ts`:
   - `pause ends my running entry with 'paused' and keeps it as my timer`
   - `resume starts a new entry on the paused target; runMs carries the paused time`
   - `stop on a running timer ends it 'stopped'; on a paused one marks it 'stopped'; either way timer is null`
@@ -2212,15 +2212,22 @@ timers, and every role gets a dashboard with charts.
   - `yesterday's paused run is not today's timer, and stop refuses`
   - `start and resume record startedFrom; firstStart is true until one does`
   - `Flow's stops (task Done, archive, deactivate, 12 h) write endReason 'flow'`
-- [ ] Also write, then run all and watch them fail:
+- [x] Also write, then run all and watch them fail:
   - in `migrations.test.ts`, `27 → 28 sets endReason 'stopped' on ended timer entries and null on running and
     manual`;
   - in `http.test.ts`, the four routes;
   - in `audit.test.ts`, `pause`, `resume` and `stop` as recorded.
-- [ ] Implement the types, `currentTimer`, the three calls, the `stopRunning` reason, v28, the routes and hooks.
+- [x] Implement the types, `currentTimer`, the three calls, the `stopRunning` reason, v28, the routes and hooks.
   `today()` returns `timer` and `firstStart`.
-- [ ] Run `npx vitest run src/mocks src/lib/http.test.ts < /dev/null`. Expected: all green, exit 0.
-- [ ] Commit: `feat(time): pause, resume and stop the timer; endReason on entries (timer slice 1)`.
+- [x] Run `npx vitest run src/mocks src/lib/http.test.ts < /dev/null`. Expected: all green, exit 0.
+- [x] Commit: `feat(time): pause, resume and stop the timer; endReason on entries (timer slice 1)`.
+- Rulings:
+  - Pause and Resume aren't audited, like Start and Stop ("a person's own running clock"). The plan said recorded.
+    Cost if wrong: one audit call each and a line in `audit.test.ts`.
+  - The 12-hour limit always writes `'flow'`, even when it's a Pause, Stop or Start that hits it (`endEntry` in
+    `mocks/timers.ts`). The spec lists the 12-hour limit as Flow's.
+  - Stop's old refusal `No timer is running.` is now the spec's `There's no timer to stop.`
+- Done: unit 1,931 pass, tsc and lint clean.
 
 ### T2. Start timer dialog and the project-then-task picker
 

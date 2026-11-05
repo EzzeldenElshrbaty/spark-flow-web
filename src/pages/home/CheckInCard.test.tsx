@@ -7,7 +7,7 @@ import { CheckInCard } from './CheckInCard'
 
 // Before someone's first check-in, the card says what checking in records (Admin and help, slice 5).
 
-const day = (over: Partial<MyDay>): MyDay => ({ day: '2026-11-01', checkIn: null, openCheckIn: null, running: null, entries: [], firstCheckIn: false, ...over })
+const day = (over: Partial<MyDay>): MyDay => ({ day: '2026-11-01', checkIn: null, openCheckIn: null, running: null, entries: [], firstCheckIn: false, timer: null, firstStart: false, ...over })
 const show = (d: MyDay) =>
   render(
     <QueryClientProvider client={new QueryClient()}>

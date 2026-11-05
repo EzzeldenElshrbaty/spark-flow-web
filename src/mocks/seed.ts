@@ -495,8 +495,8 @@ export function seed(now: Date): SeedResult {
         { id: `v-${userId}-${d}-b`, userId, day: day.toISOString().slice(0, 10), startedAt: at(day, 11, 30), endedAt: outAt, minutes: early ? 110 : 190, ip: office, device },
       )
       timeEntries.push(
-        { id: `te-${userId}-${d}-a`, userId, projectId: taskProject.get(morning) ?? '', taskId: `t-${morning.toLowerCase()}`, startedAt: at(day, 7), endedAt: at(day, 11), source: 'timer', note: '' },
-        { id: `te-${userId}-${d}-b`, userId, projectId: taskProject.get(afternoon) ?? '', taskId: `t-${afternoon.toLowerCase()}`, startedAt: at(day, 11, 30), endedAt: at(day, 15), source: d === 2 ? 'manual' : 'timer', note: d === 2 ? 'Added after the fact: forgot the timer.' : '' },
+        { id: `te-${userId}-${d}-a`, userId, projectId: taskProject.get(morning) ?? '', taskId: `t-${morning.toLowerCase()}`, startedAt: at(day, 7), endedAt: at(day, 11), source: 'timer', note: '', endReason: 'stopped' },
+        { id: `te-${userId}-${d}-b`, userId, projectId: taskProject.get(afternoon) ?? '', taskId: `t-${afternoon.toLowerCase()}`, startedAt: at(day, 11, 30), endedAt: at(day, 15), source: d === 2 ? 'manual' : 'timer', note: d === 2 ? 'Added after the fact: forgot the timer.' : '', endReason: d === 2 ? null : 'stopped' },
       )
     }
   })
@@ -510,7 +510,7 @@ export function seed(now: Date): SeedResult {
     checkIns.push({ id: `ci-${userId}-now`, userId, day: localDay(now), checkedInAt: shift(3 * 3_600_000), checkedOutAt: null, plan: `${taskKey} first, then reviews.`, inFrom: from(userId) })
     const [start, end] = [shift(3 * 3_600_000), shift(60_000)]
     visits.push({ id: `v-${userId}-now`, userId, day: localDay(now), startedAt: start, endedAt: end, minutes: Math.round((Date.parse(end) - Date.parse(start)) / 70_000), ip: office, device: laptop[userId] ?? null })
-    timeEntries.push({ id: `te-${userId}-now`, userId, projectId: 'p-nex', taskId: `t-${taskKey.toLowerCase()}`, startedAt: shift(3_600_000), endedAt: null, source: 'timer', note: '' })
+    timeEntries.push({ id: `te-${userId}-now`, userId, projectId: 'p-nex', taskId: `t-${taskKey.toLowerCase()}`, startedAt: shift(3_600_000), endedAt: null, source: 'timer', note: '', endReason: null })
   }
 
   // Hourly cost in EGP (Admin only)
