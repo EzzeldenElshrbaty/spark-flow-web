@@ -112,7 +112,8 @@ Answers given in chat:
   - Never on today while a timer runs or is paused.
 - **The Check-ins tab becomes Days:** a row per person per day with in, out, hours, where they started from (IP,
   device, place), and new IP or device and off hours as before. The route `GET /api/attendance/check-ins` becomes
-  `GET /api/attendance/days`, with the same query and the same row fields minus `byFlow`, plus `endReason`.
+  `GET /api/attendance/days`, with the same query and the same row fields minus `byFlow`, plus `endReason`, and with
+  `late` and `early` in place of `offHours` (the In and Out cells each mark their own).
 - Day, Visits and Report keep their routes; their in and out now come from timer entries.
 - Who sees whom is unchanged: `checkins.all` and `checkins.managed` keep their ids. Their labels become "See
   everyone's timers and app use" and "…of the people on projects they manage".
@@ -141,7 +142,8 @@ Answers given in chat:
   - **Overdue tasks:** a `DataTable` with key, title, project, assignee and due date; it opens the task inspector.
   - The project cards stay as they are.
   - **Working now** (was "Checked in now") lists people with a running timer, their task and the count. It is shown
-    by `checkins.all` and `checkins.managed` as today.
+    by `checkins.all` and `checkins.managed` as today. With `checkins.managed` it lists only the timers on projects
+    they manage (ruled in slice 3: a timer on another project isn't theirs to see, as "Checked in now" hid it).
 - Cost and rates stay `cost.view` and `rates.manage` only.
 
 ### 4.5 Screens

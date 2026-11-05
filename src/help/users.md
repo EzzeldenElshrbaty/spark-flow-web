@@ -15,7 +15,7 @@ Users lists everyone in the company, active or not, with their roles, teams and 
 
 ## Deactivating
 
-**Deactivate**, in someone's sheet, signs them out of Flow, stops their timer, closes their check-in and takes them out of every list you pick people from. What they did stays, with their name on it. You can't deactivate yourself, or the last person who can change settings, users and roles.
+**Deactivate**, in someone's sheet, signs them out of Flow, stops their timer and takes them out of every list you pick people from. What they did stays, with their name on it. You can't deactivate yourself, or the last person who can change settings, users and roles.
 
 **Reactivate** brings them back.
 

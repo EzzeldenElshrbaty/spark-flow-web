@@ -15,7 +15,7 @@ Press **Start timer** in the top bar, pick a project and a task, and it starts. 
 - **Switch task** on a paused timer starts another task instead.
 - A paused timer clears at the end of the day.
 - A timer that runs as long as the timer timeout (4 hours unless your company sets it otherwise) pauses and asks **Still working?**
-- A timer left running stops counting after 12 hours. Checking out stops it.
+- A timer left running past the timeout stops counting after 12 hours at most.
 
 ## Adding time
 

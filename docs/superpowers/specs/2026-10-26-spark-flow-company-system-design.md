@@ -24,7 +24,9 @@ browser run.
 - "Teams" are named groups of users. Hourly cost is per person, entered by an Admin, visible to Admins only.
 - Check-in is for tracking work; it is shown to the person and to managers of their projects. (Amended 1 Nov 2026,
   Admin and help slice 5: check-in and check-out also record IP, device and, if the person allows it, location, and
-  Flow records time using it. The card says so before the first check-in; see §4.8.)
+  Flow records time using it. The card says so before the first check-in; see §4.8.) (Amended 5 Nov 2026, timer
+  slice 3: check-in is replaced by the task timer; attendance days come from timer entries. See
+  `2026-11-05-task-timer-and-dashboard-design.md` §4.3.)
 - Waterfall is the default way of working; sprints are optional per project.
 
 ## 2. Decisions
@@ -126,6 +128,13 @@ Timer (amended 5 Nov 2026, timer slice 1, `2026-11-05-task-timer-and-dashboard-d
 A time entry carries `endReason` (`'paused' | 'stopped' | 'timeout' | 'flow' | null`). It also stores `startedFrom`
 (IP, device, place), which only Attendance returns. `MyDay.timer` is the running or paused run, with `runMs`.
 
+Check-in removed (amended 5 Nov 2026, timer slice 3, `2026-11-05-task-timer-and-dashboard-design.md` §4.3):
+- Gone: `POST /api/time/check-in`, `/check-out` and `/check-out/undo`, and the `CheckIn` record. `MyDay` is
+  `{ day, entries, timer, firstStart }`.
+- `GET /api/workspaces/:id/dashboard/checked-in` becomes `GET /api/workspaces/:id/dashboard/working-now`, returning
+  `WorkingNow[]` (`{ userId, taskId, projectId, startedAt }`): running timers only.
+- `GET /api/attendance/check-ins` becomes `GET /api/attendance/days` (§4.8).
+
 ### 4.3 Permissions (enforced in the mock API — 403 `ApiError` — and mirrored in the UI)
 
 **Amended 31 Oct 2026 (Admin and help slice 1):** the table below is now the four built-in roles' starting grants,
@@ -156,7 +165,7 @@ built-in roles give the old table's answers in every case. Routes:
 | See rates and cost | ✓ | — | — (hours only) | — |
 | Create project; edit dates, client, deliverables | ✓ | ✓ | edit own | — |
 | Phases, tasks, assign people/teams | ✓ | — | ✓ | change status of own tasks |
-| Check-in, timer, add time (own) | ✓ | ✓ | ✓ | ✓ |
+| Timer, add time (own) (check-in removed 5 Nov 2026) | ✓ | ✓ | ✓ | ✓ |
 | Comment, bug, upload, chat | ✓ | ✓ | ✓ | ✓ (projects they're on) |
 | Dashboard | ✓ | ✓ | own projects | — |
 | Time & cost page, rates, Database page | ✓ | — | — | — |
@@ -196,9 +205,9 @@ built-in roles give the old table's answers in every case. Routes:
 - **The sidebar lists my channels**: those I'm a member of and my projects' chats. Other public channels are found through search; **join** works on public, non-project, open channels (`You can only join public channels.`); **leave** on any but a project's (`This channel follows its project.`) or a DM (`You can't leave a conversation.`).
 - **Project files** are removed by whoever added them, the manager or an Admin (`You can only remove files you added.`); the bytes go when nothing else uses them. A refused or cancelled upload leaves no bytes behind; `upload` takes an abort signal.
 - **Rates keep their history**: each change adds a row `{ id, userId, hourlyCost, currency, effectiveFrom }` (a second change the same day corrects that day's row). Every cost is entry by entry at `rateAt(rates, userId, entry.startedAt)`; time before every row uses the earliest. DB_VERSION 6 migrates old rates to rows in effect since the start of time.
-- **Check-out can be undone** the same local day (`You haven't checked out today.`); the stopped timer stays stopped.
-- **Timers stop** when their task moves into a Done-type column, when the person checks in on a new day (at the 12-hour limit), and at 12 hours on screen.
-- **Time zone**: every request sends `X-Time-Zone: <IANA zone>`; "today", check-ins and report weeks are that zone's.
+- ~~**Check-out can be undone**~~ (removed 5 Nov 2026, timer slice 3: there is no check-out).
+- **Timers stop** when their task moves into a Done-type column, when the person starts a timer on a new day (at the 12-hour limit), at the timer timeout (`'timeout'`, amended 5 Nov 2026), and at 12 hours on screen.
+- **Time zone**: every request sends `X-Time-Zone: <IANA zone>`; "today", attendance days and report weeks are that zone's.
 - **Typing**: the client sends `userTyping { channelId, userId }` at most every 2 s while typing; readers show it for 3 s.
 - **Text fields** must be text (`Title must be text.`, `Name must be text.`…); links are `{ label, url }` (`Each link needs a label and an address.`); an unknown phase is `That phase no longer exists.` A task's create is checked in its own write, like an update.
 - **Events added**: `filesChanged` also on remove; `channelChanged` on archive, restore, join and leave; `projectChanged` + `channelChanged` + `timeLogged` on a project's archive.
@@ -304,16 +313,20 @@ Settings → Archived records needs "Manage archived records" (`archive.manage`,
 
 Restoring uses each type's own call and rights; the list shows `restoreBlocked` in place of Restore. Archiving or restoring what is already so changes nothing and sends nothing; the reason is checked after access. Changing the retention sends no event (another open tab sees the new dates on its next load), and "Can be deleted" compares with the browser's clock (the server checks again on delete).
 
-### 4.8 Attendance (amended 1 Nov 2026, Admin and help slice 5)
+### 4.8 Attendance (amended 1 Nov 2026, Admin and help slice 5; amended 5 Nov 2026, timer slice 3)
 
-Check-in and check-out record the server's time, IP and device (the browser's user agent), and the browser's place:
+Amended 5 Nov 2026 (timer slice 3, `2026-11-05-task-timer-and-dashboard-design.md` §4.3): there is no check-in. A person's **day** is
+made of their timer entries that started on that local day: in is the first start (with its `startedFrom`), out the
+last end (none while a timer runs), hours their sum. Manual entries don't make or change a day. Left early is never
+when the last entry ended `'flow'` or `'timeout'`, nor today while a timer runs or is paused. DB v30 drops `checkIns`;
+an import that still carries them is accepted and they are dropped.
+
+A timer start or resume records the server's time, IP and device (the browser's user agent), and the browser's place:
 `location` is `{ lat, lng, accuracy }` (5 decimals, metres), `'blocked'` when refused, `'none'` when the device has none
-or doesn't answer in 8 seconds (`That location can't be right.` for anything else). Stored on the check-in as `inFrom` and
-`outFrom` (`{ ip, device, location }`); a check-in Flow closed (forgotten on an earlier day, deactivating) has
-`closedByFlow` and no `outFrom`. Checking out a check-in left open on an earlier day stops its timer and ends it with
-that day's last entry, as Flow, not at the moment of clicking. The server keeps a place to 5 decimals. Before someone's
-first check-in that recorded where it came from (`MyDay.firstCheckIn`, so people with older check-ins see it once too)
-the card says what is recorded and who sees it. In the prototype the IP is made up per browser.
+or doesn't answer in 8 seconds (`That location can't be right.` for anything else). Stored on the entry as
+`startedFrom` (`{ ip, device, location }`), returned only by Attendance. The server keeps a place to 5 decimals. Until
+someone's first timer start that recorded where it came from (`MyDay.firstStart`) the Start timer dialog says what is
+recorded and who sees it. In the prototype the IP is made up per browser.
 
 App use: `layout/ActivityTracker.tsx` (the CRM's) pings about once a minute while Flow is on screen and was used in the
 last 5 minutes. A ping within 5 minutes of my last visit's end, from the same IP and device on the same local day, adds a
@@ -323,12 +336,12 @@ visit. Pings aren't audited and send no event.
 
 Working hours (`settings.workHours`, DB v27): days (0 = Sunday), `HH:MM` start and end, time zone; default Sunday to
 Thursday, 09:00–17:00, Africa/Cairo. Late = in after the start on a working day; left early = out before the end of the
-check-in's own working day (a check-out after midnight never is), never when Flow closed it. An import whose working
+day's own working hours (an out after midnight never is), never when Flow or the timeout ended it. An import whose working
 hours break these rules, or name an unknown time zone, is refused. Changing them needs `settings.manage` and is logged (`Working days`, `Starts`,
 `Ends`). Refusals: `Pick at least one working day.`, `Pick days from Sunday to Saturday.`, `Times are HH:MM, such as
 09:00.`, `The day ends after it starts.`
 
-Who sees whom: yourself always; `checkins.all` ("See everyone’s check-ins and app use") everyone; `checkins.managed`
+Who sees whom: yourself always; `checkins.all` ("See everyone’s timers and app use", relabelled 5 Nov 2026) everyone; `checkins.managed`
 ("…of the people on projects they manage") the people on projects you manage that aren't archived. Anyone else: 403
 `You don't have access to their attendance.` `settings.open` now includes `checkins.view`, so Project managers and
 Members find Settings → Attendance; the user menu has **My attendance** for everyone.
@@ -336,18 +349,17 @@ Members find Settings → Attendance; the user menu has **My attendance** for ev
 | Call | Route | Notes |
 |---|---|---|
 | Scope | `GET /api/attendance/scope` | `{ userIds }`, me first. |
-| Check-ins | `GET /api/attendance/check-ins?days=&userId=` | Newest first; each with `ip`, `device`, `location`, `byFlow`, `newIp` / `newDevice` (differs from that person's previous check that had one), `offHours` (late or left early). |
-| Day | `GET /api/attendance/day?day=YYYY-MM-DD&userId=` | A row per person shown (active ones, plus deactivated ones with a check-in that day): in, out, hours checked in (until now while today's is open), app minutes, late, early. `Pick a day.` |
+| Days | `GET /api/attendance/days?days=&userId=` | Newest first; `AttendanceDay` `{ id, userId, day, inAt, outAt, hours, from, endReason, newIp, newDevice, late, early }`. `newIp` / `newDevice`: the first start differs from that person's day before that had one. Replaces `check-ins` (5 Nov 2026). |
+| Day | `GET /api/attendance/day?day=YYYY-MM-DD&userId=` | A row per person shown (active ones, plus deactivated ones with a day): `{ userId, inAt, outAt, hours, appMinutes, late, early }` (timer hours, until now while one runs). `Pick a day.` |
 | Visits | `GET /api/attendance/visits?days=&userId=` | Newest first. |
 | Report | `GET /api/attendance/report?days=&userId=` | Per person: days in, average in and out (minutes after midnight in the hours' zone), late, early, hours, app minutes. |
 | Working hours | `GET` / `PUT /api/settings/work-hours` `{ days, start, end }` | |
 | Ping | `POST /api/attendance/ping` | |
-| Check-in / out | `POST /api/time/check-in` `{ plan, target?, location }`, `/check-out` `{ location }` | As before, plus the place. |
 
-`days` is 1, 7, 30 or 90 (`Pick 1, 7, 30 or 90 days.`), ending today. A check-in or check-out sends `timeLogged`, which
+`days` is 1, 7, 30 or 90 (`Pick 1, 7, 30 or 90 days.`), ending today. A timer start, pause, resume or stop sends `timeLogged`, which
 also refreshes Attendance; app time refreshes once a minute on the page. Changing working hours sends no event.
 
-Open: a "day" (`CheckIn.day`, `Visit.day`, periods, the Day view) is the local day of the browser in the prototype,
+Open: a "day" (an attendance day, `Visit.day`, periods, the Day view) is the local day of the browser in the prototype,
 which for Spark Systems is Cairo. The backend should cut days in `workHours.timeZone`, and times on the page then read in
 that zone too; until then a viewer outside Cairo sees in and out times in their own zone, while averages and late and
 early use Cairo's.
@@ -379,14 +391,14 @@ inside Chat and Projects.
 
 | Screen | Route | Copy | Content |
 |---|---|---|---|
-| Home / My day | `/w/:ws` | `01-home-light` | Check-in card (or day summary), running timer, my tasks due today/overdue, mentions of me |
+| Home / My day | `/w/:ws` | `01-home-light` | Today card: the timer with Pause / Resume / Stop, or Start timer, and today's hours (replaced the check-in card, 5 Nov 2026); my tasks due today/overdue, mentions of me |
 | Projects | `/w/:ws/projects` | `03-leads-list` | Stat cards (active, overdue, due this month, on hold); DataTable: logo+name, client, PM, current phase, due, progress, hours (+ cost for Admin), overdue count; "New project" Sheet |
 | Project | `/w/:ws/p/:key/:tab` (`overview` \| `tasks` \| `chat` \| `time`) | `05-lead-detail` + `07-opportunities-board` | RecordHeader (logo, client, links, PM); **StageProgress = phases**; Overview: about, deliverables, team, files; Tasks: Board \| List grouped by phase (sprint filter when agile); Chat: project channel; Time: entries (+ cost for Admin) |
 | My tasks | `/w/:ws/tasks` | `03-leads-list` | My open tasks across projects, overdue first |
 | Task inspector | `?ticket=KEY` (unchanged) | `27-page-help-panel` | Fields (editable per role), Start timer / Add time, logged vs estimate, **Activity**: comments, bugs, attachments (image preview, video `<video controls>`, files) with a drop zone |
 | Chat | `/w/:ws/c/:channelId` (unchanged) | existing | Composer with `@` autocomplete (people, projects, tasks, @all); mention chips open the project/task |
 | Teams | `/w/:ws/teams` | `09-clients-list` | Teams and members (Admin edits) |
-| Dashboard | `/w/:ws/dashboard` | `14-reports` | Per project: phase, progress ring, hours vs estimate, expected finish, cost (Admin), who worked this week; "Checked in now" list |
+| Dashboard | `/w/:ws/dashboard` | `14-reports` | Per project: phase, progress ring, hours vs estimate, expected finish, cost (Admin), who worked this week; "Working now" list (was "Checked in now", 5 Nov 2026) |
 | Time & cost | `/w/:ws/time` | `12-payments` | Hours and cost by project / person / week; rates editor |
 | Database | `/w/:ws/settings/database` | `16-settings` | Export (downloads `spark-flow-export-<date>.json`), Reload seed, Reset (DeleteDialog confirm) |
 
@@ -399,17 +411,20 @@ Route changes from Phases 1+2:
 
 ## 6. Flows (the demo script)
 
+Amended 5 Nov 2026 (timer slice 3): the day starts with **Start timer**, not a check-in. See
+`2026-11-05-task-timer-and-dashboard-design.md` §5 for the timer's states.
+
 ```mermaid
 flowchart LR
-  A[Open app] --> B{Checked in today?}
-  B -- no --> C[Home: Check in<br/>plan note + pick project/task]
-  C --> D[CheckIn saved, timer starts]
-  B -- yes --> E[Running timer]
-  D --> E
-  E --> F[Switch task: old entry stops, new starts]
+  A[Open app] --> B{Timer running or paused?}
+  B -- no --> C[Start timer<br/>pick project, then task]
+  C --> E[Running timer]
+  B -- yes --> E
+  E --> F[Start another task: old entry stops, new starts]
+  E --> P[Pause / Resume: the count carries on]
   E --> G[Comment / bug / upload in task inspector]
   G --> H[Card in project chat + @mentions notify]
-  E --> I[Check out: open timer stops, day summary]
+  E --> I[Stop: the bar shows Start timer again]
 ```
 
 ```mermaid

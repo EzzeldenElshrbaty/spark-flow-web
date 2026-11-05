@@ -2449,7 +2449,7 @@ timers, and every role gets a dashboard with charts.
 - v30 deletes `doc.checkIns`. An import carrying `checkIns` is accepted and they are dropped.
 
 **Steps:**
-- [ ] Write the failing tests:
+- [x] Write the failing tests:
   - `a day is first timer start to last timer end; manual entries make no day`
   - `late from the first start; early from the last end; never early after 'flow' or 'timeout', or today while a
     timer runs or is paused`
@@ -2461,9 +2461,25 @@ timers, and every role gets a dashboard with charts.
   - `the seed has days from timer entries with startedFrom`
   - removed routes are 404 in `http.test`
   - the audit listing updated
-- [ ] Implement, then run `npx vitest run --project unit < /dev/null`. Expected: the mock and lib tests are green.
+- [x] Implement, then run `npx vitest run --project unit < /dev/null`. Expected: the mock and lib tests are green.
   UI tests may be red until T8.
-- [ ] Commit: `feat(attendance): days from timer entries; check-in removed from the API (timer slice 3)`.
+- [x] Commit: `feat(attendance): days from timer entries; check-in removed from the API (timer slice 3)`.
+- Rulings:
+  - `AttendanceDay` has `late` and `early` in place of `offHours`, so the In and Out cells each mark their own. The
+    spec (§4.3) is amended to say so.
+  - `newIp` / `newDevice` compare a day's first start with the same person's day before that had one.
+  - Working now: `checkins.all` lists every running timer on this workspace's open projects; `checkins.managed` only
+    those on projects they manage (a timer elsewhere isn't theirs to see, as Checked in now hid it). A paused timer
+    isn't listed. The spec (§4.4) is amended.
+  - v30 drops `checkIns` without turning them into timer entries, as the spec says; days before this change show
+    only what their timer entries say. An import at v30 that still has `checkIns` is accepted and they are dropped,
+    without changing the file passed in.
+  - The seed's timers now start at 5:50 UTC (7:40 for Salma's late day) and end at 15:05 (13:30 for Dina's early
+    day), each with `startedFrom`, so Attendance reads as check-ins did. On the third day the morning timer stops at
+    9:00 and 9:00 to 11:00 is added by hand, so there's still a manual entry without moving the day's out. MOB-104
+    goes from 20 h to 25.8 h (`tasks.test` updated; still past its 16 h estimate).
+  - One commit for T7 and T8's code: a T7-only commit wouldn't type-check, since the pages used the removed types.
+
 
 ### T8. UI: Today card, Days tab, Working now, copy, docs
 
@@ -2481,17 +2497,30 @@ timers, and every role gets a dashboard with charts.
   `HelpPage`, `settings.browser.test`.
 
 **Steps:**
-- [ ] Write the failing tests:
+- [x] Write the failing tests:
   - `Today shows Start timer, or the timer with its controls, and today's hours; no plan field`
   - `Attendance's Days tab lists in, out, hours and where from`
   - `?tab=checkins opens Days`
   - `Working now lists people with a running timer`
   - axe light and dark, and 390px, on the three pages
-- [ ] Implement, run the gates and `npm run help:shots`, then do the app check:
+- [x] Implement, run the gates and `npm run help:shots`, then do the app check:
   - a first visit opens on Sign in, then Home's Today card;
   - start a timer and check Attendance's Days and Working now;
   - stop it and check Days shows "out".
-- [ ] Commit: `feat(home): Today card replaces check-in; Attendance Days and Working now; help and docs`.
+- [x] Commit: `feat(home): Today card replaces check-in; Attendance Days and Working now; help and docs`.
+- Rulings:
+  - The Today card's **Start timer** (the page's primary button) opens the same Start timer dialog as the top bar,
+    in place of the old inline task picker.
+  - Day view: "Not checked out" and "Still in" go; a day with no out reads "Timer running". The hours columns are
+    "Hours".
+  - Days tab badges on Out: "By Flow", "Timed out" and "Paused", from the day's last `endReason`.
+  - Working now shows each row's live count (`runningClock` with `useNow`), as the spec asks.
+  - Fixed in passing, found by axe: the Today card's "Paused" line was too faint on the accent tint
+    (`text-fg-secondary` now), and Working now's dot had `aria-label` on a plain span (`role="img"` now). Both were
+    there before.
+  - New tests: `DashboardPage.test.tsx` (there was none) and `pages/home/today.browser.test.tsx` (the Today card in
+    each timer state and the dashboard, axe in light and dark, 390px).
+
 
 ## Slice 4: Dashboard for everyone (independent of slices 1 to 3)
 

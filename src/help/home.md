@@ -2,27 +2,28 @@
 title: Home and My day
 group: Work
 order: 1
-summary: Check in, run the timer, and see what's due and who mentioned you.
+summary: Start your timer, see today's time, what's due and who mentioned you.
 ---
-Home is your day: your check-in and timer, your tasks due today or overdue, and the latest mentions of you.
+Home is your day: your timer and today's time, your tasks due today or overdue, and the latest mentions of you.
 
-![Home with a check-in and a running timer](home.jpg "Checked in, with the timer on a task")
+![Home with a running timer](home.jpg "Today, with the timer on a task")
 
-## Checking in
+## Today
 
-Write a line about today's plan and press **Check in**. Pick a task or a whole project under **Start the timer on** to start the timer as you check in, or pick later.
+Starting a timer starts your day: there's nothing else to do first. **Start timer** asks for a project, then a task (yours first), or **No task** for the whole project. The top bar has the same button on every page.
 
-Checking in and out records the time, this device's IP address and browser, and your location if your browser allows it. You, the managers of your projects and people who can see everyone's check-ins see them in [Attendance](help:attendance).
+The first time, the dialog says what a timer start records: the time, this device's IP address and browser, and your location if your browser allows it. You, the managers of your projects and people who can see everyone's timers see them in [Attendance](help:attendance).
 
 ## The timer
 
-One timer runs at a time: starting another stops the last. The running timer also shows in the top bar, so you can stop it from any page. **Add time** logs time you didn't time. See [Time](help:time) for the rules.
+One timer runs at a time: starting another stops the last.
 
-## Checking out
+- **Pause** stops the count and keeps the task ready. **Resume** carries the count on from where it stopped.
+- **Stop** ends it. The next start counts from zero.
+- **Switch task**, while paused, starts the timer on another task.
+- A paused timer clears at the end of the day.
 
-**Check out** ends your day and stops the timer. Checked out by mistake? **Undo check-out** reopens today's check-in; the timer stays stopped.
-
-If you forgot to check out on an earlier day, Home says so. **Check out** closes it at that day's last time entry.
+The timer also shows in the top bar (and above the bottom bar on phones), so you can pause or stop it from any page. **Add time** logs time you didn't time. See [Time](help:time) for the rules.
 
 ## Mentions
 

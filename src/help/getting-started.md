@@ -31,7 +31,7 @@ The round **?** beside the bell opens help for the page you're on. It stays open
 Your name at the top right opens:
 
 - **Preferences**: notifications, keywords and Do Not Disturb. See [Preferences](help:preferences).
-- **My attendance**: your check-ins and time in Flow. See [Attendance](help:attendance).
+- **My attendance**: your days from your timers, and time in Flow. See [Attendance](help:attendance).
 - **Help**: the help centre.
 - **Light** or **Dark**: how Flow looks on this device.
 

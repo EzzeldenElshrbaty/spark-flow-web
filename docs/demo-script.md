@@ -11,9 +11,9 @@ reload it, so do it shortly before the demo. Switch people with the user menu �
 | Karim Hassan | Sales | Selling a new project |
 | Ahmed Shawky | PM (Mobile App, Sela) | Phases, tasks, his own dashboard |
 | Nour El-Sayed | PM (Nexus Core, El Moasser) | Mentions in the bell |
-| Salma Ibrahim | Member (QA) | A member's day: check in, bug report |
-| Tarek Lotfy | Member (Android) | Checking in on a new project |
-| Mariam, Hossam | Members | Already checked in "now" with timers running |
+| Salma Ibrahim | Member (QA) | A member's day: start the timer, pause, bug report |
+| Tarek Lotfy | Member (Android) | Starting work on a new project |
+| Mariam, Hossam | Members | Already working "now" with timers running |
 
 ## Story 1: a project from sale to dashboard (about 5 minutes)
 
@@ -21,26 +21,26 @@ reload it, so do it shortly before the demo. Switch people with the user menu �
    opens with 5 phases and its own chat.
 2. **Ahmed** → the project → **New task** twice: one with a due date, one with an estimate (6 h), both for Tarek.
    Show Manage phases (rename, reorder).
-3. **Tarek** → Home → **Check in** with a plan, starting the timer on the first task (the timer shows in the top bar
-   and, on a phone, above the bottom bar). Then the second task → **Add time** (1 h yesterday).
+3. **Tarek** → top bar → **Start timer**: Sela kiosk, then the first task (the timer shows in the top bar and, on a
+   phone, above the bottom bar). Then the second task → **Add time** (1 h yesterday).
 4. **Ahmed** → **Dashboard**: only his projects; Sela kiosk with hours against the estimate; Tarek under
-   "Checked in now".
+   "Working now".
 
 ## Story 2: a member's day (about 4 minutes)
 
-1. **Salma** → Home → **Check in**. Open **NEX-105** → **Start timer**.
+1. **Salma** → Home → **Start timer** → Nexus Core, **NEX-105**. **Pause**, then **Resume**: the count carries on.
 2. NEX-105 → **Activity** → **Bug**: attach a screenshot (a screen recording works too), type `@mar` and pick Mariam,
    **Report bug**. The card appears in **#nexus-core**.
 3. **Mariam** → the bell: "Salma Ibrahim mentioned you". Click it.
-4. **Salma** → **NEX-108** → **Start timer** (the NEX-105 entry stops by itself). Home → **Check out**: the day's
-   summary.
+4. **Salma** → **NEX-108** → **Start timer** (the NEX-105 entry stops by itself). Home → **Stop**: Today shows the
+   day's hours, and Settings → Attendance → **Days** shows her in and out.
 5. **Mariam** → Nexus Core → **Time**: only her own entries, with "Only you and the project's manager see your
    entries." **Nour** (its manager) sees everyone's. **Tarek** isn't on it, so there's no **Add time**.
 
 ## Story 3: the manager's view (about 3 minutes)
 
 1. **Youssef** → **Dashboard**: every project, cost to date, overdue tasks, who worked in the last 7 days, and who is
-   checked in now (with what they're on).
+   working now (with what they're on).
 2. **Time & cost**: 7 / 30 / 90 days; By project, By person, By week (the chart). **Edit hourly costs** → change one
    rate and come back: the cost moves.
 3. A Member typing `/dashboard` or `/time` is told they don't have access.
@@ -75,11 +75,11 @@ reload it, so do it shortly before the demo. Switch people with the user menu �
 6. Nexus Core → **Edit project**: untick Hossam and the Backend team. The form says "Hossam Gaber keeps 1 open task
    here." Save: #nexus-core drops him, and NEX-107 reads "Hossam Gaber (not on this project)" until reassigned.
 7. Mobile App → Overview → **Files**: drop three files at once (one empty): two upload, the empty one says so. ⋯ →
-   **Remove file**. Home → **Check out**, then **Undo check-out**.
+   **Remove file**. Home → **Pause** the timer, then **Switch task** to start on another.
 8. **Youssef** → Sela booking → ⋯ → **Archive project**: it leaves Projects, the sidebar and the dashboard, and
    #sela-booking is read-only. Projects → **Show archived** → open it → **Restore project**.
-9. Settings → Database → **Export data**, then **Import data** with that file (type `import`). Home → the timer picker
-   has **Whole project · Nexus Core**.
+9. Settings → Database → **Export data**, then **Import data** with that file (type `import`). **Start timer** → Nexus
+   Core → the Task list has **No task** for the whole project.
 10. **Time & cost** → pick a project → **Export CSV**. Two tabs (one **View as Mariam**) on #general: typing in one shows
    "Mariam Fathy is typing…" in the other.
 
