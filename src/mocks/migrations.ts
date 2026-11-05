@@ -1,4 +1,5 @@
 import { DEFAULT_WORK_HOURS } from '@/lib/workHours'
+import { DEFAULT_TIMEOUT_HOURS } from '@/lib/hours'
 import { parseBody } from '@/lib/messageBody'
 import { DEFAULT_COLUMNS } from '@/lib/statuses'
 
@@ -25,6 +26,11 @@ const V24_ROLES = [
 ]
 
 export const migrations: Record<number, (doc: Record<string, unknown>) => void> = {
+  // 29: the timer timeout (timer slice 2): a running timer pauses after 4 hours unless the company says otherwise.
+  28: (doc) => {
+    const settings = typeof doc.settings === 'object' && doc.settings !== null ? (doc.settings as Record<string, unknown>) : {}
+    doc.settings = { ...settings, timerTimeoutHours: settings.timerTimeoutHours ?? DEFAULT_TIMEOUT_HOURS }
+  },
   // 28: pause and stop (timer slice 1): a timer entry says why it ended. Older ones were stopped (or are running);
   // manual ones never ran.
   27: (doc) => {

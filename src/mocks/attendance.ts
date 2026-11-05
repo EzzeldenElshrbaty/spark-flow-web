@@ -1,5 +1,6 @@
 import type { Api, AttendanceDayRow, AttendancePeriod, AttendanceQuery, AttendanceReportRow, CheckEvent, CheckIn, CheckSource, User, Visit } from '@/api/types'
 import { localDay } from '@/lib/dates'
+import { timeoutProblem } from '@/lib/hours'
 import { isActive } from '@/lib/people'
 import { can } from '@/lib/permissions'
 import { projectPeopleIds } from '@/lib/projectPeople'
@@ -187,6 +188,27 @@ export function attendanceApi(db: MockDb, now: () => Date): Api['attendance'] {
           audit(data, { action: 'changed', group: 'settings', record: { type: 'settings', id: 'workHours', name: 'Working hours' }, changes, detail: describeWorkHours(next) })
         }
         return clone(data.settings.workHours)
+      })
+    },
+
+    async timer() {
+      await delay()
+      return { timeoutHours: (await db.read()).settings.timerTimeoutHours }
+    },
+
+    async setTimer(input) {
+      await delay()
+      return db.update((data) => {
+        const me = currentUser(data)
+        if (!can('settings.manage', { userId: me.id, grants: grantsFor(data, me) })) throw forbidden('settings')
+        const problem = timeoutProblem(input?.timeoutHours)
+        if (problem) throw badRequest(problem)
+        const was = data.settings.timerTimeoutHours
+        if (was !== input.timeoutHours) {
+          data.settings.timerTimeoutHours = input.timeoutHours
+          audit(data, { action: 'changed', group: 'settings', record: { type: 'settings', id: 'timer', name: 'Timer' }, changes: [{ field: 'Timer timeout', from: `${was} h`, to: `${input.timeoutHours} h` }] })
+        }
+        return { timeoutHours: data.settings.timerTimeoutHours }
       })
     },
 

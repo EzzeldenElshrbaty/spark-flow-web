@@ -279,3 +279,9 @@ describe('27 → 28', () => {
     expect(out.timeEntries.map((e) => [e.id, e.endReason])).toEqual([['a', 'stopped'], ['b', null], ['c', null]])
   })
 })
+
+describe('28 → 29', () => {
+  it('timers pause after 4 hours unless the company says otherwise', () => {
+    expect(migrate({ version: 28, currentUserId: 'u-1', settings: { archiveRetentionDays: 90 } }, 29)).toMatchObject({ version: 29, settings: { archiveRetentionDays: 90, timerTimeoutHours: 4 } })
+  })
+})

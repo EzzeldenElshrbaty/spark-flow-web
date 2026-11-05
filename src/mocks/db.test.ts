@@ -42,7 +42,7 @@ const emptyData = (): DbData => ({
   notificationPrefs: [],
   roles: [],
   audit: [],
-  settings: { archiveRetentionDays: 365, workHours: { days: [0, 1, 2, 3, 4], start: '09:00', end: '17:00', timeZone: 'Africa/Cairo' } },
+  settings: { archiveRetentionDays: 365, workHours: { days: [0, 1, 2, 3, 4], start: '09:00', end: '17:00', timeZone: 'Africa/Cairo' }, timerTimeoutHours: 4 },
   visits: [],
   counters: {},
 })
@@ -266,7 +266,16 @@ describe('createDb', () => {
     await db.importAll({ app: 'spark-flow', version: 26, exportedAt: 'T', data: older as never })
     const data = await db.read()
     expect(data.visits).toEqual([])
-    expect(data.settings).toEqual({ archiveRetentionDays: 90, workHours: { days: [0, 1, 2, 3, 4], start: '09:00', end: '17:00', timeZone: 'Africa/Cairo' } })
+    expect(data.settings).toEqual({ archiveRetentionDays: 90, workHours: { days: [0, 1, 2, 3, 4], start: '09:00', end: '17:00', timeZone: 'Africa/Cairo' }, timerTimeoutHours: 4 })
+  })
+
+  it('a timer timeout that isn’t 1 to 12 whole hours (timer slice 2) is refused on import', async () => {
+    const db = createDb(createMemoryStore(), fakeSeed)
+    const base = (await db.exportAll()).data
+    for (const timerTimeoutHours of [0, 13, 2.5, '4']) {
+      const odd = { ...base, settings: { ...base.settings, timerTimeoutHours } }
+      await expect(db.importAll({ app: 'spark-flow', version: DB_VERSION, exportedAt: 'T', data: odd as never })).rejects.toMatchObject({ status: 400 })
+    }
   })
 
   it('a deactivation that isn’t one (slice 3) is refused on import', async () => {

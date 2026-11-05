@@ -236,3 +236,18 @@ describe('working hours (slice 5)', () => {
     expect(await detail(api.attendance.setWorkHours({ days: [0], start: '09:00', end: '17:00' }))).toBe("You don't have access to settings.")
   })
 })
+
+describe('the timer timeout setting (timer slice 2)', () => {
+  it('reads 4 hours by default; setTimer needs settings.manage, refuses anything but 1 to 12 whole hours, and audits Timer timeout', async () => {
+    expect(await api.attendance.timer()).toEqual({ timeoutHours: 4 })
+    for (const bad of [0, 13, 2.5, '4']) {
+      await expect(api.attendance.setTimer({ timeoutHours: bad as number })).rejects.toMatchObject({ status: 400, detail: 'Pick a whole number of hours from 1 to 12.' })
+    }
+    expect(await api.attendance.setTimer({ timeoutHours: 2 })).toEqual({ timeoutHours: 2 })
+    const entry = (await db.read()).audit.at(-1)!
+    expect(entry).toMatchObject({ action: 'changed', group: 'settings', changes: [{ field: 'Timer timeout', from: '4 h', to: '2 h' }] })
+    await api.users.viewAs('u-3')
+    await expect(api.attendance.setTimer({ timeoutHours: 3 })).rejects.toMatchObject({ status: 403 })
+    expect(await api.attendance.timer()).toEqual({ timeoutHours: 2 })
+  })
+})

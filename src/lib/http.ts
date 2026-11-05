@@ -220,6 +220,8 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
       report: (q) => get(`/api/attendance/report${attendanceQuery(q)}`),
       workHours: () => get('/api/settings/work-hours'),
       setWorkHours: (input) => send('PUT', '/api/settings/work-hours', input),
+      timer: () => get('/api/settings/timer'),
+      setTimer: (input) => send('PUT', '/api/settings/timer', input),
       ping: () => send<void>('POST', '/api/attendance/ping'),
     },
     time: {

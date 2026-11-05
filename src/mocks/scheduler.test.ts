@@ -202,3 +202,55 @@ describe('runScheduler: a saved file’s reminder (review)', () => {
     expect(notes.at(-1)?.flowbot).toMatchObject({ kind: 'reminder', channelId: 'c-backend', target: { kind: 'file', id: f.id } })
   })
 })
+
+describe('runScheduler: the timer timeout (timer slice 2)', () => {
+  const HOUR = 3_600_000
+  /** u-1's own timer entry on NEX-101, started `ms` before NOW. */
+  const runFor = async (ms: number) =>
+    db.update((d) => {
+      d.settings.timerTimeoutHours = 4
+      d.timeEntries.push({ id: 'te-mine', userId: 'u-1', projectId: 'p-nex', taskId: 't-nex-101', startedAt: before(ms), endedAt: null, source: 'timer', note: '', endReason: null })
+    })
+  const mine = async () => (await db.read()).timeEntries.find((e) => e.id === 'te-mine')!
+
+  it("a timer running 4 h with a 4 h timeout ends at startedAt + 4 h with 'timeout' and publishes timeLogged", async () => {
+    await runFor(4 * HOUR)
+    await runScheduler(db, hub, NOW)
+    expect(await mine()).toMatchObject({ endedAt: NOW.toISOString(), endReason: 'timeout' })
+    expect(events).toContainEqual({ type: 'timeLogged', userId: 'u-1', projectId: 'p-nex' })
+  })
+
+  it('keeps a timer under the timeout running', async () => {
+    await runFor(4 * HOUR - 1000)
+    await runScheduler(db, hub, NOW)
+    expect((await mine()).endedAt).toBeNull()
+  })
+
+  it('asleep 10 h with a 4 h timeout: endedAt is startedAt + 4 h', async () => {
+    await runFor(10 * HOUR)
+    await runScheduler(db, hub, NOW)
+    expect(await mine()).toMatchObject({ endedAt: before(6 * HOUR), endReason: 'timeout' })
+  })
+
+  it("timeout 12 at exactly 12 h ends once with 'timeout'", async () => {
+    await runFor(12 * HOUR)
+    await db.update((d) => void (d.settings.timerTimeoutHours = 12))
+    await runScheduler(db, hub, NOW)
+    expect(await mine()).toMatchObject({ endedAt: NOW.toISOString(), endReason: 'timeout' })
+    events = []
+    await runScheduler(db, hub, NOW)
+    expect(events.filter((e) => e.type === 'timeLogged')).toEqual([])
+  })
+
+  it('a resumed timer counts from its resume', async () => {
+    await db.update((d) => {
+      d.settings.timerTimeoutHours = 4
+      d.timeEntries.push(
+        { id: 'te-before', userId: 'u-1', projectId: 'p-nex', taskId: 't-nex-101', startedAt: before(6 * HOUR), endedAt: before(3 * HOUR), source: 'timer', note: '', endReason: 'paused' },
+        { id: 'te-mine', userId: 'u-1', projectId: 'p-nex', taskId: 't-nex-101', startedAt: before(2 * HOUR), endedAt: null, source: 'timer', note: '', endReason: null },
+      )
+    })
+    await runScheduler(db, hub, NOW)
+    expect((await mine()).endedAt).toBeNull()
+  })
+})

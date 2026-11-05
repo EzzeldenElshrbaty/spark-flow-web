@@ -27,6 +27,7 @@ import type {
 import { DB_VERSION, type SeedResult } from './db'
 import { checklistTxt, screenshotPng, scopePdf } from './seedFiles'
 import { localDay } from '@/lib/dates'
+import { DEFAULT_TIMEOUT_HOURS } from '@/lib/hours'
 import { DEFAULT_WORK_HOURS } from '@/lib/workHours'
 import { mentionsFor } from './mentions'
 import { parseMentions, parseTicketKeys } from './text'
@@ -586,7 +587,7 @@ export function seed(now: Date): SeedResult {
     notificationPrefs: [],
     roles: builtInRoles(),
     audit: [],
-    settings: { archiveRetentionDays: 365, workHours: { ...DEFAULT_WORK_HOURS, days: [...DEFAULT_WORK_HOURS.days] } },
+    settings: { archiveRetentionDays: 365, workHours: { ...DEFAULT_WORK_HOURS, days: [...DEFAULT_WORK_HOURS.days] }, timerTimeoutHours: DEFAULT_TIMEOUT_HOURS },
     visits: visits.sort((a, b) => (a.startedAt < b.startedAt ? -1 : 1)),
     activity: tickets
       .map((t) => ({ id: `act-${t.id}`, projectId: t.projectId, taskKey: t.key, actorId: t.reporterId, at: t.createdAt, kind: 'task.created' as const, changes: [] }))

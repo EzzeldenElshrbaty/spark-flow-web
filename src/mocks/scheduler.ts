@@ -9,6 +9,7 @@ import { canRead } from './membership'
 import { filePlace, rowText, savedRow } from './saved'
 import type { MockHub } from './realtime'
 import { clone, newId } from './shared'
+import { timeoutTimers } from './time'
 
 /** How often the prototype looks for due reminders and scheduled messages (a server would run a job queue). */
 export const SCHEDULER_EVERY_MS = 15_000
@@ -118,8 +119,8 @@ function destination(data: DbData, item: ScheduledMessage): string {
 }
 
 /**
- * Fires every reminder and sends every scheduled message that is due at `now`, inside one transaction, so each fires
- * once however many tabs run it. Returns how many it handled and the events to publish.
+ * Fires every reminder and sends every scheduled message that is due at `now`, and pauses every timer past the
+ * timeout, inside one transaction, so each happens once however many tabs run it. Returns how many it handled and the events to publish.
  */
 export function fireDue(data: DbData, now: Date): { handled: number; events: RealtimeEvent[] } {
   const at = now.toISOString()
@@ -143,6 +144,8 @@ export function fireDue(data: DbData, now: Date): { handled: number; events: Rea
     }
     handled++
   }
+  // Timers left running past the timeout pause themselves (timer slice 2); they aren't counted as handled.
+  events.push(...timeoutTimers(data, now))
   return { handled, events }
 }
 

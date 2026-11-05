@@ -34,6 +34,15 @@ export function useWorkHours() {
   return useQuery({ queryKey: qk.attendance('workHours'), queryFn: () => api.attendance.workHours(), retry })
 }
 
+/** The timer timeout (timer slice 2). */
+export function useTimerSetting() {
+  return useQuery({ queryKey: qk.attendance('timer'), queryFn: () => api.attendance.timer(), retry })
+}
+
+export function useSetTimerSetting() {
+  return useMutation({ mutationFn: (timeoutHours: number) => api.attendance.setTimer({ timeoutHours }) })
+}
+
 export function useSetWorkHours() {
   return useMutation({ mutationFn: (input: { days: number[]; start: string; end: string }) => api.attendance.setWorkHours(input) })
 }

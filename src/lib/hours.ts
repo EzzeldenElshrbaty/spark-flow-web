@@ -31,3 +31,10 @@ export function entryHours(entry: Pick<TimeEntry, 'startedAt' | 'endedAt'>, now:
 export function timerForTask(timer: MyTimer | null | undefined, taskId: string): MyTimer | null {
   return timer && 'taskId' in timer.target && timer.target.taskId === taskId ? timer : null
 }
+
+/** The timer timeout (timer slice 2): a running timer pauses after this many hours, 1 to 12, 4 unless an Admin says otherwise. */
+export const DEFAULT_TIMEOUT_HOURS = 4
+/** Why a timer timeout can't be used, or null when it can: a whole number of hours from 1 to the 12-hour limit. */
+export function timeoutProblem(hours: unknown): string | null {
+  return typeof hours === 'number' && Number.isInteger(hours) && hours >= 1 && hours <= MAX_ENTRY_HOURS ? null : 'Pick a whole number of hours from 1 to 12.'
+}

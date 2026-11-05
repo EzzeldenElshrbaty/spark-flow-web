@@ -1,4 +1,5 @@
 import { checkWorkHours } from '@/lib/workHours'
+import { timeoutProblem } from '@/lib/hours'
 import type {
   ChannelMemberState,
   Draft,
@@ -42,7 +43,7 @@ export { memorySession } from './actor'
 import { migrate } from './migrations'
 import type { MockStore } from './store'
 
-export const DB_VERSION = 28 // 2: the company-system document (spec §3); 3: mention read state; 4: channel reads per person; 5: typed columns, history; 6: rate history; 7: message seq, channel member state; 8: message bodies; 9: drafts; 10: deleted messages kept for Undo; 11: thread follows; 12: activity items, channel levels; 13: channel description, who can post; 14: email invites, default channels; 15: file details (uploader, title, description, scan); 16: reminders, scheduled messages; 17: reminders on saved items; 18: text snippets; 19: /remind notes; 20: pins, folders, bookmarks; 21: sidebar order; 22: sidebar order ids (projects too); 23: notification preferences, levels that follow the default; 24: roles as records, people with roleIds; 25: the audit log; 26: settings (archive retention), Manage archived records for Admin; 27: visits, working hours; 28: why a timer entry ended (pause, stop)
+export const DB_VERSION = 29 // 2: the company-system document (spec §3); 3: mention read state; 4: channel reads per person; 5: typed columns, history; 6: rate history; 7: message seq, channel member state; 8: message bodies; 9: drafts; 10: deleted messages kept for Undo; 11: thread follows; 12: activity items, channel levels; 13: channel description, who can post; 14: email invites, default channels; 15: file details (uploader, title, description, scan); 16: reminders, scheduled messages; 17: reminders on saved items; 18: text snippets; 19: /remind notes; 20: pins, folders, bookmarks; 21: sidebar order; 22: sidebar order ids (projects too); 23: notification preferences, levels that follow the default; 24: roles as records, people with roleIds; 25: the audit log; 26: settings (archive retention), Manage archived records for Admin; 27: visits, working hours; 28: why a timer entry ended (pause, stop); 29: the timer timeout
 /** Phase 1+2 kept the mock database in localStorage under keys starting with this. */
 const LEGACY_PREFIX = 'spark-flow.mockdb.v1'
 
@@ -117,6 +118,8 @@ export type DbData = {
     retiredKeys?: string[]
     /** What late and early mean on Attendance (slice 5). */
     workHours: WorkHours
+    /** A running timer pauses after this many hours and asks if you're still working (timer slice 2). */
+    timerTimeoutHours: number
   }
   /** Time using Flow (slice 5), oldest first. */
   visits: Visit[]
@@ -187,7 +190,8 @@ function hasShape(value: unknown): value is DbData {
     isRecord(value.mentionReads) &&
     isRecord(value.settings) &&
     typeof value.settings.archiveRetentionDays === 'number' &&
-    isRecord(value.settings.workHours)
+    isRecord(value.settings.workHours) &&
+    timeoutProblem(value.settings.timerTimeoutHours) === null
   )
 }
 

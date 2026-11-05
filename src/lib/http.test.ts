@@ -201,6 +201,8 @@ describe('createHttpApi', () => {
     await api.attendance.report({ days: 90 })
     await api.attendance.workHours()
     await api.attendance.setWorkHours({ days: [0, 1], start: '09:00', end: '17:00' })
+    await api.attendance.timer()
+    await api.attendance.setTimer({ timeoutHours: 3 })
     await api.attendance.ping()
     await api.time.checkIn({ plan: 'Reviews', location: { lat: 30, lng: 31, accuracy: 20 } })
     await api.time.checkOut()
@@ -212,6 +214,8 @@ describe('createHttpApi', () => {
       'GET /api/attendance/report?days=90',
       'GET /api/settings/work-hours',
       'PUT /api/settings/work-hours {"days":[0,1],"start":"09:00","end":"17:00"}',
+      'GET /api/settings/timer',
+      'PUT /api/settings/timer {"timeoutHours":3}',
       'POST /api/attendance/ping',
       'POST /api/time/check-in {"plan":"Reviews","location":{"lat":30,"lng":31,"accuracy":20}}',
       'POST /api/time/check-out {"location":"none"}',

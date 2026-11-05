@@ -2357,7 +2357,7 @@ timers, and every role gets a dashboard with charts.
 - Hooks: `useTimerSetting()` and `useSetTimerSetting()`.
 
 **Steps:**
-- [ ] Write the failing tests:
+- [x] Write the failing tests:
   - `a timer running 4 h with a 4 h timeout ends at startedAt + 4 h with 'timeout' and publishes timeLogged`
   - `asleep 10 h with a 4 h timeout: endedAt is startedAt + 4 h` (Review focus 3)
   - `timeout 12 at exactly 12 h ends once with 'timeout'` (Review focus 4)
@@ -2367,10 +2367,16 @@ timers, and every role gets a dashboard with charts.
   - `28 → 29 sets timerTimeoutHours 4`
   - `an import with timerTimeoutHours 13 is refused`
   - the routes, and the audit listing
-- [ ] Implement, then run `npx vitest run src/mocks src/lib < /dev/null`. Expected: green.
-- [ ] Add the dev helper `__sparkFlowDev.ageTimer(hours)` in `mocks/index.ts`: it moves my running entry's
+- [x] Implement, then run `npx vitest run src/mocks src/lib < /dev/null`. Expected: green.
+- [x] Add the dev helper `__sparkFlowDev.ageTimer(hours)` in `mocks/index.ts`: it moves my running entry's
   `startedAt` back by that many hours, for the app check.
-- [ ] Commit: `feat(time): timer timeout setting, enforced by the scheduler (timer slice 2)`.
+- [x] Commit: `feat(time): timer timeout setting, enforced by the scheduler (timer slice 2)`.
+- Rulings:
+  - The rule lives in `lib/hours.ts` (`DEFAULT_TIMEOUT_HOURS`, `timeoutProblem`), shared by the mock, the import
+    check and, in T6, the sheet.
+  - Timeouts aren't counted in `fireDue`'s `handled`, which stays reminders and scheduled messages; they only add
+    `timeLogged` events.
+- Done: 5 scheduler tests, the setting, 28 → 29, the import refusal, routes and audit; unit and lint green.
 
 ### T6. Still working dialog and the setting on Attendance
 

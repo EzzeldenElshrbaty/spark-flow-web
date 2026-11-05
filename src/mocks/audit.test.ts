@@ -112,6 +112,7 @@ const RECORDED: Record<string, Recorded> = {
   'db.reset': r(settings('reset', 'data'), (a) => a.db.reset()),
   'archive.setRetention': r(settings('changed', 'settings'), (a) => a.archive.setRetention(90)),
   'attendance.setWorkHours': r(settings('changed', 'settings'), (a) => a.attendance.setWorkHours({ days: [0, 1, 2, 3], start: '08:00', end: '16:00' })),
+  'attendance.setTimer': r(settings('changed', 'settings'), (a) => a.attendance.setTimer({ timeoutHours: 2 })),
   'archive.deleteForGood': r(
     status('deleted', 'task'),
     (a, key: string) => a.archive.deleteForGood('task', key),
@@ -142,6 +143,7 @@ const NOT_RECORDED: Record<string, string> = {
   'attendance.visits': READ,
   'attendance.report': READ,
   'attendance.workHours': READ,
+  'attendance.timer': READ,
   'attendance.ping': 'app use, about once a minute: Attendance is its record, and it would bury the log',
   'chat.openDm': 'a conversation is made by its first message, and messages aren’t in the log',
   'chat.join': `${MINE}; joining a public channel gives no access the workspace didn’t have`,

@@ -7,6 +7,7 @@ import type { DbData, MockDb } from './db'
 import { delay } from './latency'
 import { findProject, openProject } from './projects'
 import type { MockHub } from './realtime'
+import type { RealtimeEvent } from '@/lib/realtime'
 import { buildReport } from './report'
 import { ApiError } from '@/lib/apiError'
 import { badRequest, clone, currentUser, newId, notFound, requireCan } from './shared'
@@ -151,6 +152,24 @@ export function stopRunning(data: DbData, userId: string, at: string, reason: En
   const running = data.timeEntries.find((e) => e.userId === userId && e.endedAt === null)
   if (running) endEntry(running, new Date(at), reason)
   return running
+}
+
+/**
+ * The timer timeout (timer slice 2): every running timer that has run `settings.timerTimeoutHours` since it started or
+ * resumed ends exactly there, as 'timeout', however late the pass comes (a laptop asleep). Run by the scheduler,
+ * inside its transaction; the time after it is never counted.
+ */
+export function timeoutTimers(data: DbData, now: Date): RealtimeEvent[] {
+  const limit = data.settings.timerTimeoutHours * HOUR
+  const events: RealtimeEvent[] = []
+  for (const e of data.timeEntries.filter((e) => e.source === 'timer' && e.endedAt === null)) {
+    const end = Date.parse(e.startedAt) + limit
+    if (end > now.getTime()) continue
+    e.endedAt = new Date(end).toISOString()
+    e.endReason = 'timeout'
+    events.push({ type: 'timeLogged', userId: e.userId, projectId: e.projectId })
+  }
+  return events
 }
 
 /** Time goes only on projects you're on (its manager, a member, one of its teams), or anywhere for an Admin. */

@@ -926,6 +926,10 @@ export interface Api {
     workHours(): Promise<WorkHours>
     /** "Change settings, users and roles"; the time zone stays. */
     setWorkHours(input: { days: number[]; start: string; end: string }): Promise<WorkHours>
+    /** How many hours a timer runs before it pauses and asks if I'm still working (timer slice 2). */
+    timer(): Promise<{ timeoutHours: number }>
+    /** "Change settings, users and roles"; a whole number of hours from 1 to 12. */
+    setTimer(input: { timeoutHours: number }): Promise<{ timeoutHours: number }>
     /** About once a minute while Flow is on screen and in use (layout/ActivityTracker). */
     ping(): Promise<void>
   }

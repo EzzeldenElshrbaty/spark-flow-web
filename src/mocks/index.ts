@@ -49,6 +49,8 @@ declare global {
       updateTicket(key: string, patch: TicketPatch): Promise<Ticket>
       /** A reminder for me about a message, due in `seconds`; the scheduler fires it on its next pass after that. */
       remindMe(messageId: string, seconds: number): Promise<void>
+      /** Moves my running timer's start `hours` back, so the timer timeout can be seen without waiting (timer slice 2). */
+      ageTimer(hours: number): Promise<void>
     }
   }
 }
@@ -209,6 +211,12 @@ export function getMockApi(): Api {
             const target = { kind: 'message' as const, id: messageId }
             data.saved = data.saved.filter((s) => !(s.userId === data.currentUserId && s.target.kind === 'message' && s.target.id === messageId))
             data.saved.push({ id: crypto.randomUUID(), userId: data.currentUserId, workspaceId, target, status: 'inProgress', remindAt, firedAt: null, savedAt: new Date().toISOString() })
+          }),
+        ageTimer: (hours) =>
+          db.update((data) => {
+            const running = data.timeEntries.find((e) => e.userId === data.currentUserId && e.endedAt === null)
+            if (!running) throw new Error('No timer is running.')
+            running.startedAt = new Date(Date.parse(running.startedAt) - hours * 3_600_000).toISOString()
           }),
       }
     }
