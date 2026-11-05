@@ -110,7 +110,9 @@ describe('roles (slice 1, spec §4.3)', () => {
 
   it('changing roles needs settings.manage: Sales gets 403, and the rights follow the roles at once', async () => {
     db.actAs('u-9')
-    for (const call of [api.roles.create({ name: 'X' }), api.roles.rename('pm', 'Y'), api.roles.remove('pm'), api.roles.saveGrants([])]) expect(await status(call)).toBe(403)
+    // Each call starts only when awaited: started together, the later 403s reject before anything listens.
+    for (const call of [() => api.roles.create({ name: 'X' }), () => api.roles.rename('pm', 'Y'), () => api.roles.remove('pm'), () => api.roles.saveGrants([])])
+      expect(await status(call())).toBe(403)
     expect((await api.roles.list()).length).toBe(4)
     expect(await status(api.rates.list())).toBe(403)
     db.actAs('u-1')
