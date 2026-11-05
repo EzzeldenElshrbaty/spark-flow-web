@@ -45,7 +45,7 @@ describe('can (spec §4.3)', () => {
 
   it('a PM manages phases, tasks and edits only projects they manage', () => {
     expect(can('project.create', as('pm', 'u-pm'))).toBe(false)
-    for (const action of ['project.edit', 'phase.manage', 'task.manage', 'dashboard.view'] as const) {
+    for (const action of ['project.edit', 'phase.manage', 'task.manage'] as const) {
       expect(canWith(action, { ...as('pm', 'u-pm'), project }), `${action} own`).toBe(true)
       expect(canWith(action, { ...as('pm', 'u-pm'), project: other }), `${action} other`).toBe(false)
     }
@@ -79,15 +79,15 @@ describe('can (spec §4.3)', () => {
     expect(can('task.manage', as('pm', 'u-pm', { project }))).toBe(true)
   })
 
-  it('a member who manages a project can view the dashboard', () => {
-    expect(can('dashboard.view', as('member', 'u-7', { managesAny: true }))).toBe(true)
-    expect(can('dashboard.view', as('member', 'u-7', { managesAny: false }))).toBe(false)
-    expect(can('dashboard.view', as('pm', 'u-pm', { managesAny: false }))).toBe(false)
+  it('a Member may view the dashboard', () => {
+    for (const role of ['admin', 'sales', 'pm', 'member'] as const) expect(can('dashboard.view', as(role)), role).toBe(true)
+    // A custom role with nothing ticked opens it too: what it shows is scoped by the server.
+    expect(can('dashboard.view', { userId: 'u-new', grants: [] })).toBe(true)
+    expect(can('dashboard.everyProject', as('member'))).toBe(false)
   })
 
-  it('member cannot open database or the dashboard', () => {
+  it('member cannot open database', () => {
     expect(can('database.manage', as('member'))).toBe(false)
-    expect(can('dashboard.view', as('member'))).toBe(false)
   })
 })
 

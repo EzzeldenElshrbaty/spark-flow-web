@@ -74,6 +74,7 @@ export const qk = {
   sent: (workspaceId: string) => ['sent', workspaceId],
   dashboard: (workspaceId: string) => ['dashboard', workspaceId],
   workingNow: (workspaceId: string) => ['dashboard', 'working-now', workspaceId],
+  dashboardStats: (workspaceId: string) => ['dashboard', 'stats', workspaceId],
 } as const
 
 /** The events whose write the server also put in the audit log (slice 2); refusals and sign-ins publish none. */

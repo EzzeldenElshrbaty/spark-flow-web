@@ -2548,15 +2548,27 @@ timers, and every role gets a dashboard with charts.
   `GET /api/workspaces/:id/dashboard/stats`.
 
 **Steps:**
-- [ ] Write the failing tests:
+- [x] Write the failing tests:
   - `a Member may view the dashboard`
   - `scope: Admin and Sales all active projects; a PM managed ones plus ones they're on; a Member ones they're on;
     none for someone on none`
   - `stats: 14 days oldest first with mine ≤ hours; byProject most first; byStatus; overdue only in scope`
   - `cost stays cost.view only`
   - the route and the audit listing (not recorded: a read)
-- [ ] Implement, then run `npx vitest run src/mocks src/lib < /dev/null`. Expected: green.
-- [ ] Commit: `feat(dashboard): open to everyone, scoped to my projects, with stats (dashboard slice)`.
+- [x] Implement, then run `npx vitest run src/mocks src/lib < /dev/null`. Expected: green.
+- [x] Commit: `feat(dashboard): open to everyone, scoped to my projects, with stats (dashboard slice)`.
+- Rulings:
+  - `byStatus` uses the app's `StatusCategory` (`'todo' | 'inProgress' | 'done'`), not the plan's `'doing'`.
+  - `overdue[].dueAt` is `string | null`: a task over its estimate with no due date is overdue too. Due soonest first,
+    those with no due date last.
+  - "Done in the last 14 days": the task's newest `task.moved` line into its current column in the project's history;
+    with none, when it was made (it has been in that column since).
+  - The 14 days are local days, as Attendance's; an entry is split at local midnight, and a running one counts up to
+    now (capped by the 12-hour limit, `entryEnd`). `byProject` leaves out projects with no time.
+  - "On a project" is `projectPeople` (manager, member, or through a team), the rule tasks and chat already use.
+  - `managesAny` stays on `PermissionContext` until T10 takes out the UI that passes it; after T9 nothing reads it.
+  - `permissionsLegacy.test.ts` (the roles slice's old-table check) no longer compares `dashboard.view`; its last test
+    records the change. `searchShortcuts.test.ts` changes here, since a Member now finds the Dashboard.
 
 ### T10. Page, navigation and closing
 

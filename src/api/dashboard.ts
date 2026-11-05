@@ -11,3 +11,7 @@ export function useDashboard(workspaceId: string | undefined, enabled: boolean) 
 export function useWorkingNow(workspaceId: string | undefined, enabled: boolean) {
   return useQuery({ queryKey: qk.workingNow(workspaceId ?? ''), queryFn: () => api.dashboard.workingNow(workspaceId!), retry, enabled: enabled && Boolean(workspaceId) })
 }
+/** The dashboard's charts and overdue tasks, over the projects in my scope (dashboard slice). */
+export function useDashboardStats(workspaceId: string | undefined) {
+  return useQuery({ queryKey: qk.dashboardStats(workspaceId ?? ''), queryFn: () => api.dashboard.stats(workspaceId!), retry, enabled: Boolean(workspaceId) })
+}

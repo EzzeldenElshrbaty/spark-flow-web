@@ -92,7 +92,8 @@ describe('createHttpApi', () => {
     const api = createHttpApi(fetchFn)
     await api.dashboard.projects('w1')
     await api.dashboard.workingNow('w1')
-    expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url}`)).toEqual(['GET /api/workspaces/w1/dashboard', 'GET /api/workspaces/w1/dashboard/working-now'])
+    await api.dashboard.stats('w1')
+    expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url}`)).toEqual(['GET /api/workspaces/w1/dashboard', 'GET /api/workspaces/w1/dashboard/working-now', 'GET /api/workspaces/w1/dashboard/stats'])
   })
 
   it('maps the time report', async () => {

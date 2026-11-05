@@ -255,6 +255,7 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
     dashboard: {
       projects: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/dashboard`),
       workingNow: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/dashboard/working-now`),
+      stats: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/dashboard/stats`),
     },
     mentions: {
       mine: () => get('/api/mentions'),

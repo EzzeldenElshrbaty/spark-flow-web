@@ -37,17 +37,15 @@ describe('pages, tasks and people', () => {
   const grants = (role: string) => BUILT_IN_ROLES.find((r) => r.id === role)!.grants
   const titles = (role: string) => shortcutsFor(grants(role), 'engineering').pages.map((p) => p.title)
 
-  it('a member finds Home, Projects, My tasks, Teams and Attendance; an admin also Dashboard, Time & cost and the rest of Settings', () => {
-    expect(titles('member')).toEqual(['Home', 'Projects', 'My tasks', 'Teams', 'Settings', 'Attendance'])
+  it('a member finds Home, Projects, My tasks, Teams, Dashboard and Attendance; an admin also Time & cost and the rest of Settings', () => {
+    expect(titles('member')).toEqual(['Home', 'Projects', 'My tasks', 'Teams', 'Dashboard', 'Settings', 'Attendance'])
     expect(titles('admin')).toEqual(['Home', 'Projects', 'My tasks', 'Teams', 'Dashboard', 'Time & cost', 'Settings', 'Users', 'Roles and permissions', 'Audit log', 'Attendance', 'Archived records', 'Rates', 'Database'])
     expect(shortcutsFor(grants('member'), 'engineering').pages[0]!.link).toBe('/w/engineering')
   })
 
-  it('whoever manages a project finds the Dashboard, whatever their roles (as the sidebar shows it)', () => {
-    const pages = (role: string, managesAny: boolean) => shortcutsFor(grants(role), 'engineering', { managesAny }).pages.map((p) => p.title)
-    expect(pages('pm', true)).toContain('Dashboard')
-    expect(pages('member', true)).toContain('Dashboard')
-    expect(pages('pm', false)).not.toContain('Dashboard')
+  it('everyone finds the Dashboard, whatever their roles (dashboard slice)', () => {
+    for (const role of ['admin', 'sales', 'pm', 'member']) expect(shortcutsFor(grants(role), 'engineering').pages.map((p) => p.title), role).toContain('Dashboard')
+    expect(shortcutsFor([], 'engineering').pages.map((p) => p.title)).toContain('Dashboard')
   })
 
   it('NEX-1 finds NEX-1 then NEX-10 in key order; a title word finds tasks; at most 5', () => {

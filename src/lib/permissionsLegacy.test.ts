@@ -63,9 +63,10 @@ function legacyCan(action: Action, ctx: LegacyContext): boolean {
   return false
 }
 
+// dashboard.view left the old table in the dashboard slice (everyone opens it); see the last test.
 const LEGACY_ACTIONS: Action[] = [
   'rates.view', 'cost.view', 'project.create', 'project.edit', 'phase.manage', 'task.manage', 'task.updateOwnStatus', 'time.logOwn',
-  'time.logOn', 'collab.post', 'dashboard.view', 'timeCost.view', 'database.manage', 'project.archive', 'channel.manage',
+  'time.logOn', 'collab.post', 'timeCost.view', 'database.manage', 'project.archive', 'channel.manage',
   'channel.restrictPosting', 'channel.post', 'channel.inviteByEmail', 'channel.setDefault', 'invitation.revoke', 'file.manage',
   'channel.archive', 'message.edit', 'message.delete',
 ]
@@ -100,13 +101,13 @@ describe('grants-based can() gives the old table’s answers for the built-in ro
                   cases++
                   if (before !== after) differ.push(`${role.id} ${action} ${JSON.stringify(shared)}: was ${before}, now ${after}`)
                 }
-    expect(cases).toBe(93_312)
+    expect(cases).toBe(89_424)
     expect(differ.slice(0, 5)).toEqual([])
   })
 
-  it('the one change: while it isn’t known yet whether someone manages a project, the PM role no longer stands in', () => {
-    const pm = BUILT_IN_ROLES.find((r) => r.id === 'pm')!
-    expect(legacyCan('dashboard.view', { userId: me, role: 'pm' })).toBe(true)
-    expect(can('dashboard.view', { userId: me, grants: pm.grants })).toBe(false)
+  it('the one change since: the dashboard opens for everyone (dashboard slice), where the old table refused a Member', () => {
+    const member = BUILT_IN_ROLES.find((r) => r.id === 'member')!
+    expect(legacyCan('dashboard.view', { userId: me, role: 'member', managesAny: false })).toBe(false)
+    expect(can('dashboard.view', { userId: me, grants: member.grants })).toBe(true)
   })
 })

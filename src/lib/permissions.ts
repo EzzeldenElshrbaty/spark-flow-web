@@ -188,10 +188,10 @@ export function can(action: Action, ctx: PermissionContext): boolean {
       return has(ctx, 'time.othersAll')
     case 'collab.post':
       return has(ctx, 'projects.postAll') || manages(ctx) || isOn(ctx)
-    // About one project: manages that one. Otherwise: manages any (refused while that isn't known yet).
+    // Everyone in the workspace (dashboard slice): what it shows is scoped to the projects they manage or are on.
     case 'dashboard.view':
-      return has(ctx, 'dashboard.all') || (ctx.project ? manages(ctx) : (ctx.managesAny ?? false))
-    // The dashboard covers every project, not only the ones the person manages.
+      return true
+    // The dashboard covers every project, not only the ones the person manages or is on.
     case 'dashboard.everyProject':
       return has(ctx, 'dashboard.all')
     case 'checkins.view':

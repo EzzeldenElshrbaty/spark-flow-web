@@ -231,6 +231,7 @@ const NOT_RECORDED: Record<string, string> = {
   'bookmarks.remove': 'as bookmarks.add',
   'dashboard.projects': READ,
   'dashboard.workingNow': READ,
+  'dashboard.stats': READ,
   'files.url': 'a read that previews use too; the page records a download through audit.noteDownload',
   'files.list': READ,
   'files.uploadForChat': `${MESSAGE}; a chat file goes out in a message`,

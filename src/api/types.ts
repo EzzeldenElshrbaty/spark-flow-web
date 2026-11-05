@@ -654,6 +654,20 @@ export type DashboardProject = ProjectSummary & {
 }
 /** Someone with a timer running on a project the dashboard covers (timer slice 3). */
 export type WorkingNow = { userId: string; taskId: string | null; projectId: string; startedAt: string }
+/**
+ * The dashboard's charts and overdue list (dashboard slice), over the projects in the viewer's scope. Hours are
+ * unrounded; each entry counts on the local days it ran, up to now.
+ */
+export type DashboardStats = {
+  /** The last 14 local days, oldest first, 'YYYY-MM-DD'; `mine` is my part of `hours`. */
+  days: { day: string; hours: number; mine: number }[]
+  /** The last 14 days by project, most first; projects with no time are left out. */
+  byProject: { projectId: string; hours: number }[]
+  /** Always To do, In progress, Done in that order; Done counts tasks that reached it in the last 14 days. */
+  byStatus: { category: StatusCategory; count: number }[]
+  /** Overdue tasks, due soonest first; over its estimate with no due date comes last. */
+  overdue: { taskId: string; key: string; title: string; projectId: string; assigneeId: string | null; dueAt: string | null }[]
+}
 /** One mention of me: a message, a thread reply or a task comment, with where it opens. */
 export type MentionItem = {
   id: string; source: 'message' | 'reply' | 'comment'; authorId: string; excerpt: string; createdAt: string; read: boolean
@@ -1061,7 +1075,7 @@ export interface Api {
     note(channelId: string, text: string, remindAt: string): Promise<SavedView>
   }
   /** The manager dashboard (spec §5): Admin and Sales see every project, a PM the ones they manage. */
-  dashboard: { projects(workspaceId: string): Promise<DashboardProject[]>; workingNow(workspaceId: string): Promise<WorkingNow[]> }
+  dashboard: { projects(workspaceId: string): Promise<DashboardProject[]>; workingNow(workspaceId: string): Promise<WorkingNow[]>; stats(workspaceId: string): Promise<DashboardStats> }
   /** Hourly cost per person: Admin only (spec §4.3). */
   rates: { list(): Promise<Rate[]>; update(userId: string, hourlyCost: number): Promise<Rate> }
   /** The Database page: mock only, hidden when backendOn. */
