@@ -25,11 +25,11 @@ export const navGroups: NavGroup[] = [
   {
     label: 'Work',
     items: [
+      // Everyone's start page (dashboard start): it shows the projects they manage or work on.
+      { path: 'dashboard', label: 'Dashboard', icon: IconLayoutDashboard, description: 'Your projects’ hours, tasks and who is working now', link: paths.dashboard },
       { path: 'home', label: 'Home', icon: IconHome, description: 'Your day: timer, today’s time and mentions', link: paths.home },
       { path: 'projects', label: 'Projects', icon: IconLayoutKanban, description: 'Every project in the workspace', link: paths.projects },
       { path: 'tasks', label: 'My tasks', icon: IconListCheck, description: 'Your open tasks, overdue first', link: paths.tasks },
-      // Everyone's (dashboard slice): it shows the projects they manage or work on.
-      { path: 'dashboard', label: 'Dashboard', icon: IconLayoutDashboard, description: 'Your projects’ hours, tasks and who is working now', link: paths.dashboard },
       { path: 'teams', label: 'Teams', icon: IconUsers, description: 'Teams and who is in them', link: paths.teams },
     ],
   },

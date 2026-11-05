@@ -119,8 +119,8 @@ export const router = createBrowserRouter([
         element: <WorkspaceGate />,
         children: workspacePages,
       },
-      // Old or mistyped links say so, with the way home.
-      { path: '*', element: <NotFound what="page" backTo="/" backLabel="Back to Home" /> },
+      // Old or mistyped links say so, with the way back to the Dashboard.
+      { path: '*', element: <NotFound what="page" backTo="/" backLabel="Back to Dashboard" /> },
     ],
   },
 ])

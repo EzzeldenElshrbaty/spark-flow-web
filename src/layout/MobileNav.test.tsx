@@ -21,29 +21,45 @@ const tab = (name: string) => within(screen.getByRole('navigation', { name: 'Mai
 describe('Phone navigation (spec 5.5, 6.16)', () => {
   it('Chat and Projects reopen the last place on their side', () => {
     useUiStore.getState().visit('engineering', '/w/engineering/c/c-backend')
-    useUiStore.getState().visit('engineering', '/w/engineering/dashboard')
+    useUiStore.getState().visit('engineering', '/w/engineering/teams')
     bar('/w/engineering/settings')
     expect(tab('Chat').getAttribute('href')).toBe('/w/engineering/c/c-backend')
-    expect(tab('Projects').getAttribute('href')).toBe('/w/engineering/dashboard')
+    expect(tab('Projects').getAttribute('href')).toBe('/w/engineering/teams')
   })
 
-  it('a side with no saved place opens on #general, or the project list (Home has its own tab)', () => {
+  it('Dashboard is the first tab; Home is in More (dashboard start)', () => {
+    bar('/w/engineering/settings')
+    const nav = screen.getByRole('navigation', { name: 'Main' })
+    expect(within(nav).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Dashboard', 'Projects', 'Chat', 'More'])
+    expect(tab('Dashboard').getAttribute('href')).toBe('/w/engineering/dashboard')
+  })
+
+  it('a side with no saved place opens on #general, or the project list (the Dashboard has its own tab)', () => {
     bar('/w/engineering/settings')
     expect(tab('Chat').getAttribute('href')).toBe('/w/engineering/c/c-general')
-    // Home has its own tab here, so Projects starts on the project list.
+    // The Dashboard has its own tab here, so Projects starts on the project list.
+    expect(tab('Projects').getAttribute('href')).toBe('/w/engineering/projects')
+    cleanup()
+    // So does a last place that is the Dashboard.
+    useUiStore.getState().visit('engineering', '/w/engineering/dashboard')
+    bar('/w/engineering/settings')
     expect(tab('Projects').getAttribute('href')).toBe('/w/engineering/projects')
   })
 
-  it('lights Chat on every chat page and Projects on the project pages, Home on its own', () => {
+  it('lights Chat on every chat page, Projects on the project pages and Home, and Dashboard on its own', () => {
     bar('/w/engineering/saved')
     expect(tab('Chat').className).toContain('text-sf-accent')
     cleanup()
     bar('/w/engineering/teams')
     expect(tab('Projects').className).toContain('text-sf-accent')
     cleanup()
-    bar('/w/engineering')
-    expect(tab('Home').className).toContain('text-sf-accent')
+    bar('/w/engineering/dashboard')
+    expect(tab('Dashboard').className).toContain('text-sf-accent')
     expect(tab('Projects').className).not.toContain('text-sf-accent')
+    cleanup()
+    bar('/w/engineering')
+    expect(tab('Projects').className).toContain('text-sf-accent')
+    expect(tab('Dashboard').className).not.toContain('text-sf-accent')
   })
 
   it('the menu drawer has the switch, 48px for touch, above the side’s rows', () => {

@@ -23,7 +23,7 @@ export function modeOf(pathname: string): WorkspaceMode | null {
 
 /**
  * Where moving to a side goes: the last place opened there while it still leads somewhere (its channel or project
- * may be gone), else that side's start (#general for Chat, Home for Projects). Undefined while the list it needs to
+ * may be gone), else that side's start (#general for Chat, the Dashboard for Projects). Undefined while the list it needs to
  * check is still loading.
  */
 export function modeTarget(
@@ -41,7 +41,8 @@ export function modeTarget(
     // A chat place is a channel (checked against the list) or one of the chat views; no project is involved.
     return ours && validSavedPlace(ours, channels, []) ? ours : landingPath(slug, {}, channels)
   }
-  if (!ours || ours === home) return home
+  if (!ours) return paths.start(slug)
+  if (ours === home) return home
   if (!projects) return undefined
-  return validSavedPlace(ours, channels ?? [], projects) ? ours : home
+  return validSavedPlace(ours, channels ?? [], projects) ? ours : paths.start(slug)
 }

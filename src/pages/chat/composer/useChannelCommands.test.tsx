@@ -73,13 +73,13 @@ describe('useChannelCommands (spec 6.8)', () => {
     expect(u.openDetails).toHaveBeenCalledWith('about', { editTopic: true })
   })
 
-  it('/invite opens Add people with the people named; /leave leaves and goes Home', async () => {
+  it('/invite opens Add people with the people named; /leave leaves and goes to the Dashboard', async () => {
     const u = ui()
     await run(backend, '/invite', u)
     expect(u.openDetails).toHaveBeenCalledWith('members', { addPeople: [] })
     await run(backend, '/leave', u)
     expect(leave).toHaveBeenCalledWith('c-backend')
-    expect(navigate).toHaveBeenCalledWith('/w/engineering')
+    expect(navigate).toHaveBeenCalledWith('/w/engineering/dashboard')
   })
 
   it('/task opens the sheet with the title and the first person as assignee; /remind opens the reminder with the words', async () => {

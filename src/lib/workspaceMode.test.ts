@@ -41,18 +41,18 @@ describe('modeTarget', () => {
     expect(modeTarget('engineering', 'projects', last, channels, projects)).toBe('/w/engineering/p/NEX/tasks')
   })
 
-  it('starts on #general and Home when nothing is saved for that side', () => {
+  it('starts on #general and the Dashboard when nothing is saved for that side', () => {
     expect(modeTarget('engineering', 'chat', {}, channels, projects)).toBe('/w/engineering/c/c-general')
-    expect(modeTarget('engineering', 'projects', {}, channels, projects)).toBe('/w/engineering')
+    expect(modeTarget('engineering', 'projects', {}, channels, projects)).toBe('/w/engineering/dashboard')
   })
 
   it('drops a saved place that no longer leads anywhere, or belongs to the other side or workspace', () => {
     const gone = { engineering: { chat: '/w/engineering/c/c-removed', projects: '/w/engineering/p/OLD/overview' } }
     expect(modeTarget('engineering', 'chat', gone, channels, projects)).toBe('/w/engineering/c/c-general')
-    expect(modeTarget('engineering', 'projects', gone, channels, projects)).toBe('/w/engineering')
+    expect(modeTarget('engineering', 'projects', gone, channels, projects)).toBe('/w/engineering/dashboard')
     const crossed = { engineering: { chat: '/w/engineering/p/NEX/overview', projects: '/w/design/projects' } }
     expect(modeTarget('engineering', 'chat', crossed, channels, projects)).toBe('/w/engineering/c/c-general')
-    expect(modeTarget('engineering', 'projects', crossed, channels, projects)).toBe('/w/engineering')
+    expect(modeTarget('engineering', 'projects', crossed, channels, projects)).toBe('/w/engineering/dashboard')
   })
 
   it('keeps the Home of a saved projects place, which has no page of its own to check', () => {

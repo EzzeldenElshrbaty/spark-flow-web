@@ -26,8 +26,9 @@ describe('useGoToMode (spec 5.5)', () => {
     useUiStore.getState().visit('engineering', '/w/engineering/c/c-backend')
     expect(goTo()('chat')).toBe(true)
     expect(navigate).toHaveBeenLastCalledWith('/w/engineering/c/c-backend')
+    // No last place on the Projects side: its start, the Dashboard (dashboard start).
     expect(goTo()('projects')).toBe(true)
-    expect(navigate).toHaveBeenLastCalledWith('/w/engineering')
+    expect(navigate).toHaveBeenLastCalledWith('/w/engineering/dashboard')
   })
 
   it('waits, and says so, while the channel list is still loading', () => {

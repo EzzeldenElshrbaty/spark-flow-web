@@ -2664,3 +2664,24 @@ Fixed (each red, then green):
 - Every Start and Resume waits for the browser's place (up to 8 s): the spec records `startedFrom` on both.
 - v30 drops check-ins without converting them: as the spec says.
 - Attendance hours leave out manual entries while Today includes them: manual entries make no day, as specified.
+
+# Dashboard start: the Dashboard is everyone's start page — 5 Nov 2026, approved ("Yes, build it")
+
+Design approved in chat, menus "Dashboard first". Branch `feat/dashboard-start` from `dev` (1908eff).
+
+- [x] `paths.start(ws)` = the Dashboard. `/` (`LastVisitRedirect`: a plain sign-in, the logo, Not found's way back),
+  the Projects side with no last place (`modeTarget`), and leaving a channel (menu and `/leave`) land there.
+- [x] Work lists Dashboard, Home, Projects, My tasks, Teams (`navigation.ts`, the sidebar, search). The phone bar is
+  Dashboard, Projects, Chat, More; Home is in More. Projects opens the project list when its target is the Dashboard.
+- [x] Not found reads "Back to Dashboard". A sign-in sent back to a page still goes there.
+- [x] Help (getting started, Home, Dashboard first in Work), demo script, `CLAUDE.md`; help shots retaken.
+
+## Review — dashboard start
+- Gates: `tsc -b` and lint clean; unit 1,978/1,978; browser 278/279 (the known `RichComposer` failure, as on `dev`);
+  the prototype build passes (in `help:shots`).
+- App check (`npm run dev`): signing in as Salma lands on the Dashboard; the logo from Teams goes there; Work reads
+  Dashboard, Home, Projects, My tasks, Teams; at 390px the phone bar is Dashboard (lit), Projects, Chat, More, and a
+  wrong address offers "Back to Dashboard".
+- Rulings: a saved Projects place that is Home still reopens Home (it's a place, not a fallback); the phone's
+  Projects tab lights on Home, which lives on the Projects side; mention links that can't open still fall back to
+  Home, as they did.

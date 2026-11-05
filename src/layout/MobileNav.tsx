@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { IconDots, IconHome, IconLayoutKanban, IconMessages, IconX, type TablerIcon } from '@tabler/icons-react'
+import { IconDots, IconLayoutDashboard, IconLayoutKanban, IconMessages, IconX, type TablerIcon } from '@tabler/icons-react'
 import { useRef } from 'react'
 import { NavLink, useLocation, useMatch } from 'react-router'
 import { IconButton } from '@/components/sf/Button'
@@ -32,27 +32,28 @@ function TabLink({ to, active, icon, label }: { to: string | undefined; active: 
 }
 
 /**
- * Home · Projects · Chat · More (search is in the top bar). Chat and Projects reopen the last place on their side
- * (spec 5.5), as the sidebar's switch does; Home has its own tab, so Projects starts on the project list.
+ * Dashboard · Projects · Chat · More (search is in the top bar; Home is in More, dashboard start). Chat and Projects
+ * reopen the last place on their side (spec 5.5), as the sidebar's switch does; the Dashboard has its own tab, so
+ * Projects opens the project list instead of it.
  */
 export function MobileBottomBar({ onOpenMore }: { onOpenMore: () => void }) {
   const { workspace } = useCurrentWorkspace()
   const { pathname } = useLocation()
-  const inHome = useMatch({ path: '/w/:ws', end: true }) !== null
+  const inDashboard = useMatch({ path: '/w/:ws/dashboard', end: true }) !== null
   const side = modeOf(pathname)
   const inChat = side === 'chat'
-  const inProjects = side === 'projects' && !inHome
+  const inProjects = side === 'projects' && !inDashboard
 
   const slug = workspace?.slug
   const chatTo = useModeTarget('chat')
   const projectsTarget = useModeTarget('projects')
-  const projectsTo = slug && projectsTarget === paths.home(slug) ? paths.projects(slug) : projectsTarget
+  const projectsTo = slug && projectsTarget === paths.start(slug) ? paths.projects(slug) : projectsTarget
 
   return (
     <nav className="sf fixed inset-x-0 bottom-0 z-30 border-t border-sf-line bg-sf-surface pb-[env(safe-area-inset-bottom)] lg:hidden" aria-label="Main">
       <ul className="flex">
         <li className="flex-1">
-          <TabLink to={slug ? paths.home(slug) : undefined} active={inHome} icon={IconHome} label="Home" />
+          <TabLink to={slug ? paths.start(slug) : undefined} active={inDashboard} icon={IconLayoutDashboard} label="Dashboard" />
         </li>
         <li className="flex-1">
           <TabLink to={projectsTo} active={inProjects} icon={IconLayoutKanban} label="Projects" />

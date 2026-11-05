@@ -311,7 +311,7 @@ function ChannelTop({
   const copyLink = () => navigator.clipboard.writeText(new URL(paths.channel(workspaceSlug, channel.id), window.location.origin).href)
   const openSearch = useOpenSearch(workspaceSlug)
   const scope = channelScope(channel, people, persona.id)
-  const leaveChannel = () => leave.mutate(channel.id, { onSuccess: () => navigate(paths.home(workspaceSlug)) })
+  const leaveChannel = () => leave.mutate(channel.id, { onSuccess: () => navigate(paths.start(workspaceSlug)) })
   return (
     <div ref={top} className="sf flex-none bg-sf-surface">
       <ChannelHeader

@@ -64,11 +64,11 @@ describe('The sidebar shows one side of Flow at a time (spec 5.5)', () => {
     expect(screen.getByRole('link', { name: 'Settings' })).toBeTruthy()
   })
 
-  it('the Work group lists Dashboard after My tasks for a Member (dashboard slice)', () => {
+  it('the Work group lists Dashboard first, then Home, for a Member (dashboard start)', () => {
     allow = () => false
     at('/w/engineering/p/NEX/tasks', <SidebarContent />)
     const list = document.getElementById(screen.getByRole('button', { name: 'Work' }).getAttribute('aria-controls')!)!
-    expect(within(list).getAllByRole('link').map((a) => a.textContent)).toEqual(['Home', 'Projects', 'My tasks', 'Dashboard', 'Teams'])
+    expect(within(list).getAllByRole('link').map((a) => a.textContent)).toEqual(['Dashboard', 'Home', 'Projects', 'My tasks', 'Teams'])
     // Manage keeps Time & cost only, for whoever may see it.
     expect(screen.queryByRole('button', { name: 'Manage' })).toBeNull()
     expect(within(nav()).getAllByRole('link', { name: 'Dashboard' })).toHaveLength(1)

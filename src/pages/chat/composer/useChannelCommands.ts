@@ -66,7 +66,7 @@ export function useChannelCommands(channel: Channel, ui: ChannelCommandUi): Comp
         return {}
       case 'leave':
         await leave.mutateAsync(channel.id)
-        if (slug) navigate(paths.home(slug))
+        if (slug) navigate(paths.start(slug))
         return {}
       case 'task':
         ui.newTask?.open({ title: args, assigneeId: userIds[0] ?? null })

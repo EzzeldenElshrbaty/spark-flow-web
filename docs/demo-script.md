@@ -1,7 +1,8 @@
 # Spark Flow demo script (Thursday 29 Oct 2026)
 
 Before you start: Settings → Database → **Reload seed data** (type "reload"). The seed is built around the time you
-reload it, so do it shortly before the demo. Switch people with the user menu → **View as** (demo only).
+reload it, so do it shortly before the demo. Switch people with the user menu → **View as** (demo only). Everyone
+starts on their **Dashboard**; Home is next in the sidebar (in **More** on a phone).
 
 ## People
 

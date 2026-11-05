@@ -4,7 +4,7 @@ group: Work
 order: 1
 summary: Start your timer, see today's time, what's due and who mentioned you.
 ---
-Home is your day: your timer and today's time, your tasks due today or overdue, and the latest mentions of you.
+Home is your day: your timer and today's time, your tasks due today or overdue, and the latest mentions of you. It's in the sidebar under Work, after the [Dashboard](help:dashboard) you start on; on a phone, it's in **More**.
 
 ![Home with a running timer](home.jpg "Today, with the timer on a task")
 

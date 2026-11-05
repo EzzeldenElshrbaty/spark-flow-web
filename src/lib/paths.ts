@@ -15,6 +15,8 @@ const query = (q: TasksQuery = {}) => {
 export const paths = {
   workspace: (ws: string) => `/w/${ws}`,
   home: (ws: string) => `/w/${ws}`, // Home / My day is the workspace's own page
+  // Where everyone lands (dashboard start): after signing in, from the logo, and on the Projects side with no last place.
+  start: (ws: string) => `/w/${ws}/dashboard`,
   channel: (ws: string, id: string) => `/w/${ws}/c/${id}`,
   /** A permalink to one message: the channel opens on it (spec 6.2 jump). */
   message: (ws: string, channelId: string, messageId: string) => `/w/${ws}/c/${channelId}?message=${encodeURIComponent(messageId)}`,

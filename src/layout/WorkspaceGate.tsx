@@ -21,6 +21,6 @@ export function WorkspaceGate() {
 
   if (isPending) return <PageSkeleton />
   if (isError) return <p className="text-sm text-fg-muted">Spark Flow couldn’t load your workspaces. Refresh to try again.</p>
-  if (!known) return <NotFound what="workspace" backTo="/" backLabel="Back to Home" />
+  if (!known) return <NotFound what="workspace" backTo="/" backLabel="Back to Dashboard" />
   return <Outlet />
 }

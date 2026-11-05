@@ -1,10 +1,10 @@
 ---
 title: Dashboard
 group: Work
-order: 5
+order: 0
 summary: Your projects at a glance: hours, tasks by status, overdue tasks, each project's progress, and who is working now.
 ---
-Everyone has a Dashboard. It shows the projects you manage or work on, as a member or through a team. People who can see the dashboard for every project see them all. If you're on no project yet, it says so.
+Everyone has a Dashboard, and it's where you start: after signing in, from the logo, and on the Projects side the first time. It shows the projects you manage or work on, as a member or through a team. People who can see the dashboard for every project see them all. If you're on no project yet, it says so.
 
 ![The Dashboard](dashboard.jpg "Hours, tasks and the projects you're on")
 

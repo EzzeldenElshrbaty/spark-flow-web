@@ -390,6 +390,9 @@ export function SidebarContent({
         {slug && onProjects && (
           <SideSection id="work" label="Work" first {...row}>
             <li className="flex-none">
+              <SideLink to={paths.dashboard(slug)} label="Dashboard" icon={IconLayoutDashboard} {...row} />
+            </li>
+            <li className="flex-none">
               <SideLink to={paths.home(slug)} end label="Home" icon={IconHome} {...row} />
             </li>
             <li className="flex-none">
@@ -397,9 +400,6 @@ export function SidebarContent({
             </li>
             <li className="flex-none">
               <SideLink to={paths.tasks(slug)} label="My tasks" icon={IconListCheck} {...row} />
-            </li>
-            <li className="flex-none">
-              <SideLink to={paths.dashboard(slug)} label="Dashboard" icon={IconLayoutDashboard} {...row} />
             </li>
             <li className="flex-none">
               <SideLink to={paths.teams(slug)} label="Teams" icon={IconUsers} {...row} />

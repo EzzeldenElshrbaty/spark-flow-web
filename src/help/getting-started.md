@@ -8,7 +8,7 @@ Spark Flow runs Spark Systems' projects and its chat in one place. This chapter 
 
 ## Signing in
 
-Sign in with your Spark email and password. Signed out, any link opens Sign in first, then the page it pointed to. **Log out** is in your menu.
+Sign in with your Spark email and password. You start on your [Dashboard](help:dashboard). Signed out, any link opens Sign in first, then the page it pointed to. **Log out** is in your menu.
 
 > In the prototype, everyone's password is `flow2026`, and the list under the form signs you in as anyone, by role, to try what each role can do.
 
@@ -16,7 +16,7 @@ Sign in with your Spark email and password. Signed out, any link opens Sign in f
 
 ## The two sides
 
-The menu on the left shows one side at a time: **Projects** (your day, projects, tasks, time) or **Chat** (channels, messages and threads). Switch with the toggle under the logo, or press `G` then `P` for Projects and `G` then `C` for Chat. Each side reopens where you left it.
+The menu on the left shows one side at a time: **Projects** (your day, projects, tasks, time) or **Chat** (channels, messages and threads). Switch with the toggle under the logo, or press `G` then `P` for Projects and `G` then `C` for Chat. Each side reopens where you left it; the first time, Projects opens on the Dashboard and Chat on #general.
 
 ## Search
 
@@ -43,4 +43,4 @@ Drag a column's edge to make it wider; double-click to reset it. Click a header 
 
 ## On a phone
 
-The bar at the bottom holds Home, Projects, Chat and More. Tables become lists, and sheets fill the screen. Everything else works the same.
+The bar at the bottom holds Dashboard, Projects, Chat and More; Home is in More. Tables become lists, and sheets fill the screen. Everything else works the same.
