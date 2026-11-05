@@ -47,14 +47,15 @@ export function UserMenu() {
   // While Do Not Disturb is on, a moon on my avatar says so (spec 6.11).
   const dndEnd = useDndEnd()
 
-  // Demo only: become someone else, then start fresh on that workspace's home, since what they may see differs. The
+  // Demo only: become someone else, then start fresh on that workspace's start page, the Dashboard (dashboard start),
+  // since what they may see differs. The
   // menu stays open until the switch lands, so a failure shows its sentence there (viewAs.isError).
   const switchTo = (userId: string, close: () => void) => {
     viewAs.mutate(userId, {
       onSuccess: () => {
         close()
         queryClient.clear()
-        navigate(workspace ? `/w/${workspace.slug}` : '/')
+        navigate(workspace ? paths.start(workspace.slug) : '/')
       },
     })
   }

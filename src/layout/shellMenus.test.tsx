@@ -109,7 +109,7 @@ describe('UserMenu (spec 5.2: the account menu)', () => {
     expect(button.querySelector('[data-dnd] svg')?.getAttribute('class')).toContain('tabler-icon-moon')
   })
 
-  it('View as someone else keeps the menu open until the switch lands (a failure says so there), then goes home', async () => {
+  it('View as someone else keeps the menu open until the switch lands (a failure says so there), then opens the Dashboard (dashboard start)', async () => {
     show(<UserMenu />)
     await open(/Youssef Abdelrahman/)
     await act(async () => fireEvent.click(screen.getByRole('menuitemradio', { name: /Nour El-Sayed/ })))
@@ -117,7 +117,7 @@ describe('UserMenu (spec 5.2: the account menu)', () => {
     expect(screen.getByRole('menu', { name: 'Account' })).toBeTruthy()
     await act(async () => (viewAs.mock.calls[0][1] as { onSuccess: () => void }).onSuccess())
     expect(screen.queryByRole('menu', { name: 'Account' })).toBeNull()
-    expect(navigate).toHaveBeenCalledWith('/w/engineering')
+    expect(navigate).toHaveBeenCalledWith('/w/engineering/dashboard')
   })
 })
 

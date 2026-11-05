@@ -7,7 +7,7 @@ import type { DemoPerson, Me } from '@/api/types'
 import { api, ApiError } from '@/lib/api'
 import { DEMO_PASSWORD } from '@/lib/demo'
 import { ThemeProvider } from '@/lib/ThemeProvider'
-import { SignInPage } from './SignInPage'
+import { SignInPage, safeReturn } from './SignInPage'
 
 // The sign-in page (slice AB): email and password, and the prototype's people to sign in as, by role.
 
@@ -106,7 +106,17 @@ describe('the sign-in page', () => {
 
   it('already signed in, it goes straight on', async () => {
     vi.mocked(api.users.me).mockResolvedValue(nour)
+    mount('/signin?returnTo=%2Fw%2Fengineering%2Ftasks')
+    expect((await screen.findByTestId('where')).textContent).toBe('/w/engineering/tasks')
+  })
+
+  it('sent from the workspace’s own address, it opens the Dashboard; a link to a task there still returns (dashboard start)', async () => {
+    vi.spyOn(api.auth, 'signIn').mockResolvedValue(nour)
     mount('/signin?returnTo=%2Fw%2Fengineering')
-    expect((await screen.findByTestId('where')).textContent).toBe('/w/engineering')
+    fireEvent.click(await screen.findByRole('button', { name: /Nour El-Sayed/ }))
+    expect((await screen.findByTestId('where')).textContent).toBe('/w/engineering/dashboard')
+    expect(safeReturn('/w/engineering/')).toBe('/w/engineering/dashboard')
+    expect(safeReturn('/w/engineering?ticket=NEX-101')).toBe('/w/engineering?ticket=NEX-101')
+    expect(safeReturn('/w/engineering/p/NEX/tasks?ticket=NEX-101')).toBe('/w/engineering/p/NEX/tasks?ticket=NEX-101')
   })
 })

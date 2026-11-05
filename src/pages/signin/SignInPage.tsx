@@ -9,11 +9,18 @@ import { Button } from '@/components/ui/Button'
 import { Field, inputClass } from '@/components/ui/Field'
 import { api, backendOn } from '@/lib/api'
 import { DEMO_PASSWORD } from '@/lib/demo'
+import { paths } from '@/lib/paths'
 import { useTheme } from '@/lib/useTheme'
 
-/** Where to go after signing in: a path inside the app only ("/w/…"), never another site. */
+/**
+ * Where to go after signing in: a path inside the app only ("/w/…"), never another site. A workspace's own address,
+ * with nothing after it, is no page in particular, so it opens that workspace's start page, the Dashboard (dashboard
+ * start); a link to a page, or to a task on Home (`?ticket=`), returns there.
+ */
 export function safeReturn(value: string | null): string {
-  return value && value.startsWith('/') && !value.startsWith('//') && !value.startsWith('/signin') ? value : '/'
+  if (!value || !value.startsWith('/') || value.startsWith('//') || value.startsWith('/signin')) return '/'
+  const workspaceOnly = /^\/w\/([^/?#]+)\/?$/.exec(value)
+  return workspaceOnly ? paths.start(workspaceOnly[1]!) : value
 }
 
 /**

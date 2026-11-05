@@ -2685,3 +2685,8 @@ Design approved in chat, menus "Dashboard first". Branch `feat/dashboard-start` 
 - Rulings: a saved Projects place that is Home still reopens Home (it's a place, not a fallback); the phone's
   Projects tab lights on Home, which lives on the Projects side; mention links that can't open still fall back to
   Home, as they did.
+- Follow-up (approved: "Dashboard unless a deep link"): View as opens the workspace's Dashboard; `safeReturn` sends a
+  bare workspace address (`/w/:ws`, nothing after it) to that workspace's Dashboard, while any other page, including
+  Home with `?ticket=`, returns there. Tests: `shellMenus.test.tsx` (View as) and `SignInPage.test.tsx`. App check:
+  View as from Teams lands on the Dashboard; opening `/w/engineering` signed out, then signing in, lands on the
+  Dashboard. Gates: lint clean, unit 1,980/1,980, browser 278/279 (the known `RichComposer` failure), build passes.
