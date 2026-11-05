@@ -33,6 +33,16 @@ function resolveTarget(data: DbData, target: TimeTarget, keepTaskId?: string | n
   return { projectId: openProject(data, target.projectId).id, taskId: null, done: false }
 }
 
+/**
+ * An entry as the time calls return it: without where its timer started from (IP, device, place), which only
+ * Attendance shows, to the people its own rules allow.
+ */
+function shown(entry: TimeEntry): TimeEntry {
+  const copy = { ...entry }
+  delete copy.startedFrom
+  return copy
+}
+
 function myDay(data: DbData, userId: string, now: Date): MyDay {
   const day = localDay(now)
   const mine = data.timeEntries.filter((e) => e.userId === userId)
@@ -40,8 +50,8 @@ function myDay(data: DbData, userId: string, now: Date): MyDay {
     day,
     checkIn: data.checkIns.find((c) => c.userId === userId && c.day === day) ?? null,
     openCheckIn: data.checkIns.filter((c) => c.userId === userId && c.day < day && c.checkedOutAt === null).sort((a, b) => (a.checkedInAt < b.checkedInAt ? 1 : -1))[0] ?? null,
-    running: mine.find((e) => e.endedAt === null) ?? null,
-    entries: mine.filter((e) => localDay(new Date(e.startedAt)) === day).sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1)),
+    running: mine.filter((e) => e.endedAt === null).map(shown)[0] ?? null,
+    entries: mine.filter((e) => localDay(new Date(e.startedAt)) === day).sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1)).map(shown),
     // Check-ins from before Attendance recorded nothing, so their owner still gets the notice once.
     firstCheckIn: !data.checkIns.some((c) => c.userId === userId && c.inFrom),
     timer: currentTimer(data, userId, now),
@@ -247,6 +257,7 @@ export function timeApi(db: MockDb, hub: MockHub, now: () => Date): Api['time'] 
       const entries = data.timeEntries
         .filter((e) => e.projectId === projectId && (everyone || e.userId === me.id))
         .sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1))
+        .map(shown)
       const rates = can('timeCost.view', { userId: me.id, grants: grantsFor(data, me) }) ? data.rates : null
       return clone({ entries, rates })
     },
@@ -379,7 +390,7 @@ export function timeApi(db: MockDb, hub: MockHub, now: () => Date): Api['time'] 
         Object.assign(entry, { ...checked, startedAt: new Date(start).toISOString(), endedAt: new Date(end).toISOString() })
         const edits = changesBetween(data, before, entry, ENTRY_LOGGED)
         if (edits.length) audit(data, { action: 'changed', group: 'data', record: recordOf.timeEntry(data, entry), changes: edits })
-        return { entry: clone(entry), was }
+        return { entry: shown(clone(entry)), was }
       })
       hub.publish({ type: 'timeLogged', userId: entry.userId, projectId: entry.projectId })
       if (was !== entry.projectId) hub.publish({ type: 'timeLogged', userId: entry.userId, projectId: was })

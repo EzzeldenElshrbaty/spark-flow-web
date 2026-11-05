@@ -489,3 +489,22 @@ describe('pause, resume and stop (timer slice 1)', () => {
     expect((await db.read()).timeEntries.find((e) => e.id === theirs)?.endReason).toBe('flow')
   })
 })
+
+describe('where a timer start came from stays in Attendance', () => {
+  it("time.list and an edit's reply never carry startedFrom, for the owner or anyone else", async () => {
+    await api.users.viewAs('u-3')
+    // u-3's seed timer runs on NEX-106 from before the test's clock; stop it, then time one of mine.
+    await db.update((d) => void (d.timeEntries = d.timeEntries.filter((e) => e.id !== 'te-u-3-now')))
+    await api.time.start({ taskId: 't-nex-101' }, { lat: 30.04443, lng: 31.23571, accuracy: 20 })
+    later(10)
+    const own = (await api.time.stop()).entries[0]
+    expect(own).not.toHaveProperty('startedFrom') // my day lists my entries without it too
+    await api.users.viewAs('u-1')
+    const listed = (await api.time.list('p-nex')).entries
+    expect(listed.some((e) => e.id === own.id)).toBe(true)
+    expect(listed.every((e) => !('startedFrom' in e))).toBe(true)
+    const edited = await api.time.update(own.id, { note: 'Pairing' })
+    expect(edited).not.toHaveProperty('startedFrom')
+    expect((await db.read()).timeEntries.find((e) => e.id === own.id)?.startedFrom?.location).toMatchObject({ lat: 30.04443 })
+  })
+})
