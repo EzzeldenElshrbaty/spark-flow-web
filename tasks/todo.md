@@ -2390,18 +2390,30 @@ timers, and every role gets a dashboard with charts.
 `spark-flow.timeoutSeen` doesn't hold `timer.entryId`.
 
 **Steps:**
-- [ ] Write the failing tests:
+- [x] Write the failing tests:
   - `shows "Your timer paused after 4 h on NEX-101 Login page." with Continue (primary) and Keep paused`
   - `Continue resumes; Keep paused closes and stays closed for that entry`
   - `a failed Continue shows its error in the dialog`
   - `the box is titled "Working hours and timer" and says "Timers pause after 4 hours and ask if you're still
     working."; the sheet's "Pause timers after (hours)" saves`
   - axe light and dark, and 390px
-- [ ] Implement, run the gates, then do the app check:
+- [x] Implement, run the gates, then do the app check:
   - set the timeout to 1 h;
   - run `ageTimer(1)` and see the dialog within 15 s;
   - press Continue and check the count goes on.
-- [ ] Update the docs, then commit: `feat(time): Still working dialog and the timer timeout on Attendance`.
+- [x] Update the docs, then commit: `feat(time): Still working dialog and the timer timeout on Attendance`.
+- Rulings:
+  - `useMyTimer` (`layout/useMyTimer.ts`) is split out of `TimerBar` so the dialog can share it.
+  - The sheet is titled "Working hours and timer" and saves only what changed. Its button is "Change working hours
+    and timer".
+  - Found by the app check, then fixed test first: "my newest entry" went by start time, so a moved start (the dev
+    helper, or an edited entry) could hide the running timer. It now goes by end time, with a running entry first.
+    Test: "a running entry is my timer even when it started before one I already stopped".
+- Done:
+  - 4 dialog tests, 1 Attendance test, 2 browser tests (axe in light and dark, 390px); unit 1,963 pass; tsc, lint
+    and build are clean.
+  - App check: timeout 1 h, then `ageTimer(1)`. **Still working?** came up in 7 s, with the timer paused at exactly
+    1:00:00. Continue went on from 1:00:00. The setting was put back to 4 h.
 
 ## Slice 3: Check-in removed (needs slices 1 and 2)
 

@@ -50,6 +50,14 @@ Spark Flow is a sister product of **Spark CRM** (Spark Systems). The two apps mu
     (`shown`), so only Attendance shows it.
   - **Controls:** the top bar's Start timer, the pill, the phone bar, Home and the task panel all use
     `TimerControls`.
+  - **Picking my timer:** "my newest entry" goes by when entries end, with a running one first, so an edited start
+    can't reorder them.
+  - **Timeout** (timer slice 2): `settings.timerTimeoutHours` (DB v29, 1–12, default 4, `timeoutProblem` in
+    `lib/hours.ts`) is set on Settings → Attendance.
+    - The scheduler's `timeoutTimers` ends a running entry at exactly `startedAt + timeout` as `'timeout'`.
+    - `layout/StillWorkingDialog.tsx` then asks Continue or Keep paused, and remembers a Keep paused per entry in
+      `sessionStorage` (`spark-flow.timeoutSeen`).
+    - `__sparkFlowDev.ageTimer(hours)` ages my running timer for a check.
 - **Mentions & comments**: the mention syntax (`@all`, `@[Name](userId)` from the composer's autocomplete, `@KEY-n`, `@KEY`) and its parser and `segments` live in `src/lib/mentions.ts`, shared by the mock and the pages; chips are built from parsed ids of people, tasks and projects that exist, everything else renders as plain text (never HTML). A task comment or bug also posts a card (`commentId`) in its project's chat; mentions of me feed the bell and Home (`mentionReads`, DB_VERSION 3).
 - **Dashboard & Time and cost**: their figures come from the mock (`src/mocks/dashboard.ts`, `src/mocks/report.ts` with `derive`/`hours`), never from the page. `dashboard.view`: whoever holds `dashboard.all` (Admin, Sales) sees every project, anyone else the ones they manage; "Checked in now" shows everyone with `checkins.all` (Admin) and the people on projects they manage with `checkins.managed` (PM, Member). Cost and rates only with the `cost.view` and `rates.manage` permissions (Admin). Report weeks start on Sunday; "last 7 days" is rolling.
 - **Message bodies**: messages and replies store `body`, structured rich text from `src/lib/messageBody.ts` (`parseBody`, shared by the mock and the pages); the channel renders it as elements in `pages/chat/MessageBody.tsx`, never as HTML. Task chips come from `api.tickets.resolve`.

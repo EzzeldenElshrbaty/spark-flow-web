@@ -508,3 +508,19 @@ describe('where a timer start came from stays in Attendance', () => {
     expect((await db.read()).timeEntries.find((e) => e.id === own.id)?.startedFrom?.location).toMatchObject({ lat: 30.04443 })
   })
 })
+
+describe('my timer goes by when entries end (timer slice 2 app check)', () => {
+  it('a running entry is my timer even when it started before one I already stopped', async () => {
+    await api.time.start({ taskId: 't-nex-101' })
+    later(10)
+    await api.time.stop()
+    later(1)
+    const running = (await api.time.start({ taskId: 't-nex-102' })).timer!.entryId
+    // Its start moved back past the stopped one (a dev helper, or an edited start).
+    await db.update((d) => {
+      const e = d.timeEntries.find((x) => x.id === running)!
+      e.startedAt = new Date(now.getTime() - 60 * 60_000).toISOString()
+    })
+    expect((await api.time.today()).timer).toMatchObject({ state: 'running', entryId: running })
+  })
+})

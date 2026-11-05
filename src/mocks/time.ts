@@ -61,9 +61,11 @@ function myDay(data: DbData, userId: string, now: Date): MyDay {
 
 const targetOf = (entry: TimeEntry): TimeTarget => (entry.taskId ? { taskId: entry.taskId } : { projectId: entry.projectId })
 const sameTarget = (a: TimeEntry, b: TimeEntry) => a.projectId === b.projectId && a.taskId === b.taskId
-/** My timer entries, newest first. */
-const myTimerEntries = (data: DbData, userId: string) =>
-  data.timeEntries.filter((e) => e.userId === userId && e.source === 'timer').sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1))
+/** My timer entries, the running one first, then by when they ended, latest first (a moved start can't reorder them). */
+const myTimerEntries = (data: DbData, userId: string) => {
+  const end = (e: TimeEntry) => (e.endedAt === null ? Infinity : Date.parse(e.endedAt))
+  return data.timeEntries.filter((e) => e.userId === userId && e.source === 'timer').sort((a, b) => end(b) - end(a))
+}
 
 /** My paused run's last entry: my newest timer entry, if it ended 'paused' or 'timeout' today. */
 function pausedEntry(data: DbData, userId: string, now: Date): TimeEntry | null {

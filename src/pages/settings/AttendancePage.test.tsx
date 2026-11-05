@@ -42,6 +42,7 @@ beforeEach(() => {
   vi.spyOn(api.attendance, 'visits').mockResolvedValue(visits)
   vi.spyOn(api.attendance, 'report').mockResolvedValue(report)
   vi.spyOn(api.attendance, 'workHours').mockResolvedValue({ days: [0, 1, 2, 3, 4], start: '09:00', end: '17:00', timeZone: 'Africa/Cairo' })
+  vi.spyOn(api.attendance, 'timer').mockResolvedValue({ timeoutHours: 4 })
 })
 afterEach(() => {
   cleanup()
@@ -121,8 +122,8 @@ describe('Settings → Attendance (Admin and help, slice 5)', () => {
     const set = vi.spyOn(api.attendance, 'setWorkHours').mockRejectedValueOnce(new ApiError({ title: 'Bad request', status: 400, detail: 'The day ends after it starts.' })).mockResolvedValue({ days: [0, 1, 2, 3], start: '08:30', end: '16:30', timeZone: 'Africa/Cairo' })
     await mount()
     expect(await screen.findByText('Sun–Thu · 9:00 AM–5:00 PM · Cairo time')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Change working hours' }))
-    const sheet = await screen.findByRole('dialog', { name: 'Working hours' })
+    fireEvent.click(screen.getByRole('button', { name: 'Change working hours and timer' }))
+    const sheet = await screen.findByRole('dialog', { name: 'Working hours and timer' })
     fireEvent.click(within(sheet).getByRole('button', { name: 'Thursday' }))
     expect(within(sheet).getByRole('button', { name: 'Thursday' }).getAttribute('aria-pressed')).toBe('false')
     fireEvent.change(within(sheet).getByLabelText('Starts'), { target: { value: '08:30' } })
@@ -134,13 +135,34 @@ describe('Settings → Attendance (Admin and help, slice 5)', () => {
     expect(set).toHaveBeenLastCalledWith({ days: [0, 1, 2, 3], start: '08:30', end: '16:30' })
   })
 
+  it('the timer timeout (timer slice 2): said in the box, changed in the same sheet, checked before it is sent', async () => {
+    const setTimer = vi.spyOn(api.attendance, 'setTimer').mockResolvedValue({ timeoutHours: 2 })
+    const setHours = vi.spyOn(api.attendance, 'setWorkHours')
+    await mount()
+    expect(await screen.findByText('Timers pause after 4 hours and ask if you’re still working.')).toBeTruthy()
+    expect(screen.getByText('Working hours and timer')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Change working hours and timer' }))
+    const sheet = await screen.findByRole('dialog', { name: 'Working hours and timer' })
+    const field = within(sheet).getByLabelText(/^Pause timers after \(hours\)/) as HTMLInputElement
+    expect(field.value).toBe('4')
+    fireEvent.change(field, { target: { value: '0' } })
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Save' }))
+    expect(await within(sheet).findByText('Pick a whole number of hours from 1 to 12.')).toBeTruthy()
+    expect(setTimer).not.toHaveBeenCalled()
+    fireEvent.change(field, { target: { value: '2' } })
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(setTimer).toHaveBeenCalledWith({ timeoutHours: 2 })
+    expect(setHours).not.toHaveBeenCalled() // the working hours didn't change
+  })
+
   it('someone who sees only themselves gets no person filter and no Change', async () => {
     me = { ...me, id: 'u-5', roleIds: ['member'], grants: [] }
     vi.mocked(api.attendance.scope).mockResolvedValue({ userIds: ['u-5'] })
     await mount()
     await table('Check-ins')
     expect(screen.queryByRole('combobox', { name: 'Person' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Change working hours' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Change working hours and timer' })).toBeNull()
     expect(screen.getByText(/Only your own/)).toBeTruthy()
   })
 })

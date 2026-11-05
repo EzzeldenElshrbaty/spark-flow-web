@@ -94,6 +94,7 @@ beforeEach(() => {
     { userId: 'u-1', checkedInAt: null, checkedOutAt: null, byFlow: false, hours: 0, appMinutes: 0, late: false, early: false },
   ])
   vi.spyOn(api.attendance, 'workHours').mockResolvedValue({ days: [0, 1, 2, 3, 4], start: '09:00', end: '17:00', timeZone: 'Africa/Cairo' })
+  vi.spyOn(api.attendance, 'timer').mockResolvedValue({ timeoutHours: 4 })
 })
 afterEach(async () => {
   cleanup()
@@ -215,8 +216,8 @@ describe.each([
     await userEvent.click(screen.getByRole('link', { name: 'Day view' }))
     await screen.findByRole('table', { name: 'Day view' })
     expect(await violations()).toEqual([])
-    await userEvent.click(screen.getByRole('button', { name: 'Change working hours' }))
-    await screen.findByRole('dialog', { name: 'Working hours' })
+    await userEvent.click(screen.getByRole('button', { name: 'Change working hours and timer' }))
+    await screen.findByRole('dialog', { name: 'Working hours and timer' })
     expect(await violations()).toEqual([])
   })
 })
@@ -275,8 +276,8 @@ describe('Settings on a 390px phone', () => {
     await userEvent.click(screen.getByRole('link', { name: 'Day view' }))
     await screen.findByRole('list', { name: 'Day view' })
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(390)
-    await userEvent.click(screen.getByRole('button', { name: 'Change working hours' }))
-    const sheet = await screen.findByRole('dialog', { name: 'Working hours' })
+    await userEvent.click(screen.getByRole('button', { name: 'Change working hours and timer' }))
+    const sheet = await screen.findByRole('dialog', { name: 'Working hours and timer' })
     // Measured once the sheet has finished rising.
     expect(await violations()).toEqual([])
     for (const day of sheet.querySelectorAll('button[aria-pressed]')) expect(day.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)

@@ -3,30 +3,16 @@ import clsx from 'clsx'
 import { ArrowLeftRight, Pause, Play, Square } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router'
-import { useProjectSummaries } from '@/api/projects'
-import { useTickets } from '@/api/tickets'
-import { useMyDay, usePauseTimer, useResumeTimer, useStopTimer } from '@/api/time'
+import { usePauseTimer, useResumeTimer, useStopTimer } from '@/api/time'
 import type { MyTimer } from '@/api/types'
 import { Button, IconButton } from '@/components/sf/Button'
 import { Button as CardButton } from '@/components/ui/Button'
 import { StartTimerDialog } from '@/layout/StartTimerDialog'
-import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
+import { useMyTimer } from '@/layout/useMyTimer'
 import { formatClock } from '@/lib/format'
 import { runningClock } from '@/lib/hours'
 import { withInspector } from '@/lib/inspector'
 import { useNow } from '@/lib/useNow'
-
-/** My timer (running, or paused today), labelled by its task (or project); null while there's none. */
-function useTimer() {
-  const { workspace } = useCurrentWorkspace()
-  const timer = useMyDay().data?.timer ?? null
-  const tasks = useTickets(timer?.projectId)
-  const projects = useProjectSummaries(workspace?.id)
-  const taskId = timer && 'taskId' in timer.target ? timer.target.taskId : null
-  const task = taskId ? tasks.data?.find((t) => t.id === taskId) : undefined
-  const project = projects.data?.find((p) => p.id === timer?.projectId)
-  return timer ? { timer, task, label: task ? task.title : (project?.name ?? '—') } : null
-}
 
 /**
  * The run's count: its closed time, plus the running entry so far (held at 12 hours, where it stops counting). A
@@ -137,7 +123,7 @@ function StartTimerButton() {
  * are role="timer", which isn't announced).
  */
 export function TimerAnnouncer() {
-  const current = useTimer()
+  const current = useMyTimer()
   const what = current ? (current.task?.key ?? current.label) : null
   const text = current ? `Timer ${current.timer.state === 'running' ? 'running' : 'paused'} on ${what}` : null
   const [said, setSaid] = useState('')
@@ -152,7 +138,7 @@ export function TimerAnnouncer() {
 
 /** Desktop: my timer as a pill in the top bar (the label opens the task), or Start timer when there's none. */
 export function TimerPill() {
-  const current = useTimer()
+  const current = useMyTimer()
   const now = useNow(current?.timer.state === 'running' ? 1000 : 0)
   const [params] = useSearchParams()
   if (!current) return <StartTimerButton />
@@ -190,7 +176,7 @@ export function TimerPill() {
  * `--timer-bar`, which the page padding and the record action bar add, so nothing hides behind it.
  */
 export function PhoneTimerBar() {
-  const current = useTimer()
+  const current = useMyTimer()
   const now = useNow(current?.timer.state === 'running' ? 1000 : 0)
   const showing = Boolean(current)
   useEffect(() => {

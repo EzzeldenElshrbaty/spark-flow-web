@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { page } from 'vitest/browser'
 import type { MyTimer } from '@/api/types'
 import { StartTimerDialog } from '@/layout/StartTimerDialog'
+import { StillWorkingDialog } from '@/layout/StillWorkingDialog'
 import { PhoneTimerBar, TimerPill } from '@/layout/TimerBar'
 
 // CLAUDE.md: the timer in the top bar, the phone bar and the Start timer dialog read well in light and dark (axe,
@@ -17,6 +18,7 @@ vi.mock('@/layout/useCurrentWorkspace', () => ({ useCurrentWorkspace: () => ({ w
 vi.mock('@/api/projects', () => ({ useProjectSummaries: () => ({ data: [{ id: 'p-nex', key: 'NEX', name: 'Nexus Core', managerId: 'u-1' }] }) }))
 vi.mock('@/api/tickets', () => ({ useTickets: (projectId?: string) => ({ data: projectId ? [{ id: 't-101', key: 'NEX-101', title: 'Login page with a longer title than fits', projectId: 'p-nex', assigneeId: 'u-1', category: 'todo' }] : undefined }) }))
 vi.mock('@/api/users', () => ({ useMe: () => ({ data: { id: 'u-1', teamIds: [] } }) }))
+vi.mock('@/api/attendance', () => ({ useTimerSetting: () => ({ data: { timeoutHours: 4 } }) }))
 vi.mock('@/lib/usePermission', () => ({ usePermission: () => () => true }))
 vi.mock('@/api/time', () => ({
   useMyDay: () => ({ data: { timer, firstStart: true } }),
@@ -85,5 +87,22 @@ describe.each([
     expect(await violations()).toEqual([])
     expect(dialog.getBoundingClientRect().width).toBeLessThanOrEqual(390)
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(390)
+  })
+
+  it('Still working? (timer slice 2) has no axe violations and fits a 390px phone', async () => {
+    await page.viewport(390, 844)
+    timer = { state: 'paused', target: { taskId: 't-101' }, projectId: 'p-nex', entryId: 'te-1', runMs: 4 * 60 * MIN, startedAt: null, pausedBy: 'timeout' }
+    document.documentElement.classList.toggle('dark', dark)
+    render(
+      <MemoryRouter>
+        <main>
+          <h1>Home</h1>
+        </main>
+        <StillWorkingDialog />
+      </MemoryRouter>,
+    )
+    const dialog = await screen.findByRole('dialog', { name: 'Still working?' })
+    expect(await violations()).toEqual([])
+    expect(dialog.getBoundingClientRect().width).toBeLessThanOrEqual(390)
   })
 })

@@ -2,7 +2,7 @@ import clsx from 'clsx'
 import { ArrowLeft, Clock, ExternalLink, Inbox } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
-import { useAttendanceDay, useAttendanceReport, useAttendanceScope, useCheckEvents, useSetWorkHours, useVisits, useWorkHours } from '@/api/attendance'
+import { useAttendanceDay, useAttendanceReport, useAttendanceScope, useCheckEvents, useSetTimerSetting, useSetWorkHours, useTimerSetting, useVisits, useWorkHours } from '@/api/attendance'
 import type { AttendanceDayRow, AttendanceReportRow, CheckEvent, CheckLocation, Visit, WorkHours } from '@/api/types'
 import { useUsers } from '@/api/users'
 import { Badge } from '@/components/ui/Badge'
@@ -15,6 +15,7 @@ import { Sheet } from '@/components/ui/Sheet'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { localDay } from '@/lib/dates'
 import { formatDate, formatHours, formatTime, formatWhen } from '@/lib/format'
+import { timeoutProblem } from '@/lib/hours'
 import { paths } from '@/lib/paths'
 import { usePermission } from '@/lib/usePermission'
 import { describeWorkHours, formatDayMinutes, WEEKDAYS } from '@/lib/workHours'
@@ -100,15 +101,20 @@ export function AttendancePage() {
 
 function HoursBox({ canChange, onChange }: { canChange: boolean; onChange: () => void }) {
   const hours = useWorkHours().data
+  const timer = useTimerSetting().data
   if (!hours) return null
   return (
     <div className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-line bg-surface px-4 py-3 text-sm shadow-sm">
       <Clock aria-hidden className="size-4 shrink-0 text-fg-muted" />
-      <p className="m-0 min-w-0 flex-1 text-fg-secondary">
-        Working hours: <span className="font-medium text-fg">{describeWorkHours(hours)}</span>. In after the start counts as late, out before the end as left early.
-      </p>
+      <div className="min-w-0 flex-1 text-fg-secondary">
+        <h2 className="m-0 text-sm font-semibold text-fg">Working hours and timer</h2>
+        <p className="m-0">
+          Working hours: <span className="font-medium text-fg">{describeWorkHours(hours)}</span>. In after the start counts as late, out before the end as left early.
+        </p>
+        {timer && <p className="m-0">Timers pause after {timer.timeoutHours} hours and ask if you’re still working.</p>}
+      </div>
       {canChange && (
-        <Button variant="secondary" onClick={onChange} aria-label="Change working hours">
+        <Button variant="secondary" onClick={onChange} aria-label="Change working hours and timer">
           Change
         </Button>
       )}
@@ -410,32 +416,52 @@ function ReportView({ rows, nameOf }: { rows: AttendanceReportRow[]; nameOf: (id
 
 function WorkHoursSheet({ onClose }: { onClose: () => void }) {
   const current = useWorkHours().data
-  if (!current) return null
-  return <WorkHoursForm current={current} onClose={onClose} />
+  const timer = useTimerSetting().data
+  if (!current || !timer) return null
+  return <WorkHoursForm current={current} timeoutHours={timer.timeoutHours} onClose={onClose} />
 }
 
-function WorkHoursForm({ current, onClose }: { current: WorkHours; onClose: () => void }) {
+/** Working hours and the timer timeout (timer slice 2), in one sheet; only what changed is saved. */
+function WorkHoursForm({ current, timeoutHours, onClose }: { current: WorkHours; timeoutHours: number; onClose: () => void }) {
   const save = useSetWorkHours()
+  const saveTimer = useSetTimerSetting()
   const [days, setDays] = useState(current.days)
   const [start, setStart] = useState(current.start)
   const [end, setEnd] = useState(current.end)
-  const submit = () => save.mutate({ days: [...days].sort((a, b) => a - b), start, end }, { onSuccess: onClose })
+  const [timeout, setTimeoutHours] = useState(String(timeoutHours))
+  const [problem, setProblem] = useState<string | null>(null)
+  const pending = save.isPending || saveTimer.isPending
+  const submit = async () => {
+    const hours = timeout.trim() === '' ? NaN : Number(timeout)
+    const bad = timeoutProblem(hours)
+    setProblem(bad)
+    if (bad) return
+    const sorted = [...days].sort((a, b) => a - b)
+    try {
+      if (sorted.join() !== current.days.join() || start !== current.start || end !== current.end) await save.mutateAsync({ days: sorted, start, end })
+      if (hours !== timeoutHours) await saveTimer.mutateAsync(hours)
+      onClose()
+    } catch {
+      // The refusal is said in the sheet, below.
+    }
+  }
+  const error = problem ?? save.error?.message ?? saveTimer.error?.message
   const close = () => {
-    if (!save.isPending) onClose()
+    if (!pending) onClose()
   }
   return (
     <Sheet
       open
       onClose={close}
-      title="Working hours"
+      title="Working hours and timer"
       description={`What late and left early mean on Attendance, in ${current.timeZone.split('/').at(-1)!.replace(/_/g, ' ')} time.`}
       footer={
         <>
           <Button variant="secondary" onClick={close}>
             Cancel
           </Button>
-          <Button onClick={submit} disabled={save.isPending}>
-            {save.isPending ? 'Saving…' : 'Save'}
+          <Button onClick={submit} disabled={pending}>
+            {pending ? 'Saving…' : 'Save'}
           </Button>
         </>
       }
@@ -478,9 +504,12 @@ function WorkHoursForm({ current, onClose }: { current: WorkHours; onClose: () =
             <input type="time" className={inputClass} value={end} onChange={(e) => setEnd(e.target.value)} />
           </Field>
         </div>
-        {save.isError && (
+        <Field label="Pause timers after (hours)" hint="1 to 12. A timer that runs this long pauses and asks if you’re still working.">
+          <input type="number" min={1} max={12} step={1} inputMode="numeric" className={inputClass} value={timeout} onChange={(e) => setTimeoutHours(e.target.value)} />
+        </Field>
+        {error && (
           <p role="alert" className="text-sm text-red-700 dark:text-red-300">
-            {save.error.message}
+            {error}
           </p>
         )}
       </form>

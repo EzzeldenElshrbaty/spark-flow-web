@@ -12,6 +12,7 @@ import { MobileBottomBar, MobileDrawer } from '@/layout/MobileNav'
 import { RealtimeBridge } from '@/layout/RealtimeBridge'
 import { mainCardClass } from '@/layout/mainCard'
 import { Sidebar } from '@/layout/Sidebar'
+import { StillWorkingDialog } from '@/layout/StillWorkingDialog'
 import { PhoneTimerBar, TimerAnnouncer } from '@/layout/TimerBar'
 import { TopBar } from '@/layout/TopBar'
 import { useAppShortcuts } from '@/layout/useAppShortcuts'
@@ -91,6 +92,7 @@ export function AppLayout() {
         {!account.error && <PageHelpPanel />}
         <PhoneTimerBar />
         <TimerAnnouncer />
+        {!account.error && <StillWorkingDialog />}
         <MobileBottomBar onOpenMore={() => setDrawerOpen(true)} />
         <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
       </div>

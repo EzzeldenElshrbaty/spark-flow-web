@@ -28,3 +28,11 @@ Pick a person and a period (today, 7, 30 or 90 days) at the top.
 ## Working hours
 
 Late is in after the start of a working day; left early is out before its end. A check-out Flow made itself (a forgotten one) is marked "By Flow" and never counts as early. People who can change settings set the working days and hours with **Change**.
+
+## Timer timeout
+
+A timer that runs too long pauses itself and asks **Still working?**, so a forgotten timer doesn't keep counting.
+
+- **Continue** carries the count on. The time in between isn't counted.
+- **Keep paused** leaves it paused.
+- The default is 4 hours. People who can change settings set it with **Change**, from 1 to 12 hours.
