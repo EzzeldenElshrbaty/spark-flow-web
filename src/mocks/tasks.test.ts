@@ -145,7 +145,7 @@ describe('archiving tasks', () => {
     await api.time.start({ taskId: 't-nex-102' })
     clock = new Date('2026-10-26T10:00:00Z')
     await api.tasks.archive('NEX-102')
-    expect((await api.time.today()).running).toBeNull()
+    expect((await api.time.today()).timer).toBeNull()
     await expect(api.time.start({ taskId: 't-nex-102' })).rejects.toMatchObject({ status: 400, detail: 'That task is archived. Restore it to log time.' })
   })
 

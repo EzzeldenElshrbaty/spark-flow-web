@@ -15,6 +15,7 @@ import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { formatDate, timeAgo } from '@/lib/format'
 import { withInspector } from '@/lib/inspector'
 import { mentionLink } from '@/lib/mentionLink'
+import { timerForTask } from '@/lib/hours'
 import { useNow } from '@/lib/useNow'
 import { useRole } from '@/lib/useRole'
 import { loggableTasks, myOpenTasks } from '@/pages/projects/taskFilters'
@@ -93,7 +94,7 @@ export function HomePage() {
                         {projectName(t.projectId)} · {t.dueAt ? formatDate(t.dueAt) : '—'}
                       </span>
                     </Link>
-                    {day.data?.running?.taskId !== t.id && loggable.includes(t) && (
+                    {!timerForTask(day.data?.timer, t.id) && loggable.includes(t) && (
                       <Button variant="ghost" onClick={() => start.mutate({ taskId: t.id })} disabled={start.isPending} aria-label={`Start timer on ${t.key}`}>
                         <Play className="size-4" /> Start
                       </Button>

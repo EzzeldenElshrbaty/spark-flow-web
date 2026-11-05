@@ -50,7 +50,6 @@ function myDay(data: DbData, userId: string, now: Date): MyDay {
     day,
     checkIn: data.checkIns.find((c) => c.userId === userId && c.day === day) ?? null,
     openCheckIn: data.checkIns.filter((c) => c.userId === userId && c.day < day && c.checkedOutAt === null).sort((a, b) => (a.checkedInAt < b.checkedInAt ? 1 : -1))[0] ?? null,
-    running: mine.filter((e) => e.endedAt === null).map(shown)[0] ?? null,
     entries: mine.filter((e) => localDay(new Date(e.startedAt)) === day).sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1)).map(shown),
     // Check-ins from before Attendance recorded nothing, so their owner still gets the notice once.
     firstCheckIn: !data.checkIns.some((c) => c.userId === userId && c.inFrom),

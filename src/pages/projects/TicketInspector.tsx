@@ -1,10 +1,12 @@
 import clsx from 'clsx'
-import { Archive, Clock, Pencil, Play, Square } from 'lucide-react'
+import { Archive, Clock, Pencil, Play } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { useComments } from '@/api/comments'
 import { usePhases, useProjectSummary } from '@/api/projects'
 import { useArchiveTask, useRestoreTask, useSprints, useTicket, useUpdateTask } from '@/api/tickets'
-import { useMyDay, useStartTimer, useStopTimer } from '@/api/time'
+import { useMyDay, useStartTimer } from '@/api/time'
+import { TimerControls } from '@/layout/TimerBar'
+import { timerForTask } from '@/lib/hours'
 import type { TicketStatus } from '@/api/types'
 import { useUsers } from '@/api/users'
 import { ConfirmDeleteSheet } from '@/components/ConfirmDeleteSheet'
@@ -73,7 +75,6 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
   const comments = useComments(ticketKey)
   const myDay = useMyDay()
   const start = useStartTimer()
-  const stop = useStopTimer()
   const project = projectQuery.data && projectQuery.data.id === ticket.data?.projectId ? projectQuery.data : undefined
   // A ticket of another workspace's project is not found in this one.
   const foreign = Boolean(ticket.data && projectQuery.isSuccess && !project)
@@ -189,10 +190,8 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
         {!archived && canLog(project) && (
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {t.category !== 'done' &&
-            (myDay.data?.running?.taskId === t.id ? (
-              <Button variant="secondary" onClick={() => stop.mutate()} disabled={stop.isPending}>
-                <Square className="size-3.5 fill-current" /> {stop.isPending ? 'Stopping…' : 'Stop timer'}
-              </Button>
+            (timerForTask(myDay.data?.timer, t.id) ? (
+              <TimerControls timer={timerForTask(myDay.data?.timer, t.id)!} layout="card" />
             ) : (
               <Button variant="secondary" onClick={() => start.mutate({ taskId: t.id })} disabled={start.isPending}>
                 <Play className="size-4" /> {start.isPending ? 'Starting…' : 'Start timer'}
@@ -203,7 +202,7 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
           </Button>
         </div>
         )}
-        {(start.error || stop.error) && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{((start.error ?? stop.error) as Error).message}</p>}
+        {start.error && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{(start.error as Error).message}</p>}
         {addingTime && <AddTimeSheet projectId={t.projectId} taskId={t.id} onClose={() => setAddingTime(false)} />}
         <h3 className="mt-5 text-xs font-medium uppercase tracking-wide text-fg-muted">Description</h3>
         <p className="mt-1.5 whitespace-pre-line break-words text-sm text-fg-secondary">{t.description.trim() || '—'}</p>

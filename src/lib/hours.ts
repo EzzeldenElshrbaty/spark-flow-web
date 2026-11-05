@@ -1,4 +1,4 @@
-import type { TimeEntry } from '@/api/types'
+import type { MyTimer, TimeEntry } from '@/api/types'
 
 const HOUR = 3_600_000
 /** One entry can be up to 12 hours: a manual one is refused past it, a forgotten timer stops counting at it. */
@@ -25,4 +25,9 @@ export function runningClock(startedAt: string, now: Date): { ms: number; capped
 /** An entry's hours; a running entry counts up to now (at most 12 hours). Shared by the mock server and the pages. */
 export function entryHours(entry: Pick<TimeEntry, 'startedAt' | 'endedAt'>, now: Date): number {
   return Math.max(0, entryEnd(entry, now) - new Date(entry.startedAt).getTime()) / HOUR
+}
+
+/** My timer when it runs or is paused on this task (the task panel and Home offer its buttons there), else null. */
+export function timerForTask(timer: MyTimer | null | undefined, taskId: string): MyTimer | null {
+  return timer && 'taskId' in timer.target && timer.target.taskId === taskId ? timer : null
 }

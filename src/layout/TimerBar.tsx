@@ -1,13 +1,14 @@
 import { IconPlayerPlay } from '@tabler/icons-react'
 import clsx from 'clsx'
 import { ArrowLeftRight, Pause, Play, Square } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { useProjectSummaries } from '@/api/projects'
 import { useTickets } from '@/api/tickets'
 import { useMyDay, usePauseTimer, useResumeTimer, useStopTimer } from '@/api/time'
 import type { MyTimer } from '@/api/types'
 import { Button, IconButton } from '@/components/sf/Button'
+import { Button as CardButton } from '@/components/ui/Button'
 import { StartTimerDialog } from '@/layout/StartTimerDialog'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { formatClock } from '@/lib/format'
@@ -51,32 +52,63 @@ export function TimerControls({ timer, layout }: { timer: MyTimer; layout: 'pill
   const stop = useStopTimer()
   const [switching, setSwitching] = useState(false)
   const failed = [pause, resume, stop].find((m) => m.error)?.error as Error | undefined
+  if (layout === 'card') return <CardControls timer={timer} pause={pause} resume={resume} stop={stop} failed={failed} switching={switching} setSwitching={setSwitching} />
   const button = clsx(
     'inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-xs font-medium hover:bg-surface-muted disabled:opacity-60',
     // The pill sits in the sf top bar, so it takes the sf colours (the app's own accent-soft fails contrast there in dark).
     layout === 'pill' ? 'text-sf-accent hover:bg-sf-surface-hover' : 'text-fg-secondary',
   )
+  // In the pill the words show from xl up; below that the top bar has room for icons only, named for screen readers.
+  const words = layout === 'pill' ? 'hidden xl:inline' : undefined
+  const control = (icon: ReactNode, text: string, onClick: () => void, disabled = false) => (
+    <button type="button" className={button} onClick={onClick} disabled={disabled} aria-label={layout === 'pill' ? text : undefined}>
+      {icon} <span className={words}>{text}</span>
+    </button>
+  )
   return (
     <>
       {failed && <span className="min-w-0 truncate text-xs text-red-600 dark:text-red-400">{failed.message}</span>}
+      {timer.state === 'running'
+        ? control(<Pause className="size-3 fill-current" aria-hidden />, pause.isPending ? 'Pausing…' : 'Pause', () => pause.mutate(), pause.isPending)
+        : control(<Play className="size-3 fill-current" aria-hidden />, resume.isPending ? 'Resuming…' : 'Resume', () => resume.mutate(), resume.isPending)}
+      {control(<Square className="size-3 fill-current" aria-hidden />, stop.isPending ? 'Stopping…' : 'Stop', () => stop.mutate(), stop.isPending)}
+      {timer.state === 'paused' &&
+        (layout === 'bar' ? (
+          <button type="button" className={button} onClick={() => setSwitching(true)} aria-label="Switch task">
+            <ArrowLeftRight className="size-3" aria-hidden />
+          </button>
+        ) : (
+          control(<ArrowLeftRight className="size-3" aria-hidden />, 'Switch task', () => setSwitching(true))
+        ))}
+      {switching && <StartTimerDialog open onClose={() => setSwitching(false)} title="Switch task" />}
+    </>
+  )
+}
+
+type Mutation = { mutate: () => void; isPending: boolean }
+
+/** The same buttons in a card (Home, the task panel), as the page's own secondary buttons. */
+function CardControls({ timer, pause, resume, stop, failed, switching, setSwitching }: { timer: MyTimer; pause: Mutation; resume: Mutation; stop: Mutation; failed?: Error; switching: boolean; setSwitching: (on: boolean) => void }) {
+  return (
+    <>
       {timer.state === 'running' ? (
-        <button type="button" className={button} onClick={() => pause.mutate()} disabled={pause.isPending}>
-          <Pause className="size-3 fill-current" aria-hidden /> {pause.isPending ? 'Pausing…' : 'Pause'}
-        </button>
+        <CardButton variant="secondary" onClick={() => pause.mutate()} disabled={pause.isPending}>
+          <Pause className="size-3.5 fill-current" aria-hidden /> {pause.isPending ? 'Pausing…' : 'Pause'}
+        </CardButton>
       ) : (
-        <button type="button" className={button} onClick={() => resume.mutate()} disabled={resume.isPending}>
-          <Play className="size-3 fill-current" aria-hidden /> {resume.isPending ? 'Resuming…' : 'Resume'}
-        </button>
+        <CardButton variant="secondary" onClick={() => resume.mutate()} disabled={resume.isPending}>
+          <Play className="size-3.5 fill-current" aria-hidden /> {resume.isPending ? 'Resuming…' : 'Resume'}
+        </CardButton>
       )}
-      <button type="button" className={button} onClick={() => stop.mutate()} disabled={stop.isPending}>
-        <Square className="size-3 fill-current" aria-hidden /> {stop.isPending ? 'Stopping…' : 'Stop'}
-      </button>
+      <CardButton variant="secondary" onClick={() => stop.mutate()} disabled={stop.isPending}>
+        <Square className="size-3.5 fill-current" aria-hidden /> {stop.isPending ? 'Stopping…' : 'Stop'}
+      </CardButton>
       {timer.state === 'paused' && (
-        <button type="button" className={button} onClick={() => setSwitching(true)} aria-label={layout === 'bar' ? 'Switch task' : undefined}>
-          <ArrowLeftRight className="size-3" aria-hidden />
-          {layout !== 'bar' && ' Switch task'}
-        </button>
+        <CardButton variant="ghost" onClick={() => setSwitching(true)}>
+          <ArrowLeftRight className="size-4" aria-hidden /> Switch task
+        </CardButton>
       )}
+      {failed && <p className="w-full text-xs text-red-600 dark:text-red-400">{failed.message}</p>}
       {switching && <StartTimerDialog open onClose={() => setSwitching(false)} title="Switch task" />}
     </>
   )

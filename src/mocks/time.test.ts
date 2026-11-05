@@ -61,7 +61,7 @@ describe('check-in, timer and manual time', () => {
   it('today() starts empty for a fresh day', async () => {
     const day = await api.time.today()
     expect(day.checkIn).toBeNull()
-    expect(day.running).toBeNull()
+    expect(day.timer).toBeNull()
     expect(day.entries).toHaveLength(0)
   })
 
@@ -74,18 +74,18 @@ describe('check-in, timer and manual time', () => {
 
   it('check-in with a task starts its timer', async () => {
     const day = await api.time.checkIn({ plan: 'x', target: { taskId: 't-nex-101' } })
-    expect(day.running).toMatchObject({ taskId: 't-nex-101', projectId: 'p-nex', source: 'timer', endedAt: null })
+    expect(day.timer).toMatchObject({ state: 'running', target: { taskId: 't-nex-101' }, projectId: 'p-nex' })
   })
 
   it('starting a timer stops the running one', async () => {
-    const first = (await api.time.start({ taskId: 't-nex-101' })).running!
+    const first = (await api.time.start({ taskId: 't-nex-101' })).timer!
     later(30)
-    const second = (await api.time.start({ taskId: 't-nex-102' })).running!
+    const second = (await api.time.start({ taskId: 't-nex-102' })).timer!
     const entries = await mine()
-    expect(entries.find((e) => e.id === first.id)?.endedAt).toBe(second.startedAt)
+    expect(entries.find((e) => e.id === first.entryId)?.endedAt).toBe(second.startedAt)
     expect(entries.filter((e) => e.endedAt === null)).toHaveLength(1)
     later(5)
-    expect((await api.time.start({ taskId: 't-nex-102' })).running?.id).toBe(second.id)
+    expect((await api.time.start({ taskId: 't-nex-102' })).timer?.entryId).toBe(second.entryId)
   })
 
   it('start refuses a done task', async () => {
@@ -95,10 +95,10 @@ describe('check-in, timer and manual time', () => {
 
   it('stop', async () => {
     await expect(api.time.stop()).rejects.toMatchObject({ detail: "There's no timer to stop." })
-    const { running } = await api.time.start({ projectId: 'p-nex' })
+    const { timer } = await api.time.start({ projectId: 'p-nex' })
     later(10)
-    expect((await api.time.stop()).running).toBeNull()
-    expect((await mine()).find((e) => e.id === running!.id)?.endedAt).toBe(now.toISOString())
+    expect((await api.time.stop()).timer).toBeNull()
+    expect((await mine()).find((e) => e.id === timer!.entryId)?.endedAt).toBe(now.toISOString())
   })
 
   it("check-out closes yesterday's open check-in", async () => {
@@ -108,9 +108,9 @@ describe('check-in, timer and manual time', () => {
     const day = await api.time.today()
     expect(day.checkIn).toBeNull()
     expect(day.openCheckIn?.plan).toBe('Late start') // still open from yesterday
-    expect(day.running?.taskId).toBe('t-nex-101')
+    expect(day.timer?.target).toEqual({ taskId: 't-nex-101' })
     const out = await api.time.checkOut()
-    expect(out.running).toBeNull()
+    expect(out.timer).toBeNull()
     expect(out.openCheckIn).toBeNull()
     const checkIns = (await db.read()).checkIns.filter((c) => c.userId === 'u-1')
     expect(checkIns.every((c) => c.checkedOutAt !== null)).toBe(true)
@@ -141,7 +141,7 @@ describe('check-in, timer and manual time', () => {
   it('every role may log its own time', async () => {
     await api.users.viewAs('u-8') // Tarek, Member
     await api.time.checkIn({ plan: 'Offline cache' })
-    expect((await api.time.start({ taskId: 't-mob-104' })).running?.userId).toBe('u-8')
+    expect((await api.time.start({ taskId: 't-mob-104' })).timer?.target).toEqual({ taskId: 't-mob-104' })
   })
 
   it('each write publishes timeLogged', async () => {
@@ -158,14 +158,14 @@ describe('check-in, timer and manual time', () => {
   it('a timer left running overnight is closed at 12 hours, and counts at most 12 hours meanwhile', async () => {
     now = at(17)
     // NEX-102 has no seeded running timer, so its hours depend only on this test's clock (not the real time of day).
-    const { running } = await api.time.checkIn({ plan: 'Late', target: { taskId: 't-nex-102' } })
+    const { timer } = await api.time.checkIn({ plan: 'Late', target: { taskId: 't-nex-102' } })
     const before = (await api.tickets.get('NEX-102')).loggedHours
     now = at(9, 0, 1) // 16 hours later
     expect((await api.tickets.get('NEX-102')).loggedHours).toBeCloseTo(before + 12, 5)
     // Time after the 12 hours is free again for a manual entry.
     await api.time.addManual({ taskId: 't-nex-110', startedAt: at(7, 0, 1).toISOString(), endedAt: at(8, 0, 1).toISOString(), note: '' })
     await api.time.checkOut()
-    const closed = (await mine()).find((e) => e.id === running!.id)!
+    const closed = (await mine()).find((e) => e.id === timer!.entryId)!
     expect(closed.endedAt).toBe(new Date(new Date(closed.startedAt).getTime() + 12 * 3_600_000).toISOString())
   })
 
@@ -206,7 +206,7 @@ describe('editing time', () => {
 
   it("a running entry can't be edited or deleted", async () => {
     const day = await api.time.start({ taskId: 't-nex-102' })
-    const id = day.running!.id
+    const id = day.timer!.entryId
     await expect(api.time.update(id, { note: 'x' })).rejects.toMatchObject({ status: 400, detail: 'Stop the timer first.' })
     await expect(api.time.remove(id)).rejects.toMatchObject({ status: 400, detail: 'Stop the timer first.' })
   })
@@ -249,10 +249,10 @@ describe('editing time, edge cases from review', () => {
     now = new Date(at(7).getTime() + 27_400) // 07:00:27.4
     await api.time.start({ taskId: 't-nex-101' })
     now = new Date(at(8).getTime() + 13_900)
-    const second = (await api.time.start({ taskId: 't-nex-102' })).running!
+    const second = (await api.time.start({ taskId: 't-nex-102' })).timer!
     now = at(8, 30)
     await api.time.stop()
-    expect((await api.time.update(second.id, { note: 'pairing' })).note).toBe('pairing')
+    expect((await api.time.update(second.entryId, { note: 'pairing' })).note).toBe('pairing')
   })
 
   it('an entry on an archived task can still be fixed, but not moved to another archived task', async () => {
@@ -349,7 +349,7 @@ describe('a forgotten timer', () => {
     await api.time.start({ taskId: 't-nex-101' })
     now = at(9)
     const day = await api.time.checkIn({ plan: 'New day' })
-    expect(day.running).toBeNull()
+    expect(day.timer).toBeNull()
     const entry = (await db.read()).timeEntries.find((e) => e.userId === 'u-1' && e.taskId === 't-nex-101' && e.startedAt === at(16, 0, -1).toISOString())!
     // Stopped at the 12-hour limit, not at this morning's check-in: 12 hours of time, whatever a clock change overnight
     // does to the wall clock.

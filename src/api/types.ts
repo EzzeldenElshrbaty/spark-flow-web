@@ -695,7 +695,7 @@ export type TimeTarget = { taskId: string } | { projectId: string }
  * any day) and my entries that started today, newest first.
  */
 export type MyDay = {
-  day: string; checkIn: CheckIn | null; openCheckIn: CheckIn | null; running: TimeEntry | null; entries: TimeEntry[]
+  day: string; checkIn: CheckIn | null; openCheckIn: CheckIn | null; entries: TimeEntry[]
   /** Never checked in yet: the card says what checking in records. */
   firstCheckIn: boolean
   /** My timer: running, or paused today and ready to resume; null when there's none. */

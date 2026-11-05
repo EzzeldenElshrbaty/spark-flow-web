@@ -8,7 +8,13 @@ Hours come from the timer and from time added by hand. A task's hours count agai
 
 ## The timer
 
-Start it from Home, a task's panel or the top bar. One timer runs at a time: starting another stops the last. A timer left running stops counting after 12 hours. Checking out stops it.
+Press **Start timer** in the top bar, pick a project and a task, and it starts. You can also start it from Home or a task's panel. One timer runs at a time: starting another stops the last.
+
+- **Pause** stops counting and keeps the task in the bar. **Resume** carries the count on from where it stopped.
+- **Stop** ends it, and the bar shows Start timer again. The next start counts from zero.
+- **Switch task** on a paused timer starts another task instead.
+- A paused timer clears at the end of the day.
+- A timer left running stops counting after 12 hours. Checking out stops it.
 
 ## Adding time
 

@@ -2311,16 +2311,32 @@ timers, and every role gets a dashboard with charts.
   `src/help/time.md`.
 
 **Steps:**
-- [ ] Write the failing tests: in `TicketInspector.test.tsx`, `this task's running timer offers Pause and Stop; paused
+- [x] Write the failing tests: in `TicketInspector.test.tsx`, `this task's running timer offers Pause and Stop; paused
   offers Resume`; in `CheckInCard.test.tsx`, `the timer row uses Pause and Stop`.
-- [ ] Implement it and remove `running`, then run the gates.
-- [ ] App check:
+- [x] Implement it and remove `running`, then run the gates.
+- [x] App check:
   - start from the top bar;
   - pause, resume and check the count carries on;
   - stop, start again and check it counts from 0;
   - switch task;
   - a second tab follows.
-- [ ] Update the docs, then commit: `docs(time): timer slice 1 contract, help and CLAUDE.md`.
+- [x] Update the docs, then commit: `docs(time): timer slice 1 contract, help and CLAUDE.md`.
+- Rulings:
+  - No `TicketInspector.test.tsx` exists, and the panel needs a lot of mocking. Its choice moved into
+    `timerForTask(timer, taskId)` in `lib/hours.ts`, with a unit test. The controls are tested in T3, and the panel
+    was checked in the app.
+  - In the pill, Pause, Resume, Stop and Switch task show icons only below `xl`, with their names as `aria-label`. At
+    1024px the wider pill squeezed the search box to 52px and its contents spilled under the pill. With icons only
+    below `xl`, the search box gets 125px.
+  - On Home and in the task panel, `TimerControls layout="card"` uses the page's own secondary buttons.
+- Found, not this branch: `RichComposer.browser.test.tsx` "an unknown /word keeps the text and says why…" fails on
+  `dev` (0b1c436) too, every run.
+- Done:
+  - Unit 1,948 pass; browser 268 pass, plus 1 failing on `dev` as well; tsc, lint and `build:prototype` are clean.
+  - App check on `npm run dev` as Youssef: Start timer from the top bar (project, then task, mine first), 0:00:10
+    running in the pill and on Home. Pause froze it at 0:01:30 for 5 s with Resume, Stop and Switch task shown.
+    Resume went on from 1:30, and Stop cleared the bar (entry `endReason: 'stopped'`).
+  - At 390px the play icon sits in the top bar, with no sideways scroll.
 
 ## Slice 2: Timer timeout
 

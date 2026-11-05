@@ -38,6 +38,18 @@ Spark Flow is a sister product of **Spark CRM** (Spark Systems). The two apps mu
 - **Signing in** (slice AB, spec §4.10): `/signin` (`pages/signin/SignInPage.tsx`) is outside the shell; `api.auth` signs in and out, and every other call is a 401 while signed out (`guardRequests` in `src/mocks/index.ts`). The prototype's session is the browser's (`localSession` in `src/mocks/actor.ts`), so a first visit opens on Sign in; the demo list and `DEMO_PASSWORD` (`lib/demo.ts`) are prototype only. AppLayout sends a 401 to `/signin?returnTo=`.
 - **Derived values**: `src/mocks/derive.ts` works out loggedHours, overdue (past due, or more hours than estimated; never when done), progress, expectedFinish, currentPhaseId and cost (admin only) on every read; nothing derived is stored. Pages take them from `TaskView` / `ProjectSummary`; `src/lib/hours.ts` `entryHours` is the one hours rule both sides use.
 - **Time**: the rules (one check-in per local day, one running timer per person, manual entries can't overlap / be in the future / exceed 12 h, check-out stops the timer) live in `src/mocks/time.ts`; each write publishes `timeLogged`. A running clock is always `elapsedMs(startedAt, now)` with `useNow`, never a counter; durations show through `formatClock` / `formatHours`.
+- **Timer** (timer slice 1, spec `2026-11-05-task-timer-and-dashboard-design.md`):
+  - **Storage:** Pause closes the running entry with `endReason: 'paused'`, and Resume starts a new entry on the same
+    target.
+  - **Reading it:** `MyDay.timer` (`currentTimer` in `src/mocks/time.ts`) is worked out on read: my running entry, or
+    a run paused today. `runMs` is the run's closed time, and the bar shows it with `timerClock` in
+    `layout/TimerBar.tsx`.
+  - **Flow's stops** (Done, archive, deactivate, the 12-hour limit) write `'flow'` through `endEntry` in
+    `src/mocks/timers.ts`.
+  - **Where it started from:** `startedFrom` (IP, device, place) stays in the store. Time reads leave it out
+    (`shown`), so only Attendance shows it.
+  - **Controls:** the top bar's Start timer, the pill, the phone bar, Home and the task panel all use
+    `TimerControls`.
 - **Mentions & comments**: the mention syntax (`@all`, `@[Name](userId)` from the composer's autocomplete, `@KEY-n`, `@KEY`) and its parser and `segments` live in `src/lib/mentions.ts`, shared by the mock and the pages; chips are built from parsed ids of people, tasks and projects that exist, everything else renders as plain text (never HTML). A task comment or bug also posts a card (`commentId`) in its project's chat; mentions of me feed the bell and Home (`mentionReads`, DB_VERSION 3).
 - **Dashboard & Time and cost**: their figures come from the mock (`src/mocks/dashboard.ts`, `src/mocks/report.ts` with `derive`/`hours`), never from the page. `dashboard.view`: whoever holds `dashboard.all` (Admin, Sales) sees every project, anyone else the ones they manage; "Checked in now" shows everyone with `checkins.all` (Admin) and the people on projects they manage with `checkins.managed` (PM, Member). Cost and rates only with the `cost.view` and `rates.manage` permissions (Admin). Report weeks start on Sunday; "last 7 days" is rolling.
 - **Message bodies**: messages and replies store `body`, structured rich text from `src/lib/messageBody.ts` (`parseBody`, shared by the mock and the pages); the channel renders it as elements in `pages/chat/MessageBody.tsx`, never as HTML. Task chips come from `api.tickets.resolve`.

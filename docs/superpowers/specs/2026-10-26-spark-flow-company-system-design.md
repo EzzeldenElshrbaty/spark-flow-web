@@ -117,6 +117,15 @@ export type Mention = { kind: 'user' | 'project' | 'task' | 'all'; id: string } 
 `chat.reply(messageId, content)`, `mentions.mine()`, `db.export()/reloadSeed()/reset()` (admin, mock only).
 HTTP paths follow the Phases 1+2 style (`POST /api/projects`, `POST /api/time/start`, …) and are listed in the plan.
 
+Timer (amended 5 Nov 2026, timer slice 1, `2026-11-05-task-timer-and-dashboard-design.md` §4.1):
+- `POST /api/time/start` `{ ...TimeTarget, location }`
+- `POST /api/time/pause`
+- `POST /api/time/resume` `{ location }`
+- `POST /api/time/stop`
+
+A time entry carries `endReason` (`'paused' | 'stopped' | 'timeout' | 'flow' | null`). It also stores `startedFrom`
+(IP, device, place), which only Attendance returns. `MyDay.timer` is the running or paused run, with `runMs`.
+
 ### 4.3 Permissions (enforced in the mock API — 403 `ApiError` — and mirrored in the UI)
 
 **Amended 31 Oct 2026 (Admin and help slice 1):** the table below is now the four built-in roles' starting grants,

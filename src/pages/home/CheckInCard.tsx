@@ -1,13 +1,14 @@
-import { Clock, LogOut, Play, Square } from 'lucide-react'
+import { Clock, LogOut, Play } from 'lucide-react'
 import { useState } from 'react'
-import { useCheckIn, useCheckOut, useStartTimer, useStopTimer, useUndoCheckOut } from '@/api/time'
+import { useCheckIn, useCheckOut, useStartTimer, useUndoCheckOut } from '@/api/time'
 import type { MyDay, TaskView, TimeTarget } from '@/api/types'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { Field, inputClass, selectClass } from '@/components/ui/Field'
 import { formatClock, formatDate, formatHours, formatTime } from '@/lib/format'
-import { entryHours, runningClock } from '@/lib/hours'
+import { entryHours } from '@/lib/hours'
 import { useNow } from '@/lib/useNow'
+import { TimerControls, timerClock } from '@/layout/TimerBar'
 import { AddTimeSheet } from '@/pages/time/AddTimeSheet'
 import { EntryRowExtras } from '@/pages/time/EntryRowExtras'
 import { daySummary } from './myDay'
@@ -76,23 +77,21 @@ function CheckInForm({ tasks, projects, first }: { tasks: TaskView[]; projects: 
 /** The running timer with its live clock, or a way to start one. */
 function TimerRow({ day, tasks, projects, label }: { day: MyDay; tasks: TaskView[]; projects: LoggableProject[]; label: (taskId: string | null, projectId: string) => string }) {
   const start = useStartTimer()
-  const stop = useStopTimer()
-  const now = useNow(day.running ? 1000 : 0)
+  const now = useNow(day.timer?.state === 'running' ? 1000 : 0)
   const [taskId, setTaskId] = useState('')
-  if (day.running) {
-    const clock = runningClock(day.running.startedAt, now)
+  if (day.timer) {
+    const { timer } = day
+    const clock = timerClock(timer, now)
     return (
-      <div className="flex items-center gap-3 rounded-lg bg-accent-soft px-4 py-3">
-        <span className="size-2 shrink-0 rounded-full bg-brand-500 motion-safe:animate-pulse" aria-hidden />
+      <div className="flex flex-wrap items-center gap-3 rounded-lg bg-accent-soft px-4 py-3">
+        <span className={timer.state === 'running' ? 'size-2 shrink-0 rounded-full bg-brand-500 motion-safe:animate-pulse' : 'size-2 shrink-0 rounded-full bg-fg-muted'} aria-hidden />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm text-fg">{label(day.running.taskId, day.running.projectId)}</span>
+          <span className="block truncate text-sm text-fg">{label('taskId' in timer.target ? timer.target.taskId : null, timer.projectId)}</span>
           {clock.capped && <span className="block text-xs text-fg-muted">12 h limit reached · Stop it to log the 12 hours.</span>}
+          {timer.state === 'paused' && <span className="block text-xs text-fg-muted">Paused</span>}
         </span>
-        <span className="text-lg font-semibold tabular-nums text-accent">{formatClock(clock.ms)}</span>
-        <Button variant="secondary" onClick={() => stop.mutate()} disabled={stop.isPending}>
-          <Square className="size-3.5 fill-current" /> {stop.isPending ? 'Stopping…' : 'Stop'}
-        </Button>
-        {errorText(stop.error)}
+        <span role="timer" className="text-lg font-semibold tabular-nums text-accent">{formatClock(clock.ms)}</span>
+        <TimerControls timer={timer} layout="card" />
       </div>
     )
   }
@@ -113,7 +112,7 @@ function TimerRow({ day, tasks, projects, label }: { day: MyDay; tasks: TaskView
 }
 
 function Entries({ day, label }: { day: MyDay; label: (taskId: string | null, projectId: string) => string }) {
-  const now = useNow(day.running ? 60_000 : 0)
+  const now = useNow(day.timer ? 60_000 : 0)
   if (day.entries.length === 0) return <p className="text-sm text-fg-muted">No time logged today yet.</p>
   return (
     <ul className="divide-y divide-line-subtle">
@@ -142,7 +141,7 @@ export function CheckInCard({ day, tasks, projects = [], label }: { day: MyDay; 
   const checkOut = useCheckOut()
   const undo = useUndoCheckOut()
   const [adding, setAdding] = useState(false)
-  const now = useNow(day.running ? 60_000 : 0)
+  const now = useNow(day.timer ? 60_000 : 0)
   const summary = daySummary(day.entries, now)
   const { checkIn } = day
 
@@ -158,7 +157,7 @@ export function CheckInCard({ day, tasks, projects = [], label }: { day: MyDay; 
             </Button>
           </div>
         )}
-        {day.running && (
+        {day.timer && (
           <div className="border-b border-line-subtle px-5 py-4">
             <TimerRow day={day} tasks={tasks} projects={projects} label={label} />
           </div>
@@ -182,7 +181,7 @@ export function CheckInCard({ day, tasks, projects = [], label }: { day: MyDay; 
       <div className="space-y-4 p-5">
         <p className="whitespace-pre-line text-sm text-fg-secondary">{checkIn.plan}</p>
         {/* After check-out a timer can still be started from a task; it shows here so it can be stopped. */}
-        {(!out || day.running) && <TimerRow day={day} tasks={tasks} projects={projects} label={label} />}
+        {(!out || day.timer) && <TimerRow day={day} tasks={tasks} projects={projects} label={label} />}
         <Entries day={day} label={label} />
         {!out && (
           <div className="flex items-center justify-end gap-2 border-t border-line-subtle pt-4">
