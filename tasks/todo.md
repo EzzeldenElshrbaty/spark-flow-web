@@ -2281,7 +2281,7 @@ timers, and every role gets a dashboard with charts.
   `aria-label="Start timer"`.
 
 **Steps:**
-- [ ] Write the failing tests:
+- [x] Write the failing tests:
   - `no timer: Start timer opens the dialog`
   - `running: the count, Pause, Stop`
   - `paused: the frozen count (runMs), Resume, Stop, Switch task`
@@ -2289,8 +2289,17 @@ timers, and every role gets a dashboard with charts.
   - `the announcer says "Timer paused" and "Timer stopped"`
   - `390px: icon button in the top bar; running or paused uses the bottom bar`
   - `axe light and dark`
-- [ ] Implement, then run the tests. Expected: green.
-- [ ] Commit: `feat(shell): Start timer in the top bar; Pause, Resume and Stop in the pill and phone bar`.
+- [x] Implement, then run the tests. Expected: green.
+- [x] Commit: `feat(shell): Start timer in the top bar; Pause, Resume and Stop in the pill and phone bar`.
+- Rulings:
+  - `MyTimer` gains `projectId`, because the bar looks its task up through the project's task list.
+  - The pill now uses `sf` colours (`bg-sf-surface-mention text-sf-accent`). This was an existing bug: inside the
+    `sf` top bar, `text-accent` took the sf accent while `bg-accent-soft` kept the app's own, and axe failed its
+    contrast in dark.
+  - The phone bar is a `section` labelled "Timer", so it's a landmark (axe `region`).
+  - Resume says "Resuming…" while pending; the spec's list didn't name it.
+- Done: 7 jsdom tests (`TimerBar.test.tsx`) and 8 browser tests (`TimerBar.browser.test.tsx`: axe in light and dark,
+  wide and at 390px, for no timer, running, paused and the dialog).
 
 ### T4. Task inspector, Home, and closing slice 1
 

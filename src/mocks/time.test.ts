@@ -377,7 +377,7 @@ describe('pause, resume and stop (timer slice 1)', () => {
     const day = await api.time.pause()
     const entry = (await mine()).find((e) => e.id === started.timer!.entryId)!
     expect(entry).toMatchObject({ endedAt: now.toISOString(), endReason: 'paused' })
-    expect(day.timer).toEqual({ state: 'paused', target: { taskId: 't-nex-101' }, entryId: entry.id, runMs: 30 * MIN, startedAt: null, pausedBy: 'me' })
+    expect(day.timer).toEqual({ state: 'paused', target: { taskId: 't-nex-101' }, projectId: 'p-nex', entryId: entry.id, runMs: 30 * MIN, startedAt: null, pausedBy: 'me' })
   })
 
   it('resume starts a new entry on the paused target; runMs carries the paused time', async () => {

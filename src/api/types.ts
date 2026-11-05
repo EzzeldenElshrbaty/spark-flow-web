@@ -708,7 +708,7 @@ export type MyDay = {
  * 'flow', or ended before today: `runMs` is their closed time, and a running one adds `now − startedAt`.
  */
 export type MyTimer = {
-  state: 'running' | 'paused'; target: TimeTarget; entryId: string
+  state: 'running' | 'paused'; target: TimeTarget; projectId: string; entryId: string
   runMs: number; startedAt: string | null; pausedBy: 'me' | 'timeout' | null
 }
 export type NewManualEntry = TimeTarget & { startedAt: string; endedAt: string; note: string }

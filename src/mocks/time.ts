@@ -102,6 +102,7 @@ export function currentTimer(data: DbData, userId: string, now: Date): MyTimer |
   return {
     state: running ? 'running' : 'paused',
     target: targetOf(newest),
+    projectId: newest.projectId,
     entryId: newest.id,
     runMs,
     startedAt: running ? newest.startedAt : null,
