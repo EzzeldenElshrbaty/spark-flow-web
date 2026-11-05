@@ -2083,3 +2083,416 @@ Plan:
   - A person's title can repeat their role ("Project manager · Project Manager · Mobile").
   - No separate review agent this time.
 
+
+# Task timer, timer timeout, dashboard for everyone — 5 Nov 2026, plan for approval
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or
+> superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** One Start timer (with Pause, Resume, Stop) replaces check-in. A workspace timeout auto-pauses forgotten
+timers, and every role gets a dashboard with charts.
+
+**Architecture:**
+- A pause is a closed `TimeEntry` with `endReason: 'paused'`. The current timer (`MyDay.timer`) is worked out on read,
+  from my newest timer entries.
+- The mock scheduler enforces the timeout in its 15-second transaction.
+- Attendance and "Working now" read timer entries instead of check-ins.
+- The dashboard gets one new read, `stats`.
+
+**Tech stack:** React 19, TS, Vite, Tailwind v4, TanStack Query, the IndexedDB mock, Vitest (unit, jsdom, browser).
+
+**Spec:** `docs/superpowers/specs/2026-11-05-task-timer-and-dashboard-design.md` (amends
+`docs/superpowers/specs/2026-10-26-spark-flow-company-system-design.md` §2, §4.3, §4.4, §4.8, §5, §6).
+
+**Branch:** `feat/task-timer` (from `dev`).
+
+## Global constraints
+
+- Copy as the spec gives it: "Start timer", "Pause", "Resume", "Stop", "Switch task", "Starting…", "Pausing…",
+  "Stopping…", "Still working?", "Continue", "Keep paused", "Working now", ` · ` between task key and title.
+- Refusals, word for word:
+  - `Your timer isn't running.`
+  - `Nothing is paused.`
+  - `There's no timer to stop.`
+  - `Pick a whole number of hours from 1 to 12.`
+- Timeout: a whole number of hours from 1 to 12, default 4, `settings.manage`, audited as `Timer timeout`.
+- A running count is always `runningClock` / `useNow`, never a counter.
+- Every write publishes `timeLogged`.
+- The DB version goes up once per slice (v28, v29, v30), each with a step in `src/mocks/migrations.ts` and a
+  `migrations.test.ts` case.
+- Every new `Api` method is listed in `src/mocks/audit.test.ts` as recorded (with a call that must log) or not
+  recorded (with why).
+- Every screen works in light and dark and at 390px, with axe in both themes.
+- Shell UI uses `sf` primitives (`sf/Modal`, `sf/Button`), with status colours per CLAUDE.md.
+- One primary (red) button per view.
+- Components import from `@/api/*` only.
+- Each slice closes with:
+  - the gates: `npx tsc -b`, `npm run lint`, `npx vitest run --project unit`, `--project browser`,
+    `npm run build:prototype`;
+  - an app check on `npm run dev`;
+  - updates to `docs/` (contract and spec), `CLAUDE.md` and the help chapters;
+  - one commit (or more), ending `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
+- Nothing is pushed without a go-ahead.
+
+## Review focus
+
+1. **Run across midnight:** started 23:00, paused 01:00. That counts as today's paused run (it ended today), and its
+   count includes the part before midnight. Test in T1.
+2. **Resume after the task went Done while paused:** the resume is refused, and the pill shows Start's refusal in
+   the bar, not in a tooltip. Tests in T1 and T3.
+3. **A laptop asleep past the timeout** (scheduler wakes 10 h later with a 4 h timeout): the entry ends at
+   `startedAt + 4 h`, not at the moment the scheduler wakes. Test in T5.
+4. **Timeout 12 against the 12-hour cap:** at exactly 12 h the entry ends once, with `'timeout'`, not `'flow'`.
+   Test in T5.
+5. **Start timer with no project to log on:** the dialog says `You aren't on any projects you can log time on.` and
+   offers no Start. Test in T2.
+
+---
+
+## Slice 1: Timer with Pause, Resume and Stop
+
+### T1. Mock and API: `endReason`, pause, resume, stop, `MyDay.timer`
+
+**Files:**
+- `src/api/types.ts`: `TimeEntry`, `MyTimer`, `MyDay`, `Api['time']`.
+- `src/mocks/time.ts`.
+- `src/mocks/timers.ts`, `src/mocks/projects.ts`, `src/mocks/users.ts`: the places Flow stops timers.
+- `src/mocks/db.ts` and `migrations.ts`: v28.
+- `src/lib/http.ts`, `src/api/time.ts`.
+- Tests: `src/mocks/time.test.ts`, `migrations.test.ts`, `audit.test.ts`, `src/lib/http.test.ts`.
+
+**Interfaces:**
+- **Types:**
+  - `TimeEntry`: `TimeEntry & { endReason: EndReason | null; startedFrom?: CheckSource | null }`, where
+    `type EndReason = 'paused' | 'stopped' | 'timeout' | 'flow'`.
+  - `MyTimer`:
+    ```ts
+    type MyTimer = {
+      state: 'running' | 'paused'; target: TimeTarget; entryId: string
+      runMs: number; startedAt: string | null; pausedBy: 'me' | 'timeout' | null
+    }
+    ```
+  - `MyDay` gains `timer: MyTimer | null` and `firstStart: boolean`. `running` stays until T4, then goes. The
+    check-in fields stay until slice 3.
+- **`Api['time']`:**
+  - `start(target: TimeTarget, location?: CheckLocation): Promise<MyDay>`
+  - `pause(): Promise<MyDay>`
+  - `resume(location?: CheckLocation): Promise<MyDay>`
+  - `stop(): Promise<MyDay>`
+- **Routes:** `POST /api/time/start` `{ ...target, location }`, `POST /api/time/pause`,
+  `POST /api/time/resume` `{ location }`, `POST /api/time/stop`.
+- **Mock helpers:**
+  - `stopRunning(data, userId, at, reason: EndReason)`: every existing caller passes `'flow'`, except the user's Stop
+    (`'stopped'`) and Pause (`'paused'`).
+  - `currentTimer(data: DbData, userId: string, now: Date): MyTimer | null` is exported for T5 and slice 3.
+- **Hooks:** `usePauseTimer()` and `useResumeTimer()` in `src/api/time.ts`. `useStartTimer` takes
+  `{ target, location? }`.
+- **The run (the algorithm the signatures leave open):**
+  - Take my timer entries, newest first, and stop the walk at the first one that:
+    - is on another target,
+    - ended `'stopped'` or `'flow'`, or
+    - ended before today's local midnight.
+
+    The run is the entries before that point.
+  - `runMs` is the sum of the run's closed entries.
+  - The newest entry decides the state:
+    - **Running:** it has no `endedAt`.
+    - **Paused:** it ended `'paused'` or `'timeout'` today, and its task isn't Done or archived.
+    - Otherwise there's no timer.
+
+**Steps:**
+- [ ] Write the failing tests in `time.test.ts`:
+  - `pause ends my running entry with 'paused' and keeps it as my timer`
+  - `resume starts a new entry on the paused target; runMs carries the paused time`
+  - `stop on a running timer ends it 'stopped'; on a paused one marks it 'stopped'; either way timer is null`
+  - `start while paused ends the paused run and starts the new target from runMs 0`
+  - `pause, resume and stop refuse with "Your timer isn't running." / "Nothing is paused." / "There's no timer to stop."`
+  - `resume is refused like start when the task went Done while paused`
+  - `a run started 23:00 and paused 01:00 is today's paused timer with both parts in runMs` (Review focus 1)
+  - `yesterday's paused run is not today's timer, and stop refuses`
+  - `start and resume record startedFrom; firstStart is true until one does`
+  - `Flow's stops (task Done, archive, deactivate, 12 h) write endReason 'flow'`
+- [ ] Also write, then run all and watch them fail:
+  - in `migrations.test.ts`, `27 → 28 sets endReason 'stopped' on ended timer entries and null on running and
+    manual`;
+  - in `http.test.ts`, the four routes;
+  - in `audit.test.ts`, `pause`, `resume` and `stop` as recorded.
+- [ ] Implement the types, `currentTimer`, the three calls, the `stopRunning` reason, v28, the routes and hooks.
+  `today()` returns `timer` and `firstStart`.
+- [ ] Run `npx vitest run src/mocks src/lib/http.test.ts < /dev/null`. Expected: all green, exit 0.
+- [ ] Commit: `feat(time): pause, resume and stop the timer; endReason on entries (timer slice 1)`.
+
+### T2. Start timer dialog and the project-then-task picker
+
+**Files:**
+- Create `src/pages/time/TargetFields.tsx`, extracted from `AddTimeSheet.tsx:71-101`.
+- Create `src/layout/StartTimerDialog.tsx`.
+- Modify `AddTimeSheet.tsx` to use `TargetFields`.
+- Tests: `src/layout/StartTimerDialog.test.tsx`, `src/pages/time/AddTimeSheet.test.tsx` (stays green).
+
+**Interfaces:**
+- `TargetFields({ projectId, taskId, onChange })` lists projects by `useCanLog` and open tasks of that project, mine
+  first. `taskId: ''` means "No task".
+- `StartTimerDialog({ open, onClose, title = 'Start timer' })` calls `useStartTimer` with `currentLocation()`. "Switch
+  task" passes `title="Switch task"`.
+
+**Steps:**
+- [ ] Write the failing tests:
+  - `Task waits for a project; picking both and Start timer starts that target`
+  - `the notice shows while firstStart`
+  - `with no project to log on it says "You aren't on any projects you can log time on." and has no Start`
+    (Review focus 5)
+  - `a refused start shows its error in the dialog`
+  - `axe light and dark; full screen at 390px`
+- [ ] Implement the dialog with `sf/Modal`, primary button **Start timer** ("Starting…" while pending), then run the
+  tests. Expected: green.
+- [ ] Commit: `feat(time): Start timer dialog with project then task`.
+
+### T3. Top bar button, pill states and the phone bar
+
+**Files:**
+- `src/layout/TimerBar.tsx`: `TimerPill`, `PhoneTimerBar` and `TimerAnnouncer` read `MyDay.timer`.
+- `src/layout/TopBar.tsx`.
+- Test: `src/layout/TimerBar.test.tsx` (create if missing).
+
+**Interfaces:**
+- `TimerControls({ timer, layout: 'pill' | 'bar' | 'card' })`:
+  - running: **Pause** and **Stop**;
+  - paused: **Resume**, **Stop** and **Switch task**.
+
+  Errors show inline (`StopError` generalised to any of the three).
+- `StartTimerButton` shows when `timer === null`: a text button from `md:`, a round 36px icon button below it with
+  `aria-label="Start timer"`.
+
+**Steps:**
+- [ ] Write the failing tests:
+  - `no timer: Start timer opens the dialog`
+  - `running: the count, Pause, Stop`
+  - `paused: the frozen count (runMs), Resume, Stop, Switch task`
+  - `a refused Resume shows the refusal in the bar` (Review focus 2)
+  - `the announcer says "Timer paused" and "Timer stopped"`
+  - `390px: icon button in the top bar; running or paused uses the bottom bar`
+  - `axe light and dark`
+- [ ] Implement, then run the tests. Expected: green.
+- [ ] Commit: `feat(shell): Start timer in the top bar; Pause, Resume and Stop in the pill and phone bar`.
+
+### T4. Task inspector, Home, and closing slice 1
+
+**Files:**
+- `src/pages/projects/TicketInspector.tsx:189-204`.
+- `src/pages/home/CheckInCard.tsx`: `TimerRow` uses `TimerControls layout="card"`.
+- Remove `MyDay.running` and its readers.
+- Docs: `docs/flow-chat/api-contract.md` or the time contract doc (whichever holds `/api/time`), `CLAUDE.md` "Time",
+  `src/help/time.md`.
+
+**Steps:**
+- [ ] Write the failing tests: in `TicketInspector.test.tsx`, `this task's running timer offers Pause and Stop; paused
+  offers Resume`; in `CheckInCard.test.tsx`, `the timer row uses Pause and Stop`.
+- [ ] Implement it and remove `running`, then run the gates.
+- [ ] App check:
+  - start from the top bar;
+  - pause, resume and check the count carries on;
+  - stop, start again and check it counts from 0;
+  - switch task;
+  - a second tab follows.
+- [ ] Update the docs, then commit: `docs(time): timer slice 1 contract, help and CLAUDE.md`.
+
+## Slice 2: Timer timeout
+
+### T5. Setting, scheduler step and API
+
+**Files:**
+- `src/api/types.ts` (`Api['attendance']`), `src/mocks/attendance.ts`, `src/mocks/db.ts` (`settings`, import check),
+  `migrations.ts` (v29), `src/mocks/scheduler.ts`, `src/mocks/time.ts`, `src/lib/http.ts`, `src/api/attendance.ts`.
+- Tests: `scheduler.test.ts`, `attendance.test.ts`, `db.test.ts`, `migrations.test.ts`, `audit.test.ts`,
+  `http.test.ts`.
+
+**Interfaces:**
+- `Api['attendance'].timer(): Promise<{ timeoutHours: number }>` and
+  `setTimer(input: { timeoutHours: number }): Promise<{ timeoutHours: number }>`.
+- Routes: `GET` / `PUT /api/settings/timer`.
+- `timeoutTimers(data: DbData, now: Date): RealtimeEvent[]` is exported from `mocks/time.ts` and called inside
+  `fireDue`.
+- Hooks: `useTimerSetting()` and `useSetTimerSetting()`.
+
+**Steps:**
+- [ ] Write the failing tests:
+  - `a timer running 4 h with a 4 h timeout ends at startedAt + 4 h with 'timeout' and publishes timeLogged`
+  - `asleep 10 h with a 4 h timeout: endedAt is startedAt + 4 h` (Review focus 3)
+  - `timeout 12 at exactly 12 h ends once with 'timeout'` (Review focus 4)
+  - `a resumed timer counts from its resume`
+  - `setTimer needs settings.manage, refuses "Pick a whole number of hours from 1 to 12." for 0, 13, 2.5 and "4",
+    and audits Timer timeout`
+  - `28 → 29 sets timerTimeoutHours 4`
+  - `an import with timerTimeoutHours 13 is refused`
+  - the routes, and the audit listing
+- [ ] Implement, then run `npx vitest run src/mocks src/lib < /dev/null`. Expected: green.
+- [ ] Add the dev helper `__sparkFlowDev.ageTimer(hours)` in `mocks/index.ts`: it moves my running entry's
+  `startedAt` back by that many hours, for the app check.
+- [ ] Commit: `feat(time): timer timeout setting, enforced by the scheduler (timer slice 2)`.
+
+### T6. Still working dialog and the setting on Attendance
+
+**Files:**
+- Create `src/layout/StillWorkingDialog.tsx`, mounted in `src/layout/AppLayout.tsx` next to `TimerAnnouncer`.
+- `src/pages/settings/AttendancePage.tsx`: `HoursBox` and `WorkHoursSheet`.
+- Docs: `src/help/attendance.md`, `time.md`, `CLAUDE.md`.
+- Tests: `StillWorkingDialog.test.tsx`, `AttendancePage.test.tsx`.
+
+**Interfaces:** `StillWorkingDialog` shows while `timer?.pausedBy === 'timeout'` and the `sessionStorage` key
+`spark-flow.timeoutSeen` doesn't hold `timer.entryId`.
+
+**Steps:**
+- [ ] Write the failing tests:
+  - `shows "Your timer paused after 4 h on NEX-101 Login page." with Continue (primary) and Keep paused`
+  - `Continue resumes; Keep paused closes and stays closed for that entry`
+  - `a failed Continue shows its error in the dialog`
+  - `the box is titled "Working hours and timer" and says "Timers pause after 4 hours and ask if you're still
+    working."; the sheet's "Pause timers after (hours)" saves`
+  - axe light and dark, and 390px
+- [ ] Implement, run the gates, then do the app check:
+  - set the timeout to 1 h;
+  - run `ageTimer(1)` and see the dialog within 15 s;
+  - press Continue and check the count goes on.
+- [ ] Update the docs, then commit: `feat(time): Still working dialog and the timer timeout on Attendance`.
+
+## Slice 3: Check-in removed (needs slices 1 and 2)
+
+### T7. Mock: attendance from timer entries, Working now, v30
+
+**Files:**
+- `src/api/types.ts`: removes `CheckIn`, the check-in fields of `MyDay`, `checkIn` / `checkOut` / `undoCheckOut`,
+  `CheckEvent` and `CheckedInNow`.
+- `src/mocks/time.ts`, `attendance.ts`, `dashboard.ts`, `users.ts:69,163-164`, `seed.ts:473-510,566`, `db.ts`,
+  `migrations.ts` (v30).
+- `src/lib/http.ts`, `src/api/time.ts`, `src/api/attendance.ts`, `src/api/dashboard.ts`, `queryKeys.ts:76`.
+- `src/lib/permissions.ts:15-16`: labels only.
+- Tests: `time`, `attendance`, `dashboard`, `db`, `migrations`, `seed`, `people`, `roles`, `audit`, `http`,
+  `permissions`, `workHours`.
+
+**Interfaces:**
+- `AttendanceDay`:
+  ```ts
+  type AttendanceDay = {
+    id: string; userId: string; day: string; inAt: string; outAt: string | null; hours: number
+    from: CheckSource | null; endReason: EndReason | null; newIp: boolean; newDevice: boolean; offHours: boolean
+  }
+  ```
+  `Api['attendance'].days(query): Promise<AttendanceDay[]>` replaces `checkIns`, on route
+  `GET /api/attendance/days`.
+- `AttendanceDayRow` becomes `{ userId, inAt, outAt, hours, appMinutes, late, early }`: `byFlow` goes, and
+  `checkedInAt` / `checkedOutAt` are renamed.
+- `daysOf(data, userIds, since, now): AttendanceDay[]` lives in `mocks/attendance.ts`. It groups timer entries by
+  person and the local day each started, and ignores manual entries.
+- Early is false when the last entry ended `'flow'` or `'timeout'`, and false today while `currentTimer` isn't null.
+- `WorkingNow = { userId; taskId: string | null; projectId: string; startedAt: string }`.
+  `Api['dashboard'].workingNow(workspaceId)` replaces `checkedIn`, and `qk.workingNow(ws)` replaces `qk.checkedIn`.
+- v30 deletes `doc.checkIns`. An import carrying `checkIns` is accepted and they are dropped.
+
+**Steps:**
+- [ ] Write the failing tests:
+  - `a day is first timer start to last timer end; manual entries make no day`
+  - `late from the first start; early from the last end; never early after 'flow' or 'timeout', or today while a
+    timer runs or is paused`
+  - `days carry from, newIp, newDevice and offHours as check-ins did`
+  - `visibleTo is unchanged`
+  - `Working now lists running timers by checkins.all / checkins.managed`
+  - `deactivating stops the timer with 'flow'`
+  - `29 → 30 drops checkIns`
+  - `the seed has days from timer entries with startedFrom`
+  - removed routes are 404 in `http.test`
+  - the audit listing updated
+- [ ] Implement, then run `npx vitest run --project unit < /dev/null`. Expected: the mock and lib tests are green.
+  UI tests may be red until T8.
+- [ ] Commit: `feat(attendance): days from timer entries; check-in removed from the API (timer slice 3)`.
+
+### T8. UI: Today card, Days tab, Working now, copy, docs
+
+**Files:**
+- Replace `src/pages/home/CheckInCard.tsx` with `TodayCard.tsx`, and update `HomePage.tsx`.
+- `src/pages/settings/AttendancePage.tsx` and `attendanceView.ts`: tab `{ id: 'days', label: 'Days' }`; `tabOf`
+  defaults to `'days'` and maps `checkins` to it.
+- `src/pages/dashboard/DashboardPage.tsx`: Working now.
+- Copy: `src/pages/settings/UsersPage.tsx:478`, `src/pages/signin/SignInPage.tsx:194`, `UserMenu.tsx` (My attendance
+  stays).
+- Help: `src/help/{attendance,home,dashboard,time,getting-started,users}.md`, then `npm run help:shots`.
+- Docs: `docs/demo-script.md`; the company spec §2, §4.4, §4.8, §5 and §6 marked "amended 5 Nov 2026" pointing at the
+  new spec; the API contract; `CLAUDE.md` "Time", "Attendance" and "Dashboard".
+- Tests: `TodayCard.test.tsx` (from `CheckInCard.test.tsx`), `AttendancePage`, `attendanceView`, `DashboardPage`,
+  `HelpPage`, `settings.browser.test`.
+
+**Steps:**
+- [ ] Write the failing tests:
+  - `Today shows Start timer, or the timer with its controls, and today's hours; no plan field`
+  - `Attendance's Days tab lists in, out, hours and where from`
+  - `?tab=checkins opens Days`
+  - `Working now lists people with a running timer`
+  - axe light and dark, and 390px, on the three pages
+- [ ] Implement, run the gates and `npm run help:shots`, then do the app check:
+  - a first visit opens on Sign in, then Home's Today card;
+  - start a timer and check Attendance's Days and Working now;
+  - stop it and check Days shows "out".
+- [ ] Commit: `feat(home): Today card replaces check-in; Attendance Days and Working now; help and docs`.
+
+## Slice 4: Dashboard for everyone (independent of slices 1 to 3)
+
+### T9. Mock: rule, scope and stats
+
+**Files:**
+- `src/lib/permissions.ts:192-196`, `src/mocks/dashboard.ts`, `src/api/types.ts`, `src/lib/http.ts`,
+  `src/api/dashboard.ts`, `queryKeys.ts`.
+- Tests: `permissions.test.ts`, `dashboard.test.ts`, `audit.test.ts`, `http.test.ts`.
+
+**Interfaces:**
+- `can('dashboard.view')` returns true for anyone in the workspace.
+- `inScope(data, workspaceId, me)`: with `dashboard.all`, every active project. Otherwise, the ones I manage or am on
+  (member or team).
+- `DashboardStats`:
+  ```ts
+  type DashboardStats = {
+    days: { day: string; hours: number; mine: number }[]  // 14 entries, oldest first
+    byProject: { projectId: string; hours: number }[]     // last 14 days, most first
+    byStatus: { category: 'todo' | 'doing' | 'done'; count: number }[]  // done = moved Done in the last 14 days
+    overdue: { taskId: string; key: string; title: string; projectId: string; assigneeId: string | null; dueAt: string }[]
+  }
+  ```
+  `Api['dashboard'].stats(workspaceId): Promise<DashboardStats>`, on route
+  `GET /api/workspaces/:id/dashboard/stats`.
+
+**Steps:**
+- [ ] Write the failing tests:
+  - `a Member may view the dashboard`
+  - `scope: Admin and Sales all active projects; a PM managed ones plus ones they're on; a Member ones they're on;
+    none for someone on none`
+  - `stats: 14 days oldest first with mine ≤ hours; byProject most first; byStatus; overdue only in scope`
+  - `cost stays cost.view only`
+  - the route and the audit listing (not recorded: a read)
+- [ ] Implement, then run `npx vitest run src/mocks src/lib < /dev/null`. Expected: green.
+- [ ] Commit: `feat(dashboard): open to everyone, scoped to my projects, with stats (dashboard slice)`.
+
+### T10. Page, navigation and closing
+
+**Files:**
+- `src/pages/dashboard/DashboardPage.tsx` and `dashboardCard.ts`.
+- `src/lib/navigation.ts:37`: move it to Work, after My tasks.
+- `src/layout/Sidebar.tsx:371-418`.
+- `src/lib/pageHelp.ts:22`: `needs` goes.
+- Help: `src/help/dashboard.md`. Docs: the company spec §4.3 and §5, and `CLAUDE.md` "Dashboard".
+- Tests: `DashboardPage.test.tsx`, `Sidebar.test.tsx`, `navigation` / search tests, `pageHelp.test.ts`.
+
+**Steps:**
+- [ ] Write the failing tests:
+  - `the Work group lists Dashboard after My tasks for a Member`
+  - `charts: "{n} h logged in 14 days" columns (scope red, mine grey), Hours by project, Tasks by status`
+  - `Overdue tasks table opens the task inspector`
+  - `"You're not on any projects yet." with no scope`
+  - axe light and dark, and 390px
+- [ ] Implement with `ColumnChart`, `BarList`, `DataTable` and `ChartCard`. Run the gates and `npm run help:shots`.
+- [ ] App check: as Admin, then as a Member (sign in as Mariam), in light and dark, at 390px.
+- [ ] Commit: `feat(dashboard): charts and overdue tasks for everyone; nav under Work`.
+
+## Close
+
+- [ ] Whole-branch review by a fresh reviewer, then one fix pass, each fix red then green.
+- [ ] Add a review section here: checks, what changed from the plan, what's left as is.
+- [ ] Ask before pushing `feat/task-timer` to `dev`.

@@ -54,11 +54,11 @@ Answers given in chat:
   - `checkIn`, `openCheckIn` and `firstCheckIn` go.
 - `CheckIn` goes. `CheckSource`, `CheckLocation` and `GeoFix` stay (used by `startedFrom`).
 - `DbData.settings` gains `timerTimeoutHours: number` (default 4).
-- DB v28 (migration from 27):
-  - Drops `checkIns`.
-  - Sets `settings.timerTimeoutHours = 4`.
-  - Sets `endReason` on timer entries: `'stopped'` when ended, `null` when running. Manual entries get `null`.
-  - The seed is rebuilt so its days come from timer entries with `startedFrom`.
+- One DB version per slice, so each ships on its own:
+  - **v28** (slice 1) sets `endReason` on timer entries: `'stopped'` when ended, `null` when running. Manual entries
+    get `null`.
+  - **v29** (slice 2) sets `settings.timerTimeoutHours = 4`.
+  - **v30** (slice 3) drops `checkIns`. The seed is rebuilt so its days come from timer entries with `startedFrom`.
   - An import with `checkIns` is accepted and ignores them; an import whose `timerTimeoutHours` isn't a whole number
     from 1 to 12 is refused.
 
@@ -124,8 +124,8 @@ Answers given in chat:
 
 ### 4.4 Dashboard for everyone
 
-- `dashboard.view` is granted to every built-in role. A migration step adds it to Member, and custom roles keep what
-  they have.
+- `dashboard.view` isn't a stored grant: `can()` works it out (`dashboard.all`, or managing a project). It becomes
+  true for anyone in the workspace, so every role, custom ones too, opens the page. No data changes.
 - The sidebar entry moves from **Manage** to **Work**, after My tasks. `navigation.ts` and the sidebar's own copy both
   change, and so does Search.
 - **Scope:** `dashboard.all` gives every active project in the workspace. Anyone else sees the projects they manage
@@ -195,7 +195,7 @@ Each slice is planned in `tasks/todo.md`, written test first, reviewed, committe
 3. **Check-in removed:**
    - The API and the Home card go.
    - Attendance is derived from timers, and Working now replaces Checked in now.
-   - DB v28, the seed, help chapters, `CLAUDE.md` and the API contract are updated.
+   - DB v30, the seed, help chapters, `CLAUDE.md` and the API contract are updated.
    - It needs slices 1 and 2.
 4. **Dashboard for everyone:** the grant, the scope, the charts and the table. It is independent of the timer slices.
 
@@ -208,7 +208,7 @@ Each slice is planned in `tasks/todo.md`, written test first, reviewed, committe
   - Day end: yesterday's paused run isn't today's timer, and a run crossing midnight keeps counting.
   - Attendance in, out, late and early from entries, including manual entries ignored and `'timeout'` never counting
     as early.
-  - The migration 27 → 28.
+  - The migrations 27 → 28, 28 → 29 and 29 → 30.
   - Dashboard scope for Admin, Sales, a PM and a Member.
   - Every new Api method listed in `audit.test.ts`.
 - **Components (jsdom):** the Start timer dialog (project then task, the notice), the pill in each state, the Still
@@ -225,7 +225,7 @@ Each slice is planned in `tasks/todo.md`, written test first, reviewed, committe
   - `endReason` and `startedFrom` on time entries.
   - `GET` / `PUT /api/settings/timer`.
   - `GET /api/attendance/days` in place of `check-ins`.
-  - `dashboard.view` for every role.
+  - `dashboard.view` true for everyone in the workspace, and `GET /api/workspaces/:id/dashboard/stats`.
 - The server must end timers at the timeout itself, as the mock's scheduler does.
 - `docs/` API contract sections for time and attendance are updated in slice 3.
 
