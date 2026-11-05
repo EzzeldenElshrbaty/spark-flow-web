@@ -123,11 +123,16 @@ export function dashboardApi(db: MockDb, now: () => Date): Api['dashboard'] {
     async projects(workspaceId) {
       await delay()
       const data = await db.read()
-      const { me, projects } = inScope(data, workspaceId)
+      const { me, grants, projects } = inScope(data, workspaceId)
       const at = now()
+      const everyProject = can('dashboard.everyProject', { userId: me.id, grants })
       return clone(
         projects.map((p): DashboardProject => {
-          const summary = summarize(p, data, at, { userId: me.id, grants: grantsFor(data, me) })
+          const summary = summarize(p, data, at, { userId: me.id, grants })
+          const week = lastWeek(data, p.id, at)
+          // Others' hours by name, as on the project's Time tab: its manager, whoever sees everyone's time, and (as
+          // before the dashboard opened to everyone) whoever has it for every project.
+          const seesTeam = everyProject || can('time.seeTeam', { userId: me.id, grants, project: p })
           const tasks = data.tickets.filter((t) => t.projectId === p.id && !t.archivedAt)
           const estimated = tasks.filter((t) => t.estimateHours !== null)
           return {
@@ -138,7 +143,8 @@ export function dashboardApi(db: MockDb, now: () => Date): Api['dashboard'] {
             estimatedLoggedHours: data.timeEntries
               .filter((e) => e.taskId !== null && estimated.some((t) => t.id === e.taskId))
               .reduce((s, e) => s + entryHours(e, at), 0),
-            week: lastWeek(data, p.id, at),
+            week: seesTeam ? week : week.filter((w) => w.userId === me.id),
+            weekHours: week.reduce((s, w) => s + w.hours, 0),
           }
         }),
       )

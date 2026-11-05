@@ -80,7 +80,8 @@ function closedTarget(data: DbData, entry: TimeEntry): boolean {
 
 /**
  * My timer (timer slice 1): my running entry, or my paused run if it ended today on a target still open. Its run goes
- * back over my timer entries on the same target until one ended 'stopped' or 'flow', or ended before today.
+ * back over my timer entries on the same target until one ended 'stopped' or 'flow', or until a pause that spanned
+ * local midnight (a paused run clears at day end; one running across midnight carries on).
  */
 export function currentTimer(data: DbData, userId: string, now: Date): MyTimer | null {
   const mine = myTimerEntries(data, userId)
@@ -88,13 +89,15 @@ export function currentTimer(data: DbData, userId: string, now: Date): MyTimer |
   if (!newest) return null
   const running = newest.endedAt === null
   if (!running && (newest !== pausedEntry(data, userId, now) || closedTarget(data, newest))) return null
-  const day = localDay(now)
   let runMs = 0
+  let next: TimeEntry | null = null
   for (const e of mine) {
     if (!sameTarget(e, newest)) break
-    if (e !== newest && e.endReason !== 'paused' && e.endReason !== 'timeout') break
-    if (e.endedAt && localDay(new Date(e.endedAt)) !== day) break
+    if (next && e.endReason !== 'paused' && e.endReason !== 'timeout') break
+    // Paused at one day's end and resumed the next: that pause cleared the run.
+    if (next && e.endedAt && localDay(new Date(e.endedAt)) !== localDay(new Date(next.startedAt))) break
     if (e.endedAt) runMs += Date.parse(e.endedAt) - Date.parse(e.startedAt)
+    next = e
   }
   return {
     state: running ? 'running' : 'paused',

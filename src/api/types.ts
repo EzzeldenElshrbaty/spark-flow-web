@@ -645,12 +645,17 @@ export type TimeReport = {
   byPerson: (ReportRow & { userId: string; rate: number })[]
   byWeek: (ReportRow & { weekStart: string })[]           // oldest first, every week in range
 }
-/** A project as the manager dashboard shows it. */
+/** A project as the dashboard shows it. */
 export type DashboardProject = ProjectSummary & {
   phaseName: string | null                        // the current phase; null when every phase is done or there are none
   estimateHours: number | null                    // Σ task estimates; null when no task has one
   estimatedLoggedHours: number                    // hours logged on the tasks that have an estimate (what "over" compares)
-  week: { userId: string; hours: number }[]       // the last 7 days, most hours first
+  /**
+   * The last 7 days per person, most hours first: everyone for whoever may see the team's time on the project
+   * (`time.seeTeam`) or has the dashboard for every project; anyone else, their own row only.
+   */
+  week: { userId: string; hours: number }[]
+  weekHours: number                               // everyone's hours in the last 7 days, whoever's rows `week` shows
 }
 /** Someone with a timer running on a project the dashboard covers (timer slice 3). */
 export type WorkingNow = { userId: string; taskId: string | null; projectId: string; startedAt: string }
@@ -1074,7 +1079,7 @@ export interface Api {
     /** /remind (spec 6.8): a reminder about `text` at `remindAt`, set in a channel I can read; In progress. */
     note(channelId: string, text: string, remindAt: string): Promise<SavedView>
   }
-  /** The manager dashboard (spec §5): Admin and Sales see every project, a PM the ones they manage. */
+  /** The dashboard, for everyone (spec §5, dashboard slice): every project with dashboard.all, else the ones I manage or am on. */
   dashboard: { projects(workspaceId: string): Promise<DashboardProject[]>; workingNow(workspaceId: string): Promise<WorkingNow[]>; stats(workspaceId: string): Promise<DashboardStats> }
   /** Hourly cost per person: Admin only (spec §4.3). */
   rates: { list(): Promise<Rate[]>; update(userId: string, hourlyCost: number): Promise<Rate> }

@@ -22,7 +22,7 @@ Tasks past their due date, or with more hours than estimated, soonest due first.
 
 ## The projects
 
-Each project shows its phase, progress, hours against its estimate, the expected finish date and who worked on it this week. People who can see cost also see each project's cost.
+Each project shows its phase, progress, hours against its estimate, the expected finish date, and its hours this week. Its manager, and people who can see everyone's time or every project, also see who logged them; anyone else sees their own. People who can see cost also see each project's cost.
 
 ## Working now
 

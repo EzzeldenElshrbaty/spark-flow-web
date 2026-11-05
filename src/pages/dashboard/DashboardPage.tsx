@@ -79,10 +79,10 @@ function ProjectCard({ ws, project, people, now }: { ws: string; project: Dashbo
         </div>
       </dl>
       <div className="mt-4 border-t border-line-subtle pt-3">
-        <p className="text-xs text-fg-muted">Last 7 days</p>
-        {shown.length === 0 ? (
+        <p className="text-xs text-fg-muted">Last 7 days · {formatHours(project.weekHours)}</p>
+        {project.weekHours === 0 ? (
           <p className="mt-1 text-sm text-fg-muted">No time logged.</p>
-        ) : (
+        ) : shown.length === 0 ? null : (
           <ul className="mt-1.5 flex flex-wrap items-center gap-3">
             {shown.map((w) => (
               <li key={w.userId} className="flex items-center gap-1.5 text-sm" title={nameOf(w.userId)}>
@@ -151,7 +151,7 @@ export function DashboardPage() {
   const ws = workspace?.slug ?? ''
 
   const showCost = list.some((p) => p.cost !== null)
-  const hours7 = list.reduce((s, p) => s + p.week.reduce((a, w) => a + w.hours, 0), 0)
+  const hours7 = list.reduce((s, p) => s + p.weekHours, 0)
   const cost = list.reduce((s, p) => s + (p.cost ?? 0), 0)
   const projectName = (id: string) => everyProject.find((p) => p.id === id)?.name ?? list.find((p) => p.id === id)?.name ?? '—'
   const label = (taskId: string | null, projectId: string) => {

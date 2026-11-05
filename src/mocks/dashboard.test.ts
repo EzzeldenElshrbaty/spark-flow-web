@@ -114,6 +114,27 @@ describe('dashboard', () => {
   })
 })
 
+describe("others' hours on the cards", () => {
+  it("a Member sees only their own row in a card's last 7 days, with the project's total; a manager and Sales see each person", async () => {
+    const people = (week: { userId: string }[]) => week.map((w) => w.userId).sort()
+    const nexOf = async () => (await api.dashboard.projects('ws-eng')).find((p) => p.key === 'NEX')!
+    const admin = await nexOf()
+    const total = admin.week.reduce((s, w) => s + w.hours, 0)
+    expect(admin.week.length).toBeGreaterThan(1)
+    expect(admin.weekHours).toBeCloseTo(total, 2)
+
+    await as('u-3') // Mariam, a Member on Nexus Core: her own entries only, as on its Time tab
+    const member = await nexOf()
+    expect(people(member.week)).toEqual(['u-3'])
+    expect(member.weekHours).toBeCloseTo(total, 2)
+
+    await as('u-2') // Nour manages Nexus Core
+    expect(people((await nexOf()).week)).toEqual(people(admin.week))
+    await as('u-9') // Sales: the dashboard for every project, as before
+    expect(people((await nexOf()).week)).toEqual(people(admin.week))
+  })
+})
+
 describe('over estimate', () => {
   it("hours on unestimated tasks and on no task don't count toward over", async () => {
     const card = (await api.dashboard.projects('ws-eng')).find((p) => p.id === 'p-nex')!

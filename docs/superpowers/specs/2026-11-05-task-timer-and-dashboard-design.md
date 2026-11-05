@@ -42,10 +42,11 @@ Answers given in chat:
   - `startedFrom?: CheckSource | null`: where a timer start or resume came from (IP, device, place), as check-in
     recorded. Absent on manual entries and on entries from before this change.
 - `MyDay` becomes `{ day, timer, entries, firstStart }`:
-  - `timer: MyTimer | null`, where `MyTimer = { state: 'running' | 'paused'; target: TimeTarget; entryId: string;
-    runMs: number; startedAt: string | null; pausedBy: 'me' | 'timeout' | null }`.
-    - `runMs` is the closed time of this run: the target's timer entries that started today, after the target's last
-      entry today that ended `'stopped'` or `'flow'`. A running timer shows `runMs + (now − startedAt)` through
+  - `timer: MyTimer | null`, where `MyTimer = { state: 'running' | 'paused'; target: TimeTarget; projectId: string;
+    entryId: string; runMs: number; startedAt: string | null; pausedBy: 'me' | 'timeout' | null }`.
+    - `runMs` is the closed time of this run: the target's timer entries back to the last one that ended `'stopped'`
+      or `'flow'`, or to a pause that spanned local midnight (amended in the final review: a run that runs across
+      midnight keeps its earlier parts). A running timer shows `runMs + (now − startedAt)` through
       `runningClock`, never a counter.
     - Running: my entry with `endedAt: null`. Paused: no running entry, and my latest timer entry today ended
       `'paused'` or `'timeout'` on a task that isn't Done or archived.
@@ -154,6 +155,10 @@ Answers given in chat:
     after it, so a date still to come isn't shown in red.
   - Working now is left out for someone with `checkins.managed` who manages none of the projects shown: it could only
     ever be empty, even with their own timer running.
+- Ruled in the final review (5 Nov 2026): the project cards' "Last 7 days" names each person only for whoever may see
+  the team's time on that project (`time.seeTeam`: its manager, or whoever sees everyone's time) or has the dashboard
+  for every project (Admin, Sales, as before). A Member gets their own row; `weekHours` keeps the card's and the
+  tile's totals whole. Without it, opening the dashboard to everyone showed Members what the project's Time tab hides.
 
 ### 4.5 Screens
 
@@ -164,7 +169,8 @@ Answers given in chat:
   - A paused timer shows the frozen count with **Resume**, **Stop** and **Switch task**.
   - The bell and the rest stay as they are.
 - **Start timer dialog:**
-  - It uses `sf/Modal`, which is full screen on phones.
+  - It uses `sf/Modal`, the screen less 16px a side on phones, like every chat dialog (ruled in T2; this said full
+    screen).
   - Fields: **Project** (projects I may log on), then **Task** (open tasks of that project, mine first, plus "No task"
     as in Add time). The Task select waits for a project.
   - **Start timer** is the primary button.

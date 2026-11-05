@@ -382,6 +382,23 @@ describe('pause, resume and stop (timer slice 1)', () => {
     expect((await api.time.today()).timer?.state).toBe('paused')
   })
 
+  it('a run paused and resumed before midnight keeps its count after midnight, paused and resumed again', async () => {
+    now = at(22, 0, -1)
+    await api.time.start({ taskId: 't-nex-101' })
+    now = at(22, 30, -1)
+    await api.time.pause()
+    now = at(23, 0, -1)
+    await api.time.resume()
+    // Running across midnight: the 30 minutes before the pause still count.
+    now = at(0, 1)
+    expect((await api.time.today()).timer).toMatchObject({ state: 'running', runMs: 30 * MIN })
+    now = at(1, 0)
+    expect((await api.time.pause()).timer).toMatchObject({ state: 'paused', runMs: 150 * MIN })
+    // Resumed in the morning, the run carries on from 2:30, not from the part after midnight.
+    now = at(9, 0)
+    expect((await api.time.resume()).timer).toMatchObject({ state: 'running', runMs: 150 * MIN })
+  })
+
   it("yesterday's paused run is not today's timer, and stop refuses", async () => {
     now = at(15, 0, -1)
     await api.time.start({ taskId: 't-nex-101' })

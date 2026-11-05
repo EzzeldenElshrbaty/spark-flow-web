@@ -22,7 +22,7 @@ vi.mock('@/api/time', async (load) => ({ ...(await load<object>()), usePauseTime
 vi.mock('@/api/projects', async (load) => ({ ...(await load<object>()), useProjectSummaries: () => loaded([{ id: 'p-nex', name: 'Nexus Core', managerId: 'u-2' }]) }))
 const nex = {
   id: 'p-nex', key: 'NEX', name: 'Nexus Core', status: 'active', managerId: 'u-2', phaseName: 'Build', progress: 0.5, loggedHours: 40, cost: null, estimateHours: 60,
-  estimatedLoggedHours: 70, expectedFinish: '2026-12-01T00:00:00.000Z', dueDate: '2026-11-20T00:00:00.000Z', overdueCount: 1, taskCount: 10, week: [{ userId: 'u-3', hours: 6 }],
+  estimatedLoggedHours: 70, expectedFinish: '2026-12-01T00:00:00.000Z', dueDate: '2026-11-20T00:00:00.000Z', overdueCount: 1, taskCount: 10, week: [{ userId: 'u-3', hours: 6 }], weekHours: 9,
 }
 const stats = {
   days: Array.from({ length: 14 }, (_, i) => ({ day: new Date(Date.UTC(2026, 9, 23 + i)).toISOString().slice(0, 10), hours: i % 3 ? 6 : 0, mine: i % 3 ? 2 : 0 })),

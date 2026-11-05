@@ -10,7 +10,7 @@ import { DashboardPage } from './DashboardPage'
 
 const nex = {
   id: 'p-nex', key: 'NEX', name: 'Nexus Core', status: 'active', managerId: 'u-2', phaseName: 'Build', progress: 0.5, loggedHours: 40, cost: null,
-  estimateHours: null, estimatedLoggedHours: 0, expectedFinish: '2026-12-01T00:00:00.000Z', dueDate: '2026-12-01T00:00:00.000Z', overdueCount: 1, taskCount: 10, week: [],
+  estimateHours: null, estimatedLoggedHours: 0, expectedFinish: '2026-12-01T00:00:00.000Z', dueDate: '2026-12-01T00:00:00.000Z', overdueCount: 1, taskCount: 10, week: [], weekHours: 0,
 } as unknown as DashboardProject
 const fullStats: DashboardStats = {
   // 23 Oct to 5 Nov, 3 h a day of which 1 h is mine: 42 h in all.
@@ -146,6 +146,18 @@ describe('the dashboard for everyone (dashboard slice)', () => {
     grants = ['checkins.all']
     show()
     expect(screen.getByRole('heading', { name: 'Working now' })).toBeTruthy()
+  })
+
+  it("the 7-day tile and each card add everyone's hours, even when the card names only mine", () => {
+    projects = [{ ...nex, week: [{ userId: 'u-3', hours: 2 }], weekHours: 6.5 }]
+    show()
+    expect(screen.getByText('Hours, last 7 days').parentElement!.textContent).toBe('Hours, last 7 days6.5h')
+    expect(screen.getByText(/^Last 7 days/).textContent).toBe('Last 7 days · 6.5h')
+    cleanup()
+    // Time logged by others only: the card doesn't say none was logged.
+    projects = [{ ...nex, week: [], weekHours: 4 }]
+    show()
+    expect(screen.queryByText('No time logged.')).toBeNull()
   })
 
   it('"You\'re not on any projects yet." with no scope', () => {

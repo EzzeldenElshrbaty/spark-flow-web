@@ -115,7 +115,7 @@ export type Mention = { kind: 'user' | 'project' | 'task' | 'all'; id: string } 
 `projects.create/update`, `phases.list/create/update/reorder`, `deliverables.list/create/update`,
 `tasks.create/update` (plus existing reads), `comments.list(taskId)/create`, `files.upload(projectId|commentDraft, file)/url(id)`,
 `time.checkIn(plan)/checkOut()/today()`, `time.start(taskId|projectId)/stop()/addManual(entry)/list(filter)`,
-`rates.list/update` (admin), `dashboard.projects()`, `teams.list/update`, `chat.send(channelId, content)`,
+`rates.list/update` (admin), `dashboard.projects()` (and `workingNow`, `stats`, 5 Nov 2026), `teams.list/update`, `chat.send(channelId, content)`,
 `chat.reply(messageId, content)`, `mentions.mine()`, `db.export()/reloadSeed()/reset()` (admin, mock only).
 HTTP paths follow the Phases 1+2 style (`POST /api/projects`, `POST /api/time/start`, …) and are listed in the plan.
 
@@ -134,6 +134,26 @@ Check-in removed (amended 5 Nov 2026, timer slice 3, `2026-11-05-task-timer-and-
 - `GET /api/workspaces/:id/dashboard/checked-in` becomes `GET /api/workspaces/:id/dashboard/working-now`, returning
   `WorkingNow[]` (`{ userId, taskId, projectId, startedAt }`): running timers only.
 - `GET /api/attendance/check-ins` becomes `GET /api/attendance/days` (§4.8).
+
+Timer timeout (amended 5 Nov 2026, timer slice 2, `2026-11-05-task-timer-and-dashboard-design.md` §4.2):
+- `GET /api/settings/timer` → `{ timeoutHours }`, for everyone signed in (the Still working? dialog reads it).
+- `PUT /api/settings/timer` `{ timeoutHours }`: `settings.manage` only; a whole number from 1 to 12, else `400`
+  `Pick a whole number of hours from 1 to 12.`; audited as `Timer timeout`.
+- The server ends a running timer entry itself at exactly `startedAt + timeoutHours`, with `endReason: 'timeout'`.
+
+Dashboard for everyone (amended 5 Nov 2026, dashboard slice, `2026-11-05-task-timer-and-dashboard-design.md` §4.4):
+- `dashboard.view` is true for everyone in the workspace. Scope: every active project with `dashboard.all`, else the
+  projects the person manages or is on (as a member or through a team).
+- `GET /api/workspaces/:id/dashboard` (`DashboardProject[]`) adds `weekHours`, everyone's hours in the last 7 days.
+  Its `week` rows name each person only for whoever may see the team's time on that project (`time.seeTeam`) or has
+  `dashboard.all`; anyone else gets their own row.
+- `GET /api/workspaces/:id/dashboard/stats` → `DashboardStats`, over the projects in scope, hours unrounded:
+  - `days: { day, hours, mine }[]`: the last 14 local days, oldest first; an entry counts on each day it ran, up to now.
+  - `byProject: { projectId, hours }[]`: the same 14 days, most first; projects with no time are left out.
+  - `byStatus: { category, count }[]`: always `todo`, `inProgress`, `done`; `done` counts tasks whose last move into
+    their current column (from the project's history, or their creation) is within the 14 days.
+  - `overdue: { taskId, key, title, projectId, assigneeId, dueAt }[]`: overdue tasks (past due, or more hours than
+    estimated), due soonest first, those with no due date last.
 
 ### 4.3 Permissions (enforced in the mock API — 403 `ApiError` — and mirrored in the UI)
 

@@ -2610,6 +2610,57 @@ timers, and every role gets a dashboard with charts.
 
 ## Close
 
-- [ ] Whole-branch review by a fresh reviewer, then one fix pass, each fix red then green.
-- [ ] Add a review section here: checks, what changed from the plan, what's left as is.
+- [x] Whole-branch review by a fresh reviewer, then one fix pass, each fix red then green.
+- [x] Add a review section here: checks, what changed from the plan, what's left as is.
 - [ ] Ask before pushing `feat/task-timer` to `dev`.
+
+## Review — task timer, timeout, dashboard for everyone (5 Nov 2026)
+
+### Gates (after the fix pass)
+- `npx tsc -b` clean, `npm run lint` clean, unit 1,976/1,976, browser 278/279 (the one failure is
+  `RichComposer.browser.test.tsx` "an unknown /word…", failing on `dev` too), `npm run build:prototype` passes.
+- App checks on `npm run dev` per slice; slice 4 as Youssef (Admin) and Mariam (Member), light and dark, 390px.
+
+### Fresh review (most capable model): 0 critical, 2 important, 9 minor; ready "with fixes"
+Fixed (each red, then green):
+- Important: a Member saw each teammate's last-7-days hours by name on the project cards, which the project's Time
+  tab hides from them. `week` now names people only with `time.seeTeam` on that project or `dashboard.everyProject`;
+  anyone else gets their own row, and the new `weekHours` keeps the card's and the tile's totals whole. Tests:
+  `a Member sees only their own row in a card's last 7 days…` (mock) and `the 7-day tile and each card add
+  everyone's hours…` (page).
+- Important: a running timer's count dropped at midnight when the run had a pause before midnight (22:00 start,
+  22:30 pause, 23:00 resume: 89 min at 23:59, 61 at 00:01). The run now breaks only at a pause that spanned
+  midnight. The reviewer's suggested cut (the newest entry's start day) would still lose the pre-midnight part when a
+  run paused at 01:00 is resumed in the morning, so it wasn't used. Test: `a run paused and resumed before midnight
+  keeps its count after midnight…`.
+- Important (re-graded from minor: the plan asks for contract updates each slice): the company spec's contract now
+  lists `GET`/`PUT /api/settings/timer` and `GET …/dashboard/stats` with `DashboardStats`, and `weekHours`. Also
+  fixed: spec §3 `MyTimer.projectId`, §4.5's modal on phones, a stale `types.ts` comment, and help `time.md`'s
+  misleading "stops counting after 12 hours" line.
+
+### Deferred minors
+- The timeout isn't applied on writes: a Pause, Stop or Start between `startedAt + timeout` and the scheduler's next
+  pass (at most 15 s in the mock) ends the entry at "now", not at the timeout. The .NET job should clamp in its end.
+- The timer controls can show a stale error from another action (two tabs: B's Pause fails, then a Resume works and
+  the old error stays).
+- Still working? quotes the current timeout setting, not the hours that entry ran.
+- `useMyDay` doesn't refetch at local midnight: a tab open overnight offers Resume on yesterday's paused run, which
+  then says "Nothing is paused."
+- The seed has 27 timer entries longer than the 4-hour default timeout.
+- `capped()` goes by duration only, so with the timeout at 12 a timed-out entry reads "Stopped at the 12 h limit".
+- With `checkins.managed`, Attendance shows "Timer running" for a timer on a project the viewer doesn't manage,
+  while Working now hides it.
+- Which zone "local day" means for the .NET contract (the viewer's `X-Time-Zone` for days and stats, `workHours.timeZone`
+  for late and early).
+
+### Rulings on what the reviewer set aside
+- A timeout that fires after midnight offers Still working? the next morning with last night's run: the spec's
+  "paused today" applied as written.
+- On a two-person project a Member can work out a colleague's daily hours from `hours − mine`: the spec chose the
+  team's figures for everyone.
+- Working now's count is the current entry since `startedAt`, matching its "since"; it can differ from the person's
+  own pill after a pause.
+- "Done in 14 days" counts a task moved Done → another done column recently: the last move into its column, as ruled.
+- Every Start and Resume waits for the browser's place (up to 8 s): the spec records `startedFrom` on both.
+- v30 drops check-ins without converting them: as the spec says.
+- Attendance hours leave out manual entries while Today includes them: manual entries make no day, as specified.
