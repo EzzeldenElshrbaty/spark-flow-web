@@ -41,8 +41,7 @@ function useSearch(term: string) {
   const users = useUsers(workspace?.id).data
   const tasks = useTasksOf((projects ?? []).map((p) => p.id)).data
   const all = useMemo(() => {
-    // Managing a project opens the Dashboard whatever my roles, as the sidebar decides it.
-    const base = shortcutsFor(grants, workspace?.slug ?? null, { managesAny: projects?.some((p) => p.managerId === persona.id) })
+    const base = shortcutsFor(grants, workspace?.slug ?? null)
     if (!workspace) return base
     return { ...base, pages: [...base.pages, ...workspaceShortcuts(workspace, channels ?? [], projects ?? [], users ?? [], persona.id)] }
   }, [grants, workspace, channels, projects, users, persona.id])

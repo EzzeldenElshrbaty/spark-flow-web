@@ -10,19 +10,37 @@ import type { MyDay } from '@/api/types'
 import { DashboardPage } from '@/pages/dashboard/DashboardPage'
 import { TodayCard } from './TodayCard'
 
-// CLAUDE.md: Home's Today card and the dashboard's Working now (timer slice 3) read well in light and dark (axe,
+// CLAUDE.md: Home's Today card and the dashboard (timer slice 3, dashboard slice) read well in light and dark (axe,
 // contrast included) and fit a 390px phone.
 
 const loaded = <T,>(data: T) => ({ data, isPending: false, isError: false, refetch: () => undefined })
 const idle = { mutate: () => undefined, isPending: false, error: null }
 vi.mock('@/layout/useCurrentWorkspace', () => ({ useCurrentWorkspace: () => ({ workspace: { id: 'ws-eng', slug: 'engineering', name: 'Spark Engineering' } }) }))
-vi.mock('@/lib/useRole', () => ({ useRole: () => ({ persona: { id: 'u-2' } }) }))
+vi.mock('@/lib/useRole', () => ({ useRole: () => ({ persona: { id: 'u-2' }, grants: ['checkins.managed'] }) }))
 vi.mock('@/lib/usePermission', async (load) => ({ ...(await load<object>()), usePermission: () => (action: string) => action !== 'dashboard.everyProject', useAccess: () => 'allowed' }))
 vi.mock('@/api/time', async (load) => ({ ...(await load<object>()), usePauseTimer: () => idle, useResumeTimer: () => idle, useStopTimer: () => idle, useStartTimer: () => idle }))
 vi.mock('@/api/projects', async (load) => ({ ...(await load<object>()), useProjectSummaries: () => loaded([{ id: 'p-nex', name: 'Nexus Core', managerId: 'u-2' }]) }))
+const nex = {
+  id: 'p-nex', key: 'NEX', name: 'Nexus Core', status: 'active', managerId: 'u-2', phaseName: 'Build', progress: 0.5, loggedHours: 40, cost: null, estimateHours: 60,
+  estimatedLoggedHours: 70, expectedFinish: '2026-12-01T00:00:00.000Z', dueDate: '2026-11-20T00:00:00.000Z', overdueCount: 1, taskCount: 10, week: [{ userId: 'u-3', hours: 6 }],
+}
+const stats = {
+  days: Array.from({ length: 14 }, (_, i) => ({ day: new Date(Date.UTC(2026, 9, 23 + i)).toISOString().slice(0, 10), hours: i % 3 ? 6 : 0, mine: i % 3 ? 2 : 0 })),
+  byProject: [{ projectId: 'p-nex', hours: 54 }],
+  byStatus: [
+    { category: 'todo', count: 4 },
+    { category: 'inProgress', count: 2 },
+    { category: 'done', count: 3 },
+  ],
+  overdue: [
+    { taskId: 't-nex-103', key: 'NEX-103', title: 'Fix duplicate rows in GET /v2/invoices at page size 100', projectId: 'p-nex', assigneeId: 'u-3', dueAt: '2026-11-03T00:00:00.000Z' },
+    { taskId: 't-nex-104', key: 'NEX-104', title: 'Over its estimate', projectId: 'p-nex', assigneeId: null, dueAt: null },
+  ],
+}
 vi.mock('@/api/dashboard', async (load) => ({
   ...(await load<object>()),
-  useDashboard: () => loaded([]),
+  useDashboard: () => loaded([nex]),
+  useDashboardStats: () => loaded(stats),
   useWorkingNow: () => loaded([{ userId: 'u-3', taskId: 't-nex-106', projectId: 'p-nex', startedAt: new Date(Date.now() - 3_600_000).toISOString() }]),
 }))
 vi.mock('@/api/users', async (load) => ({ ...(await load<object>()), useUsers: () => ({ data: [{ id: 'u-3', name: 'Mariam Fathy' }] }) }))
@@ -77,11 +95,13 @@ describe.each([
     }
   })
 
-  it('the dashboard with Working now has no axe violations, wide and at 390px', async () => {
+  it('the dashboard with its charts, overdue tasks and Working now has no axe violations, wide and at 390px', async () => {
     for (const [width, height] of [[1440, 900], [390, 844]]) {
       await page.viewport(width, height)
       mount(<DashboardPage />, dark)
       await screen.findByRole('heading', { name: 'Working now' })
+      expect(screen.getByRole('group', { name: 'Hours per day' })).toBeTruthy()
+      expect(screen.getByRole('heading', { name: '2 overdue tasks' })).toBeTruthy()
       expect(await violations()).toEqual([])
       expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(width)
       cleanup()

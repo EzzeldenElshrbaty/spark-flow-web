@@ -2581,15 +2581,32 @@ timers, and every role gets a dashboard with charts.
 - Tests: `DashboardPage.test.tsx`, `Sidebar.test.tsx`, `navigation` / search tests, `pageHelp.test.ts`.
 
 **Steps:**
-- [ ] Write the failing tests:
+- [x] Write the failing tests:
   - `the Work group lists Dashboard after My tasks for a Member`
   - `charts: "{n} h logged in 14 days" columns (scope red, mine grey), Hours by project, Tasks by status`
   - `Overdue tasks table opens the task inspector`
   - `"You're not on any projects yet." with no scope`
   - axe light and dark, and 390px
-- [ ] Implement with `ColumnChart`, `BarList`, `DataTable` and `ChartCard`. Run the gates and `npm run help:shots`.
-- [ ] App check: as Admin, then as a Member (sign in as Mariam), in light and dark, at 390px.
-- [ ] Commit: `feat(dashboard): charts and overdue tasks for everyone; nav under Work`.
+- [x] Implement with `ColumnChart`, `BarList`, `DataTable` and `ChartCard`. Run the gates and `npm run help:shots`.
+- [x] App check: as Admin, then as a Member (sign in as Mariam), in light and dark, at 390px.
+- [x] Commit: `feat(dashboard): charts and overdue tasks for everyone; nav under Work`.
+- Rulings:
+  - The charts and the overdue table live in a new `pages/dashboard/DashboardCharts.tsx`; `dashboardCard.ts` stays the
+    project card's facts.
+  - Layout: hours per day takes 2/3, with Tasks by status and Hours by project stacked in the other 1/3; the overdue
+    table gets its own full-width row (at 2/3 it scrolled sideways at 1280px).
+  - The title reads `{n}h logged in 14 days` (`formatHours`, as the tiles). Done in 14 days is the red bar (the title's
+    takeaway), To do and In progress grey; in Hours by project the top project is red, the rest grey.
+  - Found in the app check: tasks overdue only for their hours showed a future due date in red. Their Due cell now
+    says `Over estimate · {date}`; a past due date stays red.
+  - Found in the app check: a Member with `checkins.managed` who manages none of the projects saw "Nobody has a timer
+    running." beside their own running timer. The card is left out for them; the tile shows "—", as for Sales.
+  - `managesAny` is gone: from `PermissionContext`, `requireCan`, archive's context, `canSee`, search shortcuts, the
+    sidebar and help's `useMayRead`. `permissionsLegacy.test.ts` keeps it on its own `LegacyContext`.
+  - Help: the chapter moves to Work (order 5; Time 6, Teams 7) and loses `needs`; `help-shots` waits for the
+    "Hours per day" chart.
+  - Fixed in passing, found by axe: `ColumnChart`'s columns had `aria-label` with no role (Time & cost too);
+    they're `role="img"` now.
 
 ## Close
 

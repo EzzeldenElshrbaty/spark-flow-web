@@ -83,7 +83,7 @@ export function requireCan(
   data: { currentUserId: string; users: User[]; projects: (ProjectRef & { managerId: string })[]; roles: { id: string; grants: readonly Permission[] }[] },
   action: Action,
   project?: ProjectRef,
-  extra: { taskAssigneeId?: string | null; managesAny?: boolean } = {},
+  extra: { taskAssigneeId?: string | null } = {},
 ): User {
   const me = currentUser(data)
   const ok = can(action as Exclude<Action, ProjectScoped>, {
@@ -91,7 +91,6 @@ export function requireCan(
     grants: grantsOf(me.roleIds, data.roles),
     project,
     userTeamIds: me.teamIds,
-    managesAny: data.projects.some((p) => p.managerId === me.id),
     ...extra,
   })
   if (!ok) throw forbidden(project || action.startsWith('project.') ? 'this project' : action === 'rates.view' ? 'hourly costs' : action === 'dashboard.view' ? 'the dashboard' : action === 'timeCost.view' ? 'time and cost' : 'this')

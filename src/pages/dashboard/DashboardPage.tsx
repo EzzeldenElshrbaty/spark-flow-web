@@ -1,6 +1,6 @@
 import clsx from 'clsx'
 import { Link } from 'react-router'
-import { useDashboard, useWorkingNow } from '@/api/dashboard'
+import { useDashboard, useDashboardStats, useWorkingNow } from '@/api/dashboard'
 import { useProjectSummaries } from '@/api/projects'
 import { useTasksOf } from '@/api/tickets'
 import type { DashboardProject, User, WorkingNow } from '@/api/types'
@@ -14,10 +14,11 @@ import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { formatClock, formatHours, formatMoney, formatTime } from '@/lib/format'
 import { runningClock } from '@/lib/hours'
 import { paths } from '@/lib/paths'
-import { useAccess, usePermission } from '@/lib/usePermission'
+import { usePermission } from '@/lib/usePermission'
 import { useNow } from '@/lib/useNow'
 import { useRole } from '@/lib/useRole'
 import { cardFacts } from './dashboardCard'
+import { DashboardCharts } from './DashboardCharts'
 
 const initials = (name: string) =>
   name
@@ -125,58 +126,45 @@ function WorkingNowList({ list, people, taskLabel }: { list: WorkingNow[]; peopl
   )
 }
 
-/** The manager dashboard: every project in scope at a glance, and who is working on them right now. */
+/**
+ * The dashboard, for everyone (dashboard slice): the projects in my scope (every one with dashboard.everyProject,
+ * else the ones I manage or work on) at a glance, their charts and overdue tasks, and who is working on them now.
+ */
 export function DashboardPage() {
   const { workspace } = useCurrentWorkspace()
-  const { persona } = useRole()
+  const { persona, grants } = useRole()
   const check = usePermission()
-  // Every project, not only the ones I manage (Admin and Sales to start with).
+  // Every project, not only the ones I manage or work on (Admin and Sales to start with).
   const broad = check('dashboard.everyProject')
-  // Who's working: every timer, or those on projects I manage; Sales neither (spec §1, timer slice 3).
-  const seesWorking = check('checkins.view')
-  const summaries = useProjectSummaries(workspace?.id)
-  const everyProject = summaries.data ?? []
-  const managesAny = summaries.data?.some((p) => p.managerId === persona.id)
-  const access = useAccess('dashboard.view', { managesAny }, !broad && summaries.isPending)
-  const allowed = access === 'allowed'
-  const projects = useDashboard(workspace?.id, allowed)
-  const working = useWorkingNow(workspace?.id, allowed)
+  const everyProject = useProjectSummaries(workspace?.id).data ?? []
+  const projects = useDashboard(workspace?.id, true)
+  const list = projects.data ?? []
+  // Who's working: every timer, or those on projects I manage; Sales neither (spec §1, timer slice 3). Someone who
+  // manages none of these projects would only ever see it empty, even with their own timer running, so it's left out.
+  const seesWorking = check('checkins.view') && (grants.includes('checkins.all') || list.some((p) => p.managerId === persona.id))
+  const stats = useDashboardStats(workspace?.id)
+  const working = useWorkingNow(workspace?.id, seesWorking)
   const people = useUsers(workspace?.id).data ?? []
   const runningProjects = [...new Set((working.data ?? []).map((w) => w.projectId))]
   const tasks = useTasksOf(runningProjects).data
   const now = useNow(60_000)
   const ws = workspace?.slug ?? ''
 
-  if (access === 'denied') {
-    return (
-      <>
-        <PageHeader title="Dashboard" />
-        <p className="text-sm text-fg-secondary">
-          You don't have access to the dashboard.{' '}
-          <Link to={paths.home(ws)} className="font-medium text-accent hover:text-accent-strong">
-            Go to Home
-          </Link>
-        </p>
-      </>
-    )
-  }
-
-  const list = projects.data ?? []
   const showCost = list.some((p) => p.cost !== null)
   const hours7 = list.reduce((s, p) => s + p.week.reduce((a, w) => a + w.hours, 0), 0)
   const cost = list.reduce((s, p) => s + (p.cost ?? 0), 0)
+  const projectName = (id: string) => everyProject.find((p) => p.id === id)?.name ?? list.find((p) => p.id === id)?.name ?? '—'
   const label = (taskId: string | null, projectId: string) => {
     const t = taskId ? tasks.find((x) => x.id === taskId) : undefined
-    return t ? `${t.key} · ${t.title}` : (everyProject.find((p) => p.id === projectId)?.name ?? '—')
+    return t ? `${t.key} · ${t.title}` : projectName(projectId)
   }
-  const loading = access === 'loading' || projects.isPending
 
   return (
     <>
-      <PageHeader title="Dashboard" subtitle={broad ? `Every project in ${workspace?.name ?? 'this workspace'}.` : 'The projects you manage.'} />
+      <PageHeader title="Dashboard" subtitle={broad ? `Every project in ${workspace?.name ?? 'this workspace'}.` : 'The projects you manage or work on.'} />
       {projects.isError ? (
         <QueryError what="Dashboard" onRetry={() => void projects.refetch()} />
-      ) : loading ? (
+      ) : projects.isPending ? (
         <div aria-busy="true">
           <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
             {[0, 1, 2, 3].map((i) => (
@@ -189,6 +177,8 @@ export function DashboardPage() {
             ))}
           </div>
         </div>
+      ) : list.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-line-strong p-10 text-center text-sm text-fg-secondary">{broad ? 'No projects to show.' : 'You’re not on any projects yet.'}</p>
       ) : (
         <>
           <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
@@ -201,13 +191,23 @@ export function DashboardPage() {
               <Tile label="Working now" value={seesWorking ? String(working.data?.length ?? 0) : '—'} />
             )}
           </div>
+          {stats.isError ? (
+            <div className="mb-6">
+              <QueryError what="Charts" onRetry={() => void stats.refetch()} />
+            </div>
+          ) : stats.isPending ? (
+            <div className="mb-6 flex flex-col gap-5 xl:flex-row" aria-hidden>
+              <div className="h-72 animate-pulse rounded-xl bg-surface-muted xl:flex-[2]" />
+              <div className="h-72 animate-pulse rounded-xl bg-surface-muted xl:flex-1" />
+            </div>
+          ) : (
+            <DashboardCharts stats={stats.data} scope={broad ? 'every project' : 'your projects'} projectName={projectName} people={people} />
+          )}
           <div className="flex flex-col gap-5 xl:flex-row">
             <div className="grid min-w-0 flex-1 gap-5 lg:grid-cols-2">
-              {list.length === 0 ? (
-                <p className="rounded-xl border border-dashed border-line-strong p-10 text-center text-sm text-fg-secondary lg:col-span-2">No projects to show.</p>
-              ) : (
-                list.map((p) => <ProjectCard key={p.id} ws={ws} project={p} people={people} now={now} />)
-              )}
+              {list.map((p) => (
+                <ProjectCard key={p.id} ws={ws} project={p} people={people} now={now} />
+              ))}
             </div>
             {seesWorking && (
               <Card className="xl:w-80 xl:shrink-0 xl:self-start">

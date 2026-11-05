@@ -107,8 +107,6 @@ export type PermissionContext = {
   uploadedBy?: string
   /** For message.edit and message.delete: who wrote the message or reply. */
   authorId?: string
-  /** Whether the person manages at least one project (a member can be named a project's manager). */
-  managesAny?: boolean
 }
 
 /** Actions that are always about one project: PM rights are per project, so these need it. */

@@ -40,7 +40,7 @@ const nothing = { tasks: 0, files: 0, comments: 0, phases: 0, deliverables: 0 }
 /** Why the viewer can't restore a record, by the same rules as each type's own restore; null when they can. */
 function restoreBlockedFor(data: DbData) {
   const me = currentUser(data)
-  const ctx = { userId: me.id, grants: grantsFor(data, me), userTeamIds: me.teamIds, managesAny: data.projects.some((p) => p.managerId === me.id) }
+  const ctx = { userId: me.id, grants: grantsFor(data, me), userTeamIds: me.teamIds }
   return {
     project: () => (can('project.archive', ctx) ? null : 'You can’t restore projects.'),
     task: (project: Project) => (project.archivedAt ? 'Restore its project first.' : can('task.manage', { ...ctx, project }) ? null : 'You can’t restore tasks in this project.'),

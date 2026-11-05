@@ -158,7 +158,9 @@ built-in roles give the old table's answers in every case. Routes:
   users and roles."
 - Every change sends `rolesChanged` to everyone: anyone's rights may have changed, so clients read everything again.
 - The one behaviour change: while it isn't known yet whether someone manages a project, the Project manager role no
-  longer stands in for it (the Dashboard link waits for the projects to load).
+  longer stands in for it (the Dashboard link waits for the projects to load). Amended 5 Nov 2026 (dashboard slice,
+  `2026-11-05-task-timer-and-dashboard-design.md` §4.4): the Dashboard is everyone's, so nothing waits for that any
+  more.
 
 | | Admin | Sales | PM (projects they manage) | Member |
 |---|---|---|---|---|
@@ -167,7 +169,7 @@ built-in roles give the old table's answers in every case. Routes:
 | Phases, tasks, assign people/teams | ✓ | — | ✓ | change status of own tasks |
 | Timer, add time (own) (check-in removed 5 Nov 2026) | ✓ | ✓ | ✓ | ✓ |
 | Comment, bug, upload, chat | ✓ | ✓ | ✓ | ✓ (projects they're on) |
-| Dashboard | ✓ | ✓ | own projects | — |
+| Dashboard (everyone's, 5 Nov 2026) | ✓ every project | ✓ every project | projects they manage or are on | projects they're on |
 | Time & cost page, rates, Database page | ✓ | — | — | — |
 | Archive or restore a project | ✓ | — | — | — |
 | Edit or archive a channel | public ones; private only as a member | its members | its members | its members |
@@ -385,7 +387,8 @@ chapter (`help:id#section`) or to https, and `![alt](name.jpg "caption")` from `
 
 ## 5. Screens (copy the named Spark CRM screen in `design/screenshots/`)
 
-Sidebar groups: **WORK** Home, Projects, My tasks · **TEAM** Chat, Teams · **MANAGE** Dashboard, Time & cost ·
+Sidebar groups: **WORK** Home, Projects, My tasks, Dashboard (moved from Manage, 5 Nov 2026) · **TEAM** Chat, Teams ·
+**MANAGE** Time & cost ·
 Settings (with Database) pinned at the bottom. Group/items hidden per §4.3. The Phases 1+2 channel/DM/project lists move
 inside Chat and Projects.
 
@@ -398,7 +401,7 @@ inside Chat and Projects.
 | Task inspector | `?ticket=KEY` (unchanged) | `27-page-help-panel` | Fields (editable per role), Start timer / Add time, logged vs estimate, **Activity**: comments, bugs, attachments (image preview, video `<video controls>`, files) with a drop zone |
 | Chat | `/w/:ws/c/:channelId` (unchanged) | existing | Composer with `@` autocomplete (people, projects, tasks, @all); mention chips open the project/task |
 | Teams | `/w/:ws/teams` | `09-clients-list` | Teams and members (Admin edits) |
-| Dashboard | `/w/:ws/dashboard` | `14-reports` | Per project: phase, progress ring, hours vs estimate, expected finish, cost (Admin), who worked this week; "Working now" list (was "Checked in now", 5 Nov 2026) |
+| Dashboard | `/w/:ws/dashboard` | `14-reports` | For everyone, over the projects in their scope (5 Nov 2026): tiles; charts for hours per day (14 days, mine in grey), tasks by status and hours by project; overdue tasks (opens the task inspector); per project: phase, progress ring, hours vs estimate, expected finish, cost (Admin), who worked this week; "Working now" list (was "Checked in now", 5 Nov 2026) |
 | Time & cost | `/w/:ws/time` | `12-payments` | Hours and cost by project / person / week; rates editor |
 | Database | `/w/:ws/settings/database` | `16-settings` | Export (downloads `spark-flow-export-<date>.json`), Reload seed, Reset (DeleteDialog confirm) |
 

@@ -16,7 +16,7 @@ const SHOTS = [
   { name: 'project-overview', path: '/p/NEX/overview', ready: ['heading', 'Nexus Core'] },
   { name: 'board', path: '/p/NEX/tasks', ready: ['button', 'New task'] },
   { name: 'chat', path: '/c/c-general', ready: ['textbox', null] },
-  { name: 'dashboard', path: '/dashboard', ready: ['heading', 'Dashboard'] },
+  { name: 'dashboard', path: '/dashboard', ready: ['group', 'Hours per day'] },
   { name: 'time-cost', path: '/time?days=30', ready: ['heading', 'Time & cost'] },
   { name: 'users', path: '/settings/users', ready: ['table', 'People'] },
   { name: 'roles', path: '/settings/roles', ready: ['table', 'Permissions by role'] },

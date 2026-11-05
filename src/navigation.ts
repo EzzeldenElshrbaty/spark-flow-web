@@ -28,13 +28,14 @@ export const navGroups: NavGroup[] = [
       { path: 'home', label: 'Home', icon: IconHome, description: 'Your day: timer, today’s time and mentions', link: paths.home },
       { path: 'projects', label: 'Projects', icon: IconLayoutKanban, description: 'Every project in the workspace', link: paths.projects },
       { path: 'tasks', label: 'My tasks', icon: IconListCheck, description: 'Your open tasks, overdue first', link: paths.tasks },
+      // Everyone's (dashboard slice): it shows the projects they manage or work on.
+      { path: 'dashboard', label: 'Dashboard', icon: IconLayoutDashboard, description: 'Your projects’ hours, tasks and who is working now', link: paths.dashboard },
       { path: 'teams', label: 'Teams', icon: IconUsers, description: 'Teams and who is in them', link: paths.teams },
     ],
   },
   {
     label: 'Manage',
     items: [
-      { path: 'dashboard', label: 'Dashboard', icon: IconLayoutDashboard, permission: 'dashboard.view', description: 'Projects, hours and who is working now', link: paths.dashboard },
       { path: 'time', label: 'Time & cost', icon: IconClock, permission: 'timeCost.view', description: 'Hours and cost by project, person and week', link: paths.timeCost },
     ],
   },
@@ -63,10 +64,7 @@ export const settingsItem: NavItem = {
 
 export const allNavItems: NavItem[] = [...navGroups.flatMap((group) => group.items), settingsItem]
 
-/**
- * Whether someone with these permissions sees a menu item. `managesAny`: whether they manage a project, which opens
- * the Dashboard whatever their roles (unknown while projects load).
- */
-export function canSee(item: NavItem, grants: readonly Permission[], extra: { managesAny?: boolean } = {}) {
-  return !item.permission || can(item.permission, { userId: '', grants, ...extra })
+/** Whether someone with these permissions sees a menu item. */
+export function canSee(item: NavItem, grants: readonly Permission[]) {
+  return !item.permission || can(item.permission, { userId: '', grants })
 }

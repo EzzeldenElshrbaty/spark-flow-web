@@ -1,13 +1,24 @@
 ---
 title: Dashboard
-group: Manage
-order: 1
-summary: Each project's phase, progress, hours and expected finish, and who is working now.
-needs: dashboard.view
+group: Work
+order: 5
+summary: Your projects at a glance: hours, tasks by status, overdue tasks, each project's progress, and who is working now.
 ---
-The Dashboard shows the projects you look after. People who can see the dashboard for every project see them all; a project's manager sees the ones they manage.
+Everyone has a Dashboard. It shows the projects you manage or work on, as a member or through a team. People who can see the dashboard for every project see them all. If you're on no project yet, it says so.
 
-![The Dashboard](dashboard.jpg "Every project at a glance, and who is working now")
+![The Dashboard](dashboard.jpg "Hours, tasks and the projects you're on")
+
+## The charts
+
+- **Hours per day**: the last 14 days. Red is everyone else's time on these projects, grey is yours. The title says the total.
+- **Tasks by status**: the tasks to do and in progress now, and the ones done in the last 14 days.
+- **Hours by project**: the last 14 days, the most first.
+
+Each chart can be read as a table with the button by its title.
+
+## Overdue tasks
+
+Tasks past their due date, or with more hours than estimated, soonest due first. Open one to see it beside the dashboard.
 
 ## The projects
 

@@ -145,6 +145,15 @@ Answers given in chat:
     by `checkins.all` and `checkins.managed` as today. With `checkins.managed` it lists only the timers on projects
     they manage (ruled in slice 3: a timer on another project isn't theirs to see, as "Checked in now" hid it).
 - Cost and rates stay `cost.view` and `rates.manage` only.
+- Ruled in the dashboard slice (5 Nov 2026):
+  - **Done in the last 14 days** is when a task last moved into its current column, from the project's history; a task
+    with no move there has been in it since it was made.
+  - The 14 days are local days, as Attendance's; an entry is split at local midnight.
+  - The title reads `{n}h logged in 14 days` (`formatHours`, as the tiles), not `{n} h`.
+  - An overdue task that isn't past its date is over its estimate: its Due cell says `Over estimate` with the date
+    after it, so a date still to come isn't shown in red.
+  - Working now is left out for someone with `checkins.managed` who manages none of the projects shown: it could only
+    ever be empty, even with their own timer running.
 
 ### 4.5 Screens
 

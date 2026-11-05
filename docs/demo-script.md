@@ -23,8 +23,8 @@ reload it, so do it shortly before the demo. Switch people with the user menu �
    Show Manage phases (rename, reorder).
 3. **Tarek** → top bar → **Start timer**: Sela kiosk, then the first task (the timer shows in the top bar and, on a
    phone, above the bottom bar). Then the second task → **Add time** (1 h yesterday).
-4. **Ahmed** → **Dashboard**: only his projects; Sela kiosk with hours against the estimate; Tarek under
-   "Working now".
+4. **Ahmed** → **Dashboard**: only the projects he manages or is on; Sela kiosk with hours against the estimate; Tarek
+   under "Working now".
 
 ## Story 2: a member's day (about 4 minutes)
 
@@ -39,11 +39,13 @@ reload it, so do it shortly before the demo. Switch people with the user menu �
 
 ## Story 3: the manager's view (about 3 minutes)
 
-1. **Youssef** → **Dashboard**: every project, cost to date, overdue tasks, who worked in the last 7 days, and who is
-   working now (with what they're on).
+1. **Youssef** → **Dashboard**: every project; hours per day for 14 days, tasks by status and hours by project; the
+   overdue tasks (one opens beside the page); cost to date, who worked in the last 7 days, and who is working now
+   (with what they're on).
 2. **Time & cost**: 7 / 30 / 90 days; By project, By person, By week (the chart). **Edit hourly costs** → change one
    rate and come back: the cost moves.
-3. A Member typing `/dashboard` or `/time` is told they don't have access.
+3. **Mariam** (a Member) → **Dashboard**, under Work: only Nexus Core and El Moasser, her own hours in grey. Typing
+   `/time` tells her she doesn't have access.
 
 ## Story 4: the board and the chat work together (about 4 minutes)
 

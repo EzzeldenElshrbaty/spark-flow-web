@@ -20,12 +20,12 @@ const actionsByPage: Record<string, ActionDef[]> = {}
 const pathOf = (item: (typeof allNavItems)[number], workspaceSlug: string | null) => (item.link ? (workspaceSlug ? item.link(workspaceSlug) : null) : item.path)
 
 /** Every page and action these permissions allow, in menu order. */
-export function shortcutsFor(grants: readonly Permission[], workspaceSlug: string | null, extra: { managesAny?: boolean } = {}): { pages: Shortcut[]; actions: Shortcut[] } {
+export function shortcutsFor(grants: readonly Permission[], workspaceSlug: string | null): { pages: Shortcut[]; actions: Shortcut[] } {
   const pages: Shortcut[] = []
   const actions: Shortcut[] = []
   for (const item of allNavItems) {
     const path = pathOf(item, workspaceSlug)
-    if (!canSee(item, grants, extra) || path === null) continue
+    if (!canSee(item, grants) || path === null) continue
     pages.push({ id: path, title: item.label, subtitle: item.description ?? '', link: path, icon: item.icon, keywords: [] })
     for (const action of actionsByPage[item.path] ?? []) {
       if (action.permission && !grants.includes(action.permission)) continue
@@ -34,7 +34,7 @@ export function shortcutsFor(grants: readonly Permission[], workspaceSlug: strin
     if (item === settingsItem) {
       for (const section of item.children ?? []) {
         const sectionPath = pathOf(section, workspaceSlug)
-        if (!canSee(section, grants, extra) || sectionPath === null) continue
+        if (!canSee(section, grants) || sectionPath === null) continue
         pages.push({ id: sectionPath, title: section.label, subtitle: 'Settings', link: sectionPath, icon: item.icon, keywords: ['settings'] })
       }
     }

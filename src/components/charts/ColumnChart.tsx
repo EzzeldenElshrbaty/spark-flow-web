@@ -55,6 +55,8 @@ export function ColumnChart({
             {columns.map((column, index) => (
               <div
                 key={column.title}
+                // A named, focusable column needs a role for its name to be read (axe aria-prohibited-attr).
+                role="img"
                 tabIndex={0}
                 onMouseEnter={() => setActive(index)}
                 onMouseLeave={() => setActive(null)}

@@ -6,7 +6,8 @@ import { BUILT_IN_ROLES, can, type Action, type PermissionContext, type ProjectS
 // answer for every action, built-in role and kind of case.
 
 type LegacyRole = 'admin' | 'sales' | 'pm' | 'member'
-type LegacyContext = Omit<PermissionContext, 'grants'> & { role: LegacyRole }
+// managesAny: the old dashboard rule's input, gone from PermissionContext since the dashboard opened to everyone.
+type LegacyContext = Omit<PermissionContext, 'grants'> & { role: LegacyRole; managesAny?: boolean }
 type Ref = NonNullable<PermissionContext['project']>
 
 const FROZEN = new Set<string>(['project.edit', 'phase.manage', 'task.manage', 'task.updateOwnStatus', 'time.logOn', 'collab.post'])

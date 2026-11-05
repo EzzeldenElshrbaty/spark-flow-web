@@ -1,0 +1,191 @@
+import { Link, useSearchParams } from 'react-router'
+import type { DashboardStats, StatusCategory, User } from '@/api/types'
+import { BarList } from '@/components/charts/BarList'
+import { ChartCard } from '@/components/charts/ChartCard'
+import { ColumnChart } from '@/components/charts/ColumnChart'
+import { Avatar } from '@/components/ui/Avatar'
+import { DataTable, type Column } from '@/components/ui/DataTable'
+import { isPastDue } from '@/lib/dates'
+import { formatDate, formatHours } from '@/lib/format'
+import { withInspector } from '@/lib/inspector'
+
+// The dashboard's charts and overdue tasks (dashboard slice, spec §4.4): red for the key series, grey for the rest,
+// the takeaway in each title. Every figure comes from api.dashboard.stats.
+
+const RED = 'var(--chart-primary)'
+const GREY = 'var(--chart-context)'
+const STATUS_LABEL: Record<StatusCategory, string> = { todo: 'To do', inProgress: 'In progress', done: 'Done in 14 days' }
+
+const tenth = (hours: number) => Math.round(hours * 10) / 10
+/** A stats day ('YYYY-MM-DD') as that local day. */
+const dateOf = (day: string) => {
+  const [y, m, d] = day.split('-').map(Number)
+  return new Date(y!, m! - 1, d!)
+}
+const dayTitle = (day: string) => dateOf(day).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
+
+/** Hours per day for the last 14 days: my own at the base in grey, everyone else's on top in red. */
+function HoursPerDay({ days, scope }: { days: DashboardStats['days']; scope: string }) {
+  const total = days.reduce((sum, d) => sum + d.hours, 0)
+  return (
+    <ChartCard
+      className="xl:flex-[2]"
+      title={`${formatHours(total)} logged in 14 days`}
+      subtitle={`Hours per day on ${scope}`}
+      legend={[
+        { label: 'Everyone else', color: RED },
+        { label: 'You', color: GREY },
+      ]}
+      table={{ columns: ['Day', 'Hours', 'Yours'], rows: days.map((d) => [dayTitle(d.day), formatHours(d.hours), formatHours(d.mine)]) }}
+    >
+      <ColumnChart
+        label="Hours per day"
+        series={[
+          { key: 'mine', label: 'You', color: GREY },
+          { key: 'others', label: 'Everyone else', color: RED },
+        ]}
+        columns={days.map((d, index) => ({
+          label: String(dateOf(d.day).getDate()),
+          title: dayTitle(d.day),
+          values: { mine: tenth(d.mine), others: tenth(Math.max(0, d.hours - d.mine)) },
+          highlight: index === days.length - 1,
+        }))}
+        format={formatHours}
+      />
+    </ChartCard>
+  )
+}
+
+/** Tasks in scope by status: To do and In progress now, and those done in the last 14 days (the key series). */
+function TasksByStatus({ byStatus }: { byStatus: DashboardStats['byStatus'] }) {
+  const done = byStatus.find((s) => s.category === 'done')?.count ?? 0
+  return (
+    <ChartCard
+      title={`${plural(done, 'task', 'tasks')} done in 14 days`}
+      subtitle="Tasks by status"
+      table={{ columns: ['Status', 'Tasks'], rows: byStatus.map((s) => [STATUS_LABEL[s.category], s.count]) }}
+    >
+      <BarList rows={byStatus.map((s) => ({ label: STATUS_LABEL[s.category], value: s.count, display: String(s.count), color: s.category === 'done' ? RED : GREY }))} />
+    </ChartCard>
+  )
+}
+
+/** Hours by project for the last 14 days, most first. */
+function HoursByProject({ byProject, projectName }: { byProject: DashboardStats['byProject']; projectName: (id: string) => string }) {
+  const top = byProject[0]
+  return (
+    <ChartCard
+      title={top ? `${projectName(top.projectId)} had the most hours` : 'No time logged in 14 days'}
+      subtitle="Hours by project, last 14 days"
+      table={{ columns: ['Project', 'Hours'], rows: byProject.map((p) => [projectName(p.projectId), formatHours(p.hours)]) }}
+    >
+      {top ? (
+        <BarList rows={byProject.map((p, index) => ({ label: projectName(p.projectId), value: p.hours, display: formatHours(p.hours), color: index === 0 ? RED : GREY }))} />
+      ) : (
+        <p className="text-sm text-fg-muted">No time logged.</p>
+      )}
+    </ChartCard>
+  )
+}
+
+type Overdue = DashboardStats['overdue'][number]
+
+/** The overdue tasks in scope, due soonest first; a row (or its key, for the keyboard) opens the task inspector. */
+function OverdueTasks({ overdue, projectName, people }: { overdue: Overdue[]; projectName: (id: string) => string; people: User[] }) {
+  const [params, setParams] = useSearchParams()
+  const open = (key: string) => ({ search: withInspector(params, { kind: 'ticket', key }).toString() })
+  const nameOf = (id: string | null) => (id ? (people.find((u) => u.id === id)?.name ?? 'Unknown person') : null)
+  // Past its due date: the date, in red. Otherwise it's overdue for its hours: say so, with the date it's due.
+  const now = new Date()
+  const due = (t: Overdue) =>
+    t.dueAt && isPastDue(t.dueAt, now) ? (
+      <span className="text-red-600 dark:text-red-400">{formatDate(t.dueAt)}</span>
+    ) : (
+      <>
+        <span className="text-red-600 dark:text-red-400">Over estimate</span>
+        {t.dueAt && <span className="text-fg-muted"> · {formatDate(t.dueAt)}</span>}
+      </>
+    )
+  const columns: Column<Overdue>[] = [
+    {
+      id: 'key',
+      header: 'Key',
+      width: 100,
+      cell: (t) => (
+        <Link to={open(t.key)} onClick={(e) => e.stopPropagation()} className="font-mono text-xs text-fg-secondary hover:underline">
+          {t.key}
+        </Link>
+      ),
+    },
+    { id: 'title', header: 'Title', width: 260, cell: (t) => <span className="block truncate font-medium text-fg">{t.title}</span> },
+    { id: 'project', header: 'Project', width: 150, cell: (t) => <span className="block truncate text-fg-secondary">{projectName(t.projectId)}</span> },
+    {
+      id: 'assignee',
+      header: 'Assignee',
+      width: 170,
+      cell: (t) => {
+        const name = nameOf(t.assigneeId)
+        return name ? (
+          <span className="flex min-w-0 items-center gap-2">
+            <Avatar name={name} size="sm" />
+            <span className="truncate text-fg-secondary">{name}</span>
+          </span>
+        ) : (
+          <span className="text-fg-muted">—</span>
+        )
+      },
+    },
+    { id: 'due', header: 'Due', width: 190, cell: (t) => <span className="block truncate tabular-nums">{due(t)}</span> },
+  ]
+
+  return (
+    <section className="mb-6 min-w-0" aria-labelledby="dashboard-overdue">
+      <h2 id="dashboard-overdue" className="mb-3 text-sm font-semibold text-fg">
+        {overdue.length ? plural(overdue.length, 'overdue task', 'overdue tasks') : 'No overdue tasks'}
+      </h2>
+      {overdue.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-line-strong p-6 text-center text-sm text-fg-secondary">Nothing is past its due date or over its estimate.</p>
+      ) : (
+        <>
+          <div className="max-sm:hidden">
+            <DataTable columns={columns} rows={overdue} rowKey={(t) => t.taskId} onRowClick={(t) => setParams((prev) => withInspector(prev, { kind: 'ticket', key: t.key }))} storageKey="spark-flow.table.dashboard-overdue" label="Overdue tasks" />
+          </div>
+          <ul className="divide-y divide-line-subtle overflow-hidden rounded-xl border border-line bg-surface sm:hidden">
+            {overdue.map((t) => (
+              <li key={t.taskId}>
+                <Link to={open(t.key)} className="block px-4 py-3 active:bg-surface-sunken">
+                  <span className="block truncate text-sm text-fg">
+                    <bdi dir="ltr" className="font-mono text-xs text-fg-muted">
+                      {t.key}
+                    </bdi>{' '}
+                    {t.title}
+                  </span>
+                  <span className="block truncate text-xs text-fg-muted">
+                    {projectName(t.projectId)} · {nameOf(t.assigneeId) ?? 'No one'} · {due(t)}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </section>
+  )
+}
+
+/** The charts on the dashboard's 2/3 + 1/3 rhythm (the two bar lists stacked), then the overdue tasks full width. */
+export function DashboardCharts({ stats, scope, projectName, people }: { stats: DashboardStats; scope: string; projectName: (id: string) => string; people: User[] }) {
+  return (
+    <>
+      <div className="mb-6 flex flex-col gap-5 xl:flex-row">
+        <HoursPerDay days={stats.days} scope={scope} />
+        <div className="flex min-w-0 flex-col gap-5 xl:flex-1">
+          <TasksByStatus byStatus={stats.byStatus} />
+          <HoursByProject byProject={stats.byProject} projectName={projectName} />
+        </div>
+      </div>
+      <OverdueTasks overdue={stats.overdue} projectName={projectName} people={people} />
+    </>
+  )
+}

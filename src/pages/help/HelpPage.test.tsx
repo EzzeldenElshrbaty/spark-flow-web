@@ -97,8 +97,8 @@ describe('who reads what', () => {
     expect(screen.getByText('Users')).toBeTruthy()
   })
 
-  it('whoever manages a project reads the Dashboard chapter, whatever their roles', async () => {
-    me = { ...me, id: 'u-2', roleIds: ['pm'], grants: ['checkins.managed'] }
+  it('everyone reads the Dashboard chapter, whatever their roles (dashboard slice)', async () => {
+    me = { ...me, id: 'u-8', roleIds: ['member'], grants: [] }
     mount('/w/engineering/help/dashboard')
     expect(await screen.findByRole('heading', { name: 'Dashboard', level: 2 })).toBeTruthy()
   })

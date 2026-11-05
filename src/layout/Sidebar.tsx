@@ -362,14 +362,12 @@ export function SidebarContent({
   collapsed?: boolean
   onNavigate?: () => void
 }) {
-  const { grants, persona } = useRole()
+  const { grants } = useRole()
   const check = usePermission()
   const { workspace, starred, channels, dms, apps, projects, mentions, activityUnread, threadsUnread, customOrder, savedInProgress, draftsAndScheduled, chatLoading, projectsLoading, failed } = useSidebarGroups()
   const slug = workspace?.slug
   const [newChannel, setNewChannel] = useState(false)
   const [newMessage, setNewMessage] = useState(false)
-  const managesAny = projectsLoading ? undefined : projects.some((p) => p.managerId === persona.id)
-  const canDashboard = check('dashboard.view', { managesAny })
   const row = { collapsed, onNavigate }
   // My order of Starred and Channels (spec 5.1): a drop or Sort A–Z saves; a refusal says so under its section.
   const { save: reorder, error: orderError } = useSaveSidebarOrder(workspace?.id)
@@ -401,23 +399,19 @@ export function SidebarContent({
               <SideLink to={paths.tasks(slug)} label="My tasks" icon={IconListCheck} {...row} />
             </li>
             <li className="flex-none">
+              <SideLink to={paths.dashboard(slug)} label="Dashboard" icon={IconLayoutDashboard} {...row} />
+            </li>
+            <li className="flex-none">
               <SideLink to={paths.teams(slug)} label="Teams" icon={IconUsers} {...row} />
             </li>
           </SideSection>
         )}
 
-        {slug && onProjects && (canDashboard || check('timeCost.view')) && (
+        {slug && onProjects && check('timeCost.view') && (
           <SideSection id="manage" label="Manage" {...row}>
-            {canDashboard && (
-              <li className="flex-none">
-                <SideLink to={paths.dashboard(slug)} label="Dashboard" icon={IconLayoutDashboard} {...row} />
-              </li>
-            )}
-            {check('timeCost.view') && (
-              <li className="flex-none">
-                <SideLink to={paths.timeCost(slug)} label="Time & cost" icon={IconClock} {...row} />
-              </li>
-            )}
+            <li className="flex-none">
+              <SideLink to={paths.timeCost(slug)} label="Time & cost" icon={IconClock} {...row} />
+            </li>
           </SideSection>
         )}
 

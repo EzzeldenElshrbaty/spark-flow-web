@@ -19,7 +19,7 @@ export const PAGE_HELP: PageHelp[] = [
   { path: 'drafts', chapter: 'saved-drafts', sections: ['Drafts & sent'] },
   { path: 'projects', chapter: 'projects' },
   { path: 'tasks', chapter: 'tasks', sections: ['My tasks'] },
-  { path: 'dashboard', chapter: 'dashboard', needs: 'dashboard.view' },
+  { path: 'dashboard', chapter: 'dashboard' },
   { path: 'time', chapter: 'time-cost', needs: 'timeCost.view' },
   { path: 'teams', chapter: 'teams' },
   { path: 'p/:projectKey/overview', chapter: 'project-page', sections: ['Overview'] },

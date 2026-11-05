@@ -11,7 +11,8 @@ const channel = (id: string, name: string) => ({ channel: { id, name, kind: 'cha
 
 vi.mock('@/layout/useCurrentWorkspace', () => ({ useCurrentWorkspace: () => ({ workspace }) }))
 vi.mock('@/lib/useRole', () => ({ useRole: () => ({ grants: ALL_PERMISSIONS, persona: { id: 'u-1', roleIds: ['admin'], grants: ALL_PERMISSIONS } }) }))
-vi.mock('@/lib/usePermission', () => ({ usePermission: () => () => true }))
+let allow = (_action: string) => true
+vi.mock('@/lib/usePermission', () => ({ usePermission: () => (action: string) => allow(action) }))
 vi.mock('@/layout/NewTaskButton', () => ({ NewTaskButton: () => <button type="button">New task</button> }))
 vi.mock('@/layout/useGoToMode', () => ({ useGoToMode: () => () => true }))
 const setOrder = vi.fn()
@@ -41,6 +42,7 @@ vi.mock('@/layout/useSidebarGroups', () => ({
 }))
 
 beforeEach(() => {
+  allow = () => true
   useUiStore.setState(initialUiState)
   customOrder = { starred: false, channels: false, projects: false }
   orderError = null
@@ -60,6 +62,16 @@ describe('The sidebar shows one side of Flow at a time (spec 5.5)', () => {
     }
     for (const name of ['Activity', 'Saved', 'general']) expect(within(nav()).queryByRole('link', { name }), name).toBeNull()
     expect(screen.getByRole('link', { name: 'Settings' })).toBeTruthy()
+  })
+
+  it('the Work group lists Dashboard after My tasks for a Member (dashboard slice)', () => {
+    allow = () => false
+    at('/w/engineering/p/NEX/tasks', <SidebarContent />)
+    const list = document.getElementById(screen.getByRole('button', { name: 'Work' }).getAttribute('aria-controls')!)!
+    expect(within(list).getAllByRole('link').map((a) => a.textContent)).toEqual(['Home', 'Projects', 'My tasks', 'Dashboard', 'Teams'])
+    // Manage keeps Time & cost only, for whoever may see it.
+    expect(screen.queryByRole('button', { name: 'Manage' })).toBeNull()
+    expect(within(nav()).getAllByRole('link', { name: 'Dashboard' })).toHaveLength(1)
   })
 
   it('on the Chat side: the chat views, channels and DMs, no project rows', () => {

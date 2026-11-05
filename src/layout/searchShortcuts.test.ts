@@ -38,8 +38,8 @@ describe('pages, tasks and people', () => {
   const titles = (role: string) => shortcutsFor(grants(role), 'engineering').pages.map((p) => p.title)
 
   it('a member finds Home, Projects, My tasks, Teams, Dashboard and Attendance; an admin also Time & cost and the rest of Settings', () => {
-    expect(titles('member')).toEqual(['Home', 'Projects', 'My tasks', 'Teams', 'Dashboard', 'Settings', 'Attendance'])
-    expect(titles('admin')).toEqual(['Home', 'Projects', 'My tasks', 'Teams', 'Dashboard', 'Time & cost', 'Settings', 'Users', 'Roles and permissions', 'Audit log', 'Attendance', 'Archived records', 'Rates', 'Database'])
+    expect(titles('member')).toEqual(['Home', 'Projects', 'My tasks', 'Dashboard', 'Teams', 'Settings', 'Attendance'])
+    expect(titles('admin')).toEqual(['Home', 'Projects', 'My tasks', 'Dashboard', 'Teams', 'Time & cost', 'Settings', 'Users', 'Roles and permissions', 'Audit log', 'Attendance', 'Archived records', 'Rates', 'Database'])
     expect(shortcutsFor(grants('member'), 'engineering').pages[0]!.link).toBe('/w/engineering')
   })
 

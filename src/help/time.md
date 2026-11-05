@@ -1,7 +1,7 @@
 ---
 title: Time
 group: Work
-order: 5
+order: 6
 summary: The timer, adding time by hand, and a project's Time tab.
 ---
 Hours come from the timer and from time added by hand. A task's hours count against its estimate.
