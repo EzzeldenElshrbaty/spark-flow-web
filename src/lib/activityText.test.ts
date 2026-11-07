@@ -11,6 +11,15 @@ const ctx = (over: Partial<Parameters<typeof describeActivity>[1]> = {}) => ({
 })
 const e = (over: Partial<ActivityEntry>): ActivityEntry => ({ id: 'a', projectId: 'p', taskKey: 'NEX-1', actorId: 'u-2', at: '2026-10-28T10:00:00.000Z', kind: 'task.created', changes: [], ...over })
 
+describe('a task’s files changed', () => {
+  it('reads as files changed, never naming them', () => {
+    const files = e({ kind: 'task.changed', changes: [{ field: 'attachments', from: null, to: null }] })
+    expect(describeActivity(files, ctx({ withKey: false }))).toBe('Nour changed the files')
+    expect(describeActivity(files, ctx())).toBe('Nour changed the files of NEX-1')
+    expect(changeLines(e({ kind: 'task.changed', changes: [{ field: 'attachments', from: null, to: null }, { field: 'description', from: null, to: null }] }), ctx())).toEqual(['Files changed', 'Description changed'])
+  })
+})
+
 describe('describeActivity', () => {
   it('created, archived, restored', () => {
     expect(describeActivity(e({}), ctx())).toBe('Nour created NEX-1')

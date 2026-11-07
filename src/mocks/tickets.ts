@@ -5,6 +5,8 @@ import { delay } from './latency'
 import type { MockHub } from './realtime'
 import { categoryOf, columnLabel, columnOf, columnsOf, startColumn } from '@/lib/boardColumns'
 import { badRequest, clone, isDate, notFound, pickPatch, requireActive, requireCan, stamp, text } from './shared'
+import { fileInUse } from './files'
+import { ApiError } from '@/lib/apiError'
 import { projectPeopleIds } from '@/lib/projectPeople'
 
 /** In board order (the project's columns), then by rank within a column; a column that's gone sorts last. */
@@ -83,21 +85,54 @@ const EDITABLE_BY_ASSIGNEE = new Set(['status', 'rank'])
 
 /** The fields a task patch may carry (TicketPatch); anything else is refused. */
 const TASK_FIELDS = [
-  'title', 'descriptionBody', 'status', 'priority', 'storyPoints', 'assigneeId', 'sprintId', 'rank', 'phaseId', 'type', 'dueAt', 'estimateHours',
+  'title', 'descriptionBody', 'attachmentIds', 'status', 'priority', 'storyPoints', 'assigneeId', 'sprintId', 'rank', 'phaseId', 'type', 'dueAt', 'estimateHours',
 ] as const satisfies readonly (keyof TicketPatch)[]
 const PRIORITIES: readonly Priority[] = ['urgent', 'high', 'medium', 'low']
 const TYPES: readonly TaskType[] = ['task', 'bug']
 
+const MAX_TASK_FILES = 20
+
+/**
+ * A task's files as sent (spec §4.2), each once, in order: at most 20, each a file that exists, and each one new to the
+ * task uploaded by me and used nowhere yet; every one clean. The checks go row by row, so the first rule broken is the
+ * one reported.
+ */
+function checkAttachments(data: DbData, ticket: Ticket | undefined, ids: unknown, meId: string): string[] {
+  if (!Array.isArray(ids) || !ids.every((id) => typeof id === 'string')) throw badRequest("That isn't a list of files.")
+  const unique = [...new Set(ids)]
+  if (unique.length > MAX_TASK_FILES) throw badRequest('Attach up to 20 files to a task.')
+  const files = unique.map((id) => {
+    const file = data.attachments.find((a) => a.id === id)
+    if (!file || file.deletedAt) throw notFound('File', id)
+    return file
+  })
+  const had = new Set(ticket?.attachmentIds ?? [])
+  for (const file of files.filter((f) => !had.has(f.id))) {
+    if (file.uploadedBy !== meId) throw new ApiError({ title: 'Forbidden', status: 403, detail: 'You can only attach files you uploaded.' })
+    if (fileInUse(data, file.id)) throw badRequest('Upload that file again to attach it here.')
+  }
+  for (const file of files) {
+    if (file.scanStatus === 'pending') throw badRequest(`${file.title} is still being checked.`)
+    if (file.scanStatus === 'blocked') throw badRequest(`${file.title} was blocked.`)
+  }
+  return unique
+}
+
+/** A task's files by their titles, for the audit log: "a.pdf, b.png", or null for none. */
+const fileTitles = (data: DbData, ids: string[]) => ids.map((id) => data.attachments.find((a) => a.id === id)?.title ?? 'a file').join(', ') || null
+
 /**
  * The values of a new task or a patch. The assignee is one of the project's people, or the one the task already has
  * (someone taken off the project keeps their tasks until they're reassigned). A description is replaced by its checked
- * copy (unknown fields dropped); its files are the task's own.
+ * copy (unknown fields dropped) and the files by their checked list.
  */
 function checkTaskInput(data: DbData, projectId: string, input: Partial<TicketPatch>, ticket?: Ticket) {
   const project = findProject(data, projectId)
   if (input.title !== undefined && !text(input.title, 'Title')) throw badRequest('Give the task a title.')
+  // The files first: the description may show only the task's files as they'll be.
+  if (input.attachmentIds !== undefined) input.attachmentIds = checkAttachments(data, ticket, input.attachmentIds, data.currentUserId)
   if (input.descriptionBody !== undefined) {
-    const body = validDescription(input.descriptionBody, new Set(ticket?.attachmentIds ?? []))
+    const body = validDescription(input.descriptionBody, new Set(input.attachmentIds ?? ticket?.attachmentIds ?? []))
     if (!body) throw badRequest("The description couldn't be read. Try again.")
     if (descriptionText(body).length > MAX_DESCRIPTION) throw badRequest('Keep the description under 20,000 characters.')
     input.descriptionBody = body
@@ -239,7 +274,7 @@ export async function createTicket(db: MockDb, hub: MockHub, input: NewTicket, c
       title: input.title,
       descriptionBody: input.descriptionBody ?? [],
       description: descriptionText(input.descriptionBody ?? []),
-      attachmentIds: [],
+      attachmentIds: input.attachmentIds ?? [],
       status,
       priority: input.priority,
       storyPoints: input.storyPoints,
@@ -259,13 +294,15 @@ export async function createTicket(db: MockDb, hub: MockHub, input: NewTicket, c
     data.tickets.push(created)
     data.counters[project.id] = number + 1
     logActivity(data, { projectId: project.id, taskKey: key, kind: 'task.created', changes: [] }, clock().toISOString())
-    audit(data, { action: 'created', group: 'data', record: recordOf.task(created), changes: [...statusChanges(project, null, status), ...changesBetween(data, {}, created, TASK_LOGGED)] })
+    const files = created.attachmentIds.length ? [{ field: 'Files', from: null, to: fileTitles(data, created.attachmentIds) }] : []
+    audit(data, { action: 'created', group: 'data', record: recordOf.task(created), changes: [...statusChanges(project, null, status), ...changesBetween(data, {}, created, TASK_LOGGED), ...files] })
     // The message it was made from names it from now on (its task chip).
     const source = created.linkedMessageId ? data.messages.find((m) => m.id === created.linkedMessageId) : undefined
     if (source && !source.linkedTicketKeys.includes(key)) source.linkedTicketKeys.push(key)
     return { ticket: created, cards: clone(postTaskEvents(data, null, created)), source: source && { channelId: source.channelId, messageId: source.id } }
   })
   hub.publish({ type: 'ticketUpdated', ticket: clone(ticket) })
+  if (ticket.attachmentIds.length) hub.publish({ type: 'filesChanged', projectId: ticket.projectId })
   if (source) hub.publish({ type: 'messageChanged', ...source })
   for (const message of cards) hub.publish({ type: 'messageReceived', message })
   return ticket
@@ -283,7 +320,7 @@ export async function updateTicket(
   now: () => Date = () => new Date(),
   check?: (data: DbData, ticket: Ticket) => void,
 ): Promise<Ticket> {
-  const { ticket, cards, stopped } = await db.update((data) => {
+  const { ticket, cards, stopped, orphans, filesMoved } = await db.update((data) => {
     const ticket = findTicket(data, key)
     // Archived tasks are read-only until restored (restore doesn't come through here); that comes first, for anyone.
     if (ticket.archivedAt) throw badRequest('This task is archived. Restore it first.')
@@ -294,21 +331,33 @@ export async function updateTicket(
     for (const [field, value] of Object.entries(patch)) {
       if (value !== undefined) (ticket as Record<string, unknown>)[field] = value
     }
-    if (patch.descriptionBody !== undefined) ticket.description = descriptionText(ticket.descriptionBody)
+    // Files taken off the task leave its description too, so it never shows a file the task doesn't have.
+    if (patch.attachmentIds !== undefined && patch.descriptionBody === undefined) {
+      const kept = new Set(ticket.attachmentIds)
+      ticket.descriptionBody = ticket.descriptionBody.filter((b) => b.type !== 'file' || kept.has(b.id))
+    }
+    if (patch.attachmentIds !== undefined || patch.descriptionBody !== undefined) ticket.description = descriptionText(ticket.descriptionBody)
+    const filesMoved = JSON.stringify(before.attachmentIds) !== JSON.stringify(ticket.attachmentIds)
+    const fileChanges = filesMoved ? [{ field: 'Files', from: fileTitles(data, before.attachmentIds), to: fileTitles(data, ticket.attachmentIds) }] : []
+    // A file that left the task and is used nowhere else goes, with its bytes (after this write).
+    const orphans = before.attachmentIds.filter((id) => !ticket.attachmentIds.includes(id) && !fileInUse(data, id))
+    data.attachments = data.attachments.filter((a) => !orphans.includes(a.id))
     ticket.updatedAt = stamp(ticket.updatedAt)
     logTaskUpdate(data, before, ticket, now().toISOString())
     // Done (any Done-type column, whatever it's called): the timers running on it stop, as no more time goes on it.
     const project = findProject(data, ticket.projectId)
-    const edits = changesBetween(data, before, ticket, TASK_LOGGED)
+    const edits = [...changesBetween(data, before, ticket, TASK_LOGGED), ...fileChanges]
     const moved = statusChanges(project, before.status, ticket.status)
     if (edits.length) audit(data, { action: 'changed', group: 'data', record: recordOf.task(ticket), changes: edits })
     if (moved.length) audit(data, { action: 'changed', group: 'status', record: recordOf.task(ticket), changes: moved })
     const intoDone = patch.status !== undefined && categoryOf(project, ticket.status) === 'done' && categoryOf(project, before.status) !== 'done'
     const stopped = intoDone ? stopTimersOn(data, [ticket.id], now()) : []
     // The change, its history and its cards in the project's chat are one write.
-    return { ticket, cards: clone(postTaskEvents(data, before, ticket)), stopped }
+    return { ticket, cards: clone(postTaskEvents(data, before, ticket)), stopped, orphans, filesMoved }
   })
+  for (const fileId of orphans) await db.deleteFile(fileId)
   hub.publish({ type: 'ticketUpdated', ticket: clone(ticket) })
+  if (filesMoved) hub.publish({ type: 'filesChanged', projectId: ticket.projectId })
   for (const userId of stopped) hub.publish({ type: 'timeLogged', userId, projectId: ticket.projectId })
   for (const message of cards) hub.publish({ type: 'messageReceived', message })
   return ticket

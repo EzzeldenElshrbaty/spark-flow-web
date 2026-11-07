@@ -49,6 +49,8 @@ export function diffTask(data: DbData, before: Ticket, after: Ticket): FieldChan
     }
     changes.push(change)
   }
+  // A task's files: that they changed, not which (as the description).
+  if (JSON.stringify(before.attachmentIds) !== JSON.stringify(after.attachmentIds)) changes.push({ field: 'attachments', from: null, to: null })
   return changes
 }
 

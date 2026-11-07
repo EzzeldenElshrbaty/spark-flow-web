@@ -59,7 +59,7 @@ function valueOf(change: FieldChange, side: 'from' | 'to', ctx: ActivityContext)
 export function changeLines(entry: ActivityEntry, ctx: ActivityContext): string[] {
   if (entry.kind !== 'task.changed' || entry.changes.length < 2) return []
   return entry.changes.map((c) =>
-    c.field === 'description' ? 'Description changed' : `${cap(FIELD_NAMES[c.field] ?? c.field)}: ${valueOf(c, 'from', ctx)} → ${valueOf(c, 'to', ctx)}`,
+    c.field === 'description' ? 'Description changed' : c.field === 'attachments' ? 'Files changed' : `${cap(FIELD_NAMES[c.field] ?? c.field)}: ${valueOf(c, 'from', ctx)} → ${valueOf(c, 'to', ctx)}`,
   )
 }
 
@@ -84,6 +84,7 @@ export function describeActivity(entry: ActivityEntry, ctx: ActivityContext): st
       if (entry.changes.length > 1) return `${who} changed ${entry.changes.length} fields${of}`
       if (!first) return `${who} changed ${it}`
       if (first.field === 'description') return `${who} changed the description${of}`
+      if (first.field === 'attachments') return `${who} changed the files${of}`
       return `${who} changed the ${FIELD_NAMES[first.field] ?? first.field}${of} from ${valueOf(first, 'from', ctx)} to ${valueOf(first, 'to', ctx)}`
     }
     case 'comment.added':

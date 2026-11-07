@@ -8,6 +8,7 @@ import { createMockHub, type MockHub } from './realtime'
 import { seed } from './seed'
 import { createMemoryStore } from './store'
 import { textBody } from '@/lib/messageBody'
+import type { UploadFile } from '@/api/types'
 
 let db: MockDb
 let hub: MockHub
@@ -349,5 +350,79 @@ describe('task descriptions', () => {
     await api.tasks.update('NEX-101', { descriptionBody: [{ type: 'p', children: [{ type: 'text', text: before.description, marks: ['b'] }] }] })
     const lines = (await db.read()).activity.slice(n)
     expect(lines.find((l) => l.kind === 'task.changed' && l.taskKey === 'NEX-101')?.changes).toContainEqual({ field: 'description', from: null, to: null })
+  })
+})
+
+describe('task files on save', () => {
+  const pdf = (name: string): UploadFile => Object.assign(new Blob(['%PDF-1.4 x'], { type: 'application/pdf' }), { name })
+  const nex = { projectId: 'p-nex', phaseId: 'ph-nex-build', assigneeId: 'u-3' }
+  const fileBlock = (id: string) => ({ type: 'file' as const, id })
+
+  it('a task is created with its files and a description that shows one; every tab hears its files changed', async () => {
+    const api = apiAt()
+    await api.users.viewAs('u-2')
+    const f = await api.files.uploadForTask('p-nex', pdf('flow.pdf'))
+    const events: RealtimeEvent[] = []
+    hub.subscribe((e) => events.push(e))
+    const body = [...textBody('See the flow.'), fileBlock(f.id)]
+    const task = await api.tasks.create(newTask({ ...nex, attachmentIds: [f.id], descriptionBody: body }))
+    expect(task.attachments).toEqual([f])
+    expect(task.descriptionBody).toEqual(body)
+    expect(events).toContainEqual({ type: 'filesChanged', projectId: 'p-nex' })
+  })
+
+  it('at most 20 files; a repeated one counts once', async () => {
+    const api = apiAt()
+    await api.users.viewAs('u-2')
+    const f = await api.files.uploadForTask('p-nex', pdf('a.pdf'))
+    await expect(api.tasks.create(newTask({ ...nex, attachmentIds: Array.from({ length: 21 }, (_, i) => `f-${i}`) }))).rejects.toMatchObject({ status: 400, detail: 'Attach up to 20 files to a task.' })
+    expect((await api.tasks.create(newTask({ ...nex, attachmentIds: [f.id, f.id] }))).attachmentIds).toEqual([f.id])
+  })
+
+  it('refuses a missing file, someone else’s, one used elsewhere, one not clean, and a description naming a file the task lacks', async () => {
+    const api = apiAt()
+    await api.users.viewAs('u-1')
+    const theirs = await api.files.uploadForTask('p-nex', pdf('theirs.pdf'))
+    await api.users.viewAs('u-2')
+    const pending = await api.files.uploadForTask('p-nex', pdf('pending.pdf'))
+    const blocked = await api.files.uploadForTask('p-nex', pdf('blocked.pdf'))
+    const loose = await api.files.uploadForTask('p-nex', pdf('loose.pdf'))
+    await db.update((data) => {
+      data.attachments.find((a) => a.id === pending.id)!.scanStatus = 'pending'
+      data.attachments.find((a) => a.id === blocked.id)!.scanStatus = 'blocked'
+    })
+    await expect(api.tasks.create(newTask({ ...nex, attachmentIds: ['a-gone'] }))).rejects.toMatchObject({ status: 404 })
+    await expect(api.tasks.create(newTask({ ...nex, attachmentIds: [theirs.id] }))).rejects.toMatchObject({ status: 403, detail: 'You can only attach files you uploaded.' })
+    await expect(api.tasks.create(newTask({ ...nex, attachmentIds: [pending.id] }))).rejects.toMatchObject({ status: 400, detail: 'pending.pdf is still being checked.' })
+    await expect(api.tasks.create(newTask({ ...nex, attachmentIds: [blocked.id] }))).rejects.toMatchObject({ status: 400, detail: 'blocked.pdf was blocked.' })
+    await expect(api.tasks.create(newTask({ ...nex, descriptionBody: [fileBlock(loose.id)] }))).rejects.toMatchObject({ status: 400, detail: "The description couldn't be read. Try again." })
+    await api.users.viewAs('u-4')
+    await expect(api.tasks.create(newTask({ attachmentIds: ['a-mob-checklist'] }))).rejects.toMatchObject({ status: 400, detail: 'Upload that file again to attach it here.' })
+  })
+
+  it('a file taken off the task leaves its description and, used nowhere else, is deleted; history and the audit log say so', async () => {
+    const api = apiAt()
+    await api.users.viewAs('u-2')
+    const f = await api.files.uploadForTask('p-nex', pdf('flow.pdf'))
+    const task = await api.tasks.create(newTask({ ...nex, attachmentIds: [f.id], descriptionBody: [...textBody('Before'), fileBlock(f.id), ...textBody('After')] }))
+    const n = (await db.read()).activity.length
+    const updated = await api.tasks.update(task.key, { attachmentIds: [] })
+    expect(updated.descriptionBody).toEqual(textBody('Before\n\nAfter'))
+    expect(updated.description).toBe('Before\n\nAfter')
+    const data = await db.read()
+    expect(data.attachments.some((a) => a.id === f.id)).toBe(false)
+    expect(await db.getFile(f.id)).toBeNull()
+    expect(data.activity.slice(n).find((l) => l.kind === 'task.changed')?.changes).toContainEqual({ field: 'attachments', from: null, to: null })
+    expect(data.audit.at(-1)?.changes).toContainEqual({ field: 'Files', from: 'flow.pdf', to: null })
+  })
+
+  it('a save keeps a file someone else put on the task; the assignee can’t change the files', async () => {
+    const api = apiAt()
+    await api.users.viewAs('u-2')
+    expect((await api.tasks.update('NEX-101', { attachmentIds: ['a-nex-101-flow'], title: 'Rotate refresh tokens' })).attachmentIds).toEqual(['a-nex-101-flow'])
+    await api.users.viewAs('u-1')
+    expect((await api.tasks.update('NEX-101', { attachmentIds: ['a-nex-101-flow'], priority: 'urgent' })).attachmentIds).toEqual(['a-nex-101-flow'])
+    await api.users.viewAs('u-3') // assignee of NEX-105
+    await expect(api.tasks.update('NEX-105', { attachmentIds: [] })).rejects.toMatchObject({ status: 403 })
   })
 })
