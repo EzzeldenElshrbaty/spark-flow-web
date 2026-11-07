@@ -69,3 +69,16 @@ describe('useUploadQueue', () => {
     expect(result.current.rows).toEqual([])
   })
 })
+
+describe('useUploadQueue when its screen closes', () => {
+  it('with cancelOnUnmount, the file going up stops and the rest never start', async () => {
+    const { calls, upload } = fakeUpload()
+    const { result, unmount } = renderHook(() => useUploadQueue(upload, vi.fn(), { cancelOnUnmount: true }))
+    act(() => result.current.add([f('a.pdf'), f('b.pdf')]))
+    await waitFor(() => expect(calls).toHaveLength(1))
+    unmount()
+    expect(calls[0]!.signal.aborted).toBe(true)
+    await act(async () => calls[0]!.reject(new DOMException('Cancelled', 'AbortError')))
+    expect(calls).toHaveLength(1)
+  })
+})

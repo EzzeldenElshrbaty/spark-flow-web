@@ -11,9 +11,9 @@ const refusal = (file: File) => acceptFiles([], [file]).refused[0] ?? null
 /**
  * Files going up one at a time, each with its own row: Cancel while it waits or goes, Try again or dismiss when it
  * failed or was cancelled. A finished row calls `onDone` with what the upload returned and leaves the list. `busy`
- * while any row is waiting or going.
+ * while any row is waiting or going. `cancelOnUnmount`: closing the screen cancels them all.
  */
-export function useUploadQueue<T>(upload: QueueUpload<T>, onDone: (result: T, row: UploadRow) => void) {
+export function useUploadQueue<T>(upload: QueueUpload<T>, onDone: (result: T, row: UploadRow) => void, { cancelOnUnmount = false } = {}) {
   const [rows, setRows] = useState<UploadRow[]>([])
   // A row's file, its Cancel and tag, kept for Try again; the ids waiting their turn; whether one is on its way.
   const jobs = useRef(new Map<string, { file: File; controller: AbortController; tag?: string }>())
@@ -24,6 +24,15 @@ export function useUploadQueue<T>(upload: QueueUpload<T>, onDone: (result: T, ro
   useEffect(() => {
     latest.current = { upload, onDone }
   })
+  // A screen whose uploads mean nothing once it's gone (the task sheet) stops them when it closes; Overview's keep going.
+  useEffect(() => {
+    if (!cancelOnUnmount) return
+    const all = jobs.current
+    return () => {
+      queue.current = []
+      for (const job of all.values()) job.controller.abort()
+    }
+  }, [cancelOnUnmount])
 
   const setRow = (id: string, patch: Partial<UploadRow>) => setRows((all) => all.map((r) => (r.id === id ? { ...r, ...patch } : r)))
   const dismiss = (id: string) => {

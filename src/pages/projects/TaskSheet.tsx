@@ -18,6 +18,8 @@ import type { DescriptionEditorHandle } from './description/DescriptionEditor'
 
 // The editor (Lexical) loads with the sheet, not with the page.
 const DescriptionEditor = lazy(() => import('./description/DescriptionEditor'))
+/** An upload added in the description: its tag carries where the caret was (`editor:<place>`). */
+const EDITOR_TAG = 'editor:'
 
 const priorities: [Priority, string][] = [
   ['urgent', 'Urgent'],
@@ -88,18 +90,24 @@ export function TaskSheet({
   // The description as the editor has it; sent only when it differs from the task's (deep, on an edit).
   const [descriptionBody, setDescriptionBody] = useState<DescBody>(() => task?.descriptionBody ?? draft?.descriptionBody ?? [])
   const editor = useRef<DescriptionEditorHandle>(null)
-  // The task's files as they'll be saved: uploads join the end as they finish (one added in the description also goes
-  // where its caret was); × takes one off, and out of the description (saved on Save).
-  const [attachments, setAttachments] = useState<Attachment[]>(task?.attachments ?? [])
+  // The task's files as they'll be saved: its files as they are now (the `task` prop follows live updates, so one
+  // another manager adds meanwhile stays), less those I took off, plus my uploads as they finish. One added in the
+  // description also goes where its caret was then. × takes one off, and out of the description (saved on Save).
+  const [added, setAdded] = useState<Attachment[]>([])
+  const [removed, setRemoved] = useState<ReadonlySet<string>>(new Set())
+  const live = task?.attachments ?? []
+  const attachments = [...live, ...added.filter((a) => !live.some((l) => l.id === a.id))].filter((a) => !removed.has(a.id))
   const queue = useUploadQueue(
     (file, { signal, onProgress }) => uploadTaskFile(project.id, file, { signal, onProgress }),
     (file, row) => {
-      setAttachments((all) => [...all, file])
-      if (row.tag === 'editor') editor.current?.insertFile(file)
+      setAdded((all) => [...all, file])
+      if (row.tag?.startsWith(EDITOR_TAG)) editor.current?.insertFile(file, row.tag.slice(EDITOR_TAG.length) || null)
     },
+    // Closing the sheet drops what it was uploading: nothing would ever attach it.
+    { cancelOnUnmount: true },
   )
   const removeAttachment = (id: string) => {
-    setAttachments((all) => all.filter((a) => a.id !== id))
+    setRemoved((all) => new Set(all).add(id))
     editor.current?.removeFile(id)
   }
   const people = projectPeople(project, users)
@@ -108,8 +116,8 @@ export function TaskSheet({
   const ro = !canManage
 
   const save = () => {
-    // ⌘/Ctrl+Enter in the description while a file still uploads: Save waits too.
-    if (queue.busy) return
+    // ⌘/Ctrl+Enter in the description while a file still uploads, or a second time while saving: Save waits too.
+    if (queue.busy || saving) return
     const found: typeof errors = {}
     if (!values.title.trim()) found.title = 'Give the task a title.'
     const estimate = values.estimate.trim() === '' ? null : Number(values.estimate)
@@ -122,9 +130,12 @@ export function TaskSheet({
       else update.mutate({ key: task.key, patch }, { onSuccess: onClose })
       return
     }
+    // The description shows only files the task will have (an undo may have brought back one taken off).
+    const fileIds = new Set(attachments.map((a) => a.id))
+    const filesTouched = !task || added.length > 0 || removed.size > 0
     const fields = {
       title: values.title.trim(),
-      descriptionBody,
+      descriptionBody: descriptionBody.filter((b) => b.type !== 'file' || fileIds.has(b.id)),
       type: values.type,
       phaseId: values.phaseId || null,
       status: values.status,
@@ -133,7 +144,7 @@ export function TaskSheet({
       dueAt: values.due ? new Date(`${values.due}T00:00:00.000Z`).toISOString() : null,
       estimateHours: estimate,
       sprintId: project.methodology === 'agile' ? values.sprintId || null : (task?.sprintId ?? null),
-      attachmentIds: attachments.map((a) => a.id),
+      ...(filesTouched && { attachmentIds: [...fileIds] }),
     }
     if (task) {
       // Only what changed: the rest may have moved on since the sheet was opened. Its files are compared as shown
@@ -190,7 +201,7 @@ export function TaskSheet({
               readOnly={ro}
               label="Description"
               onChange={setDescriptionBody}
-              onFiles={(files) => queue.add(files, 'editor')}
+              onFiles={(files, place) => queue.add(files, `${EDITOR_TAG}${place ?? ''}`)}
               onSubmit={save}
             />
           </Suspense>

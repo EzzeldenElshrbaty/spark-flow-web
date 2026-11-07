@@ -1,5 +1,5 @@
-import { $insertNodeToNearestRoot } from '@lexical/utils'
-import { $createParagraphNode, $getRoot, $getSelection, $isRangeSelection, type Klass, type LexicalNode } from 'lexical'
+import { $findMatchingParent, $insertNodeToNearestRoot } from '@lexical/utils'
+import { $createParagraphNode, $getNodeByKey, $getRoot, $getSelection, $isRangeSelection, $isRootOrShadowRoot, type Klass, type LexicalNode } from 'lexical'
 import { $appendBlock, $blockOf, COMPOSER_NODES, EntityNode } from '@/pages/chat/composer/bodyEditor'
 import { appendInlines, type Block, type DescBody, type Inline } from '@/lib/messageBody'
 import { $createFileNode, $isFileNode, FileNode, type DescFile } from './FileNode'
@@ -52,12 +52,29 @@ export function $editorFromDescription(body: DescBody, files: ReadonlyMap<string
   $roomAfterLastFile()
 }
 
-/** Puts a file where the caret is (splitting its line), or at the end when there's no caret. */
-export function $insertFile(file: DescFile) {
+/** Where the caret is, as the key of its top-level block (for a file that arrives later); null when there's none. */
+export function $caretPlace(): string | null {
+  const selection = $getSelection()
+  if (!$isRangeSelection(selection)) return null
+  const anchor = selection.anchor.getNode()
+  return ($findMatchingParent(anchor, (n) => $isRootOrShadowRoot(n.getParent())) ?? null)?.getKey() ?? null
+}
+
+/**
+ * Puts a file in the description. With `after` (a top-level node's key, from `$caretPlace` when the file was added) it
+ * goes right after that line, or at the end if the line is gone; without, where the caret is now (splitting its line),
+ * or at the end when there's no caret. Returns the file node, so the next file for the same place can follow it.
+ */
+export function $insertFile(file: DescFile, after?: string | null): LexicalNode {
   const node = $createFileNode(file)
-  if ($isRangeSelection($getSelection())) $insertNodeToNearestRoot(node)
+  if (after !== undefined) {
+    const line = after ? $getNodeByKey(after) : null
+    if (line?.isAttached() && $isRootOrShadowRoot(line.getParent())) line.insertAfter(node)
+    else $getRoot().append(node)
+  } else if ($isRangeSelection($getSelection())) $insertNodeToNearestRoot(node)
   else $getRoot().append(node)
   $roomAfterLastFile()
+  return node
 }
 
 /** Takes a file out of the description, wherever it shows. */

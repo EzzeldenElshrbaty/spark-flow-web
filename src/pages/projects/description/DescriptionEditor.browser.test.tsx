@@ -16,11 +16,12 @@ const pdf = { id: 'a-1', title: 'flow.pdf', name: 'flow.pdf', mimeType: 'applica
 
 async function mount(props: Partial<Parameters<typeof DescriptionEditor>[0]> = {}) {
   const onChange = vi.fn<(body: DescBody) => void>()
-  const onFiles = vi.fn<(files: File[]) => void>()
+  const onFiles = vi.fn<(files: File[], place: string | null) => void>()
   const onSubmit = vi.fn()
   const ref = createRef<DescriptionEditorHandle>()
   render(
     <div style={{ width: 600 }}>
+      <input aria-label="Other field" />
       <DescriptionEditor ref={ref} initial={[]} files={[]} readOnly={false} label="Description" onChange={onChange} onFiles={onFiles} onSubmit={onSubmit} {...props} />
     </div>,
   )
@@ -102,5 +103,51 @@ describe('DescriptionEditor (spec 5.1)', () => {
     const { editor } = await mount({ readOnly: true, initial: [{ type: 'p', children: [{ type: 'text', text: 'fixed' }] }] })
     expect(editor.getAttribute('contenteditable')).toBe('false')
     expect(screen.queryByRole('toolbar')).toBeNull()
+  })
+})
+
+describe('DescriptionEditor review fixes', () => {
+  it('a finished upload goes where its file was added, and leaves the caret where the person is now', async () => {
+    const { editor, onFiles, ref, last } = await mount()
+    await focusEditor(editor)
+    await userEvent.keyboard('one{Enter}two{ArrowUp}')
+    const data = new DataTransfer()
+    data.items.add(new File(['%PDF'], 'flow.pdf', { type: 'application/pdf' }))
+    editor.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
+    await vi.waitFor(() => expect(onFiles).toHaveBeenCalledOnce())
+    const place = onFiles.mock.calls[0]![1]
+    const other = screen.getByRole('textbox', { name: 'Other field' })
+    await userEvent.click(other)
+    act(() => ref.current!.insertFile(pdf, place))
+    await vi.waitFor(() => expect(last()).toEqual([
+      { type: 'p', children: [{ type: 'text', text: 'one' }] },
+      { type: 'file', id: 'a-1' },
+      { type: 'p', children: [{ type: 'text', text: 'two' }] },
+    ]))
+    expect(document.activeElement).toBe(other)
+    act(() => ref.current!.removeFile('a-1'))
+    await vi.waitFor(() => expect(last()).toHaveLength(2))
+    expect(document.activeElement).toBe(other)
+  })
+
+  it('a paste of files with HTML but no plain text uploads the files; HTML alone pastes its text', async () => {
+    const { editor, onFiles, last } = await mount()
+    await focusEditor(editor)
+    const copied = new DataTransfer()
+    copied.setData('text/html', '<img src="https://a.b/x.png">')
+    copied.items.add(new File(['png'], 'x.png', { type: 'image/png' }))
+    editor.dispatchEvent(new ClipboardEvent('paste', { clipboardData: copied, bubbles: true, cancelable: true }))
+    await vi.waitFor(() => expect(onFiles).toHaveBeenCalledOnce())
+    expect(editor.textContent).toBe('')
+    const html = new DataTransfer()
+    html.setData('text/html', '<b>bold</b> text')
+    editor.dispatchEvent(new ClipboardEvent('paste', { clipboardData: html, bubbles: true, cancelable: true }))
+    await vi.waitFor(() => expect(last()).toEqual([{ type: 'p', children: [{ type: 'text', text: 'bold text' }] }]))
+  })
+
+  it('opening a stored description reports no change', async () => {
+    const { onChange } = await mount({ initial: [{ type: 'p', children: [{ type: 'text', text: 'one\ntwo' }] }, { type: 'ul', items: [[{ type: 'text', text: 'x' }]] }] })
+    await new Promise((r) => setTimeout(r, 300))
+    expect(onChange).not.toHaveBeenCalled()
   })
 })

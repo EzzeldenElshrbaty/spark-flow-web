@@ -23,11 +23,14 @@ import {
   KEY_DOWN_COMMAND,
   KEY_ENTER_COMMAND,
   PASTE_COMMAND,
+  SKIP_DOM_SELECTION_TAG,
+  SKIP_SCROLL_INTO_VIEW_TAG,
+  SKIP_SELECTION_FOCUS_TAG,
   type BaseSelection,
   type EditorState,
   type LexicalEditor,
 } from 'lexical'
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useState, type Ref } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react'
 import type { Attachment } from '@/api/types'
 import { Button } from '@/components/ui/Button'
 import { inputClass } from '@/components/ui/Field'
@@ -36,11 +39,14 @@ import type { DescBody } from '@/lib/messageBody'
 import { webAddress } from '@/lib/webAddress'
 import { COMPOSER_TRANSFORMERS } from '@/pages/chat/composer/markdown'
 import { DescriptionToolbar } from './DescriptionToolbar'
-import { $descriptionFromEditor, $editorFromDescription, $insertFile, $removeFile, DESCRIPTION_NODES } from './descriptionNodes'
+import { $caretPlace, $descriptionFromEditor, $editorFromDescription, $insertFile, $removeFile, DESCRIPTION_NODES } from './descriptionNodes'
 import type { DescFile } from './FileNode'
 
-/** What the task sheet does to the editor: put an uploaded file where the caret is, or take one out. */
-export type DescriptionEditorHandle = { insertFile(file: Attachment): void; removeFile(id: string): void }
+/**
+ * What the task sheet does to the editor: put an uploaded file in (at `place`, from `onFiles`, when it was added), or
+ * take one out. Neither moves the caret or focus: the person may be typing elsewhere by then.
+ */
+export type DescriptionEditorHandle = { insertFile(file: Attachment, place?: string | null): void; removeFile(id: string): void }
 
 type Props = {
   initial: DescBody
@@ -49,8 +55,8 @@ type Props = {
   readOnly: boolean
   label: string
   onChange: (body: DescBody) => void
-  /** Files dropped, pasted or picked: the sheet uploads them, then puts each in with `insertFile`. */
-  onFiles: (files: File[]) => void
+  /** Files dropped, pasted or picked, and where the caret was: the sheet uploads them, then puts each in there. */
+  onFiles: (files: File[], place: string | null) => void
   /** ⌘/Ctrl+Enter: save the task. */
   onSubmit: () => void
 }
@@ -73,6 +79,9 @@ const THEME = {
 }
 
 const descFile = ({ id, title, name, mimeType, size }: Attachment): DescFile => ({ id, title, name, mimeType, size })
+
+/** An update made for the sheet, not by the person: it leaves the caret, focus and scroll where they are. */
+const QUIET = [SKIP_DOM_SELECTION_TAG, SKIP_SELECTION_FOCUS_TAG, SKIP_SCROLL_INTO_VIEW_TAG]
 
 /**
  * A task's description (spec 5.1): formatted text with the task's files in it, in a bordered box like the other
@@ -102,10 +111,21 @@ function Inner({ readOnly, label, onChange, onFiles, onSubmit, handle }: Props &
   const [editor] = useLexicalComposerContext()
   const [linking, setLinking] = useState<{ url: string; selection: BaseSelection | null } | null>(null)
 
+  // The last file put in at each place, so files added together keep their order.
+  const lastAt = useRef(new Map<string, string>())
   useImperativeHandle(handle, () => ({
-    insertFile: (file) => editor.update(() => $insertFile(descFile(file))),
-    removeFile: (id) => editor.update(() => $removeFile(id)),
+    insertFile: (file, place) =>
+      editor.update(
+        () => {
+          const after = place === undefined ? undefined : place ? (lastAt.current.get(place) ?? place) : null
+          const node = $insertFile(descFile(file), after)
+          if (place) lastAt.current.set(place, node.getKey())
+        },
+        { tag: QUIET },
+      ),
+    removeFile: (id) => editor.update(() => $removeFile(id), { tag: QUIET }),
   }))
+  const sendFiles = useCallback((files: File[]) => onFiles(files, editor.getEditorState().read($caretPlace)), [editor, onFiles])
   useEffect(() => editor.setEditable(!readOnly), [editor, readOnly])
 
   const openLink = useCallback(() => {
@@ -158,15 +178,22 @@ function Inner({ readOnly, label, onChange, onFiles, onSubmit, handle }: Props &
           (event) => {
             const data = 'clipboardData' in event ? event.clipboardData : null
             const files = [...(data?.files ?? [])]
-            const hasText = [...(data?.types ?? [])].some((type) => type === 'text/plain' || type === 'text/html')
-            if (files.length > 0 && !hasText) {
+            const plainText = data?.getData('text/plain') ?? ''
+            // Office apps put a picture of what was copied beside its text: with text, it's a text paste. Files with no
+            // text (a screenshot, Copy image, even with an <img> in HTML) go up.
+            if (files.length > 0 && !plainText) {
               event.preventDefault()
               const at = new Date()
-              onFiles(files.map((f) => (f.type.startsWith('image/') && /^image\.\w+$/i.test(f.name) ? new File([f], pastedName(f.type, at), { type: f.type }) : f)))
+              sendFiles(files.map((f) => (f.type.startsWith('image/') && /^image\.\w+$/i.test(f.name) ? new File([f], pastedName(f.type, at), { type: f.type }) : f)))
               return true
             }
-            const text = data?.getData('text/plain')
-            if (!text) return false
+            // Never the source's styling: HTML with no plain text pastes as its text.
+            const html = plainText ? '' : (data?.getData('text/html') ?? '')
+            const text = plainText || (html ? (new DOMParser().parseFromString(html, 'text/html').body.textContent ?? '') : '')
+            if (!text) {
+              if (html) event.preventDefault()
+              return Boolean(html)
+            }
             event.preventDefault()
             editor.update(() => {
               const selection = $getSelection()
@@ -182,13 +209,13 @@ function Inner({ readOnly, label, onChange, onFiles, onSubmit, handle }: Props &
             const files = [...(event.dataTransfer?.files ?? [])]
             if (files.length === 0) return false
             event.preventDefault()
-            onFiles(files)
+            sendFiles(files)
             return true
           },
           COMMAND_PRIORITY_HIGH,
         ),
       ),
-    [editor, onSubmit, onFiles, openLink],
+    [editor, onSubmit, sendFiles, openLink],
   )
 
   const change = useCallback((state: EditorState) => onChange(state.read(() => $descriptionFromEditor())), [onChange])
@@ -203,10 +230,10 @@ function Inner({ readOnly, label, onChange, onFiles, onSubmit, handle }: Props &
         // Dropped beside the text (on the toolbar or the box's edge): the editor's own drop takes the rest.
         if (readOnly || e.defaultPrevented || e.dataTransfer.files.length === 0) return
         e.preventDefault()
-        onFiles([...e.dataTransfer.files])
+        sendFiles([...e.dataTransfer.files])
       }}
     >
-      {!readOnly && <DescriptionToolbar onLink={openLink} onFiles={onFiles} />}
+      {!readOnly && <DescriptionToolbar onLink={openLink} onFiles={sendFiles} />}
       {linking && <LinkRow editor={editor} linking={linking} onDone={() => setLinking(null)} />}
       <RichTextPlugin
         contentEditable={

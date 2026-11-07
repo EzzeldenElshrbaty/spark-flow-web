@@ -17,12 +17,21 @@ const editor = vi.hoisted(() => ({ insertFile: vi.fn(), removeFile: vi.fn() }))
 vi.mock('./description/DescriptionEditor', async () => {
   const { forwardRef, useImperativeHandle } = await import('react')
   return {
-    default: forwardRef(function Stub(props: { onFiles: (files: File[]) => void }, ref) {
+    default: forwardRef(function Stub(props: { onFiles: (files: File[], place: string | null) => void; onChange: (body: unknown) => void; onSubmit: () => void }, ref) {
       useImperativeHandle(ref, () => editor)
       return (
-        <button type="button" onClick={() => props.onFiles([new File(['%PDF'], 'pasted.pdf', { type: 'application/pdf' })])}>
-          Paste a file
-        </button>
+        <>
+          <button type="button" onClick={() => props.onFiles([new File(['%PDF'], 'pasted.pdf', { type: 'application/pdf' })], 'k-7')}>
+            Paste a file
+          </button>
+          {/* Undo brought a removed file's chip back into the description. */}
+          <button type="button" onClick={() => props.onChange([{ type: 'p', children: [{ type: 'text', text: 'x' }] }, { type: 'file', id: 'f1' }])}>
+            Undo into the description
+          </button>
+          <button type="button" onClick={() => props.onSubmit()}>
+            Submit from the editor
+          </button>
+        </>
       )
     }),
   }
@@ -49,8 +58,9 @@ const task = (files: Attachment[] = []) =>
     assigneeId: null, dueAt: null, estimateHours: null, sprintId: null, attachmentIds: files.map((f) => f.id), attachments: files,
   }) as unknown as TaskView
 
+const sheet = (t: TaskView | undefined, onClose: () => void) => <TaskSheet project={project} phases={[]} sprints={[]} users={[]} task={t} onClose={onClose} />
 const open = (t?: TaskView, onClose = vi.fn()) => {
-  render(<TaskSheet project={project} phases={[]} sprints={[]} users={[]} task={t} onClose={onClose} />)
+  render(sheet(t, onClose))
   return onClose
 }
 const pick = (...names: string[]) =>
@@ -112,7 +122,7 @@ describe('TaskSheet description files', () => {
     upload.mockResolvedValueOnce(att('p1', 'pasted.pdf'))
     open(task([att('f1')]))
     await act(async () => fireEvent.click(await screen.findByRole('button', { name: 'Paste a file' })))
-    await waitFor(() => expect(editor.insertFile).toHaveBeenCalledWith(expect.objectContaining({ id: 'p1' })))
+    await waitFor(() => expect(editor.insertFile).toHaveBeenCalledWith(expect.objectContaining({ id: 'p1' }), 'k-7'))
     fireEvent.click(screen.getByRole('button', { name: 'Remove f1.pdf' }))
     expect(editor.removeFile).toHaveBeenCalledWith('f1')
   })
@@ -123,5 +133,44 @@ describe('TaskSheet description files', () => {
     await pick('a.pdf')
     await waitFor(() => expect(screen.getByText('a1.pdf')).toBeTruthy())
     expect(editor.insertFile).not.toHaveBeenCalled()
+  })
+})
+
+describe('TaskSheet review fixes', () => {
+  it('a file the task no longer has never goes out in the description', async () => {
+    open(task([att('f1'), att('f2')]))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove f1.pdf' }))
+    await act(async () => fireEvent.click(await screen.findByRole('button', { name: 'Undo into the description' })))
+    save()
+    expect(update.mutate).toHaveBeenCalledWith({ key: 'NEX-1', patch: { attachmentIds: ['f2'], descriptionBody: [{ type: 'p', children: [{ type: 'text', text: 'x' }] }] } }, expect.anything())
+  })
+
+  it('a file someone else added meanwhile stays when I change the files', () => {
+    const onClose = vi.fn()
+    const { rerender } = render(sheet(task([att('f1')]), onClose))
+    rerender(sheet(task([att('f1'), att('f2')]), onClose))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove f1.pdf' }))
+    save()
+    expect(update.mutate).toHaveBeenCalledWith({ key: 'NEX-1', patch: { attachmentIds: ['f2'] } }, expect.anything())
+  })
+
+  it('a file someone else added meanwhile is no change of mine', () => {
+    const onClose = vi.fn()
+    const { rerender } = render(sheet(task([att('f1')]), onClose))
+    rerender(sheet(task([att('f1'), att('f2')]), onClose))
+    save()
+    expect(update.mutate).not.toHaveBeenCalled()
+  })
+
+  it('⌘/Ctrl+Enter while saving doesn’t save twice', async () => {
+    create.isPending = true
+    try {
+      open()
+      fireEvent.change(screen.getByRole('textbox', { name: /Title/ }), { target: { value: 'New' } })
+      await act(async () => fireEvent.click(await screen.findByRole('button', { name: 'Submit from the editor' })))
+      expect(create.mutate).not.toHaveBeenCalled()
+    } finally {
+      create.isPending = false
+    }
   })
 })
