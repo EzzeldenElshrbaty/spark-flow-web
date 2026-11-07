@@ -1,18 +1,20 @@
 import clsx from 'clsx'
 import { Archive, Clock, Pencil, Play } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
+import { noteDownload } from '@/api/audit'
 import { useComments } from '@/api/comments'
-import { usePhases, useProjectSummary } from '@/api/projects'
+import { openFile, usePhases, useProjectSummary } from '@/api/projects'
 import { useArchiveTask, useRestoreTask, useSprints, useTicket, useUpdateTask } from '@/api/tickets'
 import { useMyDay, useStartTimer } from '@/api/time'
 import { TimerControls } from '@/layout/TimerBar'
 import { timerForTask } from '@/lib/hours'
-import type { TicketStatus } from '@/api/types'
+import type { Attachment, TicketStatus } from '@/api/types'
 import { useUsers } from '@/api/users'
 import { AttachmentView } from '@/components/AttachmentView'
 import { ConfirmDeleteSheet } from '@/components/ConfirmDeleteSheet'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
+import { FileViewer } from '@/components/ui/FileViewer'
 import { selectClass } from '@/components/ui/Field'
 import { QueryError } from '@/components/ui/QueryError'
 import { InspectorFrame, InspectorSkeleton, TitleSkeleton, type InspectorBodyProps } from '@/layout/InspectorFrame'
@@ -28,6 +30,7 @@ import { HistoryList } from '@/pages/projects/HistoryList'
 import { useTaskHistory } from '@/api/activity'
 import { BugPill, OverduePill, PriorityPill, StatusPill, hoursLabel } from '@/pages/projects/ticketPills'
 import { NotFound } from '@/pages/NotFound'
+import { DescriptionView } from '@/pages/projects/description/DescriptionView'
 import { isPastDue } from '@/lib/dates'
 import { columnLabel, columnsOf } from '@/lib/boardColumns'
 import { DEFAULT_COLUMNS } from '@/lib/statuses'
@@ -72,6 +75,22 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
   const archive = useArchiveTask()
   const restore = useRestoreTask()
   const [tab, setTab] = useState<'details' | 'activity' | 'history'>('details')
+  // A file opened from the description, in the viewer (Download inside, noted in the audit log).
+  const [viewing, setViewing] = useState<{ id: string; name: string; url: string; sizeKb: number } | null>(null)
+  const [openError, setOpenError] = useState<string | null>(null)
+  const openDescriptionFile = async (file: Attachment) => {
+    setOpenError(null)
+    try {
+      const url = await openFile(file.id)
+      setViewing({ id: file.id, name: file.name, url, sizeKb: Math.round(file.size / 1024) })
+    } catch {
+      setOpenError(`${file.title} couldn't be opened. Try again.`)
+    }
+  }
+  const closeViewer = () => {
+    if (viewing) URL.revokeObjectURL(viewing.url)
+    setViewing(null)
+  }
   const history = useTaskHistory(ticketKey, tab === 'history')
   const comments = useComments(ticketKey)
   const myDay = useMyDay()
@@ -206,7 +225,11 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
         {start.error && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{(start.error as Error).message}</p>}
         {addingTime && <AddTimeSheet projectId={t.projectId} taskId={t.id} onClose={() => setAddingTime(false)} />}
         <h3 className="mt-5 text-xs font-medium uppercase tracking-wide text-fg-muted">Description</h3>
-        <p className="mt-1.5 whitespace-pre-line break-words text-sm text-fg-secondary">{t.description.trim() || '—'}</p>
+        <div className="mt-1.5">
+          <DescriptionView body={t.descriptionBody} files={t.attachments} onOpen={(file) => void openDescriptionFile(file)} />
+        </div>
+        {openError && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{openError}</p>}
+        {viewing && <FileViewer files={[viewing]} onClose={closeViewer} onDownload={() => noteDownload(viewing.id)} />}
         {t.attachments.length > 0 && (
           <>
             <h3 className="mt-5 text-xs font-medium uppercase tracking-wide text-fg-muted">Attachments · {t.attachments.length}</h3>
