@@ -26,11 +26,21 @@ export function isOverdue(task: Ticket, logged: number, now: Date, category: Sta
 
 type Source = { tickets: Ticket[]; timeEntries: TimeEntry[]; phases: Phase[]; rates: Rate[]; projects?: Project[]; attachments?: Attachment[] }
 
+/** The files a task may show, by id, deleted ones left out. A read of many tasks makes it once and hands it to each. */
+export function liveFiles(attachments: readonly Attachment[] = []): ReadonlyMap<string, Attachment> {
+  return new Map(attachments.filter((a) => !a.deletedAt).map((a) => [a.id, a]))
+}
+
 /** A task as read: hours, overdue and its column's type, from its project's board; its files, in its order. */
-export function taskView(task: Ticket, data: Pick<Source, 'timeEntries' | 'projects' | 'attachments'>, now: Date, project?: Pick<Project, 'board'>): TaskView {
+export function taskView(
+  task: Ticket,
+  data: Pick<Source, 'timeEntries' | 'projects' | 'attachments'>,
+  now: Date,
+  project?: Pick<Project, 'board'>,
+  files = liveFiles(data.attachments),
+): TaskView {
   const logged = loggedHours(task.id, data.timeEntries, now)
   const category = categoryOf(project ?? data.projects?.find((p) => p.id === task.projectId) ?? {}, task.status)
-  const files = new Map((data.attachments ?? []).filter((a) => !a.deletedAt).map((a) => [a.id, a]))
   const attachments = (task.attachmentIds ?? []).flatMap((id) => files.get(id) ?? [])
   return { ...task, loggedHours: logged, overdue: isOverdue(task, logged, now, category), category, attachments }
 }
@@ -39,7 +49,8 @@ const latest = (...isoTimes: string[]) => isoTimes.reduce((a, b) => (new Date(a)
 
 export function summarize(project: Project, data: Source, now: Date, viewer: { userId: string; grants: readonly Permission[] }): ProjectSummary {
   // Archived tasks are out of the counts and progress; their time still counts in hours and cost (entries below).
-  const tasks = data.tickets.filter((t) => t.projectId === project.id && !t.archivedAt).map((t) => taskView(t, data, now, project))
+  const files = liveFiles(data.attachments)
+  const tasks = data.tickets.filter((t) => t.projectId === project.id && !t.archivedAt).map((t) => taskView(t, data, now, project, files))
   const entries = data.timeEntries.filter((e) => e.projectId === project.id)
   const phases = data.phases.filter((p) => p.projectId === project.id).sort((a, b) => a.order - b.order)
   const openPhases = phases.filter((p) => p.status !== 'done')

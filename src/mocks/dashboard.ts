@@ -4,7 +4,7 @@ import { localDay } from '@/lib/dates'
 import { entryEnd, entryHours } from '@/lib/hours'
 import { projectPeople } from '@/lib/projectPeople'
 import type { DbData, MockDb } from './db'
-import { summarize, taskView } from './derive'
+import { liveFiles, summarize, taskView } from './derive'
 import { delay } from './latency'
 import { can } from '@/lib/permissions'
 import { grantsFor } from './roles'
@@ -82,8 +82,9 @@ function statsOf(data: DbData, projects: Project[], meId: string, now: Date): Da
     counts.set(category, counts.get(category)! + 1)
   }
 
+  const files = liveFiles(data.attachments)
   const overdue = tasks
-    .filter((t) => taskView(t, data, now, projectOf.get(t.projectId)).overdue)
+    .filter((t) => taskView(t, data, now, projectOf.get(t.projectId), files).overdue)
     // Due soonest first; over its estimate with no due date last.
     .sort((a, b) => (a.dueAt ?? '\uffff').localeCompare(b.dueAt ?? '\uffff') || a.key.localeCompare(b.key))
     .map((t) => ({ taskId: t.id, key: t.key, title: t.title, projectId: t.projectId, assigneeId: t.assigneeId, dueAt: t.dueAt }))

@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { Attachment, Phase, Project, Rate, Ticket, TimeEntry } from '@/api/types'
-import { entryHours, isOverdue, loggedHours, summarize, taskView } from './derive'
+import { entryHours, isOverdue, liveFiles, loggedHours, summarize, taskView } from './derive'
 import { ALL_PERMISSIONS, BUILT_IN_ROLES } from '@/lib/permissions'
 
 const now = new Date('2026-10-26T12:00:00Z')
@@ -117,5 +117,17 @@ describe('a task’s files', () => {
     const view = taskView(task({ attachmentIds: ['f-2', 'f-gone', 'f-1', 'f-del'] }), { timeEntries: [], attachments: [a('f-1'), a('f-2'), a('f-del', day(-1))] }, now)
     expect(view.attachments.map((f) => f.id)).toEqual(['f-2', 'f-1'])
     expect(taskView(task(), { timeEntries: [] }, now).attachments).toEqual([])
+  })
+
+  it('a read looks its files up once, however many tasks it has', () => {
+    const a = (id: string, deletedAt: string | null = null) => ({ id, deletedAt }) as Attachment
+    const files = [a('f-1'), a('f-2'), a('f-del', day(-1))]
+    const lookups = vi.spyOn(files, 'filter')
+    const tickets = [task({ attachmentIds: ['f-1'] }), task({ id: 't-2', key: 'P-102', attachmentIds: ['f-2', 'f-del'] }), task({ id: 't-3', key: 'P-103' })]
+    summarize(project, { ...data({ tickets }), attachments: files }, now, { userId: 'u-1', grants: ALL_PERMISSIONS })
+    expect(lookups).toHaveBeenCalledOnce()
+    // A list's lookup, handed to each task.
+    const lookup = liveFiles(files)
+    expect(tickets.map((t) => taskView(t, { timeEntries: [] }, now, project, lookup).attachments.map((f) => f.id))).toEqual([['f-1'], ['f-2'], []])
   })
 })

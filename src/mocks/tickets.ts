@@ -1,5 +1,5 @@
 import type { Api, NewTicket, Priority, Project, TaskType, Ticket, TicketPatch } from '@/api/types'
-import { taskView } from './derive'
+import { liveFiles, taskView } from './derive'
 import type { DbData, MockDb } from './db'
 import { delay } from './latency'
 import type { MockHub } from './realtime'
@@ -52,10 +52,11 @@ export function ticketsApi(db: MockDb, now: () => Date): Api['tickets'] {
       const data = await db.read()
       const project = findProject(data, projectId)
       const archived = Boolean(opts?.archived)
+      const files = liveFiles(data.attachments)
       return data.tickets
         .filter((t) => t.projectId === projectId && Boolean(t.archivedAt) === archived)
         .sort(byColumnThenRank(columnsOf(project).map((c) => c.id)))
-        .map((t) => taskView(t, data, now(), project))
+        .map((t) => taskView(t, data, now(), project, files))
     },
     async get(key) {
       await delay()
