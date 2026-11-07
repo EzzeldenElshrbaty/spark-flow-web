@@ -118,25 +118,32 @@ function itemsOf(list: ListNode): Inline[][] {
   return items.filter((i) => !blank(i))
 }
 
+/** One of the editor's top-level nodes as a block; null when it holds nothing (an empty paragraph or item). */
+export function $blockOf(node: LexicalNode): Block | null {
+  if ($isCodeNode(node)) {
+    const text = node.getTextContent()
+    return text.trim() ? { type: 'code', text } : null
+  }
+  if ($isQuoteNode(node)) {
+    const inlines = inlinesOf(node)
+    return blank(inlines) ? null : { type: 'quote', children: [{ type: 'p', children: inlines }] }
+  }
+  if ($isListNode(node)) {
+    const items = itemsOf(node)
+    return items.length ? { type: node.getListType() === 'number' ? 'ol' : 'ul', items } : null
+  }
+  if ($isElementNode(node)) {
+    const inlines = inlinesOf(node)
+    return blank(inlines) ? null : { type: 'p', children: inlines }
+  }
+  return null
+}
+
 /** What's in the editor, as a message body. Empty paragraphs and items are left out. */
 export function $bodyFromEditor(): Body {
-  const body: Body = []
-  for (const node of $getRoot().getChildren()) {
-    if ($isCodeNode(node)) {
-      const text = node.getTextContent()
-      if (text.trim()) body.push({ type: 'code', text })
-    } else if ($isQuoteNode(node)) {
-      const inlines = inlinesOf(node)
-      if (!blank(inlines)) body.push({ type: 'quote', children: [{ type: 'p', children: inlines }] })
-    } else if ($isListNode(node)) {
-      const items = itemsOf(node)
-      if (items.length) body.push({ type: node.getListType() === 'number' ? 'ol' : 'ul', items })
-    } else if ($isElementNode(node)) {
-      const inlines = inlinesOf(node)
-      if (!blank(inlines)) body.push({ type: 'p', children: inlines })
-    }
-  }
-  return body
+  return $getRoot()
+    .getChildren()
+    .flatMap((node) => $blockOf(node) ?? [])
 }
 
 // ── Body → editor ────────────────────────────────────────────────────────
@@ -176,15 +183,18 @@ function quoteInlines(blocks: Block[]): Inline[] {
   return out
 }
 
+/** Adds one block at the end of `root` as the editor's nodes. */
+export function $appendBlock(root: ElementNode, b: Block) {
+  if (b.type === 'p') root.append($createParagraphNode().append(...inlineNodes(b.children)))
+  else if (b.type === 'quote') root.append($createQuoteNode().append(...inlineNodes(quoteInlines(b.children))))
+  else if (b.type === 'code') root.append($createCodeNode().append(...textNodes(b.text)))
+  else root.append($createListNode(b.type === 'ol' ? 'number' : 'bullet').append(...b.items.map((item) => $createListItemNode().append(...inlineNodes(item)))))
+}
+
 /** Replaces what's in the editor with a body (a draft coming back, a message being edited). */
 export function $editorFromBody(body: Body) {
   const root = $getRoot().clear()
-  for (const b of body) {
-    if (b.type === 'p') root.append($createParagraphNode().append(...inlineNodes(b.children)))
-    else if (b.type === 'quote') root.append($createQuoteNode().append(...inlineNodes(quoteInlines(b.children))))
-    else if (b.type === 'code') root.append($createCodeNode().append(...textNodes(b.text)))
-    else root.append($createListNode(b.type === 'ol' ? 'number' : 'bullet').append(...b.items.map((item) => $createListItemNode().append(...inlineNodes(item)))))
-  }
+  for (const b of body) $appendBlock(root, b)
   if (root.getChildrenSize() === 0) root.append($createParagraphNode())
 }
 
