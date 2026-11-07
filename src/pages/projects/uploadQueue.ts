@@ -1,5 +1,8 @@
-/** One file being added to a project: waiting its turn, on its way, added, or not. */
-export type UploadRow = { id: string; name: string; state: 'queued' | 'uploading' | 'done' | 'failed' | 'cancelled'; error: string | null }
+/**
+ * One file being added: waiting its turn, on its way, added, or not. `progress` (0 to 1) while it goes up, when the
+ * upload reports it; `tag` says where it was added from (the task sheet's description or its Attachments).
+ */
+export type UploadRow = { id: string; name: string; state: 'queued' | 'uploading' | 'done' | 'failed' | 'cancelled'; error: string | null; progress?: number; tag?: string }
 
 let next = 0
 
@@ -17,7 +20,7 @@ export function rowLabel(row: UploadRow): string {
     case 'queued':
       return 'Waiting…'
     case 'uploading':
-      return 'Uploading…'
+      return row.progress === undefined ? 'Uploading…' : `Uploading… ${Math.round(row.progress * 100)}%`
     case 'done':
       return 'Uploaded'
     case 'cancelled':

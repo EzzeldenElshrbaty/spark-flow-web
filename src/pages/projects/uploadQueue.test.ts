@@ -17,6 +17,7 @@ describe('upload queue', () => {
     const row = (state: UploadRow['state'], error: string | null = null): UploadRow => ({ id: '1', name: 'a.pdf', state, error })
     expect(rowLabel(row('queued'))).toBe('Waiting…')
     expect(rowLabel(row('uploading'))).toBe('Uploading…')
+    expect(rowLabel({ ...row('uploading'), progress: 0.5 })).toBe('Uploading… 50%')
     expect(rowLabel(row('done'))).toBe('Uploaded')
     expect(rowLabel(row('cancelled'))).toBe('Cancelled')
     expect(rowLabel(row('failed', 'Files can be up to 25 MB.'))).toBe('Files can be up to 25 MB.')
