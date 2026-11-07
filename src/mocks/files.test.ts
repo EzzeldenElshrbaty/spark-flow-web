@@ -244,10 +244,13 @@ describe('a project’s files (the Files tab)', () => {
     expect(rest.nextCursor).toBeNull()
   })
 
-  it('someone off the project sees only files they can read in its chat (a comment’s card shows its files there)', async () => {
+  it('someone off the project sees only the chat places they can read; a row never names a place they can’t open', async () => {
     const p = await fourPlaces()
+    await api.files.share(p.overview, 'c-p-nex')
     await api.users.viewAs('u-8')
     const rows = (await api.files.inProject('p-nex', {})).items
-    expect(rows.map((row) => row.file.id).sort()).toEqual([p.chat, p.commentFile].sort())
+    expect(rows.every((row) => row.source.kind === 'chat')).toBe(true)
+    // The shared project file lists where they can reach it; a comment's file (only on its card) doesn't list.
+    expect(rows.map((row) => row.file.id).sort()).toEqual([p.chat, p.overview].sort())
   })
 })
