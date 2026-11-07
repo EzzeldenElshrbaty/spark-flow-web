@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { useState } from 'react'
+import { lazy, Suspense, useRef, useState } from 'react'
 import { useCreateTask, useUpdateTask } from '@/api/tickets'
 import { uploadTaskFile } from '@/api/files'
 import type { Attachment, NewTicket, Phase, Priority, Project, Sprint, TaskType, TaskView, TicketStatus, User } from '@/api/types'
@@ -11,9 +11,13 @@ import { usePermission } from '@/lib/usePermission'
 import { byOrder } from './phases'
 import { assigneeOptions, savePatch } from './taskForm'
 import { columnsOf, startColumn } from '@/lib/boardColumns'
-import { descriptionText, textBody } from '@/lib/messageBody'
+import type { DescBody } from '@/lib/messageBody'
 import { TaskAttachments } from './TaskAttachments'
 import { useUploadQueue } from './useUploadQueue'
+import type { DescriptionEditorHandle } from './description/DescriptionEditor'
+
+// The editor (Lexical) loads with the sheet, not with the page.
+const DescriptionEditor = lazy(() => import('./description/DescriptionEditor'))
 
 const priorities: [Priority, string][] = [
   ['urgent', 'Urgent'],
@@ -24,7 +28,6 @@ const priorities: [Priority, string][] = [
 
 type Values = {
   title: string
-  description: string
   type: TaskType
   phaseId: string
   status: TicketStatus
@@ -40,7 +43,6 @@ export type TaskDraft = Pick<NewTicket, 'title' | 'descriptionBody'> & Partial<P
 
 const valuesOf = (task: TaskView | undefined, phaseId: string | null, firstStatus: string, draft?: TaskDraft): Values => ({
   title: task?.title ?? draft?.title ?? '',
-  description: task?.description ?? descriptionText(draft?.descriptionBody ?? []),
   type: task?.type ?? 'task',
   phaseId: (task ? task.phaseId : phaseId) ?? '',
   status: task?.status ?? firstStatus,
@@ -83,18 +85,31 @@ export function TaskSheet({
   const [opened] = useState(task)
   const [errors, setErrors] = useState<Partial<Record<keyof Values, string>>>({})
   const set = <K extends keyof Values>(k: K, v: Values[K]) => setValues((s) => ({ ...s, [k]: v }))
-  // The task's files as they'll be saved: uploads join the end as they finish; × takes one off (saved on Save).
+  // The description as the editor has it; sent only when it differs from the task's (deep, on an edit).
+  const [descriptionBody, setDescriptionBody] = useState<DescBody>(() => task?.descriptionBody ?? draft?.descriptionBody ?? [])
+  const editor = useRef<DescriptionEditorHandle>(null)
+  // The task's files as they'll be saved: uploads join the end as they finish (one added in the description also goes
+  // where its caret was); × takes one off, and out of the description (saved on Save).
   const [attachments, setAttachments] = useState<Attachment[]>(task?.attachments ?? [])
   const queue = useUploadQueue(
     (file, { signal, onProgress }) => uploadTaskFile(project.id, file, { signal, onProgress }),
-    (file) => setAttachments((all) => [...all, file]),
+    (file, row) => {
+      setAttachments((all) => [...all, file])
+      if (row.tag === 'editor') editor.current?.insertFile(file)
+    },
   )
+  const removeAttachment = (id: string) => {
+    setAttachments((all) => all.filter((a) => a.id !== id))
+    editor.current?.removeFile(id)
+  }
   const people = projectPeople(project, users)
   const saving = create.isPending || update.isPending
   const failure = (create.error ?? update.error) as Error | null
   const ro = !canManage
 
   const save = () => {
+    // ⌘/Ctrl+Enter in the description while a file still uploads: Save waits too.
+    if (queue.busy) return
     const found: typeof errors = {}
     if (!values.title.trim()) found.title = 'Give the task a title.'
     const estimate = values.estimate.trim() === '' ? null : Number(values.estimate)
@@ -109,7 +124,7 @@ export function TaskSheet({
     }
     const fields = {
       title: values.title.trim(),
-      descriptionBody: textBody(values.description),
+      descriptionBody,
       type: values.type,
       phaseId: values.phaseId || null,
       status: values.status,
@@ -164,16 +179,29 @@ export function TaskSheet({
         <Field label="Title" required error={errors.title}>
           <input className={inputClass} value={values.title} disabled={ro} aria-invalid={Boolean(errors.title)} onChange={(e) => set('title', e.target.value)} />
         </Field>
-        <Field label="Description">
-          <textarea className={inputClass} rows={4} value={values.description} disabled={ro} onChange={(e) => set('description', e.target.value)} />
-        </Field>
+        {/* Not a <label>: a click in the editor mustn't reach the toolbar's file picker. */}
+        <div>
+          <span className="mb-1.5 block text-sm font-medium text-fg-secondary">Description</span>
+          <Suspense fallback={<div className="h-32 animate-pulse rounded-lg bg-surface-muted" aria-hidden />}>
+            <DescriptionEditor
+              ref={editor}
+              initial={descriptionBody}
+              files={attachments}
+              readOnly={ro}
+              label="Description"
+              onChange={setDescriptionBody}
+              onFiles={(files) => queue.add(files, 'editor')}
+              onSubmit={save}
+            />
+          </Suspense>
+        </div>
         <div>
           <TaskAttachments
             files={attachments}
             rows={queue.rows}
             readOnly={ro}
             onAdd={(files) => queue.add(files, 'attachments')}
-            onRemove={(id) => setAttachments((all) => all.filter((a) => a.id !== id))}
+            onRemove={removeAttachment}
             onCancel={queue.cancel}
             onRetry={queue.retry}
             onDismiss={queue.dismiss}

@@ -2,7 +2,7 @@ import { createHeadlessEditor } from '@lexical/headless'
 import { $createParagraphNode, $createTextNode, $getRoot } from 'lexical'
 import { describe, expect, it } from 'vitest'
 import type { DescBody } from '@/lib/messageBody'
-import { $descriptionFromEditor, $editorFromDescription, $insertFile, $removeFile, DESCRIPTION_NODES } from './descriptionEditor'
+import { $descriptionFromEditor, $editorFromDescription, $insertFile, $removeFile, DESCRIPTION_NODES } from './descriptionNodes'
 import type { DescFile } from './FileNode'
 
 const editor = () => createHeadlessEditor({ nodes: DESCRIPTION_NODES, onError: (e) => { throw e } })

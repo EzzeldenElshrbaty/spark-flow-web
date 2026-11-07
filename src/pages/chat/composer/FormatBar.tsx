@@ -23,13 +23,15 @@ import { useEffect, useState } from 'react'
 import { IconButton } from '@/components/sf/Button'
 
 type Block = 'paragraph' | 'bullet' | 'number' | 'quote' | 'code'
-type State = { formats: Set<TextFormatType>; block: Block; link: boolean }
+/** What's on at the caret; the task description's toolbar reads it too. */
+export type FormatState = { formats: Set<TextFormatType>; block: Block; link: boolean }
+type State = FormatState
 
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
 const mod = isMac ? '⌘' : 'Ctrl'
 
 /** What's on at the caret: the text formats, the block it's in, whether it's in a link. */
-function $state(): State {
+export function $formatState(): State {
   const selection = $getSelection()
   if (!$isRangeSelection(selection)) return { formats: new Set(), block: 'paragraph', link: false }
   const formats = new Set((['bold', 'italic', 'underline', 'strikethrough', 'code'] as TextFormatType[]).filter((f) => selection.hasFormat(f)))
@@ -48,7 +50,7 @@ function $state(): State {
 export function FormatBar({ onLink, uploadKey = false }: { onLink: () => void; uploadKey?: boolean }) {
   const [editor] = useLexicalComposerContext()
   const [state, setState] = useState<State>({ formats: new Set(), block: 'paragraph', link: false })
-  useEffect(() => editor.registerUpdateListener(({ editorState }) => editorState.read(() => setState($state()))), [editor])
+  useEffect(() => editor.registerUpdateListener(({ editorState }) => editorState.read(() => setState($formatState()))), [editor])
 
   const format = (f: TextFormatType) => editor.dispatchCommand(FORMAT_TEXT_COMMAND, f)
   const setBlock = (block: 'quote' | 'code') =>

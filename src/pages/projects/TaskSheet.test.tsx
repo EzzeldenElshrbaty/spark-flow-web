@@ -12,6 +12,21 @@ let manages = true
 
 vi.mock('@/api/tickets', () => ({ useCreateTask: () => create, useUpdateTask: () => update }))
 vi.mock('@/api/files', () => ({ uploadTaskFile: (projectId: string, file: File) => upload(projectId, file) }))
+// The editor itself is tested in the browser; here it's a stand-in that hands files over and records what it's told.
+const editor = vi.hoisted(() => ({ insertFile: vi.fn(), removeFile: vi.fn() }))
+vi.mock('./description/DescriptionEditor', async () => {
+  const { forwardRef, useImperativeHandle } = await import('react')
+  return {
+    default: forwardRef(function Stub(props: { onFiles: (files: File[]) => void }, ref) {
+      useImperativeHandle(ref, () => editor)
+      return (
+        <button type="button" onClick={() => props.onFiles([new File(['%PDF'], 'pasted.pdf', { type: 'application/pdf' })])}>
+          Paste a file
+        </button>
+      )
+    }),
+  }
+})
 vi.mock('@/lib/usePermission', () => ({ usePermission: () => (action: string) => manages || action === 'task.updateOwnStatus' }))
 
 window.matchMedia ??= ((media: string) => ({ matches: false, media, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia
@@ -21,6 +36,8 @@ beforeEach(() => {
   create.mutate.mockReset()
   update.mutate.mockReset()
   upload.mockReset()
+  editor.insertFile.mockReset()
+  editor.removeFile.mockReset()
 })
 afterEach(cleanup)
 
@@ -87,5 +104,24 @@ describe('TaskSheet attachments', () => {
     expect(screen.getByText('f1.pdf')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Remove f1.pdf' })).toBeNull()
     expect(document.querySelector('input[type=file]')).toBeNull()
+  })
+})
+
+describe('TaskSheet description files', () => {
+  it('a file added in the description goes in it once uploaded; removing an attachment takes it out', async () => {
+    upload.mockResolvedValueOnce(att('p1', 'pasted.pdf'))
+    open(task([att('f1')]))
+    await act(async () => fireEvent.click(await screen.findByRole('button', { name: 'Paste a file' })))
+    await waitFor(() => expect(editor.insertFile).toHaveBeenCalledWith(expect.objectContaining({ id: 'p1' })))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove f1.pdf' }))
+    expect(editor.removeFile).toHaveBeenCalledWith('f1')
+  })
+
+  it('a file added under Attachments stays out of the description', async () => {
+    upload.mockResolvedValueOnce(att('a1'))
+    open()
+    await pick('a.pdf')
+    await waitFor(() => expect(screen.getByText('a1.pdf')).toBeTruthy())
+    expect(editor.insertFile).not.toHaveBeenCalled()
   })
 })
