@@ -477,3 +477,54 @@ describe('my timer goes by when entries end (timer slice 2 app check)', () => {
     expect((await api.time.today()).timer).toMatchObject({ state: 'running', entryId: running })
   })
 })
+
+describe('adding time for someone else (add time for)', () => {
+  // Yesterday 01:00–02:00: before any seeded timer that day.
+  const forMariam = (userId = 'u-3', h = 1) => ({ projectId: 'p-nex', startedAt: at(h, 0, -1).toISOString(), endedAt: at(h + 1, 0, -1).toISOString(), note: 'Pairing', userId })
+  const FOR_MANAGERS = 'You can only add time for others on projects you manage.'
+
+  it('an Admin adds time for someone on any project; it is theirs, marked who added it', async () => {
+    const entry = await api.time.addManual(forMariam())
+    expect(entry).toMatchObject({ userId: 'u-3', addedBy: 'u-1', projectId: 'p-nex', source: 'manual', note: 'Pairing' })
+    const audit = (await db.read()).audit.at(-1)!
+    expect(audit).toMatchObject({ actorId: 'u-1', action: 'created' })
+  })
+
+  it("a project's manager adds time for its people, and not on a project they don't manage", async () => {
+    await api.users.viewAs('u-2') // Nour manages Nexus Core
+    expect(await api.time.addManual(forMariam())).toMatchObject({ userId: 'u-3', addedBy: 'u-2' })
+    await expect(api.time.addManual({ ...forMariam('u-8'), projectId: 'p-mob' })).rejects.toMatchObject({ status: 403, detail: FOR_MANAGERS })
+  })
+
+  it("a Member can't add time for someone else; for themselves it's as before, with no addedBy", async () => {
+    await api.users.viewAs('u-3')
+    await expect(api.time.addManual(forMariam('u-5'))).rejects.toMatchObject({ status: 403, detail: FOR_MANAGERS })
+    const own = await api.time.addManual(forMariam('u-3'))
+    expect(own.userId).toBe('u-3')
+    expect('addedBy' in own).toBe(false)
+  })
+
+  it("refuses someone not on the project, someone deactivated, someone unknown, and time that overlaps theirs", async () => {
+    await api.users.viewAs('u-2')
+    await expect(api.time.addManual(forMariam('u-8'))).rejects.toMatchObject({ status: 400, detail: 'You can only add time for the people on this project.' })
+    await expect(api.time.addManual(forMariam('u-nope'))).rejects.toMatchObject({ status: 404 })
+    await api.time.addManual(forMariam())
+    await expect(api.time.addManual(forMariam())).rejects.toMatchObject({ status: 400, detail: 'That overlaps time Mariam Fathy already logged.' })
+    await api.users.viewAs('u-1')
+    await api.users.deactivate('u-6', 'Left the company')
+    await api.users.viewAs('u-2')
+    await expect(api.time.addManual(forMariam('u-6', 3))).rejects.toMatchObject({ status: 400, detail: 'Hossam Gaber is deactivated.' })
+  })
+
+  it('whoever added an entry can fix and delete it; another manager cannot', async () => {
+    await api.users.viewAs('u-2')
+    const entry = await api.time.addManual(forMariam())
+    expect(entry.userId).toBe('u-3')
+    expect((await api.time.update(entry.id, { note: 'Code review' })).note).toBe('Code review')
+    await api.users.viewAs('u-4') // Ahmed manages other projects
+    await expect(api.time.update(entry.id, { note: 'x' })).rejects.toMatchObject({ status: 403 })
+    await api.users.viewAs('u-2')
+    await api.time.remove(entry.id)
+    expect((await db.read()).timeEntries.some((e) => e.id === entry.id)).toBe(false)
+  })
+})

@@ -67,3 +67,12 @@ describe('editing keeps what was not changed', () => {
     expect(toPatch({ ...original, end: '11:15' }, original)).toEqual({ endedAt: new Date(2026, 9, 27, 11, 15).toISOString(), note: '', target: { taskId: 't-nex-101' } })
   })
 })
+
+describe('toManualEntry for someone else (add time for)', () => {
+  const v = { day: '2026-11-05', start: '09:00', end: '10:00', note: ' x ', taskId: null, projectId: 'p-nex' }
+  it('carries the person when one is picked, and nothing for me', () => {
+    expect(toManualEntry({ ...v, userId: 'u-3' })).toMatchObject({ projectId: 'p-nex', userId: 'u-3', note: 'x' })
+    expect('userId' in toManualEntry(v)).toBe(false)
+    expect('userId' in toManualEntry({ ...v, userId: '' })).toBe(false)
+  })
+})

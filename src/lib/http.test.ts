@@ -36,6 +36,9 @@ describe('createHttpApi', () => {
     ])
     expect(JSON.parse(String(calls[1].init?.body))).toEqual({ projectId: 'p1', location: 'none' })
     expect(JSON.parse(String(calls[3].init?.body))).toEqual(entry)
+    // Time for someone else carries whose it is (add time for).
+    await api.time.addManual({ ...entry, userId: 'u-3' })
+    expect(JSON.parse(String(calls[4].init?.body))).toEqual({ ...entry, userId: 'u-3' })
     // Check-in, check-out and undo went with timer slice 3.
     for (const name of ['checkIn', 'checkOut', 'undoCheckOut']) expect(name in api.time).toBe(false)
   })

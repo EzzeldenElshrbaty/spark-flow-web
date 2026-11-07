@@ -8,6 +8,7 @@ import { entryHours } from '@/lib/hours'
 import { useNow } from '@/lib/useNow'
 import { StartTimerDialog } from '@/layout/StartTimerDialog'
 import { TimerControls, timerClock } from '@/layout/TimerBar'
+import { AddedBy } from '@/pages/time/AddedBy'
 import { AddTimeSheet } from '@/pages/time/AddTimeSheet'
 import { EntryRowExtras } from '@/pages/time/EntryRowExtras'
 import { daySummary } from './myDay'
@@ -55,7 +56,13 @@ function Entries({ day, label }: { day: MyDay; label: Label }) {
         <li key={e.id} className="flex items-center gap-3 py-2 text-sm">
           <span className="min-w-0 flex-1">
             <span className="block truncate text-fg">{label(e.taskId, e.projectId)}</span>
-            {e.note.trim() && <span className="block truncate text-xs text-fg-muted">{e.note}</span>}
+            {(e.note.trim() || e.addedBy) && (
+              <span className="block truncate text-xs text-fg-muted">
+                {e.note.trim()}
+                {e.note.trim() && e.addedBy && ' · '}
+                {e.addedBy && <AddedBy userId={e.addedBy} />}
+              </span>
+            )}
           </span>
           <span className="shrink-0 tabular-nums text-fg-muted">
             {formatTime(e.startedAt)} – {e.endedAt ? formatTime(e.endedAt) : 'now'}

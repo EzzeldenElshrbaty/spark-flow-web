@@ -1,7 +1,8 @@
 import type { NewManualEntry, TimeEntry, TimeEntryPatch } from '@/api/types'
 import { localDay } from '@/lib/dates'
 
-export type ManualEntryValues = { day: string /* YYYY-MM-DD */; start: string /* HH:mm */; end: string; note: string; taskId: string | null; projectId: string }
+/** `userId`: whose time, when I add it for someone else (add time for); empty or absent for mine. */
+export type ManualEntryValues = { day: string /* YYYY-MM-DD */; start: string /* HH:mm */; end: string; note: string; taskId: string | null; projectId: string; userId?: string }
 export type ManualEntryErrors = Partial<Record<'end' | 'note' | 'task', string>>
 
 const HOUR = 3_600_000
@@ -24,7 +25,7 @@ export function manualEntryErrors(v: ManualEntryValues, now: Date): ManualEntryE
 
 /** The form's values as the API takes them: a task when one is picked, else the project. */
 export function toManualEntry(v: ManualEntryValues): NewManualEntry {
-  const times = { startedAt: at(v.day, v.start).toISOString(), endedAt: at(v.day, v.end).toISOString(), note: v.note.trim() }
+  const times = { startedAt: at(v.day, v.start).toISOString(), endedAt: at(v.day, v.end).toISOString(), note: v.note.trim(), ...(v.userId ? { userId: v.userId } : {}) }
   return v.taskId ? { taskId: v.taskId, ...times } : { projectId: v.projectId, ...times }
 }
 
@@ -43,7 +44,8 @@ export function valuesOf(entry: TimeEntry): ManualEntryValues {
  * that started the second another stopped would otherwise overlap it).
  */
 export function toPatch(v: ManualEntryValues, original?: ManualEntryValues): TimeEntryPatch {
-  const { startedAt, endedAt, note, ...target } = toManualEntry(v)
+  // An edit never changes whose entry it is.
+  const { startedAt, endedAt, note, ...target } = toManualEntry({ ...v, userId: undefined })
   const sameDay = original?.day === v.day
   return {
     ...(sameDay && original?.start === v.start ? {} : { startedAt }),

@@ -2,16 +2,23 @@ import { useState } from 'react'
 import { useArchivedTasks } from '@/api/tickets'
 import { useAddTime, useUpdateTime } from '@/api/time'
 import type { TimeEntry } from '@/api/types'
+import { useUsers } from '@/api/users'
 import { Button } from '@/components/ui/Button'
 import { Field, inputClass, selectClass } from '@/components/ui/Field'
 import { Sheet } from '@/components/ui/Sheet'
+import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { localDay } from '@/lib/dates'
+import { isActive } from '@/lib/people'
+import { projectPeople } from '@/lib/projectPeople'
+import { usePermission } from '@/lib/usePermission'
+import { useRole } from '@/lib/useRole'
 import { defaultTimes, manualEntryErrors, toManualEntry, toPatch, valuesOf, type ManualEntryErrors, type ManualEntryValues } from './manualEntry'
 import { useLogTargets } from './useLogTargets'
 
 /**
- * Add time after the fact: a task (or the project as a whole), the day, start and end, and a note. With an `entry`,
- * the same form fixes that entry. The form checks what it can; the server also refuses time that overlaps.
+ * Add time after the fact: a task (or the project as a whole), the day, start and end, and a note. An Admin, or the
+ * project's manager, also picks whose time it is (add time for). With an `entry`, the same form fixes that entry,
+ * which stays whose it is. The form checks what it can; the server also refuses time that overlaps.
  */
 export function AddTimeSheet({ projectId: forProject, taskId, entry, onClose }: { projectId?: string; taskId?: string; entry?: TimeEntry; onClose: () => void }) {
   // Editing keeps the entry's project; its task, day, times and note can change.
@@ -30,13 +37,24 @@ export function AddTimeSheet({ projectId: forProject, taskId, entry, onClose }: 
   const set = <K extends keyof ManualEntryValues>(k: K, v: ManualEntryValues[K]) => setValues((s) => ({ ...s, [k]: v }))
   const fixedTask = taskId ? tasks.find((t) => t.id === taskId) : undefined
   const project = projects.find((p) => p.id === values.projectId)
+  // Whose time (add time for): Me, then the project's active people, for an Admin or the project's manager.
+  const { persona } = useRole()
+  const check = usePermission()
+  const { workspace } = useCurrentWorkspace()
+  const users = useUsers(workspace?.id).data
+  const forOthers = !entry && project !== undefined && check('time.logFor', { project })
+  const people = forOthers
+    ? projectPeople(project, users ?? [])
+        .filter((u) => isActive(u) && u.id !== persona.id)
+        .sort((a, b) => a.name.localeCompare(b.name))
+    : []
 
   const save = () => {
     const found = manualEntryErrors(values, new Date())
     setErrors(found)
     if (Object.keys(found).length) return
     if (entry) update.mutate({ id: entry.id, patch: toPatch(values, valuesOf(entry)) }, { onSuccess: onClose })
-    else add.mutate(toManualEntry(values), { onSuccess: onClose })
+    else add.mutate(toManualEntry({ ...values, userId: forOthers ? values.userId : undefined }), { onSuccess: onClose })
   }
 
   return (
@@ -69,7 +87,7 @@ export function AddTimeSheet({ projectId: forProject, taskId, entry, onClose }: 
               className={selectClass}
               value={values.projectId}
               aria-invalid={Boolean(errors.task)}
-              onChange={(e) => setValues((s) => ({ ...s, projectId: e.target.value, taskId: null }))}
+              onChange={(e) => setValues((s) => ({ ...s, projectId: e.target.value, taskId: null, userId: '' }))}
             >
               <option value="">Choose…</option>
               {projects.map((p) => (
@@ -91,6 +109,18 @@ export function AddTimeSheet({ projectId: forProject, taskId, entry, onClose }: 
                     {t.key} · {t.title}
                   </option>
                 ))}
+            </select>
+          </Field>
+        )}
+        {forOthers && (
+          <Field label="Person">
+            <select className={selectClass} value={values.userId ?? ''} onChange={(e) => set('userId', e.target.value)}>
+              <option value="">Me</option>
+              {people.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
+              ))}
             </select>
           </Field>
         )}

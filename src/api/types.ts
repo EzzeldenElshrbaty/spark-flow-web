@@ -212,6 +212,8 @@ export type TimeEntry = {
   endReason: EndReason | null
   /** Where a timer start or resume came from; absent on manual entries and older ones. */
   startedFrom?: CheckSource | null
+  /** Who added it, when that wasn't its person (add time for); they may fix or delete it too. */
+  addedBy?: string
 }
 /** Where the browser said it was, to within `accuracy` metres. */
 export type GeoFix = { lat: number; lng: number; accuracy: number }
@@ -719,7 +721,11 @@ export type MyTimer = {
   state: 'running' | 'paused'; target: TimeTarget; projectId: string; entryId: string
   runMs: number; startedAt: string | null; pausedBy: 'me' | 'timeout' | null
 }
-export type NewManualEntry = TimeTarget & { startedAt: string; endedAt: string; note: string }
+/**
+ * Time added after the fact. `userId`: whose time it is, left out for my own; someone else's needs `time.logFor` on the
+ * project (an Admin, or the project's manager), and that person on the project (add time for).
+ */
+export type NewManualEntry = TimeTarget & { startedAt: string; endedAt: string; note: string; userId?: string }
 /** A change to a closed entry; `target` moves it to another task or project. */
 export type TimeEntryPatch = Partial<Pick<NewManualEntry, 'startedAt' | 'endedAt' | 'note'>> & { target?: TimeTarget }
 

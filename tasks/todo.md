@@ -2690,3 +2690,27 @@ Design approved in chat, menus "Dashboard first". Branch `feat/dashboard-start` 
   Home with `?ticket=`, returns there. Tests: `shellMenus.test.tsx` (View as) and `SignInPage.test.tsx`. App check:
   View as from Teams lands on the Dashboard; opening `/w/engineering` signed out, then signing in, lands on the
   Dashboard. Gates: lint clean, unit 1,980/1,980, browser 278/279 (the known `RichComposer` failure), build passes.
+
+# Add time for someone else — 7 Nov 2026, approved ("Yes, build it")
+
+Branch `feat/add-time-for` from `dev` (5c501b0). Design in chat with a flow diagram.
+
+- [x] `time.logFor` (project-scoped, frozen on archived projects): `time.othersAll` or the project's manager.
+- [x] `NewManualEntry.userId` (optional); the mock checks `time.logFor`, the person active and on the project, then
+  their own rules (overlap names them); the entry gets `addedBy`. Whoever added it may change or delete it.
+- [x] Add time sheet: **Person** after Task, only when allowed on the chosen project: Me, then the project's active
+  people by name; changing project goes back to Me; editing has no Person.
+- [x] "Added by …" on Home's Today entries and the project Time tab (table and phone list).
+- [x] Help (Time), the company spec's contract and permission table, `CLAUDE.md`.
+
+## Review — add time for someone else
+- Gates: `tsc -b` and lint clean; unit 1,991/1,991; browser 278/279 (the known `RichComposer` failure, as on `dev`);
+  `build:prototype` passes.
+- App check (`npm run dev`): as Nour, Add time on Nexus Core shows Person (Me, Dina, Hossam, Mariam, Salma); 02:00–
+  02:30 for Mariam saved, and her row on the Time tab reads "Added by Nour El-Sayed" with Nour's ⋯; as Mariam, Today
+  shows "Pairing on NEX-105 · Added by Nour El-Sayed" and her Add time has no Person; as Youssef on Mobile App,
+  Person lists Me, Ahmed, Hossam, Salma, Tarek; dark at 390px fits.
+- Rulings: the Admin picks from the project's people too (not everyone), matching "the person must be on the
+  project"; the overlap refusal now names the person whenever it isn't me (it also improves an Admin's edit of
+  someone's entry); no DB version bump, since an entry without `addedBy` reads as its person's own; no notification
+  to the person (not asked; the bell can come later).

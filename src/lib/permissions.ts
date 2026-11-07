@@ -85,7 +85,7 @@ export type Action =
   | 'channel.restrictPosting' | 'channel.post' | 'channel.inviteByEmail' | 'channel.setDefault' | 'invitation.revoke' | 'file.manage'
   | 'channel.archive' | 'message.edit' | 'message.delete'
   // Slice 1: Settings itself, whose timers and attendance someone sees, and other people's time.
-  | 'settings.manage' | 'settings.open' | 'checkins.view' | 'time.seeTeam' | 'time.editOthers' | 'dashboard.everyProject'
+  | 'settings.manage' | 'settings.open' | 'checkins.view' | 'time.seeTeam' | 'time.editOthers' | 'dashboard.everyProject' | 'time.logFor'
   // Slice 2.
   | 'audit.view' | 'archive.manage'
 
@@ -110,7 +110,7 @@ export type PermissionContext = {
 }
 
 /** Actions that are always about one project: PM rights are per project, so these need it. */
-export type ProjectScoped = 'project.edit' | 'phase.manage' | 'task.manage' | 'task.updateOwnStatus' | 'time.logOn' | 'time.seeTeam'
+export type ProjectScoped = 'project.edit' | 'phase.manage' | 'task.manage' | 'task.updateOwnStatus' | 'time.logOn' | 'time.seeTeam' | 'time.logFor'
 
 /** Whoever a project names as its manager has PM rights on it. */
 const manages = (ctx: PermissionContext) => (ctx.project ? ctx.project.managerId === ctx.userId : false)
@@ -124,7 +124,7 @@ const isOn = (ctx: PermissionContext) =>
 const has = (ctx: PermissionContext, permission: Permission) => ctx.grants.includes(permission)
 
 /** What changes a project or posts in it: none of it is allowed while the project is archived. */
-const FROZEN = new Set<Action>(['project.edit', 'phase.manage', 'task.manage', 'task.updateOwnStatus', 'time.logOn', 'collab.post'])
+const FROZEN = new Set<Action>(['project.edit', 'phase.manage', 'task.manage', 'task.updateOwnStatus', 'time.logOn', 'collab.post', 'time.logFor'])
 
 export function can(action: Exclude<Action, ProjectScoped>, ctx: PermissionContext): boolean
 export function can(action: ProjectScoped, ctx: PermissionContext & { project: ProjectRef }): boolean
@@ -184,6 +184,9 @@ export function can(action: Action, ctx: PermissionContext): boolean {
       return has(ctx, 'time.othersAll') || manages(ctx)
     case 'time.editOthers':
       return has(ctx, 'time.othersAll')
+    // Adding time for someone else (add time for): whoever may change everyone's time, or the project's manager.
+    case 'time.logFor':
+      return has(ctx, 'time.othersAll') || manages(ctx)
     case 'collab.post':
       return has(ctx, 'projects.postAll') || manages(ctx) || isOn(ctx)
     // Everyone in the workspace (dashboard slice): what it shows is scoped to the projects they manage or are on.

@@ -1,4 +1,4 @@
-import type { Api, CheckLocation, CheckSource, EndReason, GeoFix, MyDay, MyTimer, TimeEntry, TimeTarget } from '@/api/types'
+import type { Api, CheckLocation, CheckSource, EndReason, GeoFix, MyDay, MyTimer, TimeEntry, TimeTarget, User } from '@/api/types'
 import { categoryOf } from '@/lib/boardColumns'
 import { localDay } from '@/lib/dates'
 import { entryEnd, MAX_ENTRY_HOURS } from '@/lib/hours'
@@ -10,7 +10,7 @@ import type { MockHub } from './realtime'
 import type { RealtimeEvent } from '@/lib/realtime'
 import { buildReport } from './report'
 import { ApiError } from '@/lib/apiError'
-import { badRequest, clone, currentUser, newId, notFound, requireCan } from './shared'
+import { badRequest, clone, currentUser, newId, notFound, requireActive, requireCan } from './shared'
 import { grantsFor } from './roles'
 import { audit, changesBetween, recordOf, requestFrom } from './audit'
 import { endEntry } from './timers'
@@ -164,6 +164,20 @@ function checkOn(data: DbData, projectId: string) {
     throw new ApiError({ title: 'Forbidden', status: 403, detail: "You're not on this project." })
 }
 
+/**
+ * Adding time for `person` on a project (add time for): I may (an Admin, or its manager), and they're active and on it
+ * (or may log on every project).
+ */
+function checkFor(data: DbData, person: User, projectId: string) {
+  const me = currentUser(data)
+  const project = findProject(data, projectId)
+  if (!can('time.logFor', { userId: me.id, grants: grantsFor(data, me), project }))
+    throw new ApiError({ title: 'Forbidden', status: 403, detail: 'You can only add time for others on projects you manage.' })
+  requireActive(data, [person.id])
+  if (!can('time.logOn', { userId: person.id, grants: grantsFor(data, person), project, userTeamIds: person.teamIds }))
+    throw badRequest('You can only add time for the people on this project.')
+}
+
 /** Where time on `target` goes, if it may: a project I'm on, and not a done task. */
 function loggable(data: DbData, target: TimeTarget): { projectId: string; taskId: string | null } {
   const { projectId, taskId, done } = resolveTarget(data, target)
@@ -215,16 +229,19 @@ function checkEntry(
   const overlaps = data.timeEntries.some(
     (e) => e.userId === userId && e.id !== editing?.id && new Date(e.startedAt).getTime() < end && entryEnd(e, new Date(at)) > start,
   )
-  if (overlaps) throw badRequest('That overlaps time you already logged.')
+  if (overlaps) {
+    const whose = userId === currentUser(data).id ? 'you' : (data.users.find((u) => u.id === userId)?.name ?? 'they')
+    throw badRequest(`That overlaps time ${whose} already logged.`)
+  }
   return { projectId, taskId, note }
 }
 
-/** An entry I may change: mine (or anyone's, for an Admin), and not still running. */
+/** An entry I may change: mine, one I added for someone (add time for), or anyone's for an Admin; not still running. */
 function changeableEntry(data: DbData, id: string): TimeEntry {
   const me = currentUser(data)
   const entry = data.timeEntries.find((e) => e.id === id)
   if (!entry) throw notFound('Time entry', id)
-  if (entry.userId !== me.id && !can('time.editOthers', { userId: me.id, grants: grantsFor(data, me) })) throw new ApiError({ title: 'Forbidden', status: 403, detail: 'You can only change your own time.' })
+  if (entry.userId !== me.id && entry.addedBy !== me.id && !can('time.editOthers', { userId: me.id, grants: grantsFor(data, me) })) throw new ApiError({ title: 'Forbidden', status: 403, detail: 'You can only change your own time.' })
   if (entry.endedAt === null) throw badRequest('Stop the timer first.')
   // An archived project's time stays as it is: not edited, moved off it or deleted.
   openProject(data, entry.projectId)
@@ -315,11 +332,20 @@ export function timeApi(db: MockDb, hub: MockHub, now: () => Date): Api['time'] 
       await delay()
       const stored = await db.update((data) => {
         const me = requireCan(data, 'time.logOwn')
+        // Whose time: mine, or someone else's for an Admin or the project's manager (add time for).
+        const person = !input.userId || input.userId === me.id ? me : data.users.find((u) => u.id === input.userId)
+        if (!person) throw notFound('User', input.userId!)
+        const forOther = person.id !== me.id
+        const target = 'taskId' in input ? { taskId: input.taskId } : { projectId: input.projectId }
+        if (forOther) checkFor(data, person, resolveTarget(data, target).projectId)
         const start = new Date(input.startedAt).getTime()
         const end = new Date(input.endedAt).getTime()
-        const { projectId, taskId, note } = checkEntry(data, me.id, { start, end, note: input.note, target: input }, now().getTime())
-        checkOn(data, projectId)
-        const entry: TimeEntry = { id: newId('te'), userId: me.id, projectId, taskId, startedAt: new Date(start).toISOString(), endedAt: new Date(end).toISOString(), source: 'manual', note, endReason: null }
+        const { projectId, taskId, note } = checkEntry(data, person.id, { start, end, note: input.note, target }, now().getTime())
+        if (!forOther) checkOn(data, projectId)
+        const entry: TimeEntry = {
+          id: newId('te'), userId: person.id, projectId, taskId, startedAt: new Date(start).toISOString(), endedAt: new Date(end).toISOString(), source: 'manual', note, endReason: null,
+          ...(forOther ? { addedBy: me.id } : {}),
+        }
         data.timeEntries.push(entry)
         audit(data, { action: 'created', group: 'data', record: recordOf.timeEntry(data, entry), changes: changesBetween(data, {}, entry, ENTRY_LOGGED) })
         return clone(entry)

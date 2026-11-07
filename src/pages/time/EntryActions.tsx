@@ -8,8 +8,8 @@ import { AddTimeSheet } from '@/pages/time/AddTimeSheet'
 
 const item = 'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start text-sm text-fg-secondary hover:bg-surface-muted'
 
-/** Whether I may fix or delete an entry: mine (or anyone's, with time.editOthers), once it has stopped. */
-export const canChangeEntry = (entry: TimeEntry, meId: string, editOthers: boolean) => entry.endedAt !== null && (entry.userId === meId || editOthers)
+/** Whether I may fix or delete an entry: mine, one I added for someone (add time for), or anyone's with time.editOthers; once it has stopped. */
+export const canChangeEntry = (entry: TimeEntry, meId: string, editOthers: boolean) => entry.endedAt !== null && (entry.userId === meId || entry.addedBy === meId || editOthers)
 
 /** The ⋯ on a time entry: Edit entry (the Add time form, filled in) and Delete entry. `editing` opens the form from outside. */
 export function EntryActions({ entry, editing = false, onEditingChange }: { entry: TimeEntry; editing?: boolean; onEditingChange?: (open: boolean) => void }) {

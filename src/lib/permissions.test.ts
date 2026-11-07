@@ -86,6 +86,16 @@ describe('can (spec §4.3)', () => {
     expect(can('dashboard.everyProject', as('member'))).toBe(false)
   })
 
+  it('adding time for someone else: Admin on any project, a manager on their own, nobody else (add time for)', () => {
+    expect(canWith('time.logFor', { ...as('admin', 'u-a'), project: other })).toBe(true)
+    expect(can('time.logFor', as('pm', 'u-pm', { project }))).toBe(true)
+    expect(can('time.logFor', as('pm', 'u-pm', { project: other }))).toBe(false)
+    expect(can('time.logFor', as('member', 'u-m', { project }))).toBe(false)
+    expect(can('time.logFor', as('sales', 'u-s', { project }))).toBe(false)
+    // Nothing changes on an archived project.
+    expect(can('time.logFor', as('pm', 'u-pm', { project: { ...project, archivedAt: '2026-10-01T00:00:00.000Z' } }))).toBe(false)
+  })
+
   it('member cannot open database', () => {
     expect(can('database.manage', as('member'))).toBe(false)
   })

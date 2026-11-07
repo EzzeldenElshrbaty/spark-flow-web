@@ -135,6 +135,17 @@ Check-in removed (amended 5 Nov 2026, timer slice 3, `2026-11-05-task-timer-and-
   `WorkingNow[]` (`{ userId, taskId, projectId, startedAt }`): running timers only.
 - `GET /api/attendance/check-ins` becomes `GET /api/attendance/days` (§4.8).
 
+Add time for someone else (amended 7 Nov 2026):
+- `POST /api/time/entries` takes an optional `userId`: whose time it is, left out for your own. Someone else's needs
+  `time.logFor` on the project, worked out by `can()`: "See and change everyone's time" (`time.othersAll`, Admin), or
+  being the project's manager. Otherwise `403` `You can only add time for others on projects you manage.`
+- That person must be active (`400` `{Name} is deactivated.`) and on the project, or allowed on every project (`400`
+  `You can only add time for the people on this project.`). Their own rules apply: an overlap with their entries is
+  `400` `That overlaps time {Name} already logged.`
+- The entry is the person's and carries `addedBy` (the one who added it), absent when it's their own. Whoever added it
+  may also change or delete it (`PATCH` / `DELETE /api/time/entries/:id`), besides the person and `time.othersAll`.
+- It's audited as a created time entry, by whoever added it.
+
 Timer timeout (amended 5 Nov 2026, timer slice 2, `2026-11-05-task-timer-and-dashboard-design.md` §4.2):
 - `GET /api/settings/timer` → `{ timeoutHours }`, for everyone signed in (the Still working? dialog reads it).
 - `PUT /api/settings/timer` `{ timeoutHours }`: `settings.manage` only; a whole number from 1 to 12, else `400`
@@ -188,6 +199,7 @@ built-in roles give the old table's answers in every case. Routes:
 | Create project; edit dates, client, deliverables | ✓ | ✓ | edit own | — |
 | Phases, tasks, assign people/teams | ✓ | — | ✓ | change status of own tasks |
 | Timer, add time (own) (check-in removed 5 Nov 2026) | ✓ | ✓ | ✓ | ✓ |
+| Add time for someone else on a project (7 Nov 2026) | ✓ any project | — | ✓ | — |
 | Comment, bug, upload, chat | ✓ | ✓ | ✓ | ✓ (projects they're on) |
 | Dashboard (everyone's, 5 Nov 2026) | ✓ every project | ✓ every project | projects they manage or are on | projects they're on |
 | Time & cost page, rates, Database page | ✓ | — | — | — |

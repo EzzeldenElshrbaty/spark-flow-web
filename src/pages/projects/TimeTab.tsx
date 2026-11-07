@@ -71,7 +71,10 @@ export function TimeTab({ project, people }: { project: ProjectSummary; people: 
       cell: (e) => (
         <span className="flex min-w-0 items-center gap-2">
           <Avatar name={nameOf(e.userId)} size="sm" />
-          <span className="truncate text-fg">{nameOf(e.userId)}</span>
+          <span className="min-w-0">
+            <span className="block truncate text-fg">{nameOf(e.userId)}</span>
+            {e.addedBy && <span className="block truncate text-xs text-fg-muted">Added by {nameOf(e.addedBy)}</span>}
+          </span>
         </span>
       ),
     },
@@ -129,6 +132,7 @@ export function TimeTab({ project, people }: { project: ProjectSummary; people: 
                 <span className="block truncate text-sm text-fg">{t ? taskLabel(t) : nameOf(e.userId)}</span>
                 <span className="block truncate text-xs text-fg-muted">
                   {nameOf(e.userId)} · {formatDate(e.startedAt)} · {formatTime(e.startedAt)} – {e.endedAt ? formatTime(e.endedAt) : 'running'}
+                  {e.addedBy && ` · Added by ${nameOf(e.addedBy)}`}
                   {e.note.trim() && ` · ${e.note}`}
                 </span>
               </span>
