@@ -1,7 +1,8 @@
 import clsx from 'clsx'
 import { useState } from 'react'
 import { useCreateTask, useUpdateTask } from '@/api/tickets'
-import type { NewTicket, Phase, Priority, Project, Sprint, TaskType, TaskView, TicketStatus, User } from '@/api/types'
+import { uploadTaskFile } from '@/api/files'
+import type { Attachment, NewTicket, Phase, Priority, Project, Sprint, TaskType, TaskView, TicketStatus, User } from '@/api/types'
 import { Button } from '@/components/ui/Button'
 import { Field, inputClass, selectClass } from '@/components/ui/Field'
 import { Sheet } from '@/components/ui/Sheet'
@@ -11,6 +12,8 @@ import { byOrder } from './phases'
 import { assigneeOptions, savePatch } from './taskForm'
 import { columnsOf, startColumn } from '@/lib/boardColumns'
 import { descriptionText, textBody } from '@/lib/messageBody'
+import { TaskAttachments } from './TaskAttachments'
+import { useUploadQueue } from './useUploadQueue'
 
 const priorities: [Priority, string][] = [
   ['urgent', 'Urgent'],
@@ -80,6 +83,12 @@ export function TaskSheet({
   const [opened] = useState(task)
   const [errors, setErrors] = useState<Partial<Record<keyof Values, string>>>({})
   const set = <K extends keyof Values>(k: K, v: Values[K]) => setValues((s) => ({ ...s, [k]: v }))
+  // The task's files as they'll be saved: uploads join the end as they finish; × takes one off (saved on Save).
+  const [attachments, setAttachments] = useState<Attachment[]>(task?.attachments ?? [])
+  const queue = useUploadQueue(
+    (file, { signal, onProgress }) => uploadTaskFile(project.id, file, { signal, onProgress }),
+    (file) => setAttachments((all) => [...all, file]),
+  )
   const people = projectPeople(project, users)
   const saving = create.isPending || update.isPending
   const failure = (create.error ?? update.error) as Error | null
@@ -109,10 +118,13 @@ export function TaskSheet({
       dueAt: values.due ? new Date(`${values.due}T00:00:00.000Z`).toISOString() : null,
       estimateHours: estimate,
       sprintId: project.methodology === 'agile' ? values.sprintId || null : (task?.sprintId ?? null),
+      attachmentIds: attachments.map((a) => a.id),
     }
     if (task) {
-      // Only what changed: the rest may have moved on since the sheet was opened.
-      const patch = savePatch(opened ?? task, fields, true)
+      // Only what changed: the rest may have moved on since the sheet was opened. Its files are compared as shown
+      // (a deleted one isn't), so an untouched list isn't sent.
+      const was = opened ?? task
+      const patch = savePatch({ ...was, attachmentIds: was.attachments.map((a) => a.id) }, fields, true)
       if (Object.keys(patch).length === 0) onClose()
       else update.mutate({ key: task.key, patch }, { onSuccess: onClose })
     }
@@ -135,7 +147,7 @@ export function TaskSheet({
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={save} disabled={saving || (!canManage && !canStatus)}>
+          <Button onClick={save} disabled={saving || queue.busy || (!canManage && !canStatus)}>
             {saving ? 'Saving…' : 'Save task'}
           </Button>
         </>
@@ -155,6 +167,20 @@ export function TaskSheet({
         <Field label="Description">
           <textarea className={inputClass} rows={4} value={values.description} disabled={ro} onChange={(e) => set('description', e.target.value)} />
         </Field>
+        <div>
+          <TaskAttachments
+            files={attachments}
+            rows={queue.rows}
+            readOnly={ro}
+            onAdd={(files) => queue.add(files, 'attachments')}
+            onRemove={(id) => setAttachments((all) => all.filter((a) => a.id !== id))}
+            onCancel={queue.cancel}
+            onRetry={queue.retry}
+            onDismiss={queue.dismiss}
+            canRetry={queue.canRetry}
+          />
+          {queue.busy && <p className="mt-1 text-xs text-fg-muted">Wait for the files to finish uploading.</p>}
+        </div>
         <div>
           <span className="mb-1.5 block text-sm font-medium text-fg-secondary">Type</span>
           <div className="inline-flex rounded-lg border border-line p-0.5" role="radiogroup" aria-label="Type">

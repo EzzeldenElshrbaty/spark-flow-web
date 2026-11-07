@@ -1,0 +1,55 @@
+// @vitest-environment jsdom
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { Attachment } from '@/api/types'
+import { allowedFilesHint } from '@/lib/fileTypes'
+import { TaskAttachments } from './TaskAttachments'
+import type { UploadRow } from './uploadQueue'
+
+afterEach(cleanup)
+
+const file = (id: string, title: string, size: number) => ({ id, title, name: title, size, mimeType: 'application/pdf' }) as Attachment
+const handlers = () => ({ onAdd: vi.fn(), onRemove: vi.fn(), onCancel: vi.fn(), onRetry: vi.fn(), onDismiss: vi.fn(), canRetry: () => true })
+
+describe('TaskAttachments', () => {
+  it('lists files and uploads; × removes; a failed upload offers Try again and dismiss', () => {
+    const h = handlers()
+    const rows: UploadRow[] = [
+      { id: 'up-1', name: 'b.png', state: 'uploading', error: null, progress: 0.5 },
+      { id: 'up-2', name: 'c.zip', state: 'failed', error: 'Files can be up to 25 MB.' },
+    ]
+    render(<TaskAttachments files={[file('a1', 'flow.pdf', 1_258_291)]} rows={rows} readOnly={false} {...h} />)
+    expect(screen.getByText('Attachments')).toBeTruthy()
+    expect(screen.getByText('flow.pdf')).toBeTruthy()
+    expect(screen.getByText('1.2 MB')).toBeTruthy()
+    expect(screen.getByText('Uploading… 50%')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Remove flow.pdf' }))
+    expect(h.onRemove).toHaveBeenCalledWith('a1')
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(h.onCancel).toHaveBeenCalledWith('up-1')
+    expect(screen.getByText('Files can be up to 25 MB.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(h.onRetry).toHaveBeenCalledWith('up-2')
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss c.zip' }))
+    expect(h.onDismiss).toHaveBeenCalledWith('up-2')
+  })
+
+  it('takes files dropped on its box or picked', () => {
+    const h = handlers()
+    const { container } = render(<TaskAttachments files={[]} rows={[]} readOnly={false} {...h} />)
+    expect(container.textContent).toContain('Add files or drop them here')
+    expect(screen.getByText(allowedFilesHint)).toBeTruthy()
+    const picked = [new File(['x'], 'a.pdf', { type: 'application/pdf' })]
+    fireEvent.drop(screen.getByText(allowedFilesHint).parentElement!, { dataTransfer: { files: picked } })
+    expect(h.onAdd).toHaveBeenCalledWith(picked)
+    fireEvent.change(container.querySelector('input[type=file]')!, { target: { files: picked } })
+    expect(h.onAdd).toHaveBeenCalledTimes(2)
+  })
+
+  it('read-only shows the files without remove or add', () => {
+    const { container } = render(<TaskAttachments files={[file('a1', 'flow.pdf', 2048)]} rows={[]} readOnly {...handlers()} />)
+    expect(screen.getByText('flow.pdf')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Remove flow.pdf' })).toBeNull()
+    expect(container.querySelector('input[type=file]')).toBeNull()
+  })
+})

@@ -9,6 +9,7 @@ import { TimerControls } from '@/layout/TimerBar'
 import { timerForTask } from '@/lib/hours'
 import type { TicketStatus } from '@/api/types'
 import { useUsers } from '@/api/users'
+import { AttachmentView } from '@/components/AttachmentView'
 import { ConfirmDeleteSheet } from '@/components/ConfirmDeleteSheet'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
@@ -206,6 +207,12 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
         {addingTime && <AddTimeSheet projectId={t.projectId} taskId={t.id} onClose={() => setAddingTime(false)} />}
         <h3 className="mt-5 text-xs font-medium uppercase tracking-wide text-fg-muted">Description</h3>
         <p className="mt-1.5 whitespace-pre-line break-words text-sm text-fg-secondary">{t.description.trim() || '—'}</p>
+        {t.attachments.length > 0 && (
+          <>
+            <h3 className="mt-5 text-xs font-medium uppercase tracking-wide text-fg-muted">Attachments · {t.attachments.length}</h3>
+            <AttachmentView attachments={t.attachments} />
+          </>
+        )}
         {/* Archived meanwhile (another tab): the sheet goes, since none of its edits could be saved. */}
         {editing && project && !archived && (
           <TaskSheet project={project} phases={phases.data ?? []} sprints={sprints.data ?? []} users={users.data ?? []} task={t} onClose={() => setEditing(false)} />
