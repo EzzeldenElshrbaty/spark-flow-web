@@ -96,6 +96,15 @@ starts on their **Dashboard**; Home is next in the sidebar (in **More** on a pho
 4. Open the card → **History**: "moved it from QA to In review", with who and when. Project → **History** tab →
    **Board**: the column lines. **Tasks** shows each task's created line from the start.
 
+## Story 7: files on a task (about 2 minutes)
+
+1. **Nour** → Nexus Core → **New task**: "Token rotation runbook". In the description type `- check the logs`, then drop
+   a screenshot into it: it uploads and shows as a picture where the caret was. Under **Attachments** add a PDF.
+   **Save task**.
+2. Open the task: the description with the picture, then **Attachments · 2**. Click the PDF: it opens in the viewer.
+3. Project → **Files** tab: both files, From the new task's key · Attachment (it opens the task); NEX-105's screenshot
+   shows "NEX-105 · Bug". **Chat** narrows it to files shared in the project's chat.
+
 ## If something looks off
 
 - Reload the seed (Settings → Database). It replaces everything in this browser, including uploads.

@@ -447,7 +447,7 @@ Messages and replies carry the full records in `attachments`, as they always hav
 
 | Call | Route | Body | Returns |
 |---|---|---|---|
-| Ask to upload | `POST /api/files/upload-url` | `{ channelId, name, size, mimeType, snippet? }` | `{ file, uploadUrl }`: the record (`scanStatus: "pending"`) and a short-lived address for the bytes. |
+| Ask to upload | `POST /api/files/upload-url` | `{ channelId, name, size, mimeType, snippet? }`, or `{ projectId, name, size, mimeType }` for a task's file | `{ file, uploadUrl }`: the record (`scanStatus: "pending"`) and a short-lived address for the bytes. |
 | The bytes | `PUT <uploadUrl>` | The file's bytes, `Content-Type` its type | To object storage, not the API. The browser reports progress from this request. |
 | Upload complete | `POST /api/files/:id/complete` | — | The file, once the server has sniffed its type, scanned it and made any thumbnail. |
 | Send (changed) | `POST /api/channels/:id/messages` | `{ content, clientId?, body?, fileIds? }` | The message. |
@@ -468,6 +468,8 @@ Rules:
 - **Share:** whoever uploaded it, or an Admin (`403` "Only whoever uploaded it, or an admin, can share this file."), so nobody else carries a file from a private channel into a wider one; into a channel I can post in (as sending); the file must be clean. It posts a new message with the file and my optional text.
 - **The client and the scan:** an upload is ready to send only once `complete` returns it `"clean"`; a `"blocked"` file's tray card says "This file was blocked." and can only be removed, and a `"pending"` one can be tried again.
 - **Events:** sharing sends `message.created` for the new message and `file.shared`; Edit file details sends `file.updated`, and Delete file `file.deleted` (client handler `onFileChanged`, `{ fileId }`), plus `message.updated` for every message and reply that shows the file, and `files.changed` for any project that lists it. The client refreshes the file's details on `onFileChanged`.
+
+- **Task files (7 Nov 2026):** `upload-url` with `projectId` is for a task's file: whoever edits the project's tasks (`task.manage`), not while it's archived; the file is the uploader's alone until a task's `attachmentIds` names it. `details.taskKeys` counts the tasks that hold a file as well as those whose comments do. See the company spec §4.4 amendment for the task routes and `GET /api/projects/:id/all-files`.
 
 Save for later, Add to folder and Add from Flow files come with the channel Files tab (Phase 3, slice W); voice and video messages in Phase 4.
 

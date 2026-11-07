@@ -250,6 +250,22 @@ built-in roles give the old table's answers in every case. Routes:
 
 - **M13:** `tasks.moveTo(key, status, index, visibleKeys?)` places a task and renumbers its column (1000, 2000, …) in one write, with a status change's rights, so a member's drop never needs to patch other cards. Retyping a column to Done, or deleting one into a Done column, stops the timers on its tasks. Archiving or restoring something already so changes nothing and sends nothing. Import also clears stored file bytes; an export carries none. Time logged before a person's first rate is priced at that first rate; a changed rate never rewrites past cost. Mentions carry `authorName`.
 
+
+#### Amendment: task files and the Files tab (7 Nov 2026)
+
+Spec `2026-11-07-project-files-and-task-attachments-design.md`. Tasks gain `descriptionBody` (structured text and file blocks) and `attachmentIds`; `description` is read-only, worked out from the body. The task patch's fields become `title, descriptionBody, attachmentIds, status, priority, storyPoints, assigneeId, sprintId, rank, phaseId, type, dueAt, estimateHours`.
+
+- `POST /api/files/upload-url` also takes `{ projectId, name, size, mimeType }` for a task's file: whoever has `task.manage` on the project, not while it's archived. The file is the uploader's alone until a task names it.
+- `POST/PATCH` tasks take `descriptionBody` and `attachmentIds`, checked in this order:
+  - at most 20 files, a repeated id counted once: `400` "Attach up to 20 files to a task.";
+  - each exists and isn't deleted: `404`;
+  - a file new to the task is mine (`403` "You can only attach files you uploaded.") and used nowhere yet (`400` "Upload that file again to attach it here.");
+  - each is clean: `400` "{title} is still being checked." · "{title} was blocked.";
+  - the body names only the task's files and holds text and links only: `400` "The description couldn't be read. Try again.";
+  - its text is at most 20,000 characters: `400` "Keep the description under 20,000 characters."
+- A file taken off a task leaves its description; one nothing else holds is deleted with its bytes. History logs `attachments` ("changed the files"); the audit log records `Files` (names before and after); `filesChanged { projectId }` goes out.
+- `GET /api/projects/:id/all-files?from=&type=&cursor=` → `{ items: { file, source }[], nextCursor }`: every file of the project once, from the first place the caller can open (Overview, task, comment or bug, chat; comment cards left out), newest first, 50 a page.
+- A task's files count wherever access and "still used" are decided (open, details, delete for good).
 ### 4.5 Audit log (amended 31 Oct 2026, Admin and help slice 2)
 
 One entry per recorded write, appended **in the same transaction as the change** (a refused or failed write records
