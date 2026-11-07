@@ -1,10 +1,8 @@
 import clsx from 'clsx'
-import { File, FileArchive, FileCode, FileImage, FileText, FileVideo, type LucideIcon } from 'lucide-react'
 import { useFileUrl } from '@/components/AttachmentView'
-import { fileKind, sizeText, type FileKind } from '@/lib/fileTypes'
+import { fileKind, sizeText } from '@/lib/fileTypes'
+import { fileIcon } from '../fileSources'
 import type { DescFile } from './FileNode'
-
-const ICONS: Record<FileKind, LucideIcon> = { image: FileImage, pdf: FileText, document: FileText, snippet: FileCode, video: FileVideo, other: FileArchive }
 
 /**
  * One of the task's files inside its description, in the editor and in the panel: a picture for an image, otherwise a
@@ -16,7 +14,7 @@ export function DescriptionFile({ file, onOpen }: { file: DescFile; onOpen?: () 
 }
 
 function Chip({ file, onOpen }: { file: DescFile; onOpen?: () => void }) {
-  const Icon = ICONS[fileKind(file)] ?? File
+  const Icon = fileIcon(file)
   const inner = (
     <>
       <Icon className="size-4 shrink-0 text-fg-muted" aria-hidden />

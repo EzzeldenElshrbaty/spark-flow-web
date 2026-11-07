@@ -1,8 +1,9 @@
 import clsx from 'clsx'
-import { FileText, Upload, X } from 'lucide-react'
+import { Upload, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 import type { Attachment } from '@/api/types'
 import { acceptedFiles, allowedFilesHint, sizeText } from '@/lib/fileTypes'
+import { fileIcon } from './fileSources'
 import { rowLabel, type UploadRow } from './uploadQueue'
 
 /**
@@ -41,9 +42,11 @@ export function TaskAttachments({
       {empty && readOnly && <p className="text-sm text-fg-muted">—</p>}
       {!empty && (
         <ul className="mb-2 divide-y divide-line-subtle rounded-lg border border-line">
-          {files.map((f) => (
+          {files.map((f) => {
+            const Icon = fileIcon(f)
+            return (
             <li key={f.id} className="flex items-center gap-3 px-3 py-2">
-              <FileText className="size-4 shrink-0 text-fg-muted" />
+              <Icon className="size-4 shrink-0 text-fg-muted" aria-hidden />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-medium text-fg">{f.title}</span>
                 <span className="block text-xs text-fg-muted tabular-nums">{sizeText(f.size)}</span>
@@ -54,7 +57,8 @@ export function TaskAttachments({
                 </button>
               )}
             </li>
-          ))}
+            )
+          })}
           {rows.map((r) => (
             <li key={r.id} className="flex items-center gap-3 px-3 py-2" aria-live="polite">
               <Upload className="size-4 shrink-0 text-fg-muted" />

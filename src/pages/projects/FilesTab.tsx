@@ -1,5 +1,4 @@
 import clsx from 'clsx'
-import { FileText } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { noteDownload } from '@/api/audit'
@@ -15,7 +14,7 @@ import { sizeText } from '@/lib/fileTypes'
 import { formatDate } from '@/lib/format'
 import { withInspector } from '@/lib/inspector'
 import { paths } from '@/lib/paths'
-import { FROM_CHIPS, TYPE_OPTIONS, filterOf, sourceLabel, typeLabel } from './fileSources'
+import { FROM_CHIPS, TYPE_OPTIONS, fileIcon, filterOf, sourceLabel, typeLabel } from './fileSources'
 
 /** A file that can't be opened yet, and why: still being checked, or blocked. */
 const notReady = (file: Attachment) => (file.scanStatus === 'pending' ? 'Being checked' : file.scanStatus === 'blocked' ? 'Blocked' : null)
@@ -79,13 +78,16 @@ export function FilesTab({ ws, project, users }: { ws: string; project: ProjectS
       {sourceLabel(source)}
     </Link>
   )
-  const title = ({ file }: ProjectFileRow) => (
+  const title = ({ file }: ProjectFileRow) => {
+    const Icon = fileIcon(file)
+    return (
     <span className="flex min-w-0 items-center gap-2">
-      <FileText className="size-4 shrink-0 text-fg-muted" aria-hidden />
+      <Icon className="size-4 shrink-0 text-fg-muted" aria-hidden />
       <span className={clsx('truncate', notReady(file) ? 'text-fg-muted' : 'font-medium text-fg')}>{file.title}</span>
       {notReady(file) && <span className="shrink-0 rounded-full bg-surface-muted px-2 py-0.5 text-xs text-fg-muted">{notReady(file)}</span>}
     </span>
-  )
+    )
+  }
 
   const columns: Column<ProjectFileRow>[] = [
     { id: 'name', header: 'Name', width: 300, cell: title },
@@ -123,13 +125,15 @@ export function FilesTab({ ws, project, users }: { ws: string; project: ProjectS
             )
           })}
         </div>
-        <select aria-label="Type" className={`${selectClass} w-auto max-sm:w-full`} value={filter.type ?? ''} onChange={(e) => setFilter('type', e.target.value)}>
-          {TYPE_OPTIONS.map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
+        <div className="w-full sm:w-44">
+          <select aria-label="Type" className={selectClass} value={filter.type ?? ''} onChange={(e) => setFilter('type', e.target.value)}>
+            {TYPE_OPTIONS.map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {list.isError && !list.data ? (
