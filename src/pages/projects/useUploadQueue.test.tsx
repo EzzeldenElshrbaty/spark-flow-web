@@ -82,3 +82,44 @@ describe('useUploadQueue when its screen closes', () => {
     expect(calls).toHaveLength(1)
   })
 })
+
+describe('useUploadQueue with a limit', () => {
+  const sentence = 'Attach up to 20 files to a task.'
+
+  it('past its room a file starts failed with the limit’s sentence and never uploads; a refused type takes no room', async () => {
+    const { calls, upload } = fakeUpload()
+    const { result } = renderHook(() => useUploadQueue(upload, vi.fn(), { limit: { room: 2, sentence } }))
+    const exe = f('setup.exe', 'application/x-msdownload')
+    act(() => result.current.add([f('a.pdf'), exe, f('b.pdf'), f('c.pdf')]))
+    expect(result.current.rows.map((r) => [r.name, r.error])).toEqual([['a.pdf', null], ['setup.exe', acceptFiles([], [exe]).refused[0]], ['b.pdf', null], ['c.pdf', sentence]])
+    // Rows still waiting or going count against the room.
+    act(() => result.current.add([f('d.pdf')]))
+    expect(result.current.rows.at(-1)).toMatchObject({ name: 'd.pdf', state: 'failed', error: sentence })
+    expect(result.current.canRetry(result.current.rows.at(-1)!.id)).toBe(false)
+    await waitFor(() => expect(calls).toHaveLength(1))
+    expect(calls[0]!.file.name).toBe('a.pdf')
+  })
+
+  it('Try again waits for room', async () => {
+    const { calls, upload } = fakeUpload()
+    const { result } = renderHook(() => useUploadQueue(upload, vi.fn(), { limit: { room: 1, sentence } }))
+    act(() => result.current.add([f('a.pdf')]))
+    await waitFor(() => expect(calls).toHaveLength(1))
+    const a = result.current.rows[0]!.id
+    act(() => result.current.cancel(a))
+    act(() => result.current.add([f('b.pdf')]))
+    act(() => result.current.retry(a))
+    expect(result.current.rows.find((r) => r.id === a)).toMatchObject({ state: 'failed', error: sentence })
+    expect(result.current.canRetry(a)).toBe(true)
+  })
+
+  it('room the owner gets back (a file taken off) takes new files again', () => {
+    const { upload } = fakeUpload()
+    const { result, rerender } = renderHook(({ room }) => useUploadQueue(upload, vi.fn(), { limit: { room, sentence } }), { initialProps: { room: 0 } })
+    act(() => result.current.add([f('a.pdf')]))
+    expect(result.current.rows[0]).toMatchObject({ state: 'failed', error: sentence })
+    rerender({ room: 1 })
+    act(() => result.current.add([f('b.pdf')]))
+    expect(result.current.rows[1]!.error).toBeNull()
+  })
+})

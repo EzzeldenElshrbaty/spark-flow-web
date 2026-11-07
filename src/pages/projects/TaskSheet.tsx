@@ -20,6 +20,8 @@ import type { DescriptionEditorHandle } from './description/DescriptionEditor'
 const DescriptionEditor = lazy(() => import('./description/DescriptionEditor'))
 /** An upload added in the description: its tag carries where the caret was (`editor:<place>`). */
 const EDITOR_TAG = 'editor:'
+/** How many files a task holds, as the server allows (spec §4.2). */
+const MAX_TASK_FILES = 20
 
 const priorities: [Priority, string][] = [
   ['urgent', 'Urgent'],
@@ -103,8 +105,9 @@ export function TaskSheet({
       setAdded((all) => [...all, file])
       if (row.tag?.startsWith(EDITOR_TAG)) editor.current?.insertFile(file, row.tag.slice(EDITOR_TAG.length) || null)
     },
-    // Closing the sheet drops what it was uploading: nothing would ever attach it.
-    { cancelOnUnmount: true },
+    // Closing the sheet drops what it was uploading: nothing would ever attach it. A file past the 20th fails as it's
+    // added, as the server would refuse the task at Save.
+    { cancelOnUnmount: true, limit: { room: MAX_TASK_FILES - attachments.length, sentence: `Attach up to ${MAX_TASK_FILES} files to a task.` } },
   )
   const removeAttachment = (id: string) => {
     setRemoved((all) => new Set(all).add(id))

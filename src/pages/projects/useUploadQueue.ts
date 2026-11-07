@@ -8,12 +8,20 @@ export type QueueUpload<T> = (file: File, opts: { signal: AbortSignal; onProgres
 /** Why a file can't be added (the same rules as the server), or null. */
 const refusal = (file: File) => acceptFiles([], [file]).refused[0] ?? null
 
+/** At most `room` more files, the queue's own waiting and going rows counted; past it a row fails with `sentence`. */
+export type UploadLimit = { room: number; sentence: string }
+
 /**
  * Files going up one at a time, each with its own row: Cancel while it waits or goes, Try again or dismiss when it
  * failed or was cancelled. A finished row calls `onDone` with what the upload returned and leaves the list. `busy`
- * while any row is waiting or going. `cancelOnUnmount`: closing the screen cancels them all.
+ * while any row is waiting or going. `cancelOnUnmount`: closing the screen cancels them all. `limit`: a file past it
+ * fails as it's added (and Try again waits for room), so nobody learns it at Save.
  */
-export function useUploadQueue<T>(upload: QueueUpload<T>, onDone: (result: T, row: UploadRow) => void, { cancelOnUnmount = false } = {}) {
+export function useUploadQueue<T>(
+  upload: QueueUpload<T>,
+  onDone: (result: T, row: UploadRow) => void,
+  { cancelOnUnmount = false, limit }: { cancelOnUnmount?: boolean; limit?: UploadLimit } = {},
+) {
   const [rows, setRows] = useState<UploadRow[]>([])
   // A row's file, its Cancel and tag, kept for Try again; the ids waiting their turn; whether one is on its way.
   const jobs = useRef(new Map<string, { file: File; controller: AbortController; tag?: string }>())
@@ -61,10 +69,15 @@ export function useUploadQueue<T>(upload: QueueUpload<T>, onDone: (result: T, ro
     jobs.current.set(id, { file, controller: new AbortController(), tag })
     queue.current.push(id)
   }
+  const pending = rows.filter((r) => r.state === 'queued' || r.state === 'uploading').length
+  const room = () => (limit ? limit.room - pending : Infinity)
   const add = (list: File[] | FileList | null, tag?: string) => {
     const picked = [...(list ?? [])]
     if (picked.length === 0) return
-    const added = queueRows(picked, refusal).map((row) => (tag ? { ...row, tag } : row))
+    // A refused file takes no room; past the room, the limit's sentence.
+    let left = room()
+    const accept = (file: File) => refusal(file) ?? (left-- > 0 ? null : limit!.sentence)
+    const added = queueRows(picked, accept).map((row) => (tag ? { ...row, tag } : row))
     setRows((all) => [...all, ...added])
     added.forEach((row, i) => row.state === 'queued' && start(row.id, picked[i]!, tag))
     void pump()
@@ -77,10 +90,11 @@ export function useUploadQueue<T>(upload: QueueUpload<T>, onDone: (result: T, ro
   const retry = (id: string) => {
     const job = jobs.current.get(id)
     if (!job) return
+    if (room() <= 0) return setRow(id, { state: 'failed', error: limit!.sentence })
     start(id, job.file, job.tag)
     setRow(id, { state: 'queued', error: null })
     void pump()
   }
-  const busy = rows.some((r) => r.state === 'queued' || r.state === 'uploading')
+  const busy = pending > 0
   return { rows, busy, add, cancel, retry, dismiss, canRetry: (id: string) => jobs.current.has(id) }
 }

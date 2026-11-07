@@ -108,6 +108,15 @@ describe('TaskSheet attachments', () => {
     expect(update.mutate).toHaveBeenCalledWith({ key: 'NEX-1', patch: { attachmentIds: ['f2'] } }, expect.anything())
   })
 
+  it('a file past the 20th is refused as it’s added, not at Save', async () => {
+    upload.mockReturnValue(new Promise(() => {}))
+    open(task(Array.from({ length: 19 }, (_, i) => att(`f${i}`))))
+    await pick('a.pdf', 'b.pdf')
+    expect(screen.getByText('b.pdf').closest('li')!.textContent).toContain('Attach up to 20 files to a task.')
+    expect(upload).toHaveBeenCalledOnce()
+    expect(upload.mock.calls[0]![1].name).toBe('a.pdf')
+  })
+
   it('someone who only moves the status sees the files read-only', () => {
     manages = false
     open(task([att('f1')]))
