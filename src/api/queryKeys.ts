@@ -117,7 +117,12 @@ function dataKeysFor(event: RealtimeEvent): QueryKey[] {
       // Attendance (a timer start, pause, resume or stop sends this too).
       return [qk.myDay(), ['tickets'], qk.timeAll(), ['dashboard'], ['time', 'report'], qk.attendanceAll()]
     case 'messageChanged':
-      return [qk.messages(event.channelId), qk.message(event.messageId), qk.replies(event.messageId), qk.mentions(), qk.activityAll(), qk.sentAll(), qk.pins(event.channelId), qk.channelFiles(event.channelId), qk.threadsAll()]
+      // A delete takes the message's files off its project's Files tab and Undo puts them back. The event doesn't say
+      // whether it had files, or which project, so every one's: only a Files tab on screen reads again.
+      return [
+        qk.messages(event.channelId), qk.message(event.messageId), qk.replies(event.messageId), qk.mentions(), qk.activityAll(), qk.sentAll(), qk.pins(event.channelId), qk.channelFiles(event.channelId), qk.threadsAll(),
+        ['projects', 'files'],
+      ]
     case 'projectChanged':
       // Summaries and task lists live under 'tickets'; phases, deliverables and project time under 'projects'.
       return [['tickets'], ['projects'], ['dashboard'], qk.projectHistory(event.projectId)]
@@ -133,8 +138,8 @@ function dataKeysFor(event: RealtimeEvent): QueryKey[] {
     case 'filesChanged':
       return [qk.files(event.projectId)]
     case 'fileChanged':
-      // The messages that show it get messageChanged of their own.
-      return [qk.fileDetails(event.fileId), ['chat', 'files'], ['folders'], ['projects', 'files']]
+      // The messages that show it get messageChanged of their own; the tasks that hold it (a title, a delete) don't.
+      return [qk.fileDetails(event.fileId), ['chat', 'files'], ['folders'], ['projects', 'files'], ['tickets']]
     case 'draftChanged':
       return [qk.draftsAll()]
     case 'readChanged':
