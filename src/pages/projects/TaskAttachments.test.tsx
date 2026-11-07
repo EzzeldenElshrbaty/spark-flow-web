@@ -34,6 +34,14 @@ describe('TaskAttachments', () => {
     expect(h.onDismiss).toHaveBeenCalledWith('up-2')
   })
 
+  it('its icons are hidden from screen readers: the names and buttons say it all', () => {
+    const rows: UploadRow[] = [{ id: 'up-1', name: 'b.png', state: 'uploading', error: null }]
+    const { container } = render(<TaskAttachments files={[file('a1', 'flow.pdf', 1024)]} rows={rows} readOnly={false} {...handlers()} />)
+    const icons = [...container.querySelectorAll('svg')]
+    expect(icons.length).toBeGreaterThan(0)
+    expect(icons.filter((svg) => svg.getAttribute('aria-hidden') !== 'true').map((svg) => svg.getAttribute('class'))).toEqual([])
+  })
+
   it('takes files dropped on its box or picked', () => {
     const h = handlers()
     const { container } = render(<TaskAttachments files={[]} rows={[]} readOnly={false} {...h} />)

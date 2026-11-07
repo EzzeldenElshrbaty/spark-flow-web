@@ -61,7 +61,7 @@ export function TaskAttachments({
           })}
           {rows.map((r) => (
             <li key={r.id} className="flex items-center gap-3 px-3 py-2" aria-live="polite">
-              <Upload className="size-4 shrink-0 text-fg-muted" />
+              <Upload className="size-4 shrink-0 text-fg-muted" aria-hidden />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-medium text-fg">{r.name}</span>
                 <span className={clsx('block truncate text-xs tabular-nums', r.state === 'failed' ? 'text-red-600 dark:text-red-400' : 'text-fg-muted')}>{rowLabel(r)}</span>
@@ -100,7 +100,7 @@ export function TaskAttachments({
           className={clsx('rounded-lg border border-dashed p-4 text-center text-sm', dragging ? 'border-brand-500 bg-accent-soft' : 'border-line-strong')}
         >
           <button type="button" onClick={() => inputRef.current?.click()} className="inline-flex items-center gap-1.5 font-medium text-accent hover:text-accent-strong">
-            <Upload className="size-4" /> Add files
+            <Upload className="size-4" aria-hidden /> Add files
           </button>
           <span className="text-fg-muted"> or drop them here</span>
           <p className="mt-1 text-xs text-fg-muted">{allowedFilesHint}</p>
