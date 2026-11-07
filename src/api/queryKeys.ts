@@ -39,6 +39,8 @@ export const qk = {
   phases: (projectId: string) => ['projects', 'phases', projectId],
   deliverables: (projectId: string) => ['projects', 'deliverables', projectId],
   files: (projectId: string) => ['projects', 'files', projectId],
+  /** The Files tab's list (every file of the project); under `files`, so a project's file change refreshes it. */
+  projectFilesAll: (projectId: string, filter: unknown) => ['projects', 'files', projectId, 'all', filter],
   teams: (workspaceId: string) => ['teams', workspaceId],
   time: (projectId: string) => ['projects', 'time', projectId],
   timeAll: () => ['projects', 'time'],                    // prefix of every project's time
@@ -94,11 +96,15 @@ function dataKeysFor(event: RealtimeEvent): QueryKey[] {
   switch (event.type) {
     case 'messageReceived': {
       const { channelId } = event.message
-      return [qk.messages(channelId), qk.channelsAll(), qk.channel(channelId), qk.mentions(), qk.sentAll(), qk.channelFiles(channelId)]
+      // A file in a project's chat lists on its Files tab; the event doesn't say which project, so every one's.
+      return [qk.messages(channelId), qk.channelsAll(), qk.channel(channelId), qk.mentions(), qk.sentAll(), qk.channelFiles(channelId), ...(event.message.attachments?.length ? [['projects', 'files']] : [])]
     }
     case 'replyReceived': {
       const { channelId, messageId } = event.reply
-      return [qk.replies(messageId), qk.message(messageId), qk.messages(channelId), qk.channelsAll(), qk.channel(channelId), qk.mentions(), qk.sentAll(), qk.channelFiles(channelId), qk.threadsAll()]
+      return [
+        qk.replies(messageId), qk.message(messageId), qk.messages(channelId), qk.channelsAll(), qk.channel(channelId), qk.mentions(), qk.sentAll(), qk.channelFiles(channelId), qk.threadsAll(),
+        ...(event.reply.attachments?.length ? [['projects', 'files']] : []),
+      ]
     }
     case 'ticketUpdated':
       // Project summaries (progress, overdue) and the dashboard are worked out from tasks too.
@@ -120,7 +126,7 @@ function dataKeysFor(event: RealtimeEvent): QueryKey[] {
       // change its Invited list (spec 6.10).
       return [qk.channelsAll(), qk.channel(event.channelId), qk.mentions(), qk.activityAll(), qk.invitations(event.channelId), qk.pins(event.channelId), qk.bookmarks(event.channelId), qk.threadsAll()]
     case 'commentAdded':
-      return [qk.comments(event.taskKey), qk.mentions(), qk.activityAll(), qk.taskHistory(event.taskKey), qk.projectHistory(event.projectId)]
+      return [qk.comments(event.taskKey), qk.mentions(), qk.activityAll(), qk.taskHistory(event.taskKey), qk.projectHistory(event.projectId), qk.files(event.projectId)]
     case 'ratesChanged':
       // Cost is worked out from rates on every read: the report, the dashboard and the Time tabs.
       return [qk.rates(), ['time', 'report'], ['dashboard'], qk.timeAll(), ['tickets']]
@@ -128,7 +134,7 @@ function dataKeysFor(event: RealtimeEvent): QueryKey[] {
       return [qk.files(event.projectId)]
     case 'fileChanged':
       // The messages that show it get messageChanged of their own.
-      return [qk.fileDetails(event.fileId), ['chat', 'files'], ['folders']]
+      return [qk.fileDetails(event.fileId), ['chat', 'files'], ['folders'], ['projects', 'files']]
     case 'draftChanged':
       return [qk.draftsAll()]
     case 'readChanged':

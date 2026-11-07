@@ -564,6 +564,18 @@ export type ChatTarget = { kind: 'message' | 'reply'; id: string }
 export type ChannelFileFilter = { type?: FileKind; from?: string; since?: string; folderId?: string; cursor?: string }
 /** A file as the Files tab lists it: the file, who shared it, when, and the message (or reply) it's in. */
 export type ChannelFile = { file: Attachment; senderId: string; at: string; messageId: string; replyId: string | null }
+/**
+ * Where a project's file was added first (the Files tab's From): its Overview, a task, a task's comment or bug, or its
+ * chat (a message, or a reply in a thread).
+ */
+export type ProjectFileSource =
+  | { kind: 'overview' }
+  | { kind: 'task'; taskKey: string }
+  | { kind: 'comment'; taskKey: string; commentId: string; bug: boolean }
+  | { kind: 'chat'; messageId: string; replyId: string | null }
+/** A project's file as the Files tab lists it: the file, and where it came from. */
+export type ProjectFileRow = { file: Attachment; source: ProjectFileSource }
+export type ProjectFileFilter = { from?: ProjectFileSource['kind']; type?: FileKind; cursor?: string }
 /** A file I may add to a message from Flow (spec 6.8): the file, and where it is (a channel I read, or a project). */
 export type ShareableFile = { file: Attachment; channelId: string | null; projectId: string | null }
 /** A link in a channel's tabs row (spec 6.1 +, §7 Bookmark): http or https only, in the order added. */
@@ -994,6 +1006,11 @@ export interface Api {
     uploadForTask(projectId: string, file: UploadFile, options?: UploadOptions): Promise<Attachment>
     /** The files in a channel's messages and replies, newest first, 50 at a time (spec 6.1 Files tab). */
     inChannel(channelId: string, filter: ChannelFileFilter): Promise<Page<ChannelFile>>
+    /**
+     * Every file of a project I may open, once each, from where it was added first (its Overview, a task, a comment or
+     * bug, its chat; comment cards left out), newest first, 50 at a time; archived projects and tasks too.
+     */
+    inProject(projectId: string, filter: ProjectFileFilter): Promise<Page<ProjectFileRow>>
     /**
      * Add from Flow files (spec 6.8): the files in a workspace I may share (I uploaded them; an Admin, any I can see),
      * newest first, 30 at most; `q` searches title and name.

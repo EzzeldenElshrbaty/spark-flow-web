@@ -1,4 +1,4 @@
-import type { Api, Attachment, ChatMessage, FileDetails, ProjectFile, ShareableFile, StoredFile, UploadFile, UploadOptions } from '@/api/types'
+import type { Api, Attachment, ChatMessage, FileDetails, ProjectFile, ProjectFileRow, ProjectFileSource, ShareableFile, StoredFile, UploadFile, UploadOptions } from '@/api/types'
 import { fileDescriptionError, fileTitleError } from '@/lib/fileDetails'
 import { isAcceptedFile, maxFileMb } from '@/lib/fileTypes'
 import { checkCanWrite, findChannel, postMessage, readableChannel } from './chat'
@@ -291,6 +291,54 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
       const me = requireCan(before, 'task.manage', openProject(before, projectId))
       checkUpload(file)
       return uploadUnlinked(file, me.id, { onProgress, signal }, null, (data) => requireCan(data, 'task.manage', openProject(data, projectId)))
+    },
+    async inProject(projectId, { from, type, cursor }) {
+      await delay()
+      const data = await db.read()
+      const project = findProject(data, projectId)
+      // Every place a file is in this project, ranked for a tie: Overview, a task, a comment, the chat.
+      type Place = { fileId: string; at: string; rank: number; source: ProjectFileSource }
+      const createdAt = (id: string) => data.attachments.find((a) => a.id === id)?.createdAt ?? ''
+      const places: Place[] = [
+        ...data.projectFiles.filter((f) => f.projectId === projectId).map((f): Place => ({ fileId: f.attachmentId, at: f.createdAt, rank: 0, source: { kind: 'overview' } })),
+        ...data.tickets
+          .filter((t) => t.projectId === projectId)
+          .flatMap((t) => t.attachmentIds.map((id): Place => ({ fileId: id, at: createdAt(id), rank: 1, source: { kind: 'task', taskKey: t.key } }))),
+        ...data.comments
+          .filter((c) => c.projectId === projectId && !c.deletedAt)
+          .flatMap((c) => {
+            const taskKey = data.tickets.find((t) => t.id === c.taskId)?.key
+            return taskKey ? c.attachmentIds.map((id): Place => ({ fileId: id, at: c.createdAt, rank: 2, source: { kind: 'comment', taskKey, commentId: c.id, bug: c.kind === 'bug' } })) : []
+          }),
+        // A comment's card repeats its files, and a reply also sent to the chat is listed as the reply.
+        ...data.messages
+          .filter((m) => m.channelId === project.channelId && !m.deletedAt && !m.commentId && !m.broadcast)
+          .flatMap((m) => m.attachments.map((a): Place => ({ fileId: a.id, at: m.createdAt, rank: 3, source: { kind: 'chat', messageId: m.id, replyId: null } }))),
+        ...data.replies
+          .filter((r) => r.channelId === project.channelId && !r.deletedAt)
+          .flatMap((r) => r.attachments.map((a): Place => ({ fileId: a.id, at: r.createdAt, rank: 3, source: { kind: 'chat', messageId: r.messageId, replyId: r.id } }))),
+      ]
+      const first = new Map<string, Place>()
+      for (const place of places) {
+        const was = first.get(place.fileId)
+        if (!was || place.at < was.at || (place.at === was.at && place.rank < was.rank)) first.set(place.fileId, place)
+      }
+      const open = (id: string) => {
+        try {
+          return visibleFile(data, id)
+        } catch {
+          return null
+        }
+      }
+      const rows = [...first.values()]
+        .flatMap((place): ProjectFileRow[] => {
+          const file = open(place.fileId)
+          return file ? [{ file, source: place.source }] : []
+        })
+        .filter((row) => (!from || row.source.kind === from) && (!type || fileKind(row.file) === type))
+        .sort((a, b) => b.file.createdAt.localeCompare(a.file.createdAt) || b.file.id.localeCompare(a.file.id))
+      const start = cursor ? Number(cursor) || 0 : 0
+      return clone({ items: rows.slice(start, start + FILES_PAGE), nextCursor: start + FILES_PAGE < rows.length ? String(start + FILES_PAGE) : null })
     },
     async inChannel(channelId, { type, from, since, folderId, cursor }) {
       await delay()

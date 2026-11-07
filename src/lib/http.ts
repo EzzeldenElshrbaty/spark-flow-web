@@ -371,6 +371,7 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
       uploadForTask: (projectId, file, options = {}) => uploadInSteps({ projectId }, file, options),
       shareable: (workspaceId, q) => get(`/api/workspaces/${enc(workspaceId)}/files${query({ q })}`),
       inChannel: (channelId, filter) => get(`/api/channels/${enc(channelId)}/files${query(filter)}`),
+      inProject: (projectId, filter) => get(`/api/projects/${enc(projectId)}/all-files${query(filter)}`),
       details: (id) => get(`/api/files/${enc(id)}/details`),
       update: (id, patch) => send('PATCH', `/api/files/${enc(id)}`, patch),
       delete: (id) => send<void>('DELETE', `/api/files/${enc(id)}`),

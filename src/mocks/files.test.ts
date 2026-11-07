@@ -6,7 +6,8 @@ import { latency } from './latency'
 import { createMockHub, type MockHub } from './realtime'
 import { seed } from './seed'
 import { createMemoryStore } from './store'
-import { fileInUse } from './files'
+import { fileInUse, fileRecord } from './files'
+import { fileKind } from '@/lib/fileTypes'
 
 let db: MockDb
 let api: Api
@@ -179,5 +180,74 @@ describe('uploading a task’s file', () => {
     await expect(api.files.uploadForTask('p-nex', file('a.pdf', ['%PDF-1.4 a']), { signal: controller.signal })).rejects.toMatchObject({ name: 'AbortError' })
     await expect(api.files.uploadForTask('p-nex', file('e.pdf', []))).rejects.toMatchObject({ status: 400, detail: 'That file is empty.' })
     expect((await db.read()).attachments).toHaveLength(count)
+  })
+})
+
+describe('a project’s files (the Files tab)', () => {
+  const pdf = (name: string) => file(name, ['%PDF-1.4 x'])
+  /** One of each place on NEX, as its manager: Overview, a task, a comment and the chat. */
+  const fourPlaces = async () => {
+    await api.users.viewAs('u-2')
+    const overview = await api.files.upload('p-nex', pdf('overview.pdf'))
+    const task = await api.files.uploadForTask('p-nex', pdf('task.pdf'))
+    await api.tasks.update('NEX-102', { attachmentIds: [task.id] })
+    const comment = await api.comments.create({ taskKey: 'NEX-102', kind: 'comment', body: 'See the log', files: [file('log.txt', ['x'], 'text/plain')] })
+    const chatFile = await api.files.uploadForChat('c-p-nex', pdf('chat.pdf'))
+    const message = await api.chat.send('c-p-nex', 'Here it is', undefined, undefined, [chatFile.id])
+    return { overview: overview.attachmentId, task: task.id, comment, commentFile: comment.attachments[0]!.id, chat: chatFile.id, message }
+  }
+
+  it('lists each file once, from where it was added first, newest first; a comment’s chat card adds no row', async () => {
+    const p = await fourPlaces()
+    const { items } = await api.files.inProject('p-nex', {})
+    const sourceOf = (id: string) => items.filter((row) => row.file.id === id).map((row) => row.source)
+    expect(sourceOf(p.overview)).toEqual([{ kind: 'overview' }])
+    expect(sourceOf(p.task)).toEqual([{ kind: 'task', taskKey: 'NEX-102' }])
+    expect(sourceOf(p.commentFile)).toEqual([{ kind: 'comment', taskKey: 'NEX-102', commentId: p.comment.id, bug: false }])
+    expect(sourceOf(p.chat)).toEqual([{ kind: 'chat', messageId: p.message.id, replyId: null }])
+    expect(sourceOf('a-shot-105')).toEqual([{ kind: 'comment', taskKey: 'NEX-105', commentId: 'cm-002', bug: true }])
+    expect(sourceOf('a-nex-101-flow')).toEqual([{ kind: 'task', taskKey: 'NEX-101' }])
+    const times = items.map((row) => row.file.createdAt)
+    expect(times).toEqual([...times].sort().reverse())
+  })
+
+  it('a project file shared into the chat still lists once, under Overview', async () => {
+    const p = await fourPlaces()
+    await api.files.share(p.overview, 'c-p-nex')
+    const rows = (await api.files.inProject('p-nex', {})).items.filter((row) => row.file.id === p.overview)
+    expect(rows.map((row) => row.source)).toEqual([{ kind: 'overview' }])
+  })
+
+  it('filters by where and by type; a deleted file is gone', async () => {
+    const p = await fourPlaces()
+    expect((await api.files.inProject('p-nex', { from: 'chat' })).items.map((row) => row.file.id)).toEqual([p.chat])
+    const pdfs = (await api.files.inProject('p-nex', { type: 'pdf' })).items
+    expect(pdfs.length).toBeGreaterThan(0)
+    expect(pdfs.every((row) => fileKind(row.file) === 'pdf')).toBe(true)
+    await api.files.delete(p.task)
+    expect((await api.files.inProject('p-nex', {})).items.some((row) => row.file.id === p.task)).toBe(false)
+  })
+
+  it('50 a page, with a cursor for the rest', async () => {
+    await db.update((data) => {
+      for (let i = 0; i < 51; i++) {
+        const a = { ...fileRecord({ name: `f${i}.pdf`, type: 'application/pdf', size: 1 }, 'u-2', new Date(Date.UTC(2026, 9, 1, 0, i)).toISOString()), id: `f-${i}` }
+        data.attachments.push(a)
+        data.projectFiles.push({ id: `pf-${i}`, projectId: 'p-nex', attachmentId: a.id, uploadedBy: 'u-2', createdAt: a.createdAt })
+      }
+    })
+    const first = await api.files.inProject('p-nex', {})
+    expect(first.items).toHaveLength(50)
+    expect(first.nextCursor).toBe('50')
+    const rest = await api.files.inProject('p-nex', { cursor: '50' })
+    expect(rest.items.length).toBe(53 - 50) // 51 here, NEX-101's file and the bug's screenshot
+    expect(rest.nextCursor).toBeNull()
+  })
+
+  it('someone off the project sees only files they can read in its chat (a comment’s card shows its files there)', async () => {
+    const p = await fourPlaces()
+    await api.users.viewAs('u-8')
+    const rows = (await api.files.inProject('p-nex', {})).items
+    expect(rows.map((row) => row.file.id).sort()).toEqual([p.chat, p.commentFile].sort())
   })
 })

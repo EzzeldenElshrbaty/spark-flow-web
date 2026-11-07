@@ -1,5 +1,5 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
-import type { BoardColumn, DeliverablePatch, NewDeliverable, NewPhase, NewProject, PhasePatch, ProjectPatch, StatusCategory, UploadFile } from '@/api/types'
+import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
+import type { BoardColumn, DeliverablePatch, NewDeliverable, NewPhase, NewProject, PhasePatch, ProjectFileFilter, ProjectPatch, StatusCategory, UploadFile } from '@/api/types'
 import { qk } from '@/api/queryKeys'
 import { retryUnlessNotFound as retry } from '@/api/retry'
 import { api, ApiError } from '@/lib/api'
@@ -83,6 +83,17 @@ export function useTeams(workspaceId: string | undefined) {
 
 export function useProjectFiles(projectId: string | undefined) {
   return useQuery({ queryKey: qk.files(projectId ?? ''), queryFn: () => api.files.list(projectId!), retry, enabled: Boolean(projectId) })
+}
+/** Every file of a project (its Files tab), newest first, 50 a page; `filter` narrows by where it came from and type. */
+export function useAllProjectFiles(projectId: string | undefined, filter: Omit<ProjectFileFilter, 'cursor'>) {
+  return useInfiniteQuery({
+    queryKey: qk.projectFilesAll(projectId ?? '', filter),
+    queryFn: ({ pageParam }) => api.files.inProject(projectId!, { ...filter, ...(pageParam && { cursor: pageParam }) }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+    enabled: Boolean(projectId),
+    retry,
+  })
 }
 export function useUploadFile() {
   return useMutation({

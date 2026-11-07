@@ -237,6 +237,7 @@ const NOT_RECORDED: Record<string, string> = {
   'files.uploadForChat': `${MESSAGE}; a chat file goes out in a message`,
   'files.uploadForTask': `${MESSAGE}; a task's file is recorded when the task that names it is saved`,
   'files.inChannel': READ,
+  'files.inProject': READ,
   'files.shareable': READ,
   'files.details': READ,
   'files.share': `${MESSAGE}; sharing posts a message`,

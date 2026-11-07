@@ -28,7 +28,7 @@ describe('keysForEvent', () => {
     ])
     // A scheduled message made, changed, sent or failed: the Scheduled tab and Sent (spec 6.12).
     expect(keysForEvent({ type: 'scheduledChanged', userId: 'u-1' })).toEqual([qk.scheduledAll(), qk.sentAll()])
-    expect(keysForEvent({ type: 'commentAdded', taskKey: 'NEX-1', projectId: 'p1' })).toEqual([qk.comments('NEX-1'), qk.mentions(), qk.activityAll(), qk.taskHistory('NEX-1'), qk.projectHistory('p1')])
+    expect(keysForEvent({ type: 'commentAdded', taskKey: 'NEX-1', projectId: 'p1' })).toEqual([qk.comments('NEX-1'), qk.mentions(), qk.activityAll(), qk.taskHistory('NEX-1'), qk.projectHistory('p1'), qk.files('p1')])
     expect(keysForEvent({ type: 'ticketUpdated', ticket: { ...t, projectId: 'p1', key: 'NEX-1' } })).toEqual([
       qk.tickets('p1'), qk.archivedTickets('p1'), qk.ticket('NEX-1'), qk.taskHistory('NEX-1'), qk.projectHistory('p1'),
       ['tickets', 'projects'], ['tickets', 'project'], ['dashboard'], qk.taskRefsAll(), qk.auditAll(), qk.archiveAll(),
@@ -42,8 +42,19 @@ describe('keysForEvent', () => {
     // Activity (spec 6.12) refreshes when something is stored for me, a mention included, not on every new message.
     expect(keysForEvent({ type: 'notificationCreated', userId: 'u1' })).toEqual([qk.activityAll()])
     // A file's title, description or deletion changes its details; the messages showing it get messageChanged too.
-    expect(keysForEvent({ type: 'fileChanged', fileId: 'a1' })).toEqual([qk.fileDetails('a1'), ['chat', 'files'], ['folders'], qk.auditAll()])
+    expect(keysForEvent({ type: 'fileChanged', fileId: 'a1' })).toEqual([qk.fileDetails('a1'), ['chat', 'files'], ['folders'], ['projects', 'files'], qk.auditAll()])
     expect(keysForEvent({ type: 'projectChanged', projectId: 'p1' })).toEqual([['tickets'], ['projects'], ['dashboard'], qk.projectHistory('p1'), qk.auditAll(), qk.archiveAll()])
+  })
+})
+
+describe('keysForEvent and a project’s Files tab', () => {
+  it('a comment, a message with a file, or a file’s change refreshes the project files', () => {
+    expect(qk.projectFilesAll('p1', { from: 'chat' })).toEqual(['projects', 'files', 'p1', 'all', { from: 'chat' }])
+    expect(keysForEvent({ type: 'commentAdded', taskKey: 'NEX-1', projectId: 'p1' })).toContainEqual(qk.files('p1'))
+    const withFile = { ...m, channelId: 'c1', attachments: [{ id: 'a1' }] } as ChatMessage
+    expect(keysForEvent({ type: 'messageReceived', message: withFile })).toContainEqual(['projects', 'files'])
+    expect(keysForEvent({ type: 'messageReceived', message: { ...m, channelId: 'c1', attachments: [] } })).not.toContainEqual(['projects', 'files'])
+    expect(keysForEvent({ type: 'fileChanged', fileId: 'a1' })).toContainEqual(['projects', 'files'])
   })
 })
 

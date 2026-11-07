@@ -571,6 +571,16 @@ describe('uploading a chat file over HTTP (spec §8)', () => {
     expect(progress).toEqual([0.5, 1])
   })
 
+  it('a project’s files are read with their filter as a query', async () => {
+    const urls: string[] = []
+    const fetchFn = (async (url: string) => {
+      urls.push(url.replace(/^.*?\/api/, '/api'))
+      return new Response(JSON.stringify({ items: [], nextCursor: null }), { status: 200 })
+    }) as typeof fetch
+    await createHttpApi(fetchFn, fakeXhr().make).files.inProject('p-nex', { from: 'chat', type: 'pdf', cursor: '50' })
+    expect(urls).toEqual(['/api/projects/p-nex/all-files?from=chat&type=pdf&cursor=50'])
+  })
+
   it('a task file asks for its upload link with the project, then the same steps', async () => {
     const calls: string[] = []
     const fetchFn = (async (url: string, init?: RequestInit) => {
