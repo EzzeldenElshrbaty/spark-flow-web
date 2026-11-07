@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bodyTaskKeys, bodyText, isJumbo, mentionsOf, parseBody, validBody } from './messageBody'
+import { bodyTaskKeys, bodyText, descriptionText, isJumbo, mentionsOf, parseBody, textBody, validBody, validDescription } from './messageBody'
 
 const p = (...children: unknown[]) => ({ type: 'p', children })
 const text = (t: string, marks?: string[]) => (marks ? { type: 'text', text: t, marks } : { type: 'text', text: t })
@@ -131,5 +131,61 @@ describe('mentionsOf and bodyTaskKeys', () => {
       { kind: 'user', id: 'u-2' }, { kind: 'all', id: 'all' }, { kind: 'project', id: 'NEX' }, { kind: 'task', id: 'NEX-1' }, { kind: 'task', id: 'MOB-2' },
     ])
     expect(bodyTaskKeys(body)).toEqual(['NEX-1', 'MOB-2'])
+  })
+})
+
+describe('description body (task description)', () => {
+  const file = { type: 'file', id: 'a-1' }
+  const ids = new Set(['a-1'])
+
+  it('keeps a description of text, links, quotes, lists, code and files', () => {
+    const body = [
+      p(text('b', ['b']), { type: 'link', href: 'https://a.b', text: 'a.b' }),
+      { type: 'quote', children: [p(text('q'))] },
+      { type: 'ul', items: [[text('x')]] },
+      { type: 'ol', items: [[text('y')]] },
+      { type: 'code', text: 'c' },
+      file,
+    ]
+    expect(validDescription(body, ids)).toEqual(body)
+  })
+
+  it('refuses mentions and chips: a description holds text and links only', () => {
+    for (const inline of [
+      { type: 'user', id: 'u-1', name: 'A' },
+      { type: 'all' },
+      { type: 'here' },
+      { type: 'channel', id: 'c-1', name: 'c' },
+      { type: 'task', key: 'NEX-1' },
+      { type: 'project', key: 'NEX' },
+    ])
+      expect(validDescription([p(inline)], ids)).toBeNull()
+  })
+
+  it('refuses unknown or misplaced files, script links and too many blocks', () => {
+    expect(validDescription([{ type: 'file', id: 'a-2' }], ids)).toBeNull()
+    expect(validDescription([{ type: 'quote', children: [file] }], ids)).toBeNull()
+    expect(validDescription([{ type: 'file', id: '../x' }], new Set(['../x']))).toBeNull()
+    expect(validDescription([p({ type: 'link', href: 'javascript:alert(1)', text: 'x' })], ids)).toBeNull()
+    expect(validDescription(Array.from({ length: 2001 }, () => p(text('a'))), ids)).toBeNull()
+  })
+
+  it('chat bodies still refuse file blocks', () => {
+    expect(validBody([file])).toBeNull()
+  })
+
+  it('reads as plain text with blocks a blank line apart and files left out', () => {
+    expect(descriptionText([p(text('a')), file, { type: 'ul', items: [[text('x')], [text('y')]] }, { type: 'code', text: 'c' }] as never)).toBe('a\n\nx\ny\n\nc')
+  })
+
+  it('turns plain text into paragraphs at blank lines, keeping line breaks and the text as typed', () => {
+    expect(textBody('a\nb\n\n\nc')).toEqual([p(text('a\nb')), p(text('c'))])
+    expect(textBody('  \n ')).toEqual([])
+    expect(textBody('*x* https://a.b NEX-1')).toEqual([p(text('*x* https://a.b NEX-1'))])
+  })
+
+  it('round-trips a plain description through its text', () => {
+    const s = 'one\ntwo\n\nthree'
+    expect(textBody(descriptionText(textBody(s)))).toEqual(textBody(s))
   })
 })

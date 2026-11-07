@@ -309,3 +309,42 @@ export function mentionsOf(body: Body): Mention[] {
 
 /** The task keys a body names, each once, in order. */
 export const bodyTaskKeys = (body: Body): string[] => [...new Set(inlinesOf(body).flatMap((n) => (n.type === 'task' ? [n.key] : [])))]
+
+// ── Task descriptions ────────────────────────────────────────────────────
+
+/** A file in a task's description: one of the task's attachments, by id, on its own line. */
+export type FileBlock = { type: 'file'; id: string }
+export type DescBlock = Block | FileBlock
+/** A task's description: a message body of text and links only, plus file blocks at the top level. */
+export type DescBody = DescBlock[]
+
+/** How long a description's plain text may be. */
+export const MAX_DESCRIPTION = 20_000
+
+const isFileBlock = (b: DescBlock): b is FileBlock => b.type === 'file'
+
+/**
+ * A description from a client, checked like a body: text and links only (no mentions or chips), and file blocks only
+ * at the top level, naming one of `fileIds`. Null when it isn't one.
+ */
+export function validDescription(value: unknown, fileIds: ReadonlySet<string>): DescBody | null {
+  const budget: Budget = { left: MAX_NODES }
+  if (!Array.isArray(value) || value.length > MAX_BLOCKS || !spend(budget, value.length)) return null
+  const blocks = value.map((b): DescBlock | null =>
+    isRecord(b) && b.type === 'file' ? (isText(b.id) && ID.test(b.id) && fileIds.has(b.id) ? { type: 'file', id: b.id } : null) : validBlock(b, false, budget),
+  )
+  if (!blocks.every(Boolean)) return null
+  const body = blocks as DescBody
+  return inlinesOf(body.filter((b) => !isFileBlock(b)) as Body).every((n) => n.type === 'text' || n.type === 'link') ? body : null
+}
+
+/** A description as plain text: its blocks a blank line apart, files left out (what the task's `description` holds). */
+export function descriptionText(body: DescBody): string {
+  return body.flatMap((b) => (isFileBlock(b) ? [] : [bodyText([b])])).join('\n\n')
+}
+
+/** Plain text as a description: a paragraph for each run between blank lines, line breaks kept, nothing read as markup. */
+export function textBody(text: string): DescBody {
+  const trimmed = text.trim()
+  return trimmed ? trimmed.split(/\n\s*\n/).map((chunk) => ({ type: 'p', children: [{ type: 'text', text: chunk }] })) : []
+}
