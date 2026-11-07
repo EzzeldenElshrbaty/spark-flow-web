@@ -1,7 +1,6 @@
-import clsx from 'clsx'
 import { Building2, CalendarDays, Layers, Link2, Pencil, Plus, UserRound, Archive } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router'
+import { useParams } from 'react-router'
 import { useArchiveProject, usePhases, useProjectSummary, useRestoreProject, useTeams } from '@/api/projects'
 import { useSprints, useTickets } from '@/api/tickets'
 import type { ProjectStatus } from '@/api/types'
@@ -15,11 +14,12 @@ import { RecordActionBarSpacer, RecordHeader, type RecordAction, type RecordMeta
 import { StageProgress } from '@/components/ui/StageProgress'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { formatDate } from '@/lib/format'
-import { paths, projectTabs, type ProjectTab } from '@/lib/paths'
+import { paths, type ProjectTab } from '@/lib/paths'
 import { usePermission } from '@/lib/usePermission'
 import { NotFound } from '@/pages/NotFound'
 import { OverviewTab } from './OverviewTab'
 import { PhasesSheet } from './PhasesSheet'
+import { ProjectTabs } from './ProjectTabs'
 import { ProjectSheet } from './ProjectSheet'
 import { stagesOf } from './phases'
 import { TaskSheet } from './TaskSheet'
@@ -35,7 +35,6 @@ const statusBadge: Record<ProjectStatus, [string, BadgeTone]> = {
   onHold: ['On hold', 'warning'],
   delivered: ['Delivered', 'success'],
 }
-const tabLabels: Record<ProjectTab, string> = { overview: 'Overview', tasks: 'Tasks', chat: 'Chat', time: 'Time', history: 'History', files: 'Files' }
 
 const initials = (name: string) =>
   name
@@ -52,27 +51,6 @@ const safeLink = (url: string) => {
   } catch {
     return null
   }
-}
-
-function Tabs({ ws, projectKey, tab }: { ws: string; projectKey: string; tab: ProjectTab }) {
-  return (
-    <nav className="mb-5 flex gap-1 overflow-x-auto border-b border-line" aria-label="Project">
-      {projectTabs.map((value) => (
-        <Link
-          key={value}
-          to={paths.project(ws, projectKey, value)}
-          aria-current={tab === value ? 'page' : undefined}
-          className={clsx(
-            'relative flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-medium transition-colors',
-            "after:absolute after:inset-x-2 after:-bottom-px after:h-0.5 after:rounded-full after:bg-brand-500 after:transition-transform after:duration-200 after:content-['']",
-            tab === value ? 'text-fg after:scale-x-100' : 'text-fg-muted after:scale-x-0 hover:text-fg',
-          )}
-        >
-          {tabLabels[value]}
-        </Link>
-      ))}
-    </nav>
-  )
 }
 
 function PageSkeleton() {
@@ -226,7 +204,7 @@ export function ProjectPage() {
         </div>
       ) : null}
 
-      <Tabs ws={ws} projectKey={project.key} tab={tab} />
+      <ProjectTabs ws={ws} projectKey={project.key} tab={tab} />
 
       {tab === 'overview' && <OverviewTab project={project} phases={phaseList} people={people} teams={teams} canEdit={canEdit} canPost={canPost} />}
       {tab === 'tasks' && <TasksTab project={project} people={people} phases={phaseList} />}
