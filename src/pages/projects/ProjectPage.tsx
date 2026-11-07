@@ -26,6 +26,7 @@ import { TaskSheet } from './TaskSheet'
 import { ChatTab } from './ChatTab'
 import { TasksTab } from './TasksTab'
 import { HistoryTab } from '@/pages/projects/HistoryTab'
+import { FilesTab } from '@/pages/projects/FilesTab'
 import { TimeTab } from './TimeTab'
 
 const statusBadge: Record<ProjectStatus, [string, BadgeTone]> = {
@@ -34,7 +35,7 @@ const statusBadge: Record<ProjectStatus, [string, BadgeTone]> = {
   onHold: ['On hold', 'warning'],
   delivered: ['Delivered', 'success'],
 }
-const tabLabels: Record<ProjectTab, string> = { overview: 'Overview', tasks: 'Tasks', chat: 'Chat', time: 'Time', history: 'History' }
+const tabLabels: Record<ProjectTab, string> = { overview: 'Overview', tasks: 'Tasks', chat: 'Chat', time: 'Time', history: 'History', files: 'Files' }
 
 const initials = (name: string) =>
   name
@@ -94,7 +95,7 @@ function PageSkeleton() {
   )
 }
 
-/** A project: header, phases bar, and its five tabs (Overview, Tasks, Chat, Time, History), each its own address. */
+/** A project: header, phases bar, and its six tabs (Overview, Tasks, Chat, Time, History, Files), each its own address. */
 export function ProjectPage() {
   const { ws = '', projectKey = '', tab: tabParam = '' } = useParams()
   const tab = tabParam as ProjectTab // the router only renders this page for a known tab
@@ -232,6 +233,7 @@ export function ProjectPage() {
       {tab === 'chat' && <ChatTab ws={ws} project={project} />}
       {tab === 'time' && <TimeTab project={project} people={people} />}
       {tab === 'history' && <HistoryTab project={project} people={people} phases={phaseList} />}
+      {tab === 'files' && <FilesTab ws={ws} project={project} users={people} />}
 
       <RecordActionBarSpacer />
 

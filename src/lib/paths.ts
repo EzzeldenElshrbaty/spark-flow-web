@@ -1,7 +1,7 @@
 import type { Channel, Project } from '@/api/types'
 
-export type ProjectTab = 'overview' | 'tasks' | 'chat' | 'time' | 'history'
-export const projectTabs: readonly ProjectTab[] = ['overview', 'tasks', 'chat', 'time', 'history']
+export type ProjectTab = 'overview' | 'tasks' | 'chat' | 'time' | 'history' | 'files'
+export const projectTabs: readonly ProjectTab[] = ['overview', 'tasks', 'chat', 'time', 'history', 'files']
 /** The Tasks tab's own address bar state. */
 export type TasksQuery = { view?: 'board' | 'list'; phase?: string; sprint?: string }
 

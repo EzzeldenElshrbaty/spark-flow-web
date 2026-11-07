@@ -16,6 +16,7 @@ describe('paths', () => {
     expect(paths.channel('engineering', 'c-general')).toBe('/w/engineering/c/c-general')
     expect(paths.project('engineering', 'NEX')).toBe('/w/engineering/p/NEX/overview')
     expect(paths.project('engineering', 'NEX', 'tasks')).toBe('/w/engineering/p/NEX/tasks')
+    expect(paths.project('engineering', 'NEX', 'files')).toBe('/w/engineering/p/NEX/files')
     expect(paths.project('engineering', 'NEX', 'tasks', { view: 'list', phase: 'ph-nex-build' })).toBe('/w/engineering/p/NEX/tasks?view=list&phase=ph-nex-build')
     expect(paths.project('engineering', 'NEX', 'tasks', { sprint: undefined })).toBe('/w/engineering/p/NEX/tasks')
     expect(paths.projects('engineering')).toBe('/w/engineering/projects')
@@ -81,7 +82,7 @@ describe('validSavedPlace', () => {
   })
 
   it('accepts a known project on any of its tabs, and the Projects and My tasks pages', () => {
-    for (const tab of ['overview', 'tasks', 'chat', 'time']) expect(validSavedPlace(`/w/engineering/p/${key}/${tab}`, engineering, engineeringProjects)).toBe(true)
+    for (const tab of ['overview', 'tasks', 'chat', 'time', 'history', 'files']) expect(validSavedPlace(`/w/engineering/p/${key}/${tab}`, engineering, engineeringProjects)).toBe(true)
     expect(validSavedPlace('/w/engineering/projects', engineering, engineeringProjects)).toBe(true)
     expect(validSavedPlace('/w/engineering/tasks', engineering, engineeringProjects)).toBe(true)
     expect(validSavedPlace('/w/engineering/activity', engineering, engineeringProjects)).toBe(true)

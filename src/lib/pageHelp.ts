@@ -27,6 +27,7 @@ export const PAGE_HELP: PageHelp[] = [
   { path: 'p/:projectKey/chat', chapter: 'project-page', sections: ['Chat'] },
   { path: 'p/:projectKey/time', chapter: 'time' },
   { path: 'p/:projectKey/history', chapter: 'project-page', sections: ['History'] },
+  { path: 'p/:projectKey/files', chapter: 'project-page', sections: ['Files'] },
   { path: 'settings', chapter: 'settings', needs: 'settings.open' },
   { path: 'settings/users', chapter: 'users', needs: 'settings.manage' },
   { path: 'settings/roles', chapter: 'roles', needs: 'settings.manage' },
