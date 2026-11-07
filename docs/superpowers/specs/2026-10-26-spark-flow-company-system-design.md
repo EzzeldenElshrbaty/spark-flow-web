@@ -261,7 +261,7 @@ Spec `2026-11-07-project-files-and-task-attachments-design.md`. Tasks gain `desc
   - each exists and isn't deleted: `404`;
   - a file new to the task is mine (`403` "You can only attach files you uploaded.") and used nowhere yet (`400` "Upload that file again to attach it here.");
   - each is clean: `400` "{title} is still being checked." · "{title} was blocked.";
-  - the body names only the task's files and holds text and links only: `400` "The description couldn't be read. Try again.";
+  - the body names only the task's files and holds text and links only (a link may keep its `marks`): `400` "The description couldn't be read. Try again.";
   - its text is at most 20,000 characters: `400` "Keep the description under 20,000 characters."
 - A file taken off a task leaves its description; one nothing else holds is deleted with its bytes. History logs `attachments` ("changed the files"); the audit log records `Files` (names before and after); `filesChanged { projectId }` goes out.
 - `GET /api/projects/:id/all-files?from=&type=&cursor=` → `{ items: { file, source }[], nextCursor }`: every file of the project once, from the first place the caller can open (Overview, task, comment or bug, chat; comment cards left out), newest first, 50 a page.

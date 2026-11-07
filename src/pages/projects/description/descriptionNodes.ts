@@ -1,23 +1,21 @@
 import { $findMatchingParent, $insertNodeToNearestRoot } from '@lexical/utils'
 import { $createParagraphNode, $getNodeByKey, $getRoot, $getSelection, $isRangeSelection, $isRootOrShadowRoot, type Klass, type LexicalNode } from 'lexical'
-import { $appendBlock, $blockOf, COMPOSER_NODES, EntityNode } from '@/pages/chat/composer/bodyEditor'
-import { appendInlines, type Block, type DescBody, type Inline } from '@/lib/messageBody'
+import { $appendBlock, $blockOf, COMPOSER_NODES, EntityNode, type InlineReader } from '@/pages/chat/composer/bodyEditor'
+import { autoInlines, type DescBody, type Inline, type Mark } from '@/lib/messageBody'
 import { $createFileNode, $isFileNode, FileNode, type DescFile } from './FileNode'
 
 /** The nodes the description editor knows: chat's formatting, no pills, and the task's files. */
 export const DESCRIPTION_NODES: Klass<LexicalNode>[] = [...COMPOSER_NODES.filter((node) => node !== EntityNode), FileNode]
 
-/** A description holds text and links only: a task key the chat would make a chip stays the text it is. */
-function plain(inlines: Inline[]): Inline[] {
-  const out: Inline[] = []
-  for (const n of inlines) appendInlines(out, [n.type === 'task' ? { type: 'text', text: n.key } : n])
-  return out
-}
-function plainBlock(b: Block): Block {
-  if (b.type === 'p') return { type: 'p', children: plain(b.children) }
-  if (b.type === 'quote') return { type: 'quote', children: b.children.map(plainBlock) }
-  if (b.type === 'code') return b
-  return { type: b.type, items: b.items.map(plain) }
+const link = (href: string, text: string, marks: Mark[]): Inline => (marks.length ? { type: 'link', href, text, marks } : { type: 'link', href, text })
+
+/**
+ * A description holds text and links only, and keeps their marks: a task key the chat would make a chip stays the
+ * text it is, and a web address typed in bold is a bold link.
+ */
+const DESCRIPTION_READER: InlineReader = {
+  text: (text, marks) => autoInlines(text, marks).map((n) => (n.type === 'task' ? { type: 'text', text: n.key, marks } : n.type === 'link' ? link(n.href, n.text, marks) : n)),
+  link,
 }
 
 /** What's in the editor, as a description: its blocks and, on lines of their own, its files. Empty lines left out. */
@@ -26,8 +24,8 @@ export function $descriptionFromEditor(): DescBody {
   for (const node of $getRoot().getChildren()) {
     if ($isFileNode(node)) body.push({ type: 'file', id: node.getFile().id })
     else {
-      const block = $blockOf(node)
-      if (block) body.push(plainBlock(block))
+      const block = $blockOf(node, DESCRIPTION_READER)
+      if (block) body.push(block)
     }
   }
   return body

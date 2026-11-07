@@ -13,6 +13,14 @@ const pdf = { id: 'a-1', title: 'flow.pdf', name: 'flow.pdf', mimeType: 'applica
 const png = { id: 'a-2', title: 'shot.png', name: 'shot.png', mimeType: 'image/png', size: 4096 } as Attachment
 
 describe('DescriptionView (spec 5.2)', () => {
+  it('a link shows its marks', () => {
+    const { container } = render(<DescriptionView body={[{ type: 'p', children: [{ type: 'link', href: 'https://a.b/', text: 'docs', marks: ['b'] }] }]} files={[]} onOpen={vi.fn()} />)
+    const strong = container.querySelector('a[href="https://a.b/"] strong')!
+    expect(strong.textContent).toBe('docs')
+    // Bold, in the link's own colour.
+    expect(strong.className).not.toMatch(/\btext-/)
+  })
+
   it('shows text with its formatting, lists, quotes and code blocks', () => {
     const body: DescBody = [
       { type: 'p', children: [text('one\ntwo '), text('b', ['b']), text('i', ['i']), text('u', ['u']), text('s', ['s']), text('c', ['code'])] },

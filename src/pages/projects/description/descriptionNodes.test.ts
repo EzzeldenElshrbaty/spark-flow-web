@@ -1,4 +1,5 @@
 import { createHeadlessEditor } from '@lexical/headless'
+import { $createLinkNode } from '@lexical/link'
 import { $createParagraphNode, $createTextNode, $getRoot } from 'lexical'
 import { describe, expect, it } from 'vitest'
 import type { DescBody } from '@/lib/messageBody'
@@ -34,6 +35,32 @@ describe('description ⇄ editor', () => {
 
   it('a task key stays plain text', () => {
     expect(through([{ type: 'p', children: [text('See NEX-101')] }])).toEqual([{ type: 'p', children: [text('See NEX-101')] }])
+  })
+
+  it('a bold task key stays bold text; a bold web address is a bold link, typed or made with Link', () => {
+    const bold = (t: string) => $createTextNode(t).toggleFormat('bold')
+    const ed = editor()
+    ed.update(() => {
+      const line = $createParagraphNode().append(bold('See NEX-101 at https://a.b/x'), $createTextNode(' or '), $createLinkNode('https://c.d/').append(bold('docs')))
+      $getRoot().clear().append(line)
+    }, { discrete: true })
+    const body = ed.getEditorState().read(() => $descriptionFromEditor())
+    expect(body).toEqual([{ type: 'p', children: [
+      text('See NEX-101 at ', ['b']),
+      { type: 'link', href: 'https://a.b/x', text: 'https://a.b/x', marks: ['b'] },
+      text(' or '),
+      { type: 'link', href: 'https://c.d/', text: 'docs', marks: ['b'] },
+    ] }])
+    // And back: the editor shows them as it had them.
+    expect(through(body)).toEqual(body)
+  })
+
+  it('a link only partly bold isn’t bold', () => {
+    const ed = editor()
+    ed.update(() => {
+      $getRoot().clear().append($createParagraphNode().append($createLinkNode('https://c.d/').append($createTextNode('do').toggleFormat('bold'), $createTextNode('cs'))))
+    }, { discrete: true })
+    expect(ed.getEditorState().read(() => $descriptionFromEditor())).toEqual([{ type: 'p', children: [{ type: 'link', href: 'https://c.d/', text: 'docs' }] }])
   })
 
   it('drops a file block whose file it doesn’t have', () => {

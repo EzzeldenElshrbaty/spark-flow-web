@@ -9,8 +9,11 @@ export type Mark = 'b' | 'i' | 'u' | 's' | 'code'
 
 export type Inline =
   | { type: 'text'; text: string; marks?: Mark[] }
-  /** `noPreview`: its author removed the link's preview card (spec 6.3); set on the message's first link only. */
-  | { type: 'link'; href: string; text: string; noPreview?: true }
+  /**
+   * `noPreview`: its author removed the link's preview card (spec 6.3); set on the message's first link only. `marks`:
+   * a task description's link keeps its formatting (a bold address); the composer sends none.
+   */
+  | { type: 'link'; href: string; text: string; marks?: Mark[]; noPreview?: true }
   | { type: 'user'; id: string; name: string }
   | { type: 'all' } // @channel (spec 6.8)
   | { type: 'here' }
@@ -212,19 +215,26 @@ const isWebAddress = (href: unknown) => {
   }
 }
 
+/** An inline's marks, each once; none when it has none; null when they aren't marks. */
+function validMarks(marks: unknown): Mark[] | null {
+  if (marks === undefined) return []
+  if (!Array.isArray(marks) || !marks.every((m) => MARKS.includes(m as Mark))) return null
+  return [...new Set(marks as Mark[])]
+}
+
 function validInline(n: unknown): Inline | null {
   if (!isRecord(n)) return null
   switch (n.type) {
     case 'text': {
-      if (!isText(n.text)) return null
-      if (n.marks === undefined) return { type: 'text', text: n.text }
-      if (!Array.isArray(n.marks) || !n.marks.every((m) => MARKS.includes(m as Mark))) return null
-      const marks = [...new Set(n.marks as Mark[])]
+      const marks = validMarks(n.marks)
+      if (!isText(n.text) || !marks) return null
       return marks.length ? { type: 'text', text: n.text, marks } : { type: 'text', text: n.text }
     }
-    case 'link':
-      if (!isWebAddress(n.href) || !isText(n.text, 2048)) return null
-      return n.noPreview === true ? { type: 'link', href: n.href as string, text: n.text, noPreview: true } : { type: 'link', href: n.href as string, text: n.text }
+    case 'link': {
+      const marks = validMarks(n.marks)
+      if (!isWebAddress(n.href) || !isText(n.text, 2048) || !marks) return null
+      return { type: 'link', href: n.href as string, text: n.text, ...(marks.length > 0 && { marks }), ...(n.noPreview === true && { noPreview: true }) }
+    }
     case 'user':
       return isText(n.id) && ID.test(n.id) && isText(n.name, 200) ? { type: 'user', id: n.id, name: n.name } : null
     case 'all':

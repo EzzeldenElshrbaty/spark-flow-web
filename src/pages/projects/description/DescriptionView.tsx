@@ -20,17 +20,22 @@ const WRAP: Record<Mark, (child: ReactNode) => ReactNode> = {
   code: (c) => <code className="rounded bg-surface-muted px-1 font-mono text-[13px]">{c}</code>,
 }
 
+/** In a link, bold keeps the link's colour. */
+const LINK_WRAP: Record<Mark, (child: ReactNode) => ReactNode> = { ...WRAP, b: (c) => <strong className="font-semibold">{c}</strong> }
+
+const marked = (text: string, marks: Mark[] = [], wrap = WRAP) => marks.reduce<ReactNode>((child, mark) => wrap[mark](child), text)
+
 function inlines(nodes: Inline[]): ReactNode[] {
   return nodes.map((n, i) => {
-    if (n.type === 'text') return <span key={i}>{(n.marks ?? []).reduce<ReactNode>((child, mark) => WRAP[mark](child), n.text)}</span>
+    if (n.type === 'text') return <span key={i}>{marked(n.text, n.marks)}</span>
     if (n.type === 'link') {
       const href = webHref(n.href)
       return href ? (
         <a key={i} href={href} target="_blank" rel="noopener noreferrer" className="text-accent underline">
-          {n.text}
+          {marked(n.text, n.marks, LINK_WRAP)}
         </a>
       ) : (
-        <span key={i}>{n.text}</span>
+        <span key={i}>{marked(n.text, n.marks)}</span>
       )
     }
     // A description holds text and links only; anything else reads as its text.

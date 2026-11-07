@@ -85,7 +85,7 @@ The date menu offers Today, Yesterday, Last week, Last month (each from local mi
 Every message and thread reply carries `body`: the text as structured rich text (spec §7). `content` stays the text as written (search, editing). The shapes are in `src/lib/messageBody.ts`:
 
 - Blocks: `p` (inlines), `quote` (blocks), `ul` / `ol` (items of inlines), `code` (text).
-- Inlines: `text` with optional `marks` (`b`, `i`, `u`, `s`, `code`), `link` (`href`, `text`; http and https only), `user` (`id`, `name` when written), `all`, `channel` (`id`, `name`), `task` (`key`), `project` (`key`).
+- Inlines: `text` with optional `marks` (`b`, `i`, `u`, `s`, `code`), `link` (`href`, `text`; http and https only; optional `marks` as text has, which only a task description's links carry, a bold address say), `user` (`id`, `name` when written), `all`, `channel` (`id`, `name`), `task` (`key`), `project` (`key`).
 
 Until the rich composer lands (feature 5), the server works `body` out from `content` on send, reply and edit, with the same rules as `parseBody` in that file (the composer's markdown: `*bold*`, `_italic_`, `~strike~`, `` `code` ``, ```` ``` ```` blocks, `> ` quotes, `- ` and `1. ` lists; mentions `@[Name](id)`, `@channel` (stored as `{ type: 'all' }`; `@all`, its first spelling, reads the same), `@here` (`{ type: 'here' }`, mention kind `here`), `@KEY`, `@KEY-1`; channels `#[name](id)`; bare task keys matching `[A-Z][A-Z0-9]+-\d+`). A deleted message has `body: []`.
 

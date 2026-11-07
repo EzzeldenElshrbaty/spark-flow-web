@@ -89,17 +89,35 @@ const FORMATS: [TextFormatType, Mark][] = [
 
 // ── Editor → body ────────────────────────────────────────────────────────
 
+/**
+ * How a run of formatted text and a link read as inlines. Chat's (the default) finds web addresses and task keys in
+ * the text and keeps a link's address and text only; a task description keeps marks (`descriptionNodes.ts`).
+ */
+export type InlineReader = {
+  text: (text: string, marks: Mark[]) => Inline[]
+  link: (href: string, text: string, marks: Mark[]) => Inline
+}
+const CHAT_READER: InlineReader = { text: autoInlines, link: (href, text) => ({ type: 'link', href, text }) }
+
+const marksOf = (node: TextNode): Mark[] => FORMATS.filter(([f]) => node.hasFormat(f)).map(([, m]) => m)
+
+/** The marks all of a link's text has. */
+function linkMarks(link: ElementNode): Mark[] {
+  const [first, ...rest] = link.getAllTextNodes()
+  return first ? marksOf(first).filter((m) => rest.every((t) => marksOf(t).includes(m))) : []
+}
+
 /** The inlines of an element's children: formatted text (with addresses and task keys found), links, pills, breaks. */
-function inlinesOf(element: ElementNode): Inline[] {
+function inlinesOf(element: ElementNode, read: InlineReader): Inline[] {
   const out: Inline[] = []
   for (const child of element.getChildren()) {
     if ($isEntityNode(child)) out.push(child.getEntity())
-    else if ($isTextNode(child)) appendInlines(out, autoInlines(child.getTextContent(), FORMATS.filter(([f]) => child.hasFormat(f)).map(([, m]) => m)))
+    else if ($isTextNode(child)) appendInlines(out, read.text(child.getTextContent(), marksOf(child)))
     else if ($isLineBreakNode(child)) appendInlines(out, [{ type: 'text', text: '\n' }])
     else if ($isLinkNode(child)) {
       const text = child.getTextContent()
-      if (text) out.push({ type: 'link', href: child.getURL(), text })
-    } else if ($isElementNode(child)) appendInlines(out, inlinesOf(child))
+      if (text) out.push(read.link(child.getURL(), text, linkMarks(child)))
+    } else if ($isElementNode(child)) appendInlines(out, inlinesOf(child, read))
   }
   return out
 }
@@ -107,33 +125,33 @@ function inlinesOf(element: ElementNode): Inline[] {
 const blank = (inlines: Inline[]) => inlines.every((n) => n.type === 'text' && !n.text.trim())
 
 /** The list's items, nested lists flattened into it (the body has one level). */
-function itemsOf(list: ListNode): Inline[][] {
+function itemsOf(list: ListNode, read: InlineReader): Inline[][] {
   const items: Inline[][] = []
   for (const item of list.getChildren()) {
     if (!$isListItemNode(item)) continue
     const nested = item.getChildren().find($isListNode)
-    if (nested) items.push(...itemsOf(nested))
-    else items.push(inlinesOf(item))
+    if (nested) items.push(...itemsOf(nested, read))
+    else items.push(inlinesOf(item, read))
   }
   return items.filter((i) => !blank(i))
 }
 
 /** One of the editor's top-level nodes as a block; null when it holds nothing (an empty paragraph or item). */
-export function $blockOf(node: LexicalNode): Block | null {
+export function $blockOf(node: LexicalNode, read: InlineReader = CHAT_READER): Block | null {
   if ($isCodeNode(node)) {
     const text = node.getTextContent()
     return text.trim() ? { type: 'code', text } : null
   }
   if ($isQuoteNode(node)) {
-    const inlines = inlinesOf(node)
+    const inlines = inlinesOf(node, read)
     return blank(inlines) ? null : { type: 'quote', children: [{ type: 'p', children: inlines }] }
   }
   if ($isListNode(node)) {
-    const items = itemsOf(node)
+    const items = itemsOf(node, read)
     return items.length ? { type: node.getListType() === 'number' ? 'ol' : 'ul', items } : null
   }
   if ($isElementNode(node)) {
-    const inlines = inlinesOf(node)
+    const inlines = inlinesOf(node, read)
     return blank(inlines) ? null : { type: 'p', children: inlines }
   }
   return null
@@ -164,7 +182,7 @@ function textNodes(text: string, marks: Mark[] = []): LexicalNode[] {
 function inlineNodes(inlines: Inline[]): LexicalNode[] {
   return inlines.flatMap((n): LexicalNode[] => {
     if (n.type === 'text') return textNodes(n.text, n.marks)
-    if (n.type === 'link') return [$createLinkNode(n.href).append($createTextNode(n.text))]
+    if (n.type === 'link') return [$createLinkNode(n.href).append(...textNodes(n.text, n.marks))]
     if (n.type === 'task') return [$createTextNode(n.key)]
     return [$createEntityNode(n)]
   })

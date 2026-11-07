@@ -170,6 +170,13 @@ describe('description body (task description)', () => {
     expect(validDescription(Array.from({ length: 2001 }, () => p(text('a'))), ids)).toBeNull()
   })
 
+  it('a link keeps its marks (a bold address); a link with an unknown mark is refused', () => {
+    const bold = { type: 'link', href: 'https://a.b', text: 'a.b', marks: ['b', 'i'] }
+    expect(validDescription([p(bold)], ids)).toEqual([p(bold)])
+    expect(validDescription([p({ ...bold, marks: ['blink'] })], ids)).toBeNull()
+    expect(validDescription([p({ ...bold, marks: [] })], ids)).toEqual([p({ type: 'link', href: 'https://a.b', text: 'a.b' })])
+  })
+
   it('chat bodies still refuse file blocks', () => {
     expect(validBody([file])).toBeNull()
   })
