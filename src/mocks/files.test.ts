@@ -151,3 +151,33 @@ describe('task files', () => {
     expect(await db.getFile(stored.attachmentId)).not.toBeNull()
   })
 })
+
+describe('uploading a task’s file', () => {
+  it('a task editor uploads with progress; the file is theirs until a task names it', async () => {
+    await api.users.viewAs('u-2')
+    const progress: number[] = []
+    const up = await api.files.uploadForTask('p-nex', file('flow.pdf', ['%PDF-1.4 flow']), { onProgress: (p) => progress.push(p) })
+    expect(up).toMatchObject({ uploadedBy: 'u-2', scanStatus: 'clean', name: 'flow.pdf' })
+    expect(progress).toEqual([0.25, 0.5, 0.75, 1])
+    expect((await api.files.url(up.id)).startsWith('blob:')).toBe(true)
+    await api.users.viewAs('u-3')
+    await expect(api.files.url(up.id)).rejects.toMatchObject({ status: 404 })
+  })
+
+  it('only someone who edits the project’s tasks, on a project not archived', async () => {
+    await api.users.viewAs('u-3')
+    await expect(api.files.uploadForTask('p-nex', file('a.pdf', ['%PDF-1.4 a']))).rejects.toMatchObject({ status: 403 })
+    await api.users.viewAs('u-1')
+    await api.projects.archive('p-sel', 'Lost')
+    await expect(api.files.uploadForTask('p-sel', file('a.pdf', ['%PDF-1.4 a']))).rejects.toMatchObject({ status: 400 })
+  })
+
+  it('a cancelled or empty upload stores nothing', async () => {
+    const count = (await db.read()).attachments.length
+    const controller = new AbortController()
+    controller.abort()
+    await expect(api.files.uploadForTask('p-nex', file('a.pdf', ['%PDF-1.4 a']), { signal: controller.signal })).rejects.toMatchObject({ name: 'AbortError' })
+    await expect(api.files.uploadForTask('p-nex', file('e.pdf', []))).rejects.toMatchObject({ status: 400, detail: 'That file is empty.' })
+    expect((await db.read()).attachments).toHaveLength(count)
+  })
+})

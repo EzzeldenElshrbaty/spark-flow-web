@@ -235,6 +235,7 @@ const NOT_RECORDED: Record<string, string> = {
   'files.url': 'a read that previews use too; the page records a download through audit.noteDownload',
   'files.list': READ,
   'files.uploadForChat': `${MESSAGE}; a chat file goes out in a message`,
+  'files.uploadForTask': `${MESSAGE}; a task's file is recorded when the task that names it is saved`,
   'files.inChannel': READ,
   'files.shareable': READ,
   'files.details': READ,

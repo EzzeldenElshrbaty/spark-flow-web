@@ -987,6 +987,11 @@ export interface Api {
      */
     /** `snippet`: the file is a text snippet in that language (spec 6.9); its title is its name without .txt. */
     uploadForChat(channelId: string, file: UploadFile, options?: UploadOptions & { snippet?: { language: CodeLanguage } }): Promise<Attachment>
+    /**
+     * Uploads a file for a task of `projectId` before the task is saved, in the same three steps: whoever edits the
+     * project's tasks, while it isn't archived. It's the uploader's alone until a task names it in `attachmentIds`.
+     */
+    uploadForTask(projectId: string, file: UploadFile, options?: UploadOptions): Promise<Attachment>
     /** The files in a channel's messages and replies, newest first, 50 at a time (spec 6.1 Files tab). */
     inChannel(channelId: string, filter: ChannelFileFilter): Promise<Page<ChannelFile>>
     /**

@@ -1,4 +1,4 @@
-import type { Api, Attachment, ChatMessage, FileDetails, ProjectFile, ShareableFile, StoredFile } from '@/api/types'
+import type { Api, Attachment, ChatMessage, FileDetails, ProjectFile, ShareableFile, StoredFile, UploadFile, UploadOptions } from '@/api/types'
 import { fileDescriptionError, fileTitleError } from '@/lib/fileDetails'
 import { isAcceptedFile, maxFileMb } from '@/lib/fileTypes'
 import { checkCanWrite, findChannel, postMessage, readableChannel } from './chat'
@@ -169,6 +169,32 @@ const throwIfCancelled = (signal?: AbortSignal) => {
 }
 
 export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'] {
+  /**
+   * The bytes of a file nothing names yet (spec §8 upload-url, PUT, complete): saved in steps as the browser reports
+   * them, then its record, after `recheck` passes on the data the write sees. Only its uploader may use it until a
+   * message or a task names it.
+   */
+  const uploadUnlinked = async (file: UploadFile, uploaderId: string, { onProgress, signal }: UploadOptions, snippet: Attachment['snippet'], recheck: (data: DbData) => void) => {
+    throwIfCancelled(signal)
+    // The bytes go up in steps, as the browser reports them.
+    for (const step of [0.25, 0.5, 0.75]) {
+      onProgress?.(step)
+      await delay()
+      throwIfCancelled(signal)
+    }
+    const record = fileRecord(file, uploaderId, now().toISOString(), snippet)
+    // complete: the prototype has no scanner, so a finished upload is clean.
+    const stored = await withSavedBytes(db, [[record.id, file]], () => {
+      throwIfCancelled(signal)
+      return db.update((data) => {
+        recheck(data)
+        data.attachments.push(record)
+        return record
+      })
+    })
+    onProgress?.(1)
+    return clone(stored)
+  }
   return {
     /** A blob: address for a stored file. The page that shows it frees it with URL.revokeObjectURL when done. */
     async url(id) {
@@ -256,25 +282,15 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
       const me = checkCanWrite(before, findChannel(before, channelId))
       checkUpload(file)
       if (snippet) checkSnippet(file, snippet.language)
-      throwIfCancelled(signal)
-      // The bytes go up in steps, as the browser reports them.
-      for (const step of [0.25, 0.5, 0.75]) {
-        onProgress?.(step)
-        await delay()
-        throwIfCancelled(signal)
-      }
-      const record = fileRecord(file, me.id, now().toISOString(), snippet ? { language: snippet.language } : null)
-      // complete: the prototype has no scanner, so a finished upload is clean.
-      const stored = await withSavedBytes(db, [[record.id, file]], () => {
-        throwIfCancelled(signal)
-        return db.update((data) => {
-          checkCanWrite(data, findChannel(data, channelId))
-          data.attachments.push(record)
-          return record
-        })
-      })
-      onProgress?.(1)
-      return clone(stored)
+      return uploadUnlinked(file, me.id, { onProgress, signal }, snippet ? { language: snippet.language } : null, (data) => checkCanWrite(data, findChannel(data, channelId)))
+    },
+    async uploadForTask(projectId, file, { onProgress, signal } = {}) {
+      await delay()
+      // upload-url with a project: whoever edits its tasks, while it isn't archived.
+      const before = await db.read()
+      const me = requireCan(before, 'task.manage', openProject(before, projectId))
+      checkUpload(file)
+      return uploadUnlinked(file, me.id, { onProgress, signal }, null, (data) => requireCan(data, 'task.manage', openProject(data, projectId)))
     },
     async inChannel(channelId, { type, from, since, folderId, cursor }) {
       await delay()

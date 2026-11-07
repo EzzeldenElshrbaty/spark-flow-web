@@ -1,4 +1,4 @@
-import type { Api, AttendanceQuery, AuditFilter, ChatTarget, ProblemDetails } from '@/api/types'
+import type { Api, AttendanceQuery, AuditFilter, ChatTarget, ProblemDetails, UploadFile, UploadOptions } from '@/api/types'
 import { apiUrl } from '@/lib/api'
 import { ApiError } from '@/lib/apiError'
 
@@ -108,6 +108,18 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
       body === undefined ? { method } : { method, body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } },
       fetchFn,
     )
+  /**
+   * A file in three steps (spec §8): an upload link for the bytes (`where`: a channel, or a project for a task's file;
+   * `extra`: a snippet's language), the bytes straight to storage, then complete (type check, scan).
+   */
+  const uploadInSteps = async (where: { channelId: string } | { projectId: string }, file: UploadFile, { onProgress, signal }: UploadOptions, extra = {}) => {
+    const json = (method: string, path: string, body?: unknown) =>
+      request<never>(path, body === undefined ? { method, signal } : { method, signal, body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } }, fetchFn)
+    const ask = { ...where, name: file.name, size: file.size, mimeType: file.type || 'application/octet-stream', ...extra }
+    const { file: created, uploadUrl } = (await json('POST', '/api/files/upload-url', ask)) as { file: { id: string }; uploadUrl: string }
+    await putBytes(uploadUrl, file, makeXhr, onProgress, signal)
+    return json('POST', `/api/files/${enc(created.id)}/complete`)
+  }
   return {
     workspaces: { list: () => get('/api/workspaces') },
     users: {
@@ -355,13 +367,8 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
       },
       removeFromProject: (projectId, fileId) => send('DELETE', `/api/projects/${enc(projectId)}/files/${enc(fileId)}`),
       // Three steps (spec §8): an upload link for the bytes, the bytes straight to storage, then complete (type check, scan).
-      uploadForChat: async (channelId, file, { onProgress, signal, snippet } = {}) => {
-        const json = (method: string, path: string, body?: unknown) =>
-          request<never>(path, body === undefined ? { method, signal } : { method, signal, body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } }, fetchFn)
-        const { file: created, uploadUrl } = await json('POST', '/api/files/upload-url', { channelId, name: file.name, size: file.size, mimeType: file.type || 'application/octet-stream', ...(snippet && { snippet }) }) as { file: { id: string }; uploadUrl: string }
-        await putBytes(uploadUrl, file, makeXhr, onProgress, signal)
-        return json('POST', `/api/files/${enc(created.id)}/complete`)
-      },
+      uploadForChat: (channelId, file, { snippet, ...options } = {}) => uploadInSteps({ channelId }, file, options, snippet && { snippet }),
+      uploadForTask: (projectId, file, options = {}) => uploadInSteps({ projectId }, file, options),
       shareable: (workspaceId, q) => get(`/api/workspaces/${enc(workspaceId)}/files${query({ q })}`),
       inChannel: (channelId, filter) => get(`/api/channels/${enc(channelId)}/files${query(filter)}`),
       details: (id) => get(`/api/files/${enc(id)}/details`),

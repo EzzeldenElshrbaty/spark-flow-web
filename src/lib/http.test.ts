@@ -571,6 +571,21 @@ describe('uploading a chat file over HTTP (spec §8)', () => {
     expect(progress).toEqual([0.5, 1])
   })
 
+  it('a task file asks for its upload link with the project, then the same steps', async () => {
+    const calls: string[] = []
+    const fetchFn = (async (url: string, init?: RequestInit) => {
+      calls.push(`${init?.method} ${url.replace(/^.*?\/api/, '/api')} ${String(init?.body)}`)
+      const body = url.endsWith('/upload-url') ? { file: { id: 'a1' }, uploadUrl: 'https://storage.example/put/a1' } : { id: 'a1' }
+      return new Response(JSON.stringify(body), { status: 200 })
+    }) as typeof fetch
+    const xhr = fakeXhr()
+    const api = createHttpApi(fetchFn, xhr.make)
+    const blob = Object.assign(new Blob(['%PDF-1.4'], { type: 'application/pdf' }), { name: 'flow.pdf' })
+    await api.files.uploadForTask('p-nex', blob)
+    expect(calls).toEqual(['POST /api/files/upload-url {"projectId":"p-nex","name":"flow.pdf","size":8,"mimeType":"application/pdf"}', 'POST /api/files/a1/complete undefined'])
+    expect(xhr.sent.map((c) => c.method)).toEqual(['PUT'])
+  })
+
   it('a snippet sends its language with the upload link request (spec 6.9)', async () => {
     const calls: string[] = []
     const fetchFn = (async (url: string, init?: RequestInit) => {
