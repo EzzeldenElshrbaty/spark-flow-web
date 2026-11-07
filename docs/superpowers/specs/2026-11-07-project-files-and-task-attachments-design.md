@@ -27,7 +27,7 @@ Answers given in chat:
 | When a task's file uploads | **Upload first, link on save** (as chat): picking a file uploads it at once as a file only its uploader can see; Save sends the ids | Files sent with Save in one multipart request (as comments): no progress, no picture in the editor before saving, a slow Save |
 | The description's format | **The chat body format** (`lib/messageBody.ts`) plus a **file block**: paragraphs, quote, lists, code block; bold, italic, underline, strikethrough, inline code, links | Markdown text (parsed on every read, ambiguous); HTML (never rendered as HTML in Flow) |
 | Mentions in the description | **None for now**: text and links only | People and task mentions (they'd need notification rules for descriptions) |
-| Old descriptions | **One paragraph per line**, as plain text: nothing changes meaning | Parsing them as markdown (`*`, `_`, `` ` `` in old text would turn into formatting) |
+| Old descriptions | **Plain text paragraphs**: split at blank lines, line breaks kept, no formatting: nothing changes meaning | Parsing them as markdown (`*`, `_`, `` ` `` in old text would turn into formatting) |
 | The plain `description` | **Kept, worked out by the server** from the body on every save, for search, CSV, audit and old readers | Dropping it (every reader changes at once) |
 | The editor | **A new description editor** in the project pages' look (lucide icons, `components/ui` tokens), reusing chat's Lexical nodes, conversions and markdown shortcuts | Reusing the chat composer (chat's `.sf` look and font, Enter sends, drafts, slash commands) |
 | Files tab source of truth | **The server gathers** a project's files from every place (`files.inProject`) | The page joining five queries (no paging, no access rule in one place) |
@@ -39,13 +39,16 @@ Answers given in chat:
   - `validDescription(value, fileIds)`: chat's block and length rules (`MAX_BLOCKS`, `MAX_NODES`, `MAX_TEXT`, links
     http(s) only and ≤ 2,048), plus: inlines are `text` and `link` only; file blocks sit at the top level only and name
     one of `fileIds`. Chat's `validBody` keeps refusing file blocks.
-  - `descriptionText(body)`: the plain text, one block per line; a file block adds nothing.
-  - `textBody(text)`: one paragraph per line, plain text inlines only (`''` → `[]`).
+  - `descriptionText(body)`: the plain text, blocks separated by a blank line; a file block adds nothing. So
+    `textBody(descriptionText(b))` keeps the paragraphs of a plain body.
+  - `textBody(text)`: paragraphs split at blank lines, single line breaks kept inside them, plain text inlines only
+    (blank text → `[]`).
 - `Ticket` gains:
   - `descriptionBody: DescBody`: the description as written.
   - `attachmentIds: string[]`: the task's files, in the order they were added.
   - `description: string` stays, always `descriptionText(descriptionBody)`; clients never send it.
-- `NewTicket`: `descriptionBody: DescBody` and `attachmentIds?: string[]` in place of `description`.
+- `NewTicket`: `descriptionBody?: DescBody` (default `[]`) and `attachmentIds?: string[]` (default `[]`) in place of
+  `description`.
 - `TicketPatch`: `descriptionBody?` and `attachmentIds?` (the whole new list) in place of `description`.
 - `TaskView` gains `attachments: Attachment[]`: the task's files in `attachmentIds` order, deleted ones left out.
 - `ProjectFileSource = { kind: 'overview' } | { kind: 'task'; taskKey: string } | { kind: 'comment'; taskKey: string;
@@ -53,7 +56,7 @@ Answers given in chat:
 - `ProjectFileRow = { file: Attachment; source: ProjectFileSource }`; `ProjectFileFilter = { from?: ProjectFileSource['kind'];
   type?: FileKind; cursor?: string }`.
 - **DB v31** (`migrations.ts` step 30 → 31, with a test): every ticket gets `attachmentIds: []` and
-  `descriptionBody = textBody(description)`. The seed builds its tickets the same way; one seed task gets an attachment
+  `descriptionBody = textBody(description)`, then `description = descriptionText(descriptionBody)`. The seed builds its tickets the same way; one seed task gets an attachment
   and a formatted description so the feature shows in the demo. An import without these fields is migrated like the
   store.
 
@@ -247,7 +250,7 @@ One branch, `feat/task-files`, cut from `dev`; each slice planned in the plan fi
 - Tasks: `POST /api/projects/:id/tasks` and `PATCH /api/tasks/:key` take `descriptionBody` (the `DescBody` JSON) and
   `attachmentIds`; `description` becomes read-only, worked out from the body. Task reads carry `descriptionBody`,
   `attachmentIds` and `attachments` (the file records). The rules and sentences are §4.2.
-- Existing descriptions migrate to one paragraph per line.
+- Existing descriptions migrate to plain paragraphs (split at blank lines, line breaks kept).
 - `GET /api/projects/:id/all-files?from=&type=&cursor=` → `{ items: ProjectFileRow[], nextCursor }` (§4.4).
 - A task's files count in who may open a file (`GET /api/files/:id`, `/details`' `taskKeys`) and in "still used"
   before a file's bytes are thrown away; delete for good also removes the unused files of a project's or task's
