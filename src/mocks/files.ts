@@ -82,7 +82,7 @@ const onProject = (data: DbData, projectId: string) => {
   return Boolean(project) && can('collab.post', { userId: me.id, grants: grantsFor(data, me), project: { ...project!, archivedAt: null }, userTeamIds: me.teamIds })
 }
 
-/** Where a file is, as I may see it: messages and replies in channels I can read, task comments and project files. */
+/** Where a file is, as I may see it: messages and replies in channels I can read, tasks, task comments and project files. */
 function placesOf(data: DbData, fileId: string): Omit<FileDetails, 'file'> {
   const me = data.currentUserId
   const has = (row: { attachments: Attachment[] }) => row.attachments.some((a) => a.id === fileId)
@@ -90,11 +90,27 @@ function placesOf(data: DbData, fileId: string): Omit<FileDetails, 'file'> {
     ...data.messages.filter((m) => has(m) && canRead(data, m.channelId, me)).map((m) => ({ channelId: m.channelId, messageId: m.id, replyId: null, at: m.createdAt })),
     ...data.replies.filter((r) => has(r) && canRead(data, r.channelId, me)).map((r) => ({ channelId: r.channelId, messageId: r.messageId, replyId: r.id, at: r.createdAt })),
   ].sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0))
-  const taskKeys = data.comments
-    .filter((c) => c.attachmentIds.includes(fileId) && onProject(data, c.projectId))
-    .flatMap((c) => data.tickets.find((t) => t.id === c.taskId)?.key ?? [])
+  const taskKeys = [
+    ...data.tickets.filter((t) => t.attachmentIds.includes(fileId) && onProject(data, t.projectId)).map((t) => t.key),
+    ...data.comments
+      .filter((c) => c.attachmentIds.includes(fileId) && onProject(data, c.projectId))
+      .flatMap((c) => data.tickets.find((t) => t.id === c.taskId)?.key ?? []),
+  ]
   const projectIds = data.projectFiles.filter((f) => f.attachmentId === fileId && onProject(data, f.projectId)).map((f) => f.projectId)
   return { sharedIn, taskKeys: [...new Set(taskKeys)], projectIds: [...new Set(projectIds)] }
+}
+
+/**
+ * Whether anything still holds a file: a message or a reply (or one deleted within the Undo window), a project's files,
+ * a comment or a task. A file nothing holds goes, with its bytes, when the last place lets it go.
+ */
+export function fileInUse(data: DbData, fileId: string): boolean {
+  return (
+    everSent(data, fileId) ||
+    data.projectFiles.some((f) => f.attachmentId === fileId) ||
+    data.comments.some((c) => c.attachmentIds.includes(fileId)) ||
+    data.tickets.some((t) => t.attachmentIds.includes(fileId))
+  )
 }
 
 /** Whether a file was ever sent: in a message or a reply, or in one deleted within the Undo window. */
@@ -127,6 +143,7 @@ function requireUnfrozen(data: DbData, fileId: string) {
   const projectIds = [
     ...data.projectFiles.filter((f) => f.attachmentId === fileId).map((f) => f.projectId),
     ...data.comments.filter((c) => c.attachmentIds.includes(fileId)).map((c) => c.projectId),
+    ...data.tickets.filter((t) => t.attachmentIds.includes(fileId)).map((t) => t.projectId),
   ]
   for (const projectId of new Set(projectIds)) openProject(data, projectId)
   const channelIds = [...data.messages, ...data.replies].filter((row) => row.attachments.some((a) => a.id === fileId)).map((row) => row.channelId)
@@ -163,8 +180,11 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
       const places = placesOf(data, id)
       const unsent = file.uploadedBy === data.currentUserId && !everSent(data, id)
       if (!places.sharedIn.length && !unsent) {
-        // Otherwise it's a project's: a project file, or a comment's attachment, for people on the project.
-        const projectId = data.projectFiles.find((f) => f.attachmentId === id)?.projectId ?? data.comments.find((c) => c.attachmentIds.includes(id))?.projectId
+        // Otherwise it's a project's: a project file, a comment's or a task's, for people on the project.
+        const projectId =
+          data.projectFiles.find((f) => f.attachmentId === id)?.projectId ??
+          data.comments.find((c) => c.attachmentIds.includes(id))?.projectId ??
+          data.tickets.find((t) => t.attachmentIds.includes(id))?.projectId
         if (!projectId) throw notFound('File', id)
         // Reading isn't frozen: an archived project's files still open.
         requireCan(data, 'collab.post', { ...findProject(data, projectId), archivedAt: null })
@@ -220,9 +240,8 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
         const name = attachment?.name ?? 'a file'
         audit(data, { action: 'deleted', group: 'data', record: recordOf.file(attachment ?? { id: fileId, name }), detail: `Removed from ${project.name}` })
         data.projectFiles = data.projectFiles.filter((f) => f !== record)
-        // Its bytes go too, unless something else (a comment, a message) still points at them.
-        const inChat = [...data.messages, ...data.replies].some((row) => row.attachments.some((a) => a.id === fileId))
-        const used = inChat || data.projectFiles.some((f) => f.attachmentId === fileId) || data.comments.some((c) => c.attachmentIds.includes(fileId))
+        // Its bytes go too, unless something else (a comment, a task, a message) still points at them.
+        const used = fileInUse(data, fileId)
         if (!used) data.attachments = data.attachments.filter((a) => a.id !== fileId)
         logActivity(data, { projectId: project.id, taskKey: null, kind: 'file.removed', subject: name, changes: [] }, now().toISOString())
         return { orphan: used ? null : fileId }

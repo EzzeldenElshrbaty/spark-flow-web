@@ -5,6 +5,7 @@ import { seed } from './seed'
 import { projectPeopleIds } from '@/lib/projectPeople'
 import { parseMentions, parseTicketKeys } from './text'
 import { descriptionText } from '@/lib/messageBody'
+import { scopePdf } from './seedFiles'
 
 const now = new Date('2026-10-26T12:00:00Z') // a Monday
 const { data, files } = seed(now)
@@ -242,5 +243,15 @@ describe('seed task descriptions', () => {
       expect(t.description).toBe(descriptionText(t.descriptionBody))
     }
     expect(data.tickets.find((t) => t.key === 'NEX-105')!.descriptionBody.some((b) => b.type === 'ul')).toBe(true)
+  })
+})
+
+describe('seed task files', () => {
+  it('NEX-101 has one file, uploaded by Nour, shown in its description', () => {
+    const t = data.tickets.find((x) => x.key === 'NEX-101')!
+    expect(t.attachmentIds).toEqual(['a-nex-101-flow'])
+    expect(data.attachments.find((a) => a.id === 'a-nex-101-flow')).toMatchObject({ name: 'token-rotation.pdf', mimeType: 'application/pdf', uploadedBy: 'u-2' })
+    expect(files['a-nex-101-flow']).toEqual({ mimeType: 'application/pdf', base64: scopePdf })
+    expect(t.descriptionBody).toContainEqual({ type: 'file', id: 'a-nex-101-flow' })
   })
 })

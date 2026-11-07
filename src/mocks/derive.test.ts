@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Phase, Project, Rate, Ticket, TimeEntry } from '@/api/types'
+import type { Attachment, Phase, Project, Rate, Ticket, TimeEntry } from '@/api/types'
 import { entryHours, isOverdue, loggedHours, summarize, taskView } from './derive'
 import { ALL_PERMISSIONS, BUILT_IN_ROLES } from '@/lib/permissions'
 
@@ -108,5 +108,14 @@ describe('done follows the column type', () => {
     expect(view.category).toBe('inProgress')
     expect(view.overdue).toBe(true)
     expect(summarize(p, data({ tickets: [t] }), now, { userId: 'u-1', grants: ALL_PERMISSIONS }).progress).toBe(0)
+  })
+})
+
+describe('a task’s files', () => {
+  it('follow its list, leaving out deleted and missing ones', () => {
+    const a = (id: string, deletedAt: string | null = null) => ({ id, deletedAt }) as Attachment
+    const view = taskView(task({ attachmentIds: ['f-2', 'f-gone', 'f-1', 'f-del'] }), { timeEntries: [], attachments: [a('f-1'), a('f-2'), a('f-del', day(-1))] }, now)
+    expect(view.attachments.map((f) => f.id)).toEqual(['f-2', 'f-1'])
+    expect(taskView(task(), { timeEntries: [] }, now).attachments).toEqual([])
   })
 })

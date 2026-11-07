@@ -47,7 +47,7 @@ type RawReply = { id: string; messageId: string; senderId: string; createdAt: st
 type RawChannel = Omit<StoredChannel, 'lastMessageAt' | 'description' | 'whoCanPost' | 'isDefault'> & Partial<Pick<StoredChannel, 'description' | 'whoCanPost' | 'isDefault'>>
 type RawTicket = {
   /** `body`: a formatted description; otherwise the plain `description` becomes paragraphs. */
-  key: string; title: string; description: string; body?: DescBody; status: TicketStatus; priority: Priority
+  key: string; title: string; description: string; body?: DescBody; files?: string[]; status: TicketStatus; priority: Priority
   points: number | null; assigneeId: string | null; reporterId: string; sprintId: string | null
   createdAt: string; updatedAt: string; link?: { channelId: string; messageId: string }
   phaseId: string | null; type?: TaskType; dueAt?: string | null; estimate?: number | null
@@ -118,7 +118,7 @@ function buildTickets(raw: RawTicket[]): Ticket[] {
       title: t.title,
       descriptionBody,
       description: descriptionText(descriptionBody),
-      attachmentIds: [],
+      attachmentIds: t.files ?? [],
       status: t.status,
       priority: t.priority,
       storyPoints: t.points,
@@ -279,7 +279,8 @@ export function seed(now: Date): SeedResult {
   // ── Tickets (key numbers start at 101 per project) ──────────────────────
   const rawTickets: RawTicket[] = [
     // Nexus Core (agile: sprints on top of phases). Every ticket is created before the first message that names it.
-    { key: 'NEX-101', title: 'Rotate refresh tokens on POST /auth/refresh', description: 'Issue a new refresh token on every use. Keep the old one valid for 30 seconds so retries still work.', status: 'inReview', priority: 'high', points: 5, assigneeId: 'u-2', reporterId: 'u-1', sprintId: 's-nex-1', createdAt: ago(7, 4), updatedAt: ago(0, 6), phaseId: 'ph-nex-build', dueAt: ago(-2), estimate: 12 },
+    { key: 'NEX-101', title: 'Rotate refresh tokens on POST /auth/refresh', description: 'Issue a new refresh token on every use. Keep the old one valid for 30 seconds so retries still work.',
+      body: [...textBody('Issue a new refresh token on every use. Keep the old one valid for 30 seconds so retries still work.'), { type: 'file', id: 'a-nex-101-flow' }], files: ['a-nex-101-flow'], status: 'inReview', priority: 'high', points: 5, assigneeId: 'u-2', reporterId: 'u-1', sprintId: 's-nex-1', createdAt: ago(7, 4), updatedAt: ago(0, 6), phaseId: 'ph-nex-build', dueAt: ago(-2), estimate: 12 },
     { key: 'NEX-102', title: 'Return 429 with Retry-After from /v2/search', description: 'Limit each API key to 60 requests per minute. Send Retry-After in seconds.', status: 'todo', priority: 'medium', points: 3, assigneeId: 'u-2', reporterId: 'u-1', sprintId: 's-nex-1', createdAt: ago(6, 1), updatedAt: ago(1, 19), phaseId: 'ph-nex-build', dueAt: ago(-4), estimate: 6 },
     { key: 'NEX-103', title: 'Fix duplicate rows in GET /v2/invoices at page size 100', description: 'The last row of page 1 shows again as the first row of page 2. Compare the cursor with > instead of >=.', status: 'done', priority: 'urgent', points: 2, assigneeId: 'u-2', reporterId: 'u-5', sprintId: 's-nex-1', createdAt: ago(7, 3), updatedAt: ago(1, 18), phaseId: 'ph-nex-build', type: 'bug', dueAt: ago(2), estimate: 3 },
     { key: 'NEX-104', title: 'Add an index on messages (channel_id, created_at)', description: 'Channels with more than 50,000 messages take 1.8 s at p95. Target is under 100 ms.', status: 'done', priority: 'high', points: 2, assigneeId: 'u-6', reporterId: 'u-2', sprintId: 's-nex-1', createdAt: ago(5, 17), updatedAt: ago(4, 22), phaseId: 'ph-nex-build', estimate: 4 },
@@ -541,6 +542,7 @@ export function seed(now: Date): SeedResult {
     fileOf('a-shot-105', 'safari-focus-ring.png', 'image/png', screenshotPng, ago(0, 5), 'u-5'),
     fileOf('a-mob-scope', 'mobile-2.4.0-scope.pdf', 'application/pdf', scopePdf, ago(36), 'u-9'),
     fileOf('a-mob-checklist', 'release-2.4.0-checklist.txt', 'text/plain', checklistTxt, ago(3), 'u-4'),
+    fileOf('a-nex-101-flow', 'token-rotation.pdf', 'application/pdf', scopePdf, ago(7, 4), 'u-2'),
   ]
   const attachments = files.map((f) => f.attachment)
   const projectFiles: ProjectFile[] = [

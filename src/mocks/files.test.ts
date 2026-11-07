@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import type { Api, UploadFile } from '@/api/types'
+import type { Api, Attachment, UploadFile } from '@/api/types'
 import { createDb, type MockDb } from './db'
 import { createMockApi } from './index'
 import { latency } from './latency'
 import { createMockHub, type MockHub } from './realtime'
 import { seed } from './seed'
 import { createMemoryStore } from './store'
+import { fileInUse } from './files'
 
 let db: MockDb
 let api: Api
@@ -118,3 +119,35 @@ describe('file addresses', () => {
   })
 })
 
+
+describe('task files', () => {
+  it('a file is in use in a message, a reply, the Undo trash, a project file, a comment or a task; not a fresh unsent upload', async () => {
+    const fresh = await api.files.uploadForChat('c-general', file('x.pdf', ['%PDF-1.4 x']))
+    const data = structuredClone(await db.read())
+    const att = (id: string) => ({ id }) as Attachment
+    data.messages[0]!.attachments.push(att('f-msg'))
+    data.replies[0]!.attachments.push(att('f-reply'))
+    data.trash.push({ snapshot: { attachments: [att('f-trash')] } } as never)
+    for (const id of ['f-msg', 'f-reply', 'f-trash', 'a-mob-scope', 'a-shot-105', 'a-nex-101-flow']) expect(fileInUse(data, id), id).toBe(true)
+    expect(fileInUse(data, fresh.id)).toBe(false)
+  })
+
+  it('people on the task’s project see and open its file; others get 403 and 404', async () => {
+    await api.users.viewAs('u-3')
+    expect((await api.files.details('a-nex-101-flow')).taskKeys).toContain('NEX-101')
+    expect((await api.files.url('a-nex-101-flow')).startsWith('blob:')).toBe(true)
+    await api.users.viewAs('u-8')
+    await expect(api.files.url('a-nex-101-flow')).rejects.toMatchObject({ status: 403 })
+    await expect(api.files.details('a-nex-101-flow')).rejects.toMatchObject({ status: 404 })
+  })
+
+  it('removing a project file a task also has keeps the file and its bytes', async () => {
+    const stored = await api.files.upload('p-nex', file('spec.pdf', ['%PDF-1.4 spec']))
+    await db.update((data) => {
+      data.tickets.find((t) => t.key === 'NEX-102')!.attachmentIds.push(stored.attachmentId)
+    })
+    await api.files.removeFromProject('p-nex', stored.attachmentId)
+    expect((await db.read()).attachments.some((a) => a.id === stored.attachmentId)).toBe(true)
+    expect(await db.getFile(stored.attachmentId)).not.toBeNull()
+  })
+})

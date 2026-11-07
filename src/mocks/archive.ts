@@ -2,6 +2,7 @@ import type { Api, ArchivedRecord, ArchivedType, Project, StoredChannel } from '
 import { formatDate } from '@/lib/format'
 import { can } from '@/lib/permissions'
 import { audit, recordOf } from './audit'
+import { fileInUse } from './files'
 import type { DbData, MockDb } from './db'
 import { delay } from './latency'
 import type { MockHub } from './realtime'
@@ -37,6 +38,27 @@ function requireManage(data: DbData) {
 
 const nothing = { tasks: 0, files: 0, comments: 0, phases: 0, deliverables: 0 }
 
+/**
+ * The files that go when a project or a task is deleted for good: its project files (a project's), its tasks' files and
+ * its comments' files, unless something left behind (a message, a comment card in the chat, another project or task)
+ * still holds them.
+ */
+function filesThatGo(data: DbData, gone: { projectId: string } | { taskId: string }): string[] {
+  const inIt = (row: { projectId: string; taskId?: string; id?: string }) =>
+    'projectId' in gone ? row.projectId === gone.projectId : (row.taskId ?? row.id) === gone.taskId
+  const tickets = data.tickets.filter((t) => inIt({ projectId: t.projectId, id: t.id }))
+  const comments = data.comments.filter((c) => inIt(c))
+  const projectFiles = 'projectId' in gone ? data.projectFiles.filter((f) => f.projectId === gone.projectId) : []
+  const candidates = new Set([...projectFiles.map((f) => f.attachmentId), ...tickets.flatMap((t) => t.attachmentIds), ...comments.flatMap((c) => c.attachmentIds)])
+  const after: DbData = {
+    ...data,
+    tickets: data.tickets.filter((t) => !tickets.includes(t)),
+    comments: data.comments.filter((c) => !comments.includes(c)),
+    projectFiles: data.projectFiles.filter((f) => !projectFiles.includes(f)),
+  }
+  return [...candidates].filter((id) => data.attachments.some((a) => a.id === id) && !fileInUse(after, id))
+}
+
 /** Why the viewer can't restore a record, by the same rules as each type's own restore; null when they can. */
 function restoreBlockedFor(data: DbData) {
   const me = currentUser(data)
@@ -66,7 +88,7 @@ export function archivedIn(data: DbData, workspaceId: string): ArchivedRecord[] 
       deletableFrom: timed ? null : from(p.archivedAt!), keptBecause: timed ? 'time' : null,
       includes: {
         tasks: data.tickets.filter((t) => t.projectId === p.id).length,
-        files: data.projectFiles.filter((f) => f.projectId === p.id).length,
+        files: filesThatGo(data, { projectId: p.id }).length,
         comments: data.comments.filter((c) => c.projectId === p.id && !c.deletedAt).length,
         phases: data.phases.filter((ph) => ph.projectId === p.id).length,
         deliverables: data.deliverables.filter((d) => d.projectId === p.id).length,
@@ -80,8 +102,8 @@ export function archivedIn(data: DbData, workspaceId: string): ArchivedRecord[] 
       type: 'task', id: t.key, name: t.title, ref: t.key, projectId: t.projectId,
       archivedAt: t.archivedAt!, archivedBy: t.archivedBy ?? null, reason: t.archiveReason ?? null,
       deletableFrom: timed ? null : from(t.archivedAt!), keptBecause: timed ? 'time' : null,
-      // A comment's files stay: the project chat's card for that comment still shows them.
-      includes: { ...nothing, comments: data.comments.filter((c) => c.taskId === t.id && !c.deletedAt).length },
+      // A comment's files stay while the project chat's card for that comment still shows them.
+      includes: { ...nothing, files: filesThatGo(data, { taskId: t.id }).length, comments: data.comments.filter((c) => c.taskId === t.id && !c.deletedAt).length },
       restoreBlocked: blocked.task(projects.find((p) => p.id === t.projectId)!),
     })
   }
@@ -137,9 +159,9 @@ export function archiveApi(db: MockDb, hub: MockHub, now: () => Date = () => new
         if (row.deletableFrom && row.deletableFrom > now().toISOString()) throw badRequest(`It can be deleted for good from ${formatDate(row.deletableFrom)}.`)
         const { tasks, files, comments } = row.includes
         const detail = ['Deleted for good', tasks && plural(tasks, 'task'), files && plural(files, 'file'), comments && plural(comments, 'comment')].filter(Boolean).join(' · ')
-        let orphans: string[] = []
+        const orphans = filesThatGo(data, project ? { projectId: project.id } : { taskId: task!.id })
+        data.attachments = data.attachments.filter((a) => !orphans.includes(a.id))
         if (project) {
-          const fileIds = data.projectFiles.filter((f) => f.projectId === project.id).map((f) => f.attachmentId)
           audit(data, { action: 'deleted', group: 'status', record: recordOf.project(project), detail })
           data.tickets = data.tickets.filter((t) => t.projectId !== project.id)
           data.comments = data.comments.filter((c) => c.projectId !== project.id)
@@ -153,13 +175,6 @@ export function archiveApi(db: MockDb, hub: MockHub, now: () => Date = () => new
           // Its key is never used again: the log and old links still name its tasks.
           data.settings.retiredKeys = [...(data.settings.retiredKeys ?? []), project.key]
           // Its channel stays, archived, as a channel of its own: channels are restored only.
-          // A file goes with it unless a message, a comment or another project still uses it.
-          const used = (fileId: string) =>
-            [...data.messages, ...data.replies].some((row) => row.attachments.some((a) => a.id === fileId)) ||
-            data.projectFiles.some((f) => f.attachmentId === fileId) ||
-            data.comments.some((c) => c.attachmentIds.includes(fileId))
-          orphans = fileIds.filter((f) => !used(f))
-          data.attachments = data.attachments.filter((a) => !orphans.includes(a.id))
           return { projectId: project.id, orphans }
         }
         audit(data, { action: 'deleted', group: 'status', record: recordOf.task(task!), detail })

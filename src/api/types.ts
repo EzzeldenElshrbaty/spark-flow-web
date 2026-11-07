@@ -203,7 +203,8 @@ export type TaskRef = {
   projectKey: string; projectName: string; assigneeId: string | null
 }
 
-export type TaskView = Task & { loggedHours: number; overdue: boolean; category: StatusCategory }
+/** `attachments`: the task's files, in its order, leaving out deleted ones. */
+export type TaskView = Task & { loggedHours: number; overdue: boolean; category: StatusCategory; attachments: Attachment[] }
 
 // ── Time and cost ─────────────────────────────────────────────────────────
 /** Why a timer entry ended: Pause, Stop, the timer timeout, or Flow (the task went Done or was archived, the project archived, the person deactivated, the 12-hour limit). */

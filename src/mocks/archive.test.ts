@@ -6,6 +6,7 @@ import { latency } from './latency'
 import { createMockHub, type MockHub } from './realtime'
 import { seed } from './seed'
 import { createMemoryStore } from './store'
+import { fileRecord } from './files'
 
 // Archived records (Admin and help, slice 4): one list of archived projects, tasks and channels, the "Why?" given when
 // archiving, how long they're kept, and deleting for good, which never takes logged time or a channel.
@@ -162,6 +163,29 @@ describe('deleting for good (slice 4)', () => {
     expect(data.comments.some((c) => c.taskId === task.id)).toBe(false)
     expect(await lastEntry()).toMatchObject({ action: 'deleted', group: 'status', record: { type: 'task', id: task.key }, detail: 'Deleted for good · 1 comment' })
     expect(events).toContain('projectChanged')
+  })
+
+  it('a task takes its files and its comments’ files with it, unless something else still has them', async () => {
+    const task = await fresh()
+    const shared = await api.files.upload('p-nex', Object.assign(new Blob(['%PDF-1.4 x'], { type: 'application/pdf' }), { name: 'shared.pdf' }))
+    await db.update((data) => {
+      const at = clock.toISOString()
+      for (const id of ['f-task', 'f-comment']) data.attachments.push({ ...fileRecord({ name: `${id}.txt`, type: 'text/plain', size: 1 }, 'u-1', at), id })
+      data.tickets.find((t) => t.key === task.key)!.attachmentIds = ['f-task', shared.attachmentId]
+      data.comments.push({ id: 'cm-x', taskId: task.id, projectId: 'p-nex', authorId: 'u-1', kind: 'comment', body: 'x', attachmentIds: ['f-comment'], createdAt: at })
+    })
+    for (const id of ['f-task', 'f-comment']) await db.putFile(id, new Blob(['x']))
+    await api.tasks.archive(task.key, 'Parked')
+    expect((await api.archive.list('ws-eng')).items.find((r) => r.id === task.key)!.includes).toMatchObject({ files: 2, comments: 1 })
+    clock = new Date(clock.getTime() + 366 * DAY)
+    await api.archive.deleteForGood('task', task.key)
+    const ids = (await db.read()).attachments.map((a) => a.id)
+    expect(ids).not.toContain('f-task')
+    expect(ids).not.toContain('f-comment')
+    expect(ids).toContain(shared.attachmentId)
+    expect(await db.getFile('f-task')).toBeNull()
+    expect(await db.getFile('f-comment')).toBeNull()
+    expect(await db.getFile(shared.attachmentId)).not.toBeNull()
   })
 
   it('never a project or task with time logged on it, never a channel, never something not archived', async () => {

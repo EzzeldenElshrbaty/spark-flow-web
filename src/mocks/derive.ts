@@ -1,5 +1,5 @@
 import { rateAt } from '@/lib/rates'
-import type { Phase, Project, ProjectSummary, Rate, StatusCategory, TaskView, Ticket, TimeEntry } from '@/api/types'
+import type { Attachment, Phase, Project, ProjectSummary, Rate, StatusCategory, TaskView, Ticket, TimeEntry } from '@/api/types'
 import { categoryOf } from '@/lib/boardColumns'
 import { entryHours } from '@/lib/hours'
 import { can, type Permission } from '@/lib/permissions'
@@ -24,13 +24,15 @@ export function isOverdue(task: Ticket, logged: number, now: Date, category: Sta
   return late || over
 }
 
-type Source = { tickets: Ticket[]; timeEntries: TimeEntry[]; phases: Phase[]; rates: Rate[]; projects?: Project[] }
+type Source = { tickets: Ticket[]; timeEntries: TimeEntry[]; phases: Phase[]; rates: Rate[]; projects?: Project[]; attachments?: Attachment[] }
 
-/** A task as read: hours, overdue and its column's type, from its project's board. */
-export function taskView(task: Ticket, data: Pick<Source, 'timeEntries' | 'projects'>, now: Date, project?: Pick<Project, 'board'>): TaskView {
+/** A task as read: hours, overdue and its column's type, from its project's board; its files, in its order. */
+export function taskView(task: Ticket, data: Pick<Source, 'timeEntries' | 'projects' | 'attachments'>, now: Date, project?: Pick<Project, 'board'>): TaskView {
   const logged = loggedHours(task.id, data.timeEntries, now)
   const category = categoryOf(project ?? data.projects?.find((p) => p.id === task.projectId) ?? {}, task.status)
-  return { ...task, loggedHours: logged, overdue: isOverdue(task, logged, now, category), category }
+  const files = new Map((data.attachments ?? []).filter((a) => !a.deletedAt).map((a) => [a.id, a]))
+  const attachments = (task.attachmentIds ?? []).flatMap((id) => files.get(id) ?? [])
+  return { ...task, loggedHours: logged, overdue: isOverdue(task, logged, now, category), category, attachments }
 }
 
 const latest = (...isoTimes: string[]) => isoTimes.reduce((a, b) => (new Date(a).getTime() >= new Date(b).getTime() ? a : b))
