@@ -68,6 +68,32 @@ describe('DescriptionEditor (spec 5.1)', () => {
     expect(editor.textContent).toBe('x')
   })
 
+  it('a file dropped on the text or beside it goes up once, with where the caret was, and adds no text (spec §8)', async () => {
+    const { editor, onFiles } = await mount()
+    await focusEditor(editor)
+    await userEvent.keyboard('one')
+    const drop = (target: Element) => {
+      const data = new DataTransfer()
+      data.items.add(new File(['%PDF'], 'flow.pdf', { type: 'application/pdf' }))
+      target.dispatchEvent(new DragEvent('dragover', { dataTransfer: data, bubbles: true, cancelable: true }))
+      const event = new DragEvent('drop', { dataTransfer: data, bubbles: true, cancelable: true })
+      target.dispatchEvent(event)
+      return event
+    }
+    // On the text: the editor's own drop takes it, and the browser doesn't open the file.
+    const onText = drop(editor.querySelector('p')!)
+    await vi.waitFor(() => expect(onFiles).toHaveBeenCalledOnce())
+    expect(onText.defaultPrevented).toBe(true)
+    expect(onFiles.mock.calls[0]![0].map((f) => f.name)).toEqual(['flow.pdf'])
+    expect(onFiles.mock.calls[0]![1]).toEqual(expect.any(String))
+    expect(editor.textContent).toBe('one')
+    // On the toolbar, beside the text: the box takes it.
+    const beside = drop(screen.getByRole('toolbar'))
+    await vi.waitFor(() => expect(onFiles).toHaveBeenCalledTimes(2))
+    expect(beside.defaultPrevented).toBe(true)
+    expect(onFiles.mock.calls[1]![0].map((f) => f.name)).toEqual(['flow.pdf'])
+  })
+
   it('a file put in shows as a chip and is in the body; taking it out removes it', async () => {
     const { ref, last } = await mount()
     act(() => ref.current!.insertFile(pdf))
