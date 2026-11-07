@@ -1,6 +1,6 @@
 import { DEFAULT_WORK_HOURS } from '@/lib/workHours'
 import { DEFAULT_TIMEOUT_HOURS } from '@/lib/hours'
-import { parseBody } from '@/lib/messageBody'
+import { descriptionText, parseBody, textBody } from '@/lib/messageBody'
 import { DEFAULT_COLUMNS } from '@/lib/statuses'
 
 /**
@@ -26,6 +26,15 @@ const V24_ROLES = [
 ]
 
 export const migrations: Record<number, (doc: Record<string, unknown>) => void> = {
+  // 31: task files and formatted descriptions: a plain description becomes paragraphs, and a task has no files yet.
+  30: (doc) => {
+    if (!Array.isArray(doc.tickets)) return
+    for (const t of doc.tickets as Record<string, unknown>[]) {
+      t.descriptionBody = textBody(String(t.description ?? ''))
+      t.description = descriptionText(t.descriptionBody as ReturnType<typeof textBody>)
+      t.attachmentIds = []
+    }
+  },
   // 30: check-in goes (timer slice 3): a person's attendance days come from their timer entries.
   29: (doc) => {
     delete doc.checkIns

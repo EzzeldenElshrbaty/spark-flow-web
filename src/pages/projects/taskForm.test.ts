@@ -11,6 +11,16 @@ const same = {
   dueAt: null, estimateHours: 4, sprintId: null,
 }
 
+describe('changedFields: description and files', () => {
+  const body = [{ type: 'p' as const, children: [{ type: 'text' as const, text: 'a' }] }]
+  const opened = { ...task, descriptionBody: body, attachmentIds: ['f-1'] } as unknown as TaskView
+  it('an equal body or file list is no change; a different one is', () => {
+    expect(changedFields(opened, { descriptionBody: structuredClone(body), attachmentIds: ['f-1'] })).toEqual({})
+    const changed = [{ type: 'p' as const, children: [{ type: 'text' as const, text: 'b' }] }]
+    expect(changedFields(opened, { descriptionBody: changed, attachmentIds: ['f-1', 'f-2'] })).toEqual({ descriptionBody: changed, attachmentIds: ['f-1', 'f-2'] })
+  })
+})
+
 describe('changedFields', () => {
   it('only the fields that changed', () => {
     expect(changedFields(task, { ...same, dueAt: '2026-11-01T00:00:00.000Z' })).toEqual({ dueAt: '2026-11-01T00:00:00.000Z' })

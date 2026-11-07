@@ -26,7 +26,7 @@ beforeEach(() => {
 afterEach(() => hub.close())
 
 const newTicket = (over: Partial<NewTicket> = {}): NewTicket => ({
-  projectId: 'p-nex', title: 'Add rate limit', description: '', status: 'todo', priority: 'medium',
+  projectId: 'p-nex', title: 'Add rate limit', descriptionBody: [], status: 'todo', priority: 'medium',
   storyPoints: 3, assigneeId: null, sprintId: null, ...over,
 })
 

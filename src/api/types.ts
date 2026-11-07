@@ -1,6 +1,6 @@
 import type { FileKind } from '@/lib/fileTypes'
 import type { Permission } from '@/lib/permissions'
-import type { Body } from '@/lib/messageBody'
+import type { Body, DescBody } from '@/lib/messageBody'
 
 export type { Permission }
 
@@ -173,7 +173,11 @@ export type TicketStatus = string
 export type Priority = 'urgent' | 'high' | 'medium' | 'low'
 export type Ticket = {
   id: string; key: string; projectId: string            // key: 'NEX-101'
-  title: string; description: string
+  title: string
+  /** The description as formatted text and files (DescBody); `description` is its plain text, worked out on save. */
+  descriptionBody: DescBody; description: string
+  /** The task's files, in the order added (up to 20); each also counts as used by the task. */
+  attachmentIds: string[]
   status: TicketStatus; priority: Priority; storyPoints: number | null
   assigneeId: string | null; reporterId: string; sprintId: string | null
   rank: number                                           // order within a status column
@@ -607,14 +611,14 @@ export type ChannelPatch = Partial<Pick<Channel, 'name' | 'topic' | 'description
 
 export type NewTicket = Pick<
   Ticket,
-  'projectId' | 'title' | 'description' | 'status' | 'priority' | 'storyPoints' | 'assigneeId' | 'sprintId'
+  'projectId' | 'title' | 'status' | 'priority' | 'storyPoints' | 'assigneeId' | 'sprintId'
 > &
-  Partial<Pick<Ticket, 'linkedChannelId' | 'linkedMessageId' | 'phaseId' | 'type' | 'dueAt' | 'estimateHours'>>
+  Partial<Pick<Ticket, 'descriptionBody' | 'attachmentIds' | 'linkedChannelId' | 'linkedMessageId' | 'phaseId' | 'type' | 'dueAt' | 'estimateHours'>>
 
 export type TicketPatch = Partial<
   Pick<
     Ticket,
-    'title' | 'description' | 'status' | 'priority' | 'storyPoints' | 'assigneeId' | 'sprintId' | 'rank' | 'phaseId' | 'type' | 'dueAt' | 'estimateHours'
+    'title' | 'descriptionBody' | 'attachmentIds' | 'status' | 'priority' | 'storyPoints' | 'assigneeId' | 'sprintId' | 'rank' | 'phaseId' | 'type' | 'dueAt' | 'estimateHours'
   >
 >
 

@@ -4,7 +4,7 @@ import type { RealtimeEvent } from '@/lib/realtime'
 import { createMockHub, createMockRealtimeClient, type MockHub } from './realtime'
 
 const sampleTicket: Ticket = {
-  id: 't1', key: 'NEX-100', projectId: 'p1', title: 'Sample', description: '',
+  id: 't1', key: 'NEX-100', projectId: 'p1', title: 'Sample', description: '', descriptionBody: [], attachmentIds: [],
   status: 'todo', priority: 'medium', storyPoints: null,
   assigneeId: null, reporterId: 'u1', sprintId: null, rank: 1,
   linkedChannelId: null, linkedMessageId: null,

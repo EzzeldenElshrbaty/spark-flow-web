@@ -50,7 +50,7 @@ describe('getMockApi', () => {
     expect([...storage.map.keys()]).toEqual(['spark-flow.theme'])
     const dev = win.__sparkFlowDev as NonNullable<Window['__sparkFlowDev']>
     const ticket = await dev.createTicket({
-      projectId: 'p-nex', title: 'From dev', description: '', status: 'todo', priority: 'low', storyPoints: null, assigneeId: null, sprintId: null,
+      projectId: 'p-nex', title: 'From dev', descriptionBody: [], status: 'todo', priority: 'low', storyPoints: null, assigneeId: null, sprintId: null,
     })
     expect((await api.tickets.get(ticket.key)).title).toBe('From dev') // bound to the same db
   })

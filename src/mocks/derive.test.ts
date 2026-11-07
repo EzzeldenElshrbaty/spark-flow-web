@@ -8,7 +8,7 @@ const iso = (hoursFromNow: number) => new Date(now.getTime() + hoursFromNow * 3_
 const day = (daysFromNow: number) => iso(daysFromNow * 24)
 
 const task = (over: Partial<Ticket> = {}): Ticket => ({
-  id: 't-1', key: 'P-101', projectId: 'p-1', title: 'T', description: '', status: 'todo', priority: 'medium', storyPoints: null,
+  id: 't-1', key: 'P-101', projectId: 'p-1', title: 'T', description: '', descriptionBody: [], attachmentIds: [], status: 'todo', priority: 'medium', storyPoints: null,
   assigneeId: null, reporterId: 'u-1', sprintId: null, rank: 1000, linkedChannelId: null, linkedMessageId: null,
   createdAt: day(-10), updatedAt: day(-10), phaseId: null, type: 'task', dueAt: null, estimateHours: null, ...over,
 })

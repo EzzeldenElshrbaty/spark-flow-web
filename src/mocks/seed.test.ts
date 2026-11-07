@@ -4,6 +4,7 @@ import { DB_VERSION } from './db'
 import { seed } from './seed'
 import { projectPeopleIds } from '@/lib/projectPeople'
 import { parseMentions, parseTicketKeys } from './text'
+import { descriptionText } from '@/lib/messageBody'
 
 const now = new Date('2026-10-26T12:00:00Z') // a Monday
 const { data, files } = seed(now)
@@ -231,5 +232,15 @@ describe('seeded history', () => {
     expect(d.activity.every((a) => d.users.some((u) => u.id === a.actorId))).toBe(true)
     const times = d.activity.map((a) => a.at)
     expect(times).toEqual([...times].sort())
+  })
+})
+
+describe('seed task descriptions', () => {
+  it('every task has a file list and a plain description worked out from its body; NEX-105 is formatted', () => {
+    for (const t of data.tickets) {
+      expect(Array.isArray(t.attachmentIds)).toBe(true)
+      expect(t.description).toBe(descriptionText(t.descriptionBody))
+    }
+    expect(data.tickets.find((t) => t.key === 'NEX-105')!.descriptionBody.some((b) => b.type === 'ul')).toBe(true)
   })
 })

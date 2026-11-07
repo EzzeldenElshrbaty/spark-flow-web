@@ -30,7 +30,7 @@ afterEach(() => hub.close())
 const detail = (promise: Promise<unknown>) => promise.then(() => '', (e: { detail?: string }) => e.detail)
 const lastEntry = async () => (await db.read()).audit.at(-1)!
 /** A task on NEX with nothing logged on it. */
-const fresh = () => api.tasks.create({ projectId: 'p-nex', title: 'Spike: export to PDF', description: '', status: '', priority: 'low', storyPoints: null, assigneeId: null, sprintId: null })
+const fresh = () => api.tasks.create({ projectId: 'p-nex', title: 'Spike: export to PDF', descriptionBody: [], status: '', priority: 'low', storyPoints: null, assigneeId: null, sprintId: null })
 
 describe('archiving asks why (slice 4)', () => {
   it('a project, a task and a channel keep who archived them and why; restoring clears both', async () => {
@@ -182,7 +182,7 @@ describe('deleting for good (slice 4)', () => {
       workspaceId: 'ws-eng', name: 'Pilot', key: 'PIL', clientName: '', description: '', links: [], managerId: 'u-2', memberIds: [], teamIds: [],
       methodology: 'waterfall', startDate: '2026-11-01T00:00:00.000Z', dueDate: '2026-12-01T00:00:00.000Z',
     })
-    await api.tasks.create({ projectId: project.id, title: 'Kick-off', description: '', status: '', priority: 'low', storyPoints: null, assigneeId: null, sprintId: null })
+    await api.tasks.create({ projectId: project.id, title: 'Kick-off', descriptionBody: [], status: '', priority: 'low', storyPoints: null, assigneeId: null, sprintId: null })
     await api.deliverables.create({ projectId: project.id, title: 'Plan', phaseId: null, dueDate: '2026-11-10T00:00:00.000Z' })
     await api.files.upload(project.id, Object.assign(new Blob(['%PDF-1.4 x'], { type: 'application/pdf' }), { name: 'plan.pdf' }))
     await api.projects.archive(project.id, 'Pilot cancelled')

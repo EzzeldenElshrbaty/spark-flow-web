@@ -8,6 +8,7 @@ import { createMockHub, type MockHub } from './realtime'
 import { seed } from './seed'
 import { createMemoryStore } from './store'
 import { createTicket, updateTicket } from './tickets'
+import { textBody } from '@/lib/messageBody'
 
 let db: MockDb
 let api: Api
@@ -27,7 +28,7 @@ const latest = async () => (await mine()).at(-1)!
 describe('task history', () => {
   it('create logs task.created by the current person', async () => {
     await api.users.viewAs('u-2')
-    const t = await api.tasks.create({ projectId: 'p-nex', title: 'Rate limit', description: '', status: '', priority: 'medium', storyPoints: null, assigneeId: null, sprintId: null })
+    const t = await api.tasks.create({ projectId: 'p-nex', title: 'Rate limit', descriptionBody: [], status: '', priority: 'medium', storyPoints: null, assigneeId: null, sprintId: null })
     expect(await latest()).toMatchObject({ kind: 'task.created', taskKey: t.key, projectId: 'p-nex', actorId: 'u-2', changes: [] })
   })
 
@@ -35,7 +36,7 @@ describe('task history', () => {
     await api.users.viewAs('u-2')
     const before = (await db.read()).tickets.find((t) => t.key === 'NEX-101')!
     const count = (await mine()).length
-    await api.tasks.update('NEX-101', { status: 'done', priority: 'low', dueAt: '2026-11-05T00:00:00.000Z', description: 'New words' })
+    await api.tasks.update('NEX-101', { status: 'done', priority: 'low', dueAt: '2026-11-05T00:00:00.000Z', descriptionBody: textBody('New words') })
     const [moved, changed] = (await mine()).slice(count)
     expect(moved).toMatchObject({ kind: 'task.moved', taskKey: 'NEX-101', changes: [{ field: 'status', from: before.status, to: 'done', toLabel: 'Done' }] })
     expect(changed!.kind).toBe('task.changed')
@@ -71,7 +72,7 @@ describe('task history', () => {
     for (let i = 0; i < 3; i++) await updateTicket(db, hub, 'NEX-101', { title: `Title ${i}` })
     const forTask = await api.activity.forTask('NEX-101')
     expect(forTask[0]!.changes[0]).toMatchObject({ field: 'title', to: 'Title 2' })
-    for (let i = 0; i < 35; i++) await createTicket(db, hub, { projectId: 'p-nex', title: `T${i}`, description: '', status: '', priority: 'low', storyPoints: null, assigneeId: null, sprintId: null })
+    for (let i = 0; i < 35; i++) await createTicket(db, hub, { projectId: 'p-nex', title: `T${i}`, descriptionBody: [], status: '', priority: 'low', storyPoints: null, assigneeId: null, sprintId: null })
     const first = await api.activity.forProject('p-nex')
     expect(first.items).toHaveLength(30)
     expect(first.items[0]!.at >= first.items[29]!.at).toBe(true)

@@ -7,6 +7,7 @@ import { latency } from './latency'
 import { createMockHub, type MockHub } from './realtime'
 import { seed } from './seed'
 import { createMemoryStore } from './store'
+import { textBody } from '@/lib/messageBody'
 
 let db: MockDb
 let hub: MockHub
@@ -22,7 +23,7 @@ beforeEach(() => {
 afterEach(() => hub.close())
 
 const newTask = (over: Partial<NewTicket> = {}): NewTicket => ({
-  projectId: 'p-mob', title: 'Store screenshots', description: '6 screens for each store.', status: 'todo', priority: 'medium',
+  projectId: 'p-mob', title: 'Store screenshots', descriptionBody: textBody('6 screens for each store.'), status: 'todo', priority: 'medium',
   storyPoints: null, assigneeId: 'u-8', sprintId: null, phaseId: 'ph-mob-build', type: 'task', dueAt: '2026-10-28T12:00:00.000Z', estimateHours: 3, ...over,
 })
 
@@ -275,7 +276,7 @@ describe('write-path refusals', () => {
     await api.projects.update('p-nex', { managerId: 'u-1' })
     await api.users.viewAs('u-2')
     const staleApi = createMockApi({ ...db, read: async () => structuredClone(stale) }, hub, () => clock)
-    await expect(staleApi.tasks.create({ projectId: 'p-nex', title: 'Late', description: '', status: '', priority: 'medium', storyPoints: null, assigneeId: null, sprintId: null })).rejects.toMatchObject({ status: 403 })
+    await expect(staleApi.tasks.create({ projectId: 'p-nex', title: 'Late', descriptionBody: [], status: '', priority: 'medium', storyPoints: null, assigneeId: null, sprintId: null })).rejects.toMatchObject({ status: 403 })
   })
   it('a title that isn\'t text, or an unknown phase, is a 400 with a sentence', async () => {
     const api = apiAt()
@@ -317,3 +318,36 @@ describe('moveTo', () => {
   })
 })
 
+
+describe('task descriptions', () => {
+  const bold = [{ type: 'p' as const, children: [{ type: 'text' as const, text: 'Ship it', marks: ['b' as const] }] }]
+
+  it('a task keeps its formatted description and its plain text', async () => {
+    const api = apiAt()
+    await api.users.viewAs('u-4')
+    expect(await api.tasks.create(newTask({ descriptionBody: bold }))).toMatchObject({ descriptionBody: bold, description: 'Ship it' })
+    expect(await api.tasks.create(newTask({ descriptionBody: undefined }))).toMatchObject({ descriptionBody: [], description: '' })
+  })
+
+  it('refuses a description with mentions, or one too long', async () => {
+    const api = apiAt()
+    await api.users.viewAs('u-2')
+    const nex = { projectId: 'p-nex', phaseId: 'ph-nex-build', assigneeId: 'u-3' }
+    await expect(api.tasks.create(newTask({ ...nex, descriptionBody: [{ type: 'p', children: [{ type: 'user', id: 'u-3', name: 'M' }] }] as never }))).rejects.toMatchObject({
+      status: 400, message: "The description couldn't be read. Try again.",
+    })
+    await expect(api.tasks.create(newTask({ ...nex, descriptionBody: textBody('x'.repeat(20_001)) }))).rejects.toMatchObject({
+      status: 400, message: 'Keep the description under 20,000 characters.',
+    })
+  })
+
+  it('a formatting-only change is a description change in history', async () => {
+    const api = apiAt()
+    await api.users.viewAs('u-2')
+    const before = (await db.read()).tickets.find((t) => t.key === 'NEX-101')!
+    const n = (await db.read()).activity.length
+    await api.tasks.update('NEX-101', { descriptionBody: [{ type: 'p', children: [{ type: 'text', text: before.description, marks: ['b'] }] }] })
+    const lines = (await db.read()).activity.slice(n)
+    expect(lines.find((l) => l.kind === 'task.changed' && l.taskKey === 'NEX-101')?.changes).toContainEqual({ field: 'description', from: null, to: null })
+  })
+})

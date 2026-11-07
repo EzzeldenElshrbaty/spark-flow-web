@@ -10,7 +10,12 @@ export function changedFields(task: TaskView, fields: TicketPatch): TicketPatch 
   const was = task as Record<string, unknown>
   // The form keeps a due date as a day (midnight UTC); a stored one may carry a time, which is the same day.
   const same = (key: string, value: unknown) =>
-    key === 'dueAt' && typeof value === 'string' && typeof was.dueAt === 'string' ? value.slice(0, 10) === was.dueAt.slice(0, 10) : value === was[key]
+    key === 'dueAt' && typeof value === 'string' && typeof was.dueAt === 'string'
+      ? value.slice(0, 10) === was.dueAt.slice(0, 10)
+      : // A description and a file list are values: equal when they hold the same.
+        key === 'descriptionBody' || key === 'attachmentIds'
+        ? JSON.stringify(value) === JSON.stringify(was[key])
+        : value === was[key]
   return Object.fromEntries(Object.entries(fields).filter(([key, value]) => !same(key, value))) as TicketPatch
 }
 

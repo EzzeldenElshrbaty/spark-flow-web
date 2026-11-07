@@ -21,6 +21,7 @@ import { postTaskEvents } from './taskEvents'
 import { endEntry, stopTimersOn } from './timers'
 import { audit, changesBetween, recordOf } from './audit'
 import { archiveReason, setArchivedFields } from './archive'
+import { descriptionText, MAX_DESCRIPTION, validDescription } from '@/lib/messageBody'
 
 /** What the audit log records of a task's edit: everything but its place in a column; the column is "status". */
 const TASK_LOGGED = ['title', 'description', 'priority', 'storyPoints', 'assigneeId', 'sprintId', 'phaseId', 'type', 'dueAt', 'estimateHours'] as const
@@ -82,19 +83,25 @@ const EDITABLE_BY_ASSIGNEE = new Set(['status', 'rank'])
 
 /** The fields a task patch may carry (TicketPatch); anything else is refused. */
 const TASK_FIELDS = [
-  'title', 'description', 'status', 'priority', 'storyPoints', 'assigneeId', 'sprintId', 'rank', 'phaseId', 'type', 'dueAt', 'estimateHours',
+  'title', 'descriptionBody', 'status', 'priority', 'storyPoints', 'assigneeId', 'sprintId', 'rank', 'phaseId', 'type', 'dueAt', 'estimateHours',
 ] as const satisfies readonly (keyof TicketPatch)[]
 const PRIORITIES: readonly Priority[] = ['urgent', 'high', 'medium', 'low']
 const TYPES: readonly TaskType[] = ['task', 'bug']
 
 /**
  * The values of a new task or a patch. The assignee is one of the project's people, or the one the task already has
- * (someone taken off the project keeps their tasks until they're reassigned).
+ * (someone taken off the project keeps their tasks until they're reassigned). A description is replaced by its checked
+ * copy (unknown fields dropped); its files are the task's own.
  */
 function checkTaskInput(data: DbData, projectId: string, input: Partial<TicketPatch>, ticket?: Ticket) {
   const project = findProject(data, projectId)
   if (input.title !== undefined && !text(input.title, 'Title')) throw badRequest('Give the task a title.')
-  if (input.description !== undefined) text(input.description, 'Description')
+  if (input.descriptionBody !== undefined) {
+    const body = validDescription(input.descriptionBody, new Set(ticket?.attachmentIds ?? []))
+    if (!body) throw badRequest("The description couldn't be read. Try again.")
+    if (descriptionText(body).length > MAX_DESCRIPTION) throw badRequest('Keep the description under 20,000 characters.')
+    input.descriptionBody = body
+  }
   if (input.priority !== undefined && !PRIORITIES.includes(input.priority)) throw badRequest("That isn't a priority.")
   if (input.type !== undefined && !TYPES.includes(input.type)) throw badRequest("That isn't a task type.")
   if (input.assigneeId != null && input.assigneeId !== ticket?.assigneeId) {
@@ -148,8 +155,9 @@ export function tasksApi(db: MockDb, hub: MockHub, now: () => Date): Api['tasks'
   return {
     archive: (key, reason) => setArchived(key, true, reason),
     restore: (key) => setArchived(key, false),
-    async create(input) {
+    async create(given) {
       await delay()
+      const input = { ...given } // its description is swapped for the checked copy
       // Rights and values are checked in the write that creates it, on the data it sees.
       const created = await createTicket(db, hub, input, now, (data) => {
         const project = openProject(data, input.projectId)
@@ -229,7 +237,9 @@ export async function createTicket(db: MockDb, hub: MockHub, input: NewTicket, c
       key,
       projectId: project.id,
       title: input.title,
-      description: input.description,
+      descriptionBody: input.descriptionBody ?? [],
+      description: descriptionText(input.descriptionBody ?? []),
+      attachmentIds: [],
       status,
       priority: input.priority,
       storyPoints: input.storyPoints,
@@ -284,6 +294,7 @@ export async function updateTicket(
     for (const [field, value] of Object.entries(patch)) {
       if (value !== undefined) (ticket as Record<string, unknown>)[field] = value
     }
+    if (patch.descriptionBody !== undefined) ticket.description = descriptionText(ticket.descriptionBody)
     ticket.updatedAt = stamp(ticket.updatedAt)
     logTaskUpdate(data, before, ticket, now().toISOString())
     // Done (any Done-type column, whatever it's called): the timers running on it stop, as no more time goes on it.

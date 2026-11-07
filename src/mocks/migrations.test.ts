@@ -292,3 +292,12 @@ describe('29 → 30', () => {
     expect(out).toEqual({ version: 30, currentUserId: 'u-1', timeEntries: [{ id: 'te-1' }] })
   })
 })
+
+describe('30 → 31 (task files, formatted descriptions)', () => {
+  it('a plain description becomes paragraphs, and every task gets an empty file list', () => {
+    const p = (t: string) => ({ type: 'p', children: [{ type: 'text', text: t }] })
+    expect(migrate({ version: 30, tickets: [{ id: 't1', description: 'a\n\nb' }] }, 31)).toEqual({
+      version: 31, tickets: [{ id: 't1', description: 'a\n\nb', descriptionBody: [p('a'), p('b')], attachmentIds: [] }],
+    })
+  })
+})

@@ -258,7 +258,7 @@ describe('createHttpApi', () => {
     await api.deliverables.list('p1')
     await api.deliverables.create({ projectId: 'p1', phaseId: null, title: 'T', dueDate: 'd' })
     await api.deliverables.update('d1', { doneAt: 'x' })
-    await api.tasks.create({ projectId: 'p1', title: 'T', description: '', status: 'todo', priority: 'low', storyPoints: null, assigneeId: null, sprintId: null })
+    await api.tasks.create({ projectId: 'p1', title: 'T', descriptionBody: [], status: 'todo', priority: 'low', storyPoints: null, assigneeId: null, sprintId: null })
     await api.tasks.update('NEX-1', { status: 'done' })
     await api.teams.list('w1')
     await api.time.list('p1')

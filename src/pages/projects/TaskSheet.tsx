@@ -10,6 +10,7 @@ import { usePermission } from '@/lib/usePermission'
 import { byOrder } from './phases'
 import { assigneeOptions, savePatch } from './taskForm'
 import { columnsOf, startColumn } from '@/lib/boardColumns'
+import { descriptionText, textBody } from '@/lib/messageBody'
 
 const priorities: [Priority, string][] = [
   ['urgent', 'Urgent'],
@@ -32,11 +33,11 @@ type Values = {
 }
 
 /** What a new task starts from when it is made from somewhere else (a chat message). */
-export type TaskDraft = Pick<NewTicket, 'title' | 'description'> & Partial<Pick<NewTicket, 'linkedChannelId' | 'linkedMessageId' | 'assigneeId'>>
+export type TaskDraft = Pick<NewTicket, 'title' | 'descriptionBody'> & Partial<Pick<NewTicket, 'linkedChannelId' | 'linkedMessageId' | 'assigneeId'>>
 
 const valuesOf = (task: TaskView | undefined, phaseId: string | null, firstStatus: string, draft?: TaskDraft): Values => ({
   title: task?.title ?? draft?.title ?? '',
-  description: task?.description ?? draft?.description ?? '',
+  description: task?.description ?? descriptionText(draft?.descriptionBody ?? []),
   type: task?.type ?? 'task',
   phaseId: (task ? task.phaseId : phaseId) ?? '',
   status: task?.status ?? firstStatus,
@@ -99,7 +100,7 @@ export function TaskSheet({
     }
     const fields = {
       title: values.title.trim(),
-      description: values.description,
+      descriptionBody: textBody(values.description),
       type: values.type,
       phaseId: values.phaseId || null,
       status: values.status,

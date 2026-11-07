@@ -30,7 +30,7 @@ import { DEFAULT_TIMEOUT_HOURS } from '@/lib/hours'
 import { DEFAULT_WORK_HOURS } from '@/lib/workHours'
 import { mentionsFor } from './mentions'
 import { parseMentions, parseTicketKeys } from './text'
-import { parseBody } from '@/lib/messageBody'
+import { descriptionText, parseBody, textBody, type DescBody } from '@/lib/messageBody'
 import type { StoredMemberState } from './db'
 import { projectPeopleIds } from '@/lib/projectPeople'
 import { builtInRoles } from './roles'
@@ -46,7 +46,8 @@ type RawReply = { id: string; messageId: string; senderId: string; createdAt: st
 /** A seeded channel: its description and who can post default to none and everyone. */
 type RawChannel = Omit<StoredChannel, 'lastMessageAt' | 'description' | 'whoCanPost' | 'isDefault'> & Partial<Pick<StoredChannel, 'description' | 'whoCanPost' | 'isDefault'>>
 type RawTicket = {
-  key: string; title: string; description: string; status: TicketStatus; priority: Priority
+  /** `body`: a formatted description; otherwise the plain `description` becomes paragraphs. */
+  key: string; title: string; description: string; body?: DescBody; status: TicketStatus; priority: Priority
   points: number | null; assigneeId: string | null; reporterId: string; sprintId: string | null
   createdAt: string; updatedAt: string; link?: { channelId: string; messageId: string }
   phaseId: string | null; type?: TaskType; dueAt?: string | null; estimate?: number | null
@@ -109,12 +110,15 @@ function buildTickets(raw: RawTicket[]): Ticket[] {
     const column = `${projectKey}:${t.status}`
     const rank = ((columnSize.get(column) ?? 0) + 1) * 1000
     columnSize.set(column, rank / 1000)
+    const descriptionBody = t.body ?? textBody(t.description)
     return {
       id: `t-${t.key.toLowerCase()}`,
       key: t.key,
       projectId: `p-${projectKey.toLowerCase()}`,
       title: t.title,
-      description: t.description,
+      descriptionBody,
+      description: descriptionText(descriptionBody),
+      attachmentIds: [],
       status: t.status,
       priority: t.priority,
       storyPoints: t.points,
@@ -279,7 +283,11 @@ export function seed(now: Date): SeedResult {
     { key: 'NEX-102', title: 'Return 429 with Retry-After from /v2/search', description: 'Limit each API key to 60 requests per minute. Send Retry-After in seconds.', status: 'todo', priority: 'medium', points: 3, assigneeId: 'u-2', reporterId: 'u-1', sprintId: 's-nex-1', createdAt: ago(6, 1), updatedAt: ago(1, 19), phaseId: 'ph-nex-build', dueAt: ago(-4), estimate: 6 },
     { key: 'NEX-103', title: 'Fix duplicate rows in GET /v2/invoices at page size 100', description: 'The last row of page 1 shows again as the first row of page 2. Compare the cursor with > instead of >=.', status: 'done', priority: 'urgent', points: 2, assigneeId: 'u-2', reporterId: 'u-5', sprintId: 's-nex-1', createdAt: ago(7, 3), updatedAt: ago(1, 18), phaseId: 'ph-nex-build', type: 'bug', dueAt: ago(2), estimate: 3 },
     { key: 'NEX-104', title: 'Add an index on messages (channel_id, created_at)', description: 'Channels with more than 50,000 messages take 1.8 s at p95. Target is under 100 ms.', status: 'done', priority: 'high', points: 2, assigneeId: 'u-6', reporterId: 'u-2', sprintId: 's-nex-1', createdAt: ago(5, 17), updatedAt: ago(4, 22), phaseId: 'ph-nex-build', estimate: 4 },
-    { key: 'NEX-105', title: 'Board: drag a card to change its status', description: 'Pointer, touch and keyboard. Drop threshold is half the card height. Works in light and dark mode at 390 px.', status: 'inReview', priority: 'high', points: 8, assigneeId: 'u-3', reporterId: 'u-1', sprintId: 's-nex-1', createdAt: ago(7, 2), updatedAt: ago(0, 6), phaseId: 'ph-nex-build', dueAt: ago(-1), estimate: 20 },
+    { key: 'NEX-105', title: 'Board: drag a card to change its status', description: '', body: [
+      { type: 'p', children: [{ type: 'text', text: 'Drag works with:' }] },
+      { type: 'ul', items: [[{ type: 'text', text: 'Pointer' }], [{ type: 'text', text: 'Touch' }], [{ type: 'text', text: 'Keyboard' }]] },
+      { type: 'p', children: [{ type: 'text', text: 'Drop threshold is ' }, { type: 'text', text: 'half the card height', marks: ['b'] }, { type: 'text', text: '. Works in light and dark mode at 390 px.' }] },
+    ], status: 'inReview', priority: 'high', points: 8, assigneeId: 'u-3', reporterId: 'u-1', sprintId: 's-nex-1', createdAt: ago(7, 2), updatedAt: ago(0, 6), phaseId: 'ph-nex-build', dueAt: ago(-1), estimate: 20 },
     {
       key: 'NEX-106', title: 'Show an unread badge in the channel list', description: 'Show the unread count next to the channel name. Cap it at 99+. Clear it when the user opens the channel.',
       status: 'todo', priority: 'medium', points: 3, assigneeId: 'u-3', reporterId: 'u-1', sprintId: 's-nex-1', createdAt: ago(3, 20, 5), updatedAt: ago(2, 10),

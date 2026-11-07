@@ -32,11 +32,12 @@ export function statusChange(project: Pick<Project, 'board'>, from: string, to: 
 export function diffTask(data: DbData, before: Ticket, after: Ticket): FieldChange[] {
   const changes: FieldChange[] = []
   for (const field of FIELDS) {
-    if (text(before[field]) === text(after[field])) continue
     if (field === 'description') {
-      changes.push({ field, from: null, to: null })
+      // Formatting counts: the body changed even when its plain text didn't.
+      if (JSON.stringify(before.descriptionBody) !== JSON.stringify(after.descriptionBody)) changes.push({ field, from: null, to: null })
       continue
     }
+    if (text(before[field]) === text(after[field])) continue
     const change: FieldChange = { field, from: text(before[field]), to: text(after[field]) }
     // Names that can disappear (a phase, a sprint) are kept as they were.
     if (field === 'phaseId' || field === 'sprintId') {

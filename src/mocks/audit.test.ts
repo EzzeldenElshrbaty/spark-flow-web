@@ -117,7 +117,7 @@ const RECORDED: Record<string, Recorded> = {
     status('deleted', 'task'),
     (a, key: string) => a.archive.deleteForGood('task', key),
     async (a) => {
-      const t = await a.tasks.create({ projectId: 'p-nex', title: 'Old spike', description: '', status: '', priority: 'low', storyPoints: null, assigneeId: null, sprintId: null })
+      const t = await a.tasks.create({ projectId: 'p-nex', title: 'Old spike', descriptionBody: [], status: '', priority: 'low', storyPoints: null, assigneeId: null, sprintId: null })
       await a.tasks.archive(t.key)
       // Archived two years ago: past the year it's kept.
       await db.update((d) => {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ChatMessage } from '@/api/types'
 import { canMakeTask, taskDraft } from './taskDraft'
+import { textBody } from '@/lib/messageBody'
 
 const m = (content: string): ChatMessage => ({ id: 'm1', channelId: 'c-p-nex', content }) as ChatMessage
 
@@ -11,8 +12,11 @@ describe('taskDraft', () => {
   })
   it('description is the whole text, and the draft links back to the message', () => {
     expect(taskDraft(m('Fix it\nOn Safari.'), 'p-nex')).toEqual({
-      projectId: 'p-nex', title: 'Fix it', description: 'Fix it\nOn Safari.', linkedChannelId: 'c-p-nex', linkedMessageId: 'm1',
+      projectId: 'p-nex', title: 'Fix it', descriptionBody: textBody('Fix it\nOn Safari.'), linkedChannelId: 'c-p-nex', linkedMessageId: 'm1',
     })
+  })
+  it('the description keeps the message as plain paragraphs', () => {
+    expect(taskDraft(m('Fix login\nsteps'), 'p-nex').descriptionBody).toEqual(textBody('Fix login\nsteps'))
   })
   it('mention markup in the title reads as names', () => {
     expect(taskDraft(m('Ask @[Salma Ibrahim](u-6) about NEX-101'), 'p-nex').title).toBe('Ask @Salma Ibrahim about NEX-101')

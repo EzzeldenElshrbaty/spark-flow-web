@@ -57,7 +57,7 @@ export function useTaskFromMessage(
     fromFile: (file, message) => fromMessage(message, file.title),
     fromCommand: {
       projectName: project.name,
-      open: ({ title, assigneeId }) => setFrom({ key: `command-${Date.now()}`, draft: () => ({ title, description: '', ...(assigneeId && { assigneeId }) }) }),
+      open: ({ title, assigneeId }) => setFrom({ key: `command-${Date.now()}`, draft: () => ({ title, descriptionBody: [], ...(assigneeId && { assigneeId }) }) }),
     },
     sheet,
   }
