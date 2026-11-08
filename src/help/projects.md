@@ -12,7 +12,7 @@ Projects lists every project in the workspace. The cards at the top count the ac
 
 Each row shows the client, the project manager, the current phase, the due date, progress, hours logged and how many tasks are overdue. People who can see cost also see each project's cost. Click a row to open the project.
 
-A task is **overdue** when it's past its due date, or has more hours logged than estimated, and isn't done.
+A task is **overdue** when it's past its due date and isn't done. A task with more hours logged than estimated is **over estimate**, which the task and the dashboard show apart.
 
 ## Starting a project
 

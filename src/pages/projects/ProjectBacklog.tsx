@@ -34,6 +34,7 @@ export function ProjectBacklog({ tasks, phases, users, board }: { tasks: TaskVie
       {groups.map(({ phase, tasks: items }) => {
         const hours = Math.round(items.reduce((sum, t) => sum + t.loggedHours, 0) * 10) / 10
         const overdue = items.filter((t) => t.overdue).length
+        const overEstimate = items.filter((t) => t.overEstimate).length
         return (
           <Card key={phase?.id ?? 'none'} className="relative overflow-hidden">
             <div className="border-b border-line-subtle px-4 py-3.5 sm:px-5">
@@ -43,6 +44,7 @@ export function ProjectBacklog({ tasks, phases, users, board }: { tasks: TaskVie
                 <span className="ms-auto text-xs tabular-nums text-fg-muted">
                   {items.length} {items.length === 1 ? 'task' : 'tasks'} · {hours}h logged
                   {overdue > 0 && <span className="text-red-600 dark:text-red-400"> · {overdue} overdue</span>}
+                  {overEstimate > 0 && <span className="text-amber-700 dark:text-amber-300"> · {overEstimate} over estimate</span>}
                 </span>
               </div>
               {phase && (

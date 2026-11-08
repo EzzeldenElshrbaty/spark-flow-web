@@ -12,7 +12,7 @@ A project's **Tasks** tab shows its tasks as a board or a list.
 
 Each column is a status, with the hours logged in it. Drag a card to another column to change its status, or within a column to change its order. The chips narrow it to a phase, and agile projects also pick a sprint. **Board** and **List** switch the view.
 
-A card shows the task's key, priority, who it's assigned to and its hours against its estimate, in red once it's overdue.
+A card shows the task's key, priority, who it's assigned to and its hours against its estimate. A red **Overdue** chip means its due date has passed; an amber **Over estimate** chip, with its hours in amber, means more hours are logged than estimated. A task can have both.
 
 **New task** (the project's manager and people who can run any project) adds one. Give it a title, and if you like a description, priority, story points, an estimate, a due date and who it's assigned to.
 

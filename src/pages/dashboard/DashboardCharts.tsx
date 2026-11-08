@@ -5,7 +5,7 @@ import { ChartCard } from '@/components/charts/ChartCard'
 import { ColumnChart } from '@/components/charts/ColumnChart'
 import { Avatar } from '@/components/ui/Avatar'
 import { DataTable, type Column } from '@/components/ui/DataTable'
-import { isPastDue } from '@/lib/dates'
+import { hoursLabel } from '@/pages/projects/ticketPills'
 import { formatDate, formatHours } from '@/lib/format'
 import { withInspector } from '@/lib/inspector'
 
@@ -91,22 +91,22 @@ function HoursByProject({ byProject, projectName }: { byProject: DashboardStats[
 
 type Overdue = DashboardStats['attention'][number]
 
-/** The overdue tasks in scope, due soonest first; a row (or its key, for the keyboard) opens the task inspector. */
+/**
+ * The tasks that need attention in scope (UX Phase 1, 1.1): overdue ones first, then those over their estimate; each
+ * says why. A row (or its key, for the keyboard) opens the task inspector.
+ */
 function OverdueTasks({ overdue, projectName, people }: { overdue: Overdue[]; projectName: (id: string) => string; people: User[] }) {
   const [params, setParams] = useSearchParams()
   const open = (key: string) => ({ search: withInspector(params, { kind: 'ticket', key }).toString() })
   const nameOf = (id: string | null) => (id ? (people.find((u) => u.id === id)?.name ?? 'Unknown person') : null)
-  // Past its due date: the date, in red. Otherwise it's overdue for its hours: say so, with the date it's due.
-  const now = new Date()
-  const due = (t: Overdue) =>
-    t.dueAt && isPastDue(t.dueAt, now) ? (
-      <span className="text-red-600 dark:text-red-400">{formatDate(t.dueAt)}</span>
-    ) : (
-      <>
-        <span className="text-red-600 dark:text-red-400">Over estimate</span>
-        {t.dueAt && <span className="text-fg-muted"> · {formatDate(t.dueAt)}</span>}
-      </>
-    )
+  // Why: "Overdue · 6 Nov" in red, "Over estimate · 21.9 / 6 h" in amber, or both.
+  const due = (t: Overdue) => (
+    <>
+      {t.overdue && t.dueAt && <span className="text-red-600 dark:text-red-400">Overdue · {formatDate(t.dueAt)}</span>}
+      {t.overdue && t.overEstimate && <span className="text-fg-muted"> · </span>}
+      {t.overEstimate && <span className="text-amber-700 dark:text-amber-300">Over estimate · {hoursLabel(t.loggedHours, t.estimateHours)}</span>}
+    </>
+  )
   const columns: Column<Overdue>[] = [
     {
       id: 'key',
@@ -136,20 +136,20 @@ function OverdueTasks({ overdue, projectName, people }: { overdue: Overdue[]; pr
         )
       },
     },
-    { id: 'due', header: 'Due', width: 190, cell: (t) => <span className="block truncate tabular-nums">{due(t)}</span> },
+    { id: 'due', header: 'Why', width: 230, cell: (t) => <span className="block truncate tabular-nums">{due(t)}</span> },
   ]
 
   return (
     <section className="mb-6 min-w-0" aria-labelledby="dashboard-overdue">
       <h2 id="dashboard-overdue" className="mb-3 text-sm font-semibold text-fg">
-        {overdue.length ? plural(overdue.length, 'overdue task', 'overdue tasks') : 'No overdue tasks'}
+        {overdue.length ? `${plural(overdue.length, 'task needs', 'tasks need')} attention` : 'No tasks need attention'}
       </h2>
       {overdue.length === 0 ? (
         <p className="rounded-xl border border-dashed border-line-strong p-6 text-center text-sm text-fg-secondary">Nothing is past its due date or over its estimate.</p>
       ) : (
         <>
           <div className="max-sm:hidden">
-            <DataTable columns={columns} rows={overdue} rowKey={(t) => t.taskId} onRowClick={(t) => setParams((prev) => withInspector(prev, { kind: 'ticket', key: t.key }))} storageKey="spark-flow.table.dashboard-overdue" label="Overdue tasks" />
+            <DataTable columns={columns} rows={overdue} rowKey={(t) => t.taskId} onRowClick={(t) => setParams((prev) => withInspector(prev, { kind: 'ticket', key: t.key }))} storageKey="spark-flow.table.dashboard-overdue" label="Tasks that need attention" />
           </div>
           <ul className="divide-y divide-line-subtle overflow-hidden rounded-xl border border-line bg-surface sm:hidden">
             {overdue.map((t) => (

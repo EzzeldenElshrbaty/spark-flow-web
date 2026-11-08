@@ -47,13 +47,16 @@ export function HomePage() {
   const loggable = loggableTasks(mine, (id) => canLog(projects.data?.find((p) => p.id === id)))
   const due = dueTodayOrOverdue(all, persona.id, now)
   const overdue = mine.filter((t) => t.overdue).length
+  const overEstimate = mine.filter((t) => t.overEstimate).length
   const projectName = (id: string) => projects.data?.find((p) => p.id === id)?.name ?? '—'
   const label = (taskId: string | null, projectId: string) => {
     // Archived tasks keep their time, so today's entries still name them.
     const t = taskId ? (all.find((x) => x.id === taskId) ?? archived.find((x) => x.id === taskId)) : undefined
     return t ? taskLabel(t) : projectName(projectId)
   }
-  const subtitle = mine.length ? `${mine.length} open ${mine.length === 1 ? 'task' : 'tasks'} · ${overdue} overdue` : 'Nothing assigned to you.'
+  const subtitle = mine.length
+    ? `${mine.length} open ${mine.length === 1 ? 'task' : 'tasks'} · ${overdue} overdue${overEstimate ? ` · ${overEstimate} over estimate` : ''}`
+    : 'Nothing assigned to you.'
   const loading = day.isPending || projects.isPending || tasks.isPending
 
   return (

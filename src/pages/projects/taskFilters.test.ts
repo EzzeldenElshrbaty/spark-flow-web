@@ -3,7 +3,7 @@ import type { Phase, TaskView } from '@/api/types'
 import { filtersFrom, filterTasks, groupByPhase, loggableTasks, myOpenTasks, staleArchivedParam, validSprint, viewOf } from './taskFilters'
 
 const t = (over: Partial<TaskView>): TaskView =>
-  ({ id: over.key ?? 'x', key: 'P-1', status: 'todo', category: over.status === 'done' ? 'done' : 'todo', phaseId: null, sprintId: null, assigneeId: null, dueAt: null, overdue: false, rank: 0, ...over }) as TaskView
+  ({ id: over.key ?? 'x', key: 'P-1', status: 'todo', category: over.status === 'done' ? 'done' : 'todo', phaseId: null, sprintId: null, assigneeId: null, dueAt: null, overdue: false, overEstimate: false, rank: 0, ...over }) as TaskView
 const phase = (id: string, order: number): Phase => ({ id, projectId: 'p', name: id, order, startDate: '', dueDate: '', status: 'notStarted' })
 
 describe('filterTasks', () => {
@@ -89,3 +89,14 @@ describe('filtersFrom', () => {
   })
 })
 
+
+describe('myOpenTasks order (UX Phase 1, 1.1)', () => {
+  it('overdue first, then over estimate, then the nearest due date', () => {
+    const tasks = [
+      t({ key: 'D', assigneeId: 'me', dueAt: '2026-11-10T00:00:00.000Z' }),
+      t({ key: 'O', assigneeId: 'me', overEstimate: true, dueAt: '2026-12-01T00:00:00.000Z' }),
+      t({ key: 'L', assigneeId: 'me', overdue: true, dueAt: '2026-11-01T00:00:00.000Z' }),
+    ]
+    expect(myOpenTasks(tasks, 'me').map((x) => x.key)).toEqual(['L', 'O', 'D'])
+  })
+})

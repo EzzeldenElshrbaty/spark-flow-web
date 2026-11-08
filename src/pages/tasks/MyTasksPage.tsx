@@ -11,7 +11,7 @@ import { myOpenTasks } from '@/pages/projects/taskFilters'
 import { TicketRow } from '@/pages/projects/TicketRow'
 import { columnLabel } from '@/lib/boardColumns'
 
-/** Your open tasks across every project of the workspace: overdue first, then by due date. */
+/** Your open tasks across every project of the workspace: overdue first, then over estimate, then by due date. */
 export function MyTasksPage() {
   const { workspace } = useCurrentWorkspace()
   const { persona } = useRole()
@@ -26,6 +26,7 @@ export function MyTasksPage() {
     return project ? columnLabel(project, status) : undefined
   }
   const overdue = mine.filter((t) => t.overdue).length
+  const overEstimate = mine.filter((t) => t.overEstimate).length
 
   let body
   if (projects.isError || tasks.isError) body = <QueryError what="Tasks" onRetry={() => (projects.isError ? void projects.refetch() : tasks.refetch())} />
@@ -44,7 +45,7 @@ export function MyTasksPage() {
       </Card>
     )
 
-  const subtitle = mine.length ? `${mine.length} open${overdue ? ` · ${overdue} overdue` : ''}` : 'Your open tasks across every project.'
+  const subtitle = mine.length ? `${mine.length} open${overdue ? ` · ${overdue} overdue` : ''}${overEstimate ? ` · ${overEstimate} over estimate` : ''}` : 'Your open tasks across every project.'
   return (
     <>
       <PageHeader title="My tasks" subtitle={subtitle} />

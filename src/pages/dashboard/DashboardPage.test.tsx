@@ -124,14 +124,16 @@ describe('the dashboard for everyone (dashboard slice)', () => {
     expect(within(byStatus).getAllByRole('listitem').map((li) => li.getAttribute('aria-label'))).toEqual(['To do: 4', 'In progress: 2', 'Done in 14 days: 3'])
   })
 
-  it('Overdue tasks table opens the task inspector', () => {
+  it('the tasks that need attention open the task inspector; each says why (UX Phase 1, 1.1)', () => {
     show()
-    const table = screen.getByRole('table', { name: 'Overdue tasks' })
+    expect(screen.getByRole('heading', { name: '3 tasks need attention' })).toBeTruthy()
+    const table = screen.getByRole('table', { name: 'Tasks that need attention' })
     const row = within(table).getByText('Fix duplicate rows').closest('tr')!
-    expect(row.textContent).toMatch(/NEX-103.*Fix duplicate rows.*Nexus Core.*Mariam Fathy.*3 Jan 2026/)
-    // Not yet due, so over its estimate: the due date isn't the problem.
-    expect(within(table).getByText('Drag a card').closest('tr')!.textContent).toMatch(/—Over estimate · 1 Jan 2099$/)
-    expect(within(table).getByText('Load test').closest('tr')!.textContent).toMatch(/Over estimate$/)
+    expect(row.textContent).toMatch(/NEX-103.*Fix duplicate rows.*Nexus Core.*Mariam Fathy.*Overdue · 3 Jan 2026$/)
+    expect(within(table).getByText('Drag a card').closest('tr')!.textContent).toMatch(/Over estimate · 21\.9 \/ 6 h$/)
+    expect(within(table).getByText('Load test').closest('tr')!.textContent).toMatch(/Over estimate · 5 \/ 4 h$/)
+    // The Overdue tile counts late tasks only, and says how many are over their estimate.
+    expect(screen.getByText('2 over estimate')).toBeTruthy()
     fireEvent.click(row)
     expect(screen.getByTestId('address').textContent).toBe('/w/engineering/dashboard?ticket=NEX-103')
     // The key is the row's link for the keyboard.
@@ -165,7 +167,7 @@ describe('the dashboard for everyone (dashboard slice)', () => {
     show()
     expect(screen.getByText('You’re not on any projects yet.')).toBeTruthy()
     expect(screen.queryByRole('group', { name: 'Hours per day' })).toBeNull()
-    expect(screen.queryByRole('table', { name: 'Overdue tasks' })).toBeNull()
+    expect(screen.queryByRole('table', { name: 'Tasks that need attention' })).toBeNull()
     expect(screen.getByText('The projects you manage or work on.')).toBeTruthy()
   })
 })

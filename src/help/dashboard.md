@@ -16,9 +16,9 @@ Everyone has a Dashboard, and it's where you start: after signing in, from the l
 
 Each chart can be read as a table with the button by its title.
 
-## Overdue tasks
+## Tasks that need attention
 
-Tasks past their due date, or with more hours than estimated, soonest due first. Open one to see it beside the dashboard.
+Overdue tasks first (past their due date, soonest due first), then tasks over their estimate. Each row says why: "Overdue · 6 Nov", "Over estimate · 21.9 / 6 h", or both. The **Overdue tasks** tile counts only the late ones and says how many are over their estimate. Open one to see it beside the dashboard.
 
 ## The projects
 

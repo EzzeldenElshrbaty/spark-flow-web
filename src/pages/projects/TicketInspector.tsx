@@ -28,7 +28,7 @@ import { AddTimeSheet } from '@/pages/time/AddTimeSheet'
 import { TaskActivity } from '@/pages/projects/TaskActivity'
 import { HistoryList } from '@/pages/projects/HistoryList'
 import { useTaskHistory } from '@/api/activity'
-import { BugPill, OverduePill, PriorityPill, StatusPill, hoursLabel } from '@/pages/projects/ticketPills'
+import { BugPill, OverEstimatePill, OverduePill, PriorityPill, StatusPill, hoursLabel } from '@/pages/projects/ticketPills'
 import { NotFound } from '@/pages/NotFound'
 import { DescriptionView } from '@/pages/projects/description/DescriptionView'
 import { isPastDue } from '@/lib/dates'
@@ -133,10 +133,11 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
             {restore.error && <span className="w-full text-xs text-red-600 dark:text-red-400">{restore.error.message}</span>}
           </div>
         )}
-        {(t.type === 'bug' || t.overdue || (canManage && !archived)) && (
+        {(t.type === 'bug' || t.overdue || t.overEstimate || (canManage && !archived)) && (
           <div className="mb-3 flex items-center gap-2">
             {t.type === 'bug' && <BugPill />}
             {t.overdue && <OverduePill />}
+            {t.overEstimate && <OverEstimatePill />}
             {canManage && !archived && (
               <span className="ms-auto flex items-center gap-2">
                 <Button variant="ghost" onClick={() => setArchiving(true)}>

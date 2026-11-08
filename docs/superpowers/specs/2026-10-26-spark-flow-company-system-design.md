@@ -92,6 +92,9 @@ export type Mention = { kind: 'user' | 'project' | 'task' | 'all'; id: string } 
 **Derived values (computed by the API, never stored):**
 - `task.loggedHours` = Σ closed entries + running entry so far.
 - `task.overdue` = (`dueAt` < now and status ≠ done) or (`estimateHours` and `loggedHours` > `estimateHours`).
+  *Amended 9 Nov 2026 (UX Phase 1, 1.1):* `task.overdue` = `dueAt` < now and not done (the date only); `task.overEstimate`
+  = `estimateHours` > 0 and `loggedHours` > `estimateHours` and not done. A task can be both; `project.overdueCount` and
+  `overEstimateCount` count each, the dashboard's `attention` list holds both, and expectedFinish shifts on either.
 - `project.progress` = done tasks / all tasks; `project.loggedHours`; `project.cost` = Σ(entry hours × user's rate)
   (cost returned only to Admins); `project.expectedFinish` = latest of open phases' `dueDate`, shifted by overdue
   estimates (simple rule: if any open task is overdue, expectedFinish = max(dueDate, today + remaining estimate hours ÷ 8h/day)).

@@ -186,7 +186,7 @@ export function OverviewTab({
             <ProgressBar value={project.progress * 100} tone={project.progress === 1 ? 'success' : 'brand'} />
           </div>
         </div>
-        <Stat label="Hours logged" value={`${hours}h`} sub={`${project.taskCount} tasks · ${project.overdueCount} overdue`} />
+        <Stat label="Hours logged" value={`${hours}h`} sub={`${project.taskCount} tasks · ${project.overdueCount} overdue${project.overEstimateCount ? ` · ${project.overEstimateCount} over estimate` : ''}`} />
         <Stat label="Expected finish" value={formatDate(project.expectedFinish)} sub={late ? `Due ${formatDate(project.dueDate)} · late` : `Due ${formatDate(project.dueDate)}`} tone={late ? 'danger' : undefined} />
         {project.cost !== null && <Stat label="Cost so far" value={formatMoney(project.cost)} sub="Hours × hourly cost" />}
       </div>

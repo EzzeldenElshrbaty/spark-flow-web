@@ -267,7 +267,7 @@ describe('dashboard stats', () => {
     expect(stats.attention).toEqual([...late, ...overOnly])
     const dues = late.map((t) => t.dueAt!)
     expect(dues).toEqual([...dues].sort())
-    expect(overOnly.map((t) => t.key)).toEqual([...overOnly.map((t) => t.key)].sort())
+    expect(overOnly.map((t) => t.key)).toEqual(overOnly.map((t) => t.key).sort())
     expect(stats.attention[0]).toEqual({
       taskId: expect.any(String), key: expect.any(String), title: expect.any(String), projectId: expect.any(String),
       assigneeId: expect.toBeOneOf([expect.any(String), null]), dueAt: expect.toBeOneOf([expect.any(String), null]),

@@ -67,9 +67,14 @@ export function TicketKey({ value, className }: { value: string; className?: str
 /** Story points: "5 pts", "1 pt", or — when not estimated. */
 export const pointsLabel = (points: number | null) => (points === null ? '—' : `${points} ${points === 1 ? 'pt' : 'pts'}`)
 
-/** Red "Overdue" chip: past its due date, or more hours logged than estimated. */
+/** Red "Overdue" chip: past its due date and not done (UX Phase 1, 1.1: the date only). */
 export function OverduePill() {
   return <span className="inline-flex items-center whitespace-nowrap rounded-md bg-red-50 px-1.5 py-0.5 text-[11px] font-medium text-red-700 dark:bg-red-500/15 dark:text-red-300">Overdue</span>
+}
+
+/** Amber "Over estimate" chip: more hours logged than estimated, and not done (UX Phase 1, 1.1). */
+export function OverEstimatePill() {
+  return <span className="inline-flex items-center whitespace-nowrap rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">Over estimate</span>
 }
 
 /** "Bug" chip for tasks of type bug. */

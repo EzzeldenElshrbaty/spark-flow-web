@@ -4,7 +4,7 @@ import type { StatusCategory, TaskView } from '@/api/types'
 import { Avatar } from '@/components/ui/Avatar'
 import { formatDate } from '@/lib/format'
 import { parseInspector, withInspector } from '@/lib/inspector'
-import { BugPill, OverduePill, PriorityPill, StatusPill, TicketKey, hoursLabel } from '@/pages/projects/ticketPills'
+import { BugPill, OverEstimatePill, OverduePill, PriorityPill, StatusPill, TicketKey, hoursLabel } from '@/pages/projects/ticketPills'
 import { isPastDue } from '@/lib/dates'
 
 function Assignee({ name }: { name: string | null }) {
@@ -18,7 +18,8 @@ function Assignee({ name }: { name: string | null }) {
 }
 
 /**
- * A task as a board card or a list row: Bug and Overdue chips, hours against the estimate, and (rows) the due date.
+ * A task as a board card or a list row: Bug, Overdue and Over estimate chips, hours against the estimate (amber once
+ * over it), and (rows) the due date.
  * Either opens the ticket inspector (`?ticket=KEY`) and keeps the rest of the URL; the open ticket stays outlined.
  */
 /** `tabIndex={-1}` when the card itself takes focus (a movable board card), so it's one Tab stop, not two. */
@@ -44,13 +45,14 @@ export function TicketRow({ ticket, assignee, variant, project, statusName, stat
           <span className="flex items-center gap-1">
             {ticket.type === 'bug' && <BugPill />}
             {ticket.overdue && <OverduePill />}
+            {ticket.overEstimate && <OverEstimatePill />}
             <PriorityPill priority={ticket.priority} />
           </span>
         </div>
         <p className="mt-1.5 line-clamp-2 text-sm font-medium text-fg">{ticket.title}</p>
         <div className="mt-2.5 flex items-center justify-between gap-3">
           <Assignee name={assignee} />
-          <span className={clsx('text-xs tabular-nums', ticket.overdue ? 'text-red-600 dark:text-red-400' : 'text-fg-muted')}>{hoursLabel(ticket.loggedHours, ticket.estimateHours)}</span>
+          <span className={clsx('text-xs tabular-nums', ticket.overEstimate ? 'text-amber-700 dark:text-amber-300' : 'text-fg-muted')}>{hoursLabel(ticket.loggedHours, ticket.estimateHours)}</span>
         </div>
       </Link>
     )
@@ -71,13 +73,14 @@ export function TicketRow({ ticket, assignee, variant, project, statusName, stat
         <div className="mt-1.5 flex flex-wrap items-center gap-2 sm:mt-0 sm:shrink-0 sm:flex-nowrap">
           {ticket.type === 'bug' && <BugPill />}
           {ticket.overdue && <OverduePill />}
+          {ticket.overEstimate && <OverEstimatePill />}
           <StatusPill status={ticket.status} label={statusName} category={statusCategory ?? ticket.category} />
           <PriorityPill priority={ticket.priority} />
           <span className="ms-auto flex items-center gap-2 sm:ms-0">
             <span className={clsx('w-20 text-end text-xs tabular-nums', ticket.dueAt && ticket.category !== 'done' && isPastDue(ticket.dueAt, new Date()) ? 'text-red-600 dark:text-red-400' : 'text-fg-muted')}>
               {ticket.dueAt ? formatDate(ticket.dueAt) : '—'}
             </span>
-            <span className="w-20 text-end text-xs tabular-nums text-fg-muted">{hoursLabel(ticket.loggedHours, ticket.estimateHours)}</span>
+            <span className={clsx('w-20 text-end text-xs tabular-nums', ticket.overEstimate ? 'text-amber-700 dark:text-amber-300' : 'text-fg-muted')}>{hoursLabel(ticket.loggedHours, ticket.estimateHours)}</span>
             <Assignee name={assignee} />
           </span>
         </div>

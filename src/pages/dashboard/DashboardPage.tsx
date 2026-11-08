@@ -77,6 +77,10 @@ function ProjectCard({ ws, project, people, now }: { ws: string; project: Dashbo
           <dt className="text-xs text-fg-muted">Overdue tasks</dt>
           <dd className={clsx('tabular-nums', project.overdueCount ? 'font-medium text-red-600 dark:text-red-400' : 'text-fg')}>{project.overdueCount || '—'}</dd>
         </div>
+        <div>
+          <dt className="text-xs text-fg-muted">Over estimate</dt>
+          <dd className={clsx('tabular-nums', project.overEstimateCount ? 'font-medium text-amber-700 dark:text-amber-300' : 'text-fg')}>{project.overEstimateCount || '—'}</dd>
+        </div>
       </dl>
       <div className="mt-4 border-t border-line-subtle pt-3">
         <p className="text-xs text-fg-muted">Last 7 days · {formatHours(project.weekHours)}</p>
@@ -139,6 +143,7 @@ export function DashboardPage() {
   const everyProject = useProjectSummaries(workspace?.id).data ?? []
   const projects = useDashboard(workspace?.id, true)
   const list = projects.data ?? []
+  const overEstimate = list.reduce((s, p) => s + p.overEstimateCount, 0)
   // Who's working: every timer, or those on projects I manage; Sales neither (spec §1, timer slice 3). Someone who
   // manages none of these projects would only ever see it empty, even with their own timer running, so it's left out.
   const seesWorking = check('checkins.view') && (grants.includes('checkins.all') || list.some((p) => p.managerId === persona.id))
@@ -183,7 +188,12 @@ export function DashboardPage() {
         <>
           <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
             <Tile label="Active projects" value={String(list.filter((p) => p.status === 'active').length)} sub={`${list.length} in all`} />
-            <Tile label="Overdue tasks" value={String(list.reduce((s, p) => s + p.overdueCount, 0))} tone={list.some((p) => p.overdueCount) ? 'danger' : undefined} />
+            <Tile
+              label="Overdue tasks"
+              value={String(list.reduce((s, p) => s + p.overdueCount, 0))}
+              sub={overEstimate ? `${overEstimate} over estimate` : undefined}
+              tone={list.some((p) => p.overdueCount) ? 'danger' : undefined}
+            />
             <Tile label="Hours, last 7 days" value={formatHours(hours7)} />
             {showCost ? (
               <Tile label="Cost to date" value={formatMoney(Math.round(cost))} sub="Hours × hourly cost" />
