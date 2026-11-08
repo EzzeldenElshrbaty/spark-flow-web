@@ -336,8 +336,9 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       if (channel.kind === 'dm') throw badRequest("Conversations can't be archived.")
       if (data.projects.some((p) => p.channelId === id)) throw badRequest('This channel follows its project.')
       const me = requireManage(data, channel)
-      // Archiving (and restoring) is for Admins (spec 6.1).
-      if (!can('channel.archive', { userId: me.id, grants: grantsFor(data, me), channel })) throw new ApiError({ title: 'Forbidden', status: 403, detail: 'Only admins can archive channels.' })
+      // Archiving (and restoring) is for Admins (spec 6.1); the refusal names what was asked.
+      if (!can('channel.archive', { userId: me.id, grants: grantsFor(data, me), channel }))
+        throw new ApiError({ title: 'Forbidden', status: 403, detail: archive ? 'Only admins can archive channels.' : 'Only admins can restore channels.' })
       // Already so: nothing changes and nothing is sent.
       if (Boolean(channel.archivedAt) === archive) return { channel: withUnread(data, channel), same: true }
       const why = archive ? archiveReason(reason) : null

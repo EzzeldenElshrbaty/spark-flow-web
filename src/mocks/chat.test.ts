@@ -571,6 +571,11 @@ describe('archiving channels', () => {
     await expect(api.chat.edit(target, 'Changed')).rejects.toMatchObject(archived)
     await expect(api.chat.remove(target)).rejects.toMatchObject(archived)
   })
+  it('a member is refused a restore with the restore’s own reason (UX Phase 1, 1.6)', async () => {
+    await api.chat.archiveChannel('c-frontend')
+    await api.users.viewAs('u-3') // Mariam, in #frontend-dev
+    await expect(api.chat.restoreChannel('c-frontend')).rejects.toMatchObject({ status: 403, detail: 'Only admins can restore channels.' })
+  })
   it('restore makes it writable again', async () => {
     await api.chat.archiveChannel('c-frontend')
     expect((await api.chat.restoreChannel('c-frontend')).archivedAt ?? null).toBeNull()

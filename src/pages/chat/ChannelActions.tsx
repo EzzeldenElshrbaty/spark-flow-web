@@ -103,15 +103,18 @@ export function JoinChannelLine({ channel }: { channel: Channel }) {
 
 /** What an archived channel shows instead of the composer, with Restore for whoever may. */
 export function ArchivedChannelLine({ channel }: { channel: Channel }) {
-  const editable = useCanManageChannel(channel)
+  // Restoring is the archiver's right (Admins); a member who manages the channel is told so (UX Phase 1, 1.6).
+  const { manage, archive: canRestore } = useChannelRights(channel)
   const restore = useRestoreChannel()
   return (
     <div className="flex flex-wrap items-center gap-3">
       <p className="text-sm text-fg-muted">This channel is archived.</p>
-      {editable && (
+      {canRestore ? (
         <Button variant="secondary" onClick={() => restore.mutate(channel.id)} disabled={restore.isPending}>
           {restore.isPending ? 'Restoring…' : 'Restore channel'}
         </Button>
+      ) : (
+        manage && <p className="text-sm text-fg-muted">Only Admins can restore channels.</p>
       )}
       {restore.error && <p className="w-full text-sm text-red-600 dark:text-red-400">{(restore.error as Error).message}</p>}
     </div>
