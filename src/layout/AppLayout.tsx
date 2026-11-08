@@ -1,6 +1,7 @@
 import clsx from 'clsx'
 import { Suspense, useState } from 'react'
 import { Announcer } from '@/components/sf/Announcer'
+import { UnsavedChangesBlocker } from './UnsavedChangesBlocker'
 import { ToastProvider, ToastRegion } from '@/components/sf/Toast'
 import { Navigate, Outlet, useLocation, useMatches } from 'react-router'
 import { ActivityTracker } from '@/layout/ActivityTracker'
@@ -50,6 +51,8 @@ export function AppLayout() {
         <DesktopNotifier />
         <ActivityTracker />
         <Announcer />
+        {/* Unsaved forms ask before Back or another page takes them away (UX Phase 1, 1.2). */}
+        <UnsavedChangesBlocker />
         <Sidebar collapsed={collapsed} />
         {/* The main card (spec 5.3); the top bar stays put and the page scrolls under it. */}
         <div className={mainCardClass(pane)}>
