@@ -33,7 +33,7 @@ export function EntryActions({ entry, editing = false, onEditingChange }: { entr
         aria-expanded={open}
         aria-label="Entry actions"
         title="Entry actions"
-        className="flex size-8 items-center justify-center rounded-lg text-fg-tertiary hover:bg-surface-muted hover:text-fg"
+        className="flex size-8 items-center justify-center rounded-lg text-fg-tertiary hover:bg-surface-muted hover:text-fg max-sm:size-11"
       >
         <MoreHorizontal className="size-4" />
       </button>

@@ -137,6 +137,8 @@ export function TimeTab({ project, people }: { project: ProjectSummary; people: 
                 </span>
               </span>
               <span className="text-sm tabular-nums text-fg">{tenth(entryHours(e, now))}h</span>
+              {/* Edit, delete and the 12 h fix on a phone too (UX Phase 1, 1.7). */}
+              <EntryRowExtras entry={e} compact />
             </li>
           )
         })}
