@@ -18,7 +18,8 @@ describe('the project Chat tab', () => {
       </MemoryRouter>,
     )
     expect(await screen.findByText('Channel view of c-p-nex')).toBeTruthy()
-    expect((container.firstElementChild as HTMLElement).className.split(' ')).toEqual(expect.arrayContaining(['flex-1', 'min-h-0']))
+    // It fills what's left, but never below a floor: on a short screen the page scrolls to it instead (final review).
+    expect((container.firstElementChild as HTMLElement).className.split(' ')).toEqual(expect.arrayContaining(['flex-1', 'min-h-[18rem]']))
   })
 
   it('Open in Chat goes to the full channel', () => {

@@ -2734,7 +2734,7 @@ Audit `docs/ux-audit/2026-11-09-ui-ux-audit.md` (items 1.1–1.7). Plan with dec
 - [x] Phase check, help pictures, review here
 
 ## Review — UX Phase 1
-- Gates: `tsc -b` and lint clean; unit 2,143/2,143; `build:prototype` passes. Browser 2,437/2,442 in the worktree:
+- Gates: `tsc -b` and lint clean; unit 2,150/2,150; `build:prototype` passes. Browser 2,437/2,442 in the worktree:
   the known `RichComposer` "unknown /word" failure, and `MessageList` "Jump to latest" ×2, which fail the same way on
   the untouched base (15555e7) checked out in a worktree with the shared `node_modules` link (they pass in the main
   checkout): an environment effect of the worktree, not this branch. The dashboard's light and dark axe checks pass.
@@ -2747,3 +2747,7 @@ Audit `docs/ux-audit/2026-11-09-ui-ux-audit.md` (items 1.1–1.7). Plan with dec
 - Help pictures retaken (`npm run help:shots`).
 - Rulings are in the plan workspace's ledger and the final report; the biggest: Back on a changed sheet asks, and
   Discard closes the sheet and stays on the page (the next Back leaves it).
+- Final review (fresh Opus reviewer): 0 critical, 3 important, 6 minor; ready with fixes. Fixed test first: a sheet
+  that saves and moves to another page no longer skips a changed page's question; a dashboard row late and over its
+  estimate shows both reasons on their own lines; the Chat tab keeps an 18rem floor and the page scrolls to it on a
+  short screen (phone on its side: composer reachable). Six minors deferred (see the final report).

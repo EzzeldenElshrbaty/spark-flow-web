@@ -74,8 +74,9 @@ export function AppLayout() {
                   ? // The phone bottom bar (and the timer bar) cover the page's end; the pane stops above them.
                     'flex min-h-0 w-full flex-1 flex-col pb-[calc(3.5rem+var(--timer-bar,0px)+env(safe-area-inset-bottom))] lg:pb-0'
                   : fill
-                    ? // The page's padding, its content filling the height left, above the phone bars.
-                      'flex min-h-0 w-full flex-1 flex-col px-4 pb-[calc(4rem+var(--timer-bar,0px)+env(safe-area-inset-bottom))] pt-4 md:px-6 lg:pb-4 lg:pt-6 xl:px-8'
+                    ? // The page's padding, its content filling the height left, above the phone bars; it scrolls only
+                      // when a short screen can't fit the content's floor.
+                      'flex min-h-0 w-full flex-1 flex-col overflow-y-auto px-4 pb-[calc(4rem+var(--timer-bar,0px)+env(safe-area-inset-bottom))] pt-4 md:px-6 lg:pb-4 lg:pt-6 xl:px-8'
                     : 'w-full flex-1 px-4 pb-[calc(6rem+var(--timer-bar,0px))] pt-6 md:px-6 lg:pb-10 xl:px-8'
               }
             >
