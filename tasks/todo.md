@@ -2715,20 +2715,35 @@ Branch `feat/add-time-for` from `dev` (5c501b0). Design in chat with a flow diag
   someone's entry); no DB version bump, since an entry without `addedBy` reads as its person's own; no notification
   to the person (not asked; the bell can come later).
 
-# UX Phase 1: critical usability — 9 Nov 2026, roadmap approved ("Approve, start Phase 1"); plan waits for answers
+# UX Phase 1: critical usability — 9 Nov 2026, approved ("Approve, start Phase 1"; Q1–Q5 "Yes, recommended")
 
 Audit `docs/ux-audit/2026-11-09-ui-ux-audit.md` (items 1.1–1.7). Plan with decisions, flow diagram and questions:
 `docs/superpowers/plans/2026-11-09-ux-phase-1-critical-usability.md`. Branch `feat/ux-phase-1` from `origin/dev`
-(15555e7) in `.worktrees/ux-phase-1`, once the plan is approved.
+(15555e7) in `.worktrees/ux-phase-1`.
 
-- [ ] Unsaved-changes guard: store, one router blocker, `Sheet` "Discard …?" line, page "Leave without saving?" (1.2)
-- [ ] Project and time sheets join the guard; Phases no longer closes on Esc (1.2)
-- [ ] Settings and chat forms join the guard; Roles and Hourly cost pages guarded (1.2)
-- [ ] Delete for good asks for the record's key (1.4)
-- [ ] `overEstimate` next to `overdue` in the mock and types; dashboard `attention` list (1.1)
-- [ ] "Over estimate" on screen, help, `CLAUDE.md` and spec §3 (1.1)
-- [ ] A new task opens its panel (1.5)
-- [ ] Restore channel only for those who may (1.6)
-- [ ] Phones can change time entries (1.7)
-- [ ] Project Chat tab fills the screen (1.3)
-- [ ] Phase check, help pictures, review here
+- [x] Unsaved-changes guard: store, one router blocker, `Sheet` "Discard …?" line, page "Leave without saving?" (1.2)
+- [x] Project and time sheets join the guard; Phases no longer closes on Esc (1.2)
+- [x] Settings and chat forms join the guard; Roles and Hourly cost pages guarded (1.2)
+- [x] Delete for good asks for the record's key (1.4)
+- [x] `overEstimate` next to `overdue` in the mock and types; dashboard `attention` list (1.1)
+- [x] "Over estimate" on screen, help, `CLAUDE.md` and spec §3 (1.1)
+- [x] A new task opens its panel (1.5)
+- [x] Restore channel only for those who may (1.6)
+- [x] Phones can change time entries (1.7)
+- [x] Project Chat tab fills the screen (1.3)
+- [x] Phase check, help pictures, review here
+
+## Review — UX Phase 1
+- Gates: `tsc -b` and lint clean; unit 2,143/2,143; `build:prototype` passes. Browser 2,437/2,442 in the worktree:
+  the known `RichComposer` "unknown /word" failure, and `MessageList` "Jump to latest" ×2, which fail the same way on
+  the untouched base (15555e7) checked out in a worktree with the shared `node_modules` link (they pass in the main
+  checkout): an environment effect of the worktree, not this branch. The dashboard's light and dark axe checks pass.
+- App check (Playwright on `npm run dev` of this branch, port 5175): New task → type → Cancel asks "Discard this new
+  task?"; Save opens the new task's panel; the board and the dashboard say "Over estimate"; Settings → Users → Add
+  person → type → Back asks and keeps the sheet; leaving the page load gets the browser's own prompt; Roles change →
+  sidebar link asks "Leave without saving?"; phone Time list has the ⋯ menu; the project Chat tab measures a 253 px
+  message list at 1280 × 720 (was about 150), 433 px at 1440 × 900, and at 390 × 844 with a running timer the
+  composer is clear of the bars, with no page scroll.
+- Help pictures retaken (`npm run help:shots`).
+- Rulings are in the plan workspace's ledger and the final report; the biggest: Back on a changed sheet asks, and
+  Discard closes the sheet and stays on the page (the next Back leaves it).
