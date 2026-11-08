@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { renderHook } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
-import { shouldBlock, useUnsavedChanges, useUnsavedGuards, type UnsavedGuard } from './unsavedChanges'
+import { pickGuard, shouldBlock, useUnsavedChanges, useUnsavedGuards, type UnsavedGuard } from './unsavedChanges'
 
 const guard = (id: string, scope: UnsavedGuard['scope']): UnsavedGuard => ({ id, scope, ask: () => {} })
 const nav = (historyAction: 'POP' | 'PUSH' | 'REPLACE', from = '/w/a/projects', to = '/w/a/projects') => ({ historyAction, from, to })
@@ -28,10 +28,15 @@ describe('shouldBlock (UX Phase 1, 1.2)', () => {
     expect(shouldBlock(guards, nav('PUSH', '/w/a/settings/roles', '/w/a/settings/roles'))).toBe(false)
   })
 
-  it('the newest guard decides: a sheet over a changed page lets its own Save through', () => {
+  it('Back asks the newest sheet; leaving the page asks the page, whatever sheet sits on top (review fix)', () => {
     const guards = [guard('p', 'page'), guard('s', 'sheet')]
-    expect(shouldBlock(guards, nav('PUSH', '/a', '/b'))).toBe(false)
-    expect(shouldBlock(guards, nav('POP', '/a', '/b'))).toBe(true)
+    expect(pickGuard(guards, nav('POP', '/a', '/b'))?.id).toBe('s')
+    // A sheet that saves and moves on (New message, New channel) mustn't take a changed page with it.
+    expect(pickGuard(guards, nav('PUSH', '/a', '/b'))?.id).toBe('p')
+    expect(shouldBlock(guards, nav('PUSH', '/a', '/b'))).toBe(true)
+    // Its own Save closing it on the same page goes through.
+    expect(shouldBlock(guards, nav('REPLACE', '/a', '/a'))).toBe(false)
+    expect(pickGuard([guard('s', 'sheet')], nav('PUSH', '/a', '/b'))).toBeNull()
   })
 })
 

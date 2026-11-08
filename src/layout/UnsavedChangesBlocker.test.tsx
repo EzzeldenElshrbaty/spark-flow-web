@@ -50,6 +50,17 @@ describe('UnsavedChangesBlocker (UX Phase 1, 1.2)', () => {
     expect(router.state.location.search).toBe('?saved=1')
   })
 
+  it('a changed page under a changed sheet still asks when the sheet moves to another page (review fix)', async () => {
+    const router = setup('/roles')
+    const page = addGuard('page')
+    const sheet: { leave: () => void; stay: () => void }[] = []
+    useUnsavedGuards.getState().add({ id: 'sheet', scope: 'sheet', ask: (leave, stay) => sheet.push({ leave, stay }) })
+    await act(() => router.navigate('/c/dm-1'))
+    await waitFor(() => expect(page).toHaveLength(1))
+    expect(sheet).toHaveLength(0)
+    expect(router.state.location.pathname).toBe('/roles')
+  })
+
   it('asks the browser before the tab closes only while something is unsaved', () => {
     setup('/a')
     const fire = () => {
