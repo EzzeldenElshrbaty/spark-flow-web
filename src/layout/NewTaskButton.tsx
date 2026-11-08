@@ -1,5 +1,6 @@
 import { IconFolder, IconPlus } from '@tabler/icons-react'
 import { useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { usePhases, useProjectSummaries } from '@/api/projects'
 import { useSprints } from '@/api/tickets'
 import type { ProjectSummary } from '@/api/types'
@@ -7,6 +8,7 @@ import { useUsers } from '@/api/users'
 import { IconButton } from '@/components/sf/Button'
 import { Menu, MenuHeading, MenuItem } from '@/components/sf/Menu'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
+import { withInspector } from '@/lib/inspector'
 import { usePermission } from '@/lib/usePermission'
 import { TaskSheet } from '@/pages/projects/TaskSheet'
 
@@ -15,7 +17,18 @@ function NewTaskSheet({ project, workspaceId, onClose }: { project: ProjectSumma
   const phases = usePhases(project.id)
   const sprints = useSprints(project.methodology === 'agile' ? project.id : undefined)
   const users = useUsers(workspaceId)
-  return <TaskSheet project={project} phases={phases.data ?? []} sprints={sprints.data ?? []} users={users.data ?? []} onClose={onClose} />
+  // The new task opens in its panel on the page I'm on (UX Phase 1, 1.5): without toasts, that's how it shows.
+  const [, setParams] = useSearchParams()
+  return (
+    <TaskSheet
+      project={project}
+      phases={phases.data ?? []}
+      sprints={sprints.data ?? []}
+      users={users.data ?? []}
+      onCreated={(task) => setParams((prev) => withInspector(prev, { kind: 'ticket', key: task.key }))}
+      onClose={onClose}
+    />
+  )
 }
 
 /**

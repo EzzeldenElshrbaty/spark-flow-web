@@ -68,6 +68,7 @@ export function TaskSheet({
   users,
   task,
   draft,
+  onCreated,
   onClose,
 }: {
   project: Project & { currentPhaseId?: string | null }
@@ -77,6 +78,8 @@ export function TaskSheet({
   task?: TaskView
   /** Starts a new task from these values and links it back to where it came from. */
   draft?: TaskDraft
+  /** A new task was saved: the opener shows it (UX Phase 1, 1.5), before the sheet closes. */
+  onCreated?: (task: TaskView) => void
   onClose: () => void
 }) {
   const check = usePermission()
@@ -165,7 +168,12 @@ export function TaskSheet({
     else
       create.mutate(
         { ...fields, projectId: project.id, storyPoints: null, linkedChannelId: draft?.linkedChannelId, linkedMessageId: draft?.linkedMessageId } satisfies NewTicket,
-        { onSuccess: onClose },
+        {
+          onSuccess: (created) => {
+            onCreated?.(created)
+            onClose()
+          },
+        },
       )
   }
 

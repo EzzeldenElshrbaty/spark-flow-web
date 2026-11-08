@@ -1,6 +1,6 @@
 import { Building2, CalendarDays, Layers, Link2, Pencil, Plus, UserRound, Archive } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { useParams } from 'react-router'
+import { useParams, useSearchParams } from 'react-router'
 import { useArchiveProject, usePhases, useProjectSummary, useRestoreProject, useTeams } from '@/api/projects'
 import { useSprints, useTickets } from '@/api/tickets'
 import type { ProjectStatus } from '@/api/types'
@@ -14,6 +14,7 @@ import { RecordActionBarSpacer, RecordHeader, type RecordAction, type RecordMeta
 import { StageProgress } from '@/components/ui/StageProgress'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { formatDate } from '@/lib/format'
+import { withInspector } from '@/lib/inspector'
 import { paths, type ProjectTab } from '@/lib/paths'
 import { usePermission } from '@/lib/usePermission'
 import { NotFound } from '@/pages/NotFound'
@@ -91,6 +92,7 @@ export function ProjectPage() {
   const sprints = useSprints(project?.methodology === 'agile' ? project.id : undefined)
   const [sheet, setSheet] = useState<'edit' | 'phases' | 'task' | 'archive' | null>(null)
   const archive = useArchiveProject()
+  const [, setParams] = useSearchParams()
   const restore = useRestoreProject()
 
   if (summary.isError) {
@@ -216,7 +218,17 @@ export function ProjectPage() {
       <RecordActionBarSpacer />
 
       {sheet === 'edit' && <ProjectSheet workspaceId={workspace.id} project={project} takenKeys={[]} onClose={() => setSheet(null)} onSaved={() => setSheet(null)} />}
-      {sheet === 'task' && <TaskSheet project={project} phases={phaseList} sprints={sprints.data ?? []} users={people} onClose={() => setSheet(null)} />}
+      {sheet === 'task' && (
+        <TaskSheet
+          project={project}
+          phases={phaseList}
+          sprints={sprints.data ?? []}
+          users={people}
+          // The new task opens in its panel on this tab (UX Phase 1, 1.5).
+          onCreated={(task) => setParams((prev) => withInspector(prev, { kind: 'ticket', key: task.key }))}
+          onClose={() => setSheet(null)}
+        />
+      )}
       {sheet === 'phases' && <PhasesSheet project={project} phases={phaseList} onClose={() => setSheet(null)} />}
       <ConfirmDeleteSheet
         open={sheet === 'archive'}

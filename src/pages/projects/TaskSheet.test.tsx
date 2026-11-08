@@ -216,3 +216,22 @@ describe('TaskSheet asks before discarding (UX Phase 1, 1.2)', () => {
     expect(onClose2).not.toHaveBeenCalled()
   })
 })
+
+describe('TaskSheet tells who opened it about a new task (UX Phase 1, 1.5)', () => {
+  it('calls onCreated with the created task, then closes; an edit doesn’t call it', () => {
+    const onCreated = vi.fn()
+    const onClose = vi.fn()
+    create.mutate.mockImplementation((_input, opts: { onSuccess: (t: TaskView) => void }) => opts.onSuccess({ key: 'NEX-111' } as TaskView))
+    render(<TaskSheet project={project} phases={[]} sprints={[]} users={[]} onCreated={onCreated} onClose={onClose} />)
+    fireEvent.change(screen.getByRole('textbox', { name: /Title/ }), { target: { value: 'New badge' } })
+    save()
+    expect(onCreated).toHaveBeenCalledWith({ key: 'NEX-111' })
+    expect(onClose).toHaveBeenCalledTimes(1)
+    cleanup()
+    update.mutate.mockImplementation((_input, opts: { onSuccess: (t: TaskView) => void }) => opts.onSuccess(task()))
+    render(<TaskSheet project={project} phases={[]} sprints={[]} users={[]} task={task()} onCreated={onCreated} onClose={onClose} />)
+    fireEvent.change(screen.getByRole('textbox', { name: /Title/ }), { target: { value: 'Login v2' } })
+    save()
+    expect(onCreated).toHaveBeenCalledTimes(1)
+  })
+})

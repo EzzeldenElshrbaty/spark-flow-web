@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router'
+import { MemoryRouter, useLocation } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NewTaskButton } from '@/layout/NewTaskButton'
 
@@ -13,7 +13,21 @@ vi.mock('@/api/projects', () => ({ useProjectSummaries: () => ({ data: projects 
 vi.mock('@/api/tickets', () => ({ useSprints: () => ({ data: [] }) }))
 vi.mock('@/api/users', () => ({ useUsers: () => ({ data: [] }) }))
 vi.mock('@/lib/usePermission', () => ({ usePermission: () => (_action: string, ctx: { project: P }) => manages.has(ctx.project.id) }))
-vi.mock('@/pages/projects/TaskSheet', () => ({ TaskSheet: ({ project }: { project: P }) => <div role="dialog" aria-label={`New task in ${project.name}`} /> }))
+vi.mock('@/pages/projects/TaskSheet', () => ({
+  TaskSheet: ({ project, onCreated, onClose }: { project: P; onCreated?: (t: { key: string }) => void; onClose: () => void }) => (
+    <div role="dialog" aria-label={`New task in ${project.name}`}>
+      <button
+        type="button"
+        onClick={() => {
+          onCreated?.({ key: `${project.key}-111` })
+          onClose()
+        }}
+      >
+        Save task
+      </button>
+    </div>
+  ),
+}))
 
 beforeEach(() => {
   projects = [
@@ -26,7 +40,17 @@ beforeEach(() => {
 afterEach(cleanup)
 window.matchMedia ??= ((media: string) => ({ matches: false, media, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia
 
-const show = () => render(<MemoryRouter><NewTaskButton /></MemoryRouter>)
+function Address() {
+  const { pathname, search } = useLocation()
+  return <p data-testid="address">{pathname + search}</p>
+}
+const show = () =>
+  render(
+    <MemoryRouter initialEntries={['/w/engineering/dashboard?days=14']}>
+      <NewTaskButton />
+      <Address />
+    </MemoryRouter>,
+  )
 
 describe('NewTaskButton (spec 5.5: the Projects side’s button by the logo)', () => {
   it('is hidden when I may add tasks nowhere', () => {
@@ -49,5 +73,16 @@ describe('NewTaskButton (spec 5.5: the Projects side’s button by the logo)', (
     expect(items).toEqual(['Nexus Core', 'Mobile App'])
     await act(async () => fireEvent.click(screen.getByRole('menuitem', { name: 'Mobile App' })))
     expect(screen.getByRole('dialog', { name: 'New task in Mobile App' })).toBeTruthy()
+  })
+})
+
+describe('a new task shows itself (UX Phase 1, 1.5)', () => {
+  it('after Save, the new task’s panel opens on the page I am on', () => {
+    manages.add('p-nex')
+    show()
+    fireEvent.click(screen.getByRole('button', { name: 'New task' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save task' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.getByTestId('address').textContent).toBe('/w/engineering/dashboard?days=14&ticket=NEX-111')
   })
 })
