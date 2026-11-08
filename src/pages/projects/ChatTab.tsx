@@ -10,22 +10,29 @@ const ChannelView = lazy(() => import('@/pages/chat/ChannelPage').then((m) => ({
 
 /**
  * The project's channel (slice AA): the same view as in Chat (header, tabs, messages, the rich composer, threads and
- * files) in a box on the project page; "Open in Chat" goes to the full channel.
+ * files) in a box on the project page. The page fills the card on this tab (UX Phase 1, 1.3), so the box takes the
+ * height left under the header and the tabs; "Open in Chat" sits at the end of the tab row.
  */
-export function ChatTab({ ws, project }: { ws: string; project: ProjectSummary }) {
+export function ChatTab({ project }: { project: ProjectSummary }) {
   return (
-    <>
-      <div className="mb-3 flex justify-end">
-        <Link to={paths.channel(ws, project.channelId)} className="inline-flex min-h-9 items-center gap-1.5 text-sm font-medium text-accent hover:text-accent-strong">
-          <MessageSquare className="size-4" /> Open in Chat
-        </Link>
-      </div>
-      {/* A pane of its own: the messages scroll inside it, the composer stays at its foot. */}
-      <div className="sf flex h-[calc(100dvh-22rem)] min-h-[26rem] flex-col overflow-hidden rounded-xl border border-sf-line bg-sf-surface">
-        <Suspense fallback={<MessageSkeleton />}>
-          <ChannelView key={project.channelId} channelId={project.channelId} />
-        </Suspense>
-      </div>
-    </>
+    <div className="sf flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-sf-line bg-sf-surface">
+      <Suspense fallback={<MessageSkeleton />}>
+        <ChannelView key={project.channelId} channelId={project.channelId} />
+      </Suspense>
+    </div>
+  )
+}
+
+/** "Open in Chat", at the end of the project's tab row on the Chat tab: the full channel. */
+export function OpenInChatLink({ ws, channelId }: { ws: string; channelId: string }) {
+  return (
+    // On a phone the icon alone, so the tabs keep the room.
+    <Link
+      to={paths.channel(ws, channelId)}
+      title="Open in Chat"
+      className="inline-flex min-h-9 items-center gap-1.5 whitespace-nowrap text-sm font-medium text-accent hover:text-accent-strong max-sm:min-w-11 max-sm:justify-center"
+    >
+      <MessageSquare className="size-4" aria-hidden /> <span className="max-sm:sr-only">Open in Chat</span>
+    </Link>
   )
 }

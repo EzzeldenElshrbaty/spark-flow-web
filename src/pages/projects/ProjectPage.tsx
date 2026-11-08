@@ -24,7 +24,7 @@ import { ProjectTabs } from './ProjectTabs'
 import { ProjectSheet } from './ProjectSheet'
 import { stagesOf } from './phases'
 import { TaskSheet } from './TaskSheet'
-import { ChatTab } from './ChatTab'
+import { ChatTab, OpenInChatLink } from './ChatTab'
 import { TasksTab } from './TasksTab'
 import { HistoryTab } from '@/pages/projects/HistoryTab'
 import { FilesTab } from '@/pages/projects/FilesTab'
@@ -140,6 +140,8 @@ export function ProjectPage() {
     ...(check('project.archive') && !project.archivedAt ? [{ label: 'Archive project', icon: Archive, onSelect: () => setSheet('archive') }] : []),
   ]
 
+  // The Chat tab fills the card (UX Phase 1, 1.3): a compact header, no phase bar, and the channel takes the rest.
+  const chat = tab === 'chat'
   const phaseList = phases.data ?? []
   const stages = stagesOf(phaseList, tasks.data ?? [], now)
   const currentIndex = Math.max(0, stages.findIndex((s) => s.id === project.currentPhaseId))
@@ -161,6 +163,7 @@ export function ProjectPage() {
         primary={primary}
         secondary={secondary}
         more={more}
+        compact={chat}
       />
 
       {project.archivedAt && (
@@ -175,7 +178,7 @@ export function ProjectPage() {
         </div>
       )}
 
-      {phases.isError ? (
+      {chat ? null : phases.isError ? (
         <p className="mb-5 text-sm text-red-600 dark:text-red-400">Phases couldn't be loaded.</p>
       ) : phases.isPending ? (
         <div className="mb-5 h-11 animate-pulse rounded-lg bg-surface-muted" aria-hidden />
@@ -206,16 +209,16 @@ export function ProjectPage() {
         </div>
       ) : null}
 
-      <ProjectTabs ws={ws} projectKey={project.key} tab={tab} />
+      <ProjectTabs ws={ws} projectKey={project.key} tab={tab} end={chat ? <OpenInChatLink ws={ws} channelId={project.channelId} /> : undefined} />
 
       {tab === 'overview' && <OverviewTab project={project} phases={phaseList} people={people} teams={teams} canEdit={canEdit} canPost={canPost} />}
       {tab === 'tasks' && <TasksTab project={project} people={people} phases={phaseList} />}
-      {tab === 'chat' && <ChatTab ws={ws} project={project} />}
+      {chat && <ChatTab project={project} />}
       {tab === 'time' && <TimeTab project={project} people={people} />}
       {tab === 'history' && <HistoryTab project={project} people={people} phases={phaseList} />}
       {tab === 'files' && <FilesTab ws={ws} project={project} users={people} />}
 
-      <RecordActionBarSpacer />
+      {!chat && <RecordActionBarSpacer />}
 
       {sheet === 'edit' && <ProjectSheet workspaceId={workspace.id} project={project} takenKeys={[]} onClose={() => setSheet(null)} onSaved={() => setSheet(null)} />}
       {sheet === 'task' && (

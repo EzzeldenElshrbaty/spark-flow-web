@@ -86,7 +86,8 @@ export const workspacePages: RouteObject[] = [
   { path: 'time', element: <TimeCostPage /> },
   { path: 'teams', element: <TeamsPage /> },
   { path: 'p/:projectKey', element: <ProjectOverviewRedirect /> },
-  { path: 'p/:projectKey/:tab', element: <ProjectTabRoute /> },
+  // The Chat tab fills the card instead of scrolling (UX Phase 1, 1.3).
+  { path: 'p/:projectKey/:tab', element: <ProjectTabRoute />, handle: { fill: (params: { tab?: string }) => params.tab === 'chat' } },
   { path: 'settings', element: <SettingsPage /> },
   { path: 'settings/database', element: <DatabasePage /> },
   { path: 'settings/rates', element: <RatesPage /> },

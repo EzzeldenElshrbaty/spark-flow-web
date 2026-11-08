@@ -21,6 +21,7 @@ export function RecordHeader({
   primary,
   secondary = [],
   more = [],
+  compact = false,
 }: {
   avatar: ReactNode
   title: string
@@ -29,39 +30,51 @@ export function RecordHeader({
   primary?: RecordAction
   secondary?: RecordAction[]
   more?: RecordAction[]
+  /**
+   * Name, badges and actions only (UX Phase 1, 1.3: the project Chat tab): no facts row, and on phones the actions
+   * sit under ⋯ on the title row instead of a bar pinned above the bottom navigation.
+   */
+  compact?: boolean
 }) {
   const hasActions = !!primary || secondary.length > 0 || more.length > 0
   return (
     <>
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex min-w-0 items-start gap-3">
+          {compact && hasActions && (
+            <div className="order-last ms-auto sm:hidden">
+              <MoreMenu actions={[...(primary ? [primary] : []), ...secondary, ...more]} />
+            </div>
+          )}
           <span className="shrink-0 [&>span]:size-10 [&>span]:text-sm">{avatar}</span>
           <div className="min-w-0">
             <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
               <h1 className="truncate text-xl font-semibold tracking-tight text-fg sm:text-2xl">{title}</h1>
               {badges}
             </div>
-            <ul className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 text-sm text-fg-muted">
-              {meta.map((item, index) => {
-                const content = (
-                  <>
-                    <span className="flex shrink-0 items-center [&>svg]:size-3.5">{item.icon}</span>
-                    <span className="truncate">{item.label}</span>
-                  </>
-                )
-                return (
-                  <li key={index} className="flex min-w-0 max-w-full items-center gap-1.5" title={item.title}>
-                    {item.onClick ? (
-                      <button type="button" onClick={item.onClick} className="flex min-w-0 items-center gap-1.5 rounded hover:text-fg">
-                        {content}
-                      </button>
-                    ) : (
-                      content
-                    )}
+            {!compact && (
+              <ul className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 text-sm text-fg-muted">
+                {meta.map((item, index) => {
+                  const content = (
+                    <>
+                      <span className="flex shrink-0 items-center [&>svg]:size-3.5">{item.icon}</span>
+                      <span className="truncate">{item.label}</span>
+                    </>
+                  )
+                  return (
+                    <li key={index} className="flex min-w-0 max-w-full items-center gap-1.5" title={item.title}>
+                      {item.onClick ? (
+                        <button type="button" onClick={item.onClick} className="flex min-w-0 items-center gap-1.5 rounded hover:text-fg">
+                          {content}
+                        </button>
+                      ) : (
+                        content
+            )}
                   </li>
                 )
               })}
             </ul>
+            )}
           </div>
         </div>
 
@@ -85,8 +98,8 @@ export function RecordHeader({
         )}
       </div>
 
-      {/* Phones: the main action and "⋯" pinned above the bottom navigation. */}
-      {hasActions && (
+      {/* Phones: the main action and "⋯" pinned above the bottom navigation (compact: ⋯ on the title row). */}
+      {hasActions && !compact && (
         <>
           <div className="fixed inset-x-0 bottom-[calc(3.5rem+var(--timer-bar,0px)+env(safe-area-inset-bottom))] z-20 flex gap-2 border-t border-line bg-surface/95 px-4 py-2.5 backdrop-blur sm:hidden">
             {primary && (

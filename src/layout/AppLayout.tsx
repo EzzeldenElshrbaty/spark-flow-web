@@ -11,7 +11,7 @@ import { PageHelpPanel } from '@/layout/PageHelpPanel'
 import { PageSkeleton } from '@/layout/PageSkeleton'
 import { MobileBottomBar, MobileDrawer } from '@/layout/MobileNav'
 import { RealtimeBridge } from '@/layout/RealtimeBridge'
-import { mainCardClass } from '@/layout/mainCard'
+import { isFill, mainCardClass } from '@/layout/mainCard'
 import { Sidebar } from '@/layout/Sidebar'
 import { StillWorkingDialog } from '@/layout/StillWorkingDialog'
 import { PhoneTimerBar, TimerAnnouncer } from '@/layout/TimerBar'
@@ -38,13 +38,16 @@ export function AppLayout() {
   const signedOut = account.signedOut
   const location = useLocation()
   // A pane page (a channel) fills the card instead of scrolling inside the padded page column.
-  const pane = useMatches().some((match) => (match.handle as { pane?: boolean } | undefined)?.pane)
+  const matches = useMatches()
+  const pane = matches.some((match) => (match.handle as { pane?: boolean } | undefined)?.pane)
+  // A page that fills the card on the page canvas (the project Chat tab, UX Phase 1, 1.3).
+  const fill = !pane && isFill(matches)
 
   return (
     // On desktop the content floats as a rounded panel on the sidebar's colour and scrolls on its own.
     // The panel is "relative" so hidden screen-reader text inside it cannot stretch the page below it.
     <ToastProvider>
-      <div className={clsx('flex lg:h-screen lg:overflow-hidden', pane ? 'h-dvh overflow-hidden' : 'min-h-screen')}>
+      <div className={clsx('flex lg:h-screen lg:overflow-hidden', pane || fill ? 'h-dvh overflow-hidden' : 'min-h-screen')}>
         {/* The dark frame behind the sidebar and the card. Its own .sf element, so the chat tokens don't reach the pages. */}
         <div aria-hidden className="sf fixed inset-0 -z-10 hidden bg-sf-app-frame lg:block" />
         <RealtimeBridge />
@@ -64,13 +67,16 @@ export function AppLayout() {
             onSearchOpenChange={setSearchOpen}
           />
           {/* The scroller has no padding of its own, so sticky parts of a page (the channel composer) stick to its edge. */}
-          <div className={clsx('flex flex-1 flex-col', pane ? 'min-h-0' : 'lg:min-h-0 lg:overflow-y-auto')}>
+          <div className={clsx('flex flex-1 flex-col', pane || fill ? 'min-h-0' : 'lg:min-h-0 lg:overflow-y-auto')}>
             <main
               className={
                 pane
                   ? // The phone bottom bar (and the timer bar) cover the page's end; the pane stops above them.
                     'flex min-h-0 w-full flex-1 flex-col pb-[calc(3.5rem+var(--timer-bar,0px)+env(safe-area-inset-bottom))] lg:pb-0'
-                  : 'w-full flex-1 px-4 pb-[calc(6rem+var(--timer-bar,0px))] pt-6 md:px-6 lg:pb-10 xl:px-8'
+                  : fill
+                    ? // The page's padding, its content filling the height left, above the phone bars.
+                      'flex min-h-0 w-full flex-1 flex-col px-4 pb-[calc(4rem+var(--timer-bar,0px)+env(safe-area-inset-bottom))] pt-4 md:px-6 lg:pb-4 lg:pt-6 xl:px-8'
+                    : 'w-full flex-1 px-4 pb-[calc(6rem+var(--timer-bar,0px))] pt-6 md:px-6 lg:pb-10 xl:px-8'
               }
             >
               {/* Each page's code loads when it's first opened; this shows meanwhile (usually a blink). */}
