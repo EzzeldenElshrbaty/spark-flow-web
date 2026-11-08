@@ -1,5 +1,5 @@
 import { ArrowLeft } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { useRates, useUpdateRate } from '@/api/rates'
 import { formatDate } from '@/lib/format'
@@ -10,6 +10,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { inputClass } from '@/components/ui/Field'
+import { LeaveGuard } from '@/components/ui/LeaveGuard'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
@@ -19,10 +20,30 @@ import { useAccess } from '@/lib/usePermission'
 /** What a migrated rate starts from: it has always been in effect. */
 const START_OF_TIME = '1970-01-01T00:00:00.000Z'
 
-function RateRow({ person, saved, since }: { person: User; saved: number | undefined; since: string | undefined }) {
+function RateRow({
+  person,
+  saved,
+  since,
+  onChanged,
+}: {
+  person: User
+  saved: number | undefined
+  since: string | undefined
+  /** Whether this row holds a cost not saved yet, so leaving the page asks first (UX Phase 1, 1.2). */
+  onChanged: (changed: boolean) => void
+}) {
   const update = useUpdateRate()
   const [value, setValue] = useState(saved === undefined ? '' : String(saved))
   const changed = value !== (saved === undefined ? '' : String(saved))
+  const onChangedRef = useRef(onChanged)
+  useEffect(() => {
+    onChangedRef.current = onChanged
+  })
+  useEffect(() => {
+    if (!changed) return
+    onChangedRef.current(true)
+    return () => onChangedRef.current(false)
+  }, [changed])
   const number = Number(value)
   const invalid = value.trim() === '' || !Number.isFinite(number) || number < 0
   return (
@@ -69,6 +90,15 @@ export function RatesPage() {
   const access = useAccess('rates.view')
   const rates = useRates(access === 'allowed')
   const people = useUsers(workspace?.id)
+  // Rows with a cost not saved yet (UX Phase 1, 1.2).
+  const [changedRows, setChangedRows] = useState<ReadonlySet<string>>(new Set())
+  const markChanged = (userId: string, on: boolean) =>
+    setChangedRows((all) => {
+      const next = new Set(all)
+      if (on) next.add(userId)
+      else next.delete(userId)
+      return next
+    })
 
   const back = (
     <Link to={paths.settings(ws)} className="mb-3 inline-flex items-center gap-1.5 text-sm text-fg-muted hover:text-fg">
@@ -105,7 +135,7 @@ export function RatesPage() {
             const current = currentRates(rates.data).find((r) => r.userId === person.id)
             const saved = current?.hourlyCost
             // The key carries the saved value, so a row resets to it after a save.
-            return <RateRow key={`${person.id}:${saved ?? ''}`} person={person} saved={saved} since={current?.effectiveFrom} />
+            return <RateRow key={`${person.id}:${saved ?? ''}`} person={person} saved={saved} since={current?.effectiveFrom} onChanged={(on) => markChanged(person.id, on)} />
           })}
         </ul>
       </Card>
@@ -116,6 +146,7 @@ export function RatesPage() {
       {back}
       {header}
       {body}
+      <LeaveGuard dirty={changedRows.size > 0} description="Hourly costs you changed aren’t saved." />
     </>
   )
 }

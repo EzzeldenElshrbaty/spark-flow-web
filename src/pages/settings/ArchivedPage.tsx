@@ -14,7 +14,7 @@ import { DataTable, TableSkeleton, type Column } from '@/components/ui/DataTable
 import { Field, inputClass } from '@/components/ui/Field'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
-import { Sheet } from '@/components/ui/Sheet'
+import { Sheet, SheetCancelButton } from '@/components/ui/Sheet'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { formatDate } from '@/lib/format'
 import { paths } from '@/lib/paths'
@@ -329,13 +329,12 @@ function RetentionSheet({ days, onClose }: { days: number; onClose: () => void }
     <Sheet
       open
       onClose={onClose}
+      dirty={value !== String(days)}
       title="Keep archived records"
       description="How many days after archiving a record can be deleted for good."
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
+          <SheetCancelButton />
           <Button onClick={() => save.mutate(Number(value), { onSuccess: onClose })} disabled={save.isPending}>
             {save.isPending ? 'Saving…' : 'Save'}
           </Button>

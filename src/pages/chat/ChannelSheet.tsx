@@ -6,7 +6,7 @@ import { isActive } from '@/lib/people'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { Field, inputClass } from '@/components/ui/Field'
-import { Sheet } from '@/components/ui/Sheet'
+import { Sheet, SheetCancelButton } from '@/components/ui/Sheet'
 import { channelFormErrors, MAX_TOPIC, type ChannelValues } from '@/lib/channelForm'
 import { paths } from '@/lib/paths'
 
@@ -50,14 +50,15 @@ export function ChannelSheet({ workspaceId, workspaceSlug, onClose }: { workspac
     <Sheet
       open
       onClose={onClose}
+      // Closing with changes asks first (UX Phase 1, 1.2).
+      dirty={values.name.trim() !== '' || values.topic.trim() !== '' || values.isPrivate || values.memberIds.length > 0}
+      discardQuestion="Discard this new channel?"
       variant="drawer"
       title="New channel"
       description="A place for a topic or a team. A private channel shows only to the people in it."
       footer={
         <>
-          <Button variant="secondary" onClick={onClose} disabled={pending}>
-            Cancel
-          </Button>
+          <SheetCancelButton disabled={pending} />
           <Button onClick={save} disabled={pending}>
             {pending ? 'Creating…' : 'Create channel'}
           </Button>

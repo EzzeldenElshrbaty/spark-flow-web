@@ -11,7 +11,8 @@ import { Card } from '@/components/ui/Card'
 import { Field, inputClass, selectClass } from '@/components/ui/Field'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
-import { Sheet } from '@/components/ui/Sheet'
+import { LeaveGuard } from '@/components/ui/LeaveGuard'
+import { Sheet, SheetCancelButton } from '@/components/ui/Sheet'
 import { paths } from '@/lib/paths'
 import { ALL_PERMISSIONS, PERMISSION_GROUPS, type Permission } from '@/lib/permissions'
 import { useAccess } from '@/lib/usePermission'
@@ -168,6 +169,7 @@ export function RolesPage() {
         )}
       </div>
       {body}
+      <LeaveGuard dirty={changes > 0} description={changes === 1 ? '1 change to roles isn’t saved.' : `${changes} changes to roles aren’t saved.`} />
       {adding && <AddRoleSheet roles={list} onClose={() => setAdding(false)} />}
       {renaming && <RenameRoleSheet role={renaming} onClose={() => setRenaming(null)} />}
       <ConfirmDeleteSheet
@@ -318,13 +320,13 @@ function AddRoleSheet({ roles, onClose }: { roles: Role[]; onClose: () => void }
     <Sheet
       open
       onClose={onClose}
+      dirty={name.trim() !== '' || copyFrom !== ''}
+      discardQuestion="Discard this new role?"
       title="Add role"
       description="It starts with no permissions, or with another role's."
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
+          <SheetCancelButton />
           <Button onClick={save} disabled={create.isPending}>
             {create.isPending ? 'Adding…' : 'Add role'}
           </Button>
@@ -371,12 +373,11 @@ function RenameRoleSheet({ role, onClose }: { role: Role; onClose: () => void })
     <Sheet
       open
       onClose={onClose}
+      dirty={name !== role.name}
       title={`Rename ${role.name}`}
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
+          <SheetCancelButton />
           <Button onClick={save} disabled={rename.isPending}>
             {rename.isPending ? 'Renaming…' : 'Rename'}
           </Button>

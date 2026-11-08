@@ -6,7 +6,7 @@ import { isActive } from '@/lib/people'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { inputClass } from '@/components/ui/Field'
-import { Sheet } from '@/components/ui/Sheet'
+import { Sheet, SheetCancelButton } from '@/components/ui/Sheet'
 import { paths } from '@/lib/paths'
 
 const MAX_OTHERS = 8
@@ -44,14 +44,15 @@ export function NewMessageSheet({ workspaceId, workspaceSlug, onClose }: { works
     <Sheet
       open
       onClose={onClose}
+      // Closing with people picked asks first (UX Phase 1, 1.2).
+      dirty={picked.length > 0}
+      discardQuestion="Discard this new message?"
       variant="drawer"
       title="New message"
       description="Pick one person, or a few for a group conversation."
       footer={
         <>
-          <Button variant="secondary" onClick={onClose} disabled={open.isPending}>
-            Cancel
-          </Button>
+          <SheetCancelButton disabled={open.isPending} />
           <Button onClick={go} disabled={open.isPending}>
             {open.isPending ? 'Opening…' : 'Open conversation'}
           </Button>

@@ -11,7 +11,7 @@ import { DataTable, TableSkeleton, type Column } from '@/components/ui/DataTable
 import { Field, inputClass, selectClass } from '@/components/ui/Field'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
-import { Sheet } from '@/components/ui/Sheet'
+import { Sheet, SheetCancelButton } from '@/components/ui/Sheet'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { localDay } from '@/lib/dates'
 import { formatDate, formatHours, formatTime, formatWhen } from '@/lib/format'
@@ -429,6 +429,8 @@ function WorkHoursForm({ current, timeoutHours, onClose }: { current: WorkHours;
   const [timeout, setTimeoutHours] = useState(String(timeoutHours))
   const [problem, setProblem] = useState<string | null>(null)
   const pending = save.isPending || saveTimer.isPending
+  // Closing with changes asks first (UX Phase 1, 1.2).
+  const dirty = [...days].sort((a, b) => a - b).join() !== [...current.days].sort((a, b) => a - b).join() || start !== current.start || end !== current.end || timeout !== String(timeoutHours)
   const submit = async () => {
     const hours = timeout.trim() === '' ? NaN : Number(timeout)
     const bad = timeoutProblem(hours)
@@ -451,13 +453,12 @@ function WorkHoursForm({ current, timeoutHours, onClose }: { current: WorkHours;
     <Sheet
       open
       onClose={close}
+      dirty={dirty}
       title="Working hours and timer"
       description={`What late and left early mean on Attendance, in ${current.timeZone.split('/').at(-1)!.replace(/_/g, ' ')} time.`}
       footer={
         <>
-          <Button variant="secondary" onClick={close}>
-            Cancel
-          </Button>
+          <SheetCancelButton disabled={pending} />
           <Button onClick={submit} disabled={pending}>
             {pending ? 'Saving…' : 'Save'}
           </Button>

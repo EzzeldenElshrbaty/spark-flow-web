@@ -13,7 +13,7 @@ import { DataTable, TableSkeleton, type Column } from '@/components/ui/DataTable
 import { Field, inputClass, selectClass } from '@/components/ui/Field'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
-import { Sheet } from '@/components/ui/Sheet'
+import { Sheet, SheetCancelButton } from '@/components/ui/Sheet'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { formatDate, timeAgo } from '@/lib/format'
 import { paths } from '@/lib/paths'
@@ -300,13 +300,16 @@ function PersonSheet({
   const create = useCreatePerson()
   const update = useUpdatePerson()
   const save = person ? update : create
-  const [values, setValues] = useState<NewPerson>(() => ({
+  const [opened] = useState<NewPerson>(() => ({
     name: person?.name ?? '',
     email: person?.email ?? '',
     title: person?.title ?? '',
     roleIds: person?.roleIds ?? [],
     teamIds: person?.teamIds.filter((id) => teams.some((t) => t.id === id)) ?? [],
   }))
+  const [values, setValues] = useState(opened)
+  // Closing with changes asks first (UX Phase 1, 1.2).
+  const dirty = JSON.stringify(values) !== JSON.stringify(opened)
   const [checked, setChecked] = useState<Partial<Record<keyof NewPerson, string>>>({})
   const set = <K extends keyof NewPerson>(key: K, value: NewPerson[K]) => setValues((v) => ({ ...v, [key]: value }))
   const toggle = (key: 'roleIds' | 'teamIds', id: string) => set(key, values[key].includes(id) ? values[key].filter((x) => x !== id) : [...values[key], id])
@@ -332,6 +335,8 @@ function PersonSheet({
     <Sheet
       open
       onClose={onClose}
+      dirty={dirty}
+      discardQuestion={person ? 'Discard your changes?' : 'Discard this new person?'}
       variant="drawer"
       // Edit opens from a row, often by a tap: the keyboard waits until a field is chosen.
       focusFirstField={!person}
@@ -339,9 +344,7 @@ function PersonSheet({
       description={person ? undefined : 'They can be tried at once through View as. Sign-in and invitations come with the backend.'}
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
+          <SheetCancelButton />
           <Button onClick={submit} disabled={save.isPending}>
             {person ? (save.isPending ? 'Saving…' : 'Save changes') : save.isPending ? 'Adding…' : 'Add person'}
           </Button>

@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { MutationCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes, useLocation } from 'react-router'
+import { UnsavedChangesBlocker } from '@/layout/UnsavedChangesBlocker'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Me, PersonRow } from '@/api/types'
 import { api, ApiError } from '@/lib/api'
@@ -195,5 +196,52 @@ describe('Settings → Users (Admin and help, slice 3)', () => {
     expect(await screen.findByText(/You don't have access to users\./)).toBeTruthy()
     expect(api.users.directory).not.toHaveBeenCalled()
     expect(screen.queryByRole('dialog')).toBeNull()
+  })
+})
+
+describe('Add person asks before Back throws it away (UX Phase 1, 1.2)', () => {
+  async function mountRouted() {
+    const client: QueryClient = new QueryClient({ mutationCache: new MutationCache({ onSuccess: () => client.invalidateQueries() }) })
+    const router = createMemoryRouter(
+      [
+        {
+          path: '/w/:ws/settings/users',
+          element: (
+            <>
+              <UnsavedChangesBlocker />
+              <UsersPage />
+            </>
+          ),
+        },
+      ],
+      { initialEntries: ['/w/engineering/settings/users', '/w/engineering/settings/users?person=new'], initialIndex: 1 },
+    )
+    render(
+      <QueryClientProvider client={client}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    )
+    await screen.findByRole('dialog', { name: 'Add person' })
+    return router
+  }
+
+  it('Back with a typed name asks "Discard this new person?" and keeps the sheet', async () => {
+    const router = await mountRouted()
+    fireEvent.change(screen.getByRole('textbox', { name: /^Name/ }), { target: { value: 'Laila Adel' } })
+    await act(() => router.navigate(-1))
+    expect(await screen.findByText('Discard this new person?')).toBeTruthy()
+    expect(router.state.location.search).toBe('?person=new')
+  })
+
+  it('a saved person closes the sheet with no question', async () => {
+    vi.spyOn(api.users, 'create').mockImplementation(async (input) => ({ ...people[0]!, ...input, id: 'u-new' }))
+    const router = await mountRouted()
+    fireEvent.change(screen.getByRole('textbox', { name: /^Name/ }), { target: { value: 'Laila Adel' } })
+    fireEvent.change(screen.getByRole('textbox', { name: /^Email/ }), { target: { value: 'laila@spark-sys.com' } })
+    fireEvent.click(screen.getByRole('checkbox', { name: /Member/ }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Add person' })).getByRole('button', { name: 'Add person' }))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Add person' })).toBeNull())
+    expect(screen.queryByText('Discard this new person?')).toBeNull()
+    expect(router.state.location.search).toBe('')
   })
 })

@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { MutationCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
-import { MemoryRouter, Route, Routes } from 'react-router'
+import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes } from 'react-router'
+import { UnsavedChangesBlocker } from '@/layout/UnsavedChangesBlocker'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Me, Role, RoleChange } from '@/api/types'
 import { api, ApiError } from '@/lib/api'
@@ -178,5 +179,40 @@ describe('Roles and permissions (slice 1)', () => {
     await mount(false)
     expect(await screen.findByText(/You don't have access to roles and permissions/)).toBeTruthy()
     expect(screen.queryByRole('table')).toBeNull()
+  })
+})
+
+describe('leaving with unsaved role changes (UX Phase 1, 1.2)', () => {
+  it('asks "Leave without saving?" before another page; Stay keeps the changes', async () => {
+    const client: QueryClient = new QueryClient()
+    const router = createMemoryRouter(
+      [
+        {
+          path: '/w/:ws/settings/roles',
+          element: (
+            <>
+              <UnsavedChangesBlocker />
+              <RolesPage />
+            </>
+          ),
+        },
+        { path: '/w/:ws/settings', element: <p>Settings home</p> },
+      ],
+      { initialEntries: ['/w/engineering/settings/roles'] },
+    )
+    render(
+      <QueryClientProvider client={client}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    )
+    await screen.findByRole('table', { name: 'Permissions by role' })
+    const box = within(matrix()).getAllByRole('checkbox')[0]!
+    fireEvent.click(box)
+    await act(() => router.navigate('/w/engineering/settings'))
+    expect(await screen.findByRole('dialog', { name: 'Leave without saving?' })).toBeTruthy()
+    expect(screen.getByText('1 change to roles isn’t saved.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Stay' }))
+    expect(router.state.location.pathname).toBe('/w/engineering/settings/roles')
+    expect(screen.getByText('1 change not saved')).toBeTruthy()
   })
 })
