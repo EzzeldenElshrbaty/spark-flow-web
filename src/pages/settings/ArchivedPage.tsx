@@ -14,12 +14,13 @@ import { DataTable, TableSkeleton, type Column } from '@/components/ui/DataTable
 import { Field, inputClass } from '@/components/ui/Field'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
+import { DeleteDialog } from '@/components/ui/DeleteDialog'
 import { Sheet, SheetCancelButton } from '@/components/ui/Sheet'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { formatDate } from '@/lib/format'
 import { paths } from '@/lib/paths'
 import { useAccess } from '@/lib/usePermission'
-import { deletableText, filterArchived, goesWith, TYPES, typeLabel } from './archivedView'
+import { deletableText, filterArchived, goesWithParts, TYPES, typeLabel } from './archivedView'
 
 const SEARCH_WAIT_MS = 300
 
@@ -287,38 +288,23 @@ function List({ items, people, ws, now, onDelete }: RowProps) {
 
 // ── Delete for good, and how long they're kept ──────────────────────────────
 
+/** Delete for good: the record's key (or the channel's name) is typed first, so it never happens by a slip (UX Phase 1, 1.4). */
 function DeleteSheet({ record, onClose }: { record: ArchivedRecord; onClose: () => void }) {
   const remove = useDeleteForGood()
-  const close = () => {
-    if (!remove.isPending) onClose()
-  }
-  const also = goesWith(record)
+  const parts = goesWithParts(record)
   return (
-    <Sheet
-      open
-      onClose={close}
+    <DeleteDialog
       title={`Delete ${record.name} for good?`}
-      footer={
-        <>
-          <Button variant="secondary" onClick={close}>
-            Cancel
-          </Button>
-          <Button variant="danger" onClick={() => remove.mutate({ type: record.type, id: record.id }, { onSuccess: onClose })} disabled={remove.isPending}>
-            {remove.isPending ? 'Deleting…' : 'Delete for good'}
-          </Button>
-        </>
+      description={
+        record.type === 'project'
+          ? 'Its channel stays, archived, and can still be restored. The audit log keeps a line saying it was deleted.'
+          : 'The audit log keeps a line saying it was deleted.'
       }
-    >
-      <p className="text-sm text-fg-secondary">
-        {also ? `It goes with ${also}.` : 'Nothing else goes with it.'} This can't be undone. The audit log keeps a line saying it was deleted.
-      </p>
-      {record.type === 'project' && <p className="mt-2 text-sm text-fg-secondary">Its channel stays, archived, and can still be restored.</p>}
-      {remove.isError && (
-        <p role="alert" className="mt-3 text-sm text-red-700 dark:text-red-300">
-          {remove.error.message}
-        </p>
-      )}
-    </Sheet>
+      confirmText={record.ref}
+      removes={parts.length ? parts : ['Nothing else goes with it.']}
+      onDelete={() => remove.mutateAsync({ type: record.type, id: record.id }).then(onClose)}
+      onClose={onClose}
+    />
   )
 }
 

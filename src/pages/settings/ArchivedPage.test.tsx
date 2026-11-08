@@ -92,15 +92,22 @@ describe('Settings → Archived records (Admin and help, slice 4)', () => {
     expect(within(project!).getByRole('button', { name: 'Restore Sela booking' })).toBeTruthy()
   })
 
-  it('Delete for good names what goes with it and asks first', async () => {
+  it('Delete for good names what goes with it and waits for the record’s key to be typed (UX Phase 1, 1.4)', async () => {
     const remove = vi.spyOn(api.archive, 'deleteForGood').mockResolvedValue()
     await mount()
     fireEvent.click((await screen.findAllByRole('button', { name: 'Delete Sela booking for good' }))[0]!)
     const sheet = await screen.findByRole('dialog', { name: 'Delete Sela booking for good?' })
-    expect(within(sheet).getByText(/It goes with its 12 tasks, 3 files, 5 phases and 1 deliverable\. This can't be undone\./)).toBeTruthy()
+    for (const line of ['12 tasks', '3 files', '5 phases', '1 deliverable']) expect(within(sheet).getByText(line)).toBeTruthy()
     expect(within(sheet).getByText(/Its channel stays, archived/)).toBeTruthy()
-    fireEvent.click(within(sheet).getByRole('button', { name: 'Delete for good' }))
+    const go = within(sheet).getByRole('button', { name: 'Delete for good' }) as HTMLButtonElement
+    expect(go.disabled).toBe(true)
+    fireEvent.change(within(sheet).getByRole('textbox', { name: /Type SEL to confirm/ }), { target: { value: 'SE' } })
+    expect(go.disabled).toBe(true)
+    fireEvent.change(within(sheet).getByRole('textbox', { name: /Type SEL to confirm/ }), { target: { value: 'sel' } })
+    expect(go.disabled).toBe(false)
+    fireEvent.click(go)
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(remove).toHaveBeenCalledTimes(1)
     expect(remove).toHaveBeenCalledWith('project', 'p-sel')
   })
 
