@@ -2714,3 +2714,21 @@ Branch `feat/add-time-for` from `dev` (5c501b0). Design in chat with a flow diag
   project"; the overlap refusal now names the person whenever it isn't me (it also improves an Admin's edit of
   someone's entry); no DB version bump, since an entry without `addedBy` reads as its person's own; no notification
   to the person (not asked; the bell can come later).
+
+# UX Phase 1: critical usability — 9 Nov 2026, roadmap approved ("Approve, start Phase 1"); plan waits for answers
+
+Audit `docs/ux-audit/2026-11-09-ui-ux-audit.md` (items 1.1–1.7). Plan with decisions, flow diagram and questions:
+`docs/superpowers/plans/2026-11-09-ux-phase-1-critical-usability.md`. Branch `feat/ux-phase-1` from `origin/dev`
+(15555e7) in `.worktrees/ux-phase-1`, once the plan is approved.
+
+- [ ] Unsaved-changes guard: store, one router blocker, `Sheet` "Discard …?" line, page "Leave without saving?" (1.2)
+- [ ] Project and time sheets join the guard; Phases no longer closes on Esc (1.2)
+- [ ] Settings and chat forms join the guard; Roles and Hourly cost pages guarded (1.2)
+- [ ] Delete for good asks for the record's key (1.4)
+- [ ] `overEstimate` next to `overdue` in the mock and types; dashboard `attention` list (1.1)
+- [ ] "Over estimate" on screen, help, `CLAUDE.md` and spec §3 (1.1)
+- [ ] A new task opens its panel (1.5)
+- [ ] Restore channel only for those who may (1.6)
+- [ ] Phones can change time entries (1.7)
+- [ ] Project Chat tab fills the screen (1.3)
+- [ ] Phase check, help pictures, review here
