@@ -25,7 +25,7 @@ const fullStats: DashboardStats = {
     { category: 'done', count: 3 },
   ],
   attention: [
-    { taskId: 't-nex-103', key: 'NEX-103', title: 'Fix duplicate rows', projectId: 'p-nex', assigneeId: 'u-3', dueAt: '2026-01-03T00:00:00.000Z', overdue: true, overEstimate: false, loggedHours: 2, estimateHours: 4 },
+    { taskId: 't-nex-103', key: 'NEX-103', title: 'Fix duplicate rows', projectId: 'p-nex', assigneeId: 'u-3', dueAt: '2026-01-03T00:00:00.000Z', overdue: true, overEstimate: true, loggedHours: 9, estimateHours: 6 },
     { taskId: 't-nex-105', key: 'NEX-105', title: 'Drag a card', projectId: 'p-nex', assigneeId: null, dueAt: '2099-01-01T00:00:00.000Z', overdue: false, overEstimate: true, loggedHours: 21.9, estimateHours: 6 },
     { taskId: 't-nex-108', key: 'NEX-108', title: 'Load test', projectId: 'p-nex', assigneeId: 'u-6', dueAt: null, overdue: false, overEstimate: true, loggedHours: 5, estimateHours: 4 },
   ],
@@ -129,7 +129,11 @@ describe('the dashboard for everyone (dashboard slice)', () => {
     expect(screen.getByRole('heading', { name: '3 tasks need attention' })).toBeTruthy()
     const table = screen.getByRole('table', { name: 'Tasks that need attention' })
     const row = within(table).getByText('Fix duplicate rows').closest('tr')!
-    expect(row.textContent).toMatch(/NEX-103.*Fix duplicate rows.*Nexus Core.*Mariam Fathy.*Overdue · 3 Jan 2026$/)
+    expect(row.textContent).toMatch(/NEX-103.*Fix duplicate rows.*Nexus Core.*Mariam Fathy.*Overdue · 3 Jan 2026Over estimate · 9 \/ 6 h$/)
+    // A task both late and over its estimate says both, each on its own line, never cut (final review).
+    const why = within(row).getByText('Over estimate · 9 / 6 h').parentElement!
+    expect(why.className).not.toMatch(/truncate/)
+    expect(within(why).getByText('Overdue · 3 Jan 2026')).toBeTruthy()
     expect(within(table).getByText('Drag a card').closest('tr')!.textContent).toMatch(/Over estimate · 21\.9 \/ 6 h$/)
     expect(within(table).getByText('Load test').closest('tr')!.textContent).toMatch(/Over estimate · 5 \/ 4 h$/)
     // The Overdue tile counts late tasks only, and says how many are over their estimate.

@@ -99,13 +99,12 @@ function OverdueTasks({ overdue, projectName, people }: { overdue: Overdue[]; pr
   const [params, setParams] = useSearchParams()
   const open = (key: string) => ({ search: withInspector(params, { kind: 'ticket', key }).toString() })
   const nameOf = (id: string | null) => (id ? (people.find((u) => u.id === id)?.name ?? 'Unknown person') : null)
-  // Why: "Overdue · 6 Nov" in red, "Over estimate · 21.9 / 6 h" in amber, or both.
+  // Why: "Overdue · 6 Nov" in red and "Over estimate · 21.9 / 6 h" in amber, each on its own line, so both always show.
   const due = (t: Overdue) => (
-    <>
+    <span className="flex flex-col gap-0.5 tabular-nums">
       {t.overdue && t.dueAt && <span className="text-red-600 dark:text-red-400">Overdue · {formatDate(t.dueAt)}</span>}
-      {t.overdue && t.overEstimate && <span className="text-fg-muted"> · </span>}
       {t.overEstimate && <span className="text-amber-700 dark:text-amber-300">Over estimate · {hoursLabel(t.loggedHours, t.estimateHours)}</span>}
-    </>
+    </span>
   )
   const columns: Column<Overdue>[] = [
     {
@@ -136,7 +135,7 @@ function OverdueTasks({ overdue, projectName, people }: { overdue: Overdue[]; pr
         )
       },
     },
-    { id: 'due', header: 'Why', width: 230, cell: (t) => <span className="block truncate tabular-nums">{due(t)}</span> },
+    { id: 'due', header: 'Why', width: 230, cell: (t) => due(t) },
   ]
 
   return (
@@ -162,8 +161,9 @@ function OverdueTasks({ overdue, projectName, people }: { overdue: Overdue[]; pr
                     {t.title}
                   </span>
                   <span className="block truncate text-xs text-fg-muted">
-                    {projectName(t.projectId)} · {nameOf(t.assigneeId) ?? 'No one'} · {due(t)}
+                    {projectName(t.projectId)} · {nameOf(t.assigneeId) ?? 'No one'}
                   </span>
+                  <span className="mt-0.5 block text-xs">{due(t)}</span>
                 </Link>
               </li>
             ))}
