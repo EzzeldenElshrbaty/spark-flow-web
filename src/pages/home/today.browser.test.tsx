@@ -22,7 +22,7 @@ vi.mock('@/api/time', async (load) => ({ ...(await load<object>()), usePauseTime
 vi.mock('@/api/projects', async (load) => ({ ...(await load<object>()), useProjectSummaries: () => loaded([{ id: 'p-nex', name: 'Nexus Core', managerId: 'u-2' }]) }))
 const nex = {
   id: 'p-nex', key: 'NEX', name: 'Nexus Core', status: 'active', managerId: 'u-2', phaseName: 'Build', progress: 0.5, loggedHours: 40, cost: null, estimateHours: 60,
-  estimatedLoggedHours: 70, expectedFinish: '2026-12-01T00:00:00.000Z', dueDate: '2026-11-20T00:00:00.000Z', overdueCount: 1, taskCount: 10, week: [{ userId: 'u-3', hours: 6 }], weekHours: 9,
+  estimatedLoggedHours: 70, expectedFinish: '2026-12-01T00:00:00.000Z', dueDate: '2026-11-20T00:00:00.000Z', overdueCount: 1, overEstimateCount: 2, taskCount: 10, week: [{ userId: 'u-3', hours: 6 }], weekHours: 9,
 }
 const stats = {
   days: Array.from({ length: 14 }, (_, i) => ({ day: new Date(Date.UTC(2026, 9, 23 + i)).toISOString().slice(0, 10), hours: i % 3 ? 6 : 0, mine: i % 3 ? 2 : 0 })),
@@ -32,9 +32,9 @@ const stats = {
     { category: 'inProgress', count: 2 },
     { category: 'done', count: 3 },
   ],
-  overdue: [
-    { taskId: 't-nex-103', key: 'NEX-103', title: 'Fix duplicate rows in GET /v2/invoices at page size 100', projectId: 'p-nex', assigneeId: 'u-3', dueAt: '2026-11-03T00:00:00.000Z' },
-    { taskId: 't-nex-104', key: 'NEX-104', title: 'Over its estimate', projectId: 'p-nex', assigneeId: null, dueAt: null },
+  attention: [
+    { taskId: 't-nex-103', key: 'NEX-103', title: 'Fix duplicate rows in GET /v2/invoices at page size 100', projectId: 'p-nex', assigneeId: 'u-3', dueAt: '2026-11-03T00:00:00.000Z', overdue: true, overEstimate: true, loggedHours: 9, estimateHours: 6 },
+    { taskId: 't-nex-104', key: 'NEX-104', title: 'Over its estimate', projectId: 'p-nex', assigneeId: null, dueAt: null, overdue: false, overEstimate: true, loggedHours: 5, estimateHours: 4 },
   ],
 }
 vi.mock('@/api/dashboard', async (load) => ({
@@ -95,13 +95,13 @@ describe.each([
     }
   })
 
-  it('the dashboard with its charts, overdue tasks and Working now has no axe violations, wide and at 390px', async () => {
+  it('the dashboard with its charts, tasks that need attention and Working now has no axe violations, wide and at 390px', async () => {
     for (const [width, height] of [[1440, 900], [390, 844]]) {
       await page.viewport(width, height)
       mount(<DashboardPage />, dark)
       await screen.findByRole('heading', { name: 'Working now' })
       expect(screen.getByRole('group', { name: 'Hours per day' })).toBeTruthy()
-      expect(screen.getByRole('heading', { name: '2 overdue tasks' })).toBeTruthy()
+      expect(screen.getByRole('heading', { name: '2 tasks need attention' })).toBeTruthy()
       expect(await violations()).toEqual([])
       expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(width)
       cleanup()
