@@ -52,7 +52,7 @@ function inColumnSince(data: DbData, task: Ticket): string {
   return task.createdAt
 }
 
-/** The dashboard's charts and overdue tasks over `projects`; `meId`'s own hours are `mine`. */
+/** The dashboard's charts and the tasks that need attention over `projects`; `meId`'s own hours are `mine`. */
 function statsOf(data: DbData, projects: Project[], meId: string, now: Date): DashboardStats {
   const ids = new Set(projects.map((p) => p.id))
   const days = lastDays(now).map((d) => ({ ...d, hours: 0, mine: 0 }))
@@ -83,17 +83,21 @@ function statsOf(data: DbData, projects: Project[], meId: string, now: Date): Da
   }
 
   const files = liveFiles(data.attachments)
-  const overdue = tasks
-    .filter((t) => taskView(t, data, now, projectOf.get(t.projectId), files).overdue)
-    // Due soonest first; over its estimate with no due date last.
-    .sort((a, b) => (a.dueAt ?? '\uffff').localeCompare(b.dueAt ?? '\uffff') || a.key.localeCompare(b.key))
-    .map((t) => ({ taskId: t.id, key: t.key, title: t.title, projectId: t.projectId, assigneeId: t.assigneeId, dueAt: t.dueAt }))
+  // Overdue first, due soonest first; then those only over their estimate, by key (UX Phase 1, 1.1).
+  const attention = tasks
+    .map((t) => taskView(t, data, now, projectOf.get(t.projectId), files))
+    .filter((v) => v.overdue || v.overEstimate)
+    .sort((a, b) => Number(b.overdue) - Number(a.overdue) || (a.overdue ? a.dueAt!.localeCompare(b.dueAt!) : 0) || a.key.localeCompare(b.key))
+    .map((v) => ({
+      taskId: v.id, key: v.key, title: v.title, projectId: v.projectId, assigneeId: v.assigneeId, dueAt: v.dueAt,
+      overdue: v.overdue, overEstimate: v.overEstimate, loggedHours: v.loggedHours, estimateHours: v.estimateHours,
+    }))
 
   return {
     days: days.map(({ day, hours, mine }) => ({ day, hours, mine })),
     byProject: [...byProject].map(([projectId, hours]) => ({ projectId, hours })).filter((p) => p.hours > 0).sort((a, b) => b.hours - a.hours),
     byStatus: CATEGORIES.map((category) => ({ category, count: counts.get(category)! })),
-    overdue,
+    attention,
   }
 }
 

@@ -10,7 +10,7 @@ import { DashboardPage } from './DashboardPage'
 
 const nex = {
   id: 'p-nex', key: 'NEX', name: 'Nexus Core', status: 'active', managerId: 'u-2', phaseName: 'Build', progress: 0.5, loggedHours: 40, cost: null,
-  estimateHours: null, estimatedLoggedHours: 0, expectedFinish: '2026-12-01T00:00:00.000Z', dueDate: '2026-12-01T00:00:00.000Z', overdueCount: 1, taskCount: 10, week: [], weekHours: 0,
+  estimateHours: null, estimatedLoggedHours: 0, expectedFinish: '2026-12-01T00:00:00.000Z', dueDate: '2026-12-01T00:00:00.000Z', overdueCount: 1, overEstimateCount: 2, taskCount: 10, week: [], weekHours: 0,
 } as unknown as DashboardProject
 const fullStats: DashboardStats = {
   // 23 Oct to 5 Nov, 3 h a day of which 1 h is mine: 42 h in all.
@@ -24,10 +24,10 @@ const fullStats: DashboardStats = {
     { category: 'inProgress', count: 2 },
     { category: 'done', count: 3 },
   ],
-  overdue: [
-    { taskId: 't-nex-103', key: 'NEX-103', title: 'Fix duplicate rows', projectId: 'p-nex', assigneeId: 'u-3', dueAt: '2026-01-03T00:00:00.000Z' },
-    { taskId: 't-nex-105', key: 'NEX-105', title: 'Drag a card', projectId: 'p-nex', assigneeId: null, dueAt: '2099-01-01T00:00:00.000Z' },
-    { taskId: 't-nex-108', key: 'NEX-108', title: 'Load test', projectId: 'p-nex', assigneeId: 'u-6', dueAt: null },
+  attention: [
+    { taskId: 't-nex-103', key: 'NEX-103', title: 'Fix duplicate rows', projectId: 'p-nex', assigneeId: 'u-3', dueAt: '2026-01-03T00:00:00.000Z', overdue: true, overEstimate: false, loggedHours: 2, estimateHours: 4 },
+    { taskId: 't-nex-105', key: 'NEX-105', title: 'Drag a card', projectId: 'p-nex', assigneeId: null, dueAt: '2099-01-01T00:00:00.000Z', overdue: false, overEstimate: true, loggedHours: 21.9, estimateHours: 6 },
+    { taskId: 't-nex-108', key: 'NEX-108', title: 'Load test', projectId: 'p-nex', assigneeId: 'u-6', dueAt: null, overdue: false, overEstimate: true, loggedHours: 5, estimateHours: 4 },
   ],
 }
 let working: WorkingNow[] = []

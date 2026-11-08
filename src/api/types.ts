@@ -158,6 +158,7 @@ export type ProjectSummary = Project & {
   expectedFinish: string         // ISO
   currentPhaseId: string | null  // first phase not done, by order
   overdueCount: number
+  overEstimateCount: number
   taskCount: number
 }
 export type Deliverable = { id: string; projectId: string; phaseId: string | null; title: string; dueDate: string; doneAt: string | null }
@@ -204,7 +205,15 @@ export type TaskRef = {
 }
 
 /** `attachments`: the task's files, in its order, leaving out deleted ones. */
-export type TaskView = Task & { loggedHours: number; overdue: boolean; category: StatusCategory; attachments: Attachment[] }
+export type TaskView = Task & {
+  loggedHours: number
+  /** Past its due date and not done (the date only, UX Phase 1). */
+  overdue: boolean
+  /** More hours logged than its estimate, and not done (UX Phase 1). */
+  overEstimate: boolean
+  category: StatusCategory
+  attachments: Attachment[]
+}
 
 // ── Time and cost ─────────────────────────────────────────────────────────
 /** Why a timer entry ended: Pause, Stop, the timer timeout, or Flow (the task went Done or was archived, the project archived, the person deactivated, the 12-hour limit). */
@@ -689,8 +698,14 @@ export type DashboardStats = {
   byProject: { projectId: string; hours: number }[]
   /** Always To do, In progress, Done in that order; Done counts tasks that reached it in the last 14 days. */
   byStatus: { category: StatusCategory; count: number }[]
-  /** Overdue tasks, due soonest first; over its estimate with no due date comes last. */
-  overdue: { taskId: string; key: string; title: string; projectId: string; assigneeId: string | null; dueAt: string | null }[]
+  /**
+   * Tasks that need attention (UX Phase 1, 1.1): overdue ones first, due soonest first, then those only over their
+   * estimate, by key. A task can be both.
+   */
+  attention: {
+    taskId: string; key: string; title: string; projectId: string; assigneeId: string | null; dueAt: string | null
+    overdue: boolean; overEstimate: boolean; loggedHours: number; estimateHours: number | null
+  }[]
 }
 /** One mention of me: a message, a thread reply or a task comment, with where it opens. */
 export type MentionItem = {

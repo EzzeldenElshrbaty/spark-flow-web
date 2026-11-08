@@ -71,7 +71,8 @@ describe('tasks', () => {
   it('list and get return logged hours from time entries', async () => {
     const mob104 = await apiAt().tickets.get('MOB-104')
     expect(mob104.loggedHours).toBeCloseTo(5 * (5 + 10 / 60)) // five mornings, 5:50 to 11:00
-    expect(mob104.overdue).toBe(true)
+    // Due tomorrow, 25 h against an estimate of 16 h: over estimate, not overdue (UX Phase 1, 1.1).
+    expect(mob104).toMatchObject({ overdue: false, overEstimate: true })
   })
 })
 

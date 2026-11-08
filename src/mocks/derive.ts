@@ -16,12 +16,17 @@ export function loggedHours(taskId: string, entries: TimeEntry[], now: Date): nu
   return entries.filter((e) => e.taskId === taskId).reduce((sum, e) => sum + entryHours(e, now), 0)
 }
 
-/** Past its due date and not done, or past its estimate. Done is the column's type (the standard board by default). */
-export function isOverdue(task: Ticket, logged: number, now: Date, category: StatusCategory = categoryOf({}, task.status)): boolean {
-  if (category === 'done') return false
-  const late = task.dueAt !== null && isPastDue(task.dueAt, now)
-  const over = task.estimateHours !== null && task.estimateHours > 0 && logged > task.estimateHours
-  return late || over
+/**
+ * Overdue: past its due date and not done (UX Phase 1, 1.1: the date only; the hours are `isOverEstimate`). Done is
+ * the column's type (the standard board by default).
+ */
+export function isOverdue(task: Ticket, now: Date, category: StatusCategory = categoryOf({}, task.status)): boolean {
+  return category !== 'done' && task.dueAt !== null && isPastDue(task.dueAt, now)
+}
+
+/** Over estimate: more hours logged than its estimate (above 0), and not done. */
+export function isOverEstimate(task: Ticket, logged: number, category: StatusCategory = categoryOf({}, task.status)): boolean {
+  return category !== 'done' && task.estimateHours !== null && task.estimateHours > 0 && logged > task.estimateHours
 }
 
 type Source = { tickets: Ticket[]; timeEntries: TimeEntry[]; phases: Phase[]; rates: Rate[]; projects?: Project[]; attachments?: Attachment[] }
@@ -31,7 +36,7 @@ export function liveFiles(attachments: readonly Attachment[] = []): ReadonlyMap<
   return new Map(attachments.filter((a) => !a.deletedAt).map((a) => [a.id, a]))
 }
 
-/** A task as read: hours, overdue and its column's type, from its project's board; its files, in its order. */
+/** A task as read: hours, overdue, over estimate and its column's type, from its project's board; its files, in its order. */
 export function taskView(
   task: Ticket,
   data: Pick<Source, 'timeEntries' | 'projects' | 'attachments'>,
@@ -42,7 +47,7 @@ export function taskView(
   const logged = loggedHours(task.id, data.timeEntries, now)
   const category = categoryOf(project ?? data.projects?.find((p) => p.id === task.projectId) ?? {}, task.status)
   const attachments = (task.attachmentIds ?? []).flatMap((id) => files.get(id) ?? [])
-  return { ...task, loggedHours: logged, overdue: isOverdue(task, logged, now, category), category, attachments }
+  return { ...task, loggedHours: logged, overdue: isOverdue(task, now, category), overEstimate: isOverEstimate(task, logged, category), category, attachments }
 }
 
 const latest = (...isoTimes: string[]) => isoTimes.reduce((a, b) => (new Date(a).getTime() >= new Date(b).getTime() ? a : b))
@@ -56,7 +61,7 @@ export function summarize(project: Project, data: Source, now: Date, viewer: { u
   const openPhases = phases.filter((p) => p.status !== 'done')
 
   let expectedFinish = openPhases.length ? latest(...openPhases.map((p) => p.dueDate)) : project.dueDate
-  if (tasks.some((t) => t.overdue)) {
+  if (tasks.some((t) => t.overdue || t.overEstimate)) {
     const remaining = tasks
       .filter((t) => t.category !== 'done')
       .reduce((sum, t) => sum + Math.max(0, (t.estimateHours ?? 0) - t.loggedHours), 0)
@@ -74,6 +79,7 @@ export function summarize(project: Project, data: Source, now: Date, viewer: { u
     expectedFinish,
     currentPhaseId: openPhases[0]?.id ?? null,
     overdueCount: tasks.filter((t) => t.overdue).length,
+    overEstimateCount: tasks.filter((t) => t.overEstimate).length,
     taskCount: tasks.length,
   }
 }

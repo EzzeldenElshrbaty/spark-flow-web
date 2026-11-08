@@ -89,7 +89,7 @@ function HoursByProject({ byProject, projectName }: { byProject: DashboardStats[
   )
 }
 
-type Overdue = DashboardStats['overdue'][number]
+type Overdue = DashboardStats['attention'][number]
 
 /** The overdue tasks in scope, due soonest first; a row (or its key, for the keyboard) opens the task inspector. */
 function OverdueTasks({ overdue, projectName, people }: { overdue: Overdue[]; projectName: (id: string) => string; people: User[] }) {
@@ -185,7 +185,7 @@ export function DashboardCharts({ stats, scope, projectName, people }: { stats: 
           <HoursByProject byProject={stats.byProject} projectName={projectName} />
         </div>
       </div>
-      <OverdueTasks overdue={stats.overdue} projectName={projectName} people={people} />
+      <OverdueTasks overdue={stats.attention} projectName={projectName} people={people} />
     </>
   )
 }

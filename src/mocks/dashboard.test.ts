@@ -56,7 +56,7 @@ describe('dashboard', () => {
     expect(stats.days.every((d) => d.hours === 0 && d.mine === 0)).toBe(true)
     expect(stats.byProject).toEqual([])
     expect(stats.byStatus.map((s) => s.count)).toEqual([0, 0, 0])
-    expect(stats.overdue).toEqual([])
+    expect(stats.attention).toEqual([])
   })
 
   it('no cost for non-admins', async () => {
@@ -253,18 +253,28 @@ describe('dashboard stats', () => {
     expect(after.byStatus[2].count).toBe(before.byStatus[2].count + 1)
   })
 
-  it('stats: overdue only in scope, due soonest first', async () => {
+  it('stats: tasks that need attention (overdue or over estimate) only in scope; overdue first by due date, then over estimate by key', async () => {
     const stats = await api.dashboard.stats('ws-eng')
     const data = await db.read()
     const now = new Date()
-    const expected = data.tickets.filter((t) => t.projectId !== 'p-brd' && !t.archivedAt && taskView(t, data, now).overdue).map((t) => t.key)
-    expect(stats.overdue.map((t) => t.key).sort()).toEqual(expected.sort())
-    expect(expected.length).toBeGreaterThan(0)
-    const dues = stats.overdue.map((t) => t.dueAt).filter((d): d is string => d !== null)
+    const views = data.tickets.filter((t) => t.projectId !== 'p-brd' && !t.archivedAt).map((t) => taskView(t, data, now))
+    const expected = views.filter((v) => v.overdue || v.overEstimate).map((v) => v.key)
+    expect(stats.attention.map((t) => t.key).sort()).toEqual(expected.sort())
+    expect(stats.attention.some((t) => t.overdue)).toBe(true)
+    expect(stats.attention.some((t) => !t.overdue && t.overEstimate)).toBe(true)
+    const late = stats.attention.filter((t) => t.overdue)
+    const overOnly = stats.attention.filter((t) => !t.overdue)
+    expect(stats.attention).toEqual([...late, ...overOnly])
+    const dues = late.map((t) => t.dueAt!)
     expect(dues).toEqual([...dues].sort())
-    expect(stats.overdue[0]).toEqual({ taskId: expect.any(String), key: expect.any(String), title: expect.any(String), projectId: expect.any(String), assigneeId: expect.toBeOneOf([expect.any(String), null]), dueAt: expect.toBeOneOf([expect.any(String), null]) })
+    expect(overOnly.map((t) => t.key)).toEqual([...overOnly.map((t) => t.key)].sort())
+    expect(stats.attention[0]).toEqual({
+      taskId: expect.any(String), key: expect.any(String), title: expect.any(String), projectId: expect.any(String),
+      assigneeId: expect.toBeOneOf([expect.any(String), null]), dueAt: expect.toBeOneOf([expect.any(String), null]),
+      overdue: expect.any(Boolean), overEstimate: expect.any(Boolean), loggedHours: expect.any(Number), estimateHours: expect.toBeOneOf([expect.any(Number), null]),
+    })
     await as('u-8') // Mobile App only
-    expect((await api.dashboard.stats('ws-eng')).overdue.every((t) => t.projectId === 'p-mob')).toBe(true)
+    expect((await api.dashboard.stats('ws-eng')).attention.every((t) => t.projectId === 'p-mob')).toBe(true)
   })
 
   it('stats carry no cost', async () => {

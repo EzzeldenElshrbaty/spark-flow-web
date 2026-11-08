@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Attachment, Phase, Project, Rate, Ticket, TimeEntry } from '@/api/types'
-import { entryHours, isOverdue, liveFiles, loggedHours, summarize, taskView } from './derive'
+import { entryHours, isOverdue, isOverEstimate, liveFiles, loggedHours, summarize, taskView } from './derive'
 import { ALL_PERMISSIONS, BUILT_IN_ROLES } from '@/lib/permissions'
 
 const now = new Date('2026-10-26T12:00:00Z')
@@ -32,21 +32,30 @@ describe('hours', () => {
   })
 })
 
-describe('overdue edge cases', () => {
-  it('follows the spec rules', () => {
-    expect(isOverdue(task(), 0, now)).toBe(false) // no due date, no estimate
-    expect(isOverdue(task({ status: 'done', dueAt: day(-2) }), 0, now)).toBe(false) // done is never overdue
-    expect(isOverdue(task({ dueAt: day(-2) }), 0, now)).toBe(true)
-    expect(isOverdue(task({ dueAt: day(2) }), 0, now)).toBe(false)
-    expect(isOverdue(task({ dueAt: '2026-10-26T00:00:00.000Z' }), 0, now)).toBe(false) // due today is not overdue
-    expect(isOverdue(task({ estimateHours: 4 }), 4.5, now)).toBe(true)
-    expect(isOverdue(task({ estimateHours: 4 }), 4, now)).toBe(false)
-    expect(isOverdue(task({ estimateHours: 0 }), 0, now)).toBe(false)
+describe('overdue (the date) and over estimate (the hours), UX Phase 1, 1.1', () => {
+  it('overdue is past the due date and not done, whatever the hours', () => {
+    expect(isOverdue(task(), now)).toBe(false) // no due date
+    expect(isOverdue(task({ status: 'done', dueAt: day(-2) }), now)).toBe(false) // done is never overdue
+    expect(isOverdue(task({ dueAt: day(-2) }), now)).toBe(true)
+    expect(isOverdue(task({ dueAt: day(2) }), now)).toBe(false)
+    expect(isOverdue(task({ dueAt: '2026-10-26T00:00:00.000Z' }), now)).toBe(false) // due today is not overdue
+    expect(isOverdue(task({ dueAt: day(2), estimateHours: 4 }), now)).toBe(false) // hours never make it overdue
   })
 
-  it('taskView adds loggedHours and overdue', () => {
-    const view = taskView(task({ estimateHours: 1 }), data({ timeEntries: [entry({ startedAt: iso(-3), endedAt: iso(-1) })] }), now)
-    expect(view).toMatchObject({ loggedHours: 2, overdue: true })
+  it('over estimate is more hours logged than estimated and not done, whatever the date', () => {
+    expect(isOverEstimate(task({ estimateHours: 4 }), 4.5)).toBe(true)
+    expect(isOverEstimate(task({ estimateHours: 4 }), 4)).toBe(false)
+    expect(isOverEstimate(task({ estimateHours: 0 }), 3)).toBe(false)
+    expect(isOverEstimate(task({ estimateHours: null }), 3)).toBe(false)
+    expect(isOverEstimate(task({ status: 'done', estimateHours: 1 }), 3)).toBe(false)
+    expect(isOverEstimate(task({ dueAt: day(-2) }), 0)).toBe(false)
+  })
+
+  it('taskView adds loggedHours, overdue and overEstimate; a task can be both', () => {
+    const twoHours = data({ timeEntries: [entry({ startedAt: iso(-3), endedAt: iso(-1) })] })
+    expect(taskView(task({ estimateHours: 1, dueAt: day(2) }), twoHours, now)).toMatchObject({ loggedHours: 2, overdue: false, overEstimate: true })
+    expect(taskView(task({ estimateHours: 1, dueAt: day(-2) }), twoHours, now)).toMatchObject({ overdue: true, overEstimate: true })
+    expect(taskView(task({ estimateHours: 5, dueAt: day(-2) }), twoHours, now)).toMatchObject({ overdue: true, overEstimate: false })
   })
 })
 
@@ -66,6 +75,10 @@ describe('summarize', () => {
     // 1 overdue task with 160 h left → 20 working days at 8 h/day, later than the last phase
     const late = [task({ dueAt: day(-1), estimateHours: 160 })]
     expect(summarize(project, data({ phases, tickets: late }), now, admin).expectedFinish).toBe(day(20))
+    // Over its estimate but not late also pushes it out: the remaining estimate of open tasks.
+    const over = [task({ id: 'o', dueAt: day(5), estimateHours: 1 }), task({ id: 'p', estimateHours: 160 })]
+    const twoHours = [entry({ taskId: 'o', startedAt: iso(-3), endedAt: iso(-1) })]
+    expect(summarize(project, data({ phases, tickets: over, timeEntries: twoHours }), now, admin).expectedFinish).toBe(day(20))
     const done = [phase({ status: 'done' })]
     expect(summarize(project, data({ phases: done }), now, admin).expectedFinish).toBe(project.dueDate)
   })
@@ -77,10 +90,11 @@ describe('summarize', () => {
     expect(summarize(project, data({ timeEntries, rates }), now, sales).cost).toBeNull()
   })
 
-  it('currentPhaseId is the first phase not done by order; overdueCount counts overdue tasks', () => {
+  it('currentPhaseId is the first phase not done by order; overdueCount and overEstimateCount count their tasks', () => {
     const phases = [phase({ id: 'b', order: 2, status: 'notStarted' }), phase({ id: 'a', order: 1, status: 'done' })]
-    const tickets = [task({ id: 'x', dueAt: day(-1) }), task({ id: 'y' })]
-    expect(summarize(project, data({ phases, tickets }), now, admin)).toMatchObject({ currentPhaseId: 'b', overdueCount: 1 })
+    const tickets = [task({ id: 'x', dueAt: day(-1) }), task({ id: 'y' }), task({ id: 'z', estimateHours: 1 })]
+    const timeEntries = [entry({ taskId: 'z', startedAt: iso(-3), endedAt: iso(-1) })]
+    expect(summarize(project, data({ phases, tickets, timeEntries }), now, admin)).toMatchObject({ currentPhaseId: 'b', overdueCount: 1, overEstimateCount: 1 })
     expect(summarize(project, data({ phases: [phase({ status: 'done' })] }), now, admin).currentPhaseId).toBeNull()
   })
 })
