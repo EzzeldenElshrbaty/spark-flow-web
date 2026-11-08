@@ -1,12 +1,18 @@
-// The file types people may add (Ahmed, 2026-10-09). The API checks the same list, and each file's content.
+// The file types people may add (Ahmed, 2026-10-09; more added 2026-11-08). The API checks the same list, and each
+// file's content.
 
-/** Shown inside the CRM's viewer. */
-const imageTypes = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
-const previewTypes = ['.pdf', ...imageTypes, '.txt', '.csv']
+/** Shown inside the CRM's viewer. An SVG is only ever shown through <img>, where its scripts don't run. */
+const imageTypes = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp']
+/** Shown as plain text. */
+const textTypes = ['.txt', '.md', '.json', '.xml']
+const previewTypes = ['.pdf', ...imageTypes, ...textTypes, '.csv']
 /** Played in the page (task Activity and chat, spec §5); the viewer offers them to download. */
 const videoTypes = ['.mp4', '.webm', '.mov']
-/** Download only. */
-const downloadTypes = ['.docx', '.xlsx', '.pptx', '.doc', '.xls', '.ppt', '.zip', '.rar', '.ai', '.psd', '.heic']
+/** Download only. HTML is never opened in the app: it would run as a page. */
+const downloadTypes = [
+  '.docx', '.xlsx', '.pptx', '.doc', '.xls', '.ppt', '.rtf', '.tsv', '.odt', '.ods', '.odp', '.pages', '.numbers', '.key',
+  '.html', '.htm', '.zip', '.rar', '.7z', '.ai', '.psd', '.eps', '.fig', '.sketch', '.heic', '.tif', '.tiff', '.mp3', '.wav', '.m4a',
+]
 
 const extension = (name: string) => {
   const dot = name.lastIndexOf('.')
@@ -21,7 +27,7 @@ export const maxFileMb = Number(import.meta.env.VITE_MAX_FILE_MB) || 25
 
 export const isAcceptedFile = (name: string) => [...previewTypes, ...videoTypes, ...downloadTypes].includes(extension(name))
 
-export const allowedFilesHint = `PDF, images, video (MP4, WebM, MOV), Word, Excel, PowerPoint, CSV, text, ZIP/RAR, AI, PSD or HEIC, up to ${maxFileMb} MB`
+export const allowedFilesHint = `Images (PNG, JPG, GIF, WebP, SVG, HEIC), PDF, Word, Excel, PowerPoint, OpenDocument, Pages, Numbers, Keynote, CSV, text, HTML, JSON, video, audio, ZIP/RAR/7Z, AI, PSD, EPS, Figma or Sketch, up to ${maxFileMb} MB`
 
 export type Preview = 'image' | 'pdf' | 'text' | 'csv' | 'none'
 
@@ -30,7 +36,7 @@ export function previewOf(name: string): Preview {
   if (imageTypes.includes(type)) return 'image'
   if (type === '.pdf') return 'pdf'
   if (type === '.csv') return 'csv'
-  if (type === '.txt') return 'text'
+  if (textTypes.includes(type)) return 'text'
   return 'none'
 }
 
@@ -76,7 +82,10 @@ export function pastedName(mimeType: string, at = new Date()) {
 /** The Files tab's types (spec 6.1): what a file is, for its filter and its icon. */
 export type FileKind = 'image' | 'pdf' | 'document' | 'snippet' | 'video' | 'other'
 
-const documentTypes = ['.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.csv']
+const documentTypes = [
+  '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.rtf', '.odt', '.ods', '.odp', '.pages', '.numbers', '.key',
+  '.csv', '.tsv', ...textTypes, '.html', '.htm',
+]
 
 /** Which Files tab type a file is; a snippet is a snippet whatever its extension. */
 export function fileKind(file: { name: string; mimeType: string; snippet?: unknown }): FileKind {

@@ -43,3 +43,41 @@ describe('chat file names and sizes (spec 6.9, slice 6)', () => {
     expect(fileSubline('Makefile', 10)).toBe('File · 1 KB')
   })
 })
+
+describe('more file types (2026-11-08)', () => {
+  const added = ['logo.svg', 'shot.bmp', 'scan.tif', 'scan.tiff', 'page.html', 'page.htm', 'data.json', 'feed.xml', 'notes.md', 'letter.rtf', 'rows.tsv', 'spec.odt', 'plan.ods', 'deck.odp', 'brief.pages', 'budget.numbers', 'pitch.key', 'art.eps', 'ui.fig', 'ui.sketch', 'call.mp3', 'call.wav', 'memo.m4a', 'all.7z']
+
+  it.each(added)('%s can be added, and the file picker offers it', async (name) => {
+    const { acceptedFiles, isAcceptedFile } = await import('@/lib/fileTypes')
+    expect(isAcceptedFile(name)).toBe(true)
+    expect(acceptedFiles.split(',')).toContain(name.slice(name.lastIndexOf('.')))
+  })
+
+  it('programs and scripts are still refused', async () => {
+    const { isAcceptedFile } = await import('@/lib/fileTypes')
+    for (const name of ['setup.exe', 'run.sh', 'run.bat', 'app.js', 'Installer.dmg']) expect(isAcceptedFile(name)).toBe(false)
+  })
+
+  it('SVG and BMP open as pictures, Markdown, JSON and XML as text; HTML and the rest only download', async () => {
+    const { previewOf } = await import('@/lib/fileTypes')
+    expect(previewOf('logo.svg')).toBe('image')
+    expect(previewOf('shot.bmp')).toBe('image')
+    expect(previewOf('notes.md')).toBe('text')
+    expect(previewOf('data.json')).toBe('text')
+    expect(previewOf('feed.xml')).toBe('text')
+    for (const name of ['page.html', 'page.htm', 'scan.tiff', 'call.mp3', 'ui.fig', 'spec.odt']) expect(previewOf(name)).toBe('none')
+  })
+
+  it('the Files tab files SVG under images and the new office, web and data files under documents', async () => {
+    const { fileKind } = await import('@/lib/fileTypes')
+    expect(fileKind({ name: 'logo.svg', mimeType: 'image/svg+xml' })).toBe('image')
+    for (const name of ['letter.rtf', 'rows.tsv', 'spec.odt', 'plan.ods', 'deck.odp', 'brief.pages', 'budget.numbers', 'pitch.key', 'notes.md', 'data.json', 'feed.xml', 'page.html'])
+      expect(fileKind({ name, mimeType: '' })).toBe('document')
+    for (const name of ['call.mp3', 'ui.fig', 'art.eps', 'all.7z']) expect(fileKind({ name, mimeType: '' })).toBe('other')
+  })
+
+  it('the hint names PNG, JPG, SVG and HTML', async () => {
+    const { allowedFilesHint } = await import('@/lib/fileTypes')
+    for (const type of ['PNG', 'JPG', 'SVG', 'HTML']) expect(allowedFilesHint).toContain(type)
+  })
+})
