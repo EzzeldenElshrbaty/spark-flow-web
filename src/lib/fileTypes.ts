@@ -40,8 +40,11 @@ export function previewOf(name: string): Preview {
   return 'none'
 }
 
-/** The address that saves the file. Files on the API need ?download=1: across addresses the browser ignores `download`. */
-export const downloadUrl = (url: string) => (url.includes('/api/documents/') ? `${url}${url.includes('?') ? '&' : '?'}download=1` : url)
+/**
+ * The address that saves the file. Files on the API need ?download=1: across addresses the browser ignores `download`
+ * and would open the file instead, which for an HTML or SVG file means a page.
+ */
+export const downloadUrl = (url: string) => (/\/api\/(files|documents)\//.test(url) ? `${url}${url.includes('?') ? '&' : '?'}download=1` : url)
 
 /**
  * Files picked into a form: bad types, oversize files and repeats are left out, and so is anything past `max`, each

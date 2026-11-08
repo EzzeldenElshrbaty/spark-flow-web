@@ -81,3 +81,17 @@ describe('more file types (2026-11-08)', () => {
     for (const type of ['PNG', 'JPG', 'SVG', 'HTML']) expect(allowedFilesHint).toContain(type)
   })
 })
+
+describe('downloadUrl', () => {
+  it('asks the API to send any of its files as a download, so an HTML or SVG file is never opened as a page', async () => {
+    const { downloadUrl } = await import('@/lib/fileTypes')
+    expect(downloadUrl('https://api.example.com/api/files/f-1')).toBe('https://api.example.com/api/files/f-1?download=1')
+    expect(downloadUrl('/api/files/f-1?v=2')).toBe('/api/files/f-1?v=2&download=1')
+    expect(downloadUrl('https://api.example.com/api/documents/d-1')).toBe('https://api.example.com/api/documents/d-1?download=1')
+  })
+
+  it('leaves blob: addresses alone (the download attribute works on them)', async () => {
+    const { downloadUrl } = await import('@/lib/fileTypes')
+    expect(downloadUrl('blob:http://localhost/a1')).toBe('blob:http://localhost/a1')
+  })
+})
