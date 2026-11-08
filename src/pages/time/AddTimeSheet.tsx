@@ -5,7 +5,7 @@ import type { TimeEntry } from '@/api/types'
 import { useUsers } from '@/api/users'
 import { Button } from '@/components/ui/Button'
 import { Field, inputClass, selectClass } from '@/components/ui/Field'
-import { Sheet } from '@/components/ui/Sheet'
+import { Sheet, SheetCancelButton } from '@/components/ui/Sheet'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { localDay } from '@/lib/dates'
 import { isActive } from '@/lib/people'
@@ -27,7 +27,10 @@ export function AddTimeSheet({ projectId: forProject, taskId, entry, onClose }: 
   const update = useUpdateTime()
   const saving = add.isPending || update.isPending
   const failure = (add.error ?? update.error) as Error | null
-  const [values, setValues] = useState<ManualEntryValues>(() => (entry ? valuesOf(entry) : { ...defaultTimes(new Date()), note: '', taskId: taskId ?? null, projectId: projectId ?? '' }))
+  const [initial] = useState<ManualEntryValues>(() => (entry ? valuesOf(entry) : { ...defaultTimes(new Date()), note: '', taskId: taskId ?? null, projectId: projectId ?? '' }))
+  const [values, setValues] = useState(initial)
+  // Closing with changes asks first (UX Phase 1, 1.2).
+  const dirty = JSON.stringify(values) !== JSON.stringify(initial)
   const [errors, setErrors] = useState<ManualEntryErrors>({})
   // Only projects I'm on (or every one, for an Admin): the server refuses the others.
   const { projects, tasks: listed } = useLogTargets(values.projectId, entry?.projectId)
@@ -61,13 +64,13 @@ export function AddTimeSheet({ projectId: forProject, taskId, entry, onClose }: 
     <Sheet
       open
       onClose={onClose}
+      dirty={dirty}
+      discardQuestion={entry ? 'Discard your changes?' : 'Discard this time entry?'}
       title={entry ? 'Edit entry' : 'Add time'}
       description={fixedTask ? `${fixedTask.key} · ${fixedTask.title}` : (project?.name ?? 'Time you worked without the timer.')}
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
+          <SheetCancelButton />
           <Button onClick={save} disabled={saving}>
             {entry ? (saving ? 'Saving…' : 'Save') : saving ? 'Adding…' : 'Add time'}
           </Button>

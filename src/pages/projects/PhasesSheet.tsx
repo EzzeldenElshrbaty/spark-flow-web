@@ -1,11 +1,11 @@
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useCreatePhase, useRemovePhase, useReorderPhases, useUpdatePhase } from '@/api/projects'
 import type { Phase, PhaseStatus, ProjectSummary } from '@/api/types'
 import { Button } from '@/components/ui/Button'
 import { DeleteDialog } from '@/components/ui/DeleteDialog'
 import { inputClass, selectClass } from '@/components/ui/Field'
-import { Sheet } from '@/components/ui/Sheet'
+import { Sheet, useSheetClose } from '@/components/ui/Sheet'
 import { byOrder, moveDown, moveUp } from './phases'
 
 const statuses: [PhaseStatus, string][] = [
@@ -19,11 +19,35 @@ const toIso = (value: string) => new Date(`${value}T00:00:00.000Z`).toISOString(
 type Draft = { name: string; startDate: string; dueDate: string; status: PhaseStatus }
 const draftOf = (p: Phase): Draft => ({ name: p.name, startDate: day(p.startDate), dueDate: day(p.dueDate), status: p.status })
 
-function PhaseRow({ phase, first, last, onMove, onDelete }: { phase: Phase; first: boolean; last: boolean; onMove: (by: -1 | 1) => void; onDelete: () => void }) {
+function PhaseRow({
+  phase,
+  first,
+  last,
+  onMove,
+  onDelete,
+  onEditing,
+}: {
+  phase: Phase
+  first: boolean
+  last: boolean
+  onMove: (by: -1 | 1) => void
+  onDelete: () => void
+  /** Whether this row holds an edit not saved yet, so closing the sheet asks first (UX Phase 1, 1.2). */
+  onEditing: (editing: boolean) => void
+}) {
   const update = useUpdatePhase()
   const [draft, setDraft] = useState(() => draftOf(phase))
   const saved = draftOf(phase)
   const dirty = (Object.keys(draft) as (keyof Draft)[]).some((k) => draft[k] !== saved[k])
+  const onEditingRef = useRef(onEditing)
+  useEffect(() => {
+    onEditingRef.current = onEditing
+  })
+  useEffect(() => {
+    if (!dirty) return
+    onEditingRef.current(true)
+    return () => onEditingRef.current(false)
+  }, [dirty])
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft((d) => ({ ...d, [k]: v }))
   const invalid = !draft.name.trim() ? 'Give the phase a name.' : draft.dueDate < draft.startDate ? 'The due date is before the start date.' : null
 
@@ -72,6 +96,12 @@ function PhaseRow({ phase, first, last, onMove, onDelete }: { phase: Phase; firs
 }
 
 /** Manage phases: rename, change dates and status, move up or down, add, delete. Each change saves on its own. */
+/** Done closes the sheet, asking first while an edit isn't saved. */
+function DoneButton() {
+  const close = useSheetClose()
+  return <Button onClick={close}>Done</Button>
+}
+
 export function PhasesSheet({ project, phases, onClose }: { project: ProjectSummary; phases: Phase[]; onClose: () => void }) {
   const ordered = byOrder(phases)
   const ids = ordered.map((p) => p.id)
@@ -80,6 +110,15 @@ export function PhasesSheet({ project, phases, onClose }: { project: ProjectSumm
   const remove = useRemovePhase()
   const [deleting, setDeleting] = useState<Phase | null>(null)
   const [name, setName] = useState('')
+  // Rows with an edit not saved yet: with one, or a new name typed, closing asks first (UX Phase 1, 1.2).
+  const [editing, setEditing] = useState<ReadonlySet<string>>(new Set())
+  const markEditing = (id: string, on: boolean) =>
+    setEditing((all) => {
+      const next = new Set(all)
+      if (on) next.add(id)
+      else next.delete(id)
+      return next
+    })
   const last = ordered.at(-1)
 
   const add = () => {
@@ -95,11 +134,11 @@ export function PhasesSheet({ project, phases, onClose }: { project: ProjectSumm
       <Sheet
         open
         onClose={onClose}
-        dismissible
+        dirty={editing.size > 0 || name.trim() !== ''}
         variant="drawer"
         title="Manage phases"
         description={`${project.name} · each change saves on its own`}
-        footer={<Button onClick={onClose}>Done</Button>}
+        footer={<DoneButton />}
       >
         {ordered.length === 0 ? (
           <p className="text-sm text-fg-muted">No phases yet.</p>
@@ -107,7 +146,7 @@ export function PhasesSheet({ project, phases, onClose }: { project: ProjectSumm
           <ol className="divide-y divide-line-subtle">
             {ordered.map((p, i) => (
               // The key carries the saved values, so a row resets to them after a save or a reorder.
-              <PhaseRow key={`${p.id}:${p.name}:${p.startDate}:${p.dueDate}:${p.status}`} phase={p} first={i === 0} last={i === ordered.length - 1} onMove={(by) => move(p.id, by)} onDelete={() => setDeleting(p)} />
+              <PhaseRow key={`${p.id}:${p.name}:${p.startDate}:${p.dueDate}:${p.status}`} phase={p} first={i === 0} last={i === ordered.length - 1} onMove={(by) => move(p.id, by)} onDelete={() => setDeleting(p)} onEditing={(on) => markEditing(p.id, on)} />
             ))}
           </ol>
         )}

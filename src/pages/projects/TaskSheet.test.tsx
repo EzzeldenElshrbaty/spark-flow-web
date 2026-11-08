@@ -183,3 +183,36 @@ describe('TaskSheet review fixes', () => {
     }
   })
 })
+
+describe('TaskSheet asks before discarding (UX Phase 1, 1.2)', () => {
+  it('an untouched new task closes at once from Cancel', () => {
+    const onClose = open()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('a typed title asks "Discard this new task?"; Discard closes', () => {
+    const onClose = open()
+    fireEvent.change(screen.getByRole('textbox', { name: /Title/ }), { target: { value: 'Test' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.getByText('Discard this new task?')).toBeTruthy()
+    expect(onClose).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Discard' }))
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('a description change or a picked file counts as a change; an edit asks "Discard your changes?"', async () => {
+    const onClose = open(task())
+    fireEvent.click(screen.getByRole('button', { name: 'Undo into the description' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(screen.getByText('Discard your changes?')).toBeTruthy()
+    expect(onClose).not.toHaveBeenCalled()
+    cleanup()
+    upload.mockResolvedValue(att('f9'))
+    const onClose2 = open()
+    await pick('spec.pdf')
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.getByText('Discard this new task?')).toBeTruthy()
+    expect(onClose2).not.toHaveBeenCalled()
+  })
+})

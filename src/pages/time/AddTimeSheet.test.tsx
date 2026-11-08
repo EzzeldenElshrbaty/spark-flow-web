@@ -58,3 +58,19 @@ describe('Add time for someone else', () => {
     expect(screen.queryByLabelText('Person')).toBeNull()
   })
 })
+
+describe('Add time asks before discarding (UX Phase 1, 1.2)', () => {
+  it('untouched, Cancel closes; with a note typed it asks "Discard this time entry?"', () => {
+    const onClose = vi.fn()
+    render(<AddTimeSheet onClose={onClose} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(onClose).toHaveBeenCalledTimes(1)
+    cleanup()
+    const onClose2 = vi.fn()
+    render(<AddTimeSheet onClose={onClose2} />)
+    fireEvent.change(screen.getByRole('textbox', { name: /Note/ }), { target: { value: 'Pairing' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.getByText('Discard this time entry?')).toBeTruthy()
+    expect(onClose2).not.toHaveBeenCalled()
+  })
+})

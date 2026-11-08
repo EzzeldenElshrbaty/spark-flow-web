@@ -3,7 +3,7 @@ import { useAddColumn, useSetBoard } from '@/api/projects'
 import type { BoardColumn, StatusCategory } from '@/api/types'
 import { Button } from '@/components/ui/Button'
 import { Field, inputClass, selectClass } from '@/components/ui/Field'
-import { Sheet } from '@/components/ui/Sheet'
+import { Sheet, SheetCancelButton } from '@/components/ui/Sheet'
 import { columnErrors } from '@/lib/boardColumns'
 import { CATEGORIES } from '@/lib/statuses'
 
@@ -18,6 +18,8 @@ export function ColumnSheet({ projectId, columns, column, onClose }: { projectId
   const [category, setCategory] = useState<StatusCategory>(column?.category ?? 'inProgress')
   const [after, setAfter] = useState(columns.at(-1)?.id ?? '')
   const [error, setError] = useState<string | null>(null)
+  // Closing with changes asks first (UX Phase 1, 1.2).
+  const dirty = label !== (column?.label ?? '') || category !== (column?.category ?? 'inProgress') || after !== (columns.at(-1)?.id ?? '')
   const pending = add.isPending || setBoard.isPending
   const failure = (add.error ?? setBoard.error) as Error | null
 
@@ -39,13 +41,13 @@ export function ColumnSheet({ projectId, columns, column, onClose }: { projectId
     <Sheet
       open
       onClose={onClose}
+      dirty={dirty}
+      discardQuestion={column ? 'Discard your changes?' : 'Discard this new column?'}
       title={column ? 'Column details' : 'Add column'}
       description="The type decides what counts as done: progress, overdue, timers and My tasks follow it."
       footer={
         <>
-          <Button variant="secondary" onClick={onClose} disabled={pending}>
-            Cancel
-          </Button>
+          <SheetCancelButton disabled={pending} />
           <Button onClick={save} disabled={pending}>
             {column ? (pending ? 'Saving…' : 'Save') : pending ? 'Adding…' : 'Add column'}
           </Button>

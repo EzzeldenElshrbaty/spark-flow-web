@@ -8,7 +8,7 @@ import { useUsers } from '@/api/users'
 import { pickable } from '@/lib/people'
 import { Button } from '@/components/ui/Button'
 import { Field, inputClass, selectClass } from '@/components/ui/Field'
-import { Sheet } from '@/components/ui/Sheet'
+import { Sheet, SheetCancelButton } from '@/components/ui/Sheet'
 import { toLocalInput } from '@/lib/format'
 import { projectPeople } from '@/lib/projectPeople'
 import { usePermission } from '@/lib/usePermission'
@@ -68,9 +68,12 @@ export function ProjectSheet({
   const teams = useTeams(workspaceId).data ?? []
   const create = useCreateProject()
   const update = useUpdateProject()
-  const [values, setValues] = useState<ProjectFormValues>(() => initial(project))
+  const [opened] = useState<ProjectFormValues>(() => initial(project))
+  const [values, setValues] = useState(opened)
   const [keyTouched, setKeyTouched] = useState(Boolean(project))
   const [status, setStatus] = useState<ProjectStatus>(project?.status ?? 'planned')
+  // Closing with changes asks first (UX Phase 1, 1.2).
+  const dirty = JSON.stringify(values) !== JSON.stringify(opened) || status !== (project?.status ?? 'planned')
   const check = usePermission()
   // People and teams are assigned by the manager and Admin; Sales picks them only when creating (spec §4.3).
   const canPeople = project ? check('phase.manage', { project }) : true
@@ -111,14 +114,14 @@ export function ProjectSheet({
     <Sheet
       open
       onClose={onClose}
+      dirty={dirty}
+      discardQuestion={project ? 'Discard your changes?' : 'Discard this new project?'}
       variant="drawer"
       title={project ? 'Edit project' : 'New project'}
       description={project ? project.key : 'It gets its own chat and, for waterfall, five phases from start to due.'}
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
+          <SheetCancelButton />
           <Button onClick={save} disabled={saving}>
             {saving ? 'Saving…' : 'Save project'}
           </Button>

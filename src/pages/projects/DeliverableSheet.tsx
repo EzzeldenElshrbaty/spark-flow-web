@@ -3,7 +3,7 @@ import { useCreateDeliverable, useUpdateDeliverable } from '@/api/projects'
 import type { Deliverable, DeliverablePatch, Phase, ProjectSummary } from '@/api/types'
 import { Button } from '@/components/ui/Button'
 import { Field, inputClass, selectClass } from '@/components/ui/Field'
-import { Sheet } from '@/components/ui/Sheet'
+import { Sheet, SheetCancelButton } from '@/components/ui/Sheet'
 import { byOrder } from './phases'
 
 /** Add a deliverable, or edit one (`deliverable`): what the client gets, when, and in which phase. */
@@ -14,6 +14,11 @@ export function DeliverableSheet({ project, phases, deliverable, onClose }: { pr
   const [phaseId, setPhaseId] = useState(deliverable ? (deliverable.phaseId ?? '') : (project.currentPhaseId ?? ''))
   const [due, setDue] = useState((deliverable?.dueDate ?? project.dueDate).slice(0, 10))
   const [error, setError] = useState<string | null>(null)
+  // Closing with changes asks first (UX Phase 1, 1.2).
+  const dirty =
+    title !== (deliverable?.title ?? '') ||
+    phaseId !== (deliverable ? (deliverable.phaseId ?? '') : (project.currentPhaseId ?? '')) ||
+    due !== (deliverable?.dueDate ?? project.dueDate).slice(0, 10)
   const pending = create.isPending || update.isPending
   const failure = (create.error ?? update.error) as Error | null
 
@@ -36,13 +41,13 @@ export function DeliverableSheet({ project, phases, deliverable, onClose }: { pr
     <Sheet
       open
       onClose={onClose}
+      dirty={dirty}
+      discardQuestion={deliverable ? 'Discard your changes?' : 'Discard this new deliverable?'}
       title={deliverable ? 'Edit deliverable' : 'Add deliverable'}
       description={project.name}
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
+          <SheetCancelButton />
           <Button onClick={save} disabled={pending}>
             {deliverable ? (pending ? 'Saving…' : 'Save deliverable') : pending ? 'Adding…' : 'Add deliverable'}
           </Button>

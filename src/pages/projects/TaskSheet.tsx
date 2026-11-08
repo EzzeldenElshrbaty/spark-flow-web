@@ -5,7 +5,7 @@ import { uploadTaskFile } from '@/api/files'
 import type { Attachment, NewTicket, Phase, Priority, Project, Sprint, TaskType, TaskView, TicketStatus, User } from '@/api/types'
 import { Button } from '@/components/ui/Button'
 import { Field, inputClass, selectClass } from '@/components/ui/Field'
-import { Sheet } from '@/components/ui/Sheet'
+import { Sheet, SheetCancelButton } from '@/components/ui/Sheet'
 import { projectPeople } from '@/lib/projectPeople'
 import { usePermission } from '@/lib/usePermission'
 import { byOrder } from './phases'
@@ -84,13 +84,16 @@ export function TaskSheet({
   const canStatus = canManage || check('task.updateOwnStatus', { project, taskAssigneeId: task?.assigneeId ?? null })
   const create = useCreateTask()
   const update = useUpdateTask()
-  const [values, setValues] = useState(() => valuesOf(task, project.currentPhaseId ?? null, startColumn(project), draft))
+  // What the sheet opened with, to tell whether closing would throw anything away (UX Phase 1, 1.2).
+  const [initial] = useState(() => valuesOf(task, project.currentPhaseId ?? null, startColumn(project), draft))
+  const [values, setValues] = useState(initial)
   // The task as it was when the sheet opened: the prop follows live updates, so it can't tell what I changed.
   const [opened] = useState(task)
   const [errors, setErrors] = useState<Partial<Record<keyof Values, string>>>({})
   const set = <K extends keyof Values>(k: K, v: Values[K]) => setValues((s) => ({ ...s, [k]: v }))
   // The description as the editor has it; sent only when it differs from the task's (deep, on an edit).
-  const [descriptionBody, setDescriptionBody] = useState<DescBody>(() => task?.descriptionBody ?? draft?.descriptionBody ?? [])
+  const [initialBody] = useState<DescBody>(() => task?.descriptionBody ?? draft?.descriptionBody ?? [])
+  const [descriptionBody, setDescriptionBody] = useState<DescBody>(initialBody)
   const editor = useRef<DescriptionEditorHandle>(null)
   // The task's files as they'll be saved: its files as they are now (the `task` prop follows live updates, so one
   // another manager adds meanwhile stays), less those I took off, plus my uploads as they finish. One added in the
@@ -117,6 +120,8 @@ export function TaskSheet({
   const saving = create.isPending || update.isPending
   const failure = (create.error ?? update.error) as Error | null
   const ro = !canManage
+  const dirty =
+    JSON.stringify(values) !== JSON.stringify(initial) || JSON.stringify(descriptionBody) !== JSON.stringify(initialBody) || added.length > 0 || removed.size > 0 || queue.busy
 
   const save = () => {
     // ⌘/Ctrl+Enter in the description while a file still uploads, or a second time while saving: Save waits too.
@@ -168,14 +173,14 @@ export function TaskSheet({
     <Sheet
       open
       onClose={onClose}
+      dirty={dirty}
+      discardQuestion={task ? 'Discard your changes?' : 'Discard this new task?'}
       variant="drawer"
       title={task ? 'Edit task' : 'New task'}
       description={task ? `${task.key} · ${project.name}` : project.name}
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
+          <SheetCancelButton />
           <Button onClick={save} disabled={saving || queue.busy || (!canManage && !canStatus)}>
             {saving ? 'Saving…' : 'Save task'}
           </Button>
