@@ -2751,3 +2751,20 @@ Audit `docs/ux-audit/2026-11-09-ui-ux-audit.md` (items 1.1–1.7). Plan with dec
   that saves and moves to another page no longer skips a changed page's question; a dashboard row late and over its
   estimate shows both reasons on their own lines; the Chat tab keeps an 18rem floor and the page scrolls to it on a
   short screen (phone on its side: composer reachable). Six minors deferred (see the final report).
+
+# UX Phase 2: navigation and IA — 9 Nov 2026, started ("Start Phase 2"); plan waits for answers
+
+Audit items 2.1–2.8 with the user's rulings: Dashboard stays everyone's start page, Home and My tasks merge into My
+work; Settings, Preferences and Help always use the Projects sidebar. Plan with decisions, a diagram and questions:
+`docs/superpowers/plans/2026-11-09-ux-phase-2-navigation-ia.md`. Branch `feat/ux-phase-2` from `origin/dev` (c2e6cb9).
+
+- [ ] Settings, Preferences and Help on the Projects side (2.2)
+- [ ] My work joins Home and My tasks; "Go to Dashboard" (2.1)
+- [ ] Task items for me in mentions and Activity (2.3, mock)
+- [ ] The bell and Activity show task news, with See all (2.3)
+- [ ] Teams can be made, renamed and removed (2.4, Api)
+- [ ] The Teams page manages teams; Settings tiles are links (2.4, 2.8)
+- [ ] One Files list per project; the workspace button names the workspace (2.5, 2.6)
+- [ ] Filters, tabs and project sheets live in the address (2.7)
+- [ ] No Soon items; Not found has a heading (2.8)
+- [ ] Phase check, help pictures, review here
