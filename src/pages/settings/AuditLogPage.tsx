@@ -289,8 +289,10 @@ function Controls({ params, set, summary, counts }: { params: URLSearchParams; s
       ))}
     </select>
   )
+  // Sticks right under the top bar: below its 56px (--size-topbar) where the window scrolls (phones), at the edge of
+  // the page's own scroll box from lg (AppLayout).
   return (
-    <div className="sticky top-16 z-10 -mx-4 mb-3 bg-canvas/95 px-4 pb-3 pt-1 backdrop-blur md:-mx-6 md:px-6 xl:-mx-8 xl:px-8">
+    <div className="sticky top-14 z-10 -mx-4 mb-3 bg-canvas/95 px-4 pb-3 pt-1 backdrop-blur md:-mx-6 md:px-6 lg:top-0 xl:-mx-8 xl:px-8">
       <div role="group" aria-label="Kind of entry" className="mb-3 flex gap-1 overflow-x-auto border-b border-line">
         {chip('', 'All', counts?.all)}
         {GROUPS.map((g) => chip(g.id, g.label, counts?.[g.id]))}

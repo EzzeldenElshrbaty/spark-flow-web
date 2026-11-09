@@ -1,4 +1,5 @@
 import '@/index.css'
+import clsx from 'clsx'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, render, screen } from '@testing-library/react'
 import axe from 'axe-core'
@@ -302,5 +303,57 @@ describe('Settings on a 390px phone', () => {
     expect(sheet.getBoundingClientRect().width).toBeLessThanOrEqual(390)
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(390)
     expect(await violations()).toEqual([])
+  })
+})
+
+/**
+ * The page in the shell's two scroll set-ups (AppLayout): on phones the window scrolls under the sticky top bar; from
+ * lg the page scrolls in its own box below it. The bar uses the real top bar height token.
+ */
+function mountInShell(large: boolean) {
+  render(
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <MemoryRouter initialEntries={['/w/engineering/settings/audit']}>
+        <div className={large ? 'flex h-screen flex-col overflow-hidden bg-canvas' : 'min-h-screen bg-canvas'}>
+          <header data-testid="top-bar" className={clsx('sf h-sf-topbar flex-none bg-sf-surface', !large && 'sticky top-0 z-20')} />
+          <div data-testid="scroller" className={large ? 'min-h-0 flex-1 overflow-y-auto' : undefined}>
+            <main className="w-full px-4 pb-10 pt-6 md:px-6 xl:px-8">
+              <Routes>
+                <Route path="/w/:ws/settings/audit" element={<AuditLogPage />} />
+              </Routes>
+            </main>
+          </div>
+        </div>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  )
+}
+
+describe('the audit log’s kinds and filters stay right under the top bar while the log scrolls', () => {
+  afterEach(() => window.scrollTo(0, 0))
+
+  it('on a phone, where the window scrolls', async () => {
+    await page.viewport(390, 500)
+    mountInShell(false)
+    await screen.findByRole('list', { name: 'Audit log' })
+    const bar = screen.getByRole('group', { name: 'Kind of entry' }).parentElement!
+    const topBar = screen.getByTestId('top-bar').getBoundingClientRect().bottom
+    const from = bar.getBoundingClientRect().top
+    window.scrollTo(0, document.documentElement.scrollHeight)
+    expect(window.scrollY).toBeGreaterThan(from - topBar)
+    expect(bar.getBoundingClientRect().top).toBeCloseTo(topBar, 0)
+  })
+
+  it('on a laptop, where the page scrolls in its own box below the top bar', async () => {
+    await page.viewport(1280, 500)
+    mountInShell(true)
+    await screen.findByRole('table', { name: 'Audit log' })
+    const bar = screen.getByRole('group', { name: 'Kind of entry' }).parentElement!
+    const scroller = screen.getByTestId('scroller')
+    const edge = scroller.getBoundingClientRect().top
+    const from = bar.getBoundingClientRect().top
+    scroller.scrollTop = scroller.scrollHeight
+    expect(scroller.scrollTop).toBeGreaterThan(from - edge)
+    expect(bar.getBoundingClientRect().top).toBeCloseTo(edge, 0)
   })
 })
