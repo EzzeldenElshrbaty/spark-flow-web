@@ -69,6 +69,12 @@ describe('curly apostrophes (UX Phase 3, 3.7)', () => {
     expect(chapters.flatMap((path) => straightInHelp(path, readFileSync(path, 'utf8')))).toEqual([])
   })
 
+  it('placeholders show an example without "e.g." (UX Phase 4, 4.9; the kit’s DateTimePicker keeps its own)', () => {
+    const pages = files(join(SRC, 'pages'), (name) => name.endsWith('.tsx') && !/\.test\.tsx$/.test(name))
+    const found = pages.filter((path) => /placeholder=["{`'][^"]*e\.g\./.test(readFileSync(path, 'utf8'))).map((path) => relative(SRC, path))
+    expect(found).toEqual([])
+  })
+
   it('finds them in strings, templates and JSX, never in code or comments', () => {
     const sample = [
       "import x from './it's'", // an import path, not copy

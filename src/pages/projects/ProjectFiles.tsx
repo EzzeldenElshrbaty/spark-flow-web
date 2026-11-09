@@ -9,7 +9,8 @@ import { ConfirmDeleteSheet } from '@/components/ConfirmDeleteSheet'
 import { RowMenu } from '@/components/RowMenu'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { FileViewer } from '@/components/ui/FileViewer'
-import { acceptedFiles, allowedFilesHint, sizeText } from '@/lib/fileTypes'
+import { acceptedFiles, sizeText } from '@/lib/fileTypes'
+import { FileTypesHint } from './FileTypesHint'
 import { timeAgo } from '@/lib/format'
 import { rowLabel } from './uploadQueue'
 import { useUploadQueue } from './useUploadQueue'
@@ -122,7 +123,7 @@ export function ProjectFiles({ projectId, people, canUpload, canManage }: { proj
               <Upload className="size-4" /> {busy ? 'Add more files' : 'Add files'}
             </button>
             <span className="text-fg-muted"> or drop them here</span>
-            <p className="mt-1 text-xs text-fg-muted">{allowedFilesHint}</p>
+            <FileTypesHint />
             <input
               ref={inputRef}
               type="file"

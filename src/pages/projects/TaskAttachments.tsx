@@ -2,7 +2,8 @@ import clsx from 'clsx'
 import { Upload, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 import type { Attachment } from '@/api/types'
-import { acceptedFiles, allowedFilesHint, sizeText } from '@/lib/fileTypes'
+import { acceptedFiles, sizeText } from '@/lib/fileTypes'
+import { FileTypesHint } from './FileTypesHint'
 import { fileIcon } from './fileSources'
 import { rowLabel, type UploadRow } from './uploadQueue'
 import { IconButton } from '@/components/ui/IconButton'
@@ -100,7 +101,7 @@ export function TaskAttachments({
             <Upload className="size-4" aria-hidden /> Add files
           </button>
           <span className="text-fg-muted"> or drop them here</span>
-          <p className="mt-1 text-xs text-fg-muted">{allowedFilesHint}</p>
+          <FileTypesHint />
           <input
             ref={inputRef}
             type="file"

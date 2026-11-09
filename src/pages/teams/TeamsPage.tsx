@@ -90,7 +90,7 @@ function TeamNameSheet({ workspaceId, team, onClose }: { workspaceId: string; te
         }}
       >
         <Field label="Name" required error={problem ?? (save.error as Error | null)?.message}>
-          <input className={inputClass} value={name} maxLength={40} placeholder="e.g. Data" onChange={(e) => setName(e.target.value)} />
+          <input className={inputClass} value={name} maxLength={40} placeholder="Data" onChange={(e) => setName(e.target.value)} />
         </Field>
         <button type="submit" hidden />
       </form>

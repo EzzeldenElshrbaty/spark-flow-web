@@ -98,7 +98,7 @@ export function NewChannelDialog({ workspaceId, workspaceSlug, onClose }: { work
         </div>
         <div>
           <label htmlFor={`${ids}-topic`} className={labelClass}>
-            Topic
+            Topic <span className="text-sf-text-muted">(optional)</span>
           </label>
           <input
             id={`${ids}-topic`}

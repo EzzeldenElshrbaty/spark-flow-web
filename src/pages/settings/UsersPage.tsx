@@ -382,7 +382,7 @@ function PersonSheet({
           {/* Text with an email keyboard: the house sentence, not the browser's bubble, says what's wrong. */}
           <input inputMode="email" className={inputClass} value={values.email} autoComplete="off" spellCheck={false} aria-invalid={Boolean(errorOf('email'))} onChange={(e) => set('email', e.target.value)} />
         </Field>
-        <Field label="Title" error={errorOf('title')}>
+        <Field label="Title" hint="Optional" error={errorOf('title')}>
           <input className={inputClass} value={values.title} maxLength={80} placeholder="Frontend Engineer" aria-invalid={Boolean(errorOf('title'))} onChange={(e) => set('title', e.target.value)} />
         </Field>
         <fieldset aria-describedby={errorOf('roleIds') ? 'person-roles-error' : undefined}>

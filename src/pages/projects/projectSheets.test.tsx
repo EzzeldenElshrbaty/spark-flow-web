@@ -122,3 +122,11 @@ describe('project sheets check as you fix (UX Phase 4)', () => {
     expect(screen.queryByText('Give the deliverable a title.')).toBeNull()
   })
 })
+
+describe('optional fields say so (UX Phase 4, 4.9)', () => {
+  it('New project: Client, About and Links say "Optional"', () => {
+    render(<ProjectSheet workspaceId="ws-eng" takenKeys={[]} onClose={() => {}} onSaved={() => {}} />)
+    for (const name of ['Client', 'About']) expect(screen.getByText(name).closest('label')?.textContent).toContain('Optional')
+    expect(screen.getByRole('group', { name: /^Links/ }).textContent).toContain('Optional')
+  })
+})

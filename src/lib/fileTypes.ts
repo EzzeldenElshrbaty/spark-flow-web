@@ -29,6 +29,9 @@ export const isAcceptedFile = (name: string) => [...previewTypes, ...videoTypes,
 
 export const allowedFilesHint = `Images (PNG, JPG, GIF, WebP, SVG, HEIC), PDF, Word, Excel, PowerPoint, OpenDocument, Pages, Numbers, Keynote, CSV, text, HTML, JSON, video, audio, ZIP/RAR/7Z, AI, PSD, EPS, Figma or Sketch, up to ${maxFileMb} MB`
 
+/** The hint under a file box (UX Phase 4, 4.9): the kinds in one line; the full list is `allowedFilesHint`. */
+export const allowedFilesShort = `Images, documents, audio, video and archives, up to ${maxFileMb} MB.`
+
 export type Preview = 'image' | 'pdf' | 'text' | 'csv' | 'none'
 
 export function previewOf(name: string): Preview {

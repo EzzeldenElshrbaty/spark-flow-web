@@ -76,6 +76,11 @@ describe('more file types (2026-11-08)', () => {
     for (const name of ['call.mp3', 'ui.fig', 'art.eps', 'all.7z']) expect(fileKind({ name, mimeType: '' })).toBe('other')
   })
 
+  it('the short hint (UX Phase 4, 4.9) says the kinds in one line, with the size', async () => {
+    const { allowedFilesShort } = await import('@/lib/fileTypes')
+    expect(allowedFilesShort).toBe('Images, documents, audio, video and archives, up to 25 MB.')
+  })
+
   it('the hint names PNG, JPG, SVG and HTML', async () => {
     const { allowedFilesHint } = await import('@/lib/fileTypes')
     for (const type of ['PNG', 'JPG', 'SVG', 'HTML']) expect(allowedFilesHint).toContain(type)

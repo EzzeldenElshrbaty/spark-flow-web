@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Attachment } from '@/api/types'
-import { allowedFilesHint } from '@/lib/fileTypes'
+import { allowedFilesHint, allowedFilesShort } from '@/lib/fileTypes'
 import { TaskAttachments } from './TaskAttachments'
 import type { UploadRow } from './uploadQueue'
 
@@ -46,9 +46,15 @@ describe('TaskAttachments', () => {
     const h = handlers()
     const { container } = render(<TaskAttachments files={[]} rows={[]} readOnly={false} {...h} />)
     expect(container.textContent).toContain('Add files or drop them here')
-    expect(screen.getByText(allowedFilesHint)).toBeTruthy()
+    // UX Phase 4, 4.9: one short line; the full list behind "Which files?".
+    expect(screen.queryByText(`${allowedFilesHint}.`)).toBeNull()
+    const which = screen.getByRole('button', { name: 'Which files?' })
+    expect(which.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(which)
+    expect(which.getAttribute('aria-expanded')).toBe('true')
+    expect(screen.getByText(`${allowedFilesHint}.`)).toBeTruthy()
     const picked = [new File(['x'], 'a.pdf', { type: 'application/pdf' })]
-    fireEvent.drop(screen.getByText(allowedFilesHint).parentElement!, { dataTransfer: { files: picked } })
+    fireEvent.drop(screen.getByText(allowedFilesShort).parentElement!, { dataTransfer: { files: picked } })
     expect(h.onAdd).toHaveBeenCalledWith(picked)
     fireEvent.change(container.querySelector('input[type=file]')!, { target: { files: picked } })
     expect(h.onAdd).toHaveBeenCalledTimes(2)

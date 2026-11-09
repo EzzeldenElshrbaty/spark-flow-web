@@ -162,11 +162,11 @@ export function ProjectSheet({
               }}
             />
           </Field>
-          <Field label="Client">
+          <Field label="Client" hint="Optional">
             <input className={inputClass} value={values.clientName} onChange={(e) => set('clientName', e.target.value)} />
           </Field>
         </div>
-        <Field label="About">
+        <Field label="About" hint="Optional">
           <textarea className={inputClass} rows={3} value={values.description} onChange={(e) => set('description', e.target.value)} />
         </Field>
 
@@ -251,7 +251,9 @@ export function ProjectSheet({
         {leftWith && <p className="text-sm text-amber-700 dark:text-amber-300">{leftWith}</p>}
 
         <fieldset>
-          <legend className="mb-1.5 text-sm font-medium text-fg-secondary">Links</legend>
+          <legend className="mb-1.5 text-sm font-medium text-fg-secondary">
+            Links <span className="font-normal text-fg-muted">· Optional</span>
+          </legend>
           <div className="space-y-2">
             {values.links.map((link, i) => (
               <div key={i} className="flex gap-2">
