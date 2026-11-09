@@ -13,16 +13,19 @@ export type SortKeys<T> = Record<string, (row: T) => SortValue>
 
 const dirs: readonly SortDir[] = ['asc', 'desc']
 
-/** The column sort in the URL (`by` and `dir`). The API ignores a column it can't sort by. */
-export function columnSortFrom(params: URLSearchParams): ColumnSort | null {
-  const by = params.get('by')
+/**
+ * The column sort in the URL (`by` and `dir`). The API ignores a column it can't sort by. A page whose `by` already
+ * means something else keeps the column under another key (Time & cost: `sort`, UX Phase 4).
+ */
+export function columnSortFrom(params: URLSearchParams, byKey = 'by'): ColumnSort | null {
+  const by = params.get(byKey)
   if (!by) return null
   const dir = params.get('dir')
   return { by, dir: dirs.includes(dir as SortDir) ? (dir as SortDir) : 'asc' }
 }
 
 /** URL changes for a new column sort; null goes back to the list's default order. */
-export const sortParams = (sort: ColumnSort | null) => ({ by: sort?.by ?? null, dir: sort?.dir ?? null })
+export const sortParams = (sort: ColumnSort | null, byKey = 'by') => ({ [byKey]: sort?.by ?? null, dir: sort?.dir ?? null })
 
 /** Clicking a header: ascending first, then descending, then back to the default order. */
 export function nextColumnSort(current: ColumnSort | null, column: string): ColumnSort | null {

@@ -1,5 +1,6 @@
 import clsx from 'clsx'
 import { Download, Wallet } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { useArchivedProjects, useProjectSummaries } from '@/api/projects'
 import { useTimeReport } from '@/api/time'
@@ -18,7 +19,9 @@ import { formatCompact, formatDate, formatDayMonth, formatHours, formatMoney } f
 import { paths } from '@/lib/paths'
 import { useAccess } from '@/lib/usePermission'
 import { downloadCsv, toCsv } from '@/lib/csv'
-import { selectClass } from '@/components/ui/Field'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { selectInlineClass } from '@/components/ui/Field'
+import { columnSortFrom, sortByColumn, sortParams, type ColumnSort } from '@/lib/sorting'
 import { Button } from '@/components/ui/Button'
 import { exportDetail, reportRows } from './reportCsv'
 import { missingRateLine } from './missingRates'
@@ -53,14 +56,44 @@ function Share({ value, total }: { value: number; total: number }) {
   )
 }
 
-function Body({ report, by, ws, people }: { report: TimeReport; by: Grouping; ws: string; people: User[] }) {
+/** A table on wide screens and a list on phones (UX Phase 4, 4.7: the kit's list page). */
+function PhoneList<T>({ label, rows, rowKey, title, detail }: { label: string; rows: T[]; rowKey: (row: T) => string; title: (row: T) => ReactNode; detail: (row: T) => string }) {
+  return (
+    <ul aria-label={label} className="divide-y divide-line-subtle overflow-hidden rounded-xl border border-line bg-surface sm:hidden">
+      {rows.map((row) => (
+        <li key={rowKey(row)} className="px-4 py-3">
+          <span className="block truncate text-sm text-fg">{title(row)}</span>
+          <span className="mt-0.5 block text-xs text-fg-muted tabular-nums">{detail(row)}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function Body({
+  report,
+  by,
+  ws,
+  people,
+  sort,
+  onSort,
+  empty,
+}: {
+  report: TimeReport
+  by: Grouping
+  ws: string
+  people: User[]
+  sort: ColumnSort | null
+  onSort: (next: ColumnSort | null) => void
+  empty: string
+}) {
   const { workspace } = useCurrentWorkspace()
   // Archived projects keep their hours here, so their names are looked up too.
   const projects = [...(useProjectSummaries(workspace?.id).data ?? []), ...(useArchivedProjects(workspace?.id, true).data ?? [])]
   const nameOf = (id: string) => people.find((u) => u.id === id)?.name ?? 'Unknown person'
   const projectOf = (id: string) => projects.find((p) => p.id === id)
 
-  if (report.totals.hours === 0) return <p className="rounded-xl border border-dashed border-line-strong p-10 text-center text-sm text-fg-secondary">No time logged in this period.</p>
+  if (report.totals.hours === 0) return <EmptyState>{empty}</EmptyState>
 
   if (by === 'project') {
     const cols: Column<TimeReport['byProject'][number]>[] = [
@@ -68,6 +101,7 @@ function Body({ report, by, ws, people }: { report: TimeReport; by: Grouping; ws
         id: 'project',
         header: 'Project',
         width: 260,
+        sort: 'text',
         cell: (r) => {
           const p = projectOf(r.projectId)
           return p ? (
@@ -79,11 +113,19 @@ function Body({ report, by, ws, people }: { report: TimeReport; by: Grouping; ws
           )
         },
       },
-      { id: 'hours', header: 'Hours', width: 100, align: 'right', cell: (r) => <span className="tabular-nums">{formatHours(r.hours)}</span> },
-      { id: 'cost', header: 'Cost', width: 140, align: 'right', cell: (r) => <span className="tabular-nums">{money(r.cost)}</span> },
+      { id: 'hours', header: 'Hours', width: 100, align: 'right', sort: 'number', cell: (r) => <span className="tabular-nums">{formatHours(r.hours)}</span> },
+      { id: 'cost', header: 'Cost', width: 140, align: 'right', sort: 'number', cell: (r) => <span className="tabular-nums">{money(r.cost)}</span> },
       { id: 'share', header: 'Share of hours', width: 180, cell: (r) => <Share value={r.hours} total={report.totals.hours} /> },
     ]
-    return <DataTable columns={cols} rows={report.byProject} rowKey={(r) => r.projectId} storageKey="spark-flow.table.report-project" label="Hours by project" />
+    const rows = sortByColumn([...report.byProject], sort, { project: (r) => projectOf(r.projectId)?.name, hours: (r) => r.hours, cost: (r) => r.cost })
+    return (
+      <>
+        <div className="max-sm:hidden">
+          <DataTable columns={cols} rows={rows} rowKey={(r) => r.projectId} sort={sort} onSort={onSort} storageKey="spark-flow.table.report-project" label="Hours by project" />
+        </div>
+        <PhoneList label="Hours by project" rows={rows} rowKey={(r) => r.projectId} title={(r) => projectOf(r.projectId)?.name ?? '—'} detail={(r) => `${formatHours(r.hours)} · ${money(r.cost)}`} />
+      </>
+    )
   }
 
   if (by === 'person') {
@@ -92,6 +134,7 @@ function Body({ report, by, ws, people }: { report: TimeReport; by: Grouping; ws
         id: 'person',
         header: 'Person',
         width: 240,
+        sort: 'text',
         cell: (r) => (
           <span className="flex items-center gap-2">
             <Avatar name={nameOf(r.userId)} size={24} decorative />
@@ -99,11 +142,19 @@ function Body({ report, by, ws, people }: { report: TimeReport; by: Grouping; ws
           </span>
         ),
       },
-      { id: 'rate', header: 'Hourly cost', width: 130, align: 'right', cell: (r) => <span className="tabular-nums text-fg-secondary">{r.rate ? money(r.rate) : '—'}</span> },
-      { id: 'hours', header: 'Hours', width: 100, align: 'right', cell: (r) => <span className="tabular-nums">{formatHours(r.hours)}</span> },
-      { id: 'cost', header: 'Cost', width: 140, align: 'right', cell: (r) => <span className="tabular-nums">{money(r.cost)}</span> },
+      { id: 'rate', header: 'Hourly cost', width: 130, align: 'right', sort: 'number', cell: (r) => <span className="tabular-nums text-fg-secondary">{r.rate ? money(r.rate) : '—'}</span> },
+      { id: 'hours', header: 'Hours', width: 100, align: 'right', sort: 'number', cell: (r) => <span className="tabular-nums">{formatHours(r.hours)}</span> },
+      { id: 'cost', header: 'Cost', width: 140, align: 'right', sort: 'number', cell: (r) => <span className="tabular-nums">{money(r.cost)}</span> },
     ]
-    return <DataTable columns={cols} rows={report.byPerson} rowKey={(r) => r.userId} storageKey="spark-flow.table.report-person" label="Hours by person" />
+    const rows = sortByColumn([...report.byPerson], sort, { person: (r) => nameOf(r.userId), rate: (r) => r.rate, hours: (r) => r.hours, cost: (r) => r.cost })
+    return (
+      <>
+        <div className="max-sm:hidden">
+          <DataTable columns={cols} rows={rows} rowKey={(r) => r.userId} sort={sort} onSort={onSort} storageKey="spark-flow.table.report-person" label="Hours by person" />
+        </div>
+        <PhoneList label="Hours by person" rows={rows} rowKey={(r) => r.userId} title={(r) => nameOf(r.userId)} detail={(r) => `${formatHours(r.hours)} · ${money(r.cost)}${r.rate ? ` · ${money(r.rate)} an hour` : ''}`} />
+      </>
+    )
   }
 
   const peak = report.byWeek.reduce((a, b) => (b.hours > a.hours ? b : a), report.byWeek[0]!)
@@ -133,6 +184,8 @@ export function TimeCostPage() {
   const days = ([7, 30, 90] as const).find((d) => String(d) === params.get('days')) ?? 30
   const by: Grouping = groupings.some(([g]) => g === params.get('by')) ? (params.get('by') as Grouping) : 'project'
   const projectId = params.get('project') ?? ''
+  // Column sort under `sort`: `by` is the grouping here (UX Phase 4, 4.7).
+  const sort = columnSortFrom(params, 'sort')
   const report = useTimeReport(workspace?.id, days, access === 'allowed', projectId || undefined)
   const people = useUsers(workspace?.id).data ?? []
   const allProjects = [...(useProjectSummaries(workspace?.id).data ?? []), ...(useArchivedProjects(workspace?.id, true).data ?? [])]
@@ -183,9 +236,10 @@ export function TimeCostPage() {
   return (
     <>
       {header}
+      {/* One row (UX Phase 4, 4.7): period · project · Export CSV at the end. */}
       <div className="mb-5 flex flex-wrap items-center gap-3">
         <SegmentedControl label="Period" value={String(days)} onChange={(value) => set('days', value)} options={periods.map(([value, label]) => ({ value: String(value), label }))} />
-        <select className={`${selectClass} w-auto`} aria-label="Project" value={projectId} onChange={(e) => set('project', e.target.value)}>
+        <select className={clsx(selectInlineClass, 'w-56 max-sm:w-full')} aria-label="Project" value={projectId} onChange={(e) => set('project', e.target.value)}>
           <option value="">All projects</option>
           {allProjects.map((p) => (
             <option key={p.id} value={p.id}>
@@ -194,7 +248,7 @@ export function TimeCostPage() {
           ))}
         </select>
         {/* The shown report may be the last period's while the new one loads: nothing to export yet. */}
-        <Button variant="secondary" onClick={exportCsv} disabled={!report.data || report.isPlaceholderData}>
+        <Button variant="secondary" className="ms-auto" onClick={exportCsv} disabled={!report.data || report.isPlaceholderData}>
           <Download className="size-4" /> Export CSV
         </Button>
       </div>
@@ -248,7 +302,22 @@ export function TimeCostPage() {
                 </button>
               ))}
             </div>
-            <Body report={r} by={by} ws={ws} people={people} />
+            <Body
+              report={r}
+              by={by}
+              ws={ws}
+              people={people}
+              sort={sort}
+              onSort={(next) => setParams((prev) => {
+                const out = new URLSearchParams(prev)
+                for (const [key, value] of Object.entries(sortParams(next, 'sort'))) {
+                  if (value) out.set(key, value)
+                  else out.delete(key)
+                }
+                return out
+              })}
+              empty={`No time logged${projectId ? ` on ${allProjects.find((p) => p.id === projectId)?.name ?? 'this project'}` : ''} in the last ${days} days.`}
+            />
         </div>
       )}
     </>

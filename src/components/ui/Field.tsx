@@ -8,6 +8,9 @@ export const inputClass =
 /** Selects: same box as inputs, with our chevron and room for it on the right. */
 export const selectClass = `${inputClass} select-chevron cursor-pointer pe-9`
 
+/** A select sized by the page, in a row of filters (UX Phase 4): `selectClass` without its full width. */
+export const selectInlineClass = selectClass.replace('w-full ', '')
+
 export function Field({
   label,
   hint,
