@@ -334,6 +334,9 @@ describe('createHttpApi', () => {
     await api.roles.rename('r 1', 'QA')
     await api.roles.remove('r 1')
     await api.roles.saveGrants([{ roleId: 'member', add: ['projects.create'], remove: [] }])
+    await api.teams.create('w1', 'Data')
+    await api.teams.rename('t 1', 'QA')
+    await api.teams.remove('t 1')
     await api.sidebar.order('w1')
     await api.sidebar.setOrder('w1', 'channels', ['c2', 'c1'])
     await api.threads.list('w1')
@@ -383,6 +386,9 @@ describe('createHttpApi', () => {
       'PATCH /api/roles/r%201 {"name":"QA"}',
       'DELETE /api/roles/r%201 undefined',
       'PUT /api/roles/grants {"changes":[{"roleId":"member","add":["projects.create"],"remove":[]}]}',
+      'POST /api/workspaces/w1/teams {"name":"Data"}',
+      'PATCH /api/teams/t%201 {"name":"QA"}',
+      'DELETE /api/teams/t%201 undefined',
       'GET /api/workspaces/w1/sidebar-order undefined',
       'PUT /api/workspaces/w1/sidebar-order {"section":"channels","ids":["c2","c1"]}',
       'GET /api/workspaces/w1/threads undefined',

@@ -954,7 +954,13 @@ export interface Api {
     archive(key: string, reason?: string): Promise<TaskView>
     restore(key: string): Promise<TaskView>
   }
-  teams: { list(workspaceId: string): Promise<Team[]> }
+  /** Teams (UX Phase 2, 2.4): everyone reads; settings.manage makes, renames and removes (not one a project names). */
+  teams: {
+    list(workspaceId: string): Promise<Team[]>
+    create(workspaceId: string, name: string): Promise<Team>
+    rename(id: string, name: string): Promise<Team>
+    remove(id: string): Promise<void>
+  }
   /**
    * Signing in and out (slice AB). Every other call is a 401 while signed out. `demoPeople` is the prototype's list to
    * sign in as; the backend has none (404).

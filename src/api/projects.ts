@@ -80,6 +80,16 @@ export function useRemoveDeliverable() {
 export function useTeams(workspaceId: string | undefined) {
   return useQuery({ queryKey: qk.teams(workspaceId ?? ''), queryFn: () => api.teams.list(workspaceId!), retry, enabled: Boolean(workspaceId) })
 }
+/** Teams (UX Phase 2, 2.4); every mutation refreshes all queries (main.tsx). */
+export function useCreateTeam() {
+  return useMutation({ mutationFn: ({ workspaceId, name }: { workspaceId: string; name: string }) => api.teams.create(workspaceId, name) })
+}
+export function useRenameTeam() {
+  return useMutation({ mutationFn: ({ id, name }: { id: string; name: string }) => api.teams.rename(id, name) })
+}
+export function useRemoveTeam() {
+  return useMutation({ mutationFn: (id: string) => api.teams.remove(id) })
+}
 
 export function useProjectFiles(projectId: string | undefined) {
   return useQuery({ queryKey: qk.files(projectId ?? ''), queryFn: () => api.files.list(projectId!), retry, enabled: Boolean(projectId) })

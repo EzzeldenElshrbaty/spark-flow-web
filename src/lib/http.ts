@@ -217,7 +217,12 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
       archive: (key, reason) => send('POST', `/api/tasks/${enc(key)}/archive`, { reason: reason ?? '' }),
       restore: (key) => send('POST', `/api/tasks/${enc(key)}/restore`),
     },
-    teams: { list: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/teams`) },
+    teams: {
+      list: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/teams`),
+      create: (workspaceId, name) => send('POST', `/api/workspaces/${enc(workspaceId)}/teams`, { name }),
+      rename: (id, name) => send('PATCH', `/api/teams/${enc(id)}`, { name }),
+      remove: (id) => send<void>('DELETE', `/api/teams/${enc(id)}`),
+    },
     auth: {
       signIn: (email, password) => send('POST', '/api/auth/sign-in', { email, password }),
       signOut: () => send<void>('POST', '/api/auth/sign-out'),

@@ -1,4 +1,4 @@
-import type { AuditAction, AuditChange, AuditEvent, AuditGroup, AuditRecord, AuditResult, Channel, Phase, Project, Role, StoredChannel, Ticket, TimeEntry, User } from '@/api/types'
+import type { AuditAction, AuditChange, AuditEvent, AuditGroup, AuditRecord, AuditResult, Channel, Phase, Project, Role, StoredChannel, Team, Ticket, TimeEntry, User } from '@/api/types'
 import { chainEvent, GENESIS } from '@/lib/auditChain'
 import { formatDate, formatTime } from '@/lib/format'
 import type { DbData } from './db'
@@ -122,6 +122,7 @@ export const recordOf = {
   deliverable: (d: { id: string; title: string }, project: Pick<Project, 'name'> | undefined): AuditRecord => ({ type: 'deliverable', id: d.id, name: project ? `${d.title} · ${project.name}` : d.title }),
   channel: (c: Pick<StoredChannel | Channel, 'id' | 'name' | 'kind'>): AuditRecord => ({ type: 'channel', id: c.id, name: c.kind === 'dm' ? 'A direct message' : `#${c.name ?? ''}` }),
   role: (r: Pick<Role, 'id' | 'name'>): AuditRecord => ({ type: 'role', id: r.id, name: r.name }),
+  team: (t: Pick<Team, 'id' | 'name'>): AuditRecord => ({ type: 'team', id: t.id, name: t.name }),
   user: (u: Pick<User, 'id' | 'name'>): AuditRecord => ({ type: 'user', id: u.id, name: u.name }),
   file: (f: { id: string; title?: string; name: string }): AuditRecord => ({ type: 'file', id: f.id, name: f.title || f.name }),
   /** "Karim Hasan · Nexus Core · 30 Oct 2026": whose, where and which day. */
