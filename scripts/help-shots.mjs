@@ -29,9 +29,12 @@ const SHOTS = [
 async function startTimer(page) {
   await page.getByRole('main').getByRole('button', { name: 'Start timer' }).click()
   const dialog = page.getByRole('dialog', { name: 'Start timer' })
-  await dialog.getByLabel('Project').selectOption({ label: 'Nexus Core' })
-  await dialog.getByLabel('Task').selectOption({ index: 1 })
-  await dialog.getByRole('button', { name: 'Start timer' }).click()
+  // Find a task (UX Phase 4, 4.3): the Admin has none of their own, so search Nexus Core's and pick the first; on a
+  // first start the pick waits for Start, under the notice.
+  await dialog.getByRole('combobox', { name: 'Find a task' }).fill('NEX')
+  await dialog.getByRole('option').first().click()
+  const start = dialog.getByRole('button', { name: 'Start timer' })
+  if (await start.isVisible()) await start.click()
   await dialog.waitFor({ state: 'detached' })
   await page.waitForTimeout(800)
 }

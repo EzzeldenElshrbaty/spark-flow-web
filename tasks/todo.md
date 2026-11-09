@@ -2821,7 +2821,7 @@ one red (brand-500) and one danger style, danger on every delete confirm. Plan w
   5 November"; the mode switch and "+" are ink in dark. No sideways scroll; console shows only the worktree's font 403s.
 - Order changed once (ledger): IconButton (Task 8) ran before Preferences (Task 5), which uses it.
 
-# UX Phase 4: forms, tables, dashboards and workflows — 9 Nov 2026, planned (awaiting Q1–Q5)
+# UX Phase 4: forms, tables, dashboards and workflows — 9 Nov 2026, approved (Q1–Q5 "Yes, recommended")
 
 Audit items 4.1–4.10: forms check as you fix and Enter saves; tables drop low-value columns and show when they scroll;
 the kit's list pattern (search, tiles, filters in the address, counts, empty states) on the Tasks tab, My work and
@@ -2830,18 +2830,28 @@ Time & cost on one row. Plan with decisions, diagrams and questions:
 `docs/superpowers/plans/2026-11-09-ux-phase-4-forms-tables-dashboards.md`. Branch `feat/ux-phase-4` from `origin/dev`
 (a0f0047, Phase 3 landed).
 
-- [ ] Forms check as you fix, Enter saves, errors by their field (4.4)
-- [ ] Form copy (4.9)
-- [ ] Tables fit, or show that they scroll (4.1)
-- [ ] The board shows its hidden columns (4.1)
-- [ ] Shared list blocks: search box, filter tiles, filter bar, empty state (4.2)
-- [ ] Filters on the Tasks tab (4.2)
-- [ ] Tiles and search on My work (4.2)
-- [ ] Projects list: search, kit tiles, archived error (4.2)
-- [ ] Start timer in two clicks (4.3, 4.10)
-- [ ] Loading shaped like the page (4.5)
-- [ ] The Dashboard leads (4.6)
-- [ ] Time & cost on one row (4.7)
-- [ ] Settings gaps: place, Roles bar, Rates (4.8, 4.10)
-- [ ] Project gaps: done warnings, Overview, History, Teams (4.10)
-- [ ] Phase check, help pictures, review here
+- [x] Forms check as you fix, Enter saves, errors by their field (4.4)
+- [x] Form copy (4.9)
+- [x] Tables fit, or show that they scroll (4.1)
+- [x] The board shows its hidden columns (4.1)
+- [x] Shared list blocks: search box, filter tiles, filter bar, empty state (4.2)
+- [x] Filters on the Tasks tab (4.2)
+- [x] Tiles and search on My work (4.2)
+- [x] Projects list: search, kit tiles, archived error (4.2)
+- [x] Start timer in two clicks (4.3, 4.10)
+- [x] Loading shaped like the page (4.5)
+- [x] The Dashboard leads (4.6)
+- [x] Time & cost on one row (4.7)
+- [x] Settings gaps: place, Roles bar, Rates (4.8, 4.10)
+- [x] Project gaps: done warnings, Overview, History, Teams (4.10)
+- [x] Phase check, help pictures, review here
+
+## Review — UX Phase 4
+- Gates: `tsc -b` and lint clean; tests 2,635/2,638 (unit and browser; the known `RichComposer` "unknown /word" and the
+  two worktree-only `MessageList` "Jump to latest" failures); `build:prototype` passes; 13 help pictures retaken (the
+  shots script now finds a task in Start timer).
+- Looked at in the app: Projects at 1280 fits its 946 px box with no sideways scroll (Client, Manager and Phase left
+  out); the board says "Columns 1–3 of 5" with arrows; the Tasks tab's search and filters; Start timer finds a task; My
+  work's tiles and Projects' search on a 390 px phone, light and dark; no console errors.
+- New shared pieces: `lib/useFormCheck`, `DataTable` `dropOrder`, `pages/projects/ColumnStrip`, `components/ui/{SearchBox,
+  FilterTile, FilterBar, EmptyState}`, `layout/{TaskPicker,timerTargets}`, `selectInlineClass`; rules in `CLAUDE.md`.
