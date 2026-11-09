@@ -111,6 +111,8 @@ function dataKeysFor(event: RealtimeEvent): QueryKey[] {
       return [
         qk.tickets(event.ticket.projectId), qk.archivedTickets(event.ticket.projectId), qk.ticket(event.ticket.key), qk.taskHistory(event.ticket.key), qk.projectHistory(event.ticket.projectId),
         ['tickets', 'projects'], ['tickets', 'project'], ['dashboard'], qk.taskRefsAll(),
+        // Task news for the assignee (UX Phase 2, 2.3): the bell and Activity.
+        qk.mentions(), qk.activityAll(),
       ]
     case 'timeLogged':
       // Hours change everywhere: my day, every task and project summary (under 'tickets'), the Time tabs, and

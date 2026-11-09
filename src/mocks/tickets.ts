@@ -294,7 +294,9 @@ export async function createTicket(db: MockDb, hub: MockHub, input: NewTicket, c
     }
     data.tickets.push(created)
     data.counters[project.id] = number + 1
-    logActivity(data, { projectId: project.id, taskKey: key, kind: 'task.created', changes: [] }, clock().toISOString())
+    // Who it was made for counts as assigning them (UX Phase 2, 2.3: their bell says so).
+    const assigned = created.assigneeId ? [{ field: 'assigneeId', from: null, to: created.assigneeId }] : []
+    logActivity(data, { projectId: project.id, taskKey: key, kind: 'task.created', changes: assigned }, clock().toISOString())
     const files = created.attachmentIds.length ? [{ field: 'Files', from: null, to: fileTitles(data, created.attachmentIds) }] : []
     audit(data, { action: 'created', group: 'data', record: recordOf.task(created), changes: [...statusChanges(project, null, status), ...changesBetween(data, {}, created, TASK_LOGGED), ...files] })
     // The message it was made from names it from now on (its task chip).

@@ -89,6 +89,44 @@ export function mentionsFor(data: DbData, userId: string, keep: (item: Omit<Ment
   return items.filter(keep).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)).slice(0, limit)
 }
 
+/**
+ * Task news for `userId` (UX Phase 2, 2.3), worked out on read: someone else assigned them a task (the history line
+ * that set them, so it stays theirs after the task moves on), moved a task assigned to them now, or commented on one
+ * (a comment that mentions them is that mention alone). Only on projects they are on now.
+ */
+export function taskEventsFor(data: DbData, userId: string): Omit<MentionItem, 'read'>[] {
+  const nameOf = (id: string) => data.users.find((u) => u.id === id)?.name ?? 'Someone'
+  const byKey = new Map(data.tickets.map((t) => [t.key, t]))
+  const workspaceOf = (projectId: string) => data.projects.find((p) => p.id === projectId)?.workspaceId ?? ''
+  const people = new Map<string, Set<string>>()
+  const onProject = (projectId: string) => {
+    if (!people.has(projectId)) people.set(projectId, projectPeople(data, projectId))
+    return people.get(projectId)!.has(userId)
+  }
+  const items: Omit<MentionItem, 'read'>[] = []
+  for (const e of data.activity) {
+    if (e.actorId === userId || !e.taskKey || !onProject(e.projectId)) continue
+    const task = byKey.get(e.taskKey)
+    const base = { id: `task-${e.id}`, workspaceId: workspaceOf(e.projectId), authorId: e.actorId, authorName: nameOf(e.actorId), excerpt: task?.title ?? e.taskKey, createdAt: e.at, channelId: null, messageId: null, taskKey: e.taskKey, projectId: e.projectId, keyword: null }
+    if ((e.kind === 'task.created' || e.kind === 'task.changed') && e.changes.some((c) => c.field === 'assigneeId' && c.to === userId)) items.push({ ...base, source: 'assigned', statusLabel: null })
+    else if (e.kind === 'task.moved' && task && !task.archivedAt && task.assigneeId === userId) items.push({ ...base, source: 'status', statusLabel: e.changes[0]?.toLabel ?? null })
+  }
+  for (const c of data.comments) {
+    if (c.authorId === userId || c.deletedAt || !onProject(c.projectId)) continue
+    const task = data.tickets.find((t) => t.id === c.taskId)
+    if (!task || task.archivedAt || task.assigneeId !== userId) continue
+    const card = data.messages.find((m) => m.commentId === c.id)
+    if (reaches(card?.mentions ?? [], userId, () => projectPeople(data, c.projectId))) continue
+    items.push({ id: `tcomment-${c.id}`, source: 'taskComment', workspaceId: workspaceOf(c.projectId), authorId: c.authorId, authorName: nameOf(c.authorId), excerpt: excerptOf(c.body), createdAt: c.createdAt, channelId: null, messageId: null, taskKey: task.key, projectId: c.projectId, keyword: null, statusLabel: null })
+  }
+  return items
+}
+
+/** Mentions of me and task news for me, newest first: the bell's list (UX Phase 2, 2.3). */
+export function inboxFor(data: DbData, userId: string, keep: (item: Omit<MentionItem, 'read'>) => boolean = () => true, limit = MAX_ITEMS): Omit<MentionItem, 'read'>[] {
+  return [...mentionsFor(data, userId, keep, Infinity), ...taskEventsFor(data, userId).filter(keep)].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)).slice(0, limit)
+}
+
 /** Mentions of me, for the bell and Home, with their read state (kept per person). */
 export function mentionsApi(db: MockDb, hub: MockHub): Api['mentions'] {
   return {
@@ -99,7 +137,7 @@ export function mentionsApi(db: MockDb, hub: MockHub): Api['mentions'] {
       const read = new Set(data.mentionReads[me.id] ?? [])
       // Channels I set to Nothing (spec 6.11) stay out of the bell.
       const quiet = silenced(data, me.id)
-      return clone(mentionsFor(data, me.id, (item) => !quiet(item.channelId)).map((item) => ({ ...item, read: read.has(item.id) })))
+      return clone(inboxFor(data, me.id, (item) => !quiet(item.channelId)).map((item) => ({ ...item, read: read.has(item.id) })))
     },
     async markRead(ids) {
       await delay()

@@ -707,17 +707,23 @@ export type DashboardStats = {
     overdue: boolean; overEstimate: boolean; loggedHours: number; estimateHours: number | null
   }[]
 }
-/** One mention of me: a message, a thread reply or a task comment, with where it opens. */
+/**
+ * One mention of me (a message, a thread reply or a task comment), or task news for me (UX Phase 2, 2.3: someone
+ * assigned me a task, moved a task of mine, or commented on one), with where it opens. Task news is worked out on read
+ * from the task history and comments; it shares the mentions' read state.
+ */
 export type MentionItem = {
-  id: string; source: 'message' | 'reply' | 'comment'; authorId: string; excerpt: string; createdAt: string; read: boolean
+  id: string; source: 'message' | 'reply' | 'comment' | 'assigned' | 'status' | 'taskComment'; authorId: string; excerpt: string; createdAt: string; read: boolean
   workspaceId: string                                    // where it opens; the bell lists every workspace's
   authorName: string                                     // so a mention from another workspace still names its author
   channelId: string | null; messageId: string | null; taskKey: string | null; projectId: string | null
   /** Set when it isn't a mention of me but has one of my keywords (spec 6.11): which. */
   keyword: string | null
+  /** A `status` item: the column the task moved to, as it was named then. */
+  statusLabel?: string | null
 }
 /** What an Activity row is about (spec 6.12): a mention of me, a reaction to mine, a reply in a thread I follow, a reminder. */
-export type ActivityItemKind = 'mention' | 'reaction' | 'thread' | 'reminder'
+export type ActivityItemKind = 'mention' | 'reaction' | 'thread' | 'reminder' | 'task'
 /**
  * One Activity row, newest first. `messageId` is the message (a thread's root for a reply); `replyId` the reply,
  * when it's about one. A mention in a task comment has `taskKey` and `projectId` instead of a channel.
@@ -732,6 +738,9 @@ export type ActivityItem = {
   emoji: string | null
   /** A mention row that is one of my keywords instead (spec 6.11): which; absent or null otherwise. */
   keyword?: string | null
+  /** A `task` row (UX Phase 2, 2.3): what happened, and for a move, the column it went to. */
+  taskEvent?: 'assigned' | 'status' | 'taskComment'
+  statusLabel?: string | null
 }
 /** A project's time: every entry, and the hourly costs only for people who may see cost (else null). */
 export type ProjectTime = { entries: TimeEntry[]; rates: Rate[] | null }

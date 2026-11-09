@@ -3,7 +3,7 @@ import { FLOWBOT_NAME, isFlowbot } from '@/lib/flowbot'
 import { canRead, silenced } from './membership'
 import type { DbData, MockDb } from './db'
 import { delay } from './latency'
-import { mentionsFor } from './mentions'
+import { inboxFor, mentionsFor, taskEventsFor } from './mentions'
 import type { MockHub } from './realtime'
 import { clone, currentUser, excerptOf } from './shared'
 
@@ -40,7 +40,15 @@ export function activityFor(data: DbData, userId: string, workspaceId: string, l
       channelId: n.channelId, messageId: n.messageId, replyId: n.replyId, taskKey: null, projectId: null, excerpt: excerptOf(row.content), emoji: n.emoji,
     })
   }
-  return [...mentions, ...kept].sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0)).slice(0, limit)
+  // Task news for me (UX Phase 2, 2.3), with the bell's read state.
+  const tasks: ActivityItem[] = taskEventsFor(data, userId)
+    .filter((t) => t.workspaceId === workspaceId)
+    .map((t) => ({
+      id: t.id, kind: 'task', read: read.has(t.id), createdAt: t.createdAt, workspaceId: t.workspaceId, actorId: t.authorId, actorName: t.authorName,
+      channelId: null, messageId: null, replyId: null, taskKey: t.taskKey, projectId: t.projectId, excerpt: t.excerpt, emoji: null,
+      taskEvent: t.source as 'assigned' | 'status' | 'taskComment', statusLabel: t.statusLabel ?? null,
+    }))
+  return [...mentions, ...kept, ...tasks].sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0)).slice(0, limit)
 }
 
 /** Activity (spec 6.12): the list, and marking items read (a mention's read state is the bell's). */
@@ -60,7 +68,7 @@ export function inboxApi(db: MockDb, hub: MockHub): Api['inbox'] {
         // Any mention of mine in this workspace, not only the newest (an older one can still be on screen); and only
         // this workspace's items, as the route says.
         const here = (m: { workspaceId: string }) => m.workspaceId === workspaceId
-        const mentionIds = new Set(mentionsFor(data, me.id, here, Infinity).map((m) => m.id))
+        const mentionIds = new Set(inboxFor(data, me.id, here, Infinity).map((m) => m.id))
         data.mentionReads[me.id] = [...new Set([...(data.mentionReads[me.id] ?? []), ...[...wanted].filter((id) => mentionIds.has(id))])]
         for (const n of data.notifications) if (n.userId === me.id && wanted.has(n.id) && workspaceOf(data, n.channelId) === workspaceId) n.read = true
         return me.id

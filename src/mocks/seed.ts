@@ -28,7 +28,7 @@ import { checklistTxt, screenshotPng, scopePdf } from './seedFiles'
 import { localDay } from '@/lib/dates'
 import { DEFAULT_TIMEOUT_HOURS } from '@/lib/hours'
 import { DEFAULT_WORK_HOURS } from '@/lib/workHours'
-import { mentionsFor } from './mentions'
+import { inboxFor } from './mentions'
 import { parseMentions, parseTicketKeys } from './text'
 import { descriptionText, parseBody, textBody, type DescBody } from '@/lib/messageBody'
 import type { StoredMemberState } from './db'
@@ -606,7 +606,7 @@ export function seed(now: Date): SeedResult {
   }
   // The bell starts with the last day's mentions only: everything older counts as read.
   const dayAgo = new Date(now.getTime() - 24 * 3_600_000).toISOString()
-  for (const user of users) data.mentionReads[user.id] = mentionsFor(data, user.id).filter((m) => m.createdAt < dayAgo).map((m) => m.id)
+  for (const user of users) data.mentionReads[user.id] = inboxFor(data, user.id, () => true, Infinity).filter((m) => m.createdAt < dayAgo).map((m) => m.id)
   seedAuditHistory(data, now)
   return { data, files: Object.fromEntries(files.map((f) => [f.attachment.id, f.bytes])) }
 }

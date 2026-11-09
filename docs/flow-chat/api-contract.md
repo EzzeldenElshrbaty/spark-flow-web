@@ -319,7 +319,7 @@ What a delete takes is kept only for the Undo window, then dropped (retention be
 | Field | Type | Rule |
 |---|---|---|
 | `id` | string | For a mention, the mention's id (the bell's); else the stored item's. |
-| `kind` | `"mention" \| "reaction" \| "thread"` | |
+| `kind` | `"mention" \| "reaction" \| "thread" \| "reminder" \| "task"` | `task` (UX Phase 2): task news for me, with `taskEvent` `"assigned" \| "status" \| "taskComment"` and, for a move, `statusLabel`. |
 | `read` | boolean | A mention's read state is the bell's (`mentionReads`): marking it read in one marks it in the other. |
 | `createdAt` | ISO time | When it happened. |
 | `workspaceId` | string | |
@@ -345,6 +345,7 @@ What the list holds, for the signed-in person:
 - **Thread replies** in threads I follow (the following rules of slice 2): one item per reply, stored for every follower except the replier and anyone who can't read the channel. A reply that mentions me as it reads now is listed once, as the mention, not again as a thread item.
 - Items whose message or reply is deleted are left out, as are channels at Nothing and channels I can no longer read (I left a private channel or was taken off it): the read check runs when the list is read, not only when an item is stored, since the excerpt is the text as it is now.
 - Reading a message in its channel doesn't mark its Activity item read; opening the item (or Mark all read) does.
+- **Task news** for me (UX Phase 2, 2.3), worked out on read and also in `GET /api/mentions` (`source` `"assigned"`, `"status"`, `"taskComment"`): someone else assigned me a task (the history line that set me, creation included, so it stays mine after the task moves on); someone else moved a task assigned to me now (`statusLabel` is the column it went to); someone else commented on a task assigned to me now (a comment that mentions me is that mention alone). Only on projects I'm on; they share the mentions' read state. A task update (`ticket.updated`) refreshes the bell and Activity.
 
 ### Real-time event
 
