@@ -2752,19 +2752,33 @@ Audit `docs/ux-audit/2026-11-09-ui-ux-audit.md` (items 1.1–1.7). Plan with dec
   estimate shows both reasons on their own lines; the Chat tab keeps an 18rem floor and the page scrolls to it on a
   short screen (phone on its side: composer reachable). Six minors deferred (see the final report).
 
-# UX Phase 2: navigation and IA — 9 Nov 2026, started ("Start Phase 2"); plan waits for answers
+# UX Phase 2: navigation and IA — 9 Nov 2026, approved (Q1–Q5 "Yes, recommended")
 
 Audit items 2.1–2.8 with the user's rulings: Dashboard stays everyone's start page, Home and My tasks merge into My
 work; Settings, Preferences and Help always use the Projects sidebar. Plan with decisions, a diagram and questions:
 `docs/superpowers/plans/2026-11-09-ux-phase-2-navigation-ia.md`. Branch `feat/ux-phase-2` from `origin/dev` (c2e6cb9).
 
-- [ ] Settings, Preferences and Help on the Projects side (2.2)
-- [ ] My work joins Home and My tasks; "Go to Dashboard" (2.1)
-- [ ] Task items for me in mentions and Activity (2.3, mock)
-- [ ] The bell and Activity show task news, with See all (2.3)
-- [ ] Teams can be made, renamed and removed (2.4, Api)
-- [ ] The Teams page manages teams; Settings tiles are links (2.4, 2.8)
-- [ ] One Files list per project; the workspace button names the workspace (2.5, 2.6)
-- [ ] Filters, tabs and project sheets live in the address (2.7)
-- [ ] No Soon items; Not found has a heading (2.8)
-- [ ] Phase check, help pictures, review here
+- [x] Settings, Preferences and Help on the Projects side (2.2)
+- [x] My work joins Home and My tasks; "Go to Dashboard" (2.1)
+- [x] Task items for me in mentions and Activity (2.3, mock)
+- [x] The bell and Activity show task news, with See all (2.3)
+- [x] Teams can be made, renamed and removed (2.4, Api)
+- [x] The Teams page manages teams; Settings tiles are links (2.4, 2.8)
+- [x] One Files list per project; the workspace button names the workspace (2.5, 2.6)
+- [x] Filters, tabs and project sheets live in the address (2.7)
+- [x] No Soon items; Not found has a heading (2.8)
+- [x] Phase check, help pictures, review here
+
+## Review — UX Phase 2
+- Gates: `tsc -b` and lint clean; unit 2,191/2,191; `build:prototype` passes. Browser: the known `RichComposer`
+  "unknown /word" failure and the worktree-only `MessageList` "Jump to latest" ×2; `GlobalSearch.browser` failed to
+  load once in the full run (a first-load dynamic import) and passes on its own.
+- App check (Playwright on this branch's `npm run dev`, port 5176), Member in light, dark and at 390, Admin at 1440:
+  My work with My tasks and Mentions; the bell shows "commented on NEX-105" and See all opens Activity, whose Tasks
+  tab keeps `?tab=task`; the workspace button names the workspace (from 1440px); a project's chat has no Files tab;
+  Settings after a channel shows the Projects sidebar; an Admin makes "Data" and is told "Take Backend off Nexus Core
+  first."; Projects' Overdue tile is a step Back undoes; `?new=task` opens New task. No sideways scroll; axe shows
+  only the known sidebar `list` finding (Phase 5). Console 403s are Vite refusing the linked node_modules' fonts in
+  the worktree only.
+- Help pictures retaken; the 1280 picture showed the named workspace button crowding the top bar beside a running
+  timer, so the name now shows from 1440px.
