@@ -2855,3 +2855,6 @@ Time & cost on one row. Plan with decisions, diagrams and questions:
   work's tiles and Projects' search on a 390 px phone, light and dark; no console errors.
 - New shared pieces: `lib/useFormCheck`, `DataTable` `dropOrder`, `pages/projects/ColumnStrip`, `components/ui/{SearchBox,
   FilterTile, FilterBar, EmptyState}`, `layout/{TaskPicker,timerTargets}`, `selectInlineClass`; rules in `CLAUDE.md`.
+- Final review (Opus): no critical, 5 important, all fixed with a test that failed first (48f1b9e): a widened column
+  could drop under the pointer; Start timer's highlight could leave the view, and a second pick started a second timer;
+  Enter while saving saved twice; a past-due project read "On time". 11 minors deferred (listed in the session's report).
