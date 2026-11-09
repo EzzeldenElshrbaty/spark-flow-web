@@ -45,12 +45,17 @@ export function moveColumn(columns: BoardColumn[], id: string, to: number): Boar
 
 /** The first thing wrong with a board's columns, as the sentence to show; null when they are fine. */
 export function columnErrors(columns: BoardColumn[]): string | null {
-  if (columns.some((c) => !c.label.trim())) return 'Name each column.'
-  if (columns.some((c) => c.label.trim().length > MAX_LABEL)) return `Keep column names under ${MAX_LABEL} characters.`
+  return columnProblem(columns)?.message ?? null
+}
+
+/** The first thing wrong with a board, and what it's about: a column's name, the types, or the board's size (UX Phase 4). */
+export function columnProblem(columns: BoardColumn[]): { field: 'label' | 'category' | 'board'; message: string } | null {
+  if (columns.some((c) => !c.label.trim())) return { field: 'label', message: 'Name each column.' }
+  if (columns.some((c) => c.label.trim().length > MAX_LABEL)) return { field: 'label', message: `Keep column names under ${MAX_LABEL} characters.` }
   const names = columns.map((c) => c.label.trim().toLowerCase())
-  if (new Set(names).size !== names.length) return "Two columns can’t share a name."
-  if (CATEGORIES.some(({ category }) => !columns.some((c) => c.category === category))) return 'Each type needs at least one column.'
-  if (columns.length > MAX_COLUMNS) return `A board can have up to ${MAX_COLUMNS} columns.`
+  if (new Set(names).size !== names.length) return { field: 'label', message: 'Two columns can’t share a name.' }
+  if (CATEGORIES.some(({ category }) => !columns.some((c) => c.category === category))) return { field: 'category', message: 'Each type needs at least one column.' }
+  if (columns.length > MAX_COLUMNS) return { field: 'board', message: `A board can have up to ${MAX_COLUMNS} columns.` }
   return null
 }
 

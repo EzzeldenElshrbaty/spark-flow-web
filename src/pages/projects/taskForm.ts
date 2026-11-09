@@ -47,3 +47,11 @@ export function tasksLeftWith(removedIds: string[], tasks: TaskView[], project: 
   return `${who} ${names.length === 1 ? 'keeps' : 'keep'} ${count} here. Reassign ${open.length === 1 ? 'it' : 'them'} from the board.`
 }
 
+/** What a task needs before it saves: a title, and an estimate (when given) of 0 hours or more. */
+export function taskFormErrors(values: { title: string; estimate: string }): { title?: string; estimate?: string } {
+  const estimate = values.estimate.trim() === '' ? null : Number(values.estimate)
+  return {
+    title: values.title.trim() ? undefined : 'Give the task a title.',
+    estimate: estimate !== null && (!Number.isFinite(estimate) || estimate < 0) ? 'The estimate is 0 hours or more.' : undefined,
+  }
+}

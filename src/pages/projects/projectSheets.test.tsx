@@ -72,3 +72,53 @@ describe('project sheets ask before discarding', () => {
     expect(onClose).not.toHaveBeenCalled()
   })
 })
+
+// UX Phase 4, 4.4: errors show from the first Save, leave as soon as the field is fixed, sit under their own field,
+// and Enter in a field saves (the form holds a submit button, as Users' sheet does).
+const fieldOf = (text: string) => screen.getByText(text).closest('label')
+const hasSubmit = (input: HTMLElement) => (input as HTMLInputElement).form?.querySelector('button[type="submit"]')
+const board = [
+  { id: 'todo', label: 'To do', category: 'todo' as const },
+  { id: 'doing', label: 'In progress', category: 'inProgress' as const },
+  { id: 'done', label: 'Done', category: 'done' as const },
+]
+
+describe('project sheets check as you fix (UX Phase 4)', () => {
+  it('New project: the name error leaves when a name is typed; a missing start shows under Start', () => {
+    render(<ProjectSheet workspaceId="ws-eng" takenKeys={[]} onClose={() => {}} onSaved={() => {}} />)
+    const name = screen.getByRole('textbox', { name: /^Name/ })
+    expect(screen.queryByText('Give the project a name.')).toBeNull()
+    expect(hasSubmit(name)).toBeTruthy()
+    const start = fieldOf('Start')!.querySelector('input')!
+    fireEvent.change(start, { target: { value: '' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save project' }))
+    expect(fieldOf('Give the project a name.')?.textContent).toContain('Name')
+    expect(fieldOf('Pick a start date.')?.textContent).toContain('Start')
+    fireEvent.change(name, { target: { value: 'Atlas' } })
+    expect(screen.queryByText('Give the project a name.')).toBeNull()
+  })
+
+  it('Column: a missing name shows on Name and leaves once typed; Enter saves', () => {
+    mutation.mutate.mockClear()
+    render(<ColumnSheet projectId="p-nex" columns={board} onClose={() => {}} />)
+    const name = screen.getByRole('textbox', { name: /^Name/ })
+    fireEvent.click(screen.getByRole('button', { name: 'Add column' }))
+    expect(fieldOf('Name each column.')?.textContent).toContain('Name')
+    expect(mutation.mutate).not.toHaveBeenCalled()
+    fireEvent.change(name, { target: { value: 'QA' } })
+    expect(screen.queryByText('Name each column.')).toBeNull()
+    expect(hasSubmit(name)).toBeTruthy()
+    fireEvent.submit((name as HTMLInputElement).form!)
+    expect(mutation.mutate).toHaveBeenCalledTimes(1)
+  })
+
+  it('Deliverable: the title error stays on Title and never moves under Due', () => {
+    render(<DeliverableSheet project={project} phases={[phase]} onClose={() => {}} />)
+    const title = screen.getByRole('textbox', { name: /^Title/ })
+    expect(hasSubmit(title)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Add deliverable' }))
+    expect(fieldOf('Give the deliverable a title.')?.textContent).toContain('Title')
+    fireEvent.change(title, { target: { value: 'Release notes' } })
+    expect(screen.queryByText('Give the deliverable a title.')).toBeNull()
+  })
+})

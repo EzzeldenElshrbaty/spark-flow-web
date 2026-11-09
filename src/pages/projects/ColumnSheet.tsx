@@ -4,7 +4,8 @@ import type { BoardColumn, StatusCategory } from '@/api/types'
 import { Button } from '@/components/ui/Button'
 import { Field, inputClass, selectClass } from '@/components/ui/Field'
 import { Sheet, SheetCancelButton } from '@/components/ui/Sheet'
-import { columnErrors } from '@/lib/boardColumns'
+import { columnProblem } from '@/lib/boardColumns'
+import { useFormCheck } from '@/lib/useFormCheck'
 import { CATEGORIES } from '@/lib/statuses'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
 
@@ -18,22 +19,24 @@ export function ColumnSheet({ projectId, columns, column, onClose }: { projectId
   const [label, setLabel] = useState(column?.label ?? '')
   const [category, setCategory] = useState<StatusCategory>(column?.category ?? 'inProgress')
   const [after, setAfter] = useState(columns.at(-1)?.id ?? '')
-  const [error, setError] = useState<string | null>(null)
   // Closing with changes asks first (UX Phase 1, 1.2).
   const dirty = label !== (column?.label ?? '') || category !== (column?.category ?? 'inProgress') || after !== (columns.at(-1)?.id ?? '')
   const pending = add.isPending || setBoard.isPending
   const failure = (add.error ?? setBoard.error) as Error | null
 
+  const next = column
+    ? columns.map((c) => (c.id === column.id ? { ...c, label: label.trim(), category } : c))
+    : (() => {
+        const at = columns.findIndex((c) => c.id === after) + 1
+        return [...columns.slice(0, at), { id: 'new', label: label.trim(), category }, ...columns.slice(at)]
+      })()
+  // Each problem shows by what it's about, from the first Save on (UX Phase 4, 4.4).
+  const problem = columnProblem(next)
+  const about = (field: 'label' | 'category' | 'board') => (problem?.field === field ? problem.message : undefined)
+  const { errors, attempt } = useFormCheck({ label: about('label'), category: about('category'), board: about('board') })
+
   const save = () => {
-    const next = column
-      ? columns.map((c) => (c.id === column.id ? { ...c, label: label.trim(), category } : c))
-      : (() => {
-          const at = columns.findIndex((c) => c.id === after) + 1
-          return [...columns.slice(0, at), { id: 'new', label: label.trim(), category }, ...columns.slice(at)]
-        })()
-    const problem = columnErrors(next)
-    setError(problem)
-    if (problem) return
+    if (!attempt()) return
     if (column) setBoard.mutate({ id: projectId, columns: next }, { onSuccess: onClose })
     else add.mutate({ projectId, input: { label: label.trim(), category, after: after || undefined } }, { onSuccess: onClose })
   }
@@ -62,12 +65,13 @@ export function ColumnSheet({ projectId, columns, column, onClose }: { projectId
           save()
         }}
       >
-        <Field label="Name" required>
-          <input className={inputClass} value={label} maxLength={30} onChange={(e) => setLabel(e.target.value)} placeholder="QA" />
+        <Field label="Name" required error={errors.label}>
+          <input className={inputClass} value={label} maxLength={30} aria-invalid={Boolean(errors.label)} onChange={(e) => setLabel(e.target.value)} placeholder="QA" />
         </Field>
         <fieldset>
           <legend className="mb-1.5 text-sm font-medium text-fg-secondary">Type</legend>
           <SegmentedControl kind="form" label="Type" value={category} onChange={setCategory} options={CATEGORIES.map((c) => ({ value: c.category, label: c.label }))} />
+          {errors.category && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.category}</p>}
         </fieldset>
         {!column && (
           <Field label="Place">
@@ -80,11 +84,13 @@ export function ColumnSheet({ projectId, columns, column, onClose }: { projectId
             </select>
           </Field>
         )}
-        {(error ?? failure) && (
+        {(errors.board ?? failure) && (
           <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-            {error ?? failure!.message}
+            {errors.board ?? failure!.message}
           </p>
         )}
+        {/* Enter in a field saves, as the footer's button does. */}
+        <button type="submit" hidden />
       </form>
     </Sheet>
   )

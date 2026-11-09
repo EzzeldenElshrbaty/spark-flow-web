@@ -167,6 +167,19 @@ describe('Settings → Attendance (Admin and help, slice 5)', () => {
     expect(setHours).not.toHaveBeenCalled() // the working hours didn't change
   })
 
+  it('the timeout error (UX Phase 4, 4.4) sits under its field and leaves once a good number is typed; Enter saves', async () => {
+    await mount()
+    fireEvent.click(await screen.findByRole('button', { name: 'Change working hours and timer' }))
+    const sheet = await screen.findByRole('dialog', { name: 'Working hours and timer' })
+    const field = within(sheet).getByLabelText(/^Pause timers after \(hours\)/) as HTMLInputElement
+    expect(field.form?.querySelector('button[type="submit"]')).toBeTruthy()
+    fireEvent.change(field, { target: { value: '0' } })
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Save' }))
+    expect(within(sheet).getByText('Pick a whole number of hours from 1 to 12.').closest('label')).toBe(field.closest('label'))
+    fireEvent.change(field, { target: { value: '3' } })
+    expect(within(sheet).queryByText('Pick a whole number of hours from 1 to 12.')).toBeNull()
+  })
+
   it('someone who sees only themselves gets no person filter and no Change', async () => {
     me = { ...me, id: 'u-5', roleIds: ['member'], grants: [] }
     vi.mocked(api.attendance.scope).mockResolvedValue({ userIds: ['u-5'] })

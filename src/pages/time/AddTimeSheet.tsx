@@ -12,7 +12,8 @@ import { isActive } from '@/lib/people'
 import { projectPeople } from '@/lib/projectPeople'
 import { usePermission } from '@/lib/usePermission'
 import { useRole } from '@/lib/useRole'
-import { defaultTimes, manualEntryErrors, toManualEntry, toPatch, valuesOf, type ManualEntryErrors, type ManualEntryValues } from './manualEntry'
+import { useFormCheck } from '@/lib/useFormCheck'
+import { defaultTimes, manualEntryErrors, toManualEntry, toPatch, valuesOf, type ManualEntryValues } from './manualEntry'
 import { useLogTargets } from './useLogTargets'
 
 /**
@@ -31,7 +32,8 @@ export function AddTimeSheet({ projectId: forProject, taskId, entry, onClose }: 
   const [values, setValues] = useState(initial)
   // Closing with changes asks first (UX Phase 1, 1.2).
   const dirty = JSON.stringify(values) !== JSON.stringify(initial)
-  const [errors, setErrors] = useState<ManualEntryErrors>({})
+  // Errors show from the first Save and follow each change after it (UX Phase 4, 4.4).
+  const { errors, attempt } = useFormCheck(manualEntryErrors(values, new Date()))
   // Only projects I'm on (or every one, for an Admin): the server refuses the others.
   const { projects, tasks: listed } = useLogTargets(values.projectId, entry?.projectId)
   // An entry's own task stays pickable even once archived (the list leaves archived tasks out).
@@ -53,9 +55,7 @@ export function AddTimeSheet({ projectId: forProject, taskId, entry, onClose }: 
     : []
 
   const save = () => {
-    const found = manualEntryErrors(values, new Date())
-    setErrors(found)
-    if (Object.keys(found).length) return
+    if (!attempt()) return
     if (entry) update.mutate({ id: entry.id, patch: toPatch(values, valuesOf(entry)) }, { onSuccess: onClose })
     else add.mutate(toManualEntry({ ...values, userId: forOthers ? values.userId : undefined }), { onSuccess: onClose })
   }
@@ -138,14 +138,17 @@ export function AddTimeSheet({ projectId: forProject, taskId, entry, onClose }: 
             <input type="time" step={300} className={inputClass} value={values.end} aria-invalid={Boolean(errors.end)} onChange={(e) => set('end', e.target.value)} />
           </Field>
         </div>
-        <Field label="Note" hint="Optional" error={errors.note}>
-          <input className={inputClass} value={values.note} aria-invalid={Boolean(errors.note)} onChange={(e) => set('note', e.target.value)} />
-        </Field>
+        {/* A refusal from the server (an overlap, mostly) sits right under the times it's about. */}
         {failure && (
           <p role="alert" className="text-sm text-red-600 dark:text-red-400">
             {failure.message}
           </p>
         )}
+        <Field label="Note" hint="Optional" error={errors.note}>
+          <input className={inputClass} value={values.note} aria-invalid={Boolean(errors.note)} onChange={(e) => set('note', e.target.value)} />
+        </Field>
+        {/* Enter in a field saves, as the footer's button does. */}
+        <button type="submit" hidden />
       </form>
     </Sheet>
   )

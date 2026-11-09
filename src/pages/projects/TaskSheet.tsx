@@ -8,7 +8,8 @@ import { Sheet, SheetCancelButton } from '@/components/ui/Sheet'
 import { projectPeople } from '@/lib/projectPeople'
 import { usePermission } from '@/lib/usePermission'
 import { byOrder } from './phases'
-import { assigneeOptions, savePatch } from './taskForm'
+import { assigneeOptions, savePatch, taskFormErrors } from './taskForm'
+import { useFormCheck } from '@/lib/useFormCheck'
 import { columnsOf, startColumn } from '@/lib/boardColumns'
 import type { DescBody } from '@/lib/messageBody'
 import { TaskAttachments } from './TaskAttachments'
@@ -92,7 +93,8 @@ export function TaskSheet({
   const [values, setValues] = useState(initial)
   // The task as it was when the sheet opened: the prop follows live updates, so it can't tell what I changed.
   const [opened] = useState(task)
-  const [errors, setErrors] = useState<Partial<Record<keyof Values, string>>>({})
+  // Errors show from the first Save and follow each change after it (UX Phase 4, 4.4).
+  const { errors, attempt } = useFormCheck(taskFormErrors(values))
   const set = <K extends keyof Values>(k: K, v: Values[K]) => setValues((s) => ({ ...s, [k]: v }))
   // The description as the editor has it; sent only when it differs from the task's (deep, on an edit).
   const [initialBody] = useState<DescBody>(() => task?.descriptionBody ?? draft?.descriptionBody ?? [])
@@ -129,12 +131,8 @@ export function TaskSheet({
   const save = () => {
     // ⌘/Ctrl+Enter in the description while a file still uploads, or a second time while saving: Save waits too.
     if (queue.busy || saving) return
-    const found: typeof errors = {}
-    if (!values.title.trim()) found.title = 'Give the task a title.'
+    if (!attempt()) return
     const estimate = values.estimate.trim() === '' ? null : Number(values.estimate)
-    if (estimate !== null && (!Number.isFinite(estimate) || estimate < 0)) found.estimate = 'The estimate is 0 hours or more.'
-    setErrors(found)
-    if (Object.keys(found).length) return
     if (task && !canManage) {
       const patch = savePatch(opened ?? task, { status: values.status }, false)
       if (Object.keys(patch).length === 0) onClose()
@@ -315,6 +313,8 @@ export function TaskSheet({
             {failure.message}
           </p>
         )}
+        {/* Enter in a field saves, as the footer's button does; Enter in the description is the editor's own. */}
+        <button type="submit" hidden />
       </form>
     </Sheet>
   )

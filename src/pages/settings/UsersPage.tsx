@@ -19,6 +19,7 @@ import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { formatDate, timeAgo } from '@/lib/format'
 import { paths } from '@/lib/paths'
 import { useAccess, usePermission } from '@/lib/usePermission'
+import { useFormCheck } from '@/lib/useFormCheck'
 import { fieldOf, filterPeople, roleNames, teamNames, usersFilterFrom } from './usersView'
 import { quietChange } from '@/lib/searchParams'
 
@@ -308,7 +309,12 @@ function PersonSheet({
   const [values, setValues] = useState(opened)
   // Closing with changes asks first (UX Phase 1, 1.2).
   const dirty = JSON.stringify(values) !== JSON.stringify(opened)
-  const [checked, setChecked] = useState<Partial<Record<keyof NewPerson, string>>>({})
+  // Errors show from the first Save and follow each change after it (UX Phase 4, 4.4).
+  const { errors: checked, attempt } = useFormCheck<Partial<Record<keyof NewPerson, string>>>({
+    name: values.name.trim() ? undefined : 'Give their name.',
+    email: values.email.trim() ? undefined : 'Give their email.',
+    roleIds: values.roleIds.length ? undefined : 'Give them at least one role.',
+  })
   const set = <K extends keyof NewPerson>(key: K, value: NewPerson[K]) => setValues((v) => ({ ...v, [key]: value }))
   const toggle = (key: 'roleIds' | 'teamIds', id: string) => set(key, values[key].includes(id) ? values[key].filter((x) => x !== id) : [...values[key], id])
   const refused = save.error?.message ?? null
@@ -316,12 +322,7 @@ function PersonSheet({
   const deactivatedBy = person?.deactivated && people.find((p) => p.id === person.deactivated!.by)?.name
 
   const submit = () => {
-    const missing: Partial<Record<keyof NewPerson, string>> = {}
-    if (!values.name.trim()) missing.name = 'Give their name.'
-    if (!values.email.trim()) missing.email = 'Give their email.'
-    if (values.roleIds.length === 0) missing.roleIds = 'Give them at least one role.'
-    setChecked(missing)
-    if (Object.keys(missing).length) return
+    if (!attempt()) return
     // Teams in other workspaces aren't shown here, and stay.
     const elsewhere = person?.teamIds.filter((id) => !teams.some((t) => t.id === id)) ?? []
     // A team removed meanwhile (UX Phase 2, 2.4: teams can go) isn't sent: only this workspace's teams as they are now.

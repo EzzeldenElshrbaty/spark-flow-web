@@ -21,8 +21,9 @@ export function validateProject(values: ProjectFormValues, takenKeys: string[]):
   if (!KEY.test(values.key)) errors.key = 'The key is 2 to 5 capital letters, such as NEX.'
   else if (takenKeys.includes(values.key)) errors.key = `Key ${values.key} is already used.`
   if (!values.managerId) errors.managerId = 'Pick a project manager.'
-  if (!values.startDate || !values.dueDate) errors.dueDate = 'Pick a start and a due date.'
-  else if (values.dueDate < values.startDate) errors.dueDate = 'The due date is before the start date.'
+  if (!values.startDate) errors.startDate = 'Pick a start date.'
+  if (!values.dueDate) errors.dueDate = 'Pick a due date.'
+  else if (values.startDate && values.dueDate < values.startDate) errors.dueDate = 'The due date is before the start date.'
   if (values.links.some((l) => !l.label.trim())) errors.links = 'Give every link a label.'
   else if (values.links.some((l) => !/^https:\/\/[^\s]+$/.test(l.url.trim()))) errors.links = 'Links must start with https://.'
   return errors

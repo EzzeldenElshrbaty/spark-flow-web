@@ -6,6 +6,7 @@ import { Avatar } from '@/components/Avatar'
 import { Button } from '@/components/sf/Button'
 import { fieldClass, labelClass } from '@/components/sf/field'
 import { Modal, ModalCancelButton } from '@/components/sf/Modal'
+import { useFormCheck } from '@/lib/useFormCheck'
 import { channelFormErrors, MAX_TOPIC, type ChannelValues } from '@/lib/channelForm'
 import { paths } from '@/lib/paths'
 import { isActive } from '@/lib/people'
@@ -24,15 +25,14 @@ export function NewChannelDialog({ workspaceId, workspaceSlug, onClose }: { work
   const taken = (useChannels(workspaceId).data ?? []).filter((c) => c.kind === 'channel').map((c) => c.name ?? '')
   const create = useCreateChannel()
   const [values, setValues] = useState<ChannelValues>({ name: '', topic: '', isPrivate: false, memberIds: [] })
-  const [errors, setErrors] = useState<ReturnType<typeof channelFormErrors>>({})
+  // Errors show from the first Create and follow each change after it (UX Phase 4, 4.4).
+  const { errors, attempt } = useFormCheck(channelFormErrors(values, taken))
   const set = <K extends keyof ChannelValues>(k: K, v: ChannelValues[K]) => setValues((s) => ({ ...s, [k]: v }))
   const pending = create.isPending
   const failure = create.error as Error | null
 
   const save = () => {
-    const found = channelFormErrors(values, taken)
-    setErrors(found)
-    if (Object.keys(found).length) return
+    if (!attempt()) return
     const memberIds = me ? [me.id, ...values.memberIds] : values.memberIds
     create.mutate(
       { workspaceId, name: values.name.trim(), topic: values.topic.trim(), isPrivate: values.isPrivate, memberIds },
@@ -66,10 +66,17 @@ export function NewChannelDialog({ workspaceId, workspaceSlug, onClose }: { work
         </>
       }
     >
-      <div className="space-y-4">
+      <form
+        className="space-y-4"
+        onSubmit={(e) => {
+          e.preventDefault()
+          save()
+        }}
+      >
         <div>
           <label htmlFor={`${ids}-name`} className={labelClass}>
             Name
+            <span className="text-sf-accent"> *</span>
           </label>
           <span className="flex items-center gap-1.5">
             <span className="sf-ui text-sf-text-muted" aria-hidden>
@@ -113,7 +120,7 @@ export function NewChannelDialog({ workspaceId, workspaceSlug, onClose }: { work
             <span className="sf-meta block text-sf-text-muted">Only the people you add see it. This can’t be changed later.</span>
           </span>
         </label>
-        <fieldset className="m-0 border-0 p-0">
+        <fieldset className="m-0 border-0 p-0" aria-describedby={errors.members ? `${ids}-members-error` : undefined}>
           <legend className={labelClass}>People</legend>
           <ul className="m-0 max-h-72 list-none space-y-0.5 overflow-y-auto rounded-sf-md border border-sf-line p-1">
             {/* I'm in a channel I make. */}
@@ -139,14 +146,20 @@ export function NewChannelDialog({ workspaceId, workspaceSlug, onClose }: { work
               </li>
             ))}
           </ul>
-          {errors.members && <p className="sf-small mt-1 mb-0 text-sf-error">{errors.members}</p>}
+          {errors.members && (
+            <p id={`${ids}-members-error`} className="sf-small mt-1 mb-0 text-sf-error">
+              {errors.members}
+            </p>
+          )}
         </fieldset>
         {failure && (
           <p role="alert" className="sf-small m-0 text-sf-error">
             {failure.message}
           </p>
         )}
-      </div>
+        {/* Enter in a field creates it, as the footer's button does. */}
+        <button type="submit" hidden />
+      </form>
     </Modal>
   )
 }

@@ -7,11 +7,12 @@ import { AddTimeSheet } from './AddTimeSheet'
 // Add time for someone else (add time for): an Admin, or a project's manager on it, picks a Person after the task.
 
 const add = vi.fn()
+let addError: Error | null = null
 const nex = { id: 'p-nex', name: 'Nexus Core', managerId: 'u-2', memberIds: ['u-2', 'u-3', 'u-6'], teamIds: ['t-qa'] }
 const mob = { id: 'p-mob', name: 'Mobile App', managerId: 'u-4', memberIds: ['u-2', 'u-8'], teamIds: [] }
 const person = (id: string, name: string, teamIds: string[] = [], deactivated?: object) => ({ id, name, teamIds, roleIds: ['member'], deactivated })
 const users = [person('u-2', 'Nour El-Sayed'), person('u-3', 'Mariam Fathy'), person('u-5', 'Salma Ibrahim', ['t-qa']), person('u-6', 'Hossam Gaber', [], { at: '2026-11-01' }), person('u-8', 'Tarek Lotfy')]
-vi.mock('@/api/time', () => ({ useAddTime: () => ({ mutate: add, isPending: false, error: null }), useUpdateTime: () => ({ mutate: vi.fn(), isPending: false, error: null }) }))
+vi.mock('@/api/time', () => ({ useAddTime: () => ({ mutate: add, isPending: false, error: addError }), useUpdateTime: () => ({ mutate: vi.fn(), isPending: false, error: null }) }))
 vi.mock('@/api/tickets', () => ({ useArchivedTasks: () => ({ data: [] }) }))
 vi.mock('./useLogTargets', () => ({ useLogTargets: () => ({ projects: [nex, mob], tasks: [], loaded: true }) }))
 vi.mock('@/api/users', () => ({ useUsers: () => ({ data: users }) }))
@@ -21,7 +22,10 @@ vi.mock('@/lib/useRole', () => ({ useRole: () => ({ persona: { id: 'u-2' } }) })
 vi.mock('@/lib/usePermission', () => ({ usePermission: () => (action: string, ctx?: { project?: ProjectRef }) => action === 'time.logFor' && ctx?.project?.managerId === 'u-2' }))
 window.matchMedia ??= ((media: string) => ({ matches: false, media, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia
 
-beforeEach(() => add.mockReset())
+beforeEach(() => {
+  add.mockReset()
+  addError = null
+})
 afterEach(cleanup)
 
 // A required field's label ends with " *".
@@ -72,5 +76,26 @@ describe('Add time asks before discarding (UX Phase 1, 1.2)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(screen.getByText('Discard this time entry?')).toBeTruthy()
     expect(onClose2).not.toHaveBeenCalled()
+  })
+})
+
+describe('Add time checks as you fix (UX Phase 4, 4.4)', () => {
+  it('the project error shows on Save and leaves once a project is picked; Enter saves', () => {
+    render(<AddTimeSheet onClose={() => {}} />)
+    expect(screen.queryByText('Pick a project.')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Add time' }))
+    expect(screen.getByText('Pick a project.')).toBeTruthy()
+    // The label holds the error too while it shows.
+    fireEvent.change(screen.getByLabelText(/^Project/), { target: { value: 'p-nex' } })
+    expect(screen.queryByText('Pick a project.')).toBeNull()
+    const note = screen.getByLabelText(/^Note/) as HTMLInputElement
+    expect(note.form?.querySelector('button[type="submit"]')).toBeTruthy()
+  })
+
+  it('a refusal from the server (an overlap) shows right under the times, not after the note', () => {
+    addError = new Error('This overlaps time you already logged, 9:00 AM to 10:00 AM.')
+    render(<AddTimeSheet onClose={() => {}} />)
+    const alert = screen.getByRole('alert')
+    expect(alert.previousElementSibling?.textContent).toContain('End')
   })
 })

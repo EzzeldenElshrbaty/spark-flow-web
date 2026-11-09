@@ -43,3 +43,29 @@ describe('chat dialogs ask before discarding', () => {
     expect(onClose).not.toHaveBeenCalled()
   })
 })
+
+describe('New channel checks as you fix (UX Phase 4, 4.4)', () => {
+  it('the name error shows on Create and leaves once a name is typed; Name is marked required; Enter creates', () => {
+    mutation.mutate.mockClear()
+    wrap(<NewChannelDialog workspaceId="ws-eng" workspaceSlug="engineering" onClose={() => {}} />)
+    const name = screen.getByRole('textbox', { name: /^Name/ }) as HTMLInputElement
+    expect(screen.getByText('Name', { selector: 'label' }).textContent).toBe('Name *')
+    fireEvent.click(screen.getByRole('button', { name: 'Create channel' }))
+    expect(screen.getByText('Give the channel a name.')).toBeTruthy()
+    fireEvent.change(name, { target: { value: 'qa' } })
+    expect(screen.queryByText('Give the channel a name.')).toBeNull()
+    expect(name.form?.querySelector('button[type="submit"]')).toBeTruthy()
+    fireEvent.submit(name.form!)
+    expect(mutation.mutate).toHaveBeenCalledTimes(1)
+  })
+
+  it('a private channel with nobody added ties the error to the People list', () => {
+    wrap(<NewChannelDialog workspaceId="ws-eng" workspaceSlug="engineering" onClose={() => {}} />)
+    fireEvent.change(screen.getByRole('textbox', { name: /^Name/ }), { target: { value: 'qa' } })
+    fireEvent.click(screen.getByRole('checkbox', { name: /Private/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Create channel' }))
+    const people = screen.getByRole('group', { name: 'People' })
+    const error = screen.getByText('Add at least one person.')
+    expect(people.getAttribute('aria-describedby')).toBe(error.id)
+  })
+})

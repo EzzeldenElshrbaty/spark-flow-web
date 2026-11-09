@@ -115,8 +115,11 @@ describe('Settings → Users (Admin and help, slice 3)', () => {
     expect(within(sheet).getByText('Give them at least one role.')).toBeTruthy()
     expect(create).not.toHaveBeenCalled()
     fireEvent.change(within(sheet).getByRole('textbox', { name: /Name/ }), { target: { value: 'Laila Hamdy' } })
+    // UX Phase 4, 4.4: each error leaves as soon as its field is fixed, before the next Save.
+    expect(within(sheet).queryByText('Give their name.')).toBeNull()
     fireEvent.change(within(sheet).getByRole('textbox', { name: /Email/ }), { target: { value: 'mariam@spark-sys.com' } })
     fireEvent.click(within(sheet).getByRole('checkbox', { name: 'Member' }))
+    expect(within(sheet).queryByText('Give them at least one role.')).toBeNull()
     fireEvent.click(within(sheet).getByRole('checkbox', { name: 'Backend' }))
     fireEvent.click(within(sheet).getByRole('button', { name: 'Add person' }))
     expect(await within(sheet).findByText('Mariam Fathy has that email already.')).toBeTruthy()

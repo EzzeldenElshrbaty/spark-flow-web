@@ -4,6 +4,7 @@ import type { Deliverable, DeliverablePatch, Phase, ProjectSummary } from '@/api
 import { Button } from '@/components/ui/Button'
 import { Field, inputClass, selectClass } from '@/components/ui/Field'
 import { Sheet, SheetCancelButton } from '@/components/ui/Sheet'
+import { useFormCheck } from '@/lib/useFormCheck'
 import { byOrder } from './phases'
 
 /** Add a deliverable, or edit one (`deliverable`): what the client gets, when, and in which phase. */
@@ -13,7 +14,6 @@ export function DeliverableSheet({ project, phases, deliverable, onClose }: { pr
   const [title, setTitle] = useState(deliverable?.title ?? '')
   const [phaseId, setPhaseId] = useState(deliverable ? (deliverable.phaseId ?? '') : (project.currentPhaseId ?? ''))
   const [due, setDue] = useState((deliverable?.dueDate ?? project.dueDate).slice(0, 10))
-  const [error, setError] = useState<string | null>(null)
   // Closing with changes asks first (UX Phase 1, 1.2).
   const dirty =
     title !== (deliverable?.title ?? '') ||
@@ -22,10 +22,11 @@ export function DeliverableSheet({ project, phases, deliverable, onClose }: { pr
   const pending = create.isPending || update.isPending
   const failure = (create.error ?? update.error) as Error | null
 
+  // Each error under its own field, from the first Save on (UX Phase 4, 4.4).
+  const { errors, attempt } = useFormCheck(deliverableErrors(title, due))
+
   const save = () => {
-    if (!title.trim()) return setError('Give the deliverable a title.')
-    if (!due) return setError('Pick a due date.')
-    setError(null)
+    if (!attempt()) return
     const fields = { title: title.trim(), phaseId: phaseId || null, dueDate: new Date(`${due}T00:00:00.000Z`).toISOString() }
     if (!deliverable) return create.mutate({ projectId: project.id, ...fields }, { onSuccess: onClose })
     // Only what changed (a due date by its day: a stored one may carry a time).
@@ -61,8 +62,8 @@ export function DeliverableSheet({ project, phases, deliverable, onClose }: { pr
           save()
         }}
       >
-        <Field label="Title" required error={error && !title.trim() ? error : undefined}>
-          <input className={inputClass} value={title} onChange={(e) => setTitle(e.target.value)} />
+        <Field label="Title" required error={errors.title}>
+          <input className={inputClass} value={title} aria-invalid={Boolean(errors.title)} onChange={(e) => setTitle(e.target.value)} />
         </Field>
         <Field label="Phase">
           <select className={selectClass} value={phaseId} onChange={(e) => setPhaseId(e.target.value)}>
@@ -74,15 +75,22 @@ export function DeliverableSheet({ project, phases, deliverable, onClose }: { pr
             ))}
           </select>
         </Field>
-        <Field label="Due" required error={error && title.trim() ? error : undefined}>
-          <input type="date" className={inputClass} value={due} onChange={(e) => setDue(e.target.value)} />
+        <Field label="Due" required error={errors.due}>
+          <input type="date" className={inputClass} value={due} aria-invalid={Boolean(errors.due)} onChange={(e) => setDue(e.target.value)} />
         </Field>
         {failure && (
           <p role="alert" className="text-sm text-red-600 dark:text-red-400">
             {failure.message}
           </p>
         )}
+        {/* Enter in a field saves, as the footer's button does. */}
+        <button type="submit" hidden />
       </form>
     </Sheet>
   )
+}
+
+/** What a deliverable needs before it saves: a title and a due date. */
+export function deliverableErrors(title: string, due: string): { title?: string; due?: string } {
+  return { title: title.trim() ? undefined : 'Give the deliverable a title.', due: due ? undefined : 'Pick a due date.' }
 }

@@ -12,7 +12,8 @@ import { Sheet, SheetCancelButton } from '@/components/ui/Sheet'
 import { toLocalInput } from '@/lib/format'
 import { projectPeople } from '@/lib/projectPeople'
 import { usePermission } from '@/lib/usePermission'
-import { keyFromName, validateProject, type ProjectFormErrors, type ProjectFormValues } from './projectForm'
+import { useFormCheck } from '@/lib/useFormCheck'
+import { keyFromName, validateProject, type ProjectFormValues } from './projectForm'
 import { tasksLeftWith } from './taskForm'
 import { IconButton } from '@/components/ui/IconButton'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
@@ -79,7 +80,8 @@ export function ProjectSheet({
   const check = usePermission()
   // People and teams are assigned by the manager and Admin; Sales picks them only when creating (spec §4.3).
   const canPeople = project ? check('phase.manage', { project }) : true
-  const [errors, setErrors] = useState<ProjectFormErrors>({})
+  // Errors show from the first Save and follow each change after it (UX Phase 4, 4.4).
+  const { errors, attempt } = useFormCheck(validateProject(values, project ? [] : takenKeys))
   const saving = create.isPending || update.isPending
   const failure = (create.error ?? update.error) as Error | null
   // A key taken in another workspace is only known to the server: show it where the key is.
@@ -98,9 +100,7 @@ export function ProjectSheet({
     set(field, values[field].includes(id) ? values[field].filter((x) => x !== id) : [...values[field], id])
 
   const save = () => {
-    const found = validateProject(values, project ? [] : takenKeys)
-    setErrors(found)
-    if (Object.keys(found).length) return
+    if (!attempt()) return
     const dates = { startDate: toIso(values.startDate), dueDate: toIso(values.dueDate) }
     const links = values.links.map((l) => ({ label: l.label.trim(), url: l.url.trim() }))
     if (project) {
@@ -186,8 +186,8 @@ export function ProjectSheet({
         )}
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Start" required>
-            <input type="date" className={inputClass} value={values.startDate} onChange={(e) => set('startDate', e.target.value)} />
+          <Field label="Start" required error={errors.startDate}>
+            <input type="date" className={inputClass} value={values.startDate} aria-invalid={Boolean(errors.startDate)} onChange={(e) => set('startDate', e.target.value)} />
           </Field>
           <Field label="Due" required error={errors.dueDate}>
             <input type="date" className={inputClass} value={values.dueDate} aria-invalid={Boolean(errors.dueDate)} onChange={(e) => set('dueDate', e.target.value)} />
@@ -272,6 +272,8 @@ export function ProjectSheet({
             {failure.message}
           </p>
         )}
+        {/* Enter in a field saves, as the footer's button does. */}
+        <button type="submit" hidden />
       </form>
     </Sheet>
   )

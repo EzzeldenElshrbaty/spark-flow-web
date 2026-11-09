@@ -16,6 +16,7 @@ import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { localDay } from '@/lib/dates'
 import { formatDate, formatHours, formatTime, formatWhen } from '@/lib/format'
 import { timeoutProblem } from '@/lib/hours'
+import { useFormCheck } from '@/lib/useFormCheck'
 import { paths } from '@/lib/paths'
 import { usePermission } from '@/lib/usePermission'
 import { describeWorkHours, formatDayMinutes, WEEKDAYS } from '@/lib/workHours'
@@ -427,15 +428,14 @@ function WorkHoursForm({ current, timeoutHours, onClose }: { current: WorkHours;
   const [start, setStart] = useState(current.start)
   const [end, setEnd] = useState(current.end)
   const [timeout, setTimeoutHours] = useState(String(timeoutHours))
-  const [problem, setProblem] = useState<string | null>(null)
+  const hours = timeout.trim() === '' ? NaN : Number(timeout)
+  // The timeout's error shows under it from the first Save, and leaves once it's fixed (UX Phase 4, 4.4).
+  const { errors, attempt } = useFormCheck({ timeout: timeoutProblem(hours) ?? undefined })
   const pending = save.isPending || saveTimer.isPending
   // Closing with changes asks first (UX Phase 1, 1.2).
   const dirty = [...days].sort((a, b) => a - b).join() !== [...current.days].sort((a, b) => a - b).join() || start !== current.start || end !== current.end || timeout !== String(timeoutHours)
   const submit = async () => {
-    const hours = timeout.trim() === '' ? NaN : Number(timeout)
-    const bad = timeoutProblem(hours)
-    setProblem(bad)
-    if (bad) return
+    if (!attempt()) return
     const sorted = [...days].sort((a, b) => a - b)
     try {
       if (sorted.join() !== current.days.join() || start !== current.start || end !== current.end) await save.mutateAsync({ days: sorted, start, end })
@@ -445,7 +445,7 @@ function WorkHoursForm({ current, timeoutHours, onClose }: { current: WorkHours;
       // The refusal is said in the sheet, below.
     }
   }
-  const error = problem ?? save.error?.message ?? saveTimer.error?.message
+  const error = save.error?.message ?? saveTimer.error?.message
   const close = () => {
     if (!pending) onClose()
   }
@@ -503,14 +503,16 @@ function WorkHoursForm({ current, timeoutHours, onClose }: { current: WorkHours;
             <input type="time" className={inputClass} value={end} onChange={(e) => setEnd(e.target.value)} />
           </Field>
         </div>
-        <Field label="Pause timers after (hours)" hint="1 to 12. A timer that runs this long pauses and asks if you’re still working.">
-          <input type="number" min={1} max={12} step={1} inputMode="numeric" className={inputClass} value={timeout} onChange={(e) => setTimeoutHours(e.target.value)} />
+        <Field label="Pause timers after (hours)" hint="1 to 12. A timer that runs this long pauses and asks if you’re still working." error={errors.timeout}>
+          <input type="number" min={1} max={12} step={1} inputMode="numeric" className={inputClass} value={timeout} aria-invalid={Boolean(errors.timeout)} onChange={(e) => setTimeoutHours(e.target.value)} />
         </Field>
         {error && (
           <p role="alert" className="text-sm text-red-600 dark:text-red-400">
             {error}
           </p>
         )}
+        {/* Enter in a field saves, as the footer's button does. */}
+        <button type="submit" hidden />
       </form>
     </Sheet>
   )
