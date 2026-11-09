@@ -8,7 +8,7 @@ import type { ReportPeriod, TimeReport, User } from '@/api/types'
 import { useUsers } from '@/api/users'
 import { ChartCard } from '@/components/charts/ChartCard'
 import { ColumnChart } from '@/components/charts/ColumnChart'
-import { Avatar } from '@/components/ui/Avatar'
+import { Avatar } from '@/components/Avatar'
 import { DataTable, TableSkeleton, type Column } from '@/components/ui/DataTable'
 import { NoAccess } from '@/components/ui/NoAccess'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -100,7 +100,7 @@ function Body({ report, by, ws, people }: { report: TimeReport; by: Grouping; ws
         width: 240,
         cell: (r) => (
           <span className="flex items-center gap-2">
-            <Avatar name={nameOf(r.userId)} size="sm" />
+            <Avatar name={nameOf(r.userId)} size={24} decorative />
             <span className="truncate text-fg">{nameOf(r.userId)}</span>
           </span>
         ),

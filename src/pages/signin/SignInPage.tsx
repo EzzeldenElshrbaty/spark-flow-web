@@ -4,7 +4,7 @@ import { CalendarCheck, Clock, Layers, MessageSquare, Moon, Sun } from 'lucide-r
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router'
 import { useDemoPeople, useSignIn } from '@/api/auth'
-import { Avatar } from '@/components/ui/Avatar'
+import { Avatar } from '@/components/Avatar'
 import { Button } from '@/components/ui/Button'
 import { Field, inputClass } from '@/components/ui/Field'
 import { api, backendOn } from '@/lib/api'
@@ -102,7 +102,7 @@ export function SignInPage() {
                       onClick={() => go({ email: person.email, password: DEMO_PASSWORD })}
                       className="flex min-h-14 w-full items-center gap-3 px-3.5 py-2.5 text-start transition-colors hover:bg-surface-sunken focus-visible:bg-surface-sunken focus-visible:outline-none disabled:opacity-60"
                     >
-                      <Avatar name={person.name} />
+                      <Avatar name={person.name} decorative />
                       <span className="min-w-0">
                         <span className="block truncate text-sm font-medium text-fg">{person.name}</span>
                         <span className="block truncate text-xs text-fg-muted">{[person.roles.join(', '), person.title].filter(Boolean).join(' · ')}</span>

@@ -47,7 +47,7 @@ Make Flow's chat match the standard of Slack-class chat tools: fast to scan, act
 | 7 | Sidebar has no unread or mention state | Bold for unread, red count for mentions, muted and draft indicators, a Starred section, a Chat group (Threads, Activity, Drafts & sent, Saved) |
 | 8 | Ticket keys are plain monospace text | Flow task keys become live chips with a status dot; the first one unfurls into a task card |
 | 9 | Blue browser focus outline | Brand focus ring (`--focus-ring`) on every interactive element |
-| 10 | Round avatars; colours unrelated to the brand | Rounded-square avatars in three Ink tones; presence dot |
+| 10 | Round avatars; colours unrelated to the brand | Rounded-square avatars in three Ink tones; presence dot. *Amended by UX Phase 3: one avatar for people in chat and on pages, the design kit's round initials coloured by name (`src/components/Avatar.tsx`), so a person looks the same everywhere; apps stay Ink.* |
 
 ## 3. Design foundations
 
@@ -116,7 +116,7 @@ Every text pair above meets 4.5:1, and every border or icon that identifies a co
   | `heading-ar` | 16/22 | Arabic headings, never letter-spaced |
 
 - **Spacing:** 4, 8, 12, 16, 24, 32, 48, 64 (`--space-1` … `--space-16`). Nothing in between.
-- **Radii:** `--radius-sm` 4 (inline code, kbd, 20px avatars); `--radius-md` 6 (controls, rows, 36px avatars); `--radius-lg` 12 (main card, composer, menus, modals, cards, toolbar); `--radius-full` (dots, badges, reaction chips, date pill).
+- **Radii:** `--radius-sm` 4 (inline code, kbd); `--radius-md` 6 (controls, rows); avatars are round (UX Phase 3); `--radius-lg` 12 (main card, composer, menus, modals, cards, toolbar); `--radius-full` (dots, badges, reaction chips, date pill).
 - **Shadows:** `--shadow-toolbar` (message toolbar, date pill), `--shadow-menu` (menus, pickers, autocomplete, toasts), `--shadow-modal`, `--focus-ring`.
 - **Sizes:**
 
@@ -306,7 +306,7 @@ Each item lists anatomy, states, behaviour and acceptance criteria (AC). Class n
 
 ### 6.3 Message (`sf-msg`)
 
-- **Anatomy:** 36px rounded-square avatar | author (`body-strong`, opens a profile card) + time (`meta`/`text-muted`; full date in the tooltip and `datetime`) + tags (App, Guest, External) | body | attachments | reactions | thread summary.
+- **Anatomy:** 36px avatar (round, UX Phase 3) | author (`body-strong`, opens a profile card) + time (`meta`/`text-muted`; full date in the tooltip and `datetime`) + tags (App, Guest, External) | body | attachments | reactions | thread summary.
 - **Body rendering** (structured rich text, see 7):
   - Paragraphs, bold, italic, underline and strikethrough.
   - Links in `accent`; URL unfurls (title, description, image) for allowed domains.

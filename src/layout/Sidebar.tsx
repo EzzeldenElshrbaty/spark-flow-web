@@ -25,7 +25,7 @@ import {
 import clsx from 'clsx'
 import { useId, useRef, useState, type ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router'
-import { Avatar } from '@/components/sf/Avatar'
+import { Avatar } from '@/components/Avatar'
 import { Count } from '@/components/sf/Badge'
 import { IconButton } from '@/components/sf/Button'
 import { Menu, MenuItem } from '@/components/sf/Menu'
@@ -257,7 +257,7 @@ function ChannelLink({ slug, row: r, mentions, collapsed, onNavigate, describedB
   const { channel, label, presence, group, otherId } = r
   const state = sidebarRowState(channel, mentions)
   const icon =
-    channel.kind === 'channel' ? (channel.isPrivate ? IconLock : IconHash) : group ? IconUsers : isFlowbot(otherId) ? <Avatar id={otherId} name={label} size="sm" app on="frame" decorative /> : <Avatar id={otherId} name={label} size="sm" presence={presence} on="frame" decorative />
+    channel.kind === 'channel' ? (channel.isPrivate ? IconLock : IconHash) : group ? IconUsers : isFlowbot(otherId) ? <Avatar id={otherId} name={label} size={20} app on="frame" decorative /> : <Avatar id={otherId} name={label} size={20} presence={presence} on="frame" decorative />
   return (
     <SideLink
       to={paths.channel(slug, channel.id)}

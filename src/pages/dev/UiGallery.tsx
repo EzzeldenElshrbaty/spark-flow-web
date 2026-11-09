@@ -18,7 +18,7 @@ import {
   IconUserPlus,
 } from '@tabler/icons-react'
 import { useEffect, useState, type ReactNode } from 'react'
-import { Avatar, Facepile } from '@/components/sf/Avatar'
+import { Avatar, Facepile } from '@/components/Avatar'
 import { Count, Kbd, Tag } from '@/components/sf/Badge'
 import { Button, IconButton } from '@/components/sf/Button'
 import { SfDarkScope } from '@/components/sf/layers'
@@ -99,7 +99,7 @@ function Column({ theme }: { theme: 'Light' | 'Dark' }) {
             <SideLink
               to="/dm"
               label="Hala Nabil"
-              icon={<Avatar id="u-2" name="Hala Nabil" size="sm" presence="active" on="frame" decorative />}
+              icon={<Avatar id="u-2" name="Hala Nabil" size={20} presence="active" on="frame" decorative />}
               collapsed={false}
             />
           </li>
@@ -158,9 +158,9 @@ function Column({ theme }: { theme: 'Light' | 'Dark' }) {
         <Avatar id="u-1" name="Hossam Gaber" presence="active" />
         <Avatar id="u-2" name="Hala Nabil" presence="away" />
         <Avatar id="flowbot" name="Flowbot" app />
-        <Avatar id="u-4" name="Omar Fathy" size="md" presence="active" />
-        <Avatar id="u-5" name="Mona Ali" size="sm" presence="active" />
-        <Avatar id="u-3" name="Sara Adel" size="xl" />
+        <Avatar id="u-4" name="Omar Fathy" size={28} presence="active" />
+        <Avatar id="u-5" name="Mona Ali" size={20} presence="active" />
+        <Avatar id="u-3" name="Sara Adel" size={72} />
         <Facepile people={people} label="5 members" />
       </Section>
 

@@ -2,7 +2,7 @@ import { coarsePointer, shouldSendOnEnter } from '@/pages/chat/composerKeys'
 import clsx from 'clsx'
 import { AtSign, Folder, ListChecks, SendHorizontal, Users } from 'lucide-react'
 import { useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
-import { Avatar } from '@/components/ui/Avatar'
+import { Avatar } from '@/components/Avatar'
 import { Button } from '@/components/ui/Button'
 import { inputClass } from '@/components/ui/Field'
 import { activeMention, insertMention, keepDismissed, mentionOptions, type MentionOption } from '@/lib/mentionQuery'
@@ -17,7 +17,7 @@ const LIST_HEIGHT = 288 // max-h-72
 function optionLabel(o: MentionOption) {
   if (o.kind === 'all') return { icon: <Users className="size-4" />, main: '@channel', sub: 'Everyone here' }
   if (o.kind === 'here') return { icon: <Users className="size-4" />, main: '@here', sub: 'Everyone active here' }
-  if (o.kind === 'user') return { icon: <Avatar name={o.name} size="sm" />, main: o.name, sub: o.title }
+  if (o.kind === 'user') return { icon: <Avatar name={o.name} size={24} decorative />, main: o.name, sub: o.title }
   if (o.kind === 'project') return { icon: <Folder className="size-4" />, main: o.key, sub: o.name }
   return { icon: <ListChecks className="size-4" />, main: o.key, sub: o.title }
 }

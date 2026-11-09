@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router'
 import { useOpenDm } from '@/api/chat'
 import { useMe, useUsers } from '@/api/users'
 import { isActive } from '@/lib/people'
-import { Avatar } from '@/components/ui/Avatar'
+import { Avatar } from '@/components/Avatar'
 import { Button } from '@/components/ui/Button'
 import { inputClass } from '@/components/ui/Field'
 import { Sheet, SheetCancelButton } from '@/components/ui/Sheet'
@@ -66,7 +66,7 @@ export function NewMessageSheet({ workspaceId, workspaceSlug, onClose }: { works
             <li key={u.id}>
               <label className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm text-fg hover:bg-surface-muted">
                 <input type="checkbox" className="size-4 accent-brand-500" checked={picked.includes(u.id)} onChange={() => toggle(u.id)} />
-                <Avatar name={u.name} size="sm" />
+                <Avatar name={u.name} size={24} decorative />
                 <span className="min-w-0 flex-1 truncate">
                   {u.name}
                   {u.title && <span className="text-fg-muted"> · {u.title}</span>}

@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
 import { useAuditEntry, useAuditLog, useAuditSummary, useExportAudit } from '@/api/audit'
 import type { AuditAlert, AuditEvent, AuditFilter, AuditGroup, AuditSummary } from '@/api/types'
-import { Avatar } from '@/components/ui/Avatar'
+import { Avatar } from '@/components/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { DataTable, TableSkeleton, type Column } from '@/components/ui/DataTable'
@@ -336,7 +336,7 @@ const typeLabel = (types: Types, id: string) => types?.find((t) => t.id === id)?
 function Who({ event }: { event: AuditEvent }) {
   return (
     <span className="flex min-w-0 items-center gap-2">
-      <Avatar name={event.actorName} size="sm" />
+      <Avatar name={event.actorName} size={24} decorative />
       <span className="min-w-0">
         <span className="block truncate text-fg">{event.actorName}</span>
         {event.actorRoles && <span className="block truncate text-xs text-fg-muted">{event.actorRoles}</span>}

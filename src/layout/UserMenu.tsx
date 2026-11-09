@@ -8,7 +8,7 @@ import { useDndEnd } from '@/api/preferences'
 import { useRoleNames } from '@/api/roles'
 import type { User } from '@/api/types'
 import { useUsers, useViewAs } from '@/api/users'
-import { Avatar } from '@/components/sf/Avatar'
+import { Avatar } from '@/components/Avatar'
 import { Icon } from '@/components/sf/Icon'
 import { Menu, MenuHeading, MenuItem, MenuSeparator, useCloseMenu } from '@/components/sf/Menu'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
@@ -73,7 +73,7 @@ export function UserMenu() {
         >
           {loaded ? (
             <span className="relative flex-none">
-              <Avatar id={persona.id} name={persona.name} presence={people.data?.find((u) => u.id === persona.id)?.presence} decorative />
+              <Avatar id={persona.id} name={persona.name} presence={people.data?.find((u) => u.id === persona.id)?.presence} self decorative />
               {dndEnd && (
                 <span
                   data-dnd
@@ -86,7 +86,7 @@ export function UserMenu() {
               )}
             </span>
           ) : (
-            <span aria-hidden className="size-sf-avatar animate-pulse rounded-sf-md bg-sf-surface-hover" />
+            <span aria-hidden className="size-9 animate-pulse rounded-full bg-sf-surface-hover" />
           )}
           {/* Named by the name and title it shows; on a phone they're there for screen readers only. */}
           {loaded ? (
@@ -110,7 +110,7 @@ export function UserMenu() {
       )}
     >
       <div role="presentation" className="flex items-center gap-3 px-4 pt-1 pb-3">
-        <Avatar id={persona.id} name={persona.name} decorative />
+        <Avatar id={persona.id} name={persona.name} self decorative />
         <div className="min-w-0">
           <p className="sf-ui-medium m-0 truncate text-sf-text">{persona.name}</p>
           <p className="sf-meta m-0 truncate text-sf-text-muted">

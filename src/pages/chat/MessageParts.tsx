@@ -3,7 +3,7 @@ import clsx from 'clsx'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { useOpenDm, useReact } from '@/api/chat'
 import type { ChatMessage, ChatTarget, Reaction, User } from '@/api/types'
-import { Avatar } from '@/components/sf/Avatar'
+import { Avatar } from '@/components/Avatar'
 import { Tag } from '@/components/sf/Badge'
 import { Button } from '@/components/sf/Button'
 import { Icon } from '@/components/sf/Icon'
@@ -47,7 +47,7 @@ function ProfileCard({ user, ctx, close }: { user: User; ctx: BodyContext; close
   return (
     <div className="p-4">
       <div className="flex items-center gap-3">
-        <Avatar id={user.id} name={user.name} size="xl" presence={user.presence} decorative />
+        <Avatar id={user.id} name={user.name} size={72} presence={user.presence} decorative />
         <div className="min-w-0">
           <p className="sf-heading truncate text-sf-text">{user.name}</p>
           <p className="sf-small truncate text-sf-text-secondary">{user.title || '—'}</p>
@@ -190,7 +190,7 @@ export function ThreadSummary({ message, users }: { message: ChatMessage; users:
       {faces.length > 0 && (
         <span className="inline-flex items-center gap-0.5">
           {faces.map((f) => (
-            <Avatar key={f.id} id={f.id} name={f.name} size="sm" decorative />
+            <Avatar key={f.id} id={f.id} name={f.name} size={20} decorative />
           ))}
         </span>
       )}

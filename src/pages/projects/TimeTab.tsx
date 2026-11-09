@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useProjectTime } from '@/api/projects'
 import { useArchivedTasks, useTickets } from '@/api/tickets'
 import type { ProjectSummary, TimeEntry, User } from '@/api/types'
-import { Avatar } from '@/components/ui/Avatar'
+import { Avatar } from '@/components/Avatar'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { DataTable, TableSkeleton, type Column } from '@/components/ui/DataTable'
@@ -70,7 +70,7 @@ export function TimeTab({ project, people }: { project: ProjectSummary; people: 
       width: 180,
       cell: (e) => (
         <span className="flex min-w-0 items-center gap-2">
-          <Avatar name={nameOf(e.userId)} size="sm" />
+          <Avatar name={nameOf(e.userId)} size={24} decorative />
           <span className="min-w-0">
             <span className="block truncate text-fg">{nameOf(e.userId)}</span>
             {e.addedBy && <span className="block truncate text-xs text-fg-muted">Added by {nameOf(e.addedBy)}</span>}
@@ -110,7 +110,7 @@ export function TimeTab({ project, people }: { project: ProjectSummary; people: 
         <ul className="divide-y divide-line-subtle px-5">
           {totals.people.map((p) => (
             <li key={p.userId} className="flex items-center gap-3 py-2.5">
-              <Avatar name={nameOf(p.userId)} size="sm" />
+              <Avatar name={nameOf(p.userId)} size={24} decorative />
               <span className="min-w-0 flex-1 truncate text-sm text-fg">{nameOf(p.userId)}</span>
               <span className="text-sm tabular-nums text-fg-secondary">{tenth(p.hours)}h</span>
               {p.cost !== null && <span className="w-28 text-end text-sm tabular-nums text-fg-muted">{formatMoney(p.cost)}</span>}
@@ -127,7 +127,7 @@ export function TimeTab({ project, people }: { project: ProjectSummary; people: 
           const t = taskOf(e.taskId)
           return (
             <li key={e.id} className="flex items-center gap-3 px-4 py-3">
-              <Avatar name={nameOf(e.userId)} size="sm" />
+              <Avatar name={nameOf(e.userId)} size={24} decorative />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm text-fg">{t ? taskLabel(t) : nameOf(e.userId)}</span>
                 <span className="block truncate text-xs text-fg-muted">

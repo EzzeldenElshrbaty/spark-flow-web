@@ -6,7 +6,7 @@ import { $createTextNode, $getRoot, $getSelection, COMMAND_PRIORITY_LOW, type Te
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import type { Presence, User } from '@/api/types'
-import { Avatar } from '@/components/sf/Avatar'
+import { Avatar } from '@/components/Avatar'
 import { Kbd } from '@/components/sf/Badge'
 import { Icon } from '@/components/sf/Icon'
 import { rememberEmoji, searchEmoji, type EmojiInfo } from '@/lib/emoji'
@@ -224,7 +224,7 @@ function Row({ item }: { item: Item }) {
   if (item.kind === 'user')
     return (
       <>
-        <Avatar id={item.user.id} name={item.user.name} size="sm" presence={item.user.presence} decorative />
+        <Avatar id={item.user.id} name={item.user.name} size={20} presence={item.user.presence} decorative />
         <span className="truncate font-medium">{item.user.name}</span>
         <span className="truncate text-[13px] text-sf-text-secondary">{item.inChannel ? PRESENCE[item.user.presence] : 'Not in this channel'}</span>
       </>

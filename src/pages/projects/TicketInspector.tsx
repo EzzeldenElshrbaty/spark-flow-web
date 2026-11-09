@@ -12,7 +12,7 @@ import type { Attachment, TicketStatus } from '@/api/types'
 import { useUsers } from '@/api/users'
 import { AttachmentView } from '@/components/AttachmentView'
 import { ConfirmDeleteSheet } from '@/components/ConfirmDeleteSheet'
-import { Avatar } from '@/components/ui/Avatar'
+import { Avatar } from '@/components/Avatar'
 import { Button } from '@/components/ui/Button'
 import { FileViewer } from '@/components/ui/FileViewer'
 import { selectClass } from '@/components/ui/Field'
@@ -48,7 +48,7 @@ function Person({ name }: { name: string | null }) {
   if (!name) return <>—</>
   return (
     <span className="flex min-w-0 items-center gap-2">
-      <Avatar name={name} size="sm" />
+      <Avatar name={name} size={24} decorative />
       <span className="truncate">{name}</span>
     </span>
   )

@@ -123,7 +123,7 @@ describe('ChannelMessage from Flowbot (spec 5.1 Apps)', () => {
     expect(row.textContent).toContain('Flowbot')
     expect(row.textContent).not.toContain('Unknown person')
     expect(within(row).queryByRole('button', { name: 'Flowbot' })).toBeNull()
-    expect(row.querySelector('.bg-sf-ink-950')).not.toBeNull()
+    expect(row.querySelector('.bg-ink-950')).not.toBeNull()
   })
 })
 

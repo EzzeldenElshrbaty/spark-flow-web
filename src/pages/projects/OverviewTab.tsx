@@ -5,7 +5,7 @@ import { useDeliverables, useRemoveDeliverable, useUpdateDeliverable } from '@/a
 import type { Deliverable, Phase, ProjectSummary, Team, User } from '@/api/types'
 import { ConfirmDeleteSheet } from '@/components/ConfirmDeleteSheet'
 import { RowMenu } from '@/components/RowMenu'
-import { Avatar } from '@/components/ui/Avatar'
+import { Avatar } from '@/components/Avatar'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { ProgressBar } from '@/components/ui/ProgressBar'
 import { formatDate, formatMoney } from '@/lib/format'
@@ -124,7 +124,7 @@ function TeamCard({ project, people, teams }: { project: ProjectSummary; people:
         <ul className="space-y-2.5">
           {manager && (
             <li className="flex items-center gap-3">
-              <Avatar name={manager.name} size="sm" />
+              <Avatar name={manager.name} size={24} decorative />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm text-fg">{manager.name}</span>
                 <span className="block truncate text-xs text-fg-muted">Project manager</span>
@@ -133,7 +133,7 @@ function TeamCard({ project, people, teams }: { project: ProjectSummary; people:
           )}
           {members.map((u) => (
             <li key={u.id} className="flex items-center gap-3">
-              <Avatar name={u.name} size="sm" />
+              <Avatar name={u.name} size={24} decorative />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm text-fg">{u.name}</span>
                 <span className="block truncate text-xs text-fg-muted">{u.title}</span>

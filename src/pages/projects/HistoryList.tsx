@@ -1,6 +1,6 @@
 import { Link, useSearchParams } from 'react-router'
 import type { ActivityEntry, Phase, Project, User } from '@/api/types'
-import { Avatar } from '@/components/ui/Avatar'
+import { Avatar } from '@/components/Avatar'
 import { Button } from '@/components/ui/Button'
 import { changeLines, describeActivity, type ActivityContext } from '@/lib/activityText'
 import { columnOf } from '@/lib/boardColumns'
@@ -47,7 +47,7 @@ export function HistoryList({
           const [before, after] = key ? [line.slice(0, line.indexOf(key)), line.slice(line.indexOf(key) + key.length)] : [line, '']
           return (
             <li key={entry.id} className="flex gap-3">
-              <Avatar name={ctx.nameOf(entry.actorId)} size="sm" />
+              <Avatar name={ctx.nameOf(entry.actorId)} size={24} decorative />
               <div className="min-w-0 flex-1 text-sm">
                 <p className="text-fg-secondary">
                   {before}

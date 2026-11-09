@@ -2,7 +2,7 @@ import { IconEye, IconMail, IconUserPlus } from '@tabler/icons-react'
 import { isActive } from '@/lib/people'
 import { useEffect, useId, useRef, useState } from 'react'
 import type { Channel, ChannelPatch, Invitation, Team, User } from '@/api/types'
-import { Avatar } from '@/components/sf/Avatar'
+import { Avatar } from '@/components/Avatar'
 import { Tag } from '@/components/sf/Badge'
 import { Button } from '@/components/sf/Button'
 import { Icon } from '@/components/sf/Icon'
@@ -186,7 +186,7 @@ function Invited({
           const pending = revoking.includes(invitation.id)
           return (
             <li key={invitation.id} className="flex min-h-12 items-center gap-3 py-1">
-              <span aria-hidden="true" className="grid size-sf-avatar flex-none place-items-center rounded-sf-md border border-sf-line bg-sf-surface-sunken text-sf-text-secondary">
+              <span aria-hidden="true" className="grid size-sf-avatar flex-none place-items-center rounded-sf-full border border-sf-line bg-sf-surface-sunken text-sf-text-secondary">
                 <Icon icon={IconMail} size={18} />
               </span>
               <span className="min-w-0 flex-1">

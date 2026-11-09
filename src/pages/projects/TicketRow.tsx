@@ -1,7 +1,7 @@
 import clsx from 'clsx'
 import { Link, useSearchParams } from 'react-router'
 import type { StatusCategory, TaskView } from '@/api/types'
-import { Avatar } from '@/components/ui/Avatar'
+import { Avatar } from '@/components/Avatar'
 import { formatDate } from '@/lib/format'
 import { parseInspector, withInspector } from '@/lib/inspector'
 import { BugPill, OverEstimatePill, OverduePill, PriorityPill, StatusPill, TicketKey, hoursLabel } from '@/pages/projects/ticketPills'
@@ -11,7 +11,7 @@ function Assignee({ name }: { name: string | null }) {
   if (!name) return <span className="size-6 shrink-0 rounded-full border border-dashed border-line-strong" title="Unassigned" aria-label="Unassigned" role="img" />
   return (
     <span title={name} className="inline-flex">
-      <Avatar name={name} size="sm" />
+      <Avatar name={name} size={24} decorative />
       <span className="sr-only">{name}</span>
     </span>
   )

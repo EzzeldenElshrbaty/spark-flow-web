@@ -4,7 +4,7 @@ import { Link, useSearchParams } from 'react-router'
 import { noteDownload } from '@/api/audit'
 import { openFile, useAllProjectFiles } from '@/api/projects'
 import type { Attachment, ProjectFileRow, ProjectFileSource, ProjectSummary, User } from '@/api/types'
-import { Avatar } from '@/components/ui/Avatar'
+import { Avatar } from '@/components/Avatar'
 import { Button } from '@/components/ui/Button'
 import { DataTable, TableSkeleton, type Column } from '@/components/ui/DataTable'
 import { selectClass } from '@/components/ui/Field'
@@ -101,7 +101,7 @@ export function FilesTab({ ws, project, users }: { ws: string; project: ProjectS
       width: 180,
       cell: (r) => (
         <span className="flex min-w-0 items-center gap-2">
-          <Avatar name={nameOf(r.file.uploadedBy)} size="sm" />
+          <Avatar name={nameOf(r.file.uploadedBy)} size={24} decorative />
           <span className="truncate text-fg-secondary">{nameOf(r.file.uploadedBy)}</span>
         </span>
       ),

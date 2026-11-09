@@ -1,7 +1,7 @@
 import { IconArrowUpRight, IconBellOff, IconDotsVertical, IconLink } from '@tabler/icons-react'
 import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
-import { Avatar } from '@/components/sf/Avatar'
+import { Avatar } from '@/components/Avatar'
 import { Tag } from '@/components/sf/Badge'
 import { Button, IconButton } from '@/components/sf/Button'
 import { Icon } from '@/components/sf/Icon'
@@ -79,7 +79,7 @@ export function ThreadCardView({
         </h2>
         <span role="img" aria-label={names(participants)} className="flex flex-none -space-x-1">
           {participants.map((p) => (
-            <Avatar key={p.id} id={p.id} name={p.name} size="sm" decorative />
+            <Avatar key={p.id} id={p.id} name={p.name} size={20} decorative />
           ))}
         </span>
         {newCount > 0 && !unfollowed && <Tag tone="accent">{newCount} new</Tag>}

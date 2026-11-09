@@ -1,7 +1,7 @@
 import { IconArchive, IconBell, IconBellOff, IconChecks, IconChevronDown, IconDotsVertical, IconHash, IconInfoCircle, IconLink, IconLock, IconLogout, IconSearch, IconStar, IconStarFilled } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
 import type { Channel, NotifyLevel } from '@/api/types'
-import { Avatar } from '@/components/sf/Avatar'
+import { Avatar } from '@/components/Avatar'
 import { IconButton } from '@/components/sf/Button'
 import { Icon } from '@/components/sf/Icon'
 import { Menu, MenuHeading, MenuItem, MenuSeparator, Submenu } from '@/components/sf/Menu'
@@ -170,7 +170,7 @@ function MembersButton({ members, onClick }: { members: { id: string; name: stri
     <>
       <span className="inline-flex items-center gap-0.5">
         {members.slice(0, 3).map((p) => (
-          <Avatar key={p.id} id={p.id} name={p.name} size="sm" decorative />
+          <Avatar key={p.id} id={p.id} name={p.name} size={20} decorative />
         ))}
       </span>
       <span className="tabular-nums">

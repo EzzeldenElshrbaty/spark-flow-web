@@ -1,7 +1,7 @@
 import { IconAlertCircle, IconMail, IconUsersGroup, IconX } from '@tabler/icons-react'
 import clsx from 'clsx'
 import { useId, useRef, useState, type ReactNode } from 'react'
-import { Avatar } from './Avatar'
+import { Avatar } from '@/components/Avatar'
 import { Tag } from './Badge'
 import { IconButton } from './Button'
 import { Icon } from './Icon'
@@ -12,7 +12,7 @@ export type Token = { id: string; label: string; kind?: 'person' | 'email' }
 export type Suggestion = { id: string; label: string; kind?: 'person' | 'email' | 'group'; description?: string }
 
 function KindMark({ token }: { token: Suggestion }) {
-  if (token.kind === 'person') return <Avatar id={token.id} name={token.label} size="sm" decorative />
+  if (token.kind === 'person') return <Avatar id={token.id} name={token.label} size={20} decorative />
   if (token.kind === 'email') return <Icon icon={IconMail} size={16} className="mx-0.5 flex-none text-sf-text-secondary" />
   if (token.kind === 'group') return <Icon icon={IconUsersGroup} size={16} className="mx-0.5 flex-none text-sf-text-secondary" />
   return null

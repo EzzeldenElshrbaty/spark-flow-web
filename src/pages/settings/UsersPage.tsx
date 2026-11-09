@@ -6,7 +6,7 @@ import { useTeams } from '@/api/projects'
 import { useRoles } from '@/api/roles'
 import type { NewPerson, PersonRow, Role, Team } from '@/api/types'
 import { useCreatePerson, useDeactivatePerson, useDirectory, useMe, useReactivatePerson, useUpdatePerson } from '@/api/users'
-import { Avatar } from '@/components/ui/Avatar'
+import { Avatar } from '@/components/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { DataTable, TableSkeleton, type Column } from '@/components/ui/DataTable'
@@ -228,7 +228,7 @@ function Table({ people, roles, teams, onOpen }: { people: PersonRow[]; roles: R
           }}
           className="flex min-w-0 items-center gap-2.5 text-start"
         >
-          <Avatar name={p.name} size="sm" />
+          <Avatar name={p.name} size={24} decorative />
           <span className="min-w-0">
             <span className="block truncate font-medium text-fg">{p.name}</span>
             <span className="block truncate text-xs text-fg-muted">{p.title || '—'}</span>
@@ -255,7 +255,7 @@ function List({ people, roles, onOpen }: { people: PersonRow[]; roles: Role[]; o
       {people.map((p, i) => (
         <li key={p.id} className="motion-safe:animate-fade-in" style={{ animationDelay: `${Math.min(i, 15) * 20}ms` }}>
           <button type="button" onClick={() => onOpen(p.id)} className="flex w-full min-w-0 items-start gap-3 px-4 py-3 text-start active:bg-surface-sunken">
-            <Avatar name={p.name} />
+            <Avatar name={p.name} decorative />
             <span className="min-w-0 flex-1">
               <span className="flex min-w-0 items-center gap-2">
                 <span className="truncate text-sm font-medium text-fg">{p.name}</span>

@@ -2,7 +2,7 @@ import { IconAlarm, IconAt, IconSubtask, IconMessages, IconMoodSmile, type Table
 import { useId } from 'react'
 import { Link } from 'react-router'
 import type { ActivityItem, ActivityItemKind } from '@/api/types'
-import { Avatar } from '@/components/sf/Avatar'
+import { Avatar } from '@/components/Avatar'
 import { Button } from '@/components/sf/Button'
 import { Icon } from '@/components/sf/Icon'
 import { Tabs } from '@/components/sf/Tabs'

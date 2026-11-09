@@ -1,7 +1,7 @@
 import { IconArrowUpRight } from '@tabler/icons-react'
 import { Link } from 'react-router'
 import type { MessageHit } from '@/api/types'
-import { Avatar } from '@/components/sf/Avatar'
+import { Avatar } from '@/components/Avatar'
 import { Icon } from '@/components/sf/Icon'
 import { formatWhen } from '@/lib/format'
 import { paths } from '@/lib/paths'

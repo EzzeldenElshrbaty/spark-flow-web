@@ -3,7 +3,7 @@ import clsx from 'clsx'
 import { Fragment, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import type { StatusCategory, TaskRef, User } from '@/api/types'
-import { Avatar } from '@/components/sf/Avatar'
+import { Avatar } from '@/components/Avatar'
 import { Icon } from '@/components/sf/Icon'
 import { Tooltip } from '@/components/sf/Tooltip'
 import { withInspector } from '@/lib/inspector'
@@ -80,7 +80,7 @@ export function TaskUnfurl({ task, users }: { task: TaskRef; users: User[] }) {
           </span>
         </span>
       </span>
-      {assignee && <Avatar id={assignee.id} name={assignee.name} size="md" />}
+      {assignee && <Avatar id={assignee.id} name={assignee.name} size={28} />}
     </Link>
   )
 }

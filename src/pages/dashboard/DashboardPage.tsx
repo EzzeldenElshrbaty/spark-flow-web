@@ -6,7 +6,7 @@ import { useTasksOf } from '@/api/tickets'
 import type { DashboardProject, User, WorkingNow } from '@/api/types'
 import { useUsers } from '@/api/users'
 import { ProgressRing } from '@/components/charts/ProgressRing'
-import { Avatar } from '@/components/ui/Avatar'
+import { Avatar } from '@/components/Avatar'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
@@ -90,7 +90,7 @@ function ProjectCard({ ws, project, people, now }: { ws: string; project: Dashbo
           <ul className="mt-1.5 flex flex-wrap items-center gap-3">
             {shown.map((w) => (
               <li key={w.userId} className="flex items-center gap-1.5 text-sm" title={nameOf(w.userId)}>
-                <Avatar name={nameOf(w.userId)} size="sm" />
+                <Avatar name={nameOf(w.userId)} size={24} decorative />
                 <span className="tabular-nums text-fg-secondary">{formatHours(w.hours)}</span>
               </li>
             ))}
@@ -112,7 +112,7 @@ function WorkingNowList({ list, people, taskLabel }: { list: WorkingNow[]; peopl
         const name = people.find((u) => u.id === w.userId)?.name ?? 'Unknown person'
         return (
           <li key={w.userId} className="flex items-center gap-3 px-5 py-3">
-            <Avatar name={name} size="sm" />
+            <Avatar name={name} size={24} decorative />
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm text-fg">
                 {name} <span className="text-fg-muted">· since {formatTime(w.startedAt)}</span>

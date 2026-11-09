@@ -3,7 +3,7 @@ import type { DashboardStats, StatusCategory, User } from '@/api/types'
 import { BarList } from '@/components/charts/BarList'
 import { ChartCard } from '@/components/charts/ChartCard'
 import { ColumnChart } from '@/components/charts/ColumnChart'
-import { Avatar } from '@/components/ui/Avatar'
+import { Avatar } from '@/components/Avatar'
 import { DataTable, type Column } from '@/components/ui/DataTable'
 import { hoursLabel } from '@/pages/projects/ticketPills'
 import { formatDate, formatHours } from '@/lib/format'
@@ -127,7 +127,7 @@ function OverdueTasks({ overdue, projectName, people }: { overdue: Overdue[]; pr
         const name = nameOf(t.assigneeId)
         return name ? (
           <span className="flex min-w-0 items-center gap-2">
-            <Avatar name={name} size="sm" />
+            <Avatar name={name} size={24} decorative />
             <span className="truncate text-fg-secondary">{name}</span>
           </span>
         ) : (

@@ -10,7 +10,7 @@ import { RowMenu } from '@/components/RowMenu'
 import { Button } from '@/components/ui/Button'
 import { Field, inputClass } from '@/components/ui/Field'
 import { Sheet, SheetCancelButton } from '@/components/ui/Sheet'
-import { Avatar } from '@/components/ui/Avatar'
+import { Avatar } from '@/components/Avatar'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
@@ -28,7 +28,7 @@ function MemberRow({ user, workspaceId, workspaceSlug, canMessage }: { user: Use
   return (
     <li className="py-2.5">
       <div className="flex items-center gap-3">
-        <Avatar name={user.name} size="sm" />
+        <Avatar name={user.name} size={24} decorative />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm text-fg">{user.name}</span>
           <span className="block truncate text-xs text-fg-muted">{user.title}</span>

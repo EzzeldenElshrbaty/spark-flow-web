@@ -5,7 +5,7 @@ import { useWorkspaces } from '@/api/workspaces'
 import { useArchivedTasksOf, useTasksOf } from '@/api/tickets'
 import { taskLabel } from '@/lib/taskLabel'
 import { useMyDay, useStartTimer } from '@/api/time'
-import { Avatar } from '@/components/ui/Avatar'
+import { Avatar } from '@/components/Avatar'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
@@ -123,7 +123,7 @@ export function MyWorkPage() {
                           }}
                           className="flex w-full items-start gap-3 px-5 py-3 text-start hover:bg-surface-muted"
                         >
-                          <Avatar name={author} size="sm" />
+                          <Avatar name={author} size={24} decorative />
                           <span className="min-w-0 flex-1">
                             <span className={m.read ? 'block truncate text-sm text-fg-secondary' : 'block truncate text-sm font-semibold text-fg'}>
                               {author} · {timeAgo(m.createdAt)}

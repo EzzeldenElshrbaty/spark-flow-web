@@ -164,7 +164,7 @@ describe('Activity reminders (spec 6.12 Reminders tab)', () => {
     const [row] = within(screen.getByRole('list', { name: 'Unread' })).getAllByRole('link')
     expect(spoken(row)).toContain('Reminder about a message in #backend')
     expect(spoken(row)).toContain('Review the release notes')
-    expect(row.querySelector('.bg-sf-ink-950')).not.toBeNull()
+    expect(row.querySelector('.bg-ink-950')).not.toBeNull()
   })
 })
 

@@ -5,7 +5,7 @@ import type { CommentView } from '@/api/types'
 import { AttachmentView } from '@/components/AttachmentView'
 import { ConfirmDeleteSheet } from '@/components/ConfirmDeleteSheet'
 import { MentionText } from '@/components/MentionText'
-import { Avatar } from '@/components/ui/Avatar'
+import { Avatar } from '@/components/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { MenuPanel, menuItemClass } from '@/components/ui/Menu'
 import { timeAgo } from '@/lib/format'
@@ -25,7 +25,7 @@ export function CommentRow({ comment, author, mine }: { comment: CommentView; au
   const deleted = Boolean(comment.deletedAt)
   return (
     <li className="group flex gap-3">
-      <Avatar name={author} size="sm" />
+      <Avatar name={author} size={24} decorative />
       <div className="min-w-0 flex-1">
         <div className="flex items-start gap-2">
           <p className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 text-sm">

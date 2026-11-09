@@ -6,7 +6,7 @@ import { formatDate } from '@/lib/format'
 import { currentRates } from '@/lib/rates'
 import type { User } from '@/api/types'
 import { useUsers } from '@/api/users'
-import { Avatar } from '@/components/ui/Avatar'
+import { Avatar } from '@/components/Avatar'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { inputClass } from '@/components/ui/Field'
@@ -50,7 +50,7 @@ function RateRow({
   return (
     <li className="py-3">
       <div className="flex items-center gap-3">
-        <Avatar name={person.name} size="sm" />
+        <Avatar name={person.name} size={24} decorative />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm text-fg">{person.name}</span>
           <span className="block truncate text-xs text-fg-muted">
