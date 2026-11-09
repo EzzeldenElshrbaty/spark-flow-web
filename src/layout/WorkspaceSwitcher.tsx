@@ -35,19 +35,19 @@ export function WorkspaceSwitcher() {
     <Menu
       label="Workspace"
       trigger={(props) => (
-        // From lg the button names the workspace (UX Phase 2, 2.6); below it, the round initials keep the bar's room.
+        // From 1440px the button names the workspace (UX Phase 2, 2.6); below it, the round initials leave room for a running timer.
         <button
           type="button"
           {...props}
           title={`Workspace: ${workspace.name}`}
           aria-label={`Workspace: ${workspace.name}`}
-          className={clsx(round, 'cursor-pointer text-sf-text-secondary hover:bg-sf-surface-hover hover:text-sf-text lg:w-auto lg:max-w-48 lg:gap-1 lg:px-3')}
+          className={clsx(round, 'cursor-pointer text-sf-text-secondary hover:bg-sf-surface-hover hover:text-sf-text min-[1440px]:inline-flex min-[1440px]:w-auto min-[1440px]:max-w-48 min-[1440px]:items-center min-[1440px]:gap-1 min-[1440px]:px-3')}
         >
-          <span aria-hidden className="font-sf text-[11px]/none font-semibold tracking-tight lg:hidden">
+          <span aria-hidden className="font-sf text-[11px]/none font-semibold tracking-tight min-[1440px]:hidden">
             {initialsOf(workspace.name)}
           </span>
-          <span className="sf-small truncate max-lg:sr-only">{workspace.name}</span>
-          <Icon icon={IconChevronDown} size={16} className="max-lg:hidden" aria-hidden />
+          <span className="sf-small truncate whitespace-nowrap max-[1440px]:sr-only">{workspace.name}</span>
+          <Icon icon={IconChevronDown} size={16} className="flex-none max-[1440px]:hidden" aria-hidden />
         </button>
       )}
     >
