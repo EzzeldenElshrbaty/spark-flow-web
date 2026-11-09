@@ -92,7 +92,8 @@ export function mentionsFor(data: DbData, userId: string, keep: (item: Omit<Ment
 /**
  * Task news for `userId` (UX Phase 2, 2.3), worked out on read: someone else assigned them a task (the history line
  * that set them, so it stays theirs after the task moves on), moved a task assigned to them now, or commented on one
- * (a comment that mentions them is that mention alone). Only on projects they are on now.
+ * (a comment that mentions them is that mention alone). Only on projects they are on now, and only tasks that aren't
+ * archived. Moves and comments count from when the task last became theirs: older ones aren't news to a new assignee.
  */
 export function taskEventsFor(data: DbData, userId: string): Omit<MentionItem, 'read'>[] {
   const nameOf = (id: string) => data.users.find((u) => u.id === id)?.name ?? 'Someone'
@@ -103,18 +104,28 @@ export function taskEventsFor(data: DbData, userId: string): Omit<MentionItem, '
     if (!people.has(projectId)) people.set(projectId, projectPeople(data, projectId))
     return people.get(projectId)!.has(userId)
   }
+  const assignsMe = (e: DbData['activity'][number]) => (e.kind === 'task.created' || e.kind === 'task.changed') && e.changes.some((c) => c.field === 'assigneeId' && c.to === userId)
+  // When each task last became mine: the history line's place (the history is kept in order) and its time. A task with
+  // no such line (from before the history kept it) counts all its news.
+  const mine = new Map<string, { index: number; at: string }>()
+  data.activity.forEach((e, index) => {
+    if (e.taskKey && assignsMe(e)) mine.set(e.taskKey, { index, at: e.at })
+  })
   const items: Omit<MentionItem, 'read'>[] = []
-  for (const e of data.activity) {
-    if (e.actorId === userId || !e.taskKey || !onProject(e.projectId)) continue
+  data.activity.forEach((e, index) => {
+    if (e.actorId === userId || !e.taskKey || !onProject(e.projectId)) return
     const task = byKey.get(e.taskKey)
-    const base = { id: `task-${e.id}`, workspaceId: workspaceOf(e.projectId), authorId: e.actorId, authorName: nameOf(e.actorId), excerpt: task?.title ?? e.taskKey, createdAt: e.at, channelId: null, messageId: null, taskKey: e.taskKey, projectId: e.projectId, keyword: null }
-    if ((e.kind === 'task.created' || e.kind === 'task.changed') && e.changes.some((c) => c.field === 'assigneeId' && c.to === userId)) items.push({ ...base, source: 'assigned', statusLabel: null })
-    else if (e.kind === 'task.moved' && task && !task.archivedAt && task.assigneeId === userId) items.push({ ...base, source: 'status', statusLabel: e.changes[0]?.toLabel ?? null })
-  }
+    if (!task || task.archivedAt) return
+    const base = { id: `task-${e.id}`, workspaceId: workspaceOf(e.projectId), authorId: e.actorId, authorName: nameOf(e.actorId), excerpt: task.title, createdAt: e.at, channelId: null, messageId: null, taskKey: e.taskKey, projectId: e.projectId, keyword: null }
+    if (assignsMe(e)) items.push({ ...base, source: 'assigned', statusLabel: null })
+    else if (e.kind === 'task.moved' && task.assigneeId === userId && index > (mine.get(task.key)?.index ?? -1)) items.push({ ...base, source: 'status', statusLabel: e.changes[0]?.toLabel ?? null })
+  })
   for (const c of data.comments) {
     if (c.authorId === userId || c.deletedAt || !onProject(c.projectId)) continue
     const task = data.tickets.find((t) => t.id === c.taskId)
     if (!task || task.archivedAt || task.assigneeId !== userId) continue
+    const since = mine.get(task.key)?.at
+    if (since && c.createdAt <= since) continue
     const card = data.messages.find((m) => m.commentId === c.id)
     if (reaches(card?.mentions ?? [], userId, () => projectPeople(data, c.projectId))) continue
     items.push({ id: `tcomment-${c.id}`, source: 'taskComment', workspaceId: workspaceOf(c.projectId), authorId: c.authorId, authorName: nameOf(c.authorId), excerpt: excerptOf(c.body), createdAt: c.createdAt, channelId: null, messageId: null, taskKey: task.key, projectId: c.projectId, keyword: null, statusLabel: null })

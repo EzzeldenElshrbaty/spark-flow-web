@@ -79,8 +79,8 @@ export function ActivityView({
             <Icon icon={KIND_ICONS[item.kind]} size={16} className="flex-none" />
             <span className="truncate">{activityKind(item, placeOf(item))}</span>
           </span>
-          {item.kind === 'reaction' || item.kind === 'reminder' ? (
-            // My own words under the line that says who reacted; or the message a reminder is about.
+          {item.kind === 'reaction' || item.kind === 'reminder' || (item.kind === 'task' && item.taskEvent !== 'taskComment') ? (
+            // My own words under the line that says who reacted; the message a reminder is about; the task's title.
             <span className="sf-body mt-0.5 line-clamp-2 block text-sf-text-secondary">{item.excerpt}</span>
           ) : (
             <span className="sf-body mt-0.5 line-clamp-2 block text-sf-text">

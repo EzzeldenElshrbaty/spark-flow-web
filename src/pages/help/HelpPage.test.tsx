@@ -80,6 +80,15 @@ describe('the help centre', () => {
     expect(within(screen.getByRole('navigation', { name: 'Chapters' })).getAllByRole('link').map((a) => a.textContent)).toEqual(['Channels and messages', 'Threads and Activity', 'Search', 'Saved, drafts and sent', 'Preferences'])
   })
 
+  it('a topic stays picked while its chapters open (final review)', async () => {
+    mount('/w/engineering/help')
+    await screen.findByRole('heading', { name: 'Getting started', level: 2 })
+    fireEvent.click(within(screen.getByRole('group', { name: 'Topics' })).getByRole('button', { name: 'Chat' }))
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Chapters' })).getByRole('link', { name: 'Search' }))
+    expect(await screen.findByRole('heading', { name: 'Search', level: 2 })).toBeTruthy()
+    expect(within(screen.getByRole('group', { name: 'Topics' })).getByRole('button', { name: 'Chat' }).getAttribute('aria-pressed')).toBe('true')
+  })
+
   it('a link to another chapter opens it', async () => {
     mount('/w/engineering/help/time-cost')
     fireEvent.click(await screen.findByRole('link', { name: 'hourly cost' }))

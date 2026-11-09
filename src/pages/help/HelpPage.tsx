@@ -56,9 +56,16 @@ export function HelpPage() {
     ;(target ?? top.current)?.scrollIntoView({ block: 'start' })
   }, [chapter, hash])
 
+  // A picked topic stays picked while its own chapters open.
+  const hrefOf = (id: string, section: string | null = null) => {
+    const path = paths.help(ws, id, section)
+    if (!group || list.find((c) => c.id === id)?.group !== group) return path
+    const [base, hash] = path.split('#')
+    return `${base}?group=${encodeURIComponent(group)}${hash ? `#${hash}` : ''}`
+  }
   const open = (id: string, section: string | null = null) => {
     setTerm('')
-    navigate(paths.help(ws, id, section))
+    navigate(hrefOf(id, section))
   }
 
   if (isError) {
@@ -136,7 +143,7 @@ export function HelpPage() {
                         .map((c) => (
                           <li key={c.id}>
                             <Link
-                              to={paths.help(ws, c.id)}
+                              to={hrefOf(c.id)}
                               onClick={() => setTerm('')}
                               aria-current={c.id === chapter?.id ? 'page' : undefined}
                               className={clsx(
@@ -184,11 +191,11 @@ export function HelpPage() {
                   <h2 className="mt-1 text-xl font-semibold tracking-tight text-fg">{chapter.title}</h2>
                   {chapter.needs && NEEDS_TEXT[chapter.needs] && <p className="mt-1 text-sm text-fg-muted">For people who can {NEEDS_TEXT[chapter.needs]}.</p>}
                   <div className="mt-4">
-                    <HelpDoc blocks={chapter.blocks} onChapter={open} canOpen={(id) => list.some((c) => c.id === id)} hrefOf={(id, section) => paths.help(ws, id, section)} />
+                    <HelpDoc blocks={chapter.blocks} onChapter={open} canOpen={(id) => list.some((c) => c.id === id)} hrefOf={hrefOf} />
                   </div>
                   <div className="mt-10 grid gap-3 border-t border-line-subtle pt-6 sm:grid-cols-2">
                     {list[index - 1] ? (
-                      <Link to={paths.help(ws, list[index - 1]!.id)} className="rounded-xl border border-line px-4 py-3 hover:bg-surface-sunken">
+                      <Link to={hrefOf(list[index - 1]!.id)} className="rounded-xl border border-line px-4 py-3 hover:bg-surface-sunken">
                         <span className="flex items-center gap-1.5 text-xs text-fg-muted">
                           <ArrowLeft className="size-3.5 rtl:-scale-x-100" /> Previous
                         </span>
@@ -198,7 +205,7 @@ export function HelpPage() {
                       <span />
                     )}
                     {list[index + 1] && (
-                      <Link to={paths.help(ws, list[index + 1]!.id)} className="rounded-xl border border-line px-4 py-3 text-end hover:bg-surface-sunken">
+                      <Link to={hrefOf(list[index + 1]!.id)} className="rounded-xl border border-line px-4 py-3 text-end hover:bg-surface-sunken">
                         <span className="flex items-center justify-end gap-1.5 text-xs text-fg-muted">
                           Next <ArrowRight className="size-3.5 rtl:-scale-x-100" />
                         </span>

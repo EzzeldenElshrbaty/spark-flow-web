@@ -136,7 +136,7 @@ describe('WorkspaceSwitcher (spec 5.2)', () => {
     show(<WorkspaceSwitcher />)
     const button = screen.getByRole('button', { name: /Workspace: Spark Engineering/ })
     // From 1440px: below it a running timer's pill needs the room (UX Phase 2 check at 1280).
-    expect(within(button).getByText('Spark Engineering').className).toMatch(/max-\[1440px\]:sr-only/)
+    expect(within(button).getByText('Spark Engineering').className).toMatch(/max-\[1440px\]:hidden/)
     expect(within(button).getByText('SE').className).toMatch(/min-\[1440px\]:hidden/)
     expect(button.className).toMatch(/min-\[1440px\]:inline-flex/)
   })

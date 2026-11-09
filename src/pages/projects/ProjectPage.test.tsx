@@ -12,7 +12,8 @@ const project = {
   links: [], startDate: '2026-10-01T00:00:00.000Z', dueDate: '2026-12-01T00:00:00.000Z', channelId: 'c-p-nex', currentPhaseId: null, archivedAt: null,
 }
 vi.mock('@/layout/useCurrentWorkspace', () => ({ useCurrentWorkspace: () => ({ workspace: { id: 'ws-eng', slug: 'engineering', name: 'Spark Engineering' } }) }))
-vi.mock('@/lib/usePermission', () => ({ usePermission: () => () => true }))
+let allowed = true
+vi.mock('@/lib/usePermission', () => ({ usePermission: () => () => allowed }))
 vi.mock('@/api/projects', () => ({
   useProjectSummary: () => ({ data: project, isPending: false, isError: false }),
   usePhases: () => ({ data: [], isPending: false, isError: false }),
@@ -40,7 +41,10 @@ vi.mock('./OverviewTab', () => ({ OverviewTab: () => <p>Overview</p> }))
 vi.mock('./TasksTab', () => ({ TasksTab: () => <p>Tasks</p> }))
 window.matchMedia ??= ((media: string) => ({ matches: false, media, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  allowed = true
+})
 
 const at = (search: string) => {
   const router = createMemoryRouter([{ path: '/w/:ws/p/:projectKey/:tab', element: <ProjectPage /> }], { initialEntries: [`/w/engineering/p/NEX/overview${search}`] })
@@ -62,6 +66,15 @@ describe('a project’s sheets in the address (UX Phase 2, 2.7)', () => {
     cleanup()
     at('?phases=1')
     expect(screen.getByRole('dialog', { name: 'Manage phases' })).toBeTruthy()
+  })
+
+  it('a link opens a sheet only for someone who may use it (final review)', () => {
+    allowed = false
+    for (const search of ['?new=task', '?edit=project', '?phases=1']) {
+      at(search)
+      expect(screen.queryByRole('dialog')).toBeNull()
+      cleanup()
+    }
   })
 
   it('New task adds a step Back closes; Cancel closes it without leaving one', async () => {

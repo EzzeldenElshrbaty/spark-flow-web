@@ -2782,3 +2782,10 @@ work; Settings, Preferences and Help always use the Projects sidebar. Plan with 
   the worktree only.
 - Help pictures retaken; the 1280 picture showed the named workspace button crowding the top bar beside a running
   timer, so the name now shows from 1440px.
+- Final review (Opus, whole branch): no Critical; fixed test-first — a stale `?archived=1` no longer traps Back; a
+  project's sheets open from a link only for someone allowed; a new assignee gets news from when the task became
+  theirs; archived tasks leave the bell; choosing what is chosen adds no step; Help keeps the topic while its chapters
+  open, and its search keeps the caret (the app's `RouterProvider` now comes from `react-router/dom`, for
+  `flushSync`); Activity's task rows don't put the title in the actor's mouth; the workspace button is named by its
+  text again (axe `label-content-name-mismatch` at 1280). Gates after: unit 2,200/2,200, browser 289/292 (the 3
+  known), tsc, lint and `build:prototype` pass.

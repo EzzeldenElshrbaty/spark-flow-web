@@ -71,7 +71,8 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
     setParam(key, value)
     setProjectFilters(project.key, { phase: phase ?? undefined, sprint: sprint ?? undefined, [key]: value ?? undefined })
   }
-  const setParam = (key: string, value: string | null) =>
+  // A choice is a step Back undoes (UX Phase 2, 2.7); a correction the page makes itself replaces the entry.
+  const setParam = (key: string, value: string | null, replace = false) =>
     setParams(
       (prev) => {
         const next = new URLSearchParams(prev)
@@ -79,8 +80,7 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
         else next.delete(key)
         return next
       },
-      // A choice is a step Back undoes (UX Phase 2, 2.7).
-      { replace: false },
+      { replace },
     )
 
   const check = usePermission()
@@ -101,7 +101,7 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
   const staleArchived = staleArchivedParam(params.get('archived') === '1', archivedQuery.data?.length)
   // Only the flag matters here: setParam is a new function each render.
   useEffect(() => {
-    if (staleArchived) setParam('archived', null)
+    if (staleArchived) setParam('archived', null, true)
   }, [staleArchived])
   const archived = filterTasks(archivedAll, { phase, sprint })
   const showArchived = showArchivedAsked && archived.length > 0

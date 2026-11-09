@@ -32,7 +32,7 @@ function TabLink({ to, active, icon, label }: { to: string | undefined; active: 
 }
 
 /**
- * Dashboard · Projects · Chat · More (search is in the top bar; Home is in More, dashboard start). Chat and Projects
+ * Dashboard · Projects · Chat · More (search is in the top bar; My work is in More, dashboard start). Chat and Projects
  * reopen the last place on their side (spec 5.5), as the sidebar's switch does; the Dashboard has its own tab, so
  * Projects opens the project list instead of it.
  */

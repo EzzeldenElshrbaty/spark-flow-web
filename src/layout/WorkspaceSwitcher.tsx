@@ -40,13 +40,16 @@ export function WorkspaceSwitcher() {
           type="button"
           {...props}
           title={`Workspace: ${workspace.name}`}
-          aria-label={`Workspace: ${workspace.name}`}
           className={clsx(round, 'cursor-pointer text-sf-text-secondary hover:bg-sf-surface-hover hover:text-sf-text min-[1440px]:inline-flex min-[1440px]:w-auto min-[1440px]:max-w-48 min-[1440px]:items-center min-[1440px]:gap-1 min-[1440px]:px-3')}
         >
           <span aria-hidden className="font-sf text-[11px]/none font-semibold tracking-tight min-[1440px]:hidden">
             {initialsOf(workspace.name)}
           </span>
-          <span className="sf-small truncate whitespace-nowrap max-[1440px]:sr-only">{workspace.name}</span>
+          <span aria-hidden className="sf-small truncate whitespace-nowrap max-[1440px]:hidden">
+            {workspace.name}
+          </span>
+          {/* Named by its text, not an aria-label, so what it shows (initials or name) never disagrees with its name. */}
+          <span className="sr-only">Workspace: {workspace.name}</span>
           <Icon icon={IconChevronDown} size={16} className="flex-none max-[1440px]:hidden" aria-hidden />
         </button>
       )}

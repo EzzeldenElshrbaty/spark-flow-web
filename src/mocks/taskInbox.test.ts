@@ -72,6 +72,29 @@ describe('task items for me (UX Phase 2, 2.3)', () => {
     expect((await taskItems()).map((m) => m.source)).toEqual(['status', 'assigned'])
   })
 
+  it('a new assignee gets news from when the task became theirs, not its older moves and comments (final review)', async () => {
+    await as('u-2')
+    await api.tasks.moveTo('NEX-110', 'inProgress', 0)
+    await as('u-6')
+    await api.comments.create({ taskKey: 'NEX-110', kind: 'comment', body: 'Started on the cache layer.', files: [] })
+    await as('u-2')
+    await api.tasks.update('NEX-110', { assigneeId: 'u-3' })
+    await as('u-3')
+    expect((await taskItems()).map((m) => m.source)).toEqual(['assigned'])
+    await as('u-2')
+    await api.tasks.moveTo('NEX-110', 'todo', 0)
+    await as('u-3')
+    expect((await taskItems()).map((m) => m.source)).toEqual(['status', 'assigned'])
+  })
+
+  it('an archived task leaves the list, its "assigned" item too (final review)', async () => {
+    await as('u-2')
+    await api.tasks.update('NEX-110', { assigneeId: 'u-3' })
+    await api.tasks.archive('NEX-110', 'Duplicate')
+    await as('u-3')
+    expect(await taskItems()).toEqual([])
+  })
+
   it('reads through the mentions’ read state, and Activity lists them as tasks', async () => {
     await as('u-2')
     await api.tasks.update('NEX-110', { assigneeId: 'u-3' })

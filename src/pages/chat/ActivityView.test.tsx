@@ -113,6 +113,16 @@ describe('Activity (spec 6.12)', () => {
     expect(row.getAttribute('href')).toBe('/w/engineering/p/NEX/tasks?ticket=NEX-12')
   })
 
+  it('task news names the task under its line, not as the actor’s words; a comment stays theirs (final review)', () => {
+    const task = { channelId: null, messageId: null, taskKey: 'NEX-12', projectId: 'p1', kind: 'task' as const }
+    show({ items: [item({ ...task, id: 'as', taskEvent: 'assigned', excerpt: 'Fix login bug' }), item({ ...task, id: 'tc', taskEvent: 'taskComment', excerpt: 'Checked on Safari' })], placeOf: () => null })
+    const assigned = screen.getByRole('link', { name: /Fix login bug/ })
+    expect(assigned.textContent).toContain('Nour El-Sayed assigned you NEX-12')
+    expect(assigned.textContent).not.toContain('Nour El-SayedFix login bug')
+    expect(assigned.textContent).not.toContain('Nour El-Sayed Fix login bug')
+    expect(screen.getByRole('link', { name: /Checked on Safari/ }).textContent).toContain('Nour El-Sayed Checked on Safari')
+  })
+
   it('its times move on while the page stays open', () => {
     vi.useFakeTimers({ now: new Date('2026-10-28T12:00:00.000Z') })
     try {

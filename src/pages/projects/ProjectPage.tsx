@@ -124,6 +124,9 @@ export function ProjectPage() {
   const canPhases = check('phase.manage', ctx)
   const canPost = check('collab.post', ctx)
   const canTasks = check('task.manage', ctx)
+  // A link (or Forward) opens a sheet only for someone its button is shown to.
+  const shown = sheet === 'edit' ? canEdit : sheet === 'phases' ? canPhases : sheet === 'task' ? canTasks : true
+  const openSheet = shown ? sheet : null
   const nameOf = (id: string) => people.find((u) => u.id === id)?.name ?? '—'
 
   const [statusLabel, statusTone] = statusBadge[project.status]
@@ -233,8 +236,8 @@ export function ProjectPage() {
 
       {!chat && <RecordActionBarSpacer />}
 
-      {sheet === 'edit' && <ProjectSheet workspaceId={workspace.id} project={project} takenKeys={[]} onClose={() => setSheet(null)} onSaved={() => setSheet(null)} />}
-      {sheet === 'task' && (
+      {openSheet === 'edit' && <ProjectSheet workspaceId={workspace.id} project={project} takenKeys={[]} onClose={() => setSheet(null)} onSaved={() => setSheet(null)} />}
+      {openSheet === 'task' && (
         <TaskSheet
           project={project}
           phases={phaseList}
@@ -258,9 +261,9 @@ export function ProjectPage() {
           }}
         />
       )}
-      {sheet === 'phases' && <PhasesSheet project={project} phases={phaseList} onClose={() => setSheet(null)} />}
+      {openSheet === 'phases' && <PhasesSheet project={project} phases={phaseList} onClose={() => setSheet(null)} />}
       <ConfirmDeleteSheet
-        open={sheet === 'archive'}
+        open={openSheet === 'archive'}
         tone="primary"
         title={`Archive ${project.name}?`}
         description="It leaves the lists and the dashboard, and nothing in it can change until it's restored. Its time stays in reports."

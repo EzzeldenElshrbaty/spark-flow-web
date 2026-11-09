@@ -43,7 +43,7 @@ export function NotificationsMenu() {
   }
 
   return (
-    // Phones hide the bell (spec 5.4): mentions are on Home and in the Activity row there.
+    // Phones hide the bell (spec 5.4): mentions are on My work and in the Activity row there.
     <div className="relative hidden shrink-0 md:block">
       <Popover
         label="Notifications"

@@ -15,7 +15,9 @@ export function quietChange(values: Record<string, string | null | undefined>, {
 /** The page's query, and a setter that sets or (empty or null) clears keys, pushing or replacing by `quietChange`. */
 export function useParamState(options: ParamOptions = {}): [URLSearchParams, (values: Record<string, string | null | undefined>) => void] {
   const [params, setParams] = useSearchParams()
-  const set = (values: Record<string, string | null | undefined>) =>
+  const set = (values: Record<string, string | null | undefined>) => {
+    // Choosing what is already chosen adds no step.
+    if (Object.entries(values).every(([key, value]) => (params.get(key) ?? '') === (value ?? ''))) return
     setParams(
       (prev) => {
         const next = new URLSearchParams(prev)
@@ -25,8 +27,10 @@ export function useParamState(options: ParamOptions = {}): [URLSearchParams, (va
         }
         return next
       },
-      { replace: quietChange(values, options) },
+      // Typing updates the address at once (not in a transition), so the box's caret stays where the key went in.
+      { replace: quietChange(values, options), flushSync: Object.keys(values).every((key) => options.typed?.includes(key)) },
     )
+  }
   return [params, set]
 }
 

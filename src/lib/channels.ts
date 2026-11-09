@@ -77,7 +77,7 @@ export function unreadMentions(items: MentionItem[] | undefined, workspaceId: st
   return { byChannel }
 }
 
-/** My unread mentions in task comments of a workspace: the Projects side's dot on the workspace switch (spec 5.5). */
+/** My unread task news of a workspace (mentions in task comments, and assigned, moved or commented on, UX Phase 2): the Projects side's dot on the workspace switch (spec 5.5). */
 export function unreadTaskMentions(items: MentionItem[] | undefined, workspaceId: string | undefined): number {
   return (items ?? []).filter((item) => !item.read && item.workspaceId === workspaceId && !item.channelId && Boolean(item.taskKey)).length
 }
