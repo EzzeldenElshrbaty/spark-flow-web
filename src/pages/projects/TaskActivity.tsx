@@ -1,4 +1,3 @@
-import clsx from 'clsx'
 import { useState } from 'react'
 import { useAddComment, useComments } from '@/api/comments'
 import type { CommentKind, ProjectSummary, TaskView, User } from '@/api/types'
@@ -8,6 +7,7 @@ import { QueryError } from '@/components/ui/QueryError'
 import { usePermission } from '@/lib/usePermission'
 import { Composer } from '@/pages/chat/Composer'
 import { CommentRow } from '@/pages/projects/CommentRow'
+import { SegmentedControl } from '@/components/ui/SegmentedControl'
 
 const MAX_FILES = 5
 
@@ -56,25 +56,16 @@ export function TaskActivity({ task, project, users }: { task: TaskView; project
           }}
           extra={
             <div className="w-full space-y-2">
-              <div className="inline-flex rounded-lg border border-line p-0.5" role="radiogroup" aria-label="Kind">
-                {(
-                  [
-                    ['comment', 'Comment'],
-                    ['bug', 'Bug'],
-                  ] as const
-                ).map(([value, label]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    role="radio"
-                    aria-checked={kind === value}
-                    onClick={() => setKind(value)}
-                    className={clsx('rounded-md px-3 py-1 text-sm', kind === value ? 'bg-surface-muted font-medium text-fg' : 'text-fg-muted hover:text-fg')}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
+              <SegmentedControl
+                kind="form"
+                label="Kind"
+                value={kind}
+                onChange={setKind}
+                options={[
+                  { value: 'comment', label: 'Comment' },
+                  { value: 'bug', label: 'Bug' },
+                ]}
+              />
               <FileDrop files={files} onFiles={setFiles} max={MAX_FILES} label="Add images, video or files (up to 5)" />
             </div>
           }

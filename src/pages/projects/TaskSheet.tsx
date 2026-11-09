@@ -1,4 +1,3 @@
-import clsx from 'clsx'
 import { lazy, Suspense, useRef, useState } from 'react'
 import { useCreateTask, useUpdateTask } from '@/api/tickets'
 import { uploadTaskFile } from '@/api/files'
@@ -15,6 +14,7 @@ import type { DescBody } from '@/lib/messageBody'
 import { TaskAttachments } from './TaskAttachments'
 import { useUploadQueue } from './useUploadQueue'
 import type { DescriptionEditorHandle } from './description/DescriptionEditor'
+import { SegmentedControl } from '@/components/ui/SegmentedControl'
 
 // The editor (Lexical) loads with the sheet, not with the page.
 const DescriptionEditor = lazy(() => import('./description/DescriptionEditor'))
@@ -238,26 +238,17 @@ export function TaskSheet({
         </div>
         <div>
           <span className="mb-1.5 block text-sm font-medium text-fg-secondary">Type</span>
-          <div className="inline-flex rounded-lg border border-line p-0.5" role="radiogroup" aria-label="Type">
-            {(
-              [
-                ['task', 'Task'],
-                ['bug', 'Bug'],
-              ] as const
-            ).map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                role="radio"
-                aria-checked={values.type === value}
-                disabled={ro}
-                onClick={() => set('type', value)}
-                className={clsx('rounded-md px-3 py-1 text-sm disabled:cursor-default', values.type === value ? 'bg-surface-muted font-medium text-fg' : 'text-fg-muted hover:text-fg')}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl
+            kind="form"
+            label="Type"
+            value={values.type}
+            disabled={ro}
+            onChange={(type) => set('type', type)}
+            options={[
+              { value: 'task', label: 'Task' },
+              { value: 'bug', label: 'Bug' },
+            ]}
+          />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Status">

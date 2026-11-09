@@ -22,6 +22,7 @@ import { selectClass } from '@/components/ui/Field'
 import { Button } from '@/components/ui/Button'
 import { exportDetail, reportRows } from './reportCsv'
 import { missingRateLine } from './missingRates'
+import { SegmentedControl } from '@/components/ui/SegmentedControl'
 
 const periods: [ReportPeriod, string][] = [
   [7, '7 days'],
@@ -190,19 +191,7 @@ export function TimeCostPage() {
     <>
       {header}
       <div className="mb-5 flex flex-wrap items-center gap-3">
-      <div className="inline-flex rounded-lg bg-surface-muted p-0.5 ring-1 ring-line" role="group" aria-label="Period">
-        {periods.map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            aria-pressed={days === value}
-            onClick={() => set('days', String(value))}
-            className={clsx('rounded-md px-3 py-1.5 text-sm font-medium', days === value ? 'bg-surface text-fg shadow-sm ring-1 ring-line' : 'text-fg-muted hover:text-fg')}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+        <SegmentedControl label="Period" value={String(days)} onChange={(value) => set('days', value)} options={periods.map(([value, label]) => ({ value: String(value), label }))} />
         <select className={`${selectClass} w-auto`} aria-label="Project" value={projectId} onChange={(e) => set('project', e.target.value)}>
           <option value="">All projects</option>
           {allProjects.map((p) => (

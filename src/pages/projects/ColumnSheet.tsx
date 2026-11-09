@@ -6,6 +6,7 @@ import { Field, inputClass, selectClass } from '@/components/ui/Field'
 import { Sheet, SheetCancelButton } from '@/components/ui/Sheet'
 import { columnErrors } from '@/lib/boardColumns'
 import { CATEGORIES } from '@/lib/statuses'
+import { SegmentedControl } from '@/components/ui/SegmentedControl'
 
 /**
  * Add column (a name, a type and where it goes), or a column's details (its name and type). The type decides what
@@ -66,30 +67,7 @@ export function ColumnSheet({ projectId, columns, column, onClose }: { projectId
         </Field>
         <fieldset>
           <legend className="mb-1.5 text-sm font-medium text-fg-secondary">Type</legend>
-          <div className="inline-flex rounded-lg border border-line p-0.5" role="radiogroup" aria-label="Type">
-            {CATEGORIES.map((c, i) => (
-              <button
-                key={c.category}
-                type="button"
-                role="radio"
-                aria-checked={category === c.category}
-                tabIndex={category === c.category ? 0 : -1}
-                onClick={() => setCategory(c.category)}
-                onKeyDown={(e) => {
-                  // A radio group: the arrow keys move the choice (and focus) along it.
-                  const step = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0
-                  if (!step) return
-                  e.preventDefault()
-                  const at = (i + step + CATEGORIES.length) % CATEGORIES.length
-                  setCategory(CATEGORIES[at]!.category)
-                  e.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role=radio]')[at]?.focus()
-                }}
-                className={`rounded-md px-3 py-1.5 text-sm ${category === c.category ? 'bg-surface-muted font-medium text-fg' : 'text-fg-secondary hover:text-fg'}`}
-              >
-                {c.label}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl kind="form" label="Type" value={category} onChange={setCategory} options={CATEGORIES.map((c) => ({ value: c.category, label: c.label }))} />
         </fieldset>
         {!column && (
           <Field label="Place">

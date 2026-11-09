@@ -1,7 +1,7 @@
 import clsx from 'clsx'
 import { Columns3, List } from 'lucide-react'
 import { useEffect } from 'react'
-import { Link, useSearchParams } from 'react-router'
+import { useSearchParams } from 'react-router'
 import { useSetBoard } from '@/api/projects'
 import { useArchivedTasks, useSprints, useTickets, useUpdateTask, useMoveTask } from '@/api/tickets'
 import type { BoardColumn, Phase, ProjectSummary, TaskView, TicketPatch, User } from '@/api/types'
@@ -14,6 +14,7 @@ import { BacklogSkeleton, ProjectBacklog } from '@/pages/projects/ProjectBacklog
 import { BoardSkeleton, ProjectBoard } from '@/pages/projects/ProjectBoard'
 import { byOrder } from './phases'
 import { filtersFrom, filterTasks, staleArchivedParam, validSprint, viewOf } from './taskFilters'
+import { SegmentedControl } from '@/components/ui/SegmentedControl'
 
 const views = [
   ['board', 'Board', Columns3],
@@ -21,28 +22,22 @@ const views = [
 ] as const
 
 
-/** Board | List, the raised pill on a muted track. Each is its own address; the filters stay. */
+/** Board | List, the raised pill on a muted track (UX Phase 3: one segmented control). A pick is a step Back undoes; the filters stay. */
 function ViewSwitch({ view }: { view: ProjectView }) {
-  const [params] = useSearchParams()
-  const searchFor = (value: ProjectView) => {
-    const next = new URLSearchParams(params)
-    next.set('view', value)
-    return `?${next}`
-  }
+  const [, setParams] = useSearchParams()
   return (
-    <nav className="inline-flex rounded-lg bg-surface-muted p-0.5 ring-1 ring-line" aria-label="View">
-      {views.map(([value, label, Icon]) => (
-        <Link
-          key={value}
-          to={{ search: searchFor(value) }}
-          aria-current={view === value ? 'page' : undefined}
-          className={clsx('inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium', view === value ? 'bg-surface text-fg shadow-sm ring-1 ring-line' : 'text-fg-muted hover:text-fg')}
-        >
-          <Icon className="size-4" />
-          <span className="max-sm:sr-only">{label}</span>
-        </Link>
-      ))}
-    </nav>
+    <SegmentedControl
+      label="View"
+      value={view}
+      onChange={(next) =>
+        setParams((prev) => {
+          const params = new URLSearchParams(prev)
+          params.set('view', next)
+          return params
+        })
+      }
+      options={views.map(([value, label, icon]) => ({ value, label, icon, iconOnlyOnPhone: true }))}
+    />
   )
 }
 

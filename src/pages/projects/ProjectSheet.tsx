@@ -15,6 +15,7 @@ import { usePermission } from '@/lib/usePermission'
 import { keyFromName, validateProject, type ProjectFormErrors, type ProjectFormValues } from './projectForm'
 import { tasksLeftWith } from './taskForm'
 import { IconButton } from '@/components/ui/IconButton'
+import { SegmentedControl } from '@/components/ui/SegmentedControl'
 
 const statuses: [ProjectStatus, string][] = [
   ['planned', 'Planned'],
@@ -172,25 +173,15 @@ export function ProjectSheet({
         {!project && (
           <div>
             <span className="mb-1.5 block text-sm font-medium text-fg-secondary">Way of working</span>
-            <div className="inline-flex rounded-lg bg-surface-muted p-0.5 ring-1 ring-line" role="radiogroup" aria-label="Way of working">
-              {(
-                [
-                  ['waterfall', 'Waterfall'],
-                  ['agile', 'Agile'],
-                ] as const
-              ).map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  role="radio"
-                  aria-checked={values.methodology === value}
-                  onClick={() => set('methodology', value)}
-                  className={clsx('rounded-md px-3 py-1.5 text-sm font-medium', values.methodology === value ? 'bg-surface text-fg shadow-sm ring-1 ring-line' : 'text-fg-muted hover:text-fg')}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+            <SegmentedControl
+              label="Way of working"
+              value={values.methodology}
+              onChange={(methodology) => set('methodology', methodology)}
+              options={[
+                { value: 'waterfall', label: 'Waterfall' },
+                { value: 'agile', label: 'Agile' },
+              ]}
+            />
           </div>
         )}
 

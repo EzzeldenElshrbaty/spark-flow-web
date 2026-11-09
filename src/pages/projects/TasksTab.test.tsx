@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, render } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ProjectSummary } from '@/api/types'
@@ -37,5 +37,20 @@ describe('the Tasks tab’s address (final review)', () => {
     expect(router.state.historyAction).toBe('REPLACE')
     await act(() => router.navigate(-1))
     expect(router.state.location.pathname).toBe('/w/engineering/p/NEX/overview')
+  })
+})
+
+describe('Board | List (UX Phase 3, 3.5: one segmented control)', () => {
+  it('choosing List is a step Back undoes', async () => {
+    const router = createMemoryRouter([{ path: '/w/:ws/p/:projectKey/:tab', element: <TasksTab project={project} people={[]} phases={[]} /> }], {
+      initialEntries: ['/w/engineering/p/NEX/tasks?view=board'],
+    })
+    await act(async () => render(<RouterProvider router={router} />))
+    expect(screen.getByRole('radiogroup', { name: 'View' })).toBeTruthy()
+    await act(async () => fireEvent.click(screen.getByRole('radio', { name: 'List' })))
+    expect(router.state.location.search).toBe('?view=list')
+    expect(router.state.historyAction).toBe('PUSH')
+    await act(() => router.navigate(-1))
+    expect(screen.getByRole('radio', { name: 'Board' }).getAttribute('aria-checked')).toBe('true')
   })
 })
