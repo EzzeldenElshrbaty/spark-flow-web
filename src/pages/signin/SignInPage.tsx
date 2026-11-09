@@ -80,7 +80,7 @@ export function SignInPage() {
               <input className={inputClass} type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
             </Field>
             {signIn.isError && (
-              <p role="alert" className="text-sm text-red-700 dark:text-red-300">
+              <p role="alert" className="text-sm text-red-600 dark:text-red-400">
                 {signIn.error.message}
               </p>
             )}

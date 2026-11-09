@@ -100,7 +100,7 @@ function AuditLog({ ready }: { ready: boolean }) {
         }
       />
       {exportLog.isError && (
-        <p role="alert" className="-mt-3 mb-4 text-sm text-red-700 dark:text-red-300">
+        <p role="alert" className="-mt-3 mb-4 text-sm text-red-600 dark:text-red-400">
           The export didn't work. Try again.
         </p>
       )}

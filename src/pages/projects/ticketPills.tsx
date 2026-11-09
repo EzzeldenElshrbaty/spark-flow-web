@@ -22,10 +22,10 @@ const statusStyle: Record<string, Pill> = {
 /** Pastel column tints for the board, one per standard column (as the Opportunities board's stages). */
 const statusTint: Record<string, Tint> = {
   backlog: { head: 'bg-surface-muted', body: 'bg-surface-sunken/60', border: 'border-line', dot: 'bg-fg-subtle' },
-  todo: { head: 'bg-sky-50 dark:bg-sky-500/10', body: 'bg-sky-50/40 dark:bg-sky-500/[0.04]', border: 'border-sky-100 dark:border-sky-500/20', dot: 'bg-sky-400' },
-  inProgress: { head: 'bg-amber-50 dark:bg-amber-500/10', body: 'bg-amber-50/40 dark:bg-amber-500/[0.04]', border: 'border-amber-100 dark:border-amber-500/20', dot: 'bg-amber-400' },
-  inReview: { head: 'bg-violet-50 dark:bg-violet-500/10', body: 'bg-violet-50/40 dark:bg-violet-500/[0.04]', border: 'border-violet-100 dark:border-violet-500/20', dot: 'bg-violet-400' },
-  done: { head: 'bg-emerald-50 dark:bg-emerald-500/10', body: 'bg-emerald-50/40 dark:bg-emerald-500/[0.04]', border: 'border-emerald-100 dark:border-emerald-500/20', dot: 'bg-emerald-400' },
+  todo: { head: 'bg-sky-50 dark:bg-sky-500/15', body: 'bg-sky-50/40 dark:bg-sky-500/[0.04]', border: 'border-sky-100 dark:border-sky-500/20', dot: 'bg-sky-400' },
+  inProgress: { head: 'bg-amber-50 dark:bg-amber-500/15', body: 'bg-amber-50/40 dark:bg-amber-500/[0.04]', border: 'border-amber-100 dark:border-amber-500/20', dot: 'bg-amber-400' },
+  inReview: { head: 'bg-violet-50 dark:bg-violet-500/15', body: 'bg-violet-50/40 dark:bg-violet-500/[0.04]', border: 'border-violet-100 dark:border-violet-500/20', dot: 'bg-violet-400' },
+  done: { head: 'bg-emerald-50 dark:bg-emerald-500/15', body: 'bg-emerald-50/40 dark:bg-emerald-500/[0.04]', border: 'border-emerald-100 dark:border-emerald-500/20', dot: 'bg-emerald-400' },
 }
 
 /** A column's tint: a standard column's own while its type is the standard one's, else its type's. */

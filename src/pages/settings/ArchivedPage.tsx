@@ -204,7 +204,7 @@ function RestoreButton({ record }: { record: ArchivedRecord }) {
         {run.isPending ? 'Restoring…' : 'Restore'}
       </Button>
       {run.isError && (
-        <span role="alert" className="max-w-56 text-end text-xs text-red-700 dark:text-red-300">
+        <span role="alert" className="max-w-56 text-end text-xs text-red-600 dark:text-red-400">
           {run.error.message}
         </span>
       )}

@@ -38,6 +38,14 @@ describe('Button and IconButton', () => {
     expect(button.className).not.toContain('bg-sf-accent-fill')
   })
 
+  it('the white compose button (New task, New message) is ink in dark (UX Phase 3, 3.6)', () => {
+    render(<IconButton label="New message" icon={IconStar} tone="compose" />)
+    const button = screen.getByRole('button', { name: 'New message' })
+    expect(button.className).toContain('bg-sf-white')
+    expect(button.className).toContain('dark:bg-sf-ink-700')
+    expect(button.className).toContain('dark:text-sf-white')
+  })
+
   it('an icon button is named by its label and reports pressed and shortcut', () => {
     render(<IconButton label="Star channel" icon={IconStar} pressed shortcut={['⌘', 'K']} />)
     const button = screen.getByRole('button', { name: 'Star channel' })

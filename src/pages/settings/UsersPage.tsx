@@ -368,7 +368,7 @@ function PersonSheet({
               <RotateCcw className="size-4" /> {reactivate.isPending ? 'Reactivating…' : 'Reactivate'}
             </Button>
             {reactivate.isError && (
-              <p role="alert" className="m-0 w-full text-sm text-red-700 dark:text-red-300">
+              <p role="alert" className="m-0 w-full text-sm text-red-600 dark:text-red-400">
                 {reactivate.error.message || "Couldn't reactivate them. Try again."}
               </p>
             )}
@@ -421,7 +421,7 @@ function PersonSheet({
           </fieldset>
         )}
         {refused && !fieldOf(refused) && (
-          <p role="alert" className="text-sm text-red-700 dark:text-red-300">
+          <p role="alert" className="text-sm text-red-600 dark:text-red-400">
             {refused}
           </p>
         )}

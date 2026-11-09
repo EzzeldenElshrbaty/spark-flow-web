@@ -507,7 +507,7 @@ function WorkHoursForm({ current, timeoutHours, onClose }: { current: WorkHours;
           <input type="number" min={1} max={12} step={1} inputMode="numeric" className={inputClass} value={timeout} onChange={(e) => setTimeoutHours(e.target.value)} />
         </Field>
         {error && (
-          <p role="alert" className="text-sm text-red-700 dark:text-red-300">
+          <p role="alert" className="text-sm text-red-600 dark:text-red-400">
             {error}
           </p>
         )}

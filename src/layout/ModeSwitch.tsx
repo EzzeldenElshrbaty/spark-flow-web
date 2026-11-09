@@ -65,7 +65,7 @@ export function ModeSwitch({
         aria-hidden
         data-thumb
         className={clsx(
-          'absolute rounded-sf-md bg-sf-white shadow-[0_1px_2px_rgba(0,0,0,0.5)] transition-transform duration-300 ease-sf motion-reduce:transition-none',
+          'absolute rounded-sf-md bg-sf-white shadow-[0_1px_2px_rgba(0,0,0,0.5)] dark:bg-sf-ink-700 transition-transform duration-300 ease-sf motion-reduce:transition-none',
           upright
             ? clsx('inset-x-1 top-1 h-[calc(50%-4px)]', mode === 'chat' && 'translate-y-full')
             : clsx('inset-y-1 start-1 w-[calc(50%-4px)]', mode === 'chat' && 'translate-x-full rtl:-translate-x-full'),
@@ -92,10 +92,11 @@ export function ModeSwitch({
               className={clsx(
                 'sf-focus relative z-[1] flex min-w-0 cursor-pointer items-center justify-center gap-2 rounded-sf-md font-sf text-[14px]/[20px] font-medium transition-colors duration-150 ease-sf',
                 upright ? 'px-0' : 'px-2',
-                selected ? 'text-sf-ink-950' : 'text-sf-sidebar-text hover:bg-sf-sidebar-active hover:text-sf-sidebar-text-strong',
+                // On a dark screen the thumb is the raised ink, not white (UX Phase 3, 3.6).
+                selected ? 'text-sf-ink-950 dark:text-sf-white' : 'text-sf-sidebar-text hover:bg-sf-sidebar-active hover:text-sf-sidebar-text-strong',
               )}
             >
-              <Icon icon={side.icon} size={18} className={selected ? 'text-sf-red-600' : undefined} />
+              <Icon icon={side.icon} size={18} className={selected ? 'text-sf-red-600 dark:text-sf-red-400' : undefined} />
               <span className={upright ? 'sr-only' : 'truncate'}>{side.label}</span>
               {count > 0 && (
                 <>

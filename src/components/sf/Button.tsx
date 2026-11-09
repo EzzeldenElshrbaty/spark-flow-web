@@ -53,7 +53,8 @@ const tones = {
   sidebar: 'text-sf-sidebar-text enabled:hover:bg-sf-sidebar-hover enabled:hover:text-sf-sidebar-text-strong',
   'sidebar-muted':
     'text-sf-sidebar-text-muted enabled:hover:bg-sf-sidebar-hover enabled:hover:text-sf-sidebar-text-strong',
-  compose: 'bg-sf-white text-sf-ink-950 enabled:hover:bg-sf-ink-100',
+  // White on the dark sidebar; the raised ink on a dark screen, so it isn't the brightest thing there (UX Phase 3, 3.6).
+  compose: 'bg-sf-white text-sf-ink-950 enabled:hover:bg-sf-ink-100 dark:bg-sf-ink-700 dark:text-sf-white dark:enabled:hover:bg-sf-ink-600',
   /** On ink-950 (toasts). */
   ink: 'text-sf-ink-300 enabled:hover:bg-sf-ink-800 enabled:hover:text-sf-white',
 }

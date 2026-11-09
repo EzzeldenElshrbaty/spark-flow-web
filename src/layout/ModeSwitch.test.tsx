@@ -63,6 +63,9 @@ describe('ModeSwitch (spec 5.5)', () => {
     show({ mode: 'chat' })
     const thumb = screen.getByRole('tablist').querySelector('[data-thumb]') as HTMLElement
     expect(thumb.className).toContain('bg-sf-white')
+    // Not the brightest thing on a dark screen (UX Phase 3, 3.6): the dark raised ink, with light words on it.
+    expect(thumb.className).toContain('dark:bg-sf-ink-700')
+    expect(screen.getByRole('tab', { selected: true }).className).toContain('dark:text-sf-white')
     expect(thumb.className).toContain('translate-x-full')
     expect(thumb.className).toContain('motion-reduce:transition-none')
   })
