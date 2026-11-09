@@ -1,12 +1,33 @@
 import { IconX } from '@tabler/icons-react'
 import clsx from 'clsx'
-import { useEffect, useId, useRef, type ReactNode } from 'react'
-import { IconButton } from './Button'
+import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { useUnsavedChanges } from '@/lib/unsavedChanges'
+import { Button, IconButton } from './Button'
 import { focusables, InModalScope, SfPortal, trapTab, useEscapeLayer, useRestoreFocus } from './layers'
+
+/** How a footer button closes its dialog: through the "Discard …?" question when the form has changes. */
+const ModalClose = createContext<() => void>(() => {})
+
+/** Closes the dialog this sits in, asking first when its form has changes (UX Phase 3, as `useSheetClose`). */
+export function useModalClose() {
+  return useContext(ModalClose)
+}
+
+/** A dialog's Cancel: closes it, asking "Discard …?" first when its form has changes. */
+export function ModalCancelButton({ children = 'Cancel', disabled, touch }: { children?: ReactNode; disabled?: boolean; touch?: boolean }) {
+  const close = useModalClose()
+  return (
+    <Button touch={touch} onClick={close} disabled={disabled}>
+      {children}
+    </Button>
+  )
+}
 
 /**
  * Centred dialog on the overlay scrim (spec 6.13). Focus moves in and is trapped, and goes back to what
  * opened it on close. It closes with × or Esc, never with a stray click on the scrim.
+ * A form with changes passes `dirty`: then ×, Esc, Cancel (`ModalCancelButton`) and the browser's Back ask
+ * `discardQuestion` in the footer (Keep editing · Discard) before anything is thrown away (UX Phase 3, as `Sheet`).
  */
 export function Modal({
   open,
@@ -17,6 +38,8 @@ export function Modal({
   footer,
   fallbackFocus,
   wide = false,
+  dirty = false,
+  discardQuestion = 'Discard your changes?',
   children,
 }: {
   open: boolean
@@ -31,6 +54,9 @@ export function Modal({
   fallbackFocus?: () => HTMLElement | null | undefined
   /** 720px instead of 540 (spec 6.10: the snippet). */
   wide?: boolean
+  /** The form has changes: closing asks `discardQuestion` first. */
+  dirty?: boolean
+  discardQuestion?: string
   children?: ReactNode
 }) {
   const titleId = useId()
@@ -38,7 +64,25 @@ export function Modal({
   const panelRef = useRef<HTMLDivElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
 
-  useEscapeLayer(open, onClose)
+  const onCloseRef = useRef(onClose)
+  useEffect(() => {
+    onCloseRef.current = onClose
+  })
+  // The open "Discard …?" question: what Discard and Keep editing do.
+  const [asking, setAsking] = useState<{ discard: () => void; keep: () => void } | null>(null)
+  const requestClose = () => (dirty ? setAsking({ discard: () => onCloseRef.current(), keep: () => {} }) : onCloseRef.current())
+  // Back closes the dialog first (after asking) and keeps the page: the next Back leaves it.
+  useUnsavedChanges(open && dirty, 'sheet', (_leave, stay) =>
+    setAsking({
+      discard: () => {
+        stay()
+        onCloseRef.current()
+      },
+      keep: stay,
+    }),
+  )
+
+  useEscapeLayer(open, requestClose)
   useRestoreFocus(open, fallbackFocus)
 
   useEffect(() => {
@@ -95,12 +139,44 @@ export function Modal({
                 ref={closeRef}
                 label="Close"
                 icon={IconX}
-                onClick={onClose}
+                onClick={requestClose}
                 className={`relative max-md:after:absolute max-md:after:-inset-1.5 ${actions ? '' : 'ms-auto'}`}
               />
             </div>
-            {children}
-            {footer && <div className="mt-6 flex items-center justify-end gap-2">{footer}</div>}
+            <ModalClose.Provider value={requestClose}>{children}</ModalClose.Provider>
+            {(footer || asking) && (
+              <div className="mt-6 flex flex-wrap items-center justify-end gap-2">
+                {asking ? (
+                  <>
+                    <p className="sf-ui-medium me-auto mb-0 text-sf-text" role="status">
+                      {discardQuestion}
+                    </p>
+                    <Button
+                      touch
+                      autoFocus
+                      onClick={() => {
+                        setAsking(null)
+                        asking.keep()
+                      }}
+                    >
+                      Keep editing
+                    </Button>
+                    <Button
+                      touch
+                      variant="danger"
+                      onClick={() => {
+                        setAsking(null)
+                        asking.discard()
+                      }}
+                    >
+                      Discard
+                    </Button>
+                  </>
+                ) : (
+                  <ModalClose.Provider value={requestClose}>{footer}</ModalClose.Provider>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </InModalScope>

@@ -1,8 +1,7 @@
 import { useId, useState } from 'react'
 import { Button } from '@/components/sf/Button'
+import { fieldClass as field } from '@/components/sf/field'
 import { Modal } from '@/components/sf/Modal'
-
-const field = 'sf-ui h-sf-input w-full min-w-0 rounded-sf-md border border-sf-line-strong bg-sf-surface px-3 text-sf-text outline-none focus:border-sf-focus focus:shadow-[0_0_0_3px_var(--surface-mention)] max-md:h-11'
 
 /** Add a bookmark (spec 6.1 +): a web address and an optional name; a refusal is said here and what was typed stays. */
 export function AddBookmarkDialog({ onAdd, onClose }: { onAdd: (bookmark: { title: string; url: string }) => Promise<unknown>; onClose: () => void }) {

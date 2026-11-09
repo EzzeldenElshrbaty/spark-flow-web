@@ -44,8 +44,8 @@ import { SIDEBAR_WIDTH, useUiStore } from '@/lib/uiStore'
 import { usePermission } from '@/lib/usePermission'
 import { useRole } from '@/lib/useRole'
 import { canSee, settingsItem } from '@/navigation'
-import { ChannelSheet } from '@/pages/chat/ChannelSheet'
-import { NewMessageSheet } from '@/pages/chat/NewMessageSheet'
+import { NewChannelDialog } from '@/pages/chat/NewChannelDialog'
+import { NewMessageDialog } from '@/pages/chat/NewMessageDialog'
 
 type SideLinkProps = {
   to: string
@@ -524,10 +524,10 @@ export function SidebarContent({
         </div>
       )}
       {newChannel && workspace && (
-        <ChannelSheet workspaceId={workspace.id} workspaceSlug={workspace.slug} onClose={() => setNewChannel(false)} />
+        <NewChannelDialog workspaceId={workspace.id} workspaceSlug={workspace.slug} onClose={() => setNewChannel(false)} />
       )}
       {newMessage && workspace && (
-        <NewMessageSheet workspaceId={workspace.id} workspaceSlug={workspace.slug} onClose={() => setNewMessage(false)} />
+        <NewMessageDialog workspaceId={workspace.id} workspaceSlug={workspace.slug} onClose={() => setNewMessage(false)} />
       )}
     </div>
   )
@@ -580,7 +580,7 @@ export function SidebarHeader({ collapsed = false, onNavigate }: { collapsed?: b
         <>
           <IconButton label="New message" icon={IconEdit} tone="compose" className="ms-auto" onClick={() => setNewMessage(true)} />
           {newMessage && (
-            <NewMessageSheet workspaceId={workspace.id} workspaceSlug={workspace.slug} onClose={() => setNewMessage(false)} />
+            <NewMessageDialog workspaceId={workspace.id} workspaceSlug={workspace.slug} onClose={() => setNewMessage(false)} />
           )}
         </>
       )}

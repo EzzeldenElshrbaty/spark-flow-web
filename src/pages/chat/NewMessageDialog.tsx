@@ -2,17 +2,20 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useOpenDm } from '@/api/chat'
 import { useMe, useUsers } from '@/api/users'
-import { isActive } from '@/lib/people'
 import { Avatar } from '@/components/Avatar'
-import { Button } from '@/components/ui/Button'
-import { inputClass } from '@/components/ui/Field'
-import { Sheet, SheetCancelButton } from '@/components/ui/Sheet'
+import { Button } from '@/components/sf/Button'
+import { fieldClass } from '@/components/sf/field'
+import { Modal, ModalCancelButton } from '@/components/sf/Modal'
 import { paths } from '@/lib/paths'
+import { isActive } from '@/lib/people'
 
 const MAX_OTHERS = 8
 
-/** New message: pick one person or a few (up to 8), then open the conversation you have with exactly them. */
-export function NewMessageSheet({ workspaceId, workspaceSlug, onClose }: { workspaceId: string; workspaceSlug: string; onClose: () => void }) {
+/**
+ * New message, as a chat dialog (UX Phase 3, 3.1): pick one person or a few (up to 8), then open the conversation you
+ * have with exactly them.
+ */
+export function NewMessageDialog({ workspaceId, workspaceSlug, onClose }: { workspaceId: string; workspaceSlug: string; onClose: () => void }) {
   const navigate = useNavigate()
   const me = useMe().data
   // Not me, and nobody deactivated (slice 3).
@@ -41,47 +44,46 @@ export function NewMessageSheet({ workspaceId, workspaceSlug, onClose }: { works
   }
 
   return (
-    <Sheet
+    <Modal
       open
       onClose={onClose}
       // Closing with people picked asks first (UX Phase 1, 1.2).
       dirty={picked.length > 0}
       discardQuestion="Discard this new message?"
-      variant="drawer"
       title="New message"
       description="Pick one person, or a few for a group conversation."
       footer={
         <>
-          <SheetCancelButton disabled={open.isPending} />
-          <Button onClick={go} disabled={open.isPending}>
+          <ModalCancelButton touch disabled={open.isPending} />
+          <Button touch variant="primary" onClick={go} disabled={open.isPending}>
             {open.isPending ? 'Opening…' : 'Open conversation'}
           </Button>
         </>
       }
     >
       <div className="space-y-3">
-        <input className={inputClass} placeholder="Find people" aria-label="Find people" value={filter} onChange={(e) => setFilter(e.target.value)} />
-        <ul className="max-h-96 space-y-0.5 overflow-y-auto rounded-lg border border-line p-1">
+        <input className={fieldClass} placeholder="Find people" aria-label="Find people" value={filter} onChange={(e) => setFilter(e.target.value)} />
+        <ul className="m-0 max-h-96 list-none space-y-0.5 overflow-y-auto rounded-sf-md border border-sf-line p-1">
           {shown.map((u) => (
             <li key={u.id}>
-              <label className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm text-fg hover:bg-surface-muted">
-                <input type="checkbox" className="size-4 accent-brand-500" checked={picked.includes(u.id)} onChange={() => toggle(u.id)} />
+              <label className="sf-ui flex cursor-pointer items-center gap-2.5 rounded-sf-sm px-2 py-1.5 text-sf-text hover:bg-sf-surface-hover max-md:min-h-11">
+                <input type="checkbox" className="size-4 accent-[var(--accent-fill)]" checked={picked.includes(u.id)} onChange={() => toggle(u.id)} />
                 <Avatar name={u.name} size={24} decorative />
                 <span className="min-w-0 flex-1 truncate">
                   {u.name}
-                  {u.title && <span className="text-fg-muted"> · {u.title}</span>}
+                  {u.title && <span className="text-sf-text-muted"> · {u.title}</span>}
                 </span>
               </label>
             </li>
           ))}
-          {shown.length === 0 && <li className="px-2 py-3 text-sm text-fg-muted">No one matches.</li>}
+          {shown.length === 0 && <li className="sf-ui px-2 py-3 text-sf-text-muted">No one matches.</li>}
         </ul>
         {(error ?? open.error) && (
-          <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+          <p role="alert" className="sf-small m-0 text-sf-error">
             {error ?? (open.error as Error).message}
           </p>
         )}
       </div>
-    </Sheet>
+    </Modal>
   )
 }
