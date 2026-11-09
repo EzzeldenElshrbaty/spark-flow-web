@@ -57,18 +57,18 @@ const nav = () => screen.getByRole('navigation', { name: 'Workspace' })
 describe('The sidebar shows one side of Flow at a time (spec 5.5)', () => {
   it('on the Projects side: Work, Manage and the projects, no chat rows', () => {
     at('/w/engineering/p/NEX/tasks', <SidebarContent />)
-    for (const name of ['Home', 'Projects', 'My tasks', 'Teams', 'Dashboard', 'Time & cost', 'Nexus Core']) {
+    for (const name of ['My work', 'Projects', 'Teams', 'Dashboard', 'Time & cost', 'Nexus Core']) {
       expect(within(nav()).getByRole('link', { name }), name).toBeTruthy()
     }
     for (const name of ['Activity', 'Saved', 'general']) expect(within(nav()).queryByRole('link', { name }), name).toBeNull()
     expect(screen.getByRole('link', { name: 'Settings' })).toBeTruthy()
   })
 
-  it('the Work group lists Dashboard first, then Home, for a Member (dashboard start)', () => {
+  it('the Work group lists Dashboard first, then My work, for a Member (dashboard start; UX Phase 2)', () => {
     allow = () => false
     at('/w/engineering/p/NEX/tasks', <SidebarContent />)
     const list = document.getElementById(screen.getByRole('button', { name: 'Work' }).getAttribute('aria-controls')!)!
-    expect(within(list).getAllByRole('link').map((a) => a.textContent)).toEqual(['Dashboard', 'Home', 'Projects', 'My tasks', 'Teams'])
+    expect(within(list).getAllByRole('link').map((a) => a.textContent)).toEqual(['Dashboard', 'My work', 'Projects', 'Teams'])
     // Manage keeps Time & cost only, for whoever may see it.
     expect(screen.queryByRole('button', { name: 'Manage' })).toBeNull()
     expect(within(nav()).getAllByRole('link', { name: 'Dashboard' })).toHaveLength(1)
@@ -80,7 +80,7 @@ describe('The sidebar shows one side of Flow at a time (spec 5.5)', () => {
       expect(within(nav()).getByRole('link', { name }), name).toBeTruthy()
     }
     expect(within(nav()).getByRole('button', { name: /Channels/ })).toBeTruthy()
-    for (const name of ['Home', 'My tasks', 'Dashboard', 'Nexus Core']) expect(within(nav()).queryByRole('link', { name }), name).toBeNull()
+    for (const name of ['My work', 'Dashboard', 'Nexus Core']) expect(within(nav()).queryByRole('link', { name }), name).toBeNull()
     // The switch already says Chat: the quick links need no heading of their own.
     expect(within(nav()).queryByRole('button', { name: /^Chat/ })).toBeNull()
     expect(screen.getByRole('link', { name: 'Settings' })).toBeTruthy()

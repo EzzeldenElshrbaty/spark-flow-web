@@ -10,6 +10,7 @@ import { ChartCard } from '@/components/charts/ChartCard'
 import { ColumnChart } from '@/components/charts/ColumnChart'
 import { Avatar } from '@/components/ui/Avatar'
 import { DataTable, TableSkeleton, type Column } from '@/components/ui/DataTable'
+import { NoAccess } from '@/components/ui/NoAccess'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
@@ -178,12 +179,7 @@ export function TimeCostPage() {
     return (
       <>
         <PageHeader title="Time & cost" />
-        <p className="text-sm text-fg-secondary">
-          You don't have access to time and cost.{' '}
-          <Link to={paths.home(ws)} className="font-medium text-accent hover:text-accent-strong">
-            Go to Home
-          </Link>
-        </p>
+        <NoAccess ws={ws} what="time and cost" />
       </>
     )
   }

@@ -196,7 +196,7 @@ describe('Audit log (Admin and help, slice 2)', () => {
   it('without "See the audit log" it says so and asks for nothing, not even a linked entry', async () => {
     me = { ...me, roleIds: ['member'], grants: ['checkins.managed'] }
     await mount('?entry=2')
-    expect(await screen.findByText(/You don't have access to the audit log\./)).toBeTruthy()
+    expect(await screen.findByText(/You don’t have access to the audit log\./)).toBeTruthy()
     expect(api.audit.list).not.toHaveBeenCalled()
     expect(api.audit.summary).not.toHaveBeenCalled()
     expect(api.audit.get).not.toHaveBeenCalled()

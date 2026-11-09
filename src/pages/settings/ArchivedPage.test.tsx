@@ -129,7 +129,7 @@ describe('Settings → Archived records (Admin and help, slice 4)', () => {
   it('without "Manage archived records" it says so and asks for nothing', async () => {
     me = { ...me, roleIds: ['member'], grants: ['checkins.managed'] }
     await mount()
-    expect(await screen.findByText(/You don't have access to archived records\./)).toBeTruthy()
+    expect(await screen.findByText(/You don’t have access to archived records\./)).toBeTruthy()
     expect(api.archive.list).not.toHaveBeenCalled()
   })
 })

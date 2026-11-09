@@ -177,7 +177,7 @@ describe('Roles and permissions (slice 1)', () => {
   it('without the right to change roles, it says so and shows nothing to change', async () => {
     me = { ...me, roleIds: ['member'], grants: ['checkins.managed'] }
     await mount(false)
-    expect(await screen.findByText(/You don't have access to roles and permissions/)).toBeTruthy()
+    expect(await screen.findByText(/You don’t have access to roles and permissions/)).toBeTruthy()
     expect(screen.queryByRole('table')).toBeNull()
   })
 })

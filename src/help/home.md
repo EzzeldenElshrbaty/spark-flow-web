@@ -1,12 +1,12 @@
 ---
-title: Home and My day
+title: My work
 group: Work
 order: 1
-summary: Start your timer, see today's time, what's due and who mentioned you.
+summary: Start your timer, see today's time, every open task of yours and who mentioned you.
 ---
-Home is your day: your timer and today's time, your tasks due today or overdue, and the latest mentions of you. It's in the sidebar under Work, after the [Dashboard](help:dashboard) you start on; on a phone, it's in **More**.
+My work is your day in one place: your timer and today's time, every open task assigned to you, and the latest mentions of you. It's in the sidebar under Work, after the [Dashboard](help:dashboard) you start on; on a phone, it's in **More**.
 
-![Home with a running timer](home.jpg "Today, with the timer on a task")
+![My work with a running timer](home.jpg "Today, with the timer on a task")
 
 ## Today
 
@@ -25,6 +25,10 @@ One timer runs at a time: starting another stops the last.
 
 The timer also shows in the top bar (and above the bottom bar on phones), so you can pause or stop it from any page. **Add time** logs time you didn't time. See [Time](help:time) for the rules.
 
+## My tasks
+
+Every open task assigned to you, across every project: overdue first, then the ones over their estimate, then by due date. Open one to see its panel, or press **Start** to start your timer on it. The old My tasks address opens this page.
+
 ## Mentions
 
-When someone writes `@` and your name in a message or comment, it shows here and in the bell. Open it to go to the message.
+When someone writes `@` and your name in a message or comment, it shows here and in the bell. Open it to go to the message. **See all** opens [Activity](help:threads-activity).

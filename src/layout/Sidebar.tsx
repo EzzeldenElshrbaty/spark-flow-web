@@ -9,7 +9,6 @@ import {
   IconEdit,
   IconFolder,
   IconHash,
-  IconHome,
   IconLayoutDashboard,
   IconLayoutKanban,
   IconListCheck,
@@ -393,13 +392,10 @@ export function SidebarContent({
               <SideLink to={paths.dashboard(slug)} label="Dashboard" icon={IconLayoutDashboard} {...row} />
             </li>
             <li className="flex-none">
-              <SideLink to={paths.home(slug)} end label="Home" icon={IconHome} {...row} />
+              <SideLink to={paths.home(slug)} end label="My work" icon={IconListCheck} {...row} />
             </li>
             <li className="flex-none">
               <SideLink to={paths.projects(slug)} label="Projects" icon={IconLayoutKanban} {...row} />
-            </li>
-            <li className="flex-none">
-              <SideLink to={paths.tasks(slug)} label="My tasks" icon={IconListCheck} {...row} />
             </li>
             <li className="flex-none">
               <SideLink to={paths.teams(slug)} label="Teams" icon={IconUsers} {...row} />

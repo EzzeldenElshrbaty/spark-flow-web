@@ -6,6 +6,7 @@ import { useExportData, useImportData, useResetDemo } from '@/api/db'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { DeleteDialog } from '@/components/ui/DeleteDialog'
+import { NoAccess } from '@/components/ui/NoAccess'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { backendOn } from '@/lib/api'
 import { paths } from '@/lib/paths'
@@ -94,12 +95,7 @@ export function DatabasePage() {
       <>
         {back}
         <PageHeader title="Database" />
-        <p className="text-sm text-fg-secondary">
-          You don't have access to the database.{' '}
-          <Link to={paths.workspace(ws)} className="font-medium text-accent hover:text-accent-strong">
-            Go to Home
-          </Link>
-        </p>
+        <NoAccess ws={ws} what="the database" />
       </>
     )
   }

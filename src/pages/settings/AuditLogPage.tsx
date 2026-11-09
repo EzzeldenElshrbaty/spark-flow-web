@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { DataTable, TableSkeleton, type Column } from '@/components/ui/DataTable'
 import { inputClass, selectClass } from '@/components/ui/Field'
+import { NoAccess } from '@/components/ui/NoAccess'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
 import { Sheet } from '@/components/ui/Sheet'
@@ -39,12 +40,7 @@ export function AuditLogPage() {
       <>
         {back}
         <PageHeader title="Audit log" />
-        <p className="text-sm text-fg-secondary">
-          You don't have access to the audit log.{' '}
-          <Link to={paths.workspace(ws)} className="font-medium text-accent hover:text-accent-strong">
-            Go to Home
-          </Link>
-        </p>
+        <NoAccess ws={ws} what="the audit log" />
       </>
     )
   }

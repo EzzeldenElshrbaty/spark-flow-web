@@ -18,7 +18,8 @@ export const PAGE_HELP: PageHelp[] = [
   { path: 'saved', chapter: 'saved-drafts', sections: ['Saved'] },
   { path: 'drafts', chapter: 'saved-drafts', sections: ['Drafts & sent'] },
   { path: 'projects', chapter: 'projects' },
-  { path: 'tasks', chapter: 'tasks', sections: ['My tasks'] },
+  // Old My tasks addresses open My work (UX Phase 2, 2.1).
+  { path: 'tasks', chapter: 'home', sections: ['My tasks'] },
   { path: 'dashboard', chapter: 'dashboard' },
   { path: 'time', chapter: 'time-cost', needs: 'timeCost.view' },
   { path: 'teams', chapter: 'teams' },

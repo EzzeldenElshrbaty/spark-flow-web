@@ -9,6 +9,7 @@ import { RowMenu, type RowMenuItem } from '@/components/RowMenu'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Field, inputClass, selectClass } from '@/components/ui/Field'
+import { NoAccess } from '@/components/ui/NoAccess'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
 import { LeaveGuard } from '@/components/ui/LeaveGuard'
@@ -58,12 +59,7 @@ export function RolesPage() {
       <>
         {back}
         <PageHeader title={title} />
-        <p className="text-sm text-fg-secondary">
-          You don't have access to roles and permissions.{' '}
-          <Link to={paths.workspace(ws)} className="font-medium text-accent hover:text-accent-strong">
-            Go to Home
-          </Link>
-        </p>
+        <NoAccess ws={ws} what="roles and permissions" />
       </>
     )
   }

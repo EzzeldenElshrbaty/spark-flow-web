@@ -16,12 +16,12 @@ function page<K extends string>(load: () => Promise<Record<K, ComponentType>>, n
 
 const ChannelPage = page(() => import('@/pages/chat/ChannelPage'), 'ChannelPage')
 const ProjectPage = page(() => import('@/pages/projects/ProjectPage'), 'ProjectPage')
-const HomePage = page(() => import('@/pages/home/HomePage'), 'HomePage')
+const MyWorkPage = page(() => import('@/pages/home/MyWorkPage'), 'MyWorkPage')
+const MyTasksRedirect = page(() => import('@/pages/home/MyWorkPage'), 'MyTasksRedirect')
 const DashboardPage = page(() => import('@/pages/dashboard/DashboardPage'), 'DashboardPage')
 const TimeCostPage = page(() => import('@/pages/time/TimeCostPage'), 'TimeCostPage')
 const TeamsPage = page(() => import('@/pages/teams/TeamsPage'), 'TeamsPage')
 const ProjectsPage = page(() => import('@/pages/projects/ProjectsPage'), 'ProjectsPage')
-const MyTasksPage = page(() => import('@/pages/tasks/MyTasksPage'), 'MyTasksPage')
 const SettingsPage = page(() => import('@/pages/settings/SettingsPage'), 'SettingsPage')
 const DatabasePage = page(() => import('@/pages/settings/DatabasePage'), 'DatabasePage')
 const RatesPage = page(() => import('@/pages/settings/RatesPage'), 'RatesPage')
@@ -71,7 +71,8 @@ function devRoutes() {
 
 /** The pages inside a workspace (`/w/:ws/...`); `lib/pageHelp.test.ts` checks each has help or says why not. */
 export const workspacePages: RouteObject[] = [
-  { index: true, element: <HomePage /> },
+  // My work (UX Phase 2, 2.1): the workspace's own page; old My tasks links open it.
+  { index: true, element: <MyWorkPage /> },
   // A pane: the channel fills the main card and scrolls its own message list (spec 5.3).
   { path: 'c/:channelId', element: <ChannelPage />, handle: { pane: true } },
   { path: 'activity', element: <ActivityPage />, handle: { pane: true } },
@@ -81,7 +82,7 @@ export const workspacePages: RouteObject[] = [
   { path: 'saved', element: <SavedPage />, handle: { pane: true } },
   { path: 'drafts', element: <DraftsPage />, handle: { pane: true } },
   { path: 'projects', element: <ProjectsPage /> },
-  { path: 'tasks', element: <MyTasksPage /> },
+  { path: 'tasks', element: <MyTasksRedirect /> },
   { path: 'dashboard', element: <DashboardPage /> },
   { path: 'time', element: <TimeCostPage /> },
   { path: 'teams', element: <TeamsPage /> },

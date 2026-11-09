@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { DataTable, TableSkeleton, type Column } from '@/components/ui/DataTable'
 import { Field, inputClass, selectClass } from '@/components/ui/Field'
+import { NoAccess } from '@/components/ui/NoAccess'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
 import { Sheet, SheetCancelButton } from '@/components/ui/Sheet'
@@ -41,12 +42,7 @@ export function UsersPage() {
       <>
         {back}
         <PageHeader title="Users" />
-        <p className="text-sm text-fg-secondary">
-          You don't have access to users.{' '}
-          <Link to={paths.workspace(ws)} className="font-medium text-accent hover:text-accent-strong">
-            Go to Home
-          </Link>
-        </p>
+        <NoAccess ws={ws} what="users" />
       </>
     )
   }

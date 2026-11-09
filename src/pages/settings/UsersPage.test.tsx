@@ -193,7 +193,7 @@ describe('Settings → Users (Admin and help, slice 3)', () => {
   it('without "Change settings, users and roles" it says so and asks for nothing', async () => {
     me = { ...me, roleIds: ['member'], grants: ['checkins.managed'] }
     await mount('?person=u-3')
-    expect(await screen.findByText(/You don't have access to users\./)).toBeTruthy()
+    expect(await screen.findByText(/You don’t have access to users\./)).toBeTruthy()
     expect(api.users.directory).not.toHaveBeenCalled()
     expect(screen.queryByRole('dialog')).toBeNull()
   })

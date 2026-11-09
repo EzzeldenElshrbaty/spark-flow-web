@@ -126,7 +126,7 @@ describe('the help panel beside a page', () => {
     fireEvent.click(within(panel).getByRole('button', { name: 'Attendance' }))
     expect(within(panel).getByRole('heading', { name: 'Attendance', level: 2 })).toBeTruthy()
     fireEvent.click(within(panel).getByRole('button', { name: 'Back to this page' }))
-    expect(within(panel).getByRole('heading', { name: 'Home and My day', level: 2 })).toBeTruthy()
+    expect(within(panel).getByRole('heading', { name: 'My work', level: 2 })).toBeTruthy()
     // Escape while typing belongs to the field.
     const field = document.body.appendChild(document.createElement('input'))
     field.focus()
@@ -138,7 +138,7 @@ describe('the help panel beside a page', () => {
     expect(screen.queryByRole('complementary')).toBeNull()
     // Opened again, it shows the page's own help, not the chapter followed before.
     act(() => useUiStore.setState({ helpOpen: true }))
-    expect(within(await screen.findByRole('complementary')).getByRole('heading', { name: 'Home and My day', level: 2 })).toBeTruthy()
+    expect(within(await screen.findByRole('complementary')).getByRole('heading', { name: 'My work', level: 2 })).toBeTruthy()
   })
 
   it('a thread, task or file panel takes the side: help steps aside', async () => {

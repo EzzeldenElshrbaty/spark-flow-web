@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { DataTable, TableSkeleton, type Column } from '@/components/ui/DataTable'
 import { Field, inputClass } from '@/components/ui/Field'
+import { NoAccess } from '@/components/ui/NoAccess'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
 import { DeleteDialog } from '@/components/ui/DeleteDialog'
@@ -42,12 +43,7 @@ export function ArchivedPage() {
       <>
         {back}
         <PageHeader title="Archived records" />
-        <p className="text-sm text-fg-secondary">
-          You don't have access to archived records.{' '}
-          <Link to={paths.workspace(ws)} className="font-medium text-accent hover:text-accent-strong">
-            Go to Home
-          </Link>
-        </p>
+        <NoAccess ws={ws} what="archived records" />
       </>
     )
   }

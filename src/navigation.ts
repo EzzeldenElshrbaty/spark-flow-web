@@ -1,5 +1,5 @@
 // Side menu of Spark Flow. Add each section here as its feature is built; `permission` (the can() table) limits who sees an item.
-import { IconClock, IconHome, IconLayoutDashboard, IconLayoutKanban, IconListCheck, IconSettings, IconUsers, type TablerIcon } from '@tabler/icons-react'
+import { IconClock, IconLayoutDashboard, IconLayoutKanban, IconListCheck, IconSettings, IconUsers, type TablerIcon } from '@tabler/icons-react'
 import { paths } from '@/lib/paths'
 import { can, type Action, type Permission, type ProjectScoped } from '@/lib/permissions'
 
@@ -27,9 +27,9 @@ export const navGroups: NavGroup[] = [
     items: [
       // Everyone's start page (dashboard start): it shows the projects they manage or work on.
       { path: 'dashboard', label: 'Dashboard', icon: IconLayoutDashboard, description: 'Your projects’ hours, tasks and who is working now', link: paths.dashboard },
-      { path: 'home', label: 'Home', icon: IconHome, description: 'Your day: timer, today’s time and mentions', link: paths.home },
+      // My work (UX Phase 2, 2.1): Home and My tasks in one.
+      { path: 'home', label: 'My work', icon: IconListCheck, description: 'Your timer, your open tasks and mentions of you', link: paths.home },
       { path: 'projects', label: 'Projects', icon: IconLayoutKanban, description: 'Every project in the workspace', link: paths.projects },
-      { path: 'tasks', label: 'My tasks', icon: IconListCheck, description: 'Your open tasks, overdue first', link: paths.tasks },
       { path: 'teams', label: 'Teams', icon: IconUsers, description: 'Teams and who is in them', link: paths.teams },
     ],
   },

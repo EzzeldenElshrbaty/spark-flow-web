@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { inputClass } from '@/components/ui/Field'
 import { LeaveGuard } from '@/components/ui/LeaveGuard'
+import { NoAccess } from '@/components/ui/NoAccess'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
@@ -112,12 +113,7 @@ export function RatesPage() {
       <>
         {back}
         <PageHeader title="Hourly cost" />
-        <p className="text-sm text-fg-secondary">
-          You don't have access to hourly costs.{' '}
-          <Link to={paths.workspace(ws)} className="font-medium text-accent hover:text-accent-strong">
-            Go to Home
-          </Link>
-        </p>
+        <NoAccess ws={ws} what="hourly costs" />
       </>
     )
   }

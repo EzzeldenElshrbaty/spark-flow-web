@@ -2,7 +2,7 @@
 title: Board and tasks
 group: Work
 order: 4
-summary: The board and list, a task's panel, comments and bugs, and My tasks.
+summary: The board and list, a task's panel, comments and bugs.
 ---
 A project's **Tasks** tab shows its tasks as a board or a list.
 
@@ -28,6 +28,6 @@ Below is its activity: comments and bugs, with files. Write `@` to mention someo
 
 **Archive task** asks why, then hides it from the board. Its time stays in reports.
 
-## My tasks
+## Your tasks
 
-My tasks lists your open tasks across every project, overdue first.
+Your open tasks across every project are on [My work](help:home).
