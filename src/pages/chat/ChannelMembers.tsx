@@ -239,7 +239,7 @@ function RemovePerson({ channel, person, onRemove, onClose }: { channel: Channel
           <Button touch onClick={onClose} disabled={pending}>
             Cancel
           </Button>
-          <Button touch variant="primary" disabled={pending} onClick={() => void remove()}>
+          <Button touch variant="danger" disabled={pending} onClick={() => void remove()}>
             {pending ? 'Removing…' : 'Remove'}
           </Button>
         </>

@@ -63,6 +63,16 @@ describe('flow tokens', () => {
     expect(checked).toBe(spec.color.tokens.length - 1)
   })
 
+  it('uses the kit’s reds: brand-500 for Spark Red, brand-600 for its hover, brand-50 for tints (UX Phase 3)', () => {
+    expect(resolve(light, 'red-600')).toBe('#b72126')
+    expect(resolve(light, 'red-700')).toBe('#9e1d21')
+    expect(resolve(light, 'red-50')).toBe('#fcf1f1')
+    expect(resolve(light, 'focus-ring')).toContain('var(--red-600)')
+    // Delete confirms have their own fill, not Spark Red (one danger style with the kit).
+    expect(resolve(light, 'danger-fill')).toBe('#e7000b')
+    expect(resolve(dark, 'danger-fill')).toBe('#e7000b')
+  })
+
   it('keeps the overlay values of section 3.2', () => {
     expect(resolve(light, 'overlay')).toBe('rgba(10, 10, 11, 0.5)')
     expect(resolve(dark, 'overlay')).toBe('rgba(0, 0, 0, 0.64)')
@@ -75,7 +85,7 @@ describe('flow tokens', () => {
     ['accent', ['surface', 'surface-hover', 'surface-mention']],
     // Error text sits near the cause, on the same surfaces (spec 3.2: "Same as Spark Red").
     ['error', ['surface', 'surface-hover', 'surface-sunken']],
-    ['on-accent', ['accent-fill', 'accent-fill-hover']],
+    ['on-accent', ['accent-fill', 'accent-fill-hover', 'danger-fill', 'danger-fill-hover']],
     ['sidebar-text', ['app-frame', 'sidebar-hover', 'sidebar-active']],
     ['sidebar-text-strong', ['app-frame', 'sidebar-hover', 'sidebar-active']],
     ['sidebar-text-muted', ['app-frame', 'sidebar-hover']],

@@ -9,8 +9,9 @@ const variants = {
   default: 'border-sf-line-strong bg-sf-surface text-sf-text enabled:hover:bg-sf-surface-hover',
   primary:
     'border-sf-accent-fill bg-sf-accent-fill text-sf-on-accent enabled:hover:border-sf-accent-fill-hover enabled:hover:bg-sf-accent-fill-hover',
+  // The kit's danger button (UX Phase 3): every delete confirm, never the same as primary.
   danger:
-    'border-sf-accent-fill bg-sf-accent-fill text-sf-on-accent enabled:hover:border-sf-accent-fill-hover enabled:hover:bg-sf-accent-fill-hover',
+    'border-sf-danger-fill bg-sf-danger-fill text-sf-on-accent enabled:hover:border-sf-danger-fill-hover enabled:hover:bg-sf-danger-fill-hover',
   ghost: 'border-transparent bg-transparent text-sf-text enabled:hover:bg-sf-surface-hover',
 }
 

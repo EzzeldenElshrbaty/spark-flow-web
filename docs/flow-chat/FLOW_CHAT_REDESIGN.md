@@ -75,21 +75,25 @@ Make Flow's chat match the standard of Slack-class chat tools: fast to scan, act
 | `surface-raised` | `#ffffff` | `#1c1c1f` | Menus, toolbar, modals (with a shadow token) |
 | `surface-sunken` | `#f7f7f8` | `#0a0a0b` | Code, file icons, trays, search input |
 | `surface-selected` | `#fef3dc` | `#2a2110` | Message whose thread is open, or a jump target (fades out after 2s) |
-| `surface-mention` | `#fbeaea` | `#2b1415` | Rows mentioning the viewer; the viewer's own reaction chips |
+| `surface-mention` | `#fcf1f1` | `#2b1415` | Rows mentioning the viewer; the viewer's own reaction chips |
 | `line` | `#d4d4d9` | `#2a2a2e` | Hairlines and dividers |
 | `line-strong` | `#8a8a93` | `#6e6e76` | Borders of inputs, the composer and outlined buttons |
 | `text` | `#0a0a0b` | `#ededef` | Content |
 | `text-secondary` | `#4a4a51` | `#b4b4bb` | Topic, descriptions, system messages |
 | `text-muted` | `#6e6e76` | `#8a8a93` | Timestamps, placeholders, counts |
-| `accent` | `#b72427` | `#f2453d` | Red as text: links, "N replies", mention pills, destructive items |
-| `accent-fill` | `#b72427` | `#b72427` | Red as fill: primary button, enabled Send, count badges, active tab rule |
-| `accent-fill-hover` | `#931c1f` | `#931c1f` | Hover and pressed state of `accent-fill` |
+| `accent` | `#b72126` | `#f2453d` | Red as text: links, "N replies", mention pills, destructive items |
+| `accent-fill` | `#b72126` | `#b72126` | Red as fill: primary button, enabled Send, count badges, active tab rule |
+| `accent-fill-hover` | `#9e1d21` | `#9e1d21` | Hover and pressed state of `accent-fill` |
+| `danger-fill` | `#e7000b` | `#e7000b` | Delete confirm buttons (UX Phase 3: the kit's danger button) |
+| `danger-fill-hover` | `#c10007` | `#c10007` | Hover and pressed state of `danger-fill` |
 | `on-accent` | `#ffffff` | `#ffffff` | Text on `accent-fill` |
 | `presence-active` | `#15803d` | `#15803d` | Active presence dot |
-| `focus` | `#b72427` | `#f2453d` | Focus ring colour |
+| `focus` | `#b72126` | `#f2453d` | Focus ring colour |
 | `overlay` | `rgba(10,10,11,.5)` | `rgba(0,0,0,.64)` | Modal scrim |
 
 Every text pair above meets 4.5:1, and every border or icon that identifies a control meets 3:1, in both themes. Keep red under about 10% of any screen.
+
+*Amended by UX Phase 3 (one red):* Spark Red is the kit's `brand-500` `#b72126` (hover `brand-600` `#9e1d21`, tint `brand-50` `#fcf1f1`); red text in dark stays `#f2453d` because no brand red passes 4.5:1 on Ink there. Every confirm that deletes or removes uses `danger-fill`, the kit's danger button; archiving and confirms that destroy nothing stay `accent-fill`.
 
 ### 3.3 Type, spacing, radii, shadows, sizes, motion
 

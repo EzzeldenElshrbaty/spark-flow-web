@@ -196,7 +196,7 @@ function DeleteFile({ file, onClose }: { file: Attachment; onClose: () => void }
           <Button touch onClick={onClose} disabled={remove.isPending}>
             Cancel
           </Button>
-          <Button touch variant="primary" onClick={() => void go()} disabled={remove.isPending}>
+          <Button touch variant="danger" onClick={() => void go()} disabled={remove.isPending}>
             {remove.isPending ? 'Deleting…' : 'Delete'}
           </Button>
         </>

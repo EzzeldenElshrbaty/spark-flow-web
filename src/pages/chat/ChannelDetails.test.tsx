@@ -176,6 +176,8 @@ describe('Channel details: Members (spec 6.10)', () => {
     const { onRemove } = show({ tab: 'members' })
     expect(screen.queryByRole('button', { name: 'Remove Youssef Abdelrahman' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Remove Nour El-Sayed' }))
+    // A removal is a danger confirm, not a primary one (UX Phase 3).
+    expect(within(screen.getByRole('dialog', { name: /^Remove/ })).getByRole('button', { name: 'Remove' }).className).toContain('bg-sf-danger-fill')
     await act(async () => fireEvent.click(within(screen.getByRole('dialog', { name: /^Remove/ })).getByRole('button', { name: 'Remove' })))
     expect(onRemove).toHaveBeenCalledWith('u-2')
     cleanup()

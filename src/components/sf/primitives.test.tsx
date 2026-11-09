@@ -31,6 +31,13 @@ describe('Button and IconButton', () => {
     expect(button.className).toContain('sf-focus')
   })
 
+  it('a danger button has its own fill, not the primary’s (UX Phase 3: one danger style)', () => {
+    render(<Button variant="danger">Delete message</Button>)
+    const button = screen.getByRole('button', { name: 'Delete message' })
+    expect(button.className).toContain('bg-sf-danger-fill')
+    expect(button.className).not.toContain('bg-sf-accent-fill')
+  })
+
   it('an icon button is named by its label and reports pressed and shortcut', () => {
     render(<IconButton label="Star channel" icon={IconStar} pressed shortcut={['⌘', 'K']} />)
     const button = screen.getByRole('button', { name: 'Star channel' })

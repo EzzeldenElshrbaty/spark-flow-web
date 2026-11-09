@@ -15,7 +15,7 @@
   "tokens": [
    {
     "name": "red-600",
-    "value": "#b72427",
+    "value": "#b72126",
     "usage": "Spark Red 600. Primary fills (buttons, badges, the active tab rule) in both themes, and red text on light surfaces. Never text on dark surfaces (3.1:1)."
    },
    {
@@ -25,13 +25,23 @@
    },
    {
     "name": "red-700",
-    "value": "#931c1f",
+    "value": "#9e1d21",
     "usage": "Red 700. Hover and pressed state of red-600 fills."
    },
    {
     "name": "red-50",
-    "value": "#fbeaea",
+    "value": "#fcf1f1",
     "usage": "Red 50. Tinted blocks on light surfaces; behind red-600 text (5.5:1)."
+   },
+   {
+    "name": "danger-fill",
+    "value": "#e7000b",
+    "usage": "Danger fill (UX Phase 3: Tailwind red-600, the kit's danger button). Confirm buttons that delete; white text (4.8:1)."
+   },
+   {
+    "name": "danger-fill-hover",
+    "value": "#c10007",
+    "usage": "Hover and pressed state of danger-fill (Tailwind red-700)."
    },
    {
     "name": "ink-950",

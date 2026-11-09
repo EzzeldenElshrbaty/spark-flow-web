@@ -89,6 +89,7 @@ The approved chat redesign (`docs/flow-chat/FLOW_CHAT_REDESIGN.md` + `design/`) 
 
 - **Scope**: its tokens live in `src/styles/flow-tokens.css`, scoped to the `.sf` class (sidebar, top bar, chat pages, and the portals of `sf` primitives). Utilities are prefixed `sf-` (`bg-sf-surface`, `text-sf-text-muted`, `rounded-sf-md`…). Other modules keep the tokens above.
 - **Font**: Readex Pro (self-hosted, `@fontsource-variable/readex-pro`), weights 300–600, never 700, inside `.sf`.
+- **One red, one danger** (UX Phase 3): chat's reds are the kit's brand values (`--red-600` = brand-500 #b72126, hover brand-600, tint brand-50; red text in dark stays #f2453d for contrast). Every confirm that deletes or removes uses `danger` (kit `danger`, sf `danger` = `bg-sf-danger-fill`, both Tailwind red-600); archiving and confirms that destroy nothing use `primary`.
 - **Icons**: Tabler through `src/components/sf/Icon.tsx` (stroke fixed at 1.5; 20 default, 18 dense rows, 16 chips). lucide stays in other modules.
 - **Primitives**: `src/components/sf/*` (Button, IconButton, Avatar, Badge, Tag, Kbd, Tooltip, Menu, Modal, Toast, Toggle, Checkbox, TokenInput). Chat uses these, not `components/ui/*`. Toast is only for Undo after a delete; all other feedback rules still hold.
 - **Names**: Call, Page, Task list, Automation, Saved, Create task.

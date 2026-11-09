@@ -270,6 +270,8 @@
   --color-sf-accent: var(--accent);
   --color-sf-accent-fill: var(--accent-fill);
   --color-sf-accent-fill-hover: var(--accent-fill-hover);
+  --color-sf-danger-fill: var(--danger-fill);
+  --color-sf-danger-fill-hover: var(--danger-fill-hover);
   --color-sf-on-accent: var(--on-accent);
   --color-sf-presence-active: var(--presence-active);
   --color-sf-focus: var(--focus);
