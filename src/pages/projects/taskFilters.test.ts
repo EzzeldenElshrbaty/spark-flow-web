@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Phase, TaskView } from '@/api/types'
-import { activeFilters, filtersFrom, filterTasks, groupByPhase, loggableTasks, matchesQuery, myOpenTasks, sortTasks, staleArchivedParam, taskQueryFrom, validSprint, viewOf } from './taskFilters'
+import { isDueToday, myTaskTiles, activeFilters, filtersFrom, filterTasks, groupByPhase, loggableTasks, matchesQuery, myOpenTasks, sortTasks, staleArchivedParam, taskQueryFrom, validSprint, viewOf } from './taskFilters'
 
 const t = (over: Partial<TaskView>): TaskView =>
   ({ id: over.key ?? 'x', key: 'P-1', status: 'todo', category: over.status === 'done' ? 'done' : 'todo', phaseId: null, sprintId: null, assigneeId: null, dueAt: null, overdue: false, overEstimate: false, rank: 0, ...over }) as TaskView
@@ -139,4 +139,23 @@ describe('sortTasks', () => {
   it('by priority, urgent first', () => expect(keys('priority')).toEqual(['NEX-2', 'NEX-3', 'NEX-1']))
   it('recently updated first', () => expect(keys('updated')).toEqual(['NEX-2', 'NEX-3', 'NEX-1']))
   it('board order keeps the order given', () => expect(keys('board')).toEqual(['NEX-1', 'NEX-2', 'NEX-3']))
+})
+
+// UX Phase 4, 4.2: My work's attention tiles.
+describe('isDueToday and myTaskTiles', () => {
+  it('reads a due date as its calendar day, whatever the time zone', () => {
+    const due = t({ dueAt: '2026-11-09T00:00:00.000Z' })
+    expect(isDueToday(due, new Date(2026, 10, 9, 23, 30))).toBe(true)
+    expect(isDueToday(due, new Date(2026, 10, 10, 0, 30))).toBe(false)
+    expect(isDueToday(t({ dueAt: null }), new Date(2026, 10, 9))).toBe(false)
+  })
+  it('counts overdue, due today, in progress and over estimate', () => {
+    const now = new Date(2026, 10, 9, 10)
+    const tasks = [
+      t({ key: 'A', overdue: true }),
+      t({ key: 'B', dueAt: '2026-11-09T00:00:00.000Z', category: 'inProgress' }),
+      t({ key: 'C', overEstimate: true, category: 'inProgress' }),
+    ]
+    expect(myTaskTiles(tasks, now)).toEqual({ overdue: 1, today: 1, inProgress: 2, overEstimate: 1 })
+  })
 })

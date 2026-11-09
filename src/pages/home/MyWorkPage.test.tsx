@@ -41,10 +41,16 @@ beforeEach(() => {
 })
 afterEach(cleanup)
 
-const show = () =>
+let where = ''
+function Search() {
+  where = useLocation().search
+  return null
+}
+const show = (search = '') =>
   render(
-    <MemoryRouter initialEntries={['/w/engineering']}>
+    <MemoryRouter initialEntries={[`/w/engineering${search}`]}>
       <MyWorkPage />
+      <Search />
     </MemoryRouter>,
   )
 
@@ -104,3 +110,32 @@ function Where() {
   const { pathname, search } = useLocation()
   return <p data-testid="where">{pathname + search}</p>
 }
+
+// UX Phase 4, 4.2: attention tiles that filter my tasks, and a search, both in the address.
+describe('My work’s tiles and search (UX Phase 4)', () => {
+  const listed = () => within(screen.getByRole('region', { name: 'My tasks' })).getAllByRole('link').map((a) => a.textContent ?? '')
+  it('four tiles count my open tasks; Overdue filters, and clicking it again clears', () => {
+    show()
+    const overdue = screen.getByRole('button', { name: /Overdue/ })
+    expect(overdue.textContent).toContain('1')
+    expect(screen.getByRole('button', { name: /Over estimate/ }).textContent).toContain('1')
+    expect(screen.getByRole('button', { name: /Due today/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /In progress/ })).toBeTruthy()
+    fireEvent.click(overdue)
+    expect(where).toBe('?show=overdue')
+    expect(listed().every((text) => text.includes('NEX-102'))).toBe(true)
+    expect(screen.getByRole('status').textContent).toBe('Showing 1 of 3 open tasks · Clear filters')
+    fireEvent.click(screen.getByRole('button', { name: /Overdue/ }))
+    expect(where).toBe('')
+  })
+
+  it('?q= searches my tasks; nothing matching says so with Clear', () => {
+    show('?q=nex-106')
+    expect(listed().every((text) => text.includes('NEX-106'))).toBe(true)
+    cleanup()
+    show('?q=zzz')
+    expect(screen.getByText('None of your open tasks match “zzz”.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Clear search and filters' }))
+    expect(where).toBe('')
+  })
+})

@@ -1,4 +1,5 @@
 import type { Phase, Priority, TaskType, TaskView } from '@/api/types'
+import { localDay } from '@/lib/dates'
 import { byOrder } from './phases'
 
 export type TaskFilter = { phase?: string | null; sprint?: string | null }
@@ -24,6 +25,24 @@ const byAttention = (a: TaskView, b: TaskView) => Number(b.overdue) - Number(a.o
 
 /** My open tasks, needing attention first. */
 export const myOpenTasks = (tasks: TaskView[], userId: string) => tasks.filter((t) => t.assigneeId === userId && t.category !== 'done').sort(byAttention)
+
+/** My work's attention tiles (UX Phase 4, 4.2), each a filter of my open tasks. */
+export type MyTaskTile = 'overdue' | 'today' | 'inProgress' | 'overEstimate'
+
+/** Due today: the due date read as its calendar day (stored at midnight UTC, as `formatDayMonth(…, { utc })` shows it) against today here. */
+export function isDueToday(t: Pick<TaskView, 'dueAt'>, now: Date): boolean {
+  return t.dueAt !== null && t.dueAt.slice(0, 10) === localDay(now)
+}
+
+export const myTaskTile: Record<MyTaskTile, (t: TaskView, now: Date) => boolean> = {
+  overdue: (t) => t.overdue,
+  today: isDueToday,
+  inProgress: (t) => t.category === 'inProgress',
+  overEstimate: (t) => t.overEstimate,
+}
+
+export const myTaskTiles = (tasks: TaskView[], now: Date) =>
+  Object.fromEntries(Object.entries(myTaskTile).map(([tile, test]) => [tile, tasks.filter((t) => test(t, now)).length])) as Record<MyTaskTile, number>
 
 // ── Search, filters and sort (UX Phase 4, 4.2) ─────────────────────────────────
 

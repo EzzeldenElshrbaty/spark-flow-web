@@ -1,3 +1,4 @@
+import { AlertTriangle, CalendarClock, Hourglass, Timer } from 'lucide-react'
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router'
 import { useMarkMentionsRead, useMyMentions } from '@/api/mentions'
 import { useProjectSummaries } from '@/api/projects'
@@ -7,6 +8,11 @@ import { taskLabel } from '@/lib/taskLabel'
 import { useMyDay, useStartTimer } from '@/api/time'
 import { Avatar } from '@/components/Avatar'
 import { Card, CardHeader } from '@/components/ui/Card'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { FilterBar } from '@/components/ui/FilterBar'
+import { FilterTile } from '@/components/ui/FilterTile'
+import { SearchBox } from '@/components/ui/SearchBox'
+import { useParamState } from '@/lib/searchParams'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
@@ -15,7 +21,7 @@ import { mentionLink } from '@/lib/mentionLink'
 import { paths } from '@/lib/paths'
 import { useNow } from '@/lib/useNow'
 import { useRole } from '@/lib/useRole'
-import { loggableTasks, myOpenTasks } from '@/pages/projects/taskFilters'
+import { loggableTasks, myOpenTasks, myTaskTile, myTaskTiles, type MyTaskTile } from '@/pages/projects/taskFilters'
 import { useCanLog } from '@/lib/useCanLog'
 import { TodayCard } from './TodayCard'
 import { MyTasksCard } from './MyTasksCard'
@@ -53,6 +59,14 @@ export function MyWorkPage() {
     const t = taskId ? (all.find((x) => x.id === taskId) ?? archived.find((x) => x.id === taskId)) : undefined
     return t ? taskLabel(t) : projectName(projectId)
   }
+  // Attention tiles that filter my tasks, and a search: both in the address (UX Phase 4, 4.2).
+  const [params, setParams] = useParamState({ typed: ['q'] })
+  const tile = (Object.keys(myTaskTile) as MyTaskTile[]).find((key) => key === params.get('show'))
+  const words = params.get('q')?.trim().toLowerCase() ?? ''
+  const tiles = myTaskTiles(mine, now)
+  const filtered = mine.filter((t) => (!tile || myTaskTile[tile](t, now)) && (!words || t.key.toLowerCase().includes(words) || t.title.toLowerCase().includes(words)))
+  const active = Number(Boolean(tile)) + Number(Boolean(words))
+  const clear = () => setParams({ show: null, q: null })
   const hello = persona.name ? greeting(now, persona.name) : ''
   const counts = mine.length ? `${mine.length} open ${mine.length === 1 ? 'task' : 'tasks'} · ${overdue} overdue${overEstimate ? ` · ${overEstimate} over estimate` : ''}` : ''
   const subtitle = [hello, counts].filter(Boolean).join(' · ') || undefined
@@ -63,6 +77,18 @@ export function MyWorkPage() {
   return (
     <>
       <PageHeader title="My work" subtitle={loading ? undefined : subtitle} />
+      <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {(
+          [
+            ['overdue', 'Overdue', AlertTriangle, 'red'],
+            ['today', 'Due today', CalendarClock, 'sky'],
+            ['inProgress', 'In progress', Timer, 'neutral'],
+            ['overEstimate', 'Over estimate', Hourglass, 'amber'],
+          ] as const
+        ).map(([key, label, icon, tone]) => (
+          <FilterTile key={key} label={label} icon={icon} tone={tone} count={loading ? undefined : tiles[key]} pressed={tile === key} onClick={() => setParams({ show: tile === key ? null : key })} />
+        ))}
+      </div>
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <div className="min-w-0 space-y-5 lg:col-span-2">
           {day.isError ? (
@@ -77,16 +103,25 @@ export function MyWorkPage() {
           ) : loading ? (
             <div className="h-40 animate-pulse rounded-xl bg-surface-muted" aria-hidden />
           ) : (
-            <MyTasksCard
-              ws={workspace?.slug ?? ''}
-              tasks={mine}
-              loggable={loggable}
-              timer={day.data?.timer}
-              projects={projects.data ?? []}
-              assigneeName={persona.name || null}
-              onStart={(taskId) => start.mutate({ taskId })}
-              starting={start.isPending}
-            />
+            <div>
+              <FilterBar sticky={false} shown={filtered.length} total={mine.length} noun={['open task', 'open tasks']} active={active} onClear={clear}>
+                <SearchBox label="Search my tasks" placeholder="Search keys and titles…" value={params.get('q') ?? ''} onChange={(q) => setParams({ q })} className="col-span-2 sm:flex-1" />
+              </FilterBar>
+              {filtered.length === 0 && active > 0 ? (
+                <EmptyState onClear={clear}>{words ? `None of your open tasks match “${params.get('q')?.trim()}”.` : 'None of your open tasks match this filter.'}</EmptyState>
+              ) : (
+                <MyTasksCard
+                  ws={workspace?.slug ?? ''}
+                  tasks={filtered}
+                  loggable={loggable}
+                  timer={day.data?.timer}
+                  projects={projects.data ?? []}
+                  assigneeName={persona.name || null}
+                  onStart={(taskId) => start.mutate({ taskId })}
+                  starting={start.isPending}
+                />
+              )}
+            </div>
           )}
           {start.error && <p className="text-sm text-red-600 dark:text-red-400">{(start.error as Error).message}</p>}
         </div>
