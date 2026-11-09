@@ -14,7 +14,7 @@ import { NoAccess } from '@/components/ui/NoAccess'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
-import { formatCompact, formatDate, formatHours, formatMoney } from '@/lib/format'
+import { formatCompact, formatDate, formatDayMonth, formatHours, formatMoney } from '@/lib/format'
 import { paths } from '@/lib/paths'
 import { useAccess } from '@/lib/usePermission'
 import { downloadCsv, toCsv } from '@/lib/csv'
@@ -36,7 +36,7 @@ const groupings = [
 type Grouping = (typeof groupings)[number][0]
 
 const money = (n: number) => formatMoney(Math.round(n))
-const weekLabel = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+const weekLabel = (iso: string) => formatDayMonth(iso)
 
 function Tile({ label, value }: { label: string; value: string }) {
   return (

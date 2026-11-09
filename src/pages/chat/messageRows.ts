@@ -1,5 +1,6 @@
 import type { ChatMessage, ThreadReply } from '@/api/types'
 import { localDay } from '@/lib/dates'
+import { formatDayDivider } from '@/lib/format'
 
 /** One row of a channel's message list: a day's divider, the New line, or a message. */
 export type MessageListRow =
@@ -34,18 +35,9 @@ export function canContinue(prev: ChatMessage | ThreadReply, next: ChatMessage |
   )
 }
 
-/** "Today", "Yesterday", "Friday, October 23", with the year when it isn't this year's (spec 6.2). */
+/** "Today", "Yesterday", "Wednesday 4 November", with the year when it isn't this year's (spec 6.2; UX Phase 3, 3.4). */
 export function dayLabel(day: Date, now: Date): string {
-  const today = localDay(now)
-  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
-  if (localDay(day) === today) return 'Today'
-  if (localDay(day) === localDay(yesterday)) return 'Yesterday'
-  return day.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    ...(day.getFullYear() === now.getFullYear() ? {} : { year: 'numeric' }),
-  })
+  return formatDayDivider(day, now)
 }
 
 /** Whether a message is one I haven't read: someone else's, after my marker, not what the channel itself says. */

@@ -6,7 +6,7 @@ import type { Draft, ScheduledMessage, SentItem } from '@/api/types'
 import { Button, IconButton } from '@/components/sf/Button'
 import { Menu, MenuItem, MenuSeparator } from '@/components/sf/Menu'
 import { Tabs } from '@/components/sf/Tabs'
-import { formatTime, formatWhen, timeAgo } from '@/lib/format'
+import { formatDayAt, formatWhen, timeAgo } from '@/lib/format'
 import { bodyText } from '@/lib/messageBody'
 import { paths } from '@/lib/paths'
 import { schedulePresets } from '@/lib/remindTimes'
@@ -24,10 +24,7 @@ const EMPTY: Record<Tab, string> = {
 
 /** "Sends today at 2:00 PM", "Sends tomorrow at 9:00 AM", or "Sends Mon 3 Nov at 9:00 AM" (spec 6.12). */
 export function sendsWhen(iso: string, now = new Date()): string {
-  const date = new Date(iso)
-  const days = Math.round((new Date(date).setHours(0, 0, 0, 0) - new Date(now).setHours(0, 0, 0, 0)) / 86_400_000)
-  const day = days === 0 ? 'today' : days === 1 ? 'tomorrow' : date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).replace(',', '')
-  return `Sends ${day} at ${formatTime(date)}`
+  return `Sends ${formatDayAt(new Date(iso), now)}`
 }
 
 /** Where a draft, scheduled message or sent one opens: its channel, or its thread beside it. */

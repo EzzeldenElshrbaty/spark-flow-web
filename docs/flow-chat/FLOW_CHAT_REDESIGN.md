@@ -281,7 +281,7 @@ Each item lists anatomy, states, behaviour and acceptance criteria (AC). Class n
 - **Day sections:**
   - Wrap each calendar day (viewer's time zone) in a section.
   - The date pill sticks 8px below the list top while its day is on screen, and the next day's pill pushes it out.
-  - Labels: "Today", "Yesterday", "Friday, October 23". Add the year when it differs from the current one.
+  - Labels: "Today", "Yesterday", "Friday, October 23". Add the year when it differs from the current one. *Amended by UX Phase 3: day before month, as every date in Flow — "Friday 23 October" (`formatDayDivider` in `lib/format.ts`).*
   - Clicking the pill opens: Today, Yesterday, Last week, Last month, The very beginning, Jump to a specific date… (date picker).
 - **Grouping rule.** A message renders as a continuation (no avatar or name; time shown in the gutter on hover, 12px) when all of these hold:
   - the previous rendered message has the same author;

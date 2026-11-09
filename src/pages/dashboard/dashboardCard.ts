@@ -1,10 +1,8 @@
 import type { DashboardProject } from '@/api/types'
-import { formatDate, formatHours } from '@/lib/format'
+import { formatDate, formatDayMonth, formatHours } from '@/lib/format'
 import { behindSchedule } from '@/pages/projects/projectStats'
 
 export type CardFacts = { ring: number; hoursLine: string; finishLine: string; late: boolean; over: boolean }
-
-const shortDay = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 
 /** What a dashboard card says about a project: done share, hours against the estimate, and when it should finish. */
 export function cardFacts(p: DashboardProject, now: Date): CardFacts {
@@ -17,7 +15,7 @@ export function cardFacts(p: DashboardProject, now: Date): CardFacts {
       p.estimateHours === null
         ? `${formatHours(p.loggedHours)} · no estimate`
         : `${formatHours(p.estimatedLoggedHours)} of ${formatHours(p.estimateHours)} estimated · ${formatHours(p.loggedHours)} in all`,
-    finishLine: late ? `Expected ${formatDate(p.expectedFinish)} · due ${shortDay(p.dueDate)}` : `Expected ${formatDate(p.expectedFinish)}`,
+    finishLine: late ? `Expected ${formatDate(p.expectedFinish)} · due ${formatDayMonth(p.dueDate)}` : `Expected ${formatDate(p.expectedFinish)}`,
     late,
     over,
   }

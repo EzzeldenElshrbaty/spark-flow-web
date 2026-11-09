@@ -1,10 +1,12 @@
 import type { Phase, TaskView } from '@/api/types'
 import type { Stage } from '@/components/ui/StageProgress'
 import { isPastDue } from '@/lib/dates'
+import { formatDayMonth } from '@/lib/format'
 
 export type PhaseStage = Stage & { phase: Phase; taskCount: number; overdue: boolean }
 
-const shortDay = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+// Due dates are date-only values stored as UTC midnight.
+const shortDay = (iso: string) => formatDayMonth(iso, { utc: true })
 
 export const byOrder = (phases: Phase[]) => [...phases].sort((a, b) => a.order - b.order)
 

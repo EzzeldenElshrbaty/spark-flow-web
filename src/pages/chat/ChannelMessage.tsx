@@ -11,7 +11,7 @@ import { announce } from '@/components/sf/Announcer'
 import { Avatar } from '@/components/Avatar'
 import { Icon } from '@/components/sf/Icon'
 import { Tooltip } from '@/components/sf/Tooltip'
-import { formatTime } from '@/lib/format'
+import { formatDateTime, formatTime } from '@/lib/format'
 import { firstPreviewable } from '@/lib/linkPreview'
 import { parseInspector, withInspector } from '@/lib/inspector'
 import { paths } from '@/lib/paths'
@@ -197,7 +197,7 @@ export function ChannelMessage({
         }
       : undefined
   // The full date, with its weekday, in the chat tooltip (spec 6.3, 6.15); the time itself carries it as `datetime`.
-  const full = `${new Date(message.createdAt).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })}, ${formatTime(message.createdAt)}`
+  const full = formatDateTime(message.createdAt)
   const time = (
     <Tooltip label={full}>
       <time dateTime={message.createdAt} className="sf-meta whitespace-nowrap text-sf-text-muted tabular-nums">

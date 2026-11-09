@@ -58,8 +58,9 @@ describe('dayLabel', () => {
   it('says Today, Yesterday, else the weekday and date, with the year only when it differs', () => {
     expect(dayLabel(new Date(2026, 9, 28, 1), now)).toBe('Today')
     expect(dayLabel(new Date(2026, 9, 27, 23), now)).toBe('Yesterday')
-    expect(dayLabel(new Date(2026, 9, 23), now)).toBe('Friday, October 23')
-    expect(dayLabel(new Date(2025, 9, 23), now)).toBe('Thursday, October 23, 2025')
+    // Day before month, as every date in Flow (UX Phase 3, 3.4).
+    expect(dayLabel(new Date(2026, 9, 23), now)).toBe('Friday 23 October')
+    expect(dayLabel(new Date(2025, 9, 23), now)).toBe('Thursday 23 October 2025')
   })
 })
 

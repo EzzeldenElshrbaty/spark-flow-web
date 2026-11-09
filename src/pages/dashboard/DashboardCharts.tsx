@@ -6,7 +6,7 @@ import { ColumnChart } from '@/components/charts/ColumnChart'
 import { Avatar } from '@/components/Avatar'
 import { DataTable, type Column } from '@/components/ui/DataTable'
 import { hoursLabel } from '@/pages/projects/ticketPills'
-import { formatDate, formatHours } from '@/lib/format'
+import { dayTicks, formatDate, formatHours, formatWeekdayDay } from '@/lib/format'
 import { withInspector } from '@/lib/inspector'
 
 // The dashboard's charts and overdue tasks (dashboard slice, spec §4.4): red for the key series, grey for the rest,
@@ -22,12 +22,13 @@ const dateOf = (day: string) => {
   const [y, m, d] = day.split('-').map(Number)
   return new Date(y!, m! - 1, d!)
 }
-const dayTitle = (day: string) => dateOf(day).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+const dayTitle = (day: string) => formatWeekdayDay(dateOf(day))
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 
 /** Hours per day for the last 14 days: my own at the base in grey, everyone else's on top in red. */
 function HoursPerDay({ days, scope }: { days: DashboardStats['days']; scope: string }) {
   const total = days.reduce((sum, d) => sum + d.hours, 0)
+  const ticks = dayTicks(days.map((d) => dateOf(d.day)))
   return (
     <ChartCard
       className="xl:flex-[2]"
@@ -46,7 +47,8 @@ function HoursPerDay({ days, scope }: { days: DashboardStats['days']; scope: str
           { key: 'others', label: 'Everyone else', color: RED },
         ]}
         columns={days.map((d, index) => ({
-          label: String(dateOf(d.day).getDate()),
+          // The day number, with its month on the first column and on each 1st (UX Phase 3, 3.4).
+          label: ticks[index]!,
           title: dayTitle(d.day),
           values: { mine: tenth(d.mine), others: tenth(Math.max(0, d.hours - d.mine)) },
           highlight: index === days.length - 1,

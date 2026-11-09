@@ -161,7 +161,8 @@ describe('ChannelMessage states (spec 6.3)', () => {
     expect(time.getAttribute('title')).toBeNull()
     fireEvent.pointerEnter(time)
     const tip = await screen.findByRole('tooltip', { hidden: true }, { timeout: 2000 })
-    expect(tip.textContent).toBe('Wednesday, 28 Oct 2026, ' + time.textContent)
+    // Through lib/format.ts, like every date (UX Phase 3, 3.4).
+    expect(tip.textContent).toBe('Wed 28 Oct 2026, ' + time.textContent)
   })
 
   it('a deleted message with replies says it was deleted, with its thread', () => {

@@ -57,6 +57,60 @@ export function lastReplyWhen(iso: string, now = new Date()) {
   return `${days} days ago`
 }
 
+// Dates are built by hand, like formatTime, so no engine adds or drops a comma (UX Phase 3, 3.4).
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+const DAY_MS = 24 * HOUR
+
+/** A day's parts, local, or in UTC for date-only values stored as UTC midnight (due dates). */
+function partsOf(value: Date | string, utc = false) {
+  const d = new Date(value)
+  return utc
+    ? { year: d.getUTCFullYear(), month: d.getUTCMonth(), day: d.getUTCDate(), weekday: d.getUTCDay() }
+    : { year: d.getFullYear(), month: d.getMonth(), day: d.getDate(), weekday: d.getDay() }
+}
+
+/** Whole local days from `now` to `date`: 0 today, 1 tomorrow, -1 yesterday. */
+const daysFrom = (date: Date, now: Date) => Math.round((new Date(date).setHours(0, 0, 0, 0) - new Date(now).setHours(0, 0, 0, 0)) / DAY_MS)
+
+/** "3 Oct". `utc` for a date-only value (a due date). */
+export function formatDayMonth(value: Date | string, { utc = false }: { utc?: boolean } = {}) {
+  const p = partsOf(value, utc)
+  return `${p.day} ${MONTHS[p.month]!.slice(0, 3)}`
+}
+
+/** "Fri 23 Oct". */
+export function formatWeekdayDay(value: Date | string) {
+  const p = partsOf(value)
+  return `${WEEKDAYS[p.weekday]!.slice(0, 3)} ${p.day} ${MONTHS[p.month]!.slice(0, 3)}`
+}
+
+/** A chat day divider: "Today", "Yesterday", "Wednesday 4 November", "Thursday 23 October 2025" (another year). */
+export function formatDayDivider(date: Date, now: Date) {
+  const days = daysFrom(date, now)
+  if (days === 0) return 'Today'
+  if (days === -1) return 'Yesterday'
+  const p = partsOf(date)
+  return `${WEEKDAYS[p.weekday]} ${p.day} ${MONTHS[p.month]}${p.year === now.getFullYear() ? '' : ` ${p.year}`}`
+}
+
+/** A moment in full: "Wed 4 Nov 2026, 2:00 PM" (a message's time tooltip). */
+export function formatDateTime(value: Date | string) {
+  return `${formatWeekdayDay(value)} ${partsOf(value).year}, ${formatTime(value)}`
+}
+
+/** When something will happen: "today at 2:00 PM", "tomorrow at 9:00 AM", "Mon 16 Nov at 9:00 AM". */
+export function formatDayAt(date: Date, now: Date) {
+  const days = daysFrom(date, now)
+  const day = days === 0 ? 'today' : days === 1 ? 'tomorrow' : formatWeekdayDay(date)
+  return `${day} at ${formatTime(date)}`
+}
+
+/** A chart's day labels: the day number, with the month on the first column and on each 1st ("30 Oct", "31", "1 Nov"). */
+export function dayTicks(days: Date[]): string[] {
+  return days.map((d, i) => (i === 0 || d.getDate() === 1 ? formatDayMonth(d) : String(d.getDate())))
+}
+
 export function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }

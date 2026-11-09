@@ -1,6 +1,6 @@
 import type { ChannelKind, Mention, NotifyLevel, Preferences, User } from '@/api/types'
 import { senderName } from '@/lib/flowbot'
-import { formatTime } from '@/lib/format'
+import { formatDayAt, formatTime } from '@/lib/format'
 import { bodyText, type Body } from '@/lib/messageBody'
 import { matchedKeyword } from '@/lib/searchQuery'
 
@@ -50,8 +50,7 @@ export function dndEndLabel(state: DndState, now: Date): string {
   const end = new Date(state.until)
   const days = Math.round((new Date(end).setHours(0, 0, 0, 0) - new Date(now).setHours(0, 0, 0, 0)) / 86_400_000)
   if (days <= 0) return formatTime(end)
-  if (days === 1) return `tomorrow at ${formatTime(end)}`
-  return `${end.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })} at ${formatTime(end)}`
+  return formatDayAt(end, now)
 }
 
 /** "09:00" as people read it: "9:00 AM". */
