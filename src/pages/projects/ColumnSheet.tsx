@@ -36,7 +36,8 @@ export function ColumnSheet({ projectId, columns, column, count = 0, onClose }: 
   const { errors, attempt } = useFormCheck({ label: about('label'), category: about('category'), board: about('board') })
 
   const save = () => {
-    if (!attempt()) return
+    // Enter again while it saves sends nothing (final review).
+    if (pending || !attempt()) return
     if (column) setBoard.mutate({ id: projectId, columns: next }, { onSuccess: onClose })
     else add.mutate({ projectId, input: { label: label.trim(), category, after: after || undefined } }, { onSuccess: onClose })
   }

@@ -123,3 +123,22 @@ describe('StartTimerDialog (UX Phase 4, 4.3: find a task, start in two clicks)',
     expect(screen.getByRole('dialog', { name: 'Switch task' })).toBeTruthy()
   })
 })
+
+describe('Start timer, final review', () => {
+  it('↓ scrolls the highlighted task into view', () => {
+    const scrolled = vi.fn()
+    Element.prototype.scrollIntoView = scrolled
+    show()
+    fireEvent.change(box(), { target: { value: 'NEX' } })
+    fireEvent.keyDown(box(), { key: 'ArrowDown' })
+    expect(scrolled.mock.contexts.at(-1)).toBe(screen.getAllByRole('option')[1])
+  })
+
+  it('while a start is on its way, a second pick sends nothing and the dialog says “Starting…”', async () => {
+    start.isPending = true
+    show()
+    await act(async () => fireEvent.click(screen.getByRole('option')))
+    expect(start.mutate).not.toHaveBeenCalled()
+    expect(screen.getByRole('status').textContent).toBe('Starting…')
+  })
+})

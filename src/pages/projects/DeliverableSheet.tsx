@@ -26,7 +26,8 @@ export function DeliverableSheet({ project, phases, deliverable, onClose }: { pr
   const { errors, attempt } = useFormCheck(deliverableErrors(title, due))
 
   const save = () => {
-    if (!attempt()) return
+    // Enter again while it saves sends nothing (final review).
+    if (pending || !attempt()) return
     const fields = { title: title.trim(), phaseId: phaseId || null, dueDate: new Date(`${due}T00:00:00.000Z`).toISOString() }
     if (!deliverable) return create.mutate({ projectId: project.id, ...fields }, { onSuccess: onClose })
     // Only what changed (a due date by its day: a stored one may carry a time).

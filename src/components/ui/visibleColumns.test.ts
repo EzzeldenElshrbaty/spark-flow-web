@@ -24,3 +24,9 @@ describe('visibleColumns (UX Phase 4, 4.1)', () => {
     expect(ids(600, { name: 300 })).toEqual(['name', 'manager', 'due'])
   })
 })
+
+describe('a column widened by hand (final review)', () => {
+  it('never drops: the next one in drop order goes instead, so the column being dragged stays under the pointer', () => {
+    expect(ids(599, { client: 150 })).toEqual(['name', 'client', 'due'])
+  })
+})

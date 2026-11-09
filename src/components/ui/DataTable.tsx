@@ -21,13 +21,17 @@ export type Column<T> = {
   cell: (row: T) => ReactNode
 }
 
-/** The columns that fit a box `boxWidth` px wide, leaving out the lowest `dropOrder` first; all of them while the width isn't known. */
+/**
+ * The columns that fit a box `boxWidth` px wide, leaving out the lowest `dropOrder` first; all of them while the width
+ * isn't known. A column someone set the width of never drops (final review): the one being dragged stays under the
+ * pointer, and a widened one isn't the first to go.
+ */
 export function visibleColumns<T>(columns: Column<T>[], widths: Record<string, number>, boxWidth: number): Column<T>[] {
   if (boxWidth <= 0) return columns
   const widthOf = (column: Column<T>) => widths[column.id] ?? column.width
   let total = columns.reduce((sum, column) => sum + widthOf(column), 0)
   const left = new Set<string>()
-  for (const column of columns.filter((c) => c.dropOrder !== undefined).sort((a, b) => a.dropOrder! - b.dropOrder!)) {
+  for (const column of columns.filter((c) => c.dropOrder !== undefined && widths[c.id] === undefined).sort((a, b) => a.dropOrder! - b.dropOrder!)) {
     if (total <= boxWidth) break
     left.add(column.id)
     total -= widthOf(column)

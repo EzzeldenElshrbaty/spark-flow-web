@@ -9,7 +9,7 @@ const field =
  * Start timer's search list (UX Phase 4, 4.3): a box that filters the list under it, always open, in groups. ↑ and ↓
  * move through every option, Enter or a click picks one; the box keeps the focus (`aria-activedescendant`).
  */
-export function TaskPicker({ groups, query, onQuery, onPick, chosen }: { groups: TargetGroup[]; query: string; onQuery: (q: string) => void; onPick: (target: TimerTarget) => void; chosen?: TimerTarget | null }) {
+export function TaskPicker({ groups, query, onQuery, onPick, chosen, busy = false }: { groups: TargetGroup[]; query: string; onQuery: (q: string) => void; onPick: (target: TimerTarget) => void; chosen?: TimerTarget | null; busy?: boolean }) {
   const ids = useId()
   const flat = groups.flatMap((g) => g.targets)
   const [active, setActive] = useState(0)
@@ -17,6 +17,10 @@ export function TaskPicker({ groups, query, onQuery, onPick, chosen }: { groups:
   useEffect(() => setActive(0), [query])
   const at = Math.min(active, flat.length - 1)
   const optionId = (i: number) => `${ids}-option-${i}`
+  // The highlighted one is the one Enter starts: keep it in view as ↑ and ↓ move through the list (final review).
+  useEffect(() => {
+    if (at >= 0) document.getElementById(optionId(at))?.scrollIntoView?.({ block: 'nearest' })
+  }, [at])
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.nativeEvent.isComposing || flat.length === 0) return
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
@@ -47,7 +51,7 @@ export function TaskPicker({ groups, query, onQuery, onPick, chosen }: { groups:
         onChange={(e) => onQuery(e.target.value)}
         onKeyDown={onKeyDown}
       />
-      <div id={`${ids}-list`} role="listbox" aria-label="Tasks" className="mt-2 max-h-72 overflow-y-auto rounded-sf-md border border-sf-line p-1">
+      <div id={`${ids}-list`} role="listbox" aria-label="Tasks" aria-busy={busy} className="mt-2 max-h-72 overflow-y-auto rounded-sf-md border border-sf-line p-1">
         {groups.length === 0 && (
           <p className="sf-ui m-0 px-2 py-3 text-sf-text-muted">{query.trim() ? `No open tasks match “${query.trim()}”.` : 'No open tasks of yours yet. Search for one, or log on the project only.'}</p>
         )}

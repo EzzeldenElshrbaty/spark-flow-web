@@ -55,7 +55,8 @@ export function AddTimeSheet({ projectId: forProject, taskId, entry, onClose }: 
     : []
 
   const save = () => {
-    if (!attempt()) return
+    // Enter again while it saves sends nothing (final review).
+    if (saving || !attempt()) return
     if (entry) update.mutate({ id: entry.id, patch: toPatch(values, valuesOf(entry)) }, { onSuccess: onClose })
     else add.mutate(toManualEntry({ ...values, userId: forOthers ? values.userId : undefined }), { onSuccess: onClose })
   }

@@ -148,3 +148,16 @@ describe('the board says before what counts as done changes (UX Phase 4, 4.10)',
     expect(screen.getByText('2 tasks moved to Done will count as done.')).toBeTruthy()
   })
 })
+
+describe('Enter while saving (final review)', () => {
+  it('a second Enter while the first save is on its way sends nothing', () => {
+    mutation.mutate.mockClear()
+    mutation.isPending = true
+    render(<DeliverableSheet project={project} phases={[phase]} onClose={() => {}} />)
+    const title = screen.getByRole('textbox', { name: /^Title/ }) as HTMLInputElement
+    fireEvent.change(title, { target: { value: 'Release notes' } })
+    fireEvent.submit(title.form!)
+    expect(mutation.mutate).not.toHaveBeenCalled()
+    mutation.isPending = false
+  })
+})

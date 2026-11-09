@@ -46,6 +46,8 @@ export function projectStats(projects: ProjectSummary[], now: Date) {
  * date said twice), else "Due 4 Dec 2026", with " · late" when behind.
  */
 export function finishHint(p: Pick<ProjectSummary, 'status' | 'dueDate' | 'expectedFinish'>, now: Date): string {
-  if (p.expectedFinish && p.expectedFinish.slice(0, 10) === p.dueDate.slice(0, 10)) return 'On time'
-  return `Due ${formatDate(p.dueDate)}${behindSchedule(p, now) ? ' · late' : ''}`
+  // Behind schedule is late, even when it's expected to finish the day it was due (past due: final review).
+  const late = behindSchedule(p, now)
+  if (!late && p.expectedFinish && p.expectedFinish.slice(0, 10) === p.dueDate.slice(0, 10)) return 'On time'
+  return `Due ${formatDate(p.dueDate)}${late ? ' · late' : ''}`
 }

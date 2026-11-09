@@ -442,7 +442,8 @@ function WorkHoursForm({ current, timeoutHours, onClose }: { current: WorkHours;
   // Closing with changes asks first (UX Phase 1, 1.2).
   const dirty = [...days].sort((a, b) => a - b).join() !== [...current.days].sort((a, b) => a - b).join() || start !== current.start || end !== current.end || timeout !== String(timeoutHours)
   const submit = async () => {
-    if (!attempt()) return
+    // Enter again while it saves sends nothing (final review).
+    if (pending || !attempt()) return
     const sorted = [...days].sort((a, b) => a - b)
     try {
       if (sorted.join() !== current.days.join() || start !== current.start || end !== current.end) await save.mutateAsync({ days: sorted, start, end })

@@ -100,7 +100,8 @@ export function ProjectSheet({
     set(field, values[field].includes(id) ? values[field].filter((x) => x !== id) : [...values[field], id])
 
   const save = () => {
-    if (!attempt()) return
+    // Enter again while it saves sends nothing (final review).
+    if (saving || !attempt()) return
     const dates = { startDate: toIso(values.startDate), dueDate: toIso(values.dueDate) }
     const links = values.links.map((l) => ({ label: l.label.trim(), url: l.url.trim() }))
     if (project) {

@@ -38,7 +38,9 @@ export function StartTimerDialog({ open, onClose, title = 'Start timer' }: { ope
   const groups = timerTargets({ meId: me?.id ?? '', tasks, projects, recent, q: query })
   const none = loaded && projects.length === 0
 
+  // One start at a time: finding where I am can take seconds, and a second pick would start a second timer (final review).
   const go = (target: TimerTarget) =>
+    !start.isPending &&
     start.mutate(target.kind === 'task' ? { taskId: target.id } : { projectId: target.id }, {
       onSuccess: () => {
         noteRecent(recentKey, `${target.kind}:${target.id}`)
@@ -46,7 +48,11 @@ export function StartTimerDialog({ open, onClose, title = 'Start timer' }: { ope
       },
     })
   // Before my first start, a pick waits for Start, under the notice.
-  const pick = (target: TimerTarget) => (firstStart ? setChosen(target) : go(target))
+  const pick = (target: TimerTarget) => {
+    if (start.isPending) return
+    if (firstStart) setChosen(target)
+    else go(target)
+  }
   const project = projects.find((p) => p.id === projectId)
   const ready: TimerTarget | null = projectOnly ? (project ? { kind: 'project', id: project.id, projectId: project.id, label: project.name, detail: 'The project only' } : null) : chosen
 
@@ -94,7 +100,7 @@ export function StartTimerDialog({ open, onClose, title = 'Start timer' }: { ope
             </>
           ) : (
             <>
-              <TaskPicker groups={groups} query={query} onQuery={setQuery} onPick={pick} chosen={chosen} />
+              <TaskPicker groups={groups} query={query} onQuery={setQuery} onPick={pick} chosen={chosen} busy={start.isPending} />
               <button type="button" className={link} onClick={() => setProjectOnly(true)}>
                 Log on the project only
               </button>
@@ -103,6 +109,12 @@ export function StartTimerDialog({ open, onClose, title = 'Start timer' }: { ope
           {firstStart && (
             <p className="sf-small mt-4 mb-0 text-sf-text-secondary">
               Starting a timer records the time, this device’s IP address and browser, and your location if you allow it. You, the managers of your projects and Admins can see them in Attendance.
+            </p>
+          )}
+          {/* A pick has no Start button to say so: the dialog does, while the timer starts. */}
+          {start.isPending && !projectOnly && !firstStart && (
+            <p role="status" className="sf-small mt-3 mb-0 text-sf-text-secondary">
+              Starting…
             </p>
           )}
           {start.error && (

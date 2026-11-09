@@ -32,7 +32,8 @@ export function NewChannelDialog({ workspaceId, workspaceSlug, onClose }: { work
   const failure = create.error as Error | null
 
   const save = () => {
-    if (!attempt()) return
+    // Enter again while it creates sends nothing (final review).
+    if (pending || !attempt()) return
     const memberIds = me ? [me.id, ...values.memberIds] : values.memberIds
     create.mutate(
       { workspaceId, name: values.name.trim(), topic: values.topic.trim(), isPrivate: values.isPrivate, memberIds },

@@ -63,3 +63,10 @@ describe('finishHint (UX Phase 4, 4.10)', () => {
     expect(finishHint(p('2026-12-20T00:00:00.000Z'), now)).toBe('Due 4 Dec 2026 · late')
   })
 })
+
+describe('finishHint past the due date (final review)', () => {
+  it('a project past due and not delivered is late, never "On time", even when expected to finish that day', () => {
+    const now = new Date('2026-11-09T10:00:00.000Z')
+    expect(finishHint({ status: 'active', dueDate: '2026-11-03T00:00:00.000Z', expectedFinish: '2026-11-03T00:00:00.000Z' } as never, now)).toBe('Due 3 Nov 2026 · late')
+  })
+})
