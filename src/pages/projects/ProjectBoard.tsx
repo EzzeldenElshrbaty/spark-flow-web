@@ -13,6 +13,7 @@ import { CSS } from '@dnd-kit/utilities'
 import clsx from 'clsx'
 import { ArrowLeft, ArrowRight, Inbox, MoreHorizontal, Pencil, Plus, Shapes, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { ColumnStripBar, useColumnStrip } from './ColumnStrip'
 import type { BoardColumn as Column, StatusCategory, TaskView, TicketPatch, TicketStatus, User } from '@/api/types'
 import { MenuPanel } from '@/components/ui/Menu'
 import { canDeleteColumn, columnErrors, columnsOf, MAX_COLUMNS, MAX_LABEL, moveColumn } from '@/lib/boardColumns'
@@ -353,6 +354,9 @@ export function ProjectBoard({
   const [typing, setTyping] = useState<Column | null>(null)
   const [deleting, setDeleting] = useState<Column | null>(null)
   const columns = order.map(({ id, label, category }) => ({ status: id, label, category, items: shown.filter((t) => t.status === id).sort(byRank) }))
+  // Which columns are in view, and arrows to the others (UX Phase 4, 4.1).
+  const stripRef = useRef<HTMLDivElement>(null)
+  const strip = useColumnStrip(stripRef, columns.length)
   const find = (key: string) => shown.find((t) => t.key === key)
   const columnOf = (id: string) =>
     id.startsWith(COLUMN) ? (id.slice(COLUMN.length) as TicketStatus) : id.startsWith(HEADER) ? (id.slice(HEADER.length) as TicketStatus) : find(id)?.status
@@ -470,35 +474,40 @@ export function ProjectBoard({
           setOverStatus(null)
         }}
       >
-        <div aria-describedby="board-hint" className="relative -mx-4 flex snap-x snap-mandatory scroll-px-4 items-start gap-3 overflow-x-auto px-4 pb-4 [scrollbar-width:thin] md:mx-0 md:snap-none md:px-0">
-          <SortableContext id="columns" items={columns.map((c) => HEADER + c.status)} strategy={horizontalListSortingStrategy}>
-            {columns.map((c, i) => (
-              <BoardColumn
-                key={c.status}
-                {...c}
-                users={users}
-                canMove={canMove}
-                hovered={activeKey != null && overStatus === c.status}
-                editable={editable}
-                first={i === 0}
-                last={i === columns.length - 1}
-                onRename={rename(c.status)}
-                onMoveSide={moveSide(c.status)}
-                canDelete={canDeleteColumn(order, c.status)}
-                onChangeType={() => setTyping(order.find((o) => o.id === c.status) ?? null)}
-                onDelete={() => setDeleting(order.find((o) => o.id === c.status) ?? null)}
-              />
-            ))}
-          </SortableContext>
-          {editable && projectId && order.length < MAX_COLUMNS && (
-            <button
-              type="button"
-              onClick={() => setAdding(true)}
-              className="flex h-24 w-[85%] shrink-0 snap-start items-center justify-center gap-2 rounded-xl border border-dashed border-line-strong text-sm font-medium text-fg-secondary hover:bg-surface-muted hover:text-fg md:w-[296px]"
-            >
-              <Plus className="size-4" /> Add column
-            </button>
-          )}
+        <ColumnStripBar strip={strip} />
+        <div className="relative">
+          <div ref={stripRef} aria-describedby="board-hint" className="relative -mx-4 flex snap-x snap-mandatory scroll-px-4 items-start gap-3 overflow-x-auto px-4 pb-4 [scrollbar-width:thin] md:mx-0 md:snap-none md:px-0">
+            <SortableContext id="columns" items={columns.map((c) => HEADER + c.status)} strategy={horizontalListSortingStrategy}>
+              {columns.map((c, i) => (
+                <BoardColumn
+                  key={c.status}
+                  {...c}
+                  users={users}
+                  canMove={canMove}
+                  hovered={activeKey != null && overStatus === c.status}
+                  editable={editable}
+                  first={i === 0}
+                  last={i === columns.length - 1}
+                  onRename={rename(c.status)}
+                  onMoveSide={moveSide(c.status)}
+                  canDelete={canDeleteColumn(order, c.status)}
+                  onChangeType={() => setTyping(order.find((o) => o.id === c.status) ?? null)}
+                  onDelete={() => setDeleting(order.find((o) => o.id === c.status) ?? null)}
+                />
+              ))}
+            </SortableContext>
+            {editable && projectId && order.length < MAX_COLUMNS && (
+              <button
+                type="button"
+                onClick={() => setAdding(true)}
+                className="flex h-24 w-[85%] shrink-0 snap-start items-center justify-center gap-2 rounded-xl border border-dashed border-line-strong text-sm font-medium text-fg-secondary hover:bg-surface-muted hover:text-fg md:w-[296px]"
+              >
+                <Plus className="size-4" /> Add column
+              </button>
+            )}
+          </div>
+          {/* More columns past the end: the edge fades (phones show the next column's edge instead). */}
+          {strip.overflows && !strip.atEnd && <span aria-hidden className="pointer-events-none absolute inset-y-0 end-0 hidden w-10 bg-linear-to-l from-canvas md:block rtl:bg-linear-to-r" />}
         </div>
         <DragOverlay>
           {active && (
