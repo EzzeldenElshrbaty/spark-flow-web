@@ -67,7 +67,7 @@ function expectSf(panel: HTMLElement) {
 }
 
 describe('UserMenu (spec 5.2: the account menu)', () => {
-  it('names me, switches the theme, lists View as; Change password is coming soon, Log out works (slice AB)', async () => {
+  it('names me, switches the theme, lists View as; no Soon items (UX Phase 2, 2.8); Log out works (slice AB)', async () => {
     show(<UserMenu />)
     await open(/Youssef Abdelrahman/)
     const menu = screen.getByRole('menu', { name: 'Account' })
@@ -76,7 +76,7 @@ describe('UserMenu (spec 5.2: the account menu)', () => {
     expect(screen.getByRole('menuitemradio', { name: /Nour El-Sayed/ }).getAttribute('aria-checked')).toBe('false')
     // Nobody deactivated is offered (slice 3).
     expect(screen.queryByRole('menuitemradio', { name: /Mariam Fathy/ })).toBeNull()
-    expect(screen.getByRole('menuitem', { name: /Change password/ }).getAttribute('aria-disabled')).toBe('true')
+    expect(screen.queryByRole('menuitem', { name: /Change password/ })).toBeNull()
     expect(screen.getByRole('menuitem', { name: /Log out/ }).getAttribute('aria-disabled')).not.toBe('true')
     expectSf(menu)
     await act(async () => fireEvent.click(screen.getByRole('menuitemradio', { name: /Dark/ })))

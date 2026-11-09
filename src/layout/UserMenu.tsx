@@ -1,7 +1,7 @@
 import clsx from 'clsx'
 import { isActive } from '@/lib/people'
 import { useQueryClient } from '@tanstack/react-query'
-import { IconAdjustmentsHorizontal, IconChevronDown, IconClockHour4, IconLifebuoy, IconKey, IconLogout, IconMoon, IconSun } from '@tabler/icons-react'
+import { IconAdjustmentsHorizontal, IconChevronDown, IconClockHour4, IconLifebuoy, IconLogout, IconMoon, IconSun } from '@tabler/icons-react'
 import { useNavigate } from 'react-router'
 import { useSignOut } from '@/api/auth'
 import { useDndEnd } from '@/api/preferences'
@@ -18,7 +18,7 @@ import { useRole } from '@/lib/useRole'
 import { useTheme } from '@/lib/useTheme'
 
 /**
- * The account menu behind the avatar: who you are, Preferences, My attendance, Help, Change password (once
+ * The account menu behind the avatar: who you are, Preferences, My attendance, Help (Change password comes back once it works, UX Phase 2; once
  * the backend has passwords) and Log out (slice AB).
  * The redesign's menu (spec 5.2): a dropdown on desktop, a bottom sheet on phones.
  */
@@ -157,9 +157,6 @@ export function UserMenu() {
         </>
       )}
       <MenuSeparator />
-      <MenuItem icon={IconKey} disabled hint="Soon">
-        Change password
-      </MenuItem>
       <MenuItem icon={IconLogout} disabled={signOut.isPending} onSelect={logOut}>
         Log out
       </MenuItem>

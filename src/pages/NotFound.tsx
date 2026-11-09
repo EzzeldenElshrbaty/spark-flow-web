@@ -13,7 +13,8 @@ export function NotFound({ what, backTo, backLabel }: { what: 'channel' | 'proje
       <span className="rounded-full bg-accent-soft p-3 text-accent">
         <SearchX className="size-6" />
       </span>
-      <p className="mt-3 text-sm font-medium text-fg">{what === 'page' || what === 'workspace' ? sentence[what] : `This ${what} doesn't exist or was removed.`}</p>
+      {/* The page's heading (UX Phase 2, 2.8), at the size the sentence had. */}
+      <h1 className="mt-3 text-sm font-medium text-fg">{what === 'page' || what === 'workspace' ? sentence[what] : `This ${what} doesn't exist or was removed.`}</h1>
       <Link to={backTo} className="mt-4 text-sm font-medium text-accent hover:text-accent-strong">
         {backLabel}
       </Link>
