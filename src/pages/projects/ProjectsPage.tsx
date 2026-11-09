@@ -112,9 +112,9 @@ export function ProjectsPage() {
         </span>
       ),
     },
-    { id: 'client', header: 'Client', width: 160, sort: 'text', cell: (p) => <span className="text-fg-secondary">{p.clientName.trim() || '—'}</span> },
-    { id: 'manager', header: 'Manager', width: 160, sort: 'text', cell: (p) => <span className="text-fg-secondary">{nameOf(p.managerId)}</span> },
-    { id: 'phase', header: 'Phase', width: 140, cell: (p) => <PhaseName project={p} /> },
+    { id: 'client', header: 'Client', width: 160, dropOrder: 1, sort: 'text', cell: (p) => <span className="text-fg-secondary">{p.clientName.trim() || '—'}</span> },
+    { id: 'manager', header: 'Manager', width: 160, dropOrder: 2, sort: 'text', cell: (p) => <span className="text-fg-secondary">{nameOf(p.managerId)}</span> },
+    { id: 'phase', header: 'Phase', width: 140, dropOrder: 3, cell: (p) => <PhaseName project={p} /> },
     {
       id: 'due',
       header: 'Due',

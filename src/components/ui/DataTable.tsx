@@ -1,7 +1,8 @@
 import clsx from 'clsx'
-import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react'
-import { useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
+import { ArrowDown, ArrowUp, ChevronRight, ChevronsUpDown } from 'lucide-react'
+import { useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
 import { nextColumnSort, type ColumnSort, type SortKind } from '@/lib/sorting'
+import { IconButton } from './IconButton'
 
 export type Column<T> = {
   id: string
@@ -12,7 +13,26 @@ export type Column<T> = {
   align?: 'left' | 'right'
   /** Makes the header sortable; says how its values read (for the phone Sort menu). Leave out for action columns. */
   sort?: SortKind
+  /**
+   * Left out when the table doesn't fit its box (UX Phase 4, 4.1): 1 goes first, then 2…; a column without one always
+   * shows. For what people can do without (Client, Manager, IP, Device), never the key figures.
+   */
+  dropOrder?: number
   cell: (row: T) => ReactNode
+}
+
+/** The columns that fit a box `boxWidth` px wide, leaving out the lowest `dropOrder` first; all of them while the width isn't known. */
+export function visibleColumns<T>(columns: Column<T>[], widths: Record<string, number>, boxWidth: number): Column<T>[] {
+  if (boxWidth <= 0) return columns
+  const widthOf = (column: Column<T>) => widths[column.id] ?? column.width
+  let total = columns.reduce((sum, column) => sum + widthOf(column), 0)
+  const left = new Set<string>()
+  for (const column of columns.filter((c) => c.dropOrder !== undefined).sort((a, b) => a.dropOrder! - b.dropOrder!)) {
+    if (total <= boxWidth) break
+    left.add(column.id)
+    total -= widthOf(column)
+  }
+  return columns.filter((column) => !left.has(column.id))
 }
 
 const KEYBOARD_STEP = 16
@@ -64,7 +84,31 @@ export function DataTable<T>({
 }) {
   const [widths, setWidths] = useState<Record<string, number>>(() => readWidths(storageKey))
   const widthOf = (column: Column<T>) => widths[column.id] ?? column.width
-  const total = columns.reduce((sum, column) => sum + widthOf(column), 0)
+  // The box's width decides which columns show; while it still scrolls, the end edge says so (UX Phase 4, 4.1).
+  const scroller = useRef<HTMLDivElement>(null)
+  const [boxWidth, setBoxWidth] = useState(0)
+  const [more, setMore] = useState(false)
+  const shown = visibleColumns(columns, widths, boxWidth)
+  const total = shown.reduce((sum, column) => sum + widthOf(column), 0)
+  const checkMore = () => {
+    const box = scroller.current
+    if (box) setMore(box.scrollWidth - box.clientWidth - Math.abs(box.scrollLeft) > 1)
+  }
+  useLayoutEffect(() => {
+    const box = scroller.current
+    if (!box || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(([entry]) => setBoxWidth(entry!.contentRect.width))
+    observer.observe(box)
+    return () => observer.disconnect()
+  }, [])
+  useLayoutEffect(checkMore, [total, boxWidth])
+  const scrollOn = () => {
+    const box = scroller.current
+    if (!box) return
+    const rtl = getComputedStyle(box).direction === 'rtl'
+    const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    box.scrollBy({ left: (rtl ? -1 : 1) * box.clientWidth * 0.8, behavior: still ? 'auto' : 'smooth' })
+  }
 
   const resize = (column: Column<T>, width: number, persist: boolean) => {
     const next = { ...widths, [column.id]: Math.max(column.minWidth ?? 80, Math.round(width)) }
@@ -109,75 +153,99 @@ export function DataTable<T>({
   }
 
   return (
-    <div className="overflow-x-auto border border-line bg-surface">
-      <table className="table-fixed border-collapse text-sm" style={{ width: total, minWidth: '100%' }} aria-label={label}>
-        <colgroup>
-          {columns.map((column) => (
-            <col key={column.id} style={{ width: widthOf(column) }} />
-          ))}
-        </colgroup>
-        <thead className="bg-surface-sunken">
-          <tr className="border-b border-line">
-            {columns.map((column) => {
-              const sorted = sort?.by === column.id ? sort.dir : null
-              const SortIcon = sorted === 'asc' ? ArrowUp : sorted === 'desc' ? ArrowDown : ChevronsUpDown
-              return (
-                <th
-                  key={column.id}
-                  scope="col"
-                  aria-sort={sorted === 'asc' ? 'ascending' : sorted === 'desc' ? 'descending' : undefined}
-                  className={clsx('relative select-none px-4 py-2.5 text-xs font-medium text-fg-muted', column.align === 'right' ? 'text-end' : 'text-start')}
-                >
-                  {column.sort && onSort ? (
-                    <button
-                      type="button"
-                      onClick={() => onSort(nextColumnSort(sort ?? null, column.id))}
-                      title={sorted === 'desc' ? 'Back to the default order' : sorted === 'asc' ? 'Sort descending' : 'Sort ascending'}
-                      className={clsx('group inline-flex max-w-full items-center gap-1 hover:text-fg', column.align === 'right' && 'flex-row-reverse', sorted && 'text-fg')}
-                    >
-                      <span className="truncate">{column.header}</span>
-                      <SortIcon className={clsx('size-3.5 shrink-0 transition-opacity', sorted ? 'opacity-100' : 'opacity-0 group-hover:opacity-60')} />
-                    </button>
-                  ) : (
-                    <span className="block truncate">{column.header}</span>
-                  )}
-                  {/* Resize handle on the column's right border. */}
-                  <span
-                    role="separator"
-                    aria-orientation="vertical"
-                    aria-label={`Resize ${column.header} column`}
-                    aria-valuenow={widthOf(column)}
-                    tabIndex={0}
-                    onPointerDown={(event) => startDrag(column, event)}
-                    onKeyDown={(event) => onHandleKey(column, event)}
-                    onDoubleClick={() => reset(column)}
-                    title="Drag to resize · double-click to reset"
-                    className="group/handle absolute -end-1.5 top-0 z-10 flex h-full w-3 cursor-col-resize touch-none justify-center focus-visible:outline-none"
+    <div className="relative">
+      <div ref={scroller} onScroll={checkMore} className="overflow-x-auto border border-line bg-surface">
+        <table className="table-fixed border-collapse text-sm" style={{ width: total, minWidth: '100%' }} aria-label={label}>
+          <colgroup>
+            {shown.map((column) => (
+              <col key={column.id} style={{ width: widthOf(column) }} />
+            ))}
+          </colgroup>
+          <thead className="bg-surface-sunken">
+            <tr className="border-b border-line">
+              {shown.map((column, index) => {
+                const sorted = sort?.by === column.id ? sort.dir : null
+                const SortIcon = sorted === 'asc' ? ArrowUp : sorted === 'desc' ? ArrowDown : ChevronsUpDown
+                return (
+                  <th
+                    key={column.id}
+                    scope="col"
+                    aria-sort={sorted === 'asc' ? 'ascending' : sorted === 'desc' ? 'descending' : undefined}
+                    className={clsx(
+                      'select-none px-4 py-2.5 text-xs font-medium text-fg-muted',
+                      column.align === 'right' ? 'text-end' : 'text-start',
+                      // The first column stays put while the rest scroll under it.
+                      index === 0 ? 'sticky start-0 z-[2] bg-surface-sunken' : 'relative',
+                    )}
                   >
-                    <span className="h-full w-px bg-line transition-colors group-hover/handle:w-0.5 group-hover/handle:bg-brand-500 group-focus-visible/handle:w-0.5 group-focus-visible/handle:bg-brand-500" />
-                  </span>
-                </th>
-              )
-            })}
-          </tr>
-        </thead>
-        <tbody key={animateKey} className="divide-y divide-line-subtle">
-          {rows.map((row, index) => (
-            <tr
-              key={rowKey(row)}
-              onClick={onRowClick ? () => onRowClick(row) : undefined}
-              className={clsx('transition-colors motion-safe:animate-fade-in', onRowClick && 'cursor-pointer hover:bg-surface-sunken')}
-              style={{ animationDelay: `${Math.min(index, 15) * 18}ms` }}
-            >
-              {columns.map((column) => (
-                <td key={column.id} className={clsx('overflow-hidden px-4 py-3 align-middle', column.align === 'right' && 'text-end')}>
-                  {column.cell(row)}
-                </td>
-              ))}
+                    {column.sort && onSort ? (
+                      <button
+                        type="button"
+                        onClick={() => onSort(nextColumnSort(sort ?? null, column.id))}
+                        title={sorted === 'desc' ? 'Back to the default order' : sorted === 'asc' ? 'Sort descending' : 'Sort ascending'}
+                        className={clsx('group inline-flex max-w-full items-center gap-1 hover:text-fg', column.align === 'right' && 'flex-row-reverse', sorted && 'text-fg')}
+                      >
+                        <span className="truncate">{column.header}</span>
+                        <SortIcon className={clsx('size-3.5 shrink-0 transition-opacity', sorted ? 'opacity-100' : 'opacity-0 group-hover:opacity-60')} />
+                      </button>
+                    ) : (
+                      <span className="block truncate">{column.header}</span>
+                    )}
+                    {/* Resize handle on the column's right border. */}
+                    <span
+                      role="separator"
+                      aria-orientation="vertical"
+                      aria-label={`Resize ${column.header} column`}
+                      aria-valuenow={widthOf(column)}
+                      tabIndex={0}
+                      onPointerDown={(event) => startDrag(column, event)}
+                      onKeyDown={(event) => onHandleKey(column, event)}
+                      onDoubleClick={() => reset(column)}
+                      title="Drag to resize · double-click to reset"
+                      // The last one stays inside the table, so it doesn't make the box scroll by its overhang.
+                      className={clsx(
+                        'group/handle absolute top-0 z-10 flex h-full w-3 cursor-col-resize touch-none justify-center focus-visible:outline-none',
+                        index === shown.length - 1 ? 'end-0' : '-end-1.5',
+                      )}
+                    >
+                      <span className="h-full w-px bg-line transition-colors group-hover/handle:w-0.5 group-hover/handle:bg-brand-500 group-focus-visible/handle:w-0.5 group-focus-visible/handle:bg-brand-500" />
+                    </span>
+                  </th>
+                )
+              })}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody key={animateKey} className="divide-y divide-line-subtle">
+            {rows.map((row, index) => (
+              <tr
+                key={rowKey(row)}
+                onClick={onRowClick ? () => onRowClick(row) : undefined}
+                className={clsx('group/row transition-colors motion-safe:animate-fade-in', onRowClick && 'cursor-pointer hover:bg-surface-sunken')}
+                style={{ animationDelay: `${Math.min(index, 15) * 18}ms` }}
+              >
+                {shown.map((column, at) => (
+                  <td
+                    key={column.id}
+                    className={clsx(
+                      'overflow-hidden px-4 py-3 align-middle',
+                      column.align === 'right' && 'text-end',
+                      at === 0 && clsx('sticky start-0 z-[1] bg-surface transition-colors', onRowClick && 'group-hover/row:bg-surface-sunken'),
+                    )}
+                  >
+                    {column.cell(row)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {more && (
+        <>
+          <span aria-hidden className="pointer-events-none absolute inset-y-px end-px w-12 bg-linear-to-l from-surface rtl:bg-linear-to-r" />
+          <IconButton label="Scroll to more columns" icon={ChevronRight} size="sm" onClick={scrollOn} className="absolute end-1 top-1 bg-surface shadow-sm rtl:[&_svg]:-scale-x-100" />
+        </>
+      )}
     </div>
   )
 }

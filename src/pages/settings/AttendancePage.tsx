@@ -284,8 +284,8 @@ function DaysView({ rows, nameOf }: { rows: AttendanceDay[]; nameOf: (id: string
     { id: 'in', header: 'In', width: 200, cell: (d) => <InText at={d.inAt} late={d.late} withDay /> },
     { id: 'out', header: 'Out', width: 180, cell: (d) => <OutText at={d.outAt} early={d.early} endReason={d.endReason} /> },
     { id: 'hours', header: 'Hours', width: 90, align: 'right', cell: (d) => <span className="tabular-nums">{formatHours(d.hours)}</span> },
-    { id: 'ip', header: 'IP', width: 140, cell: (d) => <Seen value={d.from?.ip ?? null} fresh={d.newIp} /> },
-    { id: 'device', header: 'Device', width: 190, cell: (d) => <Seen value={d.from?.device ?? null} fresh={d.newDevice} /> },
+    { id: 'ip', header: 'IP', width: 140, dropOrder: 2, cell: (d) => <Seen value={d.from?.ip ?? null} fresh={d.newIp} /> },
+    { id: 'device', header: 'Device', width: 190, dropOrder: 1, cell: (d) => <Seen value={d.from?.device ?? null} fresh={d.newDevice} /> },
     { id: 'place', header: 'Location', width: 250, cell: (d) => <Place location={d.from?.location ?? null} /> },
   ]
   return (
