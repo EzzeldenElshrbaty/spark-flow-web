@@ -25,26 +25,31 @@ const dateOf = (day: string) => {
 const dayTitle = (day: string) => formatWeekdayDay(dateOf(day))
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 
-/** Hours per day for the last 14 days: my own at the base in grey, everyone else's on top in red. */
-function HoursPerDay({ days, scope }: { days: DashboardStats['days']; scope: string }) {
+/**
+ * Hours per day for the last 14 days: my own at the base, everyone else's on top. The key series is red (UX Phase 4,
+ * 4.6): my own for someone who sees only their projects (`mineFirst`), the team's for whoever sees every project.
+ * "You" leaves the legend while my 14 days add up to nothing.
+ */
+function HoursPerDay({ days, scope, mineFirst }: { days: DashboardStats['days']; scope: string; mineFirst: boolean }) {
   const total = days.reduce((sum, d) => sum + d.hours, 0)
+  const mineTotal = days.reduce((sum, d) => sum + d.mine, 0)
   const ticks = dayTicks(days.map((d) => dateOf(d.day)))
+  const you = { label: 'You', color: mineFirst ? RED : GREY }
+  const others = { label: 'Everyone else', color: mineFirst ? GREY : RED }
+  const legend = (mineFirst ? [you, others] : [others, you]).filter((item) => item !== you || mineTotal > 0)
   return (
     <ChartCard
       className="xl:flex-[2]"
       title={`${formatHours(total)} logged in 14 days`}
       subtitle={`Hours per day on ${scope}`}
-      legend={[
-        { label: 'Everyone else', color: RED },
-        { label: 'You', color: GREY },
-      ]}
+      legend={legend}
       table={{ columns: ['Day', 'Hours', 'Yours'], rows: days.map((d) => [dayTitle(d.day), formatHours(d.hours), formatHours(d.mine)]) }}
     >
       <ColumnChart
         label="Hours per day"
         series={[
-          { key: 'mine', label: 'You', color: GREY },
-          { key: 'others', label: 'Everyone else', color: RED },
+          { key: 'mine', label: 'You', color: you.color },
+          { key: 'others', label: 'Everyone else', color: others.color },
         ]}
         columns={days.map((d, index) => ({
           // The day number, with its month on the first column and on each 1st (UX Phase 3, 3.4).
@@ -141,8 +146,9 @@ function OverdueTasks({ overdue, projectName, people }: { overdue: Overdue[]; pr
   ]
 
   return (
-    <section className="mb-6 min-w-0" aria-labelledby="dashboard-overdue">
-      <h2 id="dashboard-overdue" className="mb-3 text-sm font-semibold text-fg">
+    // The Overdue tile leads here (#attention, UX Phase 4, 4.6).
+    <section id="attention" className="mb-6 min-w-0 scroll-mt-20" aria-labelledby="dashboard-overdue">
+      <h2 id="dashboard-overdue" tabIndex={-1} className="mb-3 text-sm font-semibold text-fg outline-none">
         {overdue.length ? `${plural(overdue.length, 'task needs', 'tasks need')} attention` : 'No tasks need attention'}
       </h2>
       {overdue.length === 0 ? (
@@ -176,12 +182,15 @@ function OverdueTasks({ overdue, projectName, people }: { overdue: Overdue[]; pr
   )
 }
 
-/** The charts on the dashboard's 2/3 + 1/3 rhythm (the two bar lists stacked), then the overdue tasks full width. */
-export function DashboardCharts({ stats, scope, projectName, people }: { stats: DashboardStats; scope: string; projectName: (id: string) => string; people: User[] }) {
+/**
+ * The charts on the dashboard's 2/3 + 1/3 rhythm (the two bar lists stacked), each card as tall as its content, then
+ * the overdue tasks full width.
+ */
+export function DashboardCharts({ stats, scope, projectName, people, mineFirst }: { stats: DashboardStats; scope: string; projectName: (id: string) => string; people: User[]; mineFirst: boolean }) {
   return (
     <>
-      <div className="mb-6 flex flex-col gap-5 xl:flex-row">
-        <HoursPerDay days={stats.days} scope={scope} />
+      <div className="mb-6 flex flex-col gap-5 xl:flex-row xl:items-start">
+        <HoursPerDay days={stats.days} scope={scope} mineFirst={mineFirst} />
         <div className="flex min-w-0 flex-col gap-5 xl:flex-1">
           <TasksByStatus byStatus={stats.byStatus} />
           <HoursByProject byProject={stats.byProject} projectName={projectName} />

@@ -101,6 +101,8 @@ describe.each([
       mount(<DashboardPage />, dark)
       await screen.findByRole('heading', { name: 'Working now' })
       expect(screen.getByRole('group', { name: 'Hours per day' })).toBeTruthy()
+      // UX Phase 4, 4.6: wide, each chart card is as tall as its content, not stretched to the stacked column's height.
+      if (width >= 1280) expect(getComputedStyle(screen.getByRole('group', { name: 'Hours per day' }).closest('div.rounded-xl')!.parentElement!).alignItems).toBe('flex-start')
       expect(screen.getByRole('heading', { name: '2 tasks need attention' })).toBeTruthy()
       expect(await violations()).toEqual([])
       expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(width)

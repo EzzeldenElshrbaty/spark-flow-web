@@ -114,8 +114,9 @@ describe('the dashboard for everyone (dashboard slice)', () => {
     const days = screen.getByRole('heading', { name: '42h logged in 14 days' }).closest('div.rounded-xl') as HTMLElement
     expect(within(days).getByRole('group', { name: 'Hours per day' })).toBeTruthy()
     const swatch = (label: string) => (within(days).getByText(label).firstElementChild as HTMLElement).style.background
-    expect(swatch('Everyone else')).toBe('var(--chart-primary)')
-    expect(swatch('You')).toBe('var(--chart-context)')
+    // UX Phase 4, 4.6: someone who sees only their own projects reads their own hours in red.
+    expect(swatch('You')).toBe('var(--chart-primary)')
+    expect(swatch('Everyone else')).toBe('var(--chart-context)')
 
     const byProject = screen.getByRole('heading', { name: 'Nexus Core had the most hours' }).closest('div.rounded-xl') as HTMLElement
     expect(within(byProject).getAllByRole('listitem').map((li) => li.getAttribute('aria-label'))).toEqual(['Nexus Core: 30h', 'Mobile App: 12h'])
@@ -173,5 +174,42 @@ describe('the dashboard for everyone (dashboard slice)', () => {
     expect(screen.queryByRole('group', { name: 'Hours per day' })).toBeNull()
     expect(screen.queryByRole('table', { name: 'Tasks that need attention' })).toBeNull()
     expect(screen.getByText('The projects you manage or work on.')).toBeTruthy()
+  })
+})
+
+describe('the dashboard leads somewhere (UX Phase 4, 4.6)', () => {
+  const tile = (label: string) => screen.getAllByText(label)[0]!.closest('a')
+  it('tiles open their lists: Projects, the tasks needing attention here, Time & cost', () => {
+    show()
+    expect(tile('Active projects')?.getAttribute('href')).toBe('/w/engineering/projects')
+    expect(tile('Overdue tasks')?.getAttribute('href')).toBe('/w/engineering/dashboard#attention')
+    expect(tile('Hours, last 7 days')?.getAttribute('href')).toBe('/w/engineering/time?days=7')
+    expect(document.getElementById('attention')?.textContent).toContain('3 tasks need attention')
+  })
+
+  it('whoever can see every project keeps the team in red and their own hours in grey', () => {
+    everyProject = true
+    show()
+    const days = screen.getByRole('heading', { name: '42h logged in 14 days' }).closest('div.rounded-xl') as HTMLElement
+    const swatch = (label: string) => (within(days).getByText(label).firstElementChild as HTMLElement).style.background
+    expect(swatch('Everyone else')).toBe('var(--chart-primary)')
+    expect(swatch('You')).toBe('var(--chart-context)')
+  })
+
+  it('"You" leaves the legend while my 14 days add up to nothing', () => {
+    const stats = fullStats.days
+    fullStats.days = stats.map((d) => ({ ...d, mine: 0 }))
+    show()
+    const days = screen.getByRole('heading', { name: '42h logged in 14 days' }).closest('div.rounded-xl') as HTMLElement
+    expect(within(days).queryByText('You')).toBeNull()
+    fullStats.days = stats
+  })
+
+  it('someone who can’t see who’s working gets three tiles, not "Working now —"', () => {
+    meId = 'u-3'
+    grants = []
+    show()
+    expect(screen.queryByText('Working now')).toBeNull()
+    expect(screen.getByText('Hours, last 7 days').closest('.grid')?.className).toContain('xl:grid-cols-3')
   })
 })

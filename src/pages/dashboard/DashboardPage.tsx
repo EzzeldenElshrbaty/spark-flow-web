@@ -1,5 +1,6 @@
 import clsx from 'clsx'
-import { Link } from 'react-router'
+import { useEffect } from 'react'
+import { Link, useLocation } from 'react-router'
 import { useDashboard, useDashboardStats, useWorkingNow } from '@/api/dashboard'
 import { useProjectSummaries } from '@/api/projects'
 import { useTasksOf } from '@/api/tickets'
@@ -146,6 +147,17 @@ export function DashboardPage() {
   const now = useNow(60_000)
   const ws = workspace?.slug ?? ''
 
+  // Each tile leads to its list (UX Phase 4, 4.6); one inside the page scrolls there and puts the focus on its heading.
+  const location = useLocation()
+  const ready = !projects.isPending && !stats.isPending
+  useEffect(() => {
+    const target = location.hash ? document.getElementById(location.hash.slice(1)) : null
+    if (!target) return
+    const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    target.scrollIntoView?.({ block: 'start', behavior: still ? 'auto' : 'smooth' })
+    target.querySelector<HTMLElement>('h2, h3')?.focus({ preventScroll: true })
+  }, [location.key, location.hash, ready])
+  const seesTime = check('timeCost.view')
   const showCost = list.some((p) => p.cost !== null)
   const hours7 = list.reduce((s, p) => s + p.weekHours, 0)
   const cost = list.reduce((s, p) => s + (p.cost ?? 0), 0)
@@ -177,20 +189,22 @@ export function DashboardPage() {
         <p className="rounded-xl border border-dashed border-line-strong p-10 text-center text-sm text-fg-secondary">{broad ? 'No projects to show.' : 'You’re not on any projects yet.'}</p>
       ) : (
         <>
-          <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-            <StatTile label="Active projects" value={String(list.filter((p) => p.status === 'active').length)} hint={`${list.length} in all`} />
+          {/* Someone who can't see who's working (Sales) gets three tiles, not "Working now —". */}
+          <div className={clsx('mb-6 grid grid-cols-2 gap-3 sm:gap-4', showCost || seesWorking ? 'xl:grid-cols-4' : 'xl:grid-cols-3')}>
+            <StatTile label="Active projects" value={String(list.filter((p) => p.status === 'active').length)} hint={`${list.length} in all`} to={paths.projects(ws)} />
             <StatTile
               label="Overdue tasks"
               value={String(list.reduce((s, p) => s + p.overdueCount, 0))}
               hint={overEstimate ? `${overEstimate} over estimate` : undefined}
               tone={list.some((p) => p.overdueCount) ? 'danger' : undefined}
+              to="#attention"
             />
-            <StatTile label="Hours, last 7 days" value={formatHours(hours7)} />
+            <StatTile label="Hours, last 7 days" value={formatHours(hours7)} to={seesTime ? `${paths.timeCost(ws)}?days=7` : undefined} />
             {showCost ? (
-              <StatTile label="Cost to date" value={formatMoney(Math.round(cost))} hint="Hours × hourly cost" />
-            ) : (
-              <StatTile label="Working now" value={seesWorking ? String(working.data?.length ?? 0) : '—'} />
-            )}
+              <StatTile label="Cost to date" value={formatMoney(Math.round(cost))} hint="Hours × hourly cost" to={seesTime ? paths.timeCost(ws) : undefined} />
+            ) : seesWorking ? (
+              <StatTile label="Working now" value={String(working.data?.length ?? 0)} to="#working-now" />
+            ) : null}
           </div>
           {stats.isError ? (
             <div className="mb-6">
@@ -202,7 +216,7 @@ export function DashboardPage() {
               <div className="h-72 animate-pulse rounded-xl bg-surface-muted xl:flex-1" />
             </div>
           ) : (
-            <DashboardCharts stats={stats.data} scope={broad ? 'every project' : 'your projects'} projectName={projectName} people={people} />
+            <DashboardCharts stats={stats.data} scope={broad ? 'every project' : 'your projects'} projectName={projectName} people={people} mineFirst={!broad} />
           )}
           <div className="flex flex-col gap-5 xl:flex-row">
             <div className="grid min-w-0 flex-1 gap-5 lg:grid-cols-2">
@@ -211,18 +225,21 @@ export function DashboardPage() {
               ))}
             </div>
             {seesWorking && (
-              <Card className="xl:w-80 xl:shrink-0 xl:self-start">
-                <CardHeader title="Working now" />
-                {working.isError ? (
-                  <div className="p-5">
-                    <QueryError what="Working now" onRetry={() => void working.refetch()} />
-                  </div>
-                ) : working.isPending ? (
-                  <div className="m-5 h-24 animate-pulse rounded-lg bg-surface-muted" aria-hidden />
-                ) : (
-                  <WorkingNowList list={working.data} people={people} taskLabel={label} />
-                )}
-              </Card>
+              // The Working now tile leads here (#working-now, UX Phase 4, 4.6).
+              <div id="working-now" className="scroll-mt-20 xl:w-80 xl:shrink-0 xl:self-start">
+                <Card>
+                  <CardHeader title="Working now" />
+                  {working.isError ? (
+                    <div className="p-5">
+                      <QueryError what="Working now" onRetry={() => void working.refetch()} />
+                    </div>
+                  ) : working.isPending ? (
+                    <div className="m-5 h-24 animate-pulse rounded-lg bg-surface-muted" aria-hidden />
+                  ) : (
+                    <WorkingNowList list={working.data} people={people} taskLabel={label} />
+                  )}
+                </Card>
+              </div>
             )}
           </div>
         </>
