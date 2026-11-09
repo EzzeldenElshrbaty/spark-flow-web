@@ -21,6 +21,7 @@ type UiState = {
   lastMode: Record<string, WorkspaceMode>        // workspace slug → the side last opened, for pages both sides share
   lastProjectView: Record<string, ProjectView>   // project key → board or list on its Tasks tab
   lastFilters: Record<string, { phase?: string; sprint?: string }> // project key → its Tasks tab's last phase and sprint
+  recentTimers: Record<string, string[]>         // `${userId}:${workspaceId}` → what timers last ran on, newest first (UX Phase 4, 4.3)
   typing: Record<string, Typer[]>                // channel id → who is typing; never persisted
   helpOpen: boolean                              // the page help panel (slice 6): kept across pages, not reloads
 }
@@ -35,6 +36,8 @@ type UiActions = {
   forgetPlaces: () => void
   setProjectView: (key: string, view: ProjectView) => void
   setProjectFilters: (key: string, filters: { phase?: string; sprint?: string }) => void
+  /** Notes a timer's target (`task:<id>` or `project:<id>`) for Start timer's Recent: first, once, five at most. */
+  noteRecentTimer: (key: string, entry: string) => void
   addTyper: (channelId: string, userId: string, now?: number) => void
   setHelpOpen: (open: boolean) => void
 }
@@ -49,6 +52,7 @@ export const initialUiState: UiState = {
   lastMode: {},
   lastProjectView: {},
   lastFilters: {},
+  recentTimers: {},
   typing: {},
   helpOpen: false,
 }
@@ -128,6 +132,8 @@ export const useUiStore = create<UiState & UiActions>()(
       forgetPlaces: () => set({ lastWorkspace: null, lastVisited: {}, lastByMode: {}, lastMode: {} }),
       setProjectView: (key, view) => set((state) => ({ lastProjectView: { ...state.lastProjectView, [key]: view } })),
       setProjectFilters: (key, filters) => set((state) => ({ lastFilters: { ...state.lastFilters, [key]: filters } })),
+      noteRecentTimer: (key, entry) =>
+        set((state) => ({ recentTimers: { ...state.recentTimers, [key]: [entry, ...(state.recentTimers[key] ?? []).filter((e) => e !== entry)].slice(0, 5) } })),
       addTyper: (channelId, userId, now = Date.now()) =>
         set((state) => ({
           typing: {

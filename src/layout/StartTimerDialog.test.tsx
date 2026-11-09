@@ -2,9 +2,10 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { StartTimerDialog } from '@/layout/StartTimerDialog'
+import { useUiStore } from '@/lib/uiStore'
 
 type P = { id: string; key: string; name: string; managerId: string }
-type T = { id: string; key: string; title: string; assigneeId: string | null; category: 'todo' | 'inProgress' | 'done' }
+type T = { id: string; key: string; title: string; projectId: string; assigneeId: string | null; category: 'todo' | 'inProgress' | 'done'; overdue?: boolean; overEstimate?: boolean; dueAt?: string | null }
 let projects: P[] = []
 let tasks: Record<string, T[]> = {}
 const loggable = new Set<string>()
@@ -13,7 +14,10 @@ const start = { mutate: vi.fn(), isPending: false, error: null as Error | null }
 
 vi.mock('@/layout/useCurrentWorkspace', () => ({ useCurrentWorkspace: () => ({ workspace: { id: 'ws-eng', slug: 'engineering', name: 'Spark Engineering' } }) }))
 vi.mock('@/api/projects', () => ({ useProjectSummaries: () => ({ data: projects }) }))
-vi.mock('@/api/tickets', () => ({ useTickets: (projectId?: string) => ({ data: projectId ? tasks[projectId] : undefined }) }))
+vi.mock('@/api/tickets', () => ({
+  useTickets: (projectId?: string) => ({ data: projectId ? tasks[projectId] : undefined }),
+  useTasksOf: (projectIds: string[]) => ({ data: projectIds.flatMap((id) => tasks[id] ?? []), isPending: false }),
+}))
 vi.mock('@/api/users', () => ({ useMe: () => ({ data: { id: 'u-1', teamIds: [] } }) }))
 vi.mock('@/lib/usePermission', () => ({ usePermission: () => (_action: string, ctx: { project: P }) => loggable.has(ctx.project.id) }))
 vi.mock('@/api/time', () => ({ useMyDay: () => ({ data: { firstStart } }), useStartTimer: () => start }))
@@ -25,9 +29,9 @@ beforeEach(() => {
   ]
   tasks = {
     'p-nex': [
-      { id: 't-101', key: 'NEX-101', title: 'Login page', assigneeId: 'u-3', category: 'inProgress' },
-      { id: 't-102', key: 'NEX-102', title: 'Invoices', assigneeId: 'u-1', category: 'todo' },
-      { id: 't-103', key: 'NEX-103', title: 'Shipped', assigneeId: 'u-1', category: 'done' },
+      { id: 't-101', key: 'NEX-101', title: 'Login page', projectId: 'p-nex', assigneeId: 'u-3', category: 'inProgress' },
+      { id: 't-102', key: 'NEX-102', title: 'Invoices', projectId: 'p-nex', assigneeId: 'u-1', category: 'todo' },
+      { id: 't-103', key: 'NEX-103', title: 'Shipped', projectId: 'p-nex', assigneeId: 'u-1', category: 'done' },
     ],
   }
   loggable.clear()
@@ -36,63 +40,76 @@ beforeEach(() => {
   start.mutate.mockReset()
   start.isPending = false
   start.error = null
+  useUiStore.setState({ recentTimers: {} })
 })
 afterEach(cleanup)
 
 const onClose = vi.fn()
 const show = (title?: string) => render(<StartTimerDialog open onClose={onClose} title={title} />)
-const select = (name: string) => screen.getByRole('combobox', { name }) as HTMLSelectElement
+const box = () => screen.getByRole('combobox', { name: 'Find a task' }) as HTMLInputElement
+const options = () => screen.getAllByRole('option').map((o) => o.textContent)
 
-describe('StartTimerDialog (timer slice 1)', () => {
-  it('Task waits for a project; picking both and Start timer starts that target', async () => {
+describe('StartTimerDialog (UX Phase 4, 4.3: find a task, start in two clicks)', () => {
+  it('lists my open tasks first; ↓ then Enter starts the first one', async () => {
     show()
     expect(screen.getByRole('dialog', { name: 'Start timer' })).toBeTruthy()
-    expect(select('Task').disabled).toBe(true)
-    // Only projects I may log on.
-    expect(within(select('Project')).getAllByRole('option').map((o) => o.textContent)).toEqual(['Choose…', 'Nexus Core'])
-    await act(async () => fireEvent.change(select('Project'), { target: { value: 'p-nex' } }))
-    expect(select('Task').disabled).toBe(false)
-    // Mine first, done ones left out.
-    expect(within(select('Task')).getAllByRole('option').map((o) => o.textContent)).toEqual(['No task', 'NEX-102 · Invoices', 'NEX-101 · Login page'])
-    await act(async () => fireEvent.change(select('Task'), { target: { value: 't-102' } }))
-    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Start timer' })))
-    expect(start.mutate).toHaveBeenCalledWith({ taskId: 't-102' }, expect.objectContaining({ onSuccess: onClose }))
+    expect(screen.getByRole('group', { name: 'My tasks' })).toBeTruthy()
+    expect(options()).toEqual(['NEX-102 · InvoicesNexus Core'])
+    fireEvent.keyDown(box(), { key: 'ArrowDown' })
+    await act(async () => fireEvent.keyDown(box(), { key: 'Enter' }))
+    expect(start.mutate).toHaveBeenCalledWith({ taskId: 't-102' }, expect.anything())
   })
 
-  it('No task starts the timer on the project', async () => {
+  it('words find any open task on a project I may log on; a click starts it', async () => {
     show()
-    await act(async () => fireEvent.change(select('Project'), { target: { value: 'p-nex' } }))
-    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Start timer' })))
-    expect(start.mutate).toHaveBeenCalledWith({ projectId: 'p-nex' }, expect.anything())
+    fireEvent.change(box(), { target: { value: 'login' } })
+    expect(screen.getByRole('group', { name: 'Matches' })).toBeTruthy()
+    expect(options()).toEqual(['NEX-101 · Login pageNexus Core'])
+    await act(async () => fireEvent.click(screen.getByRole('option')))
+    expect(start.mutate).toHaveBeenCalledWith({ taskId: 't-101' }, expect.anything())
   })
 
-  it('Start timer waits for a project, and says "Starting…" while it starts', async () => {
+  it('a start is remembered for Recent', async () => {
+    start.mutate.mockImplementation((_target, { onSuccess }) => onSuccess())
     show()
-    expect((screen.getByRole('button', { name: 'Start timer' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(box(), { target: { value: 'login' } })
+    await act(async () => fireEvent.click(screen.getByRole('option')))
+    expect(useUiStore.getState().recentTimers['u-1:ws-eng']).toEqual(['task:t-101'])
+    expect(onClose).toHaveBeenCalled()
     cleanup()
-    start.isPending = true
     show()
-    expect(screen.getByRole('button', { name: 'Starting…' })).toBeTruthy()
+    expect(screen.getByRole('group', { name: 'Recent' }).textContent).toContain('NEX-101')
   })
 
-  it('the notice shows while firstStart', () => {
+  it('on my first start, a pick shows the notice and Start confirms', async () => {
     firstStart = true
     show()
     expect(screen.getByRole('dialog').textContent).toContain(
       'Starting a timer records the time, this device’s IP address and browser, and your location if you allow it. You, the managers of your projects and Admins can see them in Attendance.',
     )
-    cleanup()
-    firstStart = false
-    show()
-    expect(screen.getByRole('dialog').textContent).not.toContain('Starting a timer records')
+    await act(async () => fireEvent.click(screen.getByRole('option')))
+    expect(start.mutate).not.toHaveBeenCalled()
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Start timer' })))
+    expect(start.mutate).toHaveBeenCalledWith({ taskId: 't-102' }, expect.anything())
   })
 
-  it('with no project to log on it says "You aren\'t on any projects you can log time on." and has no Start', () => {
+  it('Log on the project only: a project, then Start', async () => {
+    show()
+    fireEvent.click(screen.getByRole('button', { name: 'Log on the project only' }))
+    const project = screen.getByRole('combobox', { name: 'Project' }) as HTMLSelectElement
+    expect(within(project).getAllByRole('option').map((o) => o.textContent)).toEqual(['Choose…', 'Nexus Core'])
+    expect((screen.getByRole('button', { name: 'Start timer' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(project, { target: { value: 'p-nex' } })
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Start timer' })))
+    expect(start.mutate).toHaveBeenCalledWith({ projectId: 'p-nex' }, expect.anything())
+  })
+
+  it('with no project to log on it says so and has no Start', () => {
     loggable.clear()
     show()
     expect(screen.getByRole('dialog').textContent).toContain('You aren’t on any projects you can log time on.')
     expect(screen.queryByRole('button', { name: 'Start timer' })).toBeNull()
-    expect(screen.queryByRole('combobox', { name: 'Project' })).toBeNull()
+    expect(screen.queryByRole('combobox')).toBeNull()
   })
 
   it('a refused start shows its error in the dialog', () => {

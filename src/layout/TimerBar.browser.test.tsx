@@ -16,7 +16,12 @@ let timer: MyTimer | null = null
 const idle = { mutate: () => undefined, isPending: false, error: null }
 vi.mock('@/layout/useCurrentWorkspace', () => ({ useCurrentWorkspace: () => ({ workspace: { id: 'ws-eng', slug: 'engineering', name: 'Spark Engineering' } }) }))
 vi.mock('@/api/projects', () => ({ useProjectSummaries: () => ({ data: [{ id: 'p-nex', key: 'NEX', name: 'Nexus Core', managerId: 'u-1' }] }) }))
-vi.mock('@/api/tickets', () => ({ useTickets: (projectId?: string) => ({ data: projectId ? [{ id: 't-101', key: 'NEX-101', title: 'Login page with a longer title than fits', projectId: 'p-nex', assigneeId: 'u-1', category: 'todo' }] : undefined }) }))
+const loginTask = { id: 't-101', key: 'NEX-101', title: 'Login page with a longer title than fits', projectId: 'p-nex', assigneeId: 'u-1', category: 'todo', overdue: false, overEstimate: false, dueAt: null }
+vi.mock('@/api/tickets', () => ({
+  useTickets: (projectId?: string) => ({ data: projectId ? [loginTask] : undefined }),
+  // Start timer's list (UX Phase 4, 4.3) reads every project's tasks at once.
+  useTasksOf: (projectIds: string[]) => ({ data: projectIds.includes('p-nex') ? [loginTask] : [], isPending: false }),
+}))
 vi.mock('@/api/users', () => ({ useMe: () => ({ data: { id: 'u-1', teamIds: [] } }) }))
 vi.mock('@/api/attendance', () => ({ useTimerSetting: () => ({ data: { timeoutHours: 4 } }) }))
 vi.mock('@/lib/usePermission', () => ({ usePermission: () => () => true }))

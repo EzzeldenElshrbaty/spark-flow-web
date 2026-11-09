@@ -57,6 +57,10 @@ Spark Flow is a sister product of **Spark CRM** (Spark Systems). The two apps mu
     (`shown`), so only Attendance shows it.
   - **Controls:** the top bar's Start timer, the pill, the phone bar, My work and the task panel all use
     `TimerControls`.
+  - **Start timer** (UX Phase 4): one search list (`layout/TaskPicker.tsx`, groups from `layout/timerTargets.ts`): my
+    open tasks, then Recent (`uiStore.recentTimers`, per person and workspace); words find any open task on a project I
+    may log on. A pick starts it (on the first start, Start confirms under the notice); "Log on the project only" picks
+    a project. Nobody without a project to log on sees Start timer.
   - **Picking my timer:** "my newest entry" goes by when entries end, with a running one first, so an edited start
     can't reorder them.
   - **Timeout** (timer slice 2): `settings.timerTimeoutHours` (DB v29, 1–12, default 4, `timeoutProblem` in

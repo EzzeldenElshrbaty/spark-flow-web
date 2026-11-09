@@ -7,6 +7,7 @@ import { usePauseTimer, useResumeTimer, useStopTimer } from '@/api/time'
 import type { MyTimer } from '@/api/types'
 import { Button, IconButton } from '@/components/sf/Button'
 import { Button as CardButton } from '@/components/ui/Button'
+import { useLogTargets } from '@/pages/time/useLogTargets'
 import { StartTimerDialog } from '@/layout/StartTimerDialog'
 import { useMyTimer } from '@/layout/useMyTimer'
 import { formatClock } from '@/lib/format'
@@ -100,9 +101,14 @@ function CardControls({ timer, pause, resume, stop, failed, switching, setSwitch
   )
 }
 
-/** No timer: Start timer, as text from md up and a round icon button on phones; it opens the Start timer dialog. */
+/**
+ * No timer: Start timer, as text from md up and a round icon button on phones; it opens the Start timer dialog. Not
+ * there for someone with no project to log on (UX Phase 4, 4.10): the dialog could only say so.
+ */
 function StartTimerButton() {
   const [open, setOpen] = useState(false)
+  const { projects, loaded } = useLogTargets('')
+  if (loaded && projects.length === 0) return null
   return (
     <>
       <span className="hidden md:block">

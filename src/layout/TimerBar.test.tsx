@@ -16,6 +16,8 @@ vi.mock('@/layout/useCurrentWorkspace', () => ({ useCurrentWorkspace: () => ({ w
 vi.mock('@/api/projects', () => ({ useProjectSummaries: () => ({ data: [{ id: 'p-nex', key: 'NEX', name: 'Nexus Core' }] }) }))
 vi.mock('@/api/tickets', () => ({ useTickets: () => ({ data: [{ id: 't-101', key: 'NEX-101', title: 'Login page', projectId: 'p-nex' }] }) }))
 vi.mock('@/api/time', () => ({ useMyDay: () => ({ data: { timer } }), usePauseTimer: () => pause, useResumeTimer: () => resume, useStopTimer: () => stop }))
+let logProjects: { id: string }[] = [{ id: 'p-nex' }]
+vi.mock('@/pages/time/useLogTargets', () => ({ useLogTargets: () => ({ projects: logProjects, tasks: [], loaded: true }) }))
 vi.mock('@/layout/StartTimerDialog', () => ({ StartTimerDialog: ({ open, title = 'Start timer' }: { open: boolean; title?: string }) => (open ? <div role="dialog" aria-label={title} /> : null) }))
 
 const MIN = 60_000
@@ -35,6 +37,13 @@ const bar = () => document.querySelector<HTMLElement>('[data-timer="bar"]')!
 const show = (ui: React.ReactNode) => render(<MemoryRouter>{ui}</MemoryRouter>)
 
 describe('the top bar timer (timer slice 1)', () => {
+  it('someone with no project to log on gets no Start timer (UX Phase 4, 4.10)', () => {
+    logProjects = []
+    show(<TimerPill />)
+    expect(screen.queryByRole('button', { name: 'Start timer' })).toBeNull()
+    logProjects = [{ id: 'p-nex' }]
+  })
+
   it('no timer: Start timer (text from md, a round icon below) opens the dialog', async () => {
     show(<TimerPill />)
     const buttons = screen.getAllByRole('button', { name: 'Start timer' })

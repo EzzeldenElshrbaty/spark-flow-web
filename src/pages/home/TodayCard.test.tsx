@@ -10,6 +10,8 @@ import { TodayCard } from './TodayCard'
 
 vi.mock('@/api/users', async (load) => ({ ...(await load<object>()), useUsers: () => ({ data: [{ id: 'u-2', name: 'Nour El-Sayed' }] }) }))
 vi.mock('@/layout/useCurrentWorkspace', () => ({ useCurrentWorkspace: () => ({ workspace: { id: 'ws-eng', slug: 'engineering' } }) }))
+let logProjects: { id: string }[] = [{ id: 'p-nex' }]
+vi.mock('@/pages/time/useLogTargets', () => ({ useLogTargets: () => ({ projects: logProjects, tasks: [], loaded: true }) }))
 vi.mock('@/layout/StartTimerDialog', () => ({ StartTimerDialog: ({ open, title = 'Start timer' }: { open: boolean; title?: string }) => (open ? <div role="dialog" aria-label={title} /> : null) }))
 
 const MIN = 60_000
@@ -24,6 +26,14 @@ const show = (d: MyDay) =>
 afterEach(cleanup)
 
 describe('the Today card (timer slice 3)', () => {
+  it('someone with no project to log on gets no Start timer, and is told why (UX Phase 4, 4.10)', () => {
+    logProjects = []
+    show(day({}))
+    expect(screen.queryByRole('button', { name: 'Start timer' })).toBeNull()
+    expect(screen.getByText('You aren’t on a project you can log time on yet.')).toBeTruthy()
+    logProjects = [{ id: 'p-nex' }]
+  })
+
   it('no timer: Start timer opens the Start timer dialog; no plan field and no check-out', async () => {
     show(day({}))
     expect(screen.getByRole('heading', { name: 'Today · 0h' })).toBeTruthy()

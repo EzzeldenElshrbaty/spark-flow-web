@@ -8,7 +8,7 @@ Hours come from the timer and from time added by hand. A task’s hours count ag
 
 ## The timer
 
-Press **Start timer** in the top bar, pick a project and a task, and it starts. You can also start it from Home or a task’s panel. One timer runs at a time: starting another stops the last.
+Press **Start timer** in the top bar and pick a task: yours come first, then recent ones, and typing finds any open task on your projects. Picking one starts the timer; the very first time, the dialog says what a timer records and **Start timer** confirms. You can also start it from My work or a task’s panel. One timer runs at a time: starting another stops the last.
 
 - **Pause** stops counting and keeps the task in the bar. **Resume** carries the count on from where it stopped.
 - **Stop** ends it, and the bar shows Start timer again. The next start counts from zero.

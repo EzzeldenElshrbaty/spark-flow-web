@@ -10,6 +10,7 @@ import { StartTimerDialog } from '@/layout/StartTimerDialog'
 import { TimerControls, timerClock } from '@/layout/TimerBar'
 import { AddedBy } from '@/pages/time/AddedBy'
 import { AddTimeSheet } from '@/pages/time/AddTimeSheet'
+import { useLogTargets } from '@/pages/time/useLogTargets'
 import { EntryRowExtras } from '@/pages/time/EntryRowExtras'
 import { daySummary } from './myDay'
 
@@ -19,6 +20,7 @@ type Label = (taskId: string | null, projectId: string) => string
 function TimerRow({ day, label }: { day: MyDay; label: Label }) {
   const now = useNow(day.timer?.state === 'running' ? 1000 : 0)
   const [starting, setStarting] = useState(false)
+  const { projects, loaded } = useLogTargets('')
   if (day.timer) {
     const { timer } = day
     const clock = timerClock(timer, now)
@@ -36,6 +38,8 @@ function TimerRow({ day, label }: { day: MyDay; label: Label }) {
       </div>
     )
   }
+  // Someone with no project to log on can't start one (UX Phase 4, 4.10).
+  if (loaded && projects.length === 0) return <p className="text-sm text-fg-muted">You aren’t on a project you can log time on yet.</p>
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <p className="text-sm text-fg-muted">No timer running · Start one to begin your day.</p>

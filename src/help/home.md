@@ -10,7 +10,7 @@ My work is your day in one place: your timer and today’s time, every open task
 
 ## Today
 
-Starting a timer starts your day: there’s nothing else to do first. **Start timer** asks for a project, then a task (yours first), or **No task** for the whole project. The top bar has the same button on every page.
+Starting a timer starts your day: there’s nothing else to do first. **Start timer** lists your open tasks first, then the ones you timed lately; type to find any open task on your projects, and pick one to start. **Log on the project only** times the whole project. The top bar has the same button on every page.
 
 The first time, the dialog says what a timer start records: the time, this device’s IP address and browser, and your location if your browser allows it. You, the managers of your projects and people who can see everyone’s timers see them in [Attendance](help:attendance).
 
