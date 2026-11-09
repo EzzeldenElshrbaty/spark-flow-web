@@ -1,6 +1,6 @@
 import clsx from 'clsx'
-import { ArrowLeft, Inbox, Search, X } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { ArrowLeft, Inbox, X } from 'lucide-react'
+import { useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
 import { useArchived, useDeleteForGood, useSetRetention } from '@/api/archived'
 import { useRestoreChannel } from '@/api/chat'
@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { DataTable, TableSkeleton, type Column } from '@/components/ui/DataTable'
 import { Field, inputClass } from '@/components/ui/Field'
+import { SearchBox } from '@/components/ui/SearchBox'
 import { NoAccess } from '@/components/ui/NoAccess'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
@@ -24,7 +25,6 @@ import { useAccess } from '@/lib/usePermission'
 import { deletableText, filterArchived, goesWithParts, TYPES, typeLabel } from './archivedView'
 import { quietChange } from '@/lib/searchParams'
 
-const SEARCH_WAIT_MS = 300
 
 /**
  * Settings → Archived records (Admin and help, slice 4, as the CRM's): every archived project, task and channel in the
@@ -132,20 +132,6 @@ function Archived({ ready }: { ready: boolean }) {
 function Controls({ params, set, counts }: { params: URLSearchParams; set: (values: Record<string, string>) => void; counts: ArchivedRecord[] }) {
   const type = params.get('type') ?? ''
   const urlQ = params.get('q') ?? ''
-  const [q, setQ] = useState(urlQ)
-  const sent = useRef(urlQ)
-  useEffect(() => {
-    if (urlQ !== sent.current) setQ(urlQ)
-    sent.current = urlQ
-  }, [urlQ])
-  useEffect(() => {
-    if (q === urlQ) return
-    const timer = setTimeout(() => {
-      sent.current = q
-      set({ q })
-    }, SEARCH_WAIT_MS)
-    return () => clearTimeout(timer)
-  })
   const chip = (id: string, label: string, count: number) => (
     <button
       key={id || 'all'}
@@ -168,11 +154,7 @@ function Controls({ params, set, counts }: { params: URLSearchParams; set: (valu
         {chip('', 'All', counts.length)}
         {TYPES.map((t) => chip(t.id, t.label, counts.filter((r) => r.type === t.id).length))}
       </div>
-      <label className="relative block">
-        <span className="sr-only">Search archived records</span>
-        <Search aria-hidden className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-fg-muted" />
-        <input type="search" className={clsx(inputClass, 'ps-9')} placeholder="Search names, keys and reasons…" value={q} onChange={(e) => setQ(e.target.value)} />
-      </label>
+      <SearchBox label="Search archived records" placeholder="Search names, keys and reasons…" value={urlQ} onChange={(q) => set({ q })} />
     </div>
   )
 }

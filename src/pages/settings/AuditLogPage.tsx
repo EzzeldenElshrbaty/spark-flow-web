@@ -1,6 +1,6 @@
 import clsx from 'clsx'
-import { ArrowLeft, Ban, CalendarClock, Download, Inbox, LogIn, PenLine, Search, ShieldAlert, ShieldCheck, ShieldX, X, type LucideIcon } from 'lucide-react'
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { ArrowLeft, Ban, CalendarClock, Download, Inbox, LogIn, PenLine, ShieldAlert, ShieldCheck, ShieldX, X, type LucideIcon } from 'lucide-react'
+import { useId, type ReactNode } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
 import { useAuditEntry, useAuditLog, useAuditSummary, useExportAudit } from '@/api/audit'
 import type { AuditAlert, AuditEvent, AuditFilter, AuditGroup, AuditSummary } from '@/api/types'
@@ -8,7 +8,8 @@ import { Avatar } from '@/components/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { DataTable, TableSkeleton, type Column } from '@/components/ui/DataTable'
-import { inputClass, selectClass } from '@/components/ui/Field'
+import { selectClass } from '@/components/ui/Field'
+import { SearchBox } from '@/components/ui/SearchBox'
 import { NoAccess } from '@/components/ui/NoAccess'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
@@ -22,7 +23,6 @@ import { ACTIONS, breakHere, chainText, changeLine, changeSummary, dayStart, fil
 import { quietChange } from '@/lib/searchParams'
 import { StatTile } from '@/components/ui/StatTile'
 
-const SEARCH_WAIT_MS = 300
 
 /**
  * Settings → Audit log (Admin and help, slice 2, as the CRM's): who did what to which record, when and from where.
@@ -242,22 +242,6 @@ function AlertRow({ alert, onOpen }: { alert: AuditAlert; onOpen: (seq: number) 
 function Controls({ params, set, summary, counts }: { params: URLSearchParams; set: (values: Record<string, string>) => void; summary?: AuditSummary; counts?: Record<'all' | AuditGroup, number> }) {
   const group = params.get('group') ?? ''
   const urlQ = params.get('q') ?? ''
-  const [q, setQ] = useState(urlQ)
-  const sent = useRef(urlQ)
-  // The address follows the box after a pause; Back (or Clear) puts the address's words back in the box, but the
-  // words this box just sent don't overwrite what was typed since.
-  useEffect(() => {
-    if (urlQ !== sent.current) setQ(urlQ)
-    sent.current = urlQ
-  }, [urlQ])
-  useEffect(() => {
-    if (q === urlQ) return
-    const timer = setTimeout(() => {
-      sent.current = q
-      set({ q })
-    }, SEARCH_WAIT_MS)
-    return () => clearTimeout(timer)
-  })
   const chip = (id: string, label: string, count: number | undefined) => (
     <button
       key={id || 'all'}
@@ -293,11 +277,7 @@ function Controls({ params, set, summary, counts }: { params: URLSearchParams; s
         {GROUPS.map((g) => chip(g.id, g.label, counts?.[g.id]))}
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-[minmax(0,2fr)_repeat(4,minmax(0,1fr))]">
-        <label className="relative col-span-2 sm:col-span-3 lg:col-span-1">
-          <span className="sr-only">Search the log</span>
-          <Search aria-hidden className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-fg-muted" />
-          <input type="search" className={clsx(inputClass, 'ps-9')} placeholder="Search names, records, IPs, #341…" value={q} onChange={(e) => setQ(e.target.value)} />
-        </label>
+        <SearchBox label="Search the log" placeholder="Search names, records, IPs, #341…" value={urlQ} onChange={(q) => set({ q })} className="col-span-2 sm:col-span-3 lg:col-span-1" />
         {select('period', 'Period', PERIODS.filter((p) => p.id).map((p) => ({ id: p.id, label: p.label })), 'Any time')}
         {select('person', 'Person', summary?.people.map((p) => ({ id: p.id, label: p.name })) ?? [], 'Anyone')}
         {select('type', 'Record type', summary?.recordTypes ?? [], 'Any record')}

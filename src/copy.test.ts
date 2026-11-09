@@ -70,7 +70,7 @@ describe('curly apostrophes (UX Phase 3, 3.7)', () => {
   })
 
   it('placeholders show an example without "e.g." (UX Phase 4, 4.9; the kit’s DateTimePicker keeps its own)', () => {
-    const pages = files(join(SRC, 'pages'), (name) => name.endsWith('.tsx') && !/\.test\.tsx$/.test(name))
+    const pages = files(join(SRC, 'pages'), (name) => name.endsWith('.tsx') && !name.endsWith('.test.tsx'))
     const found = pages.filter((path) => /placeholder=["{`'][^"]*e\.g\./.test(readFileSync(path, 'utf8'))).map((path) => relative(SRC, path))
     expect(found).toEqual([])
   })

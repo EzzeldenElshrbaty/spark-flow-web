@@ -1,6 +1,6 @@
 import clsx from 'clsx'
-import { ArrowLeft, Inbox, Plus, RotateCcw, Search, UserX, Users as UsersIcon, Wallet, X } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { ArrowLeft, Inbox, Plus, RotateCcw, UserX, Users as UsersIcon, Wallet, X } from 'lucide-react'
+import { useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
 import { useTeams } from '@/api/projects'
 import { useRoles } from '@/api/roles'
@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { DataTable, TableSkeleton, type Column } from '@/components/ui/DataTable'
 import { Field, inputClass, selectClass } from '@/components/ui/Field'
+import { SearchBox } from '@/components/ui/SearchBox'
 import { NoAccess } from '@/components/ui/NoAccess'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
@@ -23,7 +24,6 @@ import { useFormCheck } from '@/lib/useFormCheck'
 import { fieldOf, filterPeople, roleNames, teamNames, usersFilterFrom } from './usersView'
 import { quietChange } from '@/lib/searchParams'
 
-const SEARCH_WAIT_MS = 300
 const MAX_REASON = 200
 
 /**
@@ -155,21 +155,6 @@ function Users({ ready }: { ready: boolean }) {
 
 function Controls({ params, set, roles, teams }: { params: URLSearchParams; set: (values: Record<string, string>) => void; roles: Role[]; teams: Team[] }) {
   const urlQ = params.get('q') ?? ''
-  const [q, setQ] = useState(urlQ)
-  const sent = useRef(urlQ)
-  // The address follows the box after a pause; Back (or Clear) puts the address's words back in the box.
-  useEffect(() => {
-    if (urlQ !== sent.current) setQ(urlQ)
-    sent.current = urlQ
-  }, [urlQ])
-  useEffect(() => {
-    if (q === urlQ) return
-    const timer = setTimeout(() => {
-      sent.current = q
-      set({ q })
-    }, SEARCH_WAIT_MS)
-    return () => clearTimeout(timer)
-  })
   const select = (key: string, label: string, options: { id: string; label: string }[], any: string) => (
     <select className={clsx(selectClass, 'min-w-0')} aria-label={label} value={params.get(key) ?? ''} onChange={(e) => set({ [key]: e.target.value })}>
       <option value="">{any}</option>
@@ -182,11 +167,7 @@ function Controls({ params, set, roles, teams }: { params: URLSearchParams; set:
   )
   return (
     <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))]">
-      <label className="relative col-span-2 sm:col-span-3 lg:col-span-1">
-        <span className="sr-only">Search people</span>
-        <Search aria-hidden className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-fg-muted" />
-        <input type="search" className={clsx(inputClass, 'ps-9')} placeholder="Search names, emails, titles…" value={q} onChange={(e) => setQ(e.target.value)} />
-      </label>
+      <SearchBox label="Search people" placeholder="Search names, emails, titles…" value={urlQ} onChange={(q) => set({ q })} className="col-span-2 sm:col-span-3 lg:col-span-1" />
       {select('role', 'Role', roles.map((r) => ({ id: r.id, label: r.name })), 'Any role')}
       {select('team', 'Team', teams.map((t) => ({ id: t.id, label: t.name })), 'Any team')}
       <div className="col-span-2 sm:col-span-1">
