@@ -50,3 +50,10 @@ describe('the tabs row’s bookmarks (spec 6.1: a separator, then bookmarks, the
     expect(screen.queryByRole('button', { name: 'Add a bookmark' })).toBeNull()
   })
 })
+
+describe('hidden tabs (UX Phase 2, 2.5)', () => {
+  it('leaves out the tabs it is told to: a project’s chat has no second Files list', () => {
+    show({ hidden: ['files'] })
+    expect(screen.getAllByRole('tab').map((t) => t.textContent?.trim())).toEqual(['Messages', 'Pins', 'Page'])
+  })
+})

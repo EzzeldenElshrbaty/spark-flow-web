@@ -37,6 +37,7 @@ export function ChannelTabs({
   pinCount,
   bookmarks = [],
   onAddBookmark,
+  hidden = [],
 }: {
   channel: Pick<Channel, 'kind'>
   tab: ChannelTab
@@ -47,9 +48,11 @@ export function ChannelTabs({
   bookmarks?: Bookmark[]
   /** + Add a bookmark, where I may post. */
   onAddBookmark?: (bookmark: { title: string; url: string }) => Promise<unknown>
+  /** Views left out here (UX Phase 2, 2.5: a project's chat has no Files tab; the project's Files tab has its files). */
+  hidden?: readonly ChannelTab[]
 }) {
   const [adding, setAdding] = useState(false)
-  const tabs = channelTabs(channel).map((t) => (t.id === 'pins' && pinCount ? { ...t, count: pinCount } : t))
+  const tabs = channelTabs(channel).filter((t) => !hidden.includes(t.id)).map((t) => (t.id === 'pins' && pinCount ? { ...t, count: pinCount } : t))
   return (
     <div className="flex min-w-0 items-center">
       <div className="min-w-0 flex-none">

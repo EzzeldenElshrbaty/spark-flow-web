@@ -18,7 +18,8 @@ export function ChatTab({ project }: { project: ProjectSummary }) {
     // A floor, so on a short screen (a phone on its side) the page scrolls to the box instead of squeezing it away.
     <div className="sf flex min-h-[18rem] flex-1 flex-col overflow-hidden rounded-xl border border-sf-line bg-sf-surface">
       <Suspense fallback={<MessageSkeleton />}>
-        <ChannelView key={project.channelId} channelId={project.channelId} />
+        {/* One Files list per project (UX Phase 2, 2.5): the project's own Files tab has the chat's files. */}
+        <ChannelView key={project.channelId} channelId={project.channelId} hideTabs={['files']} />
       </Suspense>
     </div>
   )

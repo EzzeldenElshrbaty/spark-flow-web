@@ -67,7 +67,7 @@ export function ChannelPage() {
  * A channel's whole view: header, tabs, messages and the rich composer. The channel page fills the card with it; a
  * project's Chat tab shows its channel with it in a box (slice AA), so both behave the same.
  */
-export function ChannelView({ channelId }: { channelId: string | undefined }) {
+export function ChannelView({ channelId, hideTabs = [] }: { channelId: string | undefined; hideTabs?: readonly ChannelTab[] }) {
   const { ws = '' } = useParams()
   const { workspace } = useCurrentWorkspace()
   const { persona } = useRole()
@@ -94,7 +94,9 @@ export function ChannelView({ channelId }: { channelId: string | undefined }) {
   const [reminding, setReminding] = useState<string | null>(null)
   const noteReminder = useNoteReminder()
   const [params, setParams] = useSearchParams()
-  const tab = channel.data ? tabFromParam(params.get('tab'), channel.data) : 'messages'
+  const asked = channel.data ? tabFromParam(params.get('tab'), channel.data) : 'messages'
+  // A view left out here (a project's chat has no Files) opens Messages instead.
+  const tab = hideTabs.includes(asked) ? 'messages' : asked
   const setTab = (next: ChannelTab) => setParams(next === 'messages' ? {} : { tab: next }, { replace: true })
   // An error belongs to the channel it happened in.
   // A channel id from another workspace is not a channel of this one: it reads as not found, and is never marked read.
@@ -151,7 +153,7 @@ export function ChannelView({ channelId }: { channelId: string | undefined }) {
       frozen={isArchived(current)}
     >
     <div className="flex min-h-0 flex-1 flex-col">
-      <ChannelTop channel={current} people={people} workspaceSlug={ws} tab={tab} onTab={setTab} panelId={panelId} details={details} setDetails={setDetails} />
+      <ChannelTop channel={current} people={people} workspaceSlug={ws} tab={tab} onTab={setTab} panelId={panelId} details={details} setDetails={setDetails} hideTabs={hideTabs} />
       <div id={panelId} role="tabpanel" aria-label={tab === 'messages' ? 'Messages' : tab} className="flex min-h-0 flex-1 flex-col" {...paneDrop(writing, uploads.add)}>
       {tab === 'pins' ? (
         <div className="sf flex min-h-0 flex-1 flex-col">
@@ -249,12 +251,15 @@ function ChannelTop({
   panelId,
   details,
   setDetails,
+  hideTabs,
 }: {
   channel: Channel
   people: User[]
   workspaceSlug: string
   tab: ChannelTab
   onTab: (tab: ChannelTab) => void
+  /** Views left out (UX Phase 2, 2.5). */
+  hideTabs: readonly ChannelTab[]
   panelId: string
   details: OpenDetails | null
   setDetails: (details: OpenDetails | null) => void
@@ -339,6 +344,7 @@ function ChannelTop({
         onChange={onTab}
         panelId={panelId}
         pinCount={pins.data?.length}
+        hidden={hideTabs}
         bookmarks={bookmarks.data}
         onAddBookmark={mayBookmark ? (bookmark) => addBookmark.mutateAsync({ channelId: channel.id, bookmark }) : undefined}
       />

@@ -7,7 +7,7 @@ import { ChatTab, OpenInChatLink } from './ChatTab'
 
 // The project's Chat tab (slice AA): the channel's own view, not a second, simpler one.
 
-vi.mock('@/pages/chat/ChannelPage', () => ({ ChannelView: ({ channelId }: { channelId: string }) => <p>Channel view of {channelId}</p> }))
+vi.mock('@/pages/chat/ChannelPage', () => ({ ChannelView: ({ channelId, hideTabs = [] }: { channelId: string; hideTabs?: string[] }) => <p>Channel view of {channelId}{hideTabs.length ? ` without ${hideTabs.join(', ')}` : ''}</p> }))
 afterEach(cleanup)
 
 describe('the project Chat tab', () => {
@@ -17,7 +17,8 @@ describe('the project Chat tab', () => {
         <ChatTab project={{ id: 'p-nex', channelId: 'c-p-nex', name: 'Nexus Core' } as ProjectSummary} />
       </MemoryRouter>,
     )
-    expect(await screen.findByText('Channel view of c-p-nex')).toBeTruthy()
+    // One Files list per project (UX Phase 2, 2.5): the project's Files tab, which has a Chat filter.
+    expect(await screen.findByText('Channel view of c-p-nex without files')).toBeTruthy()
     // It fills what's left, but never below a floor: on a short screen the page scrolls to it instead (final review).
     expect((container.firstElementChild as HTMLElement).className.split(' ')).toEqual(expect.arrayContaining(['flex-1', 'min-h-[18rem]']))
   })

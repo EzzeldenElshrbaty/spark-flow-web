@@ -131,6 +131,13 @@ describe('WorkspaceSwitcher (spec 5.2)', () => {
     await act(async () => fireEvent.click(screen.getByRole('menuitemradio', { name: /Spark Ops/ })))
     expect(navigate).toHaveBeenCalledWith('/w/ops')
   })
+
+  it('names the workspace on wide screens, and keeps the round initials on small ones (UX Phase 2, 2.6)', () => {
+    show(<WorkspaceSwitcher />)
+    const button = screen.getByRole('button', { name: /Workspace: Spark Engineering/ })
+    expect(within(button).getByText('Spark Engineering').className).toMatch(/max-lg:sr-only/)
+    expect(within(button).getByText('SE').className).toMatch(/lg:hidden/)
+  })
 })
 
 describe('NotificationsMenu (spec 5.2: the bell)', () => {

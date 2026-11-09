@@ -1,6 +1,8 @@
+import { IconChevronDown } from '@tabler/icons-react'
 import clsx from 'clsx'
 import { useNavigate } from 'react-router'
 import type { Workspace } from '@/api/types'
+import { Icon } from '@/components/sf/Icon'
 import { Menu, MenuHeading, MenuItem } from '@/components/sf/Menu'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { paths } from '@/lib/paths'
@@ -33,11 +35,19 @@ export function WorkspaceSwitcher() {
     <Menu
       label="Workspace"
       trigger={(props) => (
-        <button type="button" {...props} title={`Workspace: ${workspace.name}`} className={clsx(round, 'cursor-pointer text-sf-text-secondary hover:bg-sf-surface-hover hover:text-sf-text')}>
-          <span aria-hidden className="font-sf text-[11px]/none font-semibold tracking-tight">
+        // From lg the button names the workspace (UX Phase 2, 2.6); below it, the round initials keep the bar's room.
+        <button
+          type="button"
+          {...props}
+          title={`Workspace: ${workspace.name}`}
+          aria-label={`Workspace: ${workspace.name}`}
+          className={clsx(round, 'cursor-pointer text-sf-text-secondary hover:bg-sf-surface-hover hover:text-sf-text lg:w-auto lg:max-w-48 lg:gap-1 lg:px-3')}
+        >
+          <span aria-hidden className="font-sf text-[11px]/none font-semibold tracking-tight lg:hidden">
             {initialsOf(workspace.name)}
           </span>
-          <span className="sr-only">Workspace: {workspace.name}</span>
+          <span className="sf-small truncate max-lg:sr-only">{workspace.name}</span>
+          <Icon icon={IconChevronDown} size={16} className="max-lg:hidden" aria-hidden />
         </button>
       )}
     >
