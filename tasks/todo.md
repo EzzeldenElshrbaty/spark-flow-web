@@ -2820,3 +2820,28 @@ one red (brand-500) and one danger style, danger on every delete confirm. Plan w
   Esc with a danger Discard; Preferences matches Settings; progress bars grey on time; chat dividers read "Thursday
   5 November"; the mode switch and "+" are ink in dark. No sideways scroll; console shows only the worktree's font 403s.
 - Order changed once (ledger): IconButton (Task 8) ran before Preferences (Task 5), which uses it.
+
+# UX Phase 4: forms, tables, dashboards and workflows — 9 Nov 2026, planned (awaiting Q1–Q5)
+
+Audit items 4.1–4.10: forms check as you fix and Enter saves; tables drop low-value columns and show when they scroll;
+the kit's list pattern (search, tiles, filters in the address, counts, empty states) on the Tasks tab, My work and
+Projects; Start timer as one search list; page-shaped loading and dimmed refetches; Dashboard tiles lead somewhere;
+Time & cost on one row. Plan with decisions, diagrams and questions:
+`docs/superpowers/plans/2026-11-09-ux-phase-4-forms-tables-dashboards.md`. Branch `feat/ux-phase-4` from `origin/dev`
+(a0f0047, Phase 3 landed).
+
+- [ ] Forms check as you fix, Enter saves, errors by their field (4.4)
+- [ ] Form copy (4.9)
+- [ ] Tables fit, or show that they scroll (4.1)
+- [ ] The board shows its hidden columns (4.1)
+- [ ] Shared list blocks: search box, filter tiles, filter bar, empty state (4.2)
+- [ ] Filters on the Tasks tab (4.2)
+- [ ] Tiles and search on My work (4.2)
+- [ ] Projects list: search, kit tiles, archived error (4.2)
+- [ ] Start timer in two clicks (4.3, 4.10)
+- [ ] Loading shaped like the page (4.5)
+- [ ] The Dashboard leads (4.6)
+- [ ] Time & cost on one row (4.7)
+- [ ] Settings gaps: place, Roles bar, Rates (4.8, 4.10)
+- [ ] Project gaps: done warnings, Overview, History, Teams (4.10)
+- [ ] Phase check, help pictures, review here
