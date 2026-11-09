@@ -16,7 +16,8 @@ const tiles: Record<Tone, string> = {
   accent: 'bg-accent-soft text-accent',
   amber: 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
 }
-const marks: Record<Tone, string> = { accent: 'bg-brand-500', amber: 'bg-amber-500' }
+// Decoration only, so neither red nor amber (UX Phase 3, 3.3: red means act or late).
+const marks: Record<Tone, string> = { accent: 'bg-fg-subtle', amber: 'bg-fg-subtle' }
 
 type Entry = { to: string; icon: LucideIcon; title: string; about: string; chips?: string[] }
 

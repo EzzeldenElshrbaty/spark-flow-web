@@ -16,7 +16,7 @@ import { paths } from '@/lib/paths'
 import { columnSortFrom, sortByColumn, sortParams, type SortKeys } from '@/lib/sorting'
 import { usePermission } from '@/lib/usePermission'
 import { ProjectSheet } from './ProjectSheet'
-import { dueLate, projectStats, type ProjectFilter } from './projectStats'
+import { dueLate, progressTone, projectStats, type ProjectFilter } from './projectStats'
 import { quietChange } from '@/lib/searchParams'
 
 const tiles: [ProjectFilter, string][] = [
@@ -130,7 +130,7 @@ export function ProjectsPage() {
       cell: (p) => (
         <span className="flex items-center gap-2">
           <span className="w-20">
-            <ProgressBar value={p.progress * 100} tone={p.progress === 1 ? 'success' : 'brand'} />
+            <ProgressBar value={p.progress * 100} tone={progressTone(p, now)} />
           </span>
           <span className="text-xs tabular-nums text-fg-muted">{Math.round(p.progress * 100)}%</span>
         </span>

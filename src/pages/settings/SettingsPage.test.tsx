@@ -30,6 +30,8 @@ describe('Settings home (slice 1, as the CRM’s)', () => {
   it('counts people, roles and teams, then groups what can be changed, each card opening its page', () => {
     show()
     expect(screen.getByRole('heading', { name: 'Settings', level: 1 })).toBeTruthy()
+    // Section marks are decoration, so not red (UX Phase 3, 3.3: red means act or late).
+    for (const mark of document.querySelectorAll('.rotate-45')) expect(mark.className).not.toMatch(/bg-(brand|amber)-500/)
     const counts = screen.getByRole('list', { name: 'At a glance' })
     expect(within(counts).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['People9', 'Roles4', 'Teams4'])
     const access = screen.getByRole('region', { name: 'People and access' })

@@ -323,7 +323,10 @@ describe('MessageList scrolling (spec 6.2)', () => {
     await settle()
     expect(onMarkRead).not.toHaveBeenCalled()
     // Nothing has come in since I opened it.
-    expect(screen.getByRole('button', { name: 'Jump to latest' })).toBeTruthy()
+    // A way back, not an action: a secondary pill, not a red one (UX Phase 3, 3.3).
+    const jump = screen.getByRole('button', { name: 'Jump to latest' })
+    expect(jump.className).not.toContain('bg-sf-accent-fill')
+    expect(jump.className).toContain('bg-sf-surface-raised')
   })
 
   it('opening at the newest message marks it read', async () => {

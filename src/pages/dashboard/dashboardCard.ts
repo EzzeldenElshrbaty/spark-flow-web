@@ -1,6 +1,6 @@
 import type { DashboardProject } from '@/api/types'
-import { isPastDue } from '@/lib/dates'
 import { formatDate, formatHours } from '@/lib/format'
+import { behindSchedule } from '@/pages/projects/projectStats'
 
 export type CardFacts = { ring: number; hoursLine: string; finishLine: string; late: boolean; over: boolean }
 
@@ -10,7 +10,7 @@ const shortDay = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { da
 export function cardFacts(p: DashboardProject, now: Date): CardFacts {
   // Hours on the estimated tasks against their estimates; time on other tasks (or none) isn't part of the estimate.
   const over = p.estimateHours !== null && p.estimatedLoggedHours > p.estimateHours
-  const late = p.status !== 'delivered' && (isPastDue(p.dueDate, now) || p.expectedFinish.slice(0, 10) > p.dueDate.slice(0, 10))
+  const late = behindSchedule(p, now)
   return {
     ring: Math.round(p.progress * 100),
     hoursLine:

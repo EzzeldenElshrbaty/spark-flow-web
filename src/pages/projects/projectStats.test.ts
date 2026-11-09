@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ProjectSummary } from '@/api/types'
-import { dueLate, isLate, projectStats } from './projectStats'
+import { behindSchedule, dueLate, isLate, progressTone, projectStats } from './projectStats'
 
 const now = new Date('2026-10-26T12:00:00Z')
 const p = (over: Partial<ProjectSummary>): ProjectSummary =>
@@ -35,5 +35,21 @@ describe('projectStats', () => {
 
   it('a delivered project past its date is not late', () => {
     expect(isLate(p({ status: 'delivered', dueDate: '2026-01-01T00:00:00Z' }), now)).toBe(false)
+  })
+})
+
+describe('red only when late (UX Phase 3, 3.3)', () => {
+  const now = new Date('2026-11-09T10:00:00.000Z')
+  const at = (over: Partial<ProjectSummary>) => ({ status: 'active', dueDate: '2026-12-01T00:00:00.000Z', expectedFinish: '2026-11-20T00:00:00.000Z', progress: 0.2, ...over }) as ProjectSummary
+  it('behind schedule: past due, or expected to finish after its due date; never once delivered', () => {
+    expect(behindSchedule(at({}), now)).toBe(false)
+    expect(behindSchedule(at({ dueDate: '2026-11-01T00:00:00.000Z' }), now)).toBe(true)
+    expect(behindSchedule(at({ expectedFinish: '2026-12-05T00:00:00.000Z' }), now)).toBe(true)
+    expect(behindSchedule(at({ status: 'delivered', dueDate: '2026-11-01T00:00:00.000Z' }), now)).toBe(false)
+  })
+  it('a progress bar is grey on time, red when behind, green when done', () => {
+    expect(progressTone(at({}), now)).toBe('neutral')
+    expect(progressTone(at({ expectedFinish: '2026-12-05T00:00:00.000Z' }), now)).toBe('danger')
+    expect(progressTone(at({ progress: 1, dueDate: '2026-11-01T00:00:00.000Z' }), now)).toBe('success')
   })
 })

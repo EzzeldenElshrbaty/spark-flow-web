@@ -451,7 +451,8 @@ export function MessageList({
               atBottomRef.current = true
               scrollToBottom()
             }}
-            className="sf-focus inline-flex h-8 items-center gap-2 rounded-sf-full bg-sf-accent-fill px-4 font-sf text-[13px]/[18px] font-medium text-sf-on-accent shadow-sf-menu hover:bg-sf-accent-fill-hover"
+            // A way back, not an action: a secondary pill (UX Phase 3, 3.3), so Send stays the one red fill.
+            className="sf-focus inline-flex h-8 items-center gap-2 rounded-sf-full border border-sf-line bg-sf-surface-raised px-4 font-sf text-[13px]/[18px] font-medium text-sf-text shadow-sf-menu hover:bg-sf-surface-hover"
           >
             <Icon icon={IconArrowDown} size={16} />
             {newer > 0 ? `Jump to latest · ${newer} new` : 'Jump to latest'}

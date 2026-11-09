@@ -6,6 +6,17 @@ export type ProjectFilter = 'active' | 'overdue' | 'month' | 'onHold'
 /** The project's own due date is over and it isn't delivered. */
 export const dueLate = (p: ProjectSummary, now: Date) => p.status !== 'delivered' && isPastDue(p.dueDate, now)
 
+/**
+ * Behind schedule (UX Phase 3, 3.3): not delivered, and past its due date or expected to finish after it. The one rule
+ * the Dashboard cards and the progress bars share.
+ */
+export const behindSchedule = (p: Pick<ProjectSummary, 'status' | 'dueDate' | 'expectedFinish'>, now: Date) =>
+  p.status !== 'delivered' && (isPastDue(p.dueDate, now) || p.expectedFinish.slice(0, 10) > p.dueDate.slice(0, 10))
+
+/** A progress bar's colour: red means late, so on time is grey and done is green. */
+export const progressTone = (p: Pick<ProjectSummary, 'status' | 'dueDate' | 'expectedFinish' | 'progress'>, now: Date): 'success' | 'danger' | 'neutral' =>
+  p.progress === 1 ? 'success' : behindSchedule(p, now) ? 'danger' : 'neutral'
+
 /** Late (the Overdue tile): a task is overdue, or the project is past its due date and not delivered. */
 export const isLate = (p: ProjectSummary, now: Date) => p.overdueCount > 0 || dueLate(p, now)
 

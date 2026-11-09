@@ -8,6 +8,7 @@ import { RowMenu } from '@/components/RowMenu'
 import { Avatar } from '@/components/Avatar'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { ProgressBar } from '@/components/ui/ProgressBar'
+import { behindSchedule, progressTone } from '@/pages/projects/projectStats'
 import { formatDate, formatMoney } from '@/lib/format'
 import { DeliverableSheet } from './DeliverableSheet'
 import { ProjectFiles } from './ProjectFiles'
@@ -174,7 +175,9 @@ export function OverviewTab({
 }) {
   // Removing someone else's file is the manager's (and Admins').
   const canManageFiles = usePermission()('phase.manage', { project })
-  const late = project.status !== 'delivered' && project.expectedFinish > project.dueDate
+  const now = new Date()
+  // The same "behind" rule as the Dashboard and the progress bars (UX Phase 3, 3.3).
+  const late = behindSchedule(project, now)
   const hours = Math.round(project.loggedHours * 10) / 10
   return (
     <div className="space-y-5">
@@ -183,7 +186,7 @@ export function OverviewTab({
           <p className="text-sm text-fg-muted">Progress</p>
           <p className="mt-1 text-xl font-semibold tabular-nums text-fg sm:text-2xl">{Math.round(project.progress * 100)}%</p>
           <div className="mt-2">
-            <ProgressBar value={project.progress * 100} tone={project.progress === 1 ? 'success' : 'brand'} />
+            <ProgressBar value={project.progress * 100} tone={progressTone(project, now)} />
           </div>
         </div>
         <Stat label="Hours logged" value={`${hours}h`} sub={`${project.taskCount} tasks · ${project.overdueCount} overdue${project.overEstimateCount ? ` · ${project.overEstimateCount} over estimate` : ''}`} />
