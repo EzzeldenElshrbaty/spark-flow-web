@@ -12,8 +12,11 @@ import type { DetailsTab } from '@/pages/chat/ChannelDetails'
 /** What the shortcuts open on the page. `newTask` and `remind` only where they're offered. */
 export type ChannelCommandUi = {
   openDetails: (tab: DetailsTab, options?: { editTopic?: boolean; addPeople?: string[] }) => void
-  /** /task: the channel's project, where I manage its tasks (spec 6.8 "in the channel's linked project"). */
-  newTask?: { projectName: string; open: (draft: { title: string; assigneeId: string | null }) => void }
+  /**
+   * /task: the channel's project, where I manage its tasks (spec 6.8 "in the channel's linked project"); with no
+   * `projectName`, a channel or DM with no project, where the sheet asks which.
+   */
+  newTask?: { projectName?: string; open: (draft: { title: string; assigneeId: string | null }) => void }
   /** Why /task isn't offered here, when the page knows: said instead of "doesn’t work here". */
   whyNoTask?: string
   /** /remind: the reminder dialog with the words filled in. */
@@ -45,7 +48,7 @@ export function useChannelCommands(channel: Channel, ui: ChannelCommandUi): Comp
     shrug: true,
   }
   const commands = COMMANDS.filter((c) => offered[c.name]).map((c) =>
-    c.name === 'task' && ui.newTask
+    c.name === 'task' && ui.newTask?.projectName
       ? { ...c, description: `Create a Flow task in ${ui.newTask.projectName}` }
       : c.name === 'mute'
         ? { ...c, description: `${channel.muted ? 'Unmute' : 'Mute'} this ${isChannel ? 'channel' : 'conversation'}` }

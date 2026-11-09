@@ -235,3 +235,56 @@ describe('TaskSheet tells who opened it about a new task (UX Phase 1, 1.5)', () 
     expect(onCreated).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('TaskSheet Project field (/task in a channel with no project)', () => {
+  const mobile = { id: 'p-mob', key: 'MOB', name: 'Mobile App', methodology: 'agile', managerId: 'u-2', memberIds: [], teamIds: [], currentPhaseId: 'ph-m1' } as unknown as Project
+  const phases = [{ id: 'ph-n1', projectId: 'p-nex', name: 'Build', order: 1 }] as never[]
+  const mobilePhases = [{ id: 'ph-m1', projectId: 'p-mob', name: 'Design', order: 1 }] as never[]
+  const choice = (onPick = vi.fn()) => ({ projects: [project, mobile], onPick })
+  const nour = { id: 'u-5', name: 'Nour El-Sayed', teamIds: [] } as never
+  const field = (name: RegExp) => screen.getByRole('combobox', { name }) as HTMLSelectElement
+
+  it('comes first, lists my projects and names the one picked; without a choice there is none', () => {
+    render(<TaskSheet project={project} phases={phases} sprints={[]} users={[]} projectChoice={choice()} onClose={vi.fn()} />)
+    const picker = field(/Project/)
+    expect([...picker.options].map((o) => o.textContent)).toEqual(['Nexus Core', 'Mobile App'])
+    expect(picker.value).toBe('p-nex')
+    const title = screen.getByRole('textbox', { name: /Title/ })
+    expect(picker.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    cleanup()
+    open()
+    expect(screen.queryByRole('combobox', { name: /Project/ })).toBeNull()
+  })
+
+  it('picking another project keeps what I wrote and resets status, phase and sprint, which belong to a project', () => {
+    const onPick = vi.fn()
+    const { rerender } = render(<TaskSheet project={project} phases={phases} sprints={[]} users={[]} projectChoice={choice(onPick)} draft={{ title: 'update login', descriptionBody: [] }} onClose={vi.fn()} />)
+    fireEvent.change(field(/Priority/), { target: { value: 'high' } })
+    fireEvent.change(field(/Phase/), { target: { value: 'ph-n1' } })
+    fireEvent.change(field(/Project/), { target: { value: 'p-mob' } })
+    expect(onPick).toHaveBeenCalledWith('p-mob')
+    rerender(<TaskSheet project={mobile} phases={mobilePhases} sprints={[]} users={[]} projectChoice={choice(onPick)} draft={{ title: 'update login', descriptionBody: [] }} onClose={vi.fn()} />)
+    expect((screen.getByRole('textbox', { name: /Title/ }) as HTMLInputElement).value).toBe('update login')
+    expect(field(/Priority/).value).toBe('high')
+    expect(field(/Phase/).value).toBe('ph-m1')
+    expect(field(/Sprint/).value).toBe('')
+    expect(screen.getByText('Mobile App', { selector: 'p, span, div' })).toBeTruthy()
+    save()
+    expect(create.mutate.mock.calls[0]![0]).toMatchObject({ projectId: 'p-mob', title: 'update login', priority: 'high', phaseId: 'ph-m1' })
+  })
+
+  it('is locked once files are attached, as they were added to the project picked', async () => {
+    upload.mockResolvedValue(att('f1'))
+    render(<TaskSheet project={project} phases={phases} sprints={[]} users={[]} projectChoice={choice()} onClose={vi.fn()} />)
+    await pick('a.pdf')
+    await waitFor(() => expect(field(/Project/).disabled).toBe(true))
+    expect(screen.getByText('Take the files off to change the project.')).toBeTruthy()
+  })
+
+  it('a new task’s assignee from the draft who isn’t on the project still shows, said so', () => {
+    render(<TaskSheet project={project} phases={phases} sprints={[]} users={[nour]} projectChoice={choice()} draft={{ title: 'update login', descriptionBody: [], assigneeId: 'u-5' }} onClose={vi.fn()} />)
+    const assignee = field(/Assignee/)
+    expect(assignee.value).toBe('u-5')
+    expect(assignee.selectedOptions[0]!.textContent).toBe('Nour El-Sayed (not on this project)')
+  })
+})

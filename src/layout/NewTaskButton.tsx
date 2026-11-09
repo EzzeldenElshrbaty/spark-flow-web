@@ -1,7 +1,7 @@
 import { IconFolder, IconPlus } from '@tabler/icons-react'
 import { useState } from 'react'
 import { useSearchParams } from 'react-router'
-import { usePhases, useProjectSummaries } from '@/api/projects'
+import { usePhases } from '@/api/projects'
 import { useSprints } from '@/api/tickets'
 import type { ProjectSummary } from '@/api/types'
 import { useUsers } from '@/api/users'
@@ -9,8 +9,8 @@ import { IconButton } from '@/components/sf/Button'
 import { Menu, MenuHeading, MenuItem } from '@/components/sf/Menu'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { withInspector } from '@/lib/inspector'
-import { usePermission } from '@/lib/usePermission'
 import { TaskSheet } from '@/pages/projects/TaskSheet'
+import { useTaskProjects } from '@/pages/projects/useTaskProjects'
 
 /** The task sheet for a new task in one project, with what it needs loaded. */
 function NewTaskSheet({ project, workspaceId, onClose }: { project: ProjectSummary; workspaceId: string; onClose: () => void }) {
@@ -37,9 +37,7 @@ function NewTaskSheet({ project, workspaceId, onClose }: { project: ProjectSumma
  */
 export function NewTaskButton() {
   const { workspace } = useCurrentWorkspace()
-  const check = usePermission()
-  const summaries = useProjectSummaries(workspace?.id).data ?? []
-  const mine = summaries.filter((project) => !project.archivedAt && check('task.manage', { project }))
+  const mine = useTaskProjects(workspace?.id) ?? []
   const [picked, setPicked] = useState<ProjectSummary | null>(null)
   if (!workspace || mine.length === 0) return null
 
