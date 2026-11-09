@@ -150,7 +150,8 @@ export function TimeCostPage() {
         else next.delete(key)
         return next
       },
-      { replace: true },
+      // A choice is a step Back undoes (UX Phase 2, 2.7).
+      { replace: false },
     )
   // The table on screen as a CSV file.
   const exportCsv = () => {

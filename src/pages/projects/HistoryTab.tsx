@@ -28,7 +28,8 @@ export function HistoryTab({ project, people, phases }: { project: ProjectSummar
         else next.set('show', value)
         return next
       },
-      { replace: true },
+      // A choice is a step Back undoes (UX Phase 2, 2.7).
+      { replace: false },
     )
   const chip = (active: boolean) =>
     clsx('shrink-0 rounded-full border px-3 py-1.5 text-sm', active ? 'border-brand-500 bg-accent-soft font-medium text-fg' : 'border-line text-fg-secondary hover:bg-surface-muted')

@@ -157,3 +157,11 @@ describe('the help panel beside a page', () => {
     expect(screen.queryByRole('complementary')).toBeNull()
   })
 })
+
+describe('Help search is in the address (UX Phase 2, 2.7)', () => {
+  it('opens with the search the address holds', async () => {
+    mount('/w/engineering/help?q=tamper')
+    expect(((await screen.findByRole('searchbox', { name: 'Search help' })) as HTMLInputElement).value).toBe('tamper')
+    expect(await screen.findByRole('button', { name: /Audit log/ })).toBeTruthy()
+  })
+})

@@ -1,5 +1,5 @@
 import { Building2, CalendarDays, Layers, Link2, Pencil, Plus, UserRound, Archive } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router'
 import { useArchiveProject, usePhases, useProjectSummary, useRestoreProject, useTeams } from '@/api/projects'
 import { useSprints, useTickets } from '@/api/tickets'
@@ -29,6 +29,7 @@ import { TasksTab } from './TasksTab'
 import { HistoryTab } from '@/pages/projects/HistoryTab'
 import { FilesTab } from '@/pages/projects/FilesTab'
 import { TimeTab } from './TimeTab'
+import { useParamState } from '@/lib/searchParams'
 
 const statusBadge: Record<ProjectStatus, [string, BadgeTone]> = {
   planned: ['Planned', 'neutral'],
@@ -90,7 +91,19 @@ export function ProjectPage() {
   const check = usePermission()
   const now = useMemo(() => new Date(), [])
   const sprints = useSprints(project?.methodology === 'agile' ? project.id : undefined)
-  const [sheet, setSheet] = useState<'edit' | 'phases' | 'task' | 'archive' | null>(null)
+  // The sheets live in the address (UX Phase 2, 2.7): ?new=task, ?edit=project, ?phases=1; a link opens one and Back
+  // closes it. Archiving stays in the page (it asks once and acts).
+  const [params, setAddress] = useParamState({ sheets: ['new', 'edit', 'phases'] })
+  const [archiving, setArchiving] = useState(false)
+  const sheet: 'edit' | 'phases' | 'task' | 'archive' | null =
+    params.get('new') === 'task' ? 'task' : params.get('edit') === 'project' ? 'edit' : params.get('phases') ? 'phases' : archiving ? 'archive' : null
+  const setSheet = (next: 'edit' | 'phases' | 'task' | 'archive' | null) => {
+    if (next === 'archive') return setArchiving(true)
+    setArchiving(false)
+    setAddress({ new: next === 'task' ? 'task' : null, edit: next === 'edit' ? 'project' : null, phases: next === 'phases' ? '1' : null })
+  }
+  // A new task opens its panel instead, in the same step (UX Phase 2: one entry, not two).
+  const created = useRef(false)
   const archive = useArchiveProject()
   const [, setParams] = useSearchParams()
   const restore = useRestoreProject()
@@ -228,8 +241,21 @@ export function ProjectPage() {
           sprints={sprints.data ?? []}
           users={people}
           // The new task opens in its panel on this tab (UX Phase 1, 1.5).
-          onCreated={(task) => setParams((prev) => withInspector(prev, { kind: 'ticket', key: task.key }))}
-          onClose={() => setSheet(null)}
+          onCreated={(task) => {
+            created.current = true
+            setParams(
+              (prev) => {
+                const next = withInspector(prev, { kind: 'ticket', key: task.key })
+                next.delete('new')
+                return next
+              },
+              { replace: true },
+            )
+          }}
+          onClose={() => {
+            if (created.current) created.current = false
+            else setSheet(null)
+          }}
         />
       )}
       {sheet === 'phases' && <PhasesSheet project={project} phases={phaseList} onClose={() => setSheet(null)} />}

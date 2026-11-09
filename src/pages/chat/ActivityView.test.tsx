@@ -18,10 +18,10 @@ const reaction = item({ id: 'reaction', kind: 'reaction', emoji: '👍', read: t
 const thread = item({ id: 'thread', kind: 'thread', replyId: 'r1', excerpt: 'Merged it' })
 
 type Props = Partial<ComponentProps<typeof ActivityView>>
-function show(props: Props = {}) {
+function show(props: Props = {}, at = '/w/engineering/activity') {
   const handlers = { onOpen: vi.fn(), onMarkAllRead: vi.fn(), onRetry: vi.fn() }
   render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[at]}>
       <ActivityView items={[mention, reaction, thread]} ws="engineering" placeOf={() => '#backend'} error={false} retrying={false} marking={false} markError={null} {...handlers} {...props} />
     </MemoryRouter>,
   )
@@ -155,5 +155,12 @@ describe('Activity reminders (spec 6.12 Reminders tab)', () => {
     expect(spoken(row)).toContain('Reminder about a message in #backend')
     expect(spoken(row)).toContain('Review the release notes')
     expect(row.querySelector('.bg-sf-ink-950')).not.toBeNull()
+  })
+})
+
+describe('the tab is in the address (UX Phase 2, 2.7)', () => {
+  it('opens on the tab the address names, so a reload or a shared link keeps it', () => {
+    show({}, '/w/engineering/activity?tab=thread')
+    expect(screen.getByRole('tab', { name: /Threads/, selected: true })).toBeTruthy()
   })
 })

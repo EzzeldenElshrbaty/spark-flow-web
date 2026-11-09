@@ -40,7 +40,8 @@ export function FilesTab({ ws, project, users }: { ws: string; project: ProjectS
         else next.set(key, value)
         return next
       },
-      { replace: true },
+      // A choice is a step Back undoes (UX Phase 2, 2.7).
+      { replace: false },
     )
   const clear = () =>
     setParams(
@@ -50,7 +51,8 @@ export function FilesTab({ ws, project, users }: { ws: string; project: ProjectS
         next.delete('type')
         return next
       },
-      { replace: true },
+      // A choice is a step Back undoes (UX Phase 2, 2.7).
+      { replace: false },
     )
   const open = async ({ file }: ProjectFileRow) => {
     if (notReady(file)) return

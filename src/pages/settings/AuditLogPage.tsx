@@ -19,6 +19,7 @@ import { formatWhen, timeAgo } from '@/lib/format'
 import { paths } from '@/lib/paths'
 import { useAccess } from '@/lib/usePermission'
 import { ACTIONS, breakHere, chainText, changeLine, changeSummary, dayStart, filterFrom, GROUPS, groupLabel, PERIODS, RESULTS } from './auditView'
+import { quietChange } from '@/lib/searchParams'
 
 const SEARCH_WAIT_MS = 300
 
@@ -73,7 +74,8 @@ function AuditLog({ ready }: { ready: boolean }) {
         }
         return next
       },
-      { replace: true },
+      // Typing in search, or closing an entry, isn't a step; other choices are (UX Phase 2, 2.7).
+      { replace: quietChange(values, { typed: ['q'], sheets: ['entry'] }) },
     )
   const open = (seq: number) => set({ entry: String(seq) })
 

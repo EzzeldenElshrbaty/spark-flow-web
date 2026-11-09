@@ -12,6 +12,7 @@ import { paths } from '@/lib/paths'
 import { schedulePresets } from '@/lib/remindTimes'
 import { useNow } from '@/lib/useNow'
 import { CustomReminder } from '@/pages/chat/saved/RemindMenu'
+import { useParam } from '@/lib/searchParams'
 
 type Tab = 'drafts' | 'scheduled' | 'sent'
 
@@ -73,7 +74,10 @@ export function DraftsView({
   onDelete: (id: string) => void
 }) {
   const now = useNow(60_000)
-  const [tab, setTab] = useState<Tab>('drafts')
+  // In the address (UX Phase 2, 2.7).
+  const [tabParam, setTabParam] = useParam('tab')
+  const tab: Tab = tabParam === 'scheduled' || tabParam === 'sent' ? tabParam : 'drafts'
+  const setTab = (next: Tab) => setTabParam(next === 'drafts' ? '' : next)
   const [custom, setCustom] = useState<string | null>(null)
   const panelId = useId()
   const where = (channelId: string, rootId: string | null) => {

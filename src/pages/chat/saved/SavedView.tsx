@@ -14,6 +14,7 @@ import { paths } from '@/lib/paths'
 import { dueSoon } from '@/lib/remindTimes'
 import { useNow } from '@/lib/useNow'
 import { CustomReminder, RemindItems } from '@/pages/chat/saved/RemindMenu'
+import { useParam } from '@/lib/searchParams'
 
 type Patch = { status?: SavedStatus; remindAt?: string | null }
 
@@ -63,7 +64,10 @@ export function SavedView({
   onRemove: (id: string) => void
 }) {
   const now = useNow(60_000)
-  const [tab, setTab] = useState<SavedStatus>('inProgress')
+  // In the address (UX Phase 2, 2.7).
+  const [tabParam, setTabParam] = useParam('tab')
+  const tab: SavedStatus = tabParam === 'archived' || tabParam === 'completed' ? tabParam : 'inProgress'
+  const setTab = (next: SavedStatus) => setTabParam(next === 'inProgress' ? '' : next)
   const [custom, setCustom] = useState<string | null>(null)
   const panelId = useId()
   const shown = items?.filter((item) => item.status === tab)

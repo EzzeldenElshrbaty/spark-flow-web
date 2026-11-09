@@ -1,5 +1,5 @@
 import { IconAlarm, IconAt, IconSubtask, IconMessages, IconMoodSmile, type TablerIcon } from '@tabler/icons-react'
-import { useId, useState } from 'react'
+import { useId } from 'react'
 import { Link } from 'react-router'
 import type { ActivityItem, ActivityItemKind } from '@/api/types'
 import { Avatar } from '@/components/sf/Avatar'
@@ -11,6 +11,7 @@ import { isFlowbot } from '@/lib/flowbot'
 import { timeAgo } from '@/lib/format'
 import { useNow } from '@/lib/useNow'
 import { ACTIVITY_TABS, activityKind, activityLink, shownActivity, type ActivityTab } from '@/pages/chat/activityRows'
+import { useParam } from '@/lib/searchParams'
 
 const KIND_ICONS: Record<ActivityItemKind, TablerIcon> = { mention: IconAt, reaction: IconMoodSmile, thread: IconMessages, reminder: IconAlarm, task: IconSubtask }
 
@@ -46,8 +47,13 @@ export function ActivityView({
 }) {
   // A page people leave open: "3 min ago" moves on by itself.
   const now = useNow(60_000).getTime()
-  const [tab, setTab] = useState<ActivityTab>('all')
-  const [unreadOnly, setUnreadOnly] = useState(false)
+  // In the address (UX Phase 2, 2.7): a reload, Back or a shared link keeps the tab and Unread only.
+  const [tabParam, setTabParam] = useParam('tab')
+  const tab: ActivityTab = ACTIVITY_TABS.some((t) => t.id === tabParam) ? (tabParam as ActivityTab) : 'all'
+  const setTab = (next: ActivityTab) => setTabParam(next === 'all' ? '' : next)
+  const [unreadParam, setUnreadParam] = useParam('unread')
+  const unreadOnly = unreadParam === '1'
+  const setUnreadOnly = (on: boolean) => setUnreadParam(on ? '1' : '')
   const panelId = useId()
   const switchId = useId()
   const shown = items && shownActivity(items, tab, unreadOnly)

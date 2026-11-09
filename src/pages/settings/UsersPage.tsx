@@ -20,6 +20,7 @@ import { formatDate, timeAgo } from '@/lib/format'
 import { paths } from '@/lib/paths'
 import { useAccess, usePermission } from '@/lib/usePermission'
 import { fieldOf, filterPeople, roleNames, teamNames, usersFilterFrom } from './usersView'
+import { quietChange } from '@/lib/searchParams'
 
 const SEARCH_WAIT_MS = 300
 const MAX_REASON = 200
@@ -82,7 +83,8 @@ function Users({ ready }: { ready: boolean }) {
         }
         return next
       },
-      { replace: true },
+      // Typing in search, or closing a person, isn't a step; other choices are (UX Phase 2, 2.7).
+      { replace: quietChange(values, { typed: ['q'], sheets: ['person'] }) },
     )
   const open = (id: string) => set({ person: id })
 

@@ -79,7 +79,8 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
         else next.delete(key)
         return next
       },
-      { replace: true },
+      // A choice is a step Back undoes (UX Phase 2, 2.7).
+      { replace: false },
     )
 
   const check = usePermission()

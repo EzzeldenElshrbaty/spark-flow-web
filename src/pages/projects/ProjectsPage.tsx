@@ -17,6 +17,7 @@ import { columnSortFrom, sortByColumn, sortParams, type SortKeys } from '@/lib/s
 import { usePermission } from '@/lib/usePermission'
 import { ProjectSheet } from './ProjectSheet'
 import { dueLate, projectStats, type ProjectFilter } from './projectStats'
+import { quietChange } from '@/lib/searchParams'
 
 const tiles: [ProjectFilter, string][] = [
   ['active', 'Active'],
@@ -69,7 +70,8 @@ export function ProjectsPage() {
         else next.set(key, value)
         return next
       },
-      { replace: true },
+      // A choice, or opening New project, is a step Back undoes; closing it isn't (UX Phase 2, 2.7).
+      { replace: quietChange({ [key]: value }, { sheets: ['new'] }) },
     )
 
   const now = useMemo(() => new Date(), [])
@@ -220,7 +222,7 @@ export function ProjectsPage() {
           ) : (
             <>
               <div className="max-sm:hidden">
-                <DataTable columns={columns} rows={rows} rowKey={(p) => p.id} onRowClick={open} sort={sort} onSort={(next) => setParams((prev) => { const out = new URLSearchParams(prev); for (const [k, v] of Object.entries(sortParams(next))) { if (v) out.set(k, v); else out.delete(k) } return out }, { replace: true })} storageKey="spark-flow.table.projects" label="Projects" />
+                <DataTable columns={columns} rows={rows} rowKey={(p) => p.id} onRowClick={open} sort={sort} onSort={(next) => setParams((prev) => { const out = new URLSearchParams(prev); for (const [k, v] of Object.entries(sortParams(next))) { if (v) out.set(k, v); else out.delete(k) } return out })} storageKey="spark-flow.table.projects" label="Projects" />
               </div>
               <ul className="divide-y divide-line-subtle overflow-hidden rounded-xl border border-line bg-surface sm:hidden">
                 {rows.map((p) => (

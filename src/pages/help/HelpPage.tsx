@@ -1,6 +1,6 @@
 import clsx from 'clsx'
 import { ArrowLeft, ArrowRight, BookOpen, Search, X } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { useRoleNames } from '@/api/roles'
 import { inputClass, selectClass } from '@/components/ui/Field'
@@ -9,6 +9,7 @@ import { paths } from '@/lib/paths'
 import { NEEDS_TEXT, useHelpChapters } from '@/lib/useHelp'
 import { useRole } from '@/lib/useRole'
 import { HelpDoc } from './HelpDoc'
+import { useParam } from '@/lib/searchParams'
 
 /** Words around the first match, for a search result. */
 function snippet(text: string, term: string) {
@@ -29,8 +30,9 @@ export function HelpPage() {
   const { persona } = useRole()
   const roleNames = useRoleNames()
   const { chapters, isError } = useHelpChapters()
-  const [term, setTerm] = useState('')
-  const [group, setGroup] = useState('')
+  // In the address (UX Phase 2, 2.7): typing replaces the entry; a topic is a step Back undoes.
+  const [term, setTerm] = useParam('q', { typed: true })
+  const [group, setGroup] = useParam('group')
   const top = useRef<HTMLDivElement>(null)
 
   const list = chapters ?? []

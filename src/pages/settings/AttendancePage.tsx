@@ -48,7 +48,8 @@ export function AttendancePage() {
         }
         return next
       },
-      { replace: true },
+      // A choice is a step Back undoes (UX Phase 2, 2.7).
+      { replace: false },
     )
   const nameOf = (id: string) => people.find((p) => p.id === id)?.name ?? '—'
 
@@ -70,7 +71,6 @@ export function AttendancePage() {
             <Link
               key={t.id}
               to={{ search: next.toString() ? `?${next}` : '' }}
-              replace
               aria-current={tab === t.id ? 'page' : undefined}
               className={clsx(
                 'relative shrink-0 px-3 py-2 text-sm font-medium transition-colors',

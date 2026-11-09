@@ -22,6 +22,7 @@ import { formatDate } from '@/lib/format'
 import { paths } from '@/lib/paths'
 import { useAccess } from '@/lib/usePermission'
 import { deletableText, filterArchived, goesWithParts, TYPES, typeLabel } from './archivedView'
+import { quietChange } from '@/lib/searchParams'
 
 const SEARCH_WAIT_MS = 300
 
@@ -77,7 +78,8 @@ function Archived({ ready }: { ready: boolean }) {
         }
         return next
       },
-      { replace: true },
+      // Typing in search isn't a step; other choices are (UX Phase 2, 2.7).
+      { replace: quietChange(values, { typed: ['q'] }) },
     )
 
   return (
