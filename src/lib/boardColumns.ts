@@ -71,3 +71,13 @@ export const canDeleteColumn = (columns: BoardColumn[], id: string) => {
   const column = columns.find((c) => c.id === id)
   return Boolean(column) && columns.filter((c) => c.category === column!.category).length > 1
 }
+
+/**
+ * What a change of type does to a column's tasks (UX Phase 4, 4.10): only Done matters — progress, overdue and timers
+ * follow it. `place` names the column they move to (Delete column); null when nothing changes or there are no tasks.
+ */
+export function doneChange(from: StatusCategory, to: StatusCategory, count: number, place?: string): string | null {
+  if (count === 0 || (from === 'done') === (to === 'done')) return null
+  const tasks = `${count} ${count === 1 ? 'task' : 'tasks'} ${place ? `moved to ${place}` : 'here'}`
+  return to === 'done' ? `${tasks} will count as done.` : `${tasks} will stop counting as done.`
+}

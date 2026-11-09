@@ -8,7 +8,7 @@ import { RowMenu } from '@/components/RowMenu'
 import { Avatar } from '@/components/Avatar'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { ProgressBar } from '@/components/ui/ProgressBar'
-import { behindSchedule, progressTone } from '@/pages/projects/projectStats'
+import { behindSchedule, finishHint, progressTone } from '@/pages/projects/projectStats'
 import { formatDate, formatHours, formatMoney } from '@/lib/format'
 import { DeliverableSheet } from './DeliverableSheet'
 import { ProjectFiles } from './ProjectFiles'
@@ -178,7 +178,7 @@ export function OverviewTab({
           </div>
         </StatTile>
         <StatTile label="Hours logged" value={formatHours(project.loggedHours)} hint={`${project.taskCount} tasks · ${project.overdueCount} overdue${project.overEstimateCount ? ` · ${project.overEstimateCount} over estimate` : ''}`} />
-        <StatTile label="Expected finish" value={formatDate(project.expectedFinish)} hint={late ? `Due ${formatDate(project.dueDate)} · late` : `Due ${formatDate(project.dueDate)}`} tone={late ? 'danger' : undefined} />
+        <StatTile label="Expected finish" value={formatDate(project.expectedFinish)} hint={finishHint(project, now)} tone={late ? 'danger' : undefined} />
         {project.cost !== null && <StatTile label="Cost so far" value={formatMoney(project.cost)} hint="Hours × hourly cost" />}
       </div>
 

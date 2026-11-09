@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ProjectSummary } from '@/api/types'
-import { behindSchedule, dueLate, isLate, progressTone, projectStats } from './projectStats'
+import { behindSchedule, dueLate, isLate, progressTone, projectStats, finishHint } from './projectStats'
 
 const now = new Date('2026-10-26T12:00:00Z')
 const p = (over: Partial<ProjectSummary>): ProjectSummary =>
@@ -51,5 +51,15 @@ describe('red only when late (UX Phase 3, 3.3)', () => {
     expect(progressTone(at({}), now)).toBe('neutral')
     expect(progressTone(at({ expectedFinish: '2026-12-05T00:00:00.000Z' }), now)).toBe('danger')
     expect(progressTone(at({ progress: 1, dueDate: '2026-11-01T00:00:00.000Z' }), now)).toBe('success')
+  })
+})
+
+describe('finishHint (UX Phase 4, 4.10)', () => {
+  const now = new Date('2026-11-09T10:00:00.000Z')
+  const p = (expectedFinish: string | null, dueDate = '2026-12-04T00:00:00.000Z') => ({ status: 'active', dueDate, expectedFinish }) as never
+  it('"On time" when it’s expected to finish the day it’s due', () => expect(finishHint(p('2026-12-04T15:00:00.000Z'), now)).toBe('On time'))
+  it('the due date otherwise, and "late" when behind', () => {
+    expect(finishHint(p('2026-11-30T00:00:00.000Z'), now)).toBe('Due 4 Dec 2026')
+    expect(finishHint(p('2026-12-20T00:00:00.000Z'), now)).toBe('Due 4 Dec 2026 · late')
   })
 })

@@ -1,5 +1,6 @@
 import type { ProjectSummary } from '@/api/types'
 import { isPastDue } from '@/lib/dates'
+import { formatDate } from '@/lib/format'
 
 export type ProjectFilter = 'active' | 'overdue' | 'month' | 'onHold'
 
@@ -38,4 +39,13 @@ export function projectStats(projects: ProjectSummary[], now: Date) {
     counts: Object.fromEntries(Object.entries(rules).map(([key, rule]) => [key, projects.filter((p) => rule(p, now)).length])) as Record<ProjectFilter, number>,
     filter: (filter: ProjectFilter | null) => (filter ? projects.filter((p) => rules[filter](p, now)) : [...projects]),
   }
+}
+
+/**
+ * The Expected finish tile's line (UX Phase 4, 4.10): "On time" when it's expected to finish the day it's due (no
+ * date said twice), else "Due 4 Dec 2026", with " · late" when behind.
+ */
+export function finishHint(p: Pick<ProjectSummary, 'status' | 'dueDate' | 'expectedFinish'>, now: Date): string {
+  if (p.expectedFinish && p.expectedFinish.slice(0, 10) === p.dueDate.slice(0, 10)) return 'On time'
+  return `Due ${formatDate(p.dueDate)}${behindSchedule(p, now) ? ' · late' : ''}`
 }

@@ -528,7 +528,7 @@ export function ProjectBoard({
         </DragOverlay>
       </DndContext>
       {adding && projectId && <ColumnSheet projectId={projectId} columns={order} onClose={() => setAdding(false)} />}
-      {typing && projectId && <ColumnSheet projectId={projectId} columns={order} column={typing} onClose={() => setTyping(null)} />}
+      {typing && projectId && <ColumnSheet projectId={projectId} columns={order} column={typing} count={countOf?.(typing.id) ?? 0} onClose={() => setTyping(null)} />}
       {deleting && projectId && (
         <DeleteColumnSheet
           projectId={projectId}

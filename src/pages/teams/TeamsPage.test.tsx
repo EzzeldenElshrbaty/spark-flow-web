@@ -76,3 +76,12 @@ describe('Teams page (UX Phase 2, 2.4)', () => {
     expect(screen.queryByRole('button', { name: 'QA actions' })).toBeNull()
   })
 })
+
+describe('a team member’s Message (UX Phase 4, 4.10)', () => {
+  it('is an icon button named and titled for the person', () => {
+    show()
+    const message = screen.getByRole('button', { name: 'Message Salma Ibrahim' })
+    expect(message.getAttribute('title')).toBe('Message Salma Ibrahim')
+    expect(message.textContent).toBe('')
+  })
+})

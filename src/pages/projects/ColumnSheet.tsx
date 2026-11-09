@@ -4,7 +4,7 @@ import type { BoardColumn, StatusCategory } from '@/api/types'
 import { Button } from '@/components/ui/Button'
 import { Field, inputClass, selectClass } from '@/components/ui/Field'
 import { Sheet, SheetCancelButton } from '@/components/ui/Sheet'
-import { columnProblem } from '@/lib/boardColumns'
+import { columnProblem, doneChange } from '@/lib/boardColumns'
 import { useFormCheck } from '@/lib/useFormCheck'
 import { CATEGORIES } from '@/lib/statuses'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
@@ -13,7 +13,7 @@ import { SegmentedControl } from '@/components/ui/SegmentedControl'
  * Add column (a name, a type and where it goes), or a column's details (its name and type). The type decides what
  * "done" means for the tasks in it: progress, overdue, timers and My tasks follow it.
  */
-export function ColumnSheet({ projectId, columns, column, onClose }: { projectId: string; columns: BoardColumn[]; column?: BoardColumn; onClose: () => void }) {
+export function ColumnSheet({ projectId, columns, column, count = 0, onClose }: { projectId: string; columns: BoardColumn[]; column?: BoardColumn; /** The tasks in `column`, for the done warning. */ count?: number; onClose: () => void }) {
   const add = useAddColumn()
   const setBoard = useSetBoard()
   const [label, setLabel] = useState(column?.label ?? '')
@@ -72,6 +72,8 @@ export function ColumnSheet({ projectId, columns, column, onClose }: { projectId
           <legend className="mb-1.5 text-sm font-medium text-fg-secondary">Type</legend>
           <SegmentedControl kind="form" label="Type" value={category} onChange={setCategory} options={CATEGORIES.map((c) => ({ value: c.category, label: c.label }))} />
           {errors.category && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.category}</p>}
+          {/* Before what counts as done changes for the tasks already here (UX Phase 4, 4.10). */}
+          {column && doneChange(column.category, category, count) && <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">{doneChange(column.category, category, count)}</p>}
         </fieldset>
         {!column && (
           <Field label="Place">

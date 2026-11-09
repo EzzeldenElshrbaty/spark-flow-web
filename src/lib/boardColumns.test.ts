@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { BoardColumn } from '@/api/types'
-import { categoryOf, columnErrors, columnLabel, columnsOf, columnTaskCount, defaultMoveTo, firstOf, hueKey, moveColumn, startColumn } from './boardColumns'
+import { categoryOf, columnErrors, columnLabel, columnsOf, columnTaskCount, defaultMoveTo, doneChange, firstOf, hueKey, moveColumn, startColumn } from './boardColumns'
 import { DEFAULT_COLUMNS, statusLabel } from './statuses'
 
 const custom: BoardColumn[] = [
@@ -97,5 +97,18 @@ describe('hueKey and columnTaskCount', () => {
   it("counts a column's tasks among all of them, archived included", () => {
     const t = (status: string) => ({ status }) as { status: string }
     expect(columnTaskCount([t('a'), t('b'), t('a')], [t('a')], 'a')).toBe(3)
+  })
+})
+
+describe('doneChange (UX Phase 4, 4.10)', () => {
+  it('says when tasks start or stop counting as done, and nothing otherwise', () => {
+    expect(doneChange('inProgress', 'done', 3)).toBe('3 tasks here will count as done.')
+    expect(doneChange('done', 'todo', 1)).toBe('1 task here will stop counting as done.')
+    expect(doneChange('todo', 'inProgress', 4)).toBeNull()
+    expect(doneChange('done', 'done', 4)).toBeNull()
+    expect(doneChange('inProgress', 'done', 0)).toBeNull()
+  })
+  it('names where they go when they move', () => {
+    expect(doneChange('inProgress', 'done', 2, 'Shipped')).toBe('2 tasks moved to Shipped will count as done.')
   })
 })

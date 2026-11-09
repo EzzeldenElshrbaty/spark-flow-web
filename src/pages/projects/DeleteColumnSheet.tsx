@@ -4,13 +4,16 @@ import type { BoardColumn } from '@/api/types'
 import { Button } from '@/components/ui/Button'
 import { Field, selectClass } from '@/components/ui/Field'
 import { Sheet } from '@/components/ui/Sheet'
-import { defaultMoveTo } from '@/lib/boardColumns'
+import { defaultMoveTo, doneChange } from '@/lib/boardColumns'
 
 /** "Delete {name}?": its tasks move to the column you pick (the same type's first by default), in the same save. */
 export function DeleteColumnSheet({ projectId, columns, column, count, onClose }: { projectId: string; columns: BoardColumn[]; column: BoardColumn; count: number; onClose: () => void }) {
   const remove = useDeleteColumn()
   const [moveTo, setMoveTo] = useState(() => defaultMoveTo(columns, column.id))
   const others = columns.filter((c) => c.id !== column.id)
+  const target = others.find((c) => c.id === moveTo)
+  // Moving them to a column of another type can change what counts as done (UX Phase 4, 4.10).
+  const warning = target ? doneChange(column.category, target.category, count, target.label) : null
   return (
     <Sheet
       open
@@ -40,6 +43,7 @@ export function DeleteColumnSheet({ projectId, columns, column, count, onClose }
             </select>
           </Field>
         )}
+        {warning && <p className="text-sm text-amber-700 dark:text-amber-300">{warning}</p>}
         {remove.error && (
           <p role="alert" className="text-sm text-red-600 dark:text-red-400">
             {(remove.error as Error).message}

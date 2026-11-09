@@ -8,6 +8,7 @@ import type { Team, User } from '@/api/types'
 import { ConfirmDeleteSheet } from '@/components/ConfirmDeleteSheet'
 import { RowMenu } from '@/components/RowMenu'
 import { Button } from '@/components/ui/Button'
+import { IconButton } from '@/components/ui/IconButton'
 import { Field, inputClass } from '@/components/ui/Field'
 import { Sheet, SheetCancelButton } from '@/components/ui/Sheet'
 import { Avatar } from '@/components/Avatar'
@@ -34,15 +35,15 @@ function MemberRow({ user, workspaceId, workspaceSlug, canMessage }: { user: Use
           <span className="block truncate text-xs text-fg-muted">{user.title}</span>
         </span>
         {workspaceId && canMessage && (
-          <button
-            type="button"
+          // One quiet icon per row, not a column of outlined buttons (UX Phase 4, 4.10).
+          <IconButton
+            label={`Message ${user.name}`}
+            icon={MessageSquare}
+            size="sm"
+            touch
             disabled={open.isPending}
-            aria-label={`Message ${user.name}`}
             onClick={() => open.mutate({ workspaceId, userIds: [user.id] }, { onSuccess: (dm) => navigate(paths.channel(workspaceSlug, dm.id)) })}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-fg-secondary ring-1 ring-line hover:bg-surface-muted disabled:opacity-60"
-          >
-            <MessageSquare className="size-3.5" /> {open.isPending ? 'Opening…' : 'Message'}
-          </button>
+          />
         )}
       </div>
       {open.isError && (

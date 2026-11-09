@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ActivityEntry, ActivityKind } from '@/api/types'
-import { emptyNote, historyFilter } from './historyFilter'
+import { dayGroups, emptyNote, historyFilter } from './historyFilter'
 
 const e = (kind: ActivityKind): ActivityEntry => ({ id: kind, projectId: 'p', taskKey: null, actorId: 'u', at: '', kind, changes: [] })
 const all = (['task.created', 'task.moved', 'comment.added', 'column.added', 'phase.changed', 'deliverable.added', 'project.changed'] as ActivityKind[]).map(e)
@@ -20,5 +20,24 @@ describe('emptyNote', () => {
     expect(emptyNote('all', true)).toBe('Nothing like this in what is loaded. Load older to see more.')
     expect(emptyNote('comments', false)).toBe('Nothing like this here yet.')
     expect(emptyNote('all', false)).toBe('Nothing has happened here yet.')
+  })
+})
+
+describe('history by person and by day (UX Phase 4, 4.10)', () => {
+  it('who keeps one person’s entries', () => {
+    const mine = { ...e('task.created'), id: 'a', actorId: 'u-2' }
+    const theirs = { ...e('task.moved'), id: 'b', actorId: 'u-3' }
+    expect(historyFilter([mine, theirs], 'all', 'u-3').map((x) => x.id)).toEqual(['b'])
+    expect(historyFilter([mine, theirs], 'all', '')).toHaveLength(2)
+  })
+  it('groups newest first under Today, Yesterday and the day', () => {
+    const at = (id: string, when: Date) => ({ ...e('task.created'), id, at: when.toISOString() })
+    const now = new Date(2026, 10, 9, 15)
+    const groups = dayGroups([at('a', new Date(2026, 10, 9, 10)), at('b', new Date(2026, 10, 9, 9)), at('c', new Date(2026, 10, 8, 18)), at('d', new Date(2026, 10, 4, 12))], now)
+    expect(groups.map((g) => [g.label, g.entries.map((x) => x.id)])).toEqual([
+      ['Today', ['a', 'b']],
+      ['Yesterday', ['c']],
+      ['Wednesday 4 November', ['d']],
+    ])
   })
 })

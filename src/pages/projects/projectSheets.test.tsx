@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Phase, ProjectSummary } from '@/api/types'
 import { ColumnSheet } from './ColumnSheet'
+import { DeleteColumnSheet } from './DeleteColumnSheet'
 import { DeliverableSheet } from './DeliverableSheet'
 import { PhasesSheet } from './PhasesSheet'
 import { ProjectSheet } from './ProjectSheet'
@@ -21,6 +22,7 @@ vi.mock('@/api/projects', () => ({
   useAddColumn: () => mutation,
   useSetBoard: () => mutation,
   useCreateDeliverable: () => mutation,
+  useDeleteColumn: () => mutation,
   useUpdateDeliverable: () => mutation,
 }))
 vi.mock('@/api/tickets', () => ({ useTickets: () => ({ data: [] }) }))
@@ -128,5 +130,21 @@ describe('optional fields say so (UX Phase 4, 4.9)', () => {
     render(<ProjectSheet workspaceId="ws-eng" takenKeys={[]} onClose={() => {}} onSaved={() => {}} />)
     for (const name of ['Client', 'About']) expect(screen.getByText(name).closest('label')?.textContent).toContain('Optional')
     expect(screen.getByRole('group', { name: /^Links/ }).textContent).toContain('Optional')
+  })
+})
+
+describe('the board says before what counts as done changes (UX Phase 4, 4.10)', () => {
+  const four = [...board.slice(0, 2), { id: 'review', label: 'In review', category: 'inProgress' as const }, board[2]!]
+  it('changing a column with tasks to Done says how many will count as done', () => {
+    render(<ColumnSheet projectId="p-nex" columns={four} column={four[2]} count={3} onClose={() => {}} />)
+    expect(screen.queryByText(/will count as done/)).toBeNull()
+    fireEvent.click(screen.getByRole('radio', { name: 'Done' }))
+    expect(screen.getByText('3 tasks here will count as done.')).toBeTruthy()
+  })
+  it('deleting a column says so when its tasks move to a column of another type', () => {
+    render(<DeleteColumnSheet projectId="p-nex" columns={four} column={four[2]!} count={2} onClose={() => {}} />)
+    expect(screen.queryByText(/count as done/)).toBeNull()
+    fireEvent.change(screen.getByRole('combobox', { name: 'Move them to' }), { target: { value: 'done' } })
+    expect(screen.getByText('2 tasks moved to Done will count as done.')).toBeTruthy()
   })
 })
