@@ -41,10 +41,12 @@ describe('the font follows the screen', () => {
     }
   })
 
-  it('on a chat screen, everything keeps Readex Pro', () => {
+  it('on a chat screen, everything keeps Readex Pro, kit panels beside the chat too (final review)', () => {
     document.documentElement.dataset.font = 'chat'
     const { shell, portal } = fonts()
     expect(shell).toContain('Readex Pro')
     expect(portal).toContain('Readex Pro')
+    render(<aside data-testid="kit-panel">Task panel</aside>)
+    expect(getComputedStyle(document.querySelector('[data-testid="kit-panel"]')!).fontFamily).toContain('Readex Pro')
   })
 })

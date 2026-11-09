@@ -33,6 +33,7 @@ describe('Switch', () => {
     expect(screen.getByRole('switch', { name: 'On' }).className).toContain('bg-brand-500')
     expect(screen.getByRole('switch', { name: 'Off' }).className).toContain('bg-surface-strong')
     expect(screen.getByRole('switch', { name: 'On' }).className).toContain('focus-visible:outline-brand-500')
+    expect(screen.getByRole('switch', { name: 'On' }).className).toContain('dark:focus-visible:outline-brand-400')
     expect(screen.getByRole('switch', { name: 'On' }).querySelector('span')!.className).toContain('bg-surface')
   })
 })

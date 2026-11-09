@@ -27,7 +27,7 @@ export function Switch({
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={clsx(
-        'relative inline-flex h-6 w-10 shrink-0 cursor-pointer items-center rounded-full p-0.5 ring-1 ring-inset transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:cursor-not-allowed disabled:opacity-50',
+        'relative inline-flex h-6 w-10 shrink-0 cursor-pointer items-center rounded-full p-0.5 ring-1 ring-inset transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 dark:focus-visible:outline-brand-400 disabled:cursor-not-allowed disabled:opacity-50',
         checked ? 'bg-brand-500 ring-brand-500' : 'bg-surface-strong ring-line-strong',
       )}
     >

@@ -16,7 +16,7 @@ import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { useRole } from '@/lib/useRole'
 
 /** group: a direct message with more than one other person, so no one presence stands for it. */
-export type ChannelRow = { channel: Channel; label: string; presence: Presence; group: boolean; /** The person a 1:1 DM is with (me, for my own notes). */ otherId: string; /** I have an unsent draft there. */ draft: boolean }
+export type ChannelRow = { channel: Channel; label: string; presence: Presence; group: boolean; /** The person a 1:1 DM is with (me, for my own notes). */ otherId: string; /** Their name, which colours the avatar (the label may say "(you)"). */ otherName: string; /** I have an unsent draft there. */ draft: boolean }
 
 /** What the sidebar lists for the workspace on screen: channels, direct messages, apps, projects and unread mentions. */
 export function useSidebarGroups() {
@@ -43,7 +43,7 @@ export function useSidebarGroups() {
   const myProjectChannelIds = new Set((projectsQuery.data ?? []).filter((p) => projectPeopleIds(p, users).has(persona.id)).map((p) => p.channelId))
   const row = (channel: Channel): ChannelRow => {
     const other = channel.memberIds.find((id) => id !== persona.id) ?? persona.id
-    return { channel, label: channelLabel(channel, users, persona.id), presence: users.find((u) => u.id === other)?.presence ?? 'offline', group: channel.memberIds.length > 2, otherId: other, draft: drafted.has(channel.id) }
+    return { channel, label: channelLabel(channel, users, persona.id), presence: users.find((u) => u.id === other)?.presence ?? 'offline', group: channel.memberIds.length > 2, otherId: other, otherName: users.find((u) => u.id === other)?.name ?? channelLabel(channel, users, persona.id), draft: drafted.has(channel.id) }
   }
   // In my order (spec 5.1, slice Y+); projects have no muted rows. Filled in once the order has arrived.
   let projects: Project[] = projectsQuery.data ?? []

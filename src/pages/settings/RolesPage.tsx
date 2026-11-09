@@ -345,7 +345,7 @@ function AddRoleSheet({ roles, onClose }: { roles: Role[]; onClose: () => void }
             <option value="">No permissions</option>
             {roles.map((r) => (
               <option key={r.id} value={r.id}>
-                {r.name}'s permissions
+                {r.name}’s permissions
               </option>
             ))}
           </select>

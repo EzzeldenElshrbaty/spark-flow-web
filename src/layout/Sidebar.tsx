@@ -255,10 +255,10 @@ function GroupSkeleton() {
 
 /** A channel or DM row: `#` or a lock, or the other person's avatar; bold, count and muted by `sidebarRowState`. */
 function ChannelLink({ slug, row: r, mentions, collapsed, onNavigate, describedBy }: { slug: string; row: ChannelRow; mentions: number; collapsed?: boolean; onNavigate?: () => void; describedBy?: string }) {
-  const { channel, label, presence, group, otherId } = r
+  const { channel, label, presence, group, otherId, otherName } = r
   const state = sidebarRowState(channel, mentions)
   const icon =
-    channel.kind === 'channel' ? (channel.isPrivate ? IconLock : IconHash) : group ? IconUsers : isFlowbot(otherId) ? <Avatar id={otherId} name={label} size={20} app on="frame" decorative /> : <Avatar id={otherId} name={label} size={20} presence={presence} on="frame" decorative />
+    channel.kind === 'channel' ? (channel.isPrivate ? IconLock : IconHash) : group ? IconUsers : isFlowbot(otherId) ? <Avatar id={otherId} name={otherName} size={20} app on="frame" decorative /> : <Avatar id={otherId} name={otherName} size={20} presence={presence} on="frame" decorative />
   return (
     <SideLink
       to={paths.channel(slug, channel.id)}

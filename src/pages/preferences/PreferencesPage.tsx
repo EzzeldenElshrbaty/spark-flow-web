@@ -154,7 +154,7 @@ function KeywordsSection({ prefs, error, onError, onSave }: { prefs: Preferences
           {prefs.keywords.map((word) => (
             <li key={word} className="inline-flex items-center gap-0.5 rounded-full border border-line bg-surface-muted ps-3 text-sm text-fg">
               {word}
-              <IconButton label={`Remove ${word}`} icon={X} size="sm" onClick={() => onSave({ keywords: prefs.keywords.filter((k) => k !== word) })} />
+              <IconButton label={`Remove ${word}`} icon={X} size="sm" touch onClick={() => onSave({ keywords: prefs.keywords.filter((k) => k !== word) })} />
             </li>
           ))}
         </ul>
@@ -166,7 +166,9 @@ function KeywordsSection({ prefs, error, onError, onSave }: { prefs: Preferences
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key !== 'Enter') return
+          // Enter or a comma adds the word; Backspace in the empty box takes the last one off (as chat's token box).
+          if (e.key === 'Backspace' && query === '' && prefs.keywords.length) return onSave({ keywords: prefs.keywords.slice(0, -1) })
+          if (e.key !== 'Enter' && e.key !== ',') return
           e.preventDefault()
           const word = query.trim()
           if (word && commit(word)) setQuery('')

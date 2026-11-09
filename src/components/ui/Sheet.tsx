@@ -146,6 +146,8 @@ export function Sheet({
                   onClick={() => {
                     setAsking(null)
                     asking.keep()
+                    // The button goes; focus stays in the sheet, so Tab can't reach the page behind it.
+                    panelRef.current?.focus()
                   }}
                 >
                   Keep editing

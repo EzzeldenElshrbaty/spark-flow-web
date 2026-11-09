@@ -34,6 +34,7 @@ describe('StatTile', () => {
     const link = screen.getByRole('link', { name: /Teams/ })
     expect(link.getAttribute('href')).toBe('/w/engineering/teams')
     expect(link.className).toContain('focus-visible:outline-brand-500')
+    expect(link.className).toContain('dark:focus-visible:outline-brand-400')
   })
 
   it('an icon sits in the corner, not between the label and the value; extra content goes last', () => {

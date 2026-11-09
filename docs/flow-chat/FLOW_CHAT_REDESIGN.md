@@ -56,7 +56,7 @@ Make Flow's chat match the standard of Slack-class chat tools: fast to scan, act
 - Add `design/spark-flow-tokens.css` to the global stylesheet. Light is the default (`:root`); `[data-theme="dark"]` on any container switches it.
 - If the repo uses Tailwind, extend the theme with the CSS variables instead of hex values, for example `colors: { surface: 'var(--surface)', 'text-secondary': 'var(--text-secondary)', accent: 'var(--accent)', ... }`. Map `spacing`, `borderRadius`, `boxShadow` and `zIndex` the same way. Add every token; don't reuse Tailwind's defaults.
 - **Font:** Readex Pro, weights 300, 400, 500 and 600, with Latin and Arabic subsets. Load it from Google Fonts or self-host it (preferred for an app: `@fontsource-variable/readex-pro`). Never use weight 700.
-  *Amended by UX Phase 3 (one font per screen):* Readex Pro on chat screens (chat pages and a project's Chat tab); on every other page the shell (sidebar, top bar, phone bars and their menus) uses the page's Inter, so a screen never shows two fonts.
+  *Amended by UX Phase 3 (one font per screen):* Readex Pro on chat screens (chat pages), panels beside the chat included; every other page, a project's Chat tab included, uses the page's Inter, shell (sidebar, top bar, phone bars and their menus) and chat content alike, so a screen never shows two fonts.
 - **Icons:** Tabler Icons, outline, `stroke={1.5}`. Use 20px by default, 18px in dense rows and 16px in chips. Use `@tabler/icons-react`, or the package that matches the framework.
 - **Emoji:** render with the native emoji font stack (`"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji"`). Use emoji only for content and reactions, never as UI glyphs.
 

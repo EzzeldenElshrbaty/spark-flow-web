@@ -72,6 +72,18 @@ describe('Preferences: Keywords', () => {
     await act(async () => fireEvent.click(within(section('Keywords')).getByRole('button', { name: 'Remove deploy' })))
     expect(update).toHaveBeenLastCalledWith({ keywords: ['page size'] })
   })
+  it('a comma adds the word too; Backspace in the empty box takes the last off; × is a phone-size target (final review)', async () => {
+    await mount()
+    const box = within(section('Keywords')).getByRole('textbox', { name: 'Keywords' })
+    fireEvent.change(box, { target: { value: 'release' } })
+    await act(async () => fireEvent.keyDown(box, { key: ',' }))
+    expect(update).toHaveBeenLastCalledWith({ keywords: ['deploy', 'release'] })
+    expect((box as HTMLInputElement).value).toBe('')
+    await act(async () => fireEvent.keyDown(box, { key: 'Backspace' }))
+    expect(update).toHaveBeenLastCalledWith({ keywords: ['deploy'] })
+    expect(within(section('Keywords')).getByRole('button', { name: 'Remove deploy' }).className).toContain('max-sm:size-11')
+  })
+
   it('a keyword that’s too long says so and keeps what I typed', async () => {
     await mount()
     const box = within(section('Keywords')).getByRole('textbox', { name: 'Keywords' }) as HTMLInputElement

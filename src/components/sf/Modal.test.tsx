@@ -44,6 +44,8 @@ describe('a changed dialog asks before it closes', () => {
       expect(screen.getByRole('status').textContent).toBe('Discard this new channel?')
       fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }))
       expect(screen.queryByRole('status')).toBeNull()
+      // Focus stays in the dialog, so Tab can't reach the page behind it (final review).
+      expect(screen.getByRole('dialog').contains(document.activeElement)).toBe(true)
     }
     expect(onClose).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))

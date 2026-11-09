@@ -128,3 +128,8 @@
 :root[data-font='page'] .sf {
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
 }
+
+/* And on a chat screen, what isn't chat (a task or help panel beside it, kit menus) takes Readex Pro too. */
+:root[data-font='chat'] body {
+  font-family: "Readex Pro Variable", "Readex Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
+}

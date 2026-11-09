@@ -42,7 +42,7 @@ export function StatTile({
   )
   const tile = 'relative block h-full min-w-0 rounded-xl border border-line bg-surface p-4 shadow-sm sm:p-5'
   return to ? (
-    <Link to={to} className={clsx(tile, 'transition-colors hover:border-line-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500')}>
+    <Link to={to} className={clsx(tile, 'transition-colors hover:border-line-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 dark:focus-visible:outline-brand-400')}>
       {body}
     </Link>
   ) : (

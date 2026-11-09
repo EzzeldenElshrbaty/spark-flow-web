@@ -33,6 +33,7 @@ describe('IconButton', () => {
     expect(screen.getByRole('button', { name: 'B' }).className).toContain('size-8')
     expect(screen.getByRole('button', { name: 'C' }).className).toContain('max-sm:size-11')
     expect(screen.getByRole('button', { name: 'A' }).className).toContain('focus-visible:outline-brand-500')
+    expect(screen.getByRole('button', { name: 'A' }).className).toContain('dark:focus-visible:outline-brand-400')
   })
 
   it('a danger one turns red on hover; pressed, disabled and a ref pass through', () => {

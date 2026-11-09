@@ -35,6 +35,7 @@ describe('SegmentedControl', () => {
     expect(radios.map((r) => r.tabIndex)).toEqual([0, -1, -1])
     expect(group.className).toContain('bg-surface-muted p-0.5 ring-1 ring-line')
     expect(radios[0]!.className).toContain('bg-surface text-fg shadow-sm ring-1 ring-line')
+    expect(radios[0]!.className).toContain('dark:focus-visible:outline-brand-400')
     expect(screen.getByRole('radio', { name: 'List' }).querySelector('svg')!.getAttribute('aria-hidden')).toBe('true')
   })
 

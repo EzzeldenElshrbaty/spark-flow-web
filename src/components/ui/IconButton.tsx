@@ -34,7 +34,7 @@ export function IconButton({
       aria-label={label}
       title={title ?? label}
       className={clsx(
-        'inline-flex shrink-0 items-center justify-center rounded-lg text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg aria-pressed:bg-surface-muted aria-pressed:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:pointer-events-none disabled:opacity-40',
+        'inline-flex shrink-0 items-center justify-center rounded-lg text-fg-muted transition-colors hover:bg-surface-muted hover:text-fg aria-pressed:bg-surface-muted aria-pressed:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 dark:focus-visible:outline-brand-400 disabled:pointer-events-none disabled:opacity-40',
         size === 'md' ? 'size-9' : 'size-8',
         touch && 'max-sm:size-11',
         tone === 'danger' && 'hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/15 dark:hover:text-red-400',

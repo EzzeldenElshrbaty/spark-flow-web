@@ -24,3 +24,16 @@ describe('cardFacts', () => {
     expect(cardFacts(p({}), now)).toMatchObject({ late: false, finishLine: 'Expected 20 Nov 2026' })
   })
 })
+
+describe('a card’s due date (UX Phase 3 final review)', () => {
+  it('is the stored day, read in UTC, wherever the viewer is', () => {
+    const zone = process.env.TZ
+    process.env.TZ = 'America/New_York'
+    try {
+      const facts = cardFacts(p({ dueDate: '2026-10-03T00:00:00.000Z', expectedFinish: '2026-10-20T00:00:00.000Z' }), now)
+      expect(facts.finishLine).toContain('due 3 Oct')
+    } finally {
+      process.env.TZ = zone
+    }
+  })
+})

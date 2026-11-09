@@ -43,7 +43,7 @@ export function AppLayout() {
   // A page that fills the card on the page canvas (the project Chat tab, UX Phase 1, 1.3).
   const fill = !pane && isFill(matches)
   // One font per screen (UX Phase 3, 3.1): set before paint, so the shell never shows the other font first.
-  const font = screenFont(pane, location.pathname)
+  const font = screenFont(pane)
   useLayoutEffect(() => {
     document.documentElement.dataset.font = font
   }, [font])

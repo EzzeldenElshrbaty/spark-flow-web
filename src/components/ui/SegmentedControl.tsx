@@ -62,7 +62,7 @@ export function SegmentedControl<T extends string>({
           onClick={() => option !== value && onChange(option)}
           onKeyDown={(event) => onKeyDown(event, index)}
           className={clsx(
-            'inline-flex items-center gap-1.5 rounded-md text-sm whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:cursor-default',
+            'inline-flex items-center gap-1.5 rounded-md text-sm whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 dark:focus-visible:outline-brand-400 disabled:cursor-default',
             look.item,
             option === value ? look.on : look.off,
           )}

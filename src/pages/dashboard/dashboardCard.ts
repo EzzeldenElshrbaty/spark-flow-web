@@ -15,7 +15,7 @@ export function cardFacts(p: DashboardProject, now: Date): CardFacts {
       p.estimateHours === null
         ? `${formatHours(p.loggedHours)} · no estimate`
         : `${formatHours(p.estimatedLoggedHours)} of ${formatHours(p.estimateHours)} estimated · ${formatHours(p.loggedHours)} in all`,
-    finishLine: late ? `Expected ${formatDate(p.expectedFinish)} · due ${formatDayMonth(p.dueDate)}` : `Expected ${formatDate(p.expectedFinish)}`,
+    finishLine: late ? `Expected ${formatDate(p.expectedFinish)} · due ${formatDayMonth(p.dueDate, { utc: true })}` : `Expected ${formatDate(p.expectedFinish)}`,
     late,
     over,
   }

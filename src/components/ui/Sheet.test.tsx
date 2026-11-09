@@ -60,6 +60,8 @@ describe('a changed sheet asks before it closes (UX Phase 1, 1.2)', () => {
     act(() => guard!.ask(leave, stay))
     expect(screen.getByText('Discard your changes?')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }))
+    // Focus stays in the sheet, so Tab can't reach the page behind it (UX Phase 3 final review).
+    expect(screen.getByRole('dialog').contains(document.activeElement)).toBe(true)
     expect(stay).toHaveBeenCalledTimes(1)
     expect(onClose).not.toHaveBeenCalled()
     act(() => guard!.ask(leave, stay))

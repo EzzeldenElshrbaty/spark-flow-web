@@ -22,10 +22,10 @@ export function isFill(matches: readonly RouteMatch[]): boolean {
 }
 
 /**
- * Which font the whole screen uses (UX Phase 3, 3.1): chat pages (a route with `pane`) and the project's Chat tab are
- * chat screens, in Readex Pro; on every other page the shell takes the page's Inter. AppLayout puts it on <html> as
- * `data-font`, which flow-tokens.css reads.
+ * Which font the whole screen uses (UX Phase 3, 3.1): chat pages (a route with `pane`) are chat screens, in Readex Pro;
+ * every other page, the project's Chat tab included (it sits under the project's kit header), is a page in Inter.
+ * AppLayout puts it on <html> as `data-font`, which flow-tokens.css reads.
  */
-export function screenFont(pane: boolean, pathname: string): 'chat' | 'page' {
-  return pane || /\/p\/[^/]+\/chat\/?$/.test(pathname) ? 'chat' : 'page'
+export function screenFont(pane: boolean): 'chat' | 'page' {
+  return pane ? 'chat' : 'page'
 }

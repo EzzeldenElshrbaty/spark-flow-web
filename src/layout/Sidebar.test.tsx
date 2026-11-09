@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Sidebar, SidebarContent, SidebarHeader } from '@/layout/Sidebar'
+import { avatarTone } from '@/components/Avatar'
 import { initialUiState, useUiStore } from '@/lib/uiStore'
 import { ALL_PERMISSIONS } from '@/lib/permissions'
 
@@ -18,6 +19,7 @@ vi.mock('@/layout/useGoToMode', () => ({ useGoToMode: () => () => true }))
 const setOrder = vi.fn()
 let customOrder = { starred: false, channels: false, projects: false }
 let orderError: string | null = null
+let dms: unknown[] = []
 vi.mock('@/api/sidebar', () => ({ useSaveSidebarOrder: () => ({ save: setOrder, error: orderError }) }))
 vi.mock('@/layout/useSidebarGroups', () => ({
   useSidebarGroups: () => ({
@@ -25,7 +27,7 @@ vi.mock('@/layout/useSidebarGroups', () => ({
     workspace,
     starred: [],
     channels: [channel('c-general', 'general'), channel('c-backend', 'backend')],
-    dms: [],
+    dms,
     apps: [],
     projects: [{ id: 'p-nex', key: 'NEX', name: 'Nexus Core', managerId: 'u-1' }],
     mentions: { byChannel: new Map() },
@@ -46,6 +48,7 @@ beforeEach(() => {
   useUiStore.setState(initialUiState)
   customOrder = { starred: false, channels: false, projects: false }
   orderError = null
+  dms = []
   setOrder.mockReset()
 })
 afterEach(cleanup)
@@ -169,5 +172,14 @@ describe('my order of Projects (slice Y+)', () => {
     orderError = 'projects'
     at('/w/engineering/p/NEX/tasks', <SidebarContent />)
     expect(screen.getByRole('alert').textContent).toBe('Couldn’t save the order. Try again.')
+  })
+})
+
+describe('my own notes in Direct messages (UX Phase 3 final review: one person, one avatar)', () => {
+  it('the avatar is coloured by my name, not by its "(you)" label', () => {
+    dms = [{ channel: { id: 'c-me', kind: 'dm', memberIds: ['u-1'], muted: false }, label: 'Hossam Gaber (you)', presence: 'active', group: false, otherId: 'u-1', otherName: 'Hossam Gaber', draft: false }]
+    at('/w/engineering/c/c-general', <SidebarContent />)
+    const avatar = document.querySelector('a[href="/w/engineering/c/c-me"] .rounded-full')!
+    expect(avatar.className).toContain(avatarTone('Hossam Gaber'))
   })
 })

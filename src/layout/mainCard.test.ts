@@ -29,14 +29,10 @@ describe('isFill (UX Phase 1, 1.3: a page that fills the card)', () => {
 })
 
 describe('screenFont (UX Phase 3, 3.1: one font per screen)', () => {
-  it('chat pages and the project Chat tab are chat screens; every other page is a page', () => {
-    expect(screenFont(true, '/w/a/c/c-general')).toBe('chat')
-    expect(screenFont(true, '/w/a/search')).toBe('chat')
-    expect(screenFont(false, '/w/a/p/NEX/chat')).toBe('chat')
-    expect(screenFont(false, '/w/a/p/NEX/chat/')).toBe('chat')
-    expect(screenFont(false, '/w/a/dashboard')).toBe('page')
-    expect(screenFont(false, '/w/a/p/NEX/overview')).toBe('page')
-    expect(screenFont(false, '/w/a/p/CHAT/tasks')).toBe('page')
-    expect(screenFont(false, '/w/a/preferences')).toBe('page')
+  it('chat pages are chat screens; every other page, the project Chat tab included, is a page', () => {
+    // A channel, Activity, Search: their routes are chat panes.
+    expect(screenFont(true)).toBe('chat')
+    // Every other page, the project Chat tab included: it sits under the project's own (kit) header (final review).
+    expect(screenFont(false)).toBe('page')
   })
 })

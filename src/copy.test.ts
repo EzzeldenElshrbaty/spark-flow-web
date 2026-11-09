@@ -36,7 +36,7 @@ export function straightInSource(path: string, source: string): string[] {
     } else if (ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) {
       if (STRAIGHT.test(node.text) || AFTER_EXPRESSION.test(node.text)) report(node, node.text)
     } else if (ts.isJsxText(node)) {
-      if (STRAIGHT.test(node.text)) report(node, node.text)
+      if (STRAIGHT.test(node.text) || AFTER_EXPRESSION.test(node.text)) report(node, node.text)
     }
     ts.forEachChild(node, visit)
   }
@@ -77,7 +77,8 @@ describe('curly apostrophes (UX Phase 3, 3.7)', () => {
       'const b = `${name}\'s file`',
       'const c = <p>Don\'t go</p>',
       "const d = x['key']",
+      "const e = <p>{name}'s permissions</p>", // JSX text right after an expression (final review)
     ].join('\n')
-    expect(straightInSource(join(SRC, 'sample.tsx'), sample).map((line) => line.split(': ')[1])).toEqual(["It's here", "'s file", "Don't go"])
+    expect(straightInSource(join(SRC, 'sample.tsx'), sample).map((line) => line.split(': ')[1])).toEqual(["It's here", "'s file", "Don't go", "'s permissions"])
   })
 })
