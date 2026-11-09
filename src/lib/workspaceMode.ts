@@ -8,10 +8,11 @@ export type WorkspaceMode = 'projects' | 'chat'
 export type PlacesByMode = Record<string, Partial<Record<WorkspaceMode, string>>>
 
 const CHAT = /^\/w\/[^/]+\/(?:c\/[^/]+|activity|saved|drafts|threads)\/?$/
-const PROJECTS = /^\/w\/[^/]+(?:\/(?:projects|tasks|teams|dashboard|time|p\/.+))?\/?$/
+// Settings, Preferences and Help always use the Projects sidebar (UX Phase 2, 2.2).
+const PROJECTS = /^\/w\/[^/]+(?:\/(?:projects|tasks|teams|dashboard|time|preferences|p\/.+|settings(?:\/.+)?|help(?:\/.+)?))?\/?$/
 
 /**
- * Which side an address belongs to. Settings, search and anything else return null: they keep the side you were on.
+ * Which side an address belongs to. Search and anything else return null: they keep the side you were on.
  * Only the path counts; a query string is ignored.
  */
 export function modeOf(pathname: string): WorkspaceMode | null {

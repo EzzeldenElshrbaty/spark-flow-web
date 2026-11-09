@@ -226,7 +226,7 @@ Project work and chat are two sides of one workspace. Each side owns the whole s
 |---|---|
 | Projects | Home, Projects, My tasks, Teams, Dashboard, Time and cost, every project tab (its Chat tab included) |
 | Chat | Channels and DMs, Threads, Activity, Drafts & sent, Saved |
-| Neither | Settings, search and anything else: the side you were on stays |
+| Neither | Search and anything else: the side you were on stays. *Amended 9 Nov 2026 (UX Phase 2, 2.2):* Settings, Preferences and Help always use the Projects side. |
 
 **Sidebar per side** (replaces the single order in 5.1 for the sections below; Settings stays pinned on both):
 

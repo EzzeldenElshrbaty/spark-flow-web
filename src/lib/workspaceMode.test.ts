@@ -21,8 +21,14 @@ describe('modeOf', () => {
     }
   })
 
-  it('leaves Settings, search and unknown pages to the side you were on', () => {
-    for (const path of ['/w/engineering/settings', '/w/engineering/settings/rates', '/w/engineering/settings/roles', '/w/engineering/search', '/w/engineering/preferences', '/', '/w/engineering/nope', '/dev/ui']) {
+  it('puts Settings, Preferences and Help on the Projects side, always (UX Phase 2, 2.2)', () => {
+    for (const path of ['/w/engineering/settings', '/w/engineering/settings/rates', '/w/engineering/settings/roles', '/w/engineering/preferences', '/w/engineering/help', '/w/engineering/help/tasks']) {
+      expect(modeOf(path), path).toBe('projects')
+    }
+  })
+
+  it('leaves search and unknown pages to the side you were on', () => {
+    for (const path of ['/w/engineering/search', '/', '/w/engineering/nope', '/dev/ui', '/w/engineering/settingsx', '/w/engineering/helpful']) {
       expect(modeOf(path), path).toBeNull()
     }
   })

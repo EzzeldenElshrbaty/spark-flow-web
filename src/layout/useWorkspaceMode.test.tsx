@@ -22,12 +22,17 @@ describe('useWorkspaceMode (spec 5.5)', () => {
 
   it('keeps the side last opened in this workspace on a page both sides share', () => {
     useUiStore.getState().visit('engineering', '/w/engineering/dashboard')
-    expect(modeAt('/w/engineering/settings')).toBe('projects')
+    expect(modeAt('/w/engineering/search')).toBe('projects')
     useUiStore.getState().visit('engineering', '/w/engineering/activity')
-    expect(modeAt('/w/engineering/settings')).toBe('chat')
+    expect(modeAt('/w/engineering/search')).toBe('chat')
   })
 
   it('opens on Chat when nothing says otherwise', () => {
-    expect(modeAt('/w/engineering/settings')).toBe('chat')
+    expect(modeAt('/w/engineering/search')).toBe('chat')
+  })
+
+  it('Settings stays on the Projects side after a channel (UX Phase 2, 2.2)', () => {
+    useUiStore.getState().visit('engineering', '/w/engineering/activity')
+    expect(modeAt('/w/engineering/settings/users')).toBe('projects')
   })
 })
