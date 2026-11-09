@@ -40,6 +40,17 @@ async function mount() {
 }
 const section = (name: string) => screen.getByRole('region', { name })
 
+describe('Preferences in the standard look (UX Phase 3, 3.1)', () => {
+  it('is a kit page like Settings: its heading, no chat scope, and kit cards', async () => {
+    await mount()
+    const heading = screen.getByRole('heading', { name: 'Preferences', level: 1 })
+    expect(heading.closest('.sf')).toBeNull()
+    expect(heading.className).toContain('text-2xl')
+    for (const name of ['Notify me about', 'Keywords', 'Delivery', 'Do Not Disturb']) expect(section(name).className).toContain('rounded-xl border border-line bg-surface shadow-sm')
+    expect(screen.getByRole('switch', { name: 'Mobile push' }).className).toContain('bg-brand-500')
+  })
+})
+
 describe('Preferences: Notify me about (spec 6.11 global default)', () => {
   it('shows my default checked; picking another saves it', async () => {
     await mount()
@@ -54,7 +65,7 @@ describe('Preferences: Notify me about (spec 6.11 global default)', () => {
 describe('Preferences: Keywords', () => {
   it('adds a word with Enter and removes one with its ×', async () => {
     await mount()
-    const box = within(section('Keywords')).getByRole('combobox', { name: 'Keywords' })
+    const box = within(section('Keywords')).getByRole('textbox', { name: 'Keywords' })
     fireEvent.change(box, { target: { value: 'page size' } })
     await act(async () => fireEvent.keyDown(box, { key: 'Enter' }))
     expect(update).toHaveBeenLastCalledWith({ keywords: ['deploy', 'page size'] })
@@ -63,7 +74,7 @@ describe('Preferences: Keywords', () => {
   })
   it('a keyword that’s too long says so and keeps what I typed', async () => {
     await mount()
-    const box = within(section('Keywords')).getByRole('combobox', { name: 'Keywords' }) as HTMLInputElement
+    const box = within(section('Keywords')).getByRole('textbox', { name: 'Keywords' }) as HTMLInputElement
     fireEvent.change(box, { target: { value: 'x'.repeat(41) } })
     await act(async () => fireEvent.keyDown(box, { key: 'Enter' }))
     expect(update).not.toHaveBeenCalled()
@@ -73,7 +84,7 @@ describe('Preferences: Keywords', () => {
   it('a refused save says why, in that section', async () => {
     update.mockRejectedValueOnce(new ApiError({ status: 400, title: 'Bad request', detail: 'You can have up to 20 keywords.' }))
     await mount()
-    const box = within(section('Keywords')).getByRole('combobox', { name: 'Keywords' })
+    const box = within(section('Keywords')).getByRole('textbox', { name: 'Keywords' })
     fireEvent.change(box, { target: { value: 'one more' } })
     await act(async () => fireEvent.keyDown(box, { key: 'Enter' }))
     expect(within(section('Keywords')).getByRole('alert').textContent).toBe('You can have up to 20 keywords.')

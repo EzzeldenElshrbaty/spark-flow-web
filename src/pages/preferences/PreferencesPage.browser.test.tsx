@@ -84,10 +84,8 @@ describe('Preferences on a 390px phone', () => {
       const box = el.getBoundingClientRect()
       expect(box.right, el.outerHTML.slice(0, 120)).toBeLessThanOrEqual(390)
     }
-    // Its small button reaches 44px and more with its touch area (spec 6.16): a tap just above it still lands on it.
+    // A kit button 44px tall on phones (UX Phase 3: Preferences in the standard look; spec 6.16).
     const pause = screen.getByRole('button', { name: /Pause notifications/ })
-    pause.scrollIntoView({ block: 'center' })
-    const box = pause.getBoundingClientRect()
-    expect(document.elementFromPoint(box.left + box.width / 2, box.top - 8)?.closest('button')).toBe(pause)
+    expect(pause.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
   })
 })

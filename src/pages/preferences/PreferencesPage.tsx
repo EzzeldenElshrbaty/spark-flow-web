@@ -1,13 +1,16 @@
-import { IconChevronDown, IconPlayerPause } from '@tabler/icons-react'
-import { useId, useState, type ReactNode } from 'react'
+import clsx from 'clsx'
+import { ChevronDown, Pause, X } from 'lucide-react'
+import { useId, useRef, useState, type ReactNode } from 'react'
 import { usePreferences, useUpdatePreferences } from '@/api/preferences'
 import { viewerZone } from '@/api/scheduled'
 import type { DndSchedule, EmailDigest, NotifyLevel, Preferences } from '@/api/types'
-import { Button } from '@/components/sf/Button'
-import { Icon } from '@/components/sf/Icon'
-import { Menu, MenuItem, MenuSeparator } from '@/components/sf/Menu'
-import { Checkbox, Toggle } from '@/components/sf/Toggle'
-import { TokenInput } from '@/components/sf/TokenInput'
+import { Button } from '@/components/ui/Button'
+import { inputClass } from '@/components/ui/Field'
+import { IconButton } from '@/components/ui/IconButton'
+import { MenuPanel, menuItemClass } from '@/components/ui/Menu'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { QueryError } from '@/components/ui/QueryError'
+import { Switch } from '@/components/ui/Switch'
 import { toLocalInput } from '@/lib/format'
 import { dndEndLabel, dndState, pausePresets } from '@/lib/notifyRules'
 import { useNow } from '@/lib/useNow'
@@ -31,6 +34,7 @@ function blockedLine(): string | null {
 /**
  * My notification preferences (spec 6.11): the default level for channels, keywords, how I hear outside the app
  * (desktop, push, the email digest) and Do Not Disturb. Each change saves on its own; a refusal is said in its section.
+ * A settings page in the standard look, like Settings (UX Phase 3, 3.1).
  */
 export function PreferencesPage() {
   const prefs = usePreferences()
@@ -43,56 +47,47 @@ export function PreferencesPage() {
     )
   const p = prefs.data
   return (
-    <div className="sf flex min-h-0 flex-1 flex-col">
-      <section aria-labelledby="prefs-title" className="flex min-h-0 min-w-0 flex-1 flex-col bg-sf-surface">
-        <header className="flex h-sf-header flex-none items-center ps-4 pe-4 sm:ps-6">
-          <h1 id="prefs-title" className="sf-title min-w-0 flex-1 truncate text-sf-text">
-            Preferences
-          </h1>
-        </header>
-        <div className="min-h-0 flex-1 overflow-y-auto bg-sf-surface-sunken px-2 py-4 sm:px-6">
-          {prefs.isError && !p ? (
-            <div className="flex flex-col items-start gap-3 px-2 py-6">
-              <p className="sf-ui m-0 text-sf-text-secondary">Your preferences didn’t load.</p>
-              <Button size="sm" onClick={() => void prefs.refetch()} disabled={prefs.isFetching}>
-                {prefs.isFetching ? 'Trying…' : 'Try again'}
-              </Button>
-            </div>
-          ) : !p ? (
-            <div aria-hidden className="mx-auto flex max-w-[720px] flex-col gap-4">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="h-36 animate-pulse rounded-sf-lg bg-sf-surface-hover" />
-              ))}
-            </div>
-          ) : (
-            <div className="mx-auto flex max-w-[720px] flex-col gap-4">
-              <NotifySection prefs={p} error={errors.notify} onSave={(patch) => save('notify', patch)} />
-              <KeywordsSection prefs={p} error={errors.keywords} onError={(text) => setErrors((e) => ({ ...e, keywords: text }))} onSave={(patch) => save('keywords', patch)} />
-              <DeliverySection prefs={p} error={errors.delivery} onError={(text) => setErrors((e) => ({ ...e, delivery: text }))} onSave={(patch) => save('delivery', patch)} />
-              <DndSection prefs={p} error={errors.dnd} onError={(text) => setErrors((e) => ({ ...e, dnd: text }))} onSave={(patch) => save('dnd', patch)} />
-            </div>
-          )}
+    <>
+      <PageHeader title="Preferences" subtitle="How Flow tells you about messages. Only you see these." />
+      {prefs.isError && !p ? (
+        <QueryError what="your preferences" onRetry={() => void prefs.refetch()} />
+      ) : !p ? (
+        <div aria-hidden className="flex max-w-3xl flex-col gap-4">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-36 animate-pulse rounded-xl bg-surface-muted" />
+          ))}
         </div>
-      </section>
-    </div>
+      ) : (
+        <div className="flex max-w-3xl flex-col gap-4">
+          <NotifySection prefs={p} error={errors.notify} onSave={(patch) => save('notify', patch)} />
+          <KeywordsSection prefs={p} error={errors.keywords} onError={(text) => setErrors((e) => ({ ...e, keywords: text }))} onSave={(patch) => save('keywords', patch)} />
+          <DeliverySection prefs={p} error={errors.delivery} onError={(text) => setErrors((e) => ({ ...e, delivery: text }))} onSave={(patch) => save('delivery', patch)} />
+          <DndSection prefs={p} error={errors.dnd} onError={(text) => setErrors((e) => ({ ...e, dnd: text }))} onSave={(patch) => save('dnd', patch)} />
+        </div>
+      )}
+    </>
   )
 }
 
-/** A card with a heading, a line under it, and the section's error at the end. */
+/** A kit card with a heading, a line under it, and the section's error at the end. */
 function Section({ title, help, error, children }: { title: string; help?: ReactNode; error?: string; children: ReactNode }) {
   const id = useId()
   return (
-    <section aria-labelledby={id} className="rounded-sf-lg border border-sf-line bg-sf-surface p-4 sm:p-5">
-      <h2 id={id} className="sf-body-strong m-0 text-sf-text">
-        {title}
-      </h2>
-      {help && <p className="sf-small m-0 mt-1 text-sf-text-secondary">{help}</p>}
-      <div className="mt-3 flex flex-col gap-3">{children}</div>
-      {error && (
-        <p role="alert" className="sf-small m-0 mt-3 text-sf-error">
-          {error}
-        </p>
-      )}
+    <section aria-labelledby={id} className="rounded-xl border border-line bg-surface shadow-sm">
+      <div className="border-b border-line-subtle px-5 py-3.5">
+        <h2 id={id} className="text-sm font-semibold text-fg">
+          {title}
+        </h2>
+        {help && <p className="mt-0.5 text-sm text-fg-muted">{help}</p>}
+      </div>
+      <div className="flex flex-col gap-3 px-5 py-4">
+        {children}
+        {error && (
+          <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+            {error}
+          </p>
+        )}
+      </div>
     </section>
   )
 }
@@ -101,11 +96,11 @@ function Section({ title, help, error, children }: { title: string; help?: React
 function Radios<T extends string>({ legend, options, value, onPick }: { legend: string; options: { id: T; label: string }[]; value: T; onPick: (value: T) => void }) {
   const name = useId()
   return (
-    <fieldset className="m-0 flex flex-col gap-1 border-0 p-0">
+    <fieldset className="flex flex-col gap-1">
       <legend className="sr-only">{legend}</legend>
       {options.map((o) => (
-        <label key={o.id} className="sf-ui flex min-h-8 cursor-pointer items-center gap-2 text-sf-text max-md:min-h-11">
-          <input type="radio" name={name} checked={value === o.id} onChange={() => o.id !== value && onPick(o.id)} className="sf-focus size-4 accent-[var(--accent-fill)]" />
+        <label key={o.id} className="flex min-h-8 cursor-pointer items-center gap-2.5 text-sm text-fg max-md:min-h-11">
+          <input type="radio" name={name} checked={value === o.id} onChange={() => o.id !== value && onPick(o.id)} className="size-4 accent-brand-500" />
           {o.label}
         </label>
       ))}
@@ -119,13 +114,13 @@ function SwitchRow({ label, help, checked, onChange }: { label: string; help?: R
   return (
     <div className="flex items-start gap-3">
       <div className="min-w-0 flex-1">
-        <p id={id} className="sf-ui m-0 text-sf-text">
+        <p id={id} className="text-sm font-medium text-fg">
           {label}
         </p>
-        {help && <p className="sf-small m-0 text-sf-text-secondary">{help}</p>}
+        {help && <p className="text-sm text-fg-muted">{help}</p>}
       </div>
       <span className="flex min-h-6 items-center max-md:min-h-11">
-        <Toggle checked={checked} onChange={onChange} labelledBy={id} />
+        <Switch checked={checked} onChange={onChange} labelledBy={id} />
       </span>
     </div>
   )
@@ -154,15 +149,28 @@ function KeywordsSection({ prefs, error, onError, onSave }: { prefs: Preferences
   }
   return (
     <Section title="Keywords" help="Someone else’s message with one of these counts like a mention, in channels you’re in. Up to 20." error={error}>
-      <TokenInput
-        label="Keywords"
-        tokens={prefs.keywords.map((k) => ({ id: k, label: k }))}
-        query={query}
-        onQueryChange={setQuery}
-        onAdd={() => {}}
-        onCommit={commit}
-        onRemove={(word) => onSave({ keywords: prefs.keywords.filter((k) => k !== word) })}
+      {prefs.keywords.length > 0 && (
+        <ul aria-label="Your keywords" className="flex flex-wrap gap-1.5">
+          {prefs.keywords.map((word) => (
+            <li key={word} className="inline-flex items-center gap-0.5 rounded-full border border-line bg-surface-muted ps-3 text-sm text-fg">
+              {word}
+              <IconButton label={`Remove ${word}`} icon={X} size="sm" onClick={() => onSave({ keywords: prefs.keywords.filter((k) => k !== word) })} />
+            </li>
+          ))}
+        </ul>
+      )}
+      <input
+        className={inputClass}
+        aria-label="Keywords"
         placeholder="Type a word and press Enter"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key !== 'Enter') return
+          e.preventDefault()
+          const word = query.trim()
+          if (word && commit(word)) setQuery('')
+        }}
       />
     </Section>
   )
@@ -190,8 +198,8 @@ function DeliverySection({ prefs, error, onError, onSave }: { prefs: Preferences
       />
       <SwitchRow label="Mobile push" help="Sent by the Flow mobile app. Not sent in this preview." checked={prefs.push} onChange={(push) => onSave({ push })} />
       <div>
-        <p className="sf-ui m-0 text-sf-text">Email digest of missed mentions</p>
-        <p className="sf-small m-0 mb-1 text-sf-text-secondary">Mentions you haven’t read, by email. Not sent in this preview.</p>
+        <p className="text-sm font-medium text-fg">Email digest of missed mentions</p>
+        <p className="mb-1 text-sm text-fg-muted">Mentions you haven’t read, by email. Not sent in this preview.</p>
         <Radios<EmailDigest> legend="Email digest of missed mentions" options={DIGESTS} value={prefs.emailDigest} onPick={(emailDigest) => onSave({ emailDigest })} />
       </div>
     </Section>
@@ -208,34 +216,17 @@ function DndSection({ prefs, error, onError, onSave }: { prefs: Preferences; err
   return (
     <Section title="Do Not Disturb" help="Holds back desktop notifications, mobile push and email. Badges and counts in Flow don’t change." error={error}>
       {state && (
-        <p role="status" className="sf-ui m-0 flex flex-wrap items-center gap-2 text-sf-text">
+        <p role="status" className="flex flex-wrap items-center gap-2 text-sm text-fg">
           {state.reason === 'paused' ? `Notifications are paused until ${dndEndLabel(state, now)}.` : `Do Not Disturb is on until ${dndEndLabel(state, now)} (your schedule).`}
           {state.reason === 'paused' && (
-            <Button size="sm" touch onClick={() => onSave({ dndUntil: null })}>
+            <Button variant="secondary" className="max-md:min-h-11" onClick={() => onSave({ dndUntil: null })}>
               Resume
             </Button>
           )}
         </p>
       )}
       <div className="flex flex-wrap items-center gap-2">
-        <Menu
-          label="Pause notifications"
-          trigger={(props) => (
-            <Button size="sm" touch icon={IconPlayerPause} {...props}>
-              Pause notifications
-              <Icon icon={IconChevronDown} size={16} />
-            </Button>
-          )}
-        >
-          {/* Worked out again on the click: the shown list can be half a minute old. */}
-          {pausePresets(now).map((preset, i) => (
-            <MenuItem key={preset.label} onSelect={() => onSave({ dndUntil: pausePresets(new Date())[i].until })}>
-              {preset.label}
-            </MenuItem>
-          ))}
-          <MenuSeparator />
-          <MenuItem onSelect={() => setCustom(toLocalInput(new Date(now.getTime() + 3 * 3_600_000)))}>Custom time…</MenuItem>
-        </Menu>
+        <PauseMenu now={now} onPick={(until) => onSave({ dndUntil: until })} onCustom={() => setCustom(toLocalInput(new Date(now.getTime() + 3 * 3_600_000)))} />
         {custom !== null && (
           <form
             // Said in the section like any other refusal, not in the browser's own bubble.
@@ -249,14 +240,14 @@ function DndSection({ prefs, error, onError, onSave }: { prefs: Preferences; err
               setCustom(null)
             }}
           >
-            <label className="sf-small text-sf-text-secondary">
+            <label>
               <span className="sr-only">Pause until</span>
-              <input type="datetime-local" value={custom} min={toLocalInput(now)} onChange={(e) => setCustom(e.target.value)} className="sf-focus sf-ui h-8 rounded-sf-md border border-sf-line-strong bg-sf-surface px-2 text-sf-text max-md:h-11" />
+              <input type="datetime-local" value={custom} min={toLocalInput(now)} onChange={(e) => setCustom(e.target.value)} className={clsx(inputClass, 'w-auto')} />
             </label>
-            <Button size="sm" touch type="submit">
+            <Button variant="secondary" type="submit" className="max-md:min-h-11">
               Pause
             </Button>
-            <Button size="sm" touch variant="ghost" onClick={() => setCustom(null)}>
+            <Button variant="ghost" onClick={() => setCustom(null)} className="max-md:min-h-11">
               Cancel
             </Button>
           </form>
@@ -267,20 +258,24 @@ function DndSection({ prefs, error, onError, onSave }: { prefs: Preferences; err
         <TimeField label="From" value={schedule.from} onSave={(from) => setSchedule({ from })} />
         <TimeField label="To" value={schedule.to} onSave={(to) => setSchedule({ to })} />
       </div>
-      <fieldset className="m-0 flex flex-wrap gap-x-4 gap-y-1 border-0 p-0">
-        <legend className="sf-small mb-1 text-sf-text-secondary">On these days</legend>
+      <fieldset className="flex flex-wrap gap-x-4 gap-y-1">
+        <legend className="mb-1 text-sm text-fg-muted">On these days</legend>
         {DAYS.map((day, i) => (
-          <span key={day} className="flex min-h-8 items-center max-md:min-h-11">
-            <Checkbox checked={schedule.days.includes(i)} onChange={(on) => setSchedule({ days: on ? [...schedule.days, i].sort((a, b) => a - b) : schedule.days.filter((d) => d !== i) })}>
-              {day}
-            </Checkbox>
-          </span>
+          <label key={day} className="flex min-h-8 cursor-pointer items-center gap-2 text-sm text-fg max-md:min-h-11">
+            <input
+              type="checkbox"
+              className="size-4 accent-brand-500"
+              checked={schedule.days.includes(i)}
+              onChange={(e) => setSchedule({ days: e.target.checked ? [...schedule.days, i].sort((a, b) => a - b) : schedule.days.filter((d) => d !== i) })}
+            />
+            {day}
+          </label>
         ))}
       </fieldset>
-      <p className="sf-small m-0 flex flex-wrap items-center gap-2 text-sf-text-secondary">
+      <p className="flex flex-wrap items-center gap-2 text-sm text-fg-muted">
         Times are in {schedule.tz}.
         {zone && zone !== schedule.tz && (
-          <Button size="sm" touch variant="ghost" onClick={() => setSchedule({ tz: zone })}>
+          <Button variant="ghost" onClick={() => setSchedule({ tz: zone })} className="max-md:min-h-11">
             Use {zone}
           </Button>
         )}
@@ -301,15 +296,46 @@ function TimeField({ label, value, onSave }: { label: string; value: string; onS
     setDraft(value)
   }
   return (
-    <label className="sf-small flex flex-col gap-1 text-sf-text-secondary">
+    <label className="flex flex-col gap-1 text-sm text-fg-secondary">
       {label}
       <input
         type="time"
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={() => (draft && draft !== value ? onSave(draft) : setDraft(value))}
-        className="sf-focus sf-ui h-8 rounded-sf-md border border-sf-line-strong bg-sf-surface px-2 text-sf-text tabular-nums max-md:h-11"
+        className={clsx(inputClass, 'w-32 tabular-nums')}
       />
     </label>
+  )
+}
+
+/** Pause notifications: the presets, then Custom time…, in the kit's menu. */
+function PauseMenu({ now, onPick, onCustom }: { now: Date; onPick: (until: string) => void; onCustom: () => void }) {
+  const [open, setOpen] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const pick = (run: () => void) => () => {
+    setOpen(false)
+    run()
+  }
+  return (
+    <div className="relative">
+      <Button ref={triggerRef} variant="secondary" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((v) => !v)} className="max-md:min-h-11">
+        <Pause aria-hidden className="size-4" />
+        Pause notifications
+        <ChevronDown aria-hidden className="size-4" />
+      </Button>
+      <MenuPanel open={open} onClose={() => setOpen(false)} triggerRef={triggerRef} label="Pause notifications" className="p-1.5 sm:w-52">
+        {/* Worked out again on the click: the shown list can be half a minute old. */}
+        {pausePresets(now).map((preset, i) => (
+          <button key={preset.label} type="button" role="menuitem" className={menuItemClass} onClick={pick(() => onPick(pausePresets(new Date())[i].until))}>
+            {preset.label}
+          </button>
+        ))}
+        <div role="separator" className="my-1 h-px bg-line-subtle" />
+        <button type="button" role="menuitem" className={menuItemClass} onClick={pick(onCustom)}>
+          Custom time…
+        </button>
+      </MenuPanel>
+    </div>
   )
 }

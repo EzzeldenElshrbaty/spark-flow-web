@@ -78,7 +78,7 @@ export const workspacePages: RouteObject[] = [
   { path: 'activity', element: <ActivityPage />, handle: { pane: true } },
   { path: 'threads', element: <ThreadsPage />, handle: { pane: true } },
   { path: 'search', element: <SearchPage />, handle: { pane: true } },
-  { path: 'preferences', element: <PreferencesPage />, handle: { pane: true } },
+  { path: 'preferences', element: <PreferencesPage /> },
   { path: 'saved', element: <SavedPage />, handle: { pane: true } },
   { path: 'drafts', element: <DraftsPage />, handle: { pane: true } },
   { path: 'projects', element: <ProjectsPage /> },
