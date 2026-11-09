@@ -10,6 +10,7 @@ import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { backendOn } from '@/lib/api'
 import { paths } from '@/lib/paths'
 import { usePermission } from '@/lib/usePermission'
+import { StatTile } from '@/components/ui/StatTile'
 
 type Tone = 'accent' | 'amber'
 const tiles: Record<Tone, string> = {
@@ -104,29 +105,11 @@ export function SettingsPage() {
             ['Teams', teamsQuery, paths.teams(ws)],
           ] as const
         ).map(([label, query, to]) => {
-          const body = (
-            <>
-              <span className="block text-xs text-fg-muted sm:text-sm">{label}</span>
-              {/* A pulse while it loads; "—" only when it couldn't be counted. */}
-              {query.data ? (
-                <span className="mt-1 block text-2xl font-semibold tracking-tight text-fg tabular-nums">{query.data.length}</span>
-              ) : query.isError ? (
-                <span className="mt-1 block text-2xl font-semibold tracking-tight text-fg-muted">—</span>
-              ) : (
-                <span aria-hidden className="mt-1 block h-8 w-10 animate-pulse rounded-md bg-surface-strong" />
-              )}
-            </>
-          )
-          const tile = 'block rounded-xl border border-line bg-surface px-4 py-3 shadow-sm sm:px-5 sm:py-4'
+          // A pulse while it loads; "—" only when it couldn't be counted.
+          const value = query.data ? query.data.length : query.isError ? '—' : <span aria-hidden className="mt-1 block h-8 w-10 animate-pulse rounded-md bg-surface-strong" />
           return (
             <li key={label}>
-              {to ? (
-                <Link to={to} className={`${tile} transition-colors hover:border-line-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500`}>
-                  {body}
-                </Link>
-              ) : (
-                <div className={tile}>{body}</div>
-              )}
+              <StatTile label={label} value={value} to={to ?? undefined} />
             </li>
           )
         })}

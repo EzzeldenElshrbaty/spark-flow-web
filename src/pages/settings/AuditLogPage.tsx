@@ -20,6 +20,7 @@ import { paths } from '@/lib/paths'
 import { useAccess } from '@/lib/usePermission'
 import { ACTIONS, breakHere, chainText, changeLine, changeSummary, dayStart, filterFrom, GROUPS, groupLabel, PERIODS, RESULTS } from './auditView'
 import { quietChange } from '@/lib/searchParams'
+import { StatTile } from '@/components/ui/StatTile'
 
 const SEARCH_WAIT_MS = 300
 
@@ -136,17 +137,11 @@ const hasFilter = (f: AuditFilter) => Boolean(f.q || f.since || f.actorId || f.r
 
 // ── The top: today's counts and the tamper check ───────────────────────────────
 
-function Tile({ icon: Icon, label, value, note, tone }: { icon: LucideIcon; label: string; value: ReactNode; note?: ReactNode; tone: string }) {
+/** A count of today's events: the shared stat tile, in a list item (UX Phase 3, 3.5). */
+function Tile({ icon, label, value, note, tone }: { icon: LucideIcon; label: string; value: ReactNode; note?: ReactNode; tone: string }) {
   return (
-    <li className="min-w-0 rounded-xl border border-line bg-surface p-3 shadow-sm sm:p-4">
-      <span className="flex min-w-0 items-center gap-2 text-xs text-fg-muted">
-        <span aria-hidden className={clsx('shrink-0 rounded-md p-1', tone)}>
-          <Icon className="size-3.5" />
-        </span>
-        <span className="truncate">{label}</span>
-      </span>
-      <span className="mt-2 block text-xl font-semibold tabular-nums text-fg">{value}</span>
-      {note && <span className="block text-xs text-fg-muted">{note}</span>}
+    <li className="min-w-0">
+      <StatTile icon={icon} iconTone={tone} label={label} value={value} hint={note} />
     </li>
   )
 }

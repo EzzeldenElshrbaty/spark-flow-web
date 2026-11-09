@@ -19,6 +19,7 @@ import { useNow } from '@/lib/useNow'
 import { useRole } from '@/lib/useRole'
 import { cardFacts } from './dashboardCard'
 import { DashboardCharts } from './DashboardCharts'
+import { StatTile } from '@/components/ui/StatTile'
 
 const initials = (name: string) =>
   name
@@ -27,16 +28,6 @@ const initials = (name: string) =>
     .slice(0, 2)
     .map((w) => w[0]!.toUpperCase())
     .join('')
-
-function Tile({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: 'danger' }) {
-  return (
-    <div className="rounded-xl border border-line bg-surface p-4 shadow-sm">
-      <p className="text-sm text-fg-muted">{label}</p>
-      <p className={clsx('mt-1 text-xl font-semibold tabular-nums sm:text-2xl', tone === 'danger' ? 'text-red-600 dark:text-red-400' : 'text-fg')}>{value}</p>
-      {sub && <p className="mt-0.5 text-xs text-fg-muted">{sub}</p>}
-    </div>
-  )
-}
 
 function ProjectCard({ ws, project, people, now }: { ws: string; project: DashboardProject; people: User[]; now: Date }) {
   const facts = cardFacts(project, now)
@@ -187,18 +178,18 @@ export function DashboardPage() {
       ) : (
         <>
           <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-            <Tile label="Active projects" value={String(list.filter((p) => p.status === 'active').length)} sub={`${list.length} in all`} />
-            <Tile
+            <StatTile label="Active projects" value={String(list.filter((p) => p.status === 'active').length)} hint={`${list.length} in all`} />
+            <StatTile
               label="Overdue tasks"
               value={String(list.reduce((s, p) => s + p.overdueCount, 0))}
-              sub={overEstimate ? `${overEstimate} over estimate` : undefined}
+              hint={overEstimate ? `${overEstimate} over estimate` : undefined}
               tone={list.some((p) => p.overdueCount) ? 'danger' : undefined}
             />
-            <Tile label="Hours, last 7 days" value={formatHours(hours7)} />
+            <StatTile label="Hours, last 7 days" value={formatHours(hours7)} />
             {showCost ? (
-              <Tile label="Cost to date" value={formatMoney(Math.round(cost))} sub="Hours × hourly cost" />
+              <StatTile label="Cost to date" value={formatMoney(Math.round(cost))} hint="Hours × hourly cost" />
             ) : (
-              <Tile label="Working now" value={seesWorking ? String(working.data?.length ?? 0) : '—'} />
+              <StatTile label="Working now" value={seesWorking ? String(working.data?.length ?? 0) : '—'} />
             )}
           </div>
           {stats.isError ? (

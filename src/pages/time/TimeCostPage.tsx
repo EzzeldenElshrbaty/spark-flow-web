@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/Button'
 import { exportDetail, reportRows } from './reportCsv'
 import { missingRateLine } from './missingRates'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
+import { StatTile } from '@/components/ui/StatTile'
 
 const periods: [ReportPeriod, string][] = [
   [7, '7 days'],
@@ -39,14 +40,6 @@ type Grouping = (typeof groupings)[number][0]
 const money = (n: number) => formatMoney(Math.round(n))
 const weekLabel = (iso: string) => formatDayMonth(iso)
 
-function Tile({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-line bg-surface p-4 shadow-sm">
-      <p className="text-sm text-fg-muted">{label}</p>
-      <p className="mt-1 text-xl font-semibold tabular-nums text-fg sm:text-2xl">{value}</p>
-    </div>
-  )
-}
 
 function Share({ value, total }: { value: number; total: number }) {
   const pct = total ? Math.round((value / total) * 100) : 0
@@ -230,10 +223,10 @@ export function TimeCostPage() {
       ) : (
         <>
           <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-            <Tile label="Hours" value={formatHours(r.totals.hours)} />
-            <Tile label="Cost" value={formatCompact(Math.round(r.totals.cost))} />
-            <Tile label="Average cost per hour" value={r.totals.hours ? money(r.totals.cost / r.totals.hours) : '—'} />
-            <Tile label="People who logged time" value={String(r.totals.people)} />
+            <StatTile label="Hours" value={formatHours(r.totals.hours)} />
+            <StatTile label="Cost" value={formatCompact(Math.round(r.totals.cost))} />
+            <StatTile label="Average cost per hour" value={r.totals.hours ? money(r.totals.cost / r.totals.hours) : '—'} />
+            <StatTile label="People who logged time" value={String(r.totals.people)} />
           </div>
           <div className="mb-3 flex gap-1 overflow-x-auto border-b border-line" role="tablist" aria-label="Group by">
             {groupings.map(([value, label]) => (

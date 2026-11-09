@@ -117,7 +117,7 @@ Every text pair above meets 4.5:1, and every border or icon that identifies a co
   | `heading-ar` | 16/22 | Arabic headings, never letter-spaced |
 
 - **Spacing:** 4, 8, 12, 16, 24, 32, 48, 64 (`--space-1` … `--space-16`). Nothing in between.
-- **Radii:** `--radius-sm` 4 (inline code, kbd); `--radius-md` 6 (controls, rows); avatars are round (UX Phase 3); `--radius-lg` 12 (main card, composer, menus, modals, cards, toolbar); `--radius-full` (dots, badges, reaction chips, date pill).
+- **Radii:** `--radius-sm` 4 (inline code, kbd); `--radius-md` 6 (controls, rows); avatars are round and the main card takes the kit's 16px corner, as it frames pages too (UX Phase 3); `--radius-lg` 12 (composer, menus, modals, cards, toolbar); `--radius-full` (dots, badges, reaction chips, date pill).
 - **Shadows:** `--shadow-toolbar` (message toolbar, date pill), `--shadow-menu` (menus, pickers, autocomplete, toasts), `--shadow-modal`, `--focus-ring`.
 - **Sizes:**
 

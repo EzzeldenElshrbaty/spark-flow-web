@@ -7,6 +7,10 @@ describe('mainCardClass (spec 5.3: the main card is on surface)', () => {
     expect(mainCardClass(true)).not.toContain('bg-canvas')
   })
 
+  it('the card takes the kit’s corner (UX Phase 3, 3.5)', () => {
+    for (const pane of [true, false]) expect(mainCardClass(pane).split(' ')).toContain('lg:rounded-2xl')
+  })
+
   it('other pages keep their own canvas', () => {
     expect(mainCardClass(false).split(' ')).toContain('lg:bg-canvas')
     expect(mainCardClass(false).split(' ')).not.toContain('sf')

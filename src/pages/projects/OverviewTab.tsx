@@ -9,21 +9,12 @@ import { Avatar } from '@/components/Avatar'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { ProgressBar } from '@/components/ui/ProgressBar'
 import { behindSchedule, progressTone } from '@/pages/projects/projectStats'
-import { formatDate, formatMoney } from '@/lib/format'
+import { formatDate, formatHours, formatMoney } from '@/lib/format'
 import { DeliverableSheet } from './DeliverableSheet'
 import { ProjectFiles } from './ProjectFiles'
 import { isPastDue } from '@/lib/dates'
 import { usePermission } from '@/lib/usePermission'
-
-function Stat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: 'danger' }) {
-  return (
-    <div className="rounded-xl border border-line bg-surface p-4 shadow-sm">
-      <p className="text-sm text-fg-muted">{label}</p>
-      <p className={clsx('mt-1 text-xl font-semibold tabular-nums sm:text-2xl', tone === 'danger' ? 'text-red-600 dark:text-red-400' : 'text-fg')}>{value}</p>
-      {sub && <p className="mt-0.5 text-xs text-fg-muted">{sub}</p>}
-    </div>
-  )
-}
+import { StatTile } from '@/components/ui/StatTile'
 
 function Deliverables({ project, phases, canEdit }: { project: ProjectSummary; phases: Phase[]; canEdit: boolean }) {
   const deliverables = useDeliverables(project.id)
@@ -178,20 +169,17 @@ export function OverviewTab({
   const now = new Date()
   // The same "behind" rule as the Dashboard and the progress bars (UX Phase 3, 3.3).
   const late = behindSchedule(project, now)
-  const hours = Math.round(project.loggedHours * 10) / 10
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <div className="rounded-xl border border-line bg-surface p-4 shadow-sm">
-          <p className="text-sm text-fg-muted">Progress</p>
-          <p className="mt-1 text-xl font-semibold tabular-nums text-fg sm:text-2xl">{Math.round(project.progress * 100)}%</p>
+        <StatTile label="Progress" value={`${Math.round(project.progress * 100)}%`}>
           <div className="mt-2">
             <ProgressBar value={project.progress * 100} tone={progressTone(project, now)} />
           </div>
-        </div>
-        <Stat label="Hours logged" value={`${hours}h`} sub={`${project.taskCount} tasks · ${project.overdueCount} overdue${project.overEstimateCount ? ` · ${project.overEstimateCount} over estimate` : ''}`} />
-        <Stat label="Expected finish" value={formatDate(project.expectedFinish)} sub={late ? `Due ${formatDate(project.dueDate)} · late` : `Due ${formatDate(project.dueDate)}`} tone={late ? 'danger' : undefined} />
-        {project.cost !== null && <Stat label="Cost so far" value={formatMoney(project.cost)} sub="Hours × hourly cost" />}
+        </StatTile>
+        <StatTile label="Hours logged" value={formatHours(project.loggedHours)} hint={`${project.taskCount} tasks · ${project.overdueCount} overdue${project.overEstimateCount ? ` · ${project.overEstimateCount} over estimate` : ''}`} />
+        <StatTile label="Expected finish" value={formatDate(project.expectedFinish)} hint={late ? `Due ${formatDate(project.dueDate)} · late` : `Due ${formatDate(project.dueDate)}`} tone={late ? 'danger' : undefined} />
+        {project.cost !== null && <StatTile label="Cost so far" value={formatMoney(project.cost)} hint="Hours × hourly cost" />}
       </div>
 
       <div className="grid gap-5 lg:grid-cols-3">
