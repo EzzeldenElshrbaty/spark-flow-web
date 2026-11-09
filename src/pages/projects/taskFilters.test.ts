@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Phase, TaskView } from '@/api/types'
-import { filtersFrom, filterTasks, groupByPhase, loggableTasks, myOpenTasks, staleArchivedParam, validSprint, viewOf } from './taskFilters'
+import { activeFilters, filtersFrom, filterTasks, groupByPhase, loggableTasks, matchesQuery, myOpenTasks, sortTasks, staleArchivedParam, taskQueryFrom, validSprint, viewOf } from './taskFilters'
 
 const t = (over: Partial<TaskView>): TaskView =>
   ({ id: over.key ?? 'x', key: 'P-1', status: 'todo', category: over.status === 'done' ? 'done' : 'todo', phaseId: null, sprintId: null, assigneeId: null, dueAt: null, overdue: false, overEstimate: false, rank: 0, ...over }) as TaskView
@@ -99,4 +99,44 @@ describe('myOpenTasks order (UX Phase 1, 1.1)', () => {
     ]
     expect(myOpenTasks(tasks, 'me').map((x) => x.key)).toEqual(['L', 'O', 'D'])
   })
+})
+
+// UX Phase 4, 4.2: the Tasks tab's search, filters and sort.
+describe('matchesQuery', () => {
+  const login = t({ key: 'NEX-12', title: 'Login page', assigneeId: 'u-2', priority: 'high', type: 'task' })
+  const bug = t({ key: 'NEX-13', title: 'Crash on save', assigneeId: null, priority: 'urgent', type: 'bug' })
+  const keys = (query: Parameters<typeof matchesQuery>[1]) => [login, bug].filter((x) => matchesQuery(x, query, 'u-2')).map((x) => x.key)
+  it('searches the key and the title, any case', () => {
+    expect(keys({ q: 'nex-12' })).toEqual(['NEX-12'])
+    expect(keys({ q: 'LOGIN' })).toEqual(['NEX-12'])
+    expect(keys({ q: '  ' })).toEqual(['NEX-12', 'NEX-13'])
+  })
+  it('filters by assignee (me, nobody, someone), priority and type', () => {
+    expect(keys({ assignee: 'me' })).toEqual(['NEX-12'])
+    expect(keys({ assignee: 'none' })).toEqual(['NEX-13'])
+    expect(keys({ assignee: 'u-9' })).toEqual([])
+    expect(keys({ priority: 'urgent' })).toEqual(['NEX-13'])
+    expect(keys({ type: 'task' })).toEqual(['NEX-12'])
+  })
+})
+
+describe('taskQueryFrom and activeFilters', () => {
+  it('reads the keys it knows and counts what is on', () => {
+    const query = taskQueryFrom(new URLSearchParams('q=log&assignee=me&priority=loud&type=bug'))
+    expect(query).toEqual({ q: 'log', assignee: 'me', priority: undefined, type: 'bug' })
+    expect(activeFilters(query, { phase: 'ph1', sprint: null })).toBe(4)
+    expect(activeFilters({}, { phase: null, sprint: null })).toBe(0)
+  })
+})
+
+describe('sortTasks', () => {
+  const a = t({ key: 'NEX-1', dueAt: '2026-11-20', priority: 'low', updatedAt: '2026-11-01T10:00:00.000Z' })
+  const b = t({ key: 'NEX-2', dueAt: null, priority: 'urgent', overEstimate: true, updatedAt: '2026-11-08T10:00:00.000Z' })
+  const c = t({ key: 'NEX-3', dueAt: '2026-11-02', priority: 'medium', overdue: true, updatedAt: '2026-11-05T10:00:00.000Z' })
+  const keys = (sort: Parameters<typeof sortTasks>[1]) => sortTasks([a, b, c], sort).map((x) => x.key)
+  it('needs attention first: overdue, then over estimate, then by due', () => expect(keys('attention')).toEqual(['NEX-3', 'NEX-2', 'NEX-1']))
+  it('by due date, none last', () => expect(keys('due')).toEqual(['NEX-3', 'NEX-1', 'NEX-2']))
+  it('by priority, urgent first', () => expect(keys('priority')).toEqual(['NEX-2', 'NEX-3', 'NEX-1']))
+  it('recently updated first', () => expect(keys('updated')).toEqual(['NEX-2', 'NEX-3', 'NEX-1']))
+  it('board order keeps the order given', () => expect(keys('board')).toEqual(['NEX-1', 'NEX-2', 'NEX-3']))
 })

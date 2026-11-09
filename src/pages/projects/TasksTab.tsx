@@ -5,15 +5,20 @@ import { useSearchParams } from 'react-router'
 import { useSetBoard } from '@/api/projects'
 import { useArchivedTasks, useSprints, useTickets, useUpdateTask, useMoveTask } from '@/api/tickets'
 import type { BoardColumn, Phase, ProjectSummary, TaskView, TicketPatch, User } from '@/api/types'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { selectClass } from '@/components/ui/Field'
+import { FilterBar } from '@/components/ui/FilterBar'
 import { QueryError } from '@/components/ui/QueryError'
+import { SearchBox } from '@/components/ui/SearchBox'
 import { columnTaskCount } from '@/lib/boardColumns'
 import { useUiStore, type ProjectView } from '@/lib/uiStore'
 import { usePermission } from '@/lib/usePermission'
+import { useRole } from '@/lib/useRole'
+import { useParamState } from '@/lib/searchParams'
 import { BacklogSkeleton, ProjectBacklog } from '@/pages/projects/ProjectBacklog'
 import { BoardSkeleton, ProjectBoard } from '@/pages/projects/ProjectBoard'
 import { byOrder } from './phases'
-import { filtersFrom, filterTasks, staleArchivedParam, validSprint, viewOf } from './taskFilters'
+import { activeFilters, filtersFrom, filterTasks, matchesQuery, PRIORITIES, sortOf, sortTasks, staleArchivedParam, TASK_SORTS, taskQueryFrom, validSprint, viewOf } from './taskFilters'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
 
 const views = [
@@ -87,7 +92,19 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
   // Column names and order are the project manager's (and Admins').
   const onBoard = check('phase.manage', { project }) ? (columns: BoardColumn[]) => setBoard.mutateAsync({ id: project.id, columns }) : undefined
 
-  const shown = filterTasks(tickets.data ?? [], { phase, sprint })
+  // Search, assignee, priority, type and (List) sort, each in the address (UX Phase 4, 4.2): typing replaces the
+  // entry, a choice is a step Back undoes, Clear filters takes them all off at once (phase and sprint too).
+  const { persona } = useRole()
+  const [, setFilters] = useParamState({ typed: ['q'] })
+  const query = taskQueryFrom(params)
+  const sort = sortOf(params.get('sort'))
+  const active = activeFilters(query, { phase, sprint })
+  const clear = () => {
+    setFilters({ q: null, assignee: null, priority: null, type: null, phase: null, sprint: null })
+    setProjectFilters(project.key, {})
+  }
+  const all = tickets.data ?? []
+  const shown = filterTasks(all, { phase, sprint }).filter((t) => matchesQuery(t, query, persona.id))
   // The list can also show the archived tasks, below the others, kept in ?archived=1.
   // Showing archived tasks only makes sense while there are some (the toggle goes when the last one is restored).
   const showArchivedAsked = view === 'list' && params.get('archived') === '1'
@@ -106,14 +123,25 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
   else if (view === 'board') body = (
       <ProjectBoard tickets={shown} allTickets={tickets.data ?? []} users={people} canMove={canMove} onMove={move} onMoveTo={(t, status, index, visibleKeys) => moveTask.mutateAsync({ key: t.key, status, index, visibleKeys })} error={(update.error ?? moveTask.error)?.message ?? null} board={project.board} onBoard={onBoard} projectId={project.id} countOf={(id) => columnTaskCount(tickets.data ?? [], archivedAll, id)} />
     )
-  else body = <ProjectBacklog tasks={shown} phases={phases} users={people} board={project.board} />
+  else if (shown.length === 0 && active > 0)
+    body = <EmptyState onClear={clear}>{query.q?.trim() ? `No tasks match “${query.q.trim()}”.` : 'No tasks match these filters.'}</EmptyState>
+  else body = <ProjectBacklog tasks={sortTasks(shown, sort)} order={sort === 'board' ? 'board' : 'given'} phases={phases} users={people} board={project.board} />
+  const select = (label: string, key: string, value: string | undefined, options: [string, string][]) => (
+    <select className={clsx(selectClass, 'sm:w-40')} aria-label={label} value={value ?? ''} onChange={(e) => setFilters({ [key]: e.target.value })}>
+      {options.map(([id, text]) => (
+        <option key={id} value={id}>
+          {text}
+        </option>
+      ))}
+    </select>
+  )
 
   const chip = (active: boolean) =>
     clsx('shrink-0 rounded-full border px-3 py-1.5 text-sm', active ? 'border-brand-500 bg-accent-soft font-medium text-fg' : 'border-line text-fg-secondary hover:bg-surface-muted')
 
   return (
     <>
-      <div className="mb-4 flex flex-wrap items-center gap-2">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
         {phases.length > 0 && (
           <div className="-mx-4 flex w-[calc(100%+2rem)] min-w-0 gap-2 overflow-x-auto px-4 sm:mx-0 sm:w-auto sm:flex-1 sm:px-0" role="group" aria-label="Phase">
             <button type="button" aria-pressed={!phase} onClick={() => setFilter('phase', null)} className={chip(!phase)}>
@@ -145,6 +173,22 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
           <ViewSwitch view={view} />
         </div>
       </div>
+      <FilterBar sticky={false} shown={shown.length} total={all.length} noun={['task', 'tasks']} active={active} onClear={clear}>
+        <SearchBox label="Search tasks" placeholder="Search keys and titles…" value={query.q ?? ''} onChange={(q) => setFilters({ q })} className="col-span-2 sm:min-w-48 sm:flex-1" />
+        {select('Assignee', 'assignee', query.assignee, [
+          ['', 'Anyone'],
+          ['me', 'Me'],
+          ['none', 'Unassigned'],
+          ...[...people].sort((a, b) => a.name.localeCompare(b.name)).map((u): [string, string] => [u.id, u.name]),
+        ])}
+        {select('Priority', 'priority', query.priority, [['', 'Any priority'], ...PRIORITIES])}
+        {select('Type', 'type', query.type, [
+          ['', 'Any type'],
+          ['task', 'Tasks'],
+          ['bug', 'Bugs'],
+        ])}
+        {view === 'list' && select('Sort', 'sort', sort === 'attention' ? '' : sort, TASK_SORTS.map(({ value, label }) => [value === 'attention' ? '' : value, label]))}
+      </FilterBar>
       {body}
       {showArchived && archived.length > 0 && (
         <section aria-label="Archived tasks" className="mt-6 opacity-75">

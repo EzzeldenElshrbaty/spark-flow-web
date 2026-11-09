@@ -19,13 +19,16 @@ export function BacklogSkeleton() {
   )
 }
 
-/** The List view: tasks grouped by phase in phase order, then those without a phase. Empty phases are left out. */
-export function ProjectBacklog({ tasks, phases, users, board }: { tasks: TaskView[]; phases: Phase[]; users: User[]; board?: BoardColumn[] }) {
+/**
+ * The List view: tasks grouped by phase in phase order, then those without a phase. Empty phases are left out. Within
+ * a phase, `order` 'board' is the project's columns then rank; 'given' keeps the order handed in (a sort the Tasks tab chose).
+ */
+export function ProjectBacklog({ tasks, phases, users, board, order = 'board' }: { tasks: TaskView[]; phases: Phase[]; users: User[]; board?: BoardColumn[]; order?: 'board' | 'given' }) {
   const nameOf = (id: string | null) => (id ? (users.find((u) => u.id === id)?.name ?? 'Unknown person') : null)
   // In board order: the project's columns, then by rank within one.
   const ids = columnsOf({ board }).map((c) => c.id)
   const statusOrder = (task: TaskView) => ids.indexOf(task.status)
-  const sorted = [...tasks].sort((a, b) => statusOrder(a) - statusOrder(b) || a.rank - b.rank)
+  const sorted = order === 'given' ? tasks : [...tasks].sort((a, b) => statusOrder(a) - statusOrder(b) || a.rank - b.rank)
   const groups = groupByPhase(sorted, phases).filter((g) => g.tasks.length > 0)
   if (groups.length === 0) return <p className="rounded-xl border border-dashed border-line-strong p-10 text-center text-sm text-fg-secondary">No tasks here.</p>
 
