@@ -61,3 +61,15 @@ describe('Settings home (slice 1, as the CRM’s)', () => {
     expect(within(screen.getByRole('region', { name: 'People and access' })).getAllByRole('link').map((a) => a.getAttribute('href'))).toEqual(['/w/engineering/settings/audit'])
   })
 })
+
+describe('the counts open their pages (UX Phase 2, 2.4, 2.8)', () => {
+  it('People, Roles and Teams link to Users, Roles and permissions, and Teams; without settings rights only Teams does', () => {
+    show()
+    const counts = screen.getByRole('list', { name: 'At a glance' })
+    expect(within(counts).getAllByRole('link').map((a) => a.getAttribute('href'))).toEqual(['/w/engineering/settings/users', '/w/engineering/settings/roles', '/w/engineering/teams'])
+    cleanup()
+    grants = ['rates.manage']
+    show()
+    expect(within(screen.getByRole('list', { name: 'At a glance' })).getAllByRole('link').map((a) => a.getAttribute('href'))).toEqual(['/w/engineering/teams'])
+  })
+})

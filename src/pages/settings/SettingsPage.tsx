@@ -97,23 +97,38 @@ export function SettingsPage() {
       <ul aria-label="At a glance" className="m-0 grid list-none grid-cols-3 gap-3 p-0">
         {(
           [
-            ['People', peopleQuery],
-            ['Roles', rolesQuery],
-            ['Teams', teamsQuery],
+            // Each count opens its page (UX Phase 2, 2.4, 2.8): Users and Roles for whoever may change them, Teams for all.
+            ['People', peopleQuery, check('settings.manage') ? paths.users(ws) : null],
+            ['Roles', rolesQuery, check('settings.manage') ? paths.roles(ws) : null],
+            ['Teams', teamsQuery, paths.teams(ws)],
           ] as const
-        ).map(([label, query]) => (
-          <li key={label} className="rounded-xl border border-line bg-surface px-4 py-3 shadow-sm sm:px-5 sm:py-4">
-            <span className="block text-xs text-fg-muted sm:text-sm">{label}</span>
-            {/* A pulse while it loads; "—" only when it couldn't be counted. */}
-            {query.data ? (
-              <span className="mt-1 block text-2xl font-semibold tracking-tight text-fg tabular-nums">{query.data.length}</span>
-            ) : query.isError ? (
-              <span className="mt-1 block text-2xl font-semibold tracking-tight text-fg-muted">—</span>
-            ) : (
-              <span aria-hidden className="mt-1 block h-8 w-10 animate-pulse rounded-md bg-surface-strong" />
-            )}
-          </li>
-        ))}
+        ).map(([label, query, to]) => {
+          const body = (
+            <>
+              <span className="block text-xs text-fg-muted sm:text-sm">{label}</span>
+              {/* A pulse while it loads; "—" only when it couldn't be counted. */}
+              {query.data ? (
+                <span className="mt-1 block text-2xl font-semibold tracking-tight text-fg tabular-nums">{query.data.length}</span>
+              ) : query.isError ? (
+                <span className="mt-1 block text-2xl font-semibold tracking-tight text-fg-muted">—</span>
+              ) : (
+                <span aria-hidden className="mt-1 block h-8 w-10 animate-pulse rounded-md bg-surface-strong" />
+              )}
+            </>
+          )
+          const tile = 'block rounded-xl border border-line bg-surface px-4 py-3 shadow-sm sm:px-5 sm:py-4'
+          return (
+            <li key={label}>
+              {to ? (
+                <Link to={to} className={`${tile} transition-colors hover:border-line-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500`}>
+                  {body}
+                </Link>
+              ) : (
+                <div className={tile}>{body}</div>
+              )}
+            </li>
+          )
+        })}
       </ul>
       {access.length === 0 && data.length === 0 && <p className="mt-8 text-sm text-fg-muted">Nothing to set up here yet.</p>}
       {access.length > 0 && (

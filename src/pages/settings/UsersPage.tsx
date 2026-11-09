@@ -322,7 +322,8 @@ function PersonSheet({
     if (Object.keys(missing).length) return
     // Teams in other workspaces aren't shown here, and stay.
     const elsewhere = person?.teamIds.filter((id) => !teams.some((t) => t.id === id)) ?? []
-    const input = { ...values, teamIds: [...elsewhere, ...values.teamIds] }
+    // A team removed meanwhile (UX Phase 2, 2.4: teams can go) isn't sent: only this workspace's teams as they are now.
+    const input = { ...values, teamIds: [...elsewhere, ...values.teamIds.filter((id) => teams.some((t) => t.id === id))] }
     if (person) update.mutate({ id: person.id, patch: input }, { onSuccess: onClose })
     else create.mutate(input, { onSuccess: onClose })
   }

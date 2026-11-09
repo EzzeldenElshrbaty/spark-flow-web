@@ -337,6 +337,7 @@ People are company-wide records, edited on Settings → Users by whoever holds "
 | Reactivate | `POST /api/users/:id/reactivate` | Clears `deactivated`. |
 
 - **Teams agree both ways:** a person's `teamIds` and each team's `memberIds` are written together.
+- *Amended 9 Nov 2026 (UX Phase 2, 2.4):* `teams.create(workspaceId, name)`, `teams.rename(id, name)` and `teams.remove(id)` need `settings.manage`; names are 1–40 characters and unique per workspace (any case); a team a project names (archived ones too) can't be removed ("Take Backend off Nexus Core first."); removing one takes it off every person. Routes `POST /api/workspaces/:id/teams`, `PATCH /api/teams/:id`, `DELETE /api/teams/:id`; each write is audited (`team`).
 - **A deactivated person** stays in the people list (their name still shows on what they did) but leaves every
   picker: View as, an assignee, a project's manager or members, a new channel's or conversation's people, Add people,
   `@` mentions and search's people. The server refuses to add them (`Mariam Fathy is deactivated.`); people who

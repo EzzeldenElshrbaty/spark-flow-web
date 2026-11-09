@@ -1,15 +1,22 @@
-import { MessageSquare } from 'lucide-react'
+import { MessageSquare, Pencil, Plus, Trash2 } from 'lucide-react'
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useOpenDm } from '@/api/chat'
-import { useProjectSummaries, useTeams } from '@/api/projects'
+import { useCreateTeam, useProjectSummaries, useRemoveTeam, useRenameTeam, useTeams } from '@/api/projects'
 import { useMe, useUsers } from '@/api/users'
-import type { User } from '@/api/types'
+import type { Team, User } from '@/api/types'
+import { ConfirmDeleteSheet } from '@/components/ConfirmDeleteSheet'
+import { RowMenu } from '@/components/RowMenu'
+import { Button } from '@/components/ui/Button'
+import { Field, inputClass } from '@/components/ui/Field'
+import { Sheet, SheetCancelButton } from '@/components/ui/Sheet'
 import { Avatar } from '@/components/ui/Avatar'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { paths } from '@/lib/paths'
+import { usePermission } from '@/lib/usePermission'
 
 /**
  * One person in a team, with "Message", which opens (or starts) the conversation with them. The button waits until
@@ -47,7 +54,54 @@ function MemberRow({ user, workspaceId, workspaceSlug, canMessage }: { user: Use
   )
 }
 
-/** Teams and who is in them, with the projects each team is on. Read-only: editing teams is past the cut line. */
+/** New team or Rename (UX Phase 2, 2.4): one name, asking before a typed one is thrown away. */
+function TeamNameSheet({ workspaceId, team, onClose }: { workspaceId: string; team?: Team; onClose: () => void }) {
+  const create = useCreateTeam()
+  const rename = useRenameTeam()
+  const save = team ? rename : create
+  const [name, setName] = useState(team?.name ?? '')
+  const [problem, setProblem] = useState<string | null>(null)
+  const submit = () => {
+    if (!name.trim()) return setProblem('Name the team.')
+    setProblem(null)
+    if (team) rename.mutate({ id: team.id, name: name.trim() }, { onSuccess: onClose })
+    else create.mutate({ workspaceId, name: name.trim() }, { onSuccess: onClose })
+  }
+  return (
+    <Sheet
+      open
+      onClose={onClose}
+      dirty={name !== (team?.name ?? '')}
+      discardQuestion={team ? 'Discard your changes?' : 'Discard this new team?'}
+      title={team ? `Rename ${team.name}` : 'New team'}
+      footer={
+        <>
+          <SheetCancelButton />
+          <Button onClick={submit} disabled={save.isPending}>
+            {team ? (save.isPending ? 'Renaming…' : 'Rename') : save.isPending ? 'Adding…' : 'Add team'}
+          </Button>
+        </>
+      }
+    >
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          submit()
+        }}
+      >
+        <Field label="Name" required error={problem ?? (save.error as Error | null)?.message}>
+          <input className={inputClass} value={name} maxLength={40} placeholder="e.g. Data" onChange={(e) => setName(e.target.value)} />
+        </Field>
+        <button type="submit" hidden />
+      </form>
+    </Sheet>
+  )
+}
+
+/**
+ * Teams and who is in them, with the projects each team is on. Whoever may change settings makes, renames and removes
+ * teams here (UX Phase 2, 2.4); who is on a team is set on Settings → Users.
+ */
 export function TeamsPage() {
   const { workspace } = useCurrentWorkspace()
   const ws = workspace?.slug ?? ''
@@ -55,10 +109,24 @@ export function TeamsPage() {
   const users = useUsers(workspace?.id).data ?? []
   const projects = useProjectSummaries(workspace?.id).data ?? []
   const meId = useMe().data?.id
+  const manages = usePermission()('settings.manage')
+  const remove = useRemoveTeam()
+  const [naming, setNaming] = useState<{ team?: Team } | null>(null)
+  const [removing, setRemoving] = useState<Team | null>(null)
 
   return (
     <>
-      <PageHeader title="Teams" subtitle="Teams and who is in them." />
+      <PageHeader
+        title="Teams"
+        subtitle="Teams and who is in them."
+        actions={
+          manages ? (
+            <Button variant="secondary" onClick={() => setNaming({})}>
+              <Plus className="size-4" /> New team
+            </Button>
+          ) : undefined
+        }
+      />
       {teams.isError ? (
         <QueryError what="Teams" onRetry={() => void teams.refetch()} />
       ) : teams.isPending ? (
@@ -76,7 +144,20 @@ export function TeamsPage() {
             const onProjects = projects.filter((p) => p.teamIds.includes(team.id))
             return (
               <Card key={team.id}>
-                <CardHeader title={`${team.name} · ${members.length} ${members.length === 1 ? 'person' : 'people'}`} />
+                <CardHeader
+                  title={`${team.name} · ${members.length} ${members.length === 1 ? 'person' : 'people'}`}
+                  action={
+                    manages ? (
+                      <RowMenu
+                        label={`${team.name} actions`}
+                        items={[
+                          { label: 'Rename', icon: Pencil, onSelect: () => setNaming({ team }) },
+                          { label: 'Remove', icon: Trash2, danger: true, onSelect: () => setRemoving(team) },
+                        ]}
+                      />
+                    ) : undefined
+                  }
+                />
                 <ul className="divide-y divide-line-subtle px-5">
                   {members.map((u) => (
                     <MemberRow key={u.id} user={u} workspaceId={workspace?.id} workspaceSlug={ws} canMessage={meId !== undefined && u.id !== meId} />
@@ -100,6 +181,16 @@ export function TeamsPage() {
           })}
         </div>
       )}
+      {naming && workspace && <TeamNameSheet workspaceId={workspace.id} team={naming.team} onClose={() => setNaming(null)} />}
+      <ConfirmDeleteSheet
+        open={removing !== null}
+        title={`Remove ${removing?.name ?? ''}?`}
+        description="Its people stay; they leave the team. A team a project still uses can't be removed."
+        actionLabel="Remove team"
+        pendingLabel="Removing…"
+        onConfirm={() => remove.mutateAsync(removing!.id)}
+        onClose={() => setRemoving(null)}
+      />
     </>
   )
 }
