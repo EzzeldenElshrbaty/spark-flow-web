@@ -53,8 +53,8 @@ describe('signing in (slice AB)', () => {
   })
 
   it('a wrong password, an unknown email or a deactivated person is refused; the log records the attempt', async () => {
-    expect(await detail(api.auth.signIn('nour.elsayed@spark-sys.com', 'nope'))).toBe("That email and password don't match.")
-    expect(await detail(api.auth.signIn('nobody@spark-sys.com', DEMO_PASSWORD))).toBe("That email and password don't match.")
+    expect(await detail(api.auth.signIn('nour.elsayed@spark-sys.com', 'nope'))).toBe("That email and password don’t match.")
+    expect(await detail(api.auth.signIn('nobody@spark-sys.com', DEMO_PASSWORD))).toBe("That email and password don’t match.")
     expect((await db.read()).audit.at(-1)).toMatchObject({ action: 'signInFailed', actorId: null, actorName: 'nobody@spark-sys.com', result: 'failed', detail: 'Wrong email or password' })
     await api.auth.signIn('youssef.abdelrahman@spark-sys.com', DEMO_PASSWORD)
     await api.users.deactivate('u-6', 'Left')

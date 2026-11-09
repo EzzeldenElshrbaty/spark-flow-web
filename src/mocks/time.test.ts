@@ -78,11 +78,11 @@ describe('timer and manual time', () => {
 
   it('start refuses a done task', async () => {
     await expect(api.time.start({ taskId: 't-nex-103' })).rejects.toMatchObject({ detail: 'That task is done. Reopen it to log time.' })
-    await expect(api.time.start({ taskId: 't-nope' })).rejects.toMatchObject({ detail: "That task doesn't exist." })
+    await expect(api.time.start({ taskId: 't-nope' })).rejects.toMatchObject({ detail: "That task doesn’t exist." })
   })
 
   it('stop', async () => {
-    await expect(api.time.stop()).rejects.toMatchObject({ detail: "There's no timer to stop." })
+    await expect(api.time.stop()).rejects.toMatchObject({ detail: "There’s no timer to stop." })
     const { timer } = await api.time.start({ projectId: 'p-nex' })
     later(10)
     expect((await api.time.stop()).timer).toBeNull()
@@ -92,7 +92,7 @@ describe('timer and manual time', () => {
   it('addManual rejects end before start, the future, over 12 hours, overlaps and long notes', async () => {
     const entry = (start: Date, end: Date, note = '') => ({ taskId: 't-nex-101', startedAt: start.toISOString(), endedAt: end.toISOString(), note })
     await expect(api.time.addManual(entry(at(8), at(7)))).rejects.toMatchObject({ detail: 'The end is before the start.' })
-    await expect(api.time.addManual(entry(at(8), at(10)))).rejects.toMatchObject({ detail: "Time can't be logged in the future." })
+    await expect(api.time.addManual(entry(at(8), at(10)))).rejects.toMatchObject({ detail: "Time can’t be logged in the future." })
     await expect(api.time.addManual(entry(at(7, 0, -1), at(20, 0, -1)))).rejects.toMatchObject({ detail: 'One entry can be up to 12 hours.' })
     await expect(api.time.addManual(entry(at(7), at(8), 'x'.repeat(201)))).rejects.toMatchObject({ detail: 'Keep the note under 200 characters.' })
     await api.time.addManual(entry(at(8), at(8, 30)))
@@ -154,7 +154,7 @@ describe('editing time', () => {
     const a = await api.time.addManual(entry(at(6), at(7)))
     await api.time.addManual(entry(at(7), at(8)))
     await expect(api.time.update(a.id, { endedAt: at(5).toISOString() })).rejects.toMatchObject({ detail: 'The end is before the start.' })
-    await expect(api.time.update(a.id, { endedAt: at(10).toISOString() })).rejects.toMatchObject({ detail: "Time can't be logged in the future." })
+    await expect(api.time.update(a.id, { endedAt: at(10).toISOString() })).rejects.toMatchObject({ detail: "Time can’t be logged in the future." })
     await expect(api.time.update(a.id, { startedAt: at(5, 0, -1).toISOString() })).rejects.toMatchObject({ detail: 'One entry can be up to 12 hours.' })
     await expect(api.time.update(a.id, { endedAt: at(7, 30).toISOString() })).rejects.toMatchObject({ detail: 'That overlaps time you already logged.' })
   })
@@ -243,8 +243,8 @@ describe('time on projects you are on', () => {
 
   it("starting a timer or adding time on a project you aren't on is refused", async () => {
     await api.users.viewAs('u-8') // Tarek: Mobile App only
-    await expect(api.time.start({ taskId: 't-nex-102' })).rejects.toMatchObject({ status: 403, detail: "You're not on this project." })
-    await expect(api.time.addManual(entry(at(6), at(7), 't-nex-102'))).rejects.toMatchObject({ status: 403, detail: "You're not on this project." })
+    await expect(api.time.start({ taskId: 't-nex-102' })).rejects.toMatchObject({ status: 403, detail: "You’re not on this project." })
+    await expect(api.time.addManual(entry(at(6), at(7), 't-nex-102'))).rejects.toMatchObject({ status: 403, detail: "You’re not on this project." })
     await api.users.viewAs('u-9') // Karim, sales, not on Nexus Core
     await expect(api.time.start({ taskId: 't-nex-102' })).rejects.toMatchObject({ status: 403 })
   })
@@ -356,9 +356,9 @@ describe('pause, resume and stop (timer slice 1)', () => {
   })
 
   it('pause, resume and stop refuse with "Your timer isn\'t running." / "Nothing is paused." / "There\'s no timer to stop."', async () => {
-    await expect(api.time.pause()).rejects.toMatchObject({ status: 400, detail: "Your timer isn't running." })
+    await expect(api.time.pause()).rejects.toMatchObject({ status: 400, detail: "Your timer isn’t running." })
     await expect(api.time.resume()).rejects.toMatchObject({ status: 400, detail: 'Nothing is paused.' })
-    await expect(api.time.stop()).rejects.toMatchObject({ status: 400, detail: "There's no timer to stop." })
+    await expect(api.time.stop()).rejects.toMatchObject({ status: 400, detail: "There’s no timer to stop." })
     await api.time.start({ taskId: 't-nex-101' })
     await expect(api.time.resume()).rejects.toMatchObject({ detail: 'Nothing is paused.' })
   })
@@ -406,7 +406,7 @@ describe('pause, resume and stop (timer slice 1)', () => {
     await api.time.pause()
     now = at(9, 0)
     expect((await api.time.today()).timer).toBeNull()
-    await expect(api.time.stop()).rejects.toMatchObject({ detail: "There's no timer to stop." })
+    await expect(api.time.stop()).rejects.toMatchObject({ detail: "There’s no timer to stop." })
   })
 
   it('start and resume record startedFrom; firstStart is true until one does', async () => {
@@ -421,7 +421,7 @@ describe('pause, resume and stop (timer slice 1)', () => {
     await api.time.pause()
     const resumed = await api.time.resume('blocked')
     expect((await mine()).find((e) => e.id === resumed.timer!.entryId)?.startedFrom?.location).toBe('blocked')
-    await expect(api.time.start({ taskId: 't-nex-102' }, { lat: 200, lng: 0, accuracy: 1 })).rejects.toMatchObject({ detail: "That location can't be right." })
+    await expect(api.time.start({ taskId: 't-nex-102' }, { lat: 200, lng: 0, accuracy: 1 })).rejects.toMatchObject({ detail: "That location can’t be right." })
   })
 
   it("Flow's stops (task Done, deactivate, 12 h) write endReason 'flow'", async () => {

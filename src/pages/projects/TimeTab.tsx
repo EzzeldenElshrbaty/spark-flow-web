@@ -36,7 +36,7 @@ export function TimeTab({ project, people }: { project: ProjectSummary; people: 
   const everyone = check('time.seeTeam', { project })
   const addBar = (
     <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
-      {showPrivacyNote(everyone, loading) && <p className="me-auto text-sm text-fg-muted">Only you and the project's manager see your entries.</p>}
+      {showPrivacyNote(everyone, loading) && <p className="me-auto text-sm text-fg-muted">Only you and the project’s manager see your entries.</p>}
       {canLog && (
         <Button variant="secondary" onClick={() => setAdding(true)}>
           <Clock className="size-4" /> Add time

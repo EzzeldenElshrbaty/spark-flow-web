@@ -87,9 +87,9 @@ describe('File details panel (spec 6.9)', () => {
   })
 
   it('a file that’s gone, or that I can’t see, says so with a way back', () => {
-    state = { data: undefined, error: new ApiError({ title: 'Not Found', status: 404, detail: "File a1 doesn't exist." }) }
+    state = { data: undefined, error: new ApiError({ title: 'Not Found', status: 404, detail: "File a1 doesn’t exist." }) }
     show()
-    expect(screen.getByText("This file doesn't exist or was removed.")).toBeTruthy()
+    expect(screen.getByText("This file doesn’t exist or was removed.")).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Close the details' })).toBeTruthy()
     state = { data: details, error: null }
   })

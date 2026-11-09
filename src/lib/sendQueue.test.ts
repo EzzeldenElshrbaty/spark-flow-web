@@ -63,7 +63,7 @@ describe('send queue (spec 6.2: optimistic send, retry, offline queue)', () => {
     const { queue, gates, state, statuses, sent } = setup()
     queue.enqueue(msg('a'))
     state.online = false
-    gates.a.reject(new ApiError({ title: "Couldn't reach the server", status: 0 }))
+    gates.a.reject(new ApiError({ title: "Couldn’t reach the server", status: 0 }))
     await flush()
     expect(statuses()).toEqual({ a: 'queued' })
     state.online = true
@@ -74,7 +74,7 @@ describe('send queue (spec 6.2: optimistic send, retry, offline queue)', () => {
   it('an unreachable server while the browser says online is tried again after a growing wait, not at once', async () => {
     vi.useFakeTimers()
     try {
-      const unreachable = new ApiError({ title: "Couldn't reach the server", status: 0 })
+      const unreachable = new ApiError({ title: "Couldn’t reach the server", status: 0 })
       const { queue, gates, sent, statuses } = setup()
       queue.enqueue(msg('a'))
       gates.a.reject(unreachable)
@@ -104,7 +104,7 @@ describe('send queue (spec 6.2: optimistic send, retry, offline queue)', () => {
     try {
       const { queue, gates, sent } = setup()
       queue.enqueue(msg('a'))
-      gates.a.reject(new ApiError({ title: "Couldn't reach the server", status: 0 }))
+      gates.a.reject(new ApiError({ title: "Couldn’t reach the server", status: 0 }))
       await vi.advanceTimersByTimeAsync(0)
       queue.wake()
       expect(sent).toEqual(['a', 'a'])
@@ -120,7 +120,7 @@ describe('send queue (spec 6.2: optimistic send, retry, offline queue)', () => {
       queue.enqueue(msg('a'))
       queue.enqueue(msg('x', 'c2'))
       gates.x.reject(new ApiError({ title: 'Bad request', status: 400 }))
-      gates.a.reject(new ApiError({ title: "Couldn't reach the server", status: 0 }))
+      gates.a.reject(new ApiError({ title: "Couldn’t reach the server", status: 0 }))
       await vi.advanceTimersByTimeAsync(0)
       queue.retry('x')
       expect(sent).toEqual(['a', 'x', 'a', 'x'])

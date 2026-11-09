@@ -190,7 +190,7 @@ function DeleteFile({ file, onClose }: { file: Attachment; onClose: () => void }
       open
       onClose={onClose}
       title={`Delete ${file.title}?`}
-      description="It's removed from every message it's shared in, for everyone."
+      description="It’s removed from every message it’s shared in, for everyone."
       footer={
         <>
           <Button touch onClick={onClose} disabled={remove.isPending}>

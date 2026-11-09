@@ -61,7 +61,7 @@ export function FilesTab({ ws, project, users }: { ws: string; project: ProjectS
       const url = await openFile(file.id)
       setViewing({ id: file.id, name: file.name, url, sizeKb: Math.round(file.size / 1024) })
     } catch {
-      setOpenError(`${file.title} couldn't be opened. Try again.`)
+      setOpenError(`${file.title} couldn’t be opened. Try again.`)
     }
   }
   const close = () => {

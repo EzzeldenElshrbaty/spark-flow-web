@@ -2,7 +2,7 @@
 title: Preferences
 group: Chat
 order: 5
-summary: What you're notified about, keywords, Do Not Disturb and browser notifications.
+summary: What you’re notified about, keywords, Do Not Disturb and browser notifications.
 ---
 Preferences (in your menu) decide what reaches you.
 
@@ -14,7 +14,7 @@ Choose **All new messages**, **Mentions and keywords**, or **Nothing**. A channe
 
 ## Do Not Disturb
 
-Pauses notifications for 30 minutes, 1 or 2 hours, or until tomorrow at 9:00 AM. A moon on your picture shows it's on.
+Pauses notifications for 30 minutes, 1 or 2 hours, or until tomorrow at 9:00 AM. A moon on your picture shows it’s on.
 
 ## Browser notifications
 

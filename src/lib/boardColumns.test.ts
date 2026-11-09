@@ -51,7 +51,7 @@ describe('columnErrors', () => {
   it('each rule, in order', () => {
     expect(columnErrors(with_(0, { label: ' ' }))).toBe('Name each column.')
     expect(columnErrors(with_(0, { label: 'x'.repeat(31) }))).toBe('Keep column names under 30 characters.')
-    expect(columnErrors(with_(0, { label: 'shipped' }))).toBe("Two columns can't share a name.")
+    expect(columnErrors(with_(0, { label: 'shipped' }))).toBe("Two columns can’t share a name.")
     expect(columnErrors(with_(2, { category: 'inProgress' }))).toBe('Each type needs at least one column.')
     const many = Array.from({ length: 11 }, (_, i): BoardColumn => ({ id: `c${i}`, label: `C${i}`, category: i === 0 ? 'todo' : i === 1 ? 'done' : 'inProgress' }))
     expect(columnErrors(many)).toBe('A board can have up to 10 columns.')

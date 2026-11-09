@@ -137,7 +137,7 @@ export function findMessage(data: DbData, id: string): ChatMessage {
   return message
 }
 
-const notInChannel = () => new ApiError({ title: 'Forbidden', status: 403, detail: "You're not in this channel." })
+const notInChannel = () => new ApiError({ title: 'Forbidden', status: 403, detail: "You’re not in this channel." })
 
 /** Private channels and DMs exist only for their members; everyone in the workspace sees the rest. */
 const visible = (data: DbData, channel: StoredChannel) => !channel.isPrivate || channel.memberIds.includes(data.currentUserId)
@@ -186,7 +186,7 @@ function checkText(content: string, optional = false): string {
 /** A body from the composer, checked, with its plain text (which the length rules apply to). */
 export function checkBody(value: unknown, optional = false): { body: Body; text: string } {
   const body = validBody(value)
-  if (!body) throw badRequest("That message couldn't be read.")
+  if (!body) throw badRequest("That message couldn’t be read.")
   return { body, text: checkText(bodyText(body), optional) }
 }
 
@@ -245,7 +245,7 @@ const WHO_CAN_POST: WhoCanPost[] = ['everyone', 'admins']
  */
 function editableChannel(data: DbData, id: string) {
   const channel = readableChannel(data, id)
-  if (channel.kind === 'dm') throw badRequest("Direct messages can't be edited.")
+  if (channel.kind === 'dm') throw badRequest("Direct messages can’t be edited.")
   if (data.projects.some((p) => p.channelId === id)) throw badRequest('This channel follows its project.')
   if (channel.archivedAt) throw badRequest('This channel is archived.')
   return { channel, me: requireManage(data, channel) }
@@ -279,7 +279,7 @@ const forbiddenOwn = () => new ApiError({ title: 'Forbidden', status: 403, detai
 
 /** Cards (a comment's, a task event's), system messages and deleted rows stay as they are. */
 function checkPlain(row: Row) {
-  if (row.deletedAt || ('commentId' in row && row.commentId) || ('taskEvent' in row && row.taskEvent) || ('system' in row && row.system)) throw badRequest("This message can't be changed.")
+  if (row.deletedAt || ('commentId' in row && row.commentId) || ('taskEvent' in row && row.taskEvent) || ('system' in row && row.system)) throw badRequest("This message can’t be changed.")
 }
 
 /** Keys of tasks someone made from this message: an edit keeps them linked even when the text no longer says them. */
@@ -309,7 +309,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       const channel = findChannel(data, id)
       const me = currentUser(data)
       const wasMember = channel.memberIds.includes(me.id)
-      if (channel.kind === 'dm') throw badRequest(join ? 'You can only join public channels.' : "You can't leave a conversation.")
+      if (channel.kind === 'dm') throw badRequest(join ? 'You can only join public channels.' : "You can’t leave a conversation.")
       if (data.projects.some((p) => p.channelId === id)) throw badRequest('This channel follows its project.')
       if (join) {
         if (channel.isPrivate) throw badRequest('You can only join public channels.')
@@ -333,7 +333,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
     await delay()
     const result = await db.update((data) => {
       const channel = readableChannel(data, id)
-      if (channel.kind === 'dm') throw badRequest("Conversations can't be archived.")
+      if (channel.kind === 'dm') throw badRequest("Conversations can’t be archived.")
       if (data.projects.some((p) => p.channelId === id)) throw badRequest('This channel follows its project.')
       const me = requireManage(data, channel)
       // Archiving (and restoring) is for Admins (spec 6.1); the refusal names what was asked.
@@ -432,7 +432,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         const isDefault = patch.isDefault ?? channel.isDefault
         if (isDefault !== channel.isDefault) {
           if (!can('channel.setDefault', { userId: me.id, grants: grantsFor(data, me), channel })) throw new ApiError({ title: 'Forbidden', status: 403, detail: 'Only admins can choose default channels.' })
-          if (isDefault && channel.isPrivate) throw badRequest("A private channel can't be a default channel.")
+          if (isDefault && channel.isPrivate) throw badRequest("A private channel can’t be a default channel.")
         }
         const posted: ChatMessage[] = []
         if (channel.name && name !== channel.name) posted.push(postSystem(data, id, { kind: 'renamed', from: channel.name, to: name }))
@@ -544,7 +544,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       const { channelId, messageId, notified, same } = await db.update((data) => {
         const { row, channel, messageId } = findTarget(data, target)
         const me = checkCanPost(data, channel)
-        if (row.deletedAt) throw badRequest("This message can't be changed.")
+        if (row.deletedAt) throw badRequest("This message can’t be changed.")
         const next = setReaction(row.reactions, emoji, me.id, on)
         if (!next) throw badRequest(`This message has ${MAX_DISTINCT_REACTIONS} different reactions already.`)
         // Already so (a retry): nothing changes, nothing is sent.
@@ -621,9 +621,9 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       const { channelId, messageId } = await db.update((data) => {
         const { row, channel, messageId } = findTarget(data, target)
         const me = checkCanPost(data, channel)
-        if (!row.deletedAt) throw badRequest("This message isn't deleted.")
+        if (!row.deletedAt) throw badRequest("This message isn’t deleted.")
         const entry = data.trash.find((t) => t.id === row.id && t.kind === target.kind)
-        if (!entry || Date.now() - Date.parse(entry.at) >= UNDO_MS) throw badRequest("It's too late to undo that.")
+        if (!entry || Date.now() - Date.parse(entry.at) >= UNDO_MS) throw badRequest("It’s too late to undo that.")
         if (entry.by !== me.id) throw new ApiError({ title: 'Forbidden', status: 403, detail: 'Only whoever deleted it can undo that.' })
         // Its files as they are now: renamed or deleted since, the restored copy says so.
         const files = entry.snapshot.attachments.map((a) => clone(data.attachments.find((current) => current.id === a.id) ?? a))
@@ -744,7 +744,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
     async saveDraft(channelId, value, rootId = null) {
       await delay()
       const body = validBody(value)
-      if (!body) throw badRequest("That draft couldn't be read.")
+      if (!body) throw badRequest("That draft couldn’t be read.")
       const result = await db.update((data) => {
         readableChannel(data, channelId)
         const userId = data.currentUserId
@@ -803,7 +803,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       await delay()
       const result = await db.update((data) => {
         readableChannel(data, channelId)
-        if (!Number.isInteger(seq) || seq < 1 || seq > lastSeqOf(data, channelId)) throw badRequest("That message isn't in this channel.")
+        if (!Number.isInteger(seq) || seq < 1 || seq > lastSeqOf(data, channelId)) throw badRequest("That message isn’t in this channel.")
         const state = myState(data, channelId)
         state.lastReadSeq = seq - 1
         return { userId: data.currentUserId, seq: state.lastReadSeq }

@@ -262,7 +262,7 @@ function Column({ theme }: { theme: 'Light' | 'Dark' }) {
           open={modal}
           onClose={() => setModal(false)}
           title="Add people to #backend"
-          description="They'll see the channel's history."
+          description="They’ll see the channel’s history."
           footer={
             <>
               <Button onClick={() => setModal(false)}>Cancel</Button>

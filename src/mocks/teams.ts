@@ -13,8 +13,8 @@ const MAX_NAME = 40
 function checkName(data: DbData, workspaceId: string, value: unknown, exceptId?: string): string {
   if (typeof value !== 'string' || !value.trim()) throw badRequest('Name the team.')
   const name = value.trim()
-  if (name.length > MAX_NAME) throw badRequest(`A team's name has at most ${MAX_NAME} characters.`)
-  if (data.teams.some((t) => t.workspaceId === workspaceId && t.id !== exceptId && t.name.toLowerCase() === name.toLowerCase())) throw badRequest(`There's already a team called ${name}.`)
+  if (name.length > MAX_NAME) throw badRequest(`A team’s name has at most ${MAX_NAME} characters.`)
+  if (data.teams.some((t) => t.workspaceId === workspaceId && t.id !== exceptId && t.name.toLowerCase() === name.toLowerCase())) throw badRequest(`There’s already a team called ${name}.`)
   return name
 }
 

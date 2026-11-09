@@ -52,7 +52,7 @@ export function PinsTab({ pins, ctx, canUnpin, onUnpin }: { pins: PinnedMessage[
                       View message
                     </Link>
                     {canUnpin && (
-                      <Button size="sm" touch onClick={() => onUnpin(message.id).then(() => setError(null), (e: Error) => setError(e.message || "Couldn't unpin it. Try again."))}>
+                      <Button size="sm" touch onClick={() => onUnpin(message.id).then(() => setError(null), (e: Error) => setError(e.message || "Couldn’t unpin it. Try again."))}>
                         Unpin
                       </Button>
                     )}

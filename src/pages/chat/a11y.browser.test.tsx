@@ -416,8 +416,8 @@ describe.each([
     mount(
       <FileActionsProvider workspaceId="ws-eng" meId="u-1" people={users} onDetails={vi.fn()}>
         <UploadTray
-          uploads={[uploadOf('notes.pdf'), uploadOf('scope.pdf', { status: 'ready', progress: 1, uploaded: scope }), uploadOf('log.pdf', { status: 'failed', error: "Couldn't reach the server" })]}
-          refused={["run.exe: this type of file can't be added."]}
+          uploads={[uploadOf('notes.pdf'), uploadOf('scope.pdf', { status: 'ready', progress: 1, uploaded: scope }), uploadOf('log.pdf', { status: 'failed', error: "Couldn’t reach the server" })]}
+          refused={["run.exe: this type of file can’t be added."]}
           onRemove={vi.fn()}
           onRetry={vi.fn()}
         />
@@ -891,7 +891,7 @@ describe('Add people with emails, with real key presses (spec 6.10, slice 5)', (
     await userEvent.click(screen.getByRole('combobox', { name: 'Names or emails' }))
     await userEvent.keyboard('sam@client.com,lina@partner.io{Enter}')
     for (const email of ['sam@client.com', 'lina@partner.io']) expect(screen.getByRole('button', { name: `Remove ${email}` }).parentElement!.textContent).toContain('Guest')
-    expect(screen.getByText("2 people aren't in Spark Systems yet. They'll get email invites as guests who can see #backend only.")).toBeTruthy()
+    expect(screen.getByText("2 people aren’t in Spark Systems yet. They’ll get email invites as guests who can see #backend only.")).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Add 2 people' })).toBeTruthy()
   })
 

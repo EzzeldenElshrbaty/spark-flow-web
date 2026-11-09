@@ -36,9 +36,9 @@ function checkPerson(data: DbData, values: NewPerson, exceptId?: string): NewPer
   const ids = (value: unknown) => (Array.isArray(value) && value.every((v) => typeof v === 'string') ? [...new Set(value as string[])] : null)
   const roleIds = ids(values.roleIds)
   if (!roleIds || roleIds.length === 0) throw badRequest('Give them at least one role.')
-  if (!roleIds.every((id) => data.roles.some((r) => r.id === id))) throw badRequest("That role doesn't exist.")
+  if (!roleIds.every((id) => data.roles.some((r) => r.id === id))) throw badRequest("That role doesn’t exist.")
   const teamIds = ids(values.teamIds)
-  if (!teamIds || !teamIds.every((id) => data.teams.some((t) => t.id === id))) throw badRequest("That team doesn't exist.")
+  if (!teamIds || !teamIds.every((id) => data.teams.some((t) => t.id === id))) throw badRequest("That team doesn’t exist.")
   // In the roles' and teams' own order, so the same choice always reads the same.
   return { name, email, title, roleIds: data.roles.filter((r) => roleIds.includes(r.id)).map((r) => r.id), teamIds: data.teams.filter((t) => teamIds.includes(t.id)).map((t) => t.id) }
 }
@@ -150,7 +150,7 @@ export function usersApi(db: MockDb, hub: MockHub, now: () => Date = () => new D
       const result = await db.update((data) => {
         const me = requireManage(data)
         const person = find(data, id)
-        if (person.id === me.id) throw badRequest("You can't deactivate yourself.")
+        if (person.id === me.id) throw badRequest("You can’t deactivate yourself.")
         const why = text(reason ?? '', 'Reason').trim()
         if (why.length > MAX_REASON) throw badRequest(`Keep the reason under ${MAX_REASON} characters.`)
         // Already off (a double click, two tabs): nothing changes, nothing is logged or sent.

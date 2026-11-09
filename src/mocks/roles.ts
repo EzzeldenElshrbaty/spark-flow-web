@@ -23,8 +23,8 @@ const withHolders = (data: DbData, role: StoredRole): Role => ({ ...clone(role),
 function checkName(data: DbData, value: unknown, exceptId?: string): string {
   if (typeof value !== 'string' || !value.trim()) throw badRequest('Name the role.')
   const name = value.trim()
-  if (name.length > MAX_NAME) throw badRequest(`A role's name has at most ${MAX_NAME} characters.`)
-  if (data.roles.some((r) => r.id !== exceptId && r.name.toLowerCase() === name.toLowerCase())) throw badRequest(`There's a role called ${name} already.`)
+  if (name.length > MAX_NAME) throw badRequest(`A role’s name has at most ${MAX_NAME} characters.`)
+  if (data.roles.some((r) => r.id !== exceptId && r.name.toLowerCase() === name.toLowerCase())) throw badRequest(`There’s a role called ${name} already.`)
   return name
 }
 
@@ -40,7 +40,7 @@ function grantChanges(before: readonly Permission[], after: readonly Permission[
 }
 
 function checkGrants(value: unknown): Permission[] {
-  if (!Array.isArray(value) || value.some((p) => !ALL_PERMISSIONS.includes(p as Permission))) throw badRequest("Some of these permissions don't exist.")
+  if (!Array.isArray(value) || value.some((p) => !ALL_PERMISSIONS.includes(p as Permission))) throw badRequest("Some of these permissions don’t exist.")
   return ALL_PERMISSIONS.filter((p) => value.includes(p))
 }
 
@@ -96,7 +96,7 @@ export function rolesApi(db: MockDb, hub: MockHub): Api['roles'] {
         requireManage(data)
         const stored = data.roles.find((r) => r.id === id)
         if (!stored) throw notFound('Role', id)
-        if (stored.builtIn) throw badRequest(`${stored.name} is built in, so it can't be deleted.`)
+        if (stored.builtIn) throw badRequest(`${stored.name} is built in, so it can’t be deleted.`)
         const holders = data.users.filter((u) => u.roleIds.includes(id)).length
         if (holders) throw badRequest(`${holders === 1 ? '1 person holds' : `${holders} people hold`} ${stored.name}. Give them another role first.`)
         audit(data, { action: 'deleted', group: 'settings', record: recordOf.role(stored), changes: grantChanges(stored.grants, []) })
@@ -106,7 +106,7 @@ export function rolesApi(db: MockDb, hub: MockHub): Api['roles'] {
     },
     async saveGrants(changes: RoleChange[]) {
       await delay()
-      if (!Array.isArray(changes)) throw badRequest("Some of these permissions don't exist.")
+      if (!Array.isArray(changes)) throw badRequest("Some of these permissions don’t exist.")
       // Nothing to change: still only for those who may, but nobody needs telling.
       if (changes.length === 0) {
         const data = await db.read()

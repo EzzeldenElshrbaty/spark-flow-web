@@ -13,7 +13,7 @@ describe('Not found (UX Phase 2, 2.8)', () => {
         <NotFound what="page" backTo="/" backLabel="Back to Dashboard" />
       </MemoryRouter>,
     )
-    expect(screen.getByRole('heading', { level: 1, name: "This page doesn't exist." })).toBeTruthy()
+    expect(screen.getByRole('heading', { level: 1, name: "This page doesn’t exist." })).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Back to Dashboard' })).toBeTruthy()
   })
 })

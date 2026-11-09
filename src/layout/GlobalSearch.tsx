@@ -89,7 +89,7 @@ function useGo(after: (link: string) => void) {
           navigate(paths.channel(workspace.slug, dm.id))
           after(link)
         },
-        onError: () => setFailed("Couldn't open the conversation."),
+        onError: () => setFailed("Couldn’t open the conversation."),
       },
     )
   }

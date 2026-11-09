@@ -91,7 +91,7 @@ function AuditLog({ ready }: { ready: boolean }) {
     <>
       <PageHeader
         title="Audit log"
-        subtitle="Who did what, when and from where. Entries can't be changed or removed."
+        subtitle="Who did what, when and from where. Entries can’t be changed or removed."
         actions={
           <Button variant="secondary" onClick={exportCsv} disabled={!ready || exportLog.isPending}>
             <Download className="size-4" />
@@ -101,7 +101,7 @@ function AuditLog({ ready }: { ready: boolean }) {
       />
       {exportLog.isError && (
         <p role="alert" className="-mt-3 mb-4 text-sm text-red-600 dark:text-red-400">
-          The export didn't work. Try again.
+          The export didn’t work. Try again.
         </p>
       )}
       <Tiles summary={summary.data} failed={summary.isError} onOpen={open} />
@@ -447,7 +447,7 @@ function EntrySheet({ seq, summary, loaded, types, onClose }: { seq: number | nu
       {!event ? (
         fetched.isError ? (
           <p role="alert" className="text-sm text-fg-muted">
-            {(fetched.error as { status?: number }).status === 404 ? `There's no entry #${seq}.` : "This entry didn't load."}
+            {(fetched.error as { status?: number }).status === 404 ? `There’s no entry #${seq}.` : "This entry didn’t load."}
           </p>
         ) : (
           <div aria-busy="true" className="h-64 animate-pulse rounded-xl bg-surface-muted" />

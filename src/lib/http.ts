@@ -28,7 +28,7 @@ async function respond(path: string, init: RequestInit | undefined, fetchFn: typ
     res = await fetchFn(apiUrl(path), { credentials: 'include', ...init, headers: { Accept: accept, 'X-Time-Zone': zone, ...init?.headers } })
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') throw error // cancelled on purpose, not a failure
-    throw new ApiError({ title: "Couldn't reach the server", status: 0 })
+    throw new ApiError({ title: "Couldn’t reach the server", status: 0 })
   }
   if (!res.ok) throw await toApiError(res)
   return res
@@ -75,7 +75,7 @@ const targetPath = (target: ChatTarget) => `/api/${target.kind === 'reply' ? 're
 /** The Api over HTTP: one route per call, as the backend serves them. */
 /** For the demo-only actions: the real backend refuses them. */
 const mockOnly = (what: string): Promise<never> =>
-  Promise.reject(new ApiError({ title: 'Not available', status: 400, detail: `${what} isn't available with the backend on.` }))
+  Promise.reject(new ApiError({ title: 'Not available', status: 400, detail: `${what} isn’t available with the backend on.` }))
 
 /**
  * PUTs a file's bytes to the storage address the API handed out, reporting progress (fetch can't report an upload's).
@@ -91,8 +91,8 @@ function putBytes(url: string, file: Blob, makeXhr: () => XMLHttpRequest, onProg
       if (event.lengthComputable && event.total > 0) onProgress?.(event.loaded / event.total)
     }
     xhr.onload = () =>
-      xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new ApiError({ title: "Couldn't upload the file", status: xhr.status }))
-    xhr.onerror = () => reject(new ApiError({ title: "Couldn't reach the server", status: 0 }))
+      xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new ApiError({ title: "Couldn’t upload the file", status: xhr.status }))
+    xhr.onerror = () => reject(new ApiError({ title: "Couldn’t reach the server", status: 0 }))
     xhr.onabort = () => reject(new DOMException('Cancelled', 'AbortError'))
     signal?.addEventListener('abort', () => xhr.abort(), { once: true })
     xhr.send(file)

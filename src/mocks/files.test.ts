@@ -43,7 +43,7 @@ describe('files', () => {
     // A stand-in with a 26 MB size: the check runs before any bytes are read.
     const big = { name: 'big.pdf', type: 'application/pdf', size: 26 * 1024 * 1024 } as unknown as UploadFile
     await expect(api.files.upload('p-mob', big)).rejects.toMatchObject({ status: 400, detail: 'Files can be up to 25 MB.' })
-    await expect(api.files.upload('p-mob', file('run.exe', ['MZ'], 'application/octet-stream'))).rejects.toMatchObject({ status: 400, detail: "That type of file can't be added." })
+    await expect(api.files.upload('p-mob', file('run.exe', ['MZ'], 'application/octet-stream'))).rejects.toMatchObject({ status: 400, detail: "That type of file can’t be added." })
     expect((await db.read()).attachments).toEqual(before.attachments)
   })
 

@@ -13,7 +13,7 @@ import { badRequest, clone } from './shared'
 const ROLE_ORDER = ['admin', 'pm', 'sales', 'member']
 const rank = (roleIds: string[]) => Math.min(...roleIds.map((id) => (ROLE_ORDER.includes(id) ? ROLE_ORDER.indexOf(id) : ROLE_ORDER.length)), ROLE_ORDER.length)
 
-const NO_MATCH = "That email and password don't match."
+const NO_MATCH = "That email and password don’t match."
 
 export function authApi(db: MockDb): Api['auth'] {
   return {

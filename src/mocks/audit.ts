@@ -266,7 +266,7 @@ export function seedAuditHistory(data: DbData, now: Date) {
       detail: 'Wrong password',
     })),
     { at: at(0, 8, 31), from: office, ...signIn('u-3') },
-    { at: at(0, 8, 33), actor: who('u-3'), from: office, action: 'denied', group: 'access', record: { type: 'request', id: 'rates.list', name: 'rates.list' }, result: 'refused', detail: "You don't have access to hourly costs." },
+    { at: at(0, 8, 33), actor: who('u-3'), from: office, action: 'denied', group: 'access', record: { type: 'request', id: 'rates.list', name: 'rates.list' }, result: 'refused', detail: "You don’t have access to hourly costs." },
   ]
   entries.forEach((entry, i) => {
     if (entry.at <= now.toISOString()) audit(data, { ...entry, requestId: `req-seed-${i + 1}` })

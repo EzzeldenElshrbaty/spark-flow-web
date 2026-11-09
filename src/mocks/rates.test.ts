@@ -24,7 +24,7 @@ describe('rates', () => {
     await expect(api.rates.update('u-3', -1)).rejects.toMatchObject({ status: 400, detail: 'Hourly cost is 0 or more.' })
     await expect(api.rates.update('u-nope', 100)).rejects.toMatchObject({ status: 404 })
     await api.users.viewAs('u-2') // PM
-    await expect(api.rates.list()).rejects.toMatchObject({ status: 403, detail: "You don't have access to hourly costs." })
+    await expect(api.rates.list()).rejects.toMatchObject({ status: 403, detail: "You don’t have access to hourly costs." })
     await expect(api.rates.update('u-3', 1)).rejects.toMatchObject({ status: 403 })
   })
 

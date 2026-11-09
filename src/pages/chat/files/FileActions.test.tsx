@@ -79,7 +79,7 @@ describe('file actions: Edit file details, Delete file and Share (spec 6.9, slic
     const ask = screen.getByRole('dialog', { name: 'Delete Scope v3.pdf?' })
     // A delete is a danger confirm, not a primary one (UX Phase 3).
     expect(within(ask).getByRole('button', { name: 'Delete' }).className).toContain('bg-sf-danger-fill')
-    expect(screen.getByRole('dialog', { description: "It's removed from every message it's shared in, for everyone." })).toBe(ask)
+    expect(screen.getByRole('dialog', { description: "It’s removed from every message it’s shared in, for everyone." })).toBe(ask)
     await act(async () => fireEvent.click(within(ask).getByRole('button', { name: 'Delete' })))
     expect(within(ask).getByRole('alert').textContent).toBe('This channel is archived.')
     await act(async () => fireEvent.click(within(ask).getByRole('button', { name: 'Delete' })))

@@ -101,7 +101,7 @@ function FileActionsPill({
   }
   const [newFolder, setNewFolder] = useState(false)
   // Add to folder ▸ (spec 6.9): whoever may edit the file's details files it; a refusal is said beside the pill.
-  const fileIn = (folderId: string | null) => actions?.folders?.set(attachment, folderId).catch((e: Error) => setSaid(e.message || "Couldn't file it. Try again."))
+  const fileIn = (folderId: string | null) => actions?.folders?.set(attachment, folderId).catch((e: Error) => setSaid(e.message || "Couldn’t file it. Try again."))
   return (
     <div className="absolute end-2 top-2 flex items-center gap-1">
       <span role="status" className="sf-meta rounded-sf-sm bg-sf-surface-raised px-1 text-sf-text-muted empty:hidden">
@@ -123,7 +123,7 @@ function FileActionsPill({
             onClick={() => {
               navigator.clipboard.writeText(copyText).then(
                 () => setSaid('Copied'),
-                () => setSaid("Couldn't copy"),
+                () => setSaid("Couldn’t copy"),
               )
             }}
           />
@@ -165,7 +165,7 @@ function FileActionsPill({
                 onSelect={() => {
                   navigator.clipboard.writeText(link!).then(
                     () => setSaid('Link copied'),
-                    () => setSaid("Couldn't copy the link"),
+                    () => setSaid("Couldn’t copy the link"),
                   )
                 }}
               >
@@ -268,7 +268,7 @@ function Live({ attachment, link, message, pending }: { attachment: Attachment; 
   )
   let body
   if (!clean) body = <Unchecked attachment={attachment} link={link} message={message} pending={pending} />
-  else if (failed || code === false) body = <p className="sf-small text-sf-error">{attachment.title} couldn't be opened.</p>
+  else if (failed || code === false) body = <p className="sf-small text-sf-error">{attachment.title} couldn’t be opened.</p>
   else if (attachment.snippet)
     body =
       typeof code === 'string' ? (

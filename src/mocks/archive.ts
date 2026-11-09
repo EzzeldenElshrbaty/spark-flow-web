@@ -152,7 +152,7 @@ export function archiveApi(db: MockDb, hub: MockHub, now: () => Date = () => new
         const task = type === 'task' ? data.tickets.find((t) => t.key === id) : undefined
         if (type === 'project' && !project) throw notFound('Project', id)
         if (type === 'task' && !task) throw notFound('Ticket', id)
-        if (type !== 'project' && type !== 'task') throw badRequest("That isn't something that can be archived.")
+        if (type !== 'project' && type !== 'task') throw badRequest("That isn’t something that can be archived.")
         const row = archivedIn(data, (project ?? data.projects.find((p) => p.id === task!.projectId))!.workspaceId).find((r) => r.type === type && r.id === id)
         if (!row) throw badRequest('Only archived records can be deleted for good.')
         if (row.keptBecause === 'time') throw badRequest('It has time logged on it, so it’s kept: its hours and cost stay in reports.')

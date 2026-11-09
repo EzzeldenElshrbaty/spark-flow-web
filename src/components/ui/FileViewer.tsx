@@ -2,7 +2,7 @@ import clsx from 'clsx'
 import { ChevronLeft, ChevronRight, Download, FileText, Minus, Plus, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { downloadUrl, previewOf } from '@/lib/fileTypes'
+import { downloadUrl, previewOf, sizeText } from '@/lib/fileTypes'
 import { fetchCredentials, type ViewedFile } from '@/lib/fileView'
 import { isPdf } from '@/lib/pdfSignature'
 import { safeFileUrl } from '@/lib/safeFileUrl'
@@ -17,7 +17,8 @@ function savedAs(file: ViewedFile): { url: string; name: string } | null {
   return url ? { url, name: target.name } : null
 }
 
-const sizeText = (sizeKb?: number) => (sizeKb === undefined ? '' : sizeKb >= 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${sizeKb} KB`)
+// One size rule with the rest of Flow (lib/fileTypes.ts); the viewer is given kilobytes.
+const kbText = (sizeKb?: number) => (sizeKb === undefined ? '' : sizeText(sizeKb * 1024))
 
 /**
  * Full-screen preview of a file inside the CRM: images, PDFs, text and CSV. Other types show a card to download.
@@ -104,7 +105,7 @@ export function FileViewer({
         {preview === 'image' && <ImageView key={file.url} file={file} />}
         {preview === 'pdf' && <PdfView key={file.url} file={file} />}
         {(preview === 'text' || preview === 'csv') && <TextView key={file.url} file={file} csv={preview === 'csv'} />}
-        {preview === 'none' && <NoPreview file={file} message={url ? undefined : "This file can't be opened from here."} />}
+        {preview === 'none' && <NoPreview file={file} message={url ? undefined : "This file can’t be opened from here."} />}
       </div>
     </div>,
     document.body,
@@ -163,7 +164,7 @@ function PdfView({ file }: { file: ViewedFile }) {
     }
   }, [file.url])
 
-  if (failed) return <NoPreview file={file} message="This file can't be previewed. Download it instead." />
+  if (failed) return <NoPreview file={file} message="This file can’t be previewed. Download it instead." />
   if (!blobUrl) return <p className="self-center text-sm text-white/80">Opening…</p>
   return <iframe src={blobUrl} title={file.name} className="size-full rounded-md bg-white" />
 }
@@ -214,7 +215,7 @@ function TextView({ file, csv }: { file: ViewedFile; csv: boolean }) {
     }
   }, [file.url])
 
-  if (failed) return <NoPreview file={file} message="This file couldn't be opened here. Download it instead." />
+  if (failed) return <NoPreview file={file} message="This file couldn’t be opened here. Download it instead." />
   if (text === null) return <p className="self-center text-sm text-white/80">Opening…</p>
   const rows = csv ? parseCsv(text).slice(0, 2000) : []
   return (
@@ -240,13 +241,13 @@ function TextView({ file, csv }: { file: ViewedFile; csv: boolean }) {
   )
 }
 
-function NoPreview({ file, message = "This type of file can't be previewed. Download it to open it." }: { file: ViewedFile; message?: string }) {
+function NoPreview({ file, message = "This type of file can’t be previewed. Download it to open it." }: { file: ViewedFile; message?: string }) {
   return (
     <div className="m-auto flex w-full max-w-sm flex-col items-center gap-3 rounded-lg bg-surface p-6 text-center">
       <FileText className="size-10 text-fg-muted" />
       <div className="min-w-0 max-w-full">
         <p className="truncate text-sm font-medium text-fg">{file.name}</p>
-        {file.sizeKb !== undefined && <p className="text-xs text-fg-muted">{sizeText(file.sizeKb)}</p>}
+        {file.sizeKb !== undefined && <p className="text-xs text-fg-muted">{kbText(file.sizeKb)}</p>}
       </div>
       <p className="text-sm text-fg-secondary">{message}</p>
       {savedAs(file) && (

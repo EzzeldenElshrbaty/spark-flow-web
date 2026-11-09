@@ -66,7 +66,7 @@ describe('archiving asks why (slice 4)', () => {
 
   it('a reason is checked only once access is: someone who can’t archive hears that first', async () => {
     await api.users.viewAs('u-5')
-    expect(await detail(api.projects.archive('p-sel', 'x'.repeat(201)))).toMatch(/^You don't have access/)
+    expect(await detail(api.projects.archive('p-sel', 'x'.repeat(201)))).toMatch(/^You don’t have access/)
     expect(await detail(api.chat.archiveChannel('c-release', 'x'.repeat(201)))).not.toBe('Keep the reason under 200 characters.')
   })
 
@@ -107,9 +107,9 @@ describe('the list of archived records (slice 4)', () => {
 
   it('only whoever may manage archived records sees the list, sets how long they’re kept, or deletes', async () => {
     await api.users.viewAs('u-2')
-    expect(await detail(api.archive.list('ws-eng'))).toBe("You don't have access to archived records.")
-    expect(await detail(api.archive.setRetention(90))).toBe("You don't have access to archived records.")
-    expect(await detail(api.archive.deleteForGood('task', 'NEX-101'))).toBe("You don't have access to archived records.")
+    expect(await detail(api.archive.list('ws-eng'))).toBe("You don’t have access to archived records.")
+    expect(await detail(api.archive.setRetention(90))).toBe("You don’t have access to archived records.")
+    expect(await detail(api.archive.deleteForGood('task', 'NEX-101'))).toBe("You don’t have access to archived records.")
   })
 
   it('keeps them 30 to 3650 days; a change is logged and moves every date', async () => {
@@ -198,7 +198,7 @@ describe('deleting for good (slice 4)', () => {
     expect(await detail(api.archive.deleteForGood('task', 'NEX-101'))).toBe('It has time logged on it, so it’s kept: its hours and cost stay in reports.')
     expect(await detail(api.archive.deleteForGood('channel', 'c-release'))).toBe('Channels are restored, not deleted for good.')
     expect(await detail(api.archive.deleteForGood('task', 'NEX-102'))).toBe('Only archived records can be deleted for good.')
-    expect(await detail(api.archive.deleteForGood('project', 'p-gone'))).toBe("Project p-gone doesn't exist.")
+    expect(await detail(api.archive.deleteForGood('project', 'p-gone'))).toBe("Project p-gone doesn’t exist.")
   })
 
   it('a project with no time goes with its tasks, phases, deliverables and files; its channel stays, archived', async () => {

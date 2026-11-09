@@ -4,15 +4,15 @@ group: Getting started
 order: 1
 summary: The screen, the two sides of Flow, search, help and your menu.
 ---
-Spark Flow runs Spark Systems' projects and its chat in one place. This chapter covers what's around every page.
+Spark Flow runs Spark Systems' projects and its chat in one place. This chapter covers what’s around every page.
 
 ## Signing in
 
-Sign in with your Spark email and password. You start on your [Dashboard](help:dashboard). Signed out, any link opens Sign in first, then the page it pointed to (the workspace's own address opens the Dashboard). **Log out** is in your menu.
+Sign in with your Spark email and password. You start on your [Dashboard](help:dashboard). Signed out, any link opens Sign in first, then the page it pointed to (the workspace’s own address opens the Dashboard). **Log out** is in your menu.
 
-> In the prototype, everyone's password is `flow2026`, and the list under the form signs you in as anyone, by role, to try what each role can do.
+> In the prototype, everyone’s password is `flow2026`, and the list under the form signs you in as anyone, by role, to try what each role can do.
 
-![The sign-in page](signin.jpg "Email and password, and the prototype's people by role")
+![The sign-in page](signin.jpg "Email and password, and the prototype’s people by role")
 
 ## The two sides
 
@@ -20,11 +20,11 @@ The menu on the left shows one side at a time: **Projects** (your day, projects,
 
 ## Search
 
-The box at the top finds projects, tasks, people and pages as you type. Press `Ctrl` + `K` (`⌘` + `K` on a Mac) to jump to it, unless you're writing a message, where it adds a link. Its last row searches messages and files; see [Search](help:search).
+The box at the top finds projects, tasks, people and pages as you type. Press `Ctrl` + `K` (`⌘` + `K` on a Mac) to jump to it, unless you’re writing a message, where it adds a link. Its last row searches messages and files; see [Search](help:search).
 
 ## Help
 
-The round **?** beside the bell opens help for the page you're on. It stays open as you move between pages, so you can read and work at once. At its foot, **Open the help centre** shows every chapter, with search.
+The round **?** beside the bell opens help for the page you’re on. It stays open as you move between pages, so you can read and work at once. At its foot, **Open the help centre** shows every chapter, with search.
 
 ## Your menu
 
@@ -39,7 +39,7 @@ Your name at the top right opens:
 
 ## Lists and tables
 
-Drag a column's edge to make it wider; double-click to reset it. Click a header to sort. Filters and searches stay in the address, so a link you share opens the same view.
+Drag a column’s edge to make it wider; double-click to reset it. Click a header to sort. Filters and searches stay in the address, so a link you share opens the same view.
 
 ## On a phone
 

@@ -10,8 +10,8 @@ describe('emails for invites (spec 6.10)', () => {
   })
 
   it('says what happens to the emails picked, one or several', () => {
-    expect(inviteHelp(['sam@client.com'], 'backend')).toBe("sam@client.com isn't in Spark Systems yet. They'll get an email invite as a guest who can see #backend only.")
-    expect(inviteHelp(['sam@client.com', 'lina@partner.io'], 'backend')).toBe("2 people aren't in Spark Systems yet. They'll get email invites as guests who can see #backend only.")
+    expect(inviteHelp(['sam@client.com'], 'backend')).toBe("sam@client.com isn’t in Spark Systems yet. They’ll get an email invite as a guest who can see #backend only.")
+    expect(inviteHelp(['sam@client.com', 'lina@partner.io'], 'backend')).toBe("2 people aren’t in Spark Systems yet. They’ll get email invites as guests who can see #backend only.")
     expect(inviteHelp([], 'backend')).toBeUndefined()
   })
 })

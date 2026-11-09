@@ -155,18 +155,18 @@ export function ChannelMessage({
   // Someone else's message, there and settled: my own never count as unread.
   const markUnread =
     onMarkUnread && !reply && message.senderId !== meId && !message.deletedAt && !sendState && !root?.system
-      ? () => onMarkUnread().then(() => say('Marked unread'), () => say("Couldn't mark it unread. Try again.", true))
+      ? () => onMarkUnread().then(() => say('Marked unread'), () => say("Couldn’t mark it unread. Try again.", true))
       : undefined
   // Copied while the key press still counts as mine; no clipboard (an insecure page) fails the same way as a refusal.
   const copy = (text: string, done: string, failed: string) =>
     new Promise<void>((resolve) => resolve(navigator.clipboard.writeText(text))).then(() => say(done), () => say(failed, true))
-  const copyLink = () => copy(permalink, 'Link copied', "Couldn't copy the link")
-  const copyText = () => copy(bodyText(message.body), 'Text copied', "Couldn't copy the text")
+  const copyLink = () => copy(permalink, 'Link copied', "Couldn’t copy the link")
+  const copyText = () => copy(bodyText(message.body), 'Text copied', "Couldn’t copy the text")
   // Following its thread (spec 6.7): a top-level message's, from its ⋯ menu (a broadcast reply has no thread).
   const setFollowing = useSetFollowing()
   const follow =
     root && !root.system && !broadcast
-      ? { following: Boolean(root.following), onToggle: () => setFollowing.mutate({ messageId: root.id, following: !root.following }, { onError: () => say("Couldn't change that. Try again.", true) }) }
+      ? { following: Boolean(root.following), onToggle: () => setFollowing.mutate({ messageId: root.id, following: !root.following }, { onError: () => say("Couldn’t change that. Try again.", true) }) }
       : undefined
   // Pin to channel (P, spec 6.5): a top-level message that's there and settled, where I may post; not a card or a line.
   const setPinned = useSetPinned()
@@ -177,7 +177,7 @@ export function ChannelMessage({
           onToggle: () =>
             setPinned.mutate(
               { messageId: root.id, pinned: !root.pin },
-              { onSuccess: () => say(root.pin ? 'Unpinned' : 'Pinned to the channel'), onError: (e) => say(e.message || "Couldn't change that. Try again.", true) },
+              { onSuccess: () => say(root.pin ? 'Unpinned' : 'Pinned to the channel'), onError: (e) => say(e.message || "Couldn’t change that. Try again.", true) },
             ),
         }
       : undefined

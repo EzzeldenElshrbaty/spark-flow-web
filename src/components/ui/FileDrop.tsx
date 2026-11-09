@@ -1,9 +1,8 @@
 import clsx from 'clsx'
 import { FileUp, X } from 'lucide-react'
 import { useEffect, useId, useState, type DragEvent } from 'react'
-import { acceptedFiles, acceptFiles } from '@/lib/fileTypes'
+import { acceptedFiles, acceptFiles, sizeText } from '@/lib/fileTypes'
 
-const sizeText = (bytes: number) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`)
 
 /**
  * Pick or drag in one or more files. Types and sizes the API would refuse are left out, with a line saying why.

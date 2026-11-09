@@ -5,10 +5,10 @@ const f = (name: string) => new File(['x'], name)
 
 describe('upload queue', () => {
   it('three files queue in order; a refused one starts failed with its reason', () => {
-    const rows = queueRows([f('a.pdf'), f('b.exe'), f('c.png')], (file) => (file.name.endsWith('.exe') ? "b.exe: this type of file can't be added." : null))
+    const rows = queueRows([f('a.pdf'), f('b.exe'), f('c.png')], (file) => (file.name.endsWith('.exe') ? "b.exe: this type of file can’t be added." : null))
     expect(rows.map((r) => [r.name, r.state, r.error])).toEqual([
       ['a.pdf', 'queued', null],
-      ['b.exe', 'failed', "b.exe: this type of file can't be added."],
+      ['b.exe', 'failed', "b.exe: this type of file can’t be added."],
       ['c.png', 'queued', null],
     ])
     expect(new Set(rows.map((r) => r.id)).size).toBe(3)

@@ -66,7 +66,7 @@ describe('time.report', () => {
     expect((await api.time.report('ws-eng', 30)).totals.cost).toBeGreaterThan(0)
     for (const userId of ['u-9', 'u-4']) {
       await api.users.viewAs(userId)
-      await expect(api.time.report('ws-eng', 30)).rejects.toMatchObject({ status: 403, detail: "You don't have access to time and cost." })
+      await expect(api.time.report('ws-eng', 30)).rejects.toMatchObject({ status: 403, detail: "You don’t have access to time and cost." })
     }
   })
 })

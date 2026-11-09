@@ -260,7 +260,7 @@ const badImport = (newer = false) =>
   new ApiError({
     title: 'Import failed',
     status: 400,
-    detail: newer ? 'That export is from a newer version of Spark Flow. Update the app, then import it again.' : "That file isn't a Spark Flow export.",
+    detail: newer ? 'That export is from a newer version of Spark Flow. Update the app, then import it again.' : "That file isn’t a Spark Flow export.",
   })
 
 /**

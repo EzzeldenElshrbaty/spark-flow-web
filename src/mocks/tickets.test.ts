@@ -61,10 +61,10 @@ describe('tickets reads', () => {
   })
 
   it('throws ApiError 404 for an unknown key or project', async () => {
-    await expect(api.tickets.get('NEX-999')).rejects.toMatchObject({ status: 404, title: 'Not found', detail: "Ticket NEX-999 doesn't exist." })
-    await expect(api.tickets.list('nope')).rejects.toMatchObject({ status: 404, detail: "Project nope doesn't exist." })
+    await expect(api.tickets.get('NEX-999')).rejects.toMatchObject({ status: 404, title: 'Not found', detail: "Ticket NEX-999 doesn’t exist." })
+    await expect(api.tickets.list('nope')).rejects.toMatchObject({ status: 404, detail: "Project nope doesn’t exist." })
     await expect(api.tickets.sprints('nope')).rejects.toMatchObject({ status: 404 })
-    await expect(api.projects.list('nope')).rejects.toMatchObject({ status: 404, detail: "Workspace nope doesn't exist." })
+    await expect(api.projects.list('nope')).rejects.toMatchObject({ status: 404, detail: "Workspace nope doesn’t exist." })
     await expect(createTicket(db, hub, newTicket({ projectId: 'nope' }))).rejects.toMatchObject({ status: 404 })
     await expect(updateTicket(db, hub, 'NEX-999', { title: 'x' })).rejects.toMatchObject({ status: 404 })
     expect(events).toEqual([])

@@ -85,5 +85,5 @@ export type ComposerSlash = { commands: SlashCommand[]; run: (command: ParsedCom
 /** Why a `/word` at the start didn't run: it isn't a shortcut, or not one this place offers. */
 export function refusal(name: string): string {
   const known = COMMANDS.some((c) => c.name === name)
-  return `/${name} ${known ? "doesn't work here" : "isn't a shortcut"}. To send it as a message, start it with a space.`
+  return `/${name} ${known ? "doesn’t work here" : "isn’t a shortcut"}. To send it as a message, start it with a space.`
 }

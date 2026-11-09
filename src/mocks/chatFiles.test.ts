@@ -41,7 +41,7 @@ describe('uploading a file for a message (spec §8: upload-url, the bytes, compl
   it('refuses what the files rules refuse, a channel I can’t post in, and a cancelled upload, keeping nothing', async () => {
     const before = (await db.read()).attachments.length
     await expect(api.files.uploadForChat('c-backend', file('empty.pdf', ''))).rejects.toMatchObject({ status: 400, detail: 'That file is empty.' })
-    await expect(upload('run.exe')).rejects.toMatchObject({ status: 400, detail: "That type of file can't be added." })
+    await expect(upload('run.exe')).rejects.toMatchObject({ status: 400, detail: "That type of file can’t be added." })
     await api.users.viewAs('u-3')
     await expect(upload('scope.pdf', 'c-release')).rejects.toMatchObject({ status: 403 })
     await api.users.viewAs('u-1')
@@ -220,7 +220,7 @@ describe('a text snippet (spec 6.9): a .txt chat file with a language', () => {
   })
 
   it('refuses a language it doesn’t know and a snippet that isn’t .txt', async () => {
-    await expect(api.files.uploadForChat('c-backend', file('a.txt', 'x', 'text/plain'), { snippet: { language: 'cobol' as never } })).rejects.toMatchObject({ status: 400, detail: "That snippet type isn't supported." })
+    await expect(api.files.uploadForChat('c-backend', file('a.txt', 'x', 'text/plain'), { snippet: { language: 'cobol' as never } })).rejects.toMatchObject({ status: 400, detail: "That snippet type isn’t supported." })
     await expect(api.files.uploadForChat('c-backend', file('a.pdf'), { snippet: { language: 'sql' } })).rejects.toMatchObject({ status: 400, detail: 'A snippet is a .txt file.' })
   })
 })

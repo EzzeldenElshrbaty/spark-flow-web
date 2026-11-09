@@ -26,7 +26,7 @@ Spark Flow is a sister product of **Spark CRM** (Spark Systems). The two apps mu
 - **Loader**: only the 2px red top `LoadingBar` + pulse skeletons. No spinners, no overlays.
 - **Modals**: only `Sheet` (dialog / drawer, full-screen on phones, doesn't close by accident). Menus: only `MenuPanel` (dropdown → bottom sheet on phones).
 - **Feedback**: no toasts; invalidate all queries after a mutation and close the sheet. Errors as sentences near the cause.
-- **Microcopy**: English, sentence case, verb-first buttons, `…` for pending ("Saving…"), ` · ` separators, `—` for empty.
+- **Microcopy**: English, sentence case, verb-first buttons, `…` for pending ("Saving…"), ` · ` separators, `—` for empty. Curly apostrophes (’) in every string a person reads, help chapters and mock messages included — `src/copy.test.ts` fails on a straight one (UX Phase 3); help search reads ’ and ' alike.
 - **Formatting**: use `lib/format.ts` (money "EGP 1.2M", "3h ago", "Today 2:00 PM", "3 Oct 2026"; UX Phase 3 added "3 Oct" `formatDayMonth` (`utc` for due dates), "Fri 23 Oct" `formatWeekdayDay`, "Wednesday 4 November" `formatDayDivider`, "Wed 4 Nov 2026, 2:00 PM" `formatDateTime`, "tomorrow at 9:00 AM" `formatDayAt`, chart days `dayTicks`). Never `toLocaleDateString` in a page. `tabular-nums` for numbers.
 - **One primary (red) button per view.**
 - **RTL-ready**: logical direction classes only (`ms-/me-/ps-/pe-/start-/end-/text-start/border-s…`); directional icons get `rtl:-scale-x-100`. `src/rtl.test.ts` enforces it.

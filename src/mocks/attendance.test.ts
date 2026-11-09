@@ -119,7 +119,7 @@ describe('who sees whom (slice 5)', () => {
     expect(pm[0]).toBe('u-2')
     expect(pm).toEqual(expect.arrayContaining(['u-3', 'u-5', 'u-6']))
     expect(pm).not.toContain('u-9') // only on Sela booking, which Nour doesn't manage
-    expect(await detail(api.attendance.days({ days: 7, userId: 'u-9' }))).toBe("You don't have access to their attendance.")
+    expect(await detail(api.attendance.days({ days: 7, userId: 'u-9' }))).toBe("You don’t have access to their attendance.")
     const seen = new Set((await api.attendance.days({ days: 7 })).map((r) => r.userId))
     expect([...seen].every((id) => pm.includes(id))).toBe(true)
     expect(seen.has('u-5')).toBe(true)
@@ -133,9 +133,9 @@ describe('who sees whom (slice 5)', () => {
     await api.users.viewAs('u-5')
     expect((await api.attendance.scope()).userIds).toEqual(['u-5'])
     expect(new Set((await api.attendance.visits({ days: 7 })).map((v) => v.userId))).toEqual(new Set(['u-5']))
-    expect(await detail(api.attendance.report({ days: 7, userId: 'u-2' }))).toBe("You don't have access to their attendance.")
-    expect(await detail(api.attendance.visits({ days: 7, userId: 'u-2' }))).toBe("You don't have access to their attendance.")
-    expect(await detail(api.attendance.day('2026-10-26', 'u-2'))).toBe("You don't have access to their attendance.")
+    expect(await detail(api.attendance.report({ days: 7, userId: 'u-2' }))).toBe("You don’t have access to their attendance.")
+    expect(await detail(api.attendance.visits({ days: 7, userId: 'u-2' }))).toBe("You don’t have access to their attendance.")
+    expect(await detail(api.attendance.day('2026-10-26', 'u-2'))).toBe("You don’t have access to their attendance.")
   })
 })
 
@@ -233,7 +233,7 @@ describe('working hours (slice 5)', () => {
     // 8:50 is now late.
     expect((await api.attendance.report({ days: 7, userId: 'u-5' }))[0]!.late).toBe(5)
     await api.users.viewAs('u-2')
-    expect(await detail(api.attendance.setWorkHours({ days: [0], start: '09:00', end: '17:00' }))).toBe("You don't have access to settings.")
+    expect(await detail(api.attendance.setWorkHours({ days: [0], start: '09:00', end: '17:00' }))).toBe("You don’t have access to settings.")
   })
 })
 

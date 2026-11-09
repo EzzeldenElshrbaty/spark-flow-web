@@ -39,14 +39,14 @@ const SHAREABLE_MAX = 30
 
 /** A snippet is a .txt file in a language the card knows (spec 6.9). */
 function checkSnippet(file: { name: string }, language: string) {
-  if (!CODE_LANGUAGES.some((l) => l.id === language)) throw badRequest("That snippet type isn't supported.")
+  if (!CODE_LANGUAGES.some((l) => l.id === language)) throw badRequest("That snippet type isn’t supported.")
   if (!/\.txt$/i.test(file.name)) throw badRequest('A snippet is a .txt file.')
 }
 
 export function checkUpload(file: { size: number; name: string }) {
   if (file.size === 0) throw badRequest('That file is empty.')
   if (file.size > maxFileMb * 1024 * 1024) throw badRequest(`Files can be up to ${maxFileMb} MB.`)
-  if (!isAcceptedFile(file.name)) throw badRequest("That type of file can't be added.")
+  if (!isAcceptedFile(file.name)) throw badRequest("That type of file can’t be added.")
 }
 
 /**

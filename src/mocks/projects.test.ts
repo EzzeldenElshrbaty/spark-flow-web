@@ -58,7 +58,7 @@ describe('projects', () => {
   it('member cannot create or edit', async () => {
     await api.users.viewAs('u-8') // Member
     const before = await db.read()
-    await expect(api.projects.create(newProject())).rejects.toMatchObject({ status: 403, detail: "You don't have access to this project." })
+    await expect(api.projects.create(newProject())).rejects.toMatchObject({ status: 403, detail: "You don’t have access to this project." })
     await expect(api.projects.update('p-mob', { name: 'Hacked' })).rejects.toMatchObject({ status: 403 })
     const after = await db.read()
     expect(after.projects).toEqual(before.projects)
@@ -162,7 +162,7 @@ describe('board columns', () => {
 
   it('bad columns are refused; setBoard neither adds nor drops columns', async () => {
     await expect(api.projects.setBoard('p-nex', columns.slice(0, 4))).rejects.toMatchObject({ status: 400, detail: 'That column no longer exists.' })
-    await expect(api.projects.setBoard('p-nex', columns.map((c) => ({ ...c, label: 'Same' })))).rejects.toMatchObject({ status: 400, detail: "Two columns can't share a name." })
+    await expect(api.projects.setBoard('p-nex', columns.map((c) => ({ ...c, label: 'Same' })))).rejects.toMatchObject({ status: 400, detail: "Two columns can’t share a name." })
     await expect(api.projects.setBoard('p-nex', columns.map((c) => ({ ...c, category: 'todo' as const })))).rejects.toMatchObject({ status: 400, detail: 'Each type needs at least one column.' })
   })
 })
@@ -243,19 +243,19 @@ describe('adding and deleting columns', () => {
 })
 
 describe('project, phase and deliverable writes are checked', () => {
-  const unknown = { status: 400, detail: "Some of these fields can't be changed." }
+  const unknown = { status: 400, detail: "Some of these fields can’t be changed." }
   it('projects.update takes only its fields and valid values', async () => {
     for (const patch of [{ key: 'ZZ' }, { channelId: 'c-x' }]) await expect(api.projects.update('p-nex', patch as never)).rejects.toMatchObject(unknown)
     const refused = async (patch: object, detail: string) => await expect(api.projects.update('p-nex', patch as never)).rejects.toMatchObject({ status: 400, detail })
-    await refused({ status: 'gone' }, "That isn't a project status.")
+    await refused({ status: 'gone' }, "That isn’t a project status.")
     await refused({ managerId: 'nobody' }, 'Pick a project manager.')
-    await refused({ memberIds: ['nobody'] }, "Someone on this list doesn't exist.")
-    await refused({ teamIds: ['t-none'] }, "That team doesn't exist.")
+    await refused({ memberIds: ['nobody'] }, "Someone on this list doesn’t exist.")
+    await refused({ teamIds: ['t-none'] }, "That team doesn’t exist.")
   })
   it('phases.update takes only its fields and a valid status', async () => {
     const phase = (await db.read()).phases.find((p) => p.projectId === 'p-nex')!
     await expect(api.phases.update(phase.id, { projectId: 'p-x' } as never)).rejects.toMatchObject(unknown)
-    await expect(api.phases.update(phase.id, { status: 'x' } as never)).rejects.toMatchObject({ status: 400, detail: "That isn't a phase status." })
+    await expect(api.phases.update(phase.id, { status: 'x' } as never)).rejects.toMatchObject({ status: 400, detail: "That isn’t a phase status." })
   })
   it('deliverables.update takes only its fields and stays in its project', async () => {
     await expect(api.deliverables.update('d-nex-1', { projectId: 'p-mob' } as never)).rejects.toMatchObject(unknown)
@@ -344,8 +344,8 @@ describe('phase and deliverable dates', () => {
     const p = (await db.read()).projects.find((x) => x.id === 'p-nex')!
     const before = new Date(new Date(p.startDate).getTime() - 86_400_000).toISOString()
     const after = new Date(new Date(p.dueDate).getTime() + 86_400_000).toISOString()
-    await expect(api.phases.create({ projectId: 'p-nex', name: 'Early', startDate: before, dueDate: p.dueDate })).rejects.toMatchObject({ status: 400, detail: "A phase can't start before the project." })
-    await expect(api.phases.create({ projectId: 'p-nex', name: 'Late', startDate: p.startDate, dueDate: after })).rejects.toMatchObject({ status: 400, detail: "A phase can't end after the project's due date." })
+    await expect(api.phases.create({ projectId: 'p-nex', name: 'Early', startDate: before, dueDate: p.dueDate })).rejects.toMatchObject({ status: 400, detail: "A phase can’t start before the project." })
+    await expect(api.phases.create({ projectId: 'p-nex', name: 'Late', startDate: p.startDate, dueDate: after })).rejects.toMatchObject({ status: 400, detail: "A phase can’t end after the project’s due date." })
   })
   it('deliverables.create checks its due date', async () => {
     await expect(api.deliverables.create({ projectId: 'p-nex', phaseId: null, title: 'X', dueDate: 'soon' })).rejects.toMatchObject({ status: 400, detail: 'Pick a due date.' })

@@ -89,7 +89,7 @@ describe('adding and removing people (spec 6.10)', () => {
     for (const call of [() => api.chat.addMembers('c-p-nex', ['u-9']), () => api.chat.removeMember('c-p-nex', 'u-2')])
       await expect(call()).rejects.toMatchObject({ status: 400, detail: 'This channel follows its project.' })
     for (const call of [() => api.chat.addMembers('c-dm-1', ['u-3']), () => api.chat.removeMember('c-dm-1', 'u-2')])
-      await expect(call()).rejects.toMatchObject({ status: 400, detail: "Direct messages can't be edited." })
+      await expect(call()).rejects.toMatchObject({ status: 400, detail: "Direct messages can’t be edited." })
   })
 
   it('someone taken off a private channel can no longer read it, nor see its mentions', async () => {

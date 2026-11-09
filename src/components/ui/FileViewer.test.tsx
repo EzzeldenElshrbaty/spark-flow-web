@@ -37,3 +37,10 @@ describe('FileViewer controls (UX Phase 3, 3.7: icon buttons have a title)', () 
     for (const name of ['Close', 'Next file', 'Zoom in', 'Zoom out']) expect(screen.getByRole('button', { name }).getAttribute('title')).toBe(name)
   })
 })
+
+describe('FileViewer size (UX Phase 3, 3.7: one file-size helper)', () => {
+  it('a file under half a kilobyte says 1 KB, like everywhere else', () => {
+    render(<FileViewer files={[{ name: 'notes.bin', url: 'blob:http://localhost/x', sizeKb: 0 }]} onClose={() => {}} />)
+    expect(screen.getByText('1 KB')).toBeTruthy()
+  })
+})

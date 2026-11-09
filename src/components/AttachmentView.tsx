@@ -43,7 +43,7 @@ function One({ attachment }: { attachment: Attachment }) {
   const kind = previewOf(attachment.name) === 'image' ? 'image' : playable ? 'video' : 'file'
   const viewer = viewing && url && <FileViewer files={[{ name: attachment.name, url, sizeKb: Math.round(attachment.size / 1024) }]} onClose={() => setViewing(false)} onDownload={() => noteDownload(attachment.id)} />
 
-  if (failed) return <p className="text-xs text-red-600 dark:text-red-400">{attachment.name} couldn't be opened.</p>
+  if (failed) return <p className="text-xs text-red-600 dark:text-red-400">{attachment.name} couldn’t be opened.</p>
   if (kind === 'image')
     return (
       <>

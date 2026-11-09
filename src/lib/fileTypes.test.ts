@@ -14,7 +14,7 @@ describe('acceptFiles', () => {
     const one = f('a.png')
     const { files, refused } = acceptFiles([one], [one, f('setup.exe'), f('b.pdf')], 2)
     expect(files.map((x) => x.name)).toEqual(['a.png', 'b.pdf'])
-    expect(refused).toEqual(["setup.exe: this type of file can't be added."])
+    expect(refused).toEqual(["setup.exe: this type of file can’t be added."])
   })
   it('with no limit, takes every good file', () => {
     expect(acceptFiles([], [f('a.png'), f('b.png')]).files).toHaveLength(2)

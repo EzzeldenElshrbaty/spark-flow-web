@@ -59,7 +59,7 @@ export function ArchiveChannelModal({ channel, open, onClose }: { channel: Chann
       open={open}
       onClose={onClose}
       title={`Archive #${channel.name}?`}
-      description="No one can post in it until it's restored. Its messages stay."
+      description="No one can post in it until it’s restored. Its messages stay."
       footer={
         <>
           <SfButton onClick={onClose}>Cancel</SfButton>
@@ -92,7 +92,7 @@ export function JoinChannelLine({ channel }: { channel: Channel }) {
   const join = useJoinChannel()
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <p className="text-sm text-fg-muted">You're not in this channel.</p>
+      <p className="text-sm text-fg-muted">You’re not in this channel.</p>
       <Button onClick={() => join.mutate(channel.id)} disabled={join.isPending}>
         {join.isPending ? 'Joining…' : 'Join channel'}
       </Button>

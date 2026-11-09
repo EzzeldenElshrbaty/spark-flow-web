@@ -36,7 +36,7 @@ export function pinsApi(db: MockDb, hub: MockHub): Api['pins'] {
         const channel = findChannel(data, message.channelId)
         const me = checkCanWrite(data, channel)
         if (message.deletedAt) throw badRequest('This message was deleted.')
-        if (message.system || message.broadcast) throw badRequest("This message can't be pinned.")
+        if (message.system || message.broadcast) throw badRequest("This message can’t be pinned.")
         if (data.pins.some((p) => p.messageId === messageId)) return { channelId: channel.id, line: null }
         data.pins.push({ channelId: channel.id, messageId, pinnedBy: me.id, pinnedAt: new Date().toISOString() })
         return { channelId: channel.id, line: postSystem(data, channel.id, { kind: 'pinned', messageId }) }

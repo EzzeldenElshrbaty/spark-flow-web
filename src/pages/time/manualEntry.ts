@@ -16,8 +16,8 @@ export function manualEntryErrors(v: ManualEntryValues, now: Date): ManualEntryE
   const end = at(v.day, v.end).getTime()
   if (!Number.isFinite(start) || !Number.isFinite(end) || end === start) errors.end = 'The end is before the start.'
   // On one day, an end earlier on the clock means the work ran past midnight.
-  else if (end < start) errors.end = "An entry can't run past midnight. Add it as two entries."
-  else if (end > now.getTime()) errors.end = "Time can't be logged in the future."
+  else if (end < start) errors.end = "An entry can’t run past midnight. Add it as two entries."
+  else if (end > now.getTime()) errors.end = "Time can’t be logged in the future."
   else if (end - start > 12 * HOUR) errors.end = 'One entry can be up to 12 hours.'
   if (v.note.trim().length > 200) errors.note = 'Keep the note under 200 characters.'
   return errors

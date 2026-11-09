@@ -55,7 +55,7 @@ export function acceptFiles<F extends { name: string; size: number; lastModified
   const refused = picked
     .filter((file) => !ok.includes(file))
     .map((file) =>
-      !isAcceptedFile(file.name) ? `${file.name}: this type of file can't be added.` : file.size === 0 ? `${file.name} is empty.` : `${file.name} is over ${maxFileMb} MB.`,
+      !isAcceptedFile(file.name) ? `${file.name}: this type of file can’t be added.` : file.size === 0 ? `${file.name} is empty.` : `${file.name} is over ${maxFileMb} MB.`,
     )
   // Picking the same file twice adds it once.
   const id = (file: F) => `${file.name}|${file.size}|${file.lastModified}`

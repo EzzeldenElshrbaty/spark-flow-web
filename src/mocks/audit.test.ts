@@ -405,7 +405,7 @@ describe('the log outlives the demo data (slice 2: nothing removes an entry)', (
 describe('api.audit (slice 2)', () => {
   it('reading needs "See the audit log", and the refusal is itself in the log', async () => {
     await api.users.viewAs('u-2')
-    await expect(api.audit.list({})).rejects.toMatchObject({ status: 403, detail: "You don't have access to the audit log." })
+    await expect(api.audit.list({})).rejects.toMatchObject({ status: 403, detail: "You don’t have access to the audit log." })
     await expect(api.audit.export({})).rejects.toMatchObject({ status: 403 })
     await api.users.viewAs('u-1')
     const refused = (await api.audit.list({ result: 'refused', actorId: 'u-2' })).items
@@ -477,7 +477,7 @@ describe('api.audit (slice 2)', () => {
     )
     const texts = (await api.audit.summary(clock.toISOString())).needsALook.map((a) => [a.tone, a.text])
     expect(texts).toEqual([
-      ['amber', "Youssef Abdelrahman changed Mariam Fathy's roles: Member → Member, Project manager"],
+      ['amber', "Youssef Abdelrahman changed Mariam Fathy’s roles: Member → Member, Project manager"],
       ['red', 'Mariam Fathy was refused 3 times in 4 minutes'],
       ['red', '3 failed sign-ins for k.hasan@spark-sys.com from 105.196.66.3 in 4 minutes'],
       ['amber', 'Youssef Abdelrahman exported all the demo data'],

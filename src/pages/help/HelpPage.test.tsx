@@ -62,7 +62,7 @@ describe('the help centre', () => {
     cleanup()
     me = { ...me, roleIds: ['member'], grants: ['checkins.managed'] }
     mount('/w/engineering/help/audit-log')
-    expect(await screen.findByText(/That chapter isn't in your help\./)).toBeTruthy()
+    expect(await screen.findByText(/That chapter isn’t in your help\./)).toBeTruthy()
     const nav = screen.getByRole('navigation', { name: 'Chapters' })
     expect(within(nav).queryByRole('link', { name: 'Audit log' })).toBeNull()
     expect(within(nav).getByRole('link', { name: 'Attendance' })).toBeTruthy()
@@ -87,6 +87,13 @@ describe('the help centre', () => {
     fireEvent.click(within(screen.getByRole('navigation', { name: 'Chapters' })).getByRole('link', { name: 'Search' }))
     expect(await screen.findByRole('heading', { name: 'Search', level: 2 })).toBeTruthy()
     expect(within(screen.getByRole('group', { name: 'Topics' })).getByRole('button', { name: 'Chat' }).getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('searching with a straight apostrophe finds copy written with ’ (UX Phase 3, 3.7)', async () => {
+    mount('/w/engineering/help')
+    await screen.findByRole('heading', { name: 'Getting started', level: 2 })
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search help' }), { target: { value: "can't" } })
+    expect(await screen.findByText(/chapters? mention/)).toBeTruthy()
   })
 
   it('a link to another chapter opens it', async () => {

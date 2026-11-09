@@ -32,7 +32,7 @@ const newcomer: NewPerson = { name: '  Laila Hamdy ', email: ' Laila.Hamdy@Spark
 describe('the people directory (slice 3)', () => {
   it('lists everyone, active or not, with when each last did anything; only for whoever may change users', async () => {
     await api.users.viewAs('u-3')
-    await expect(api.users.directory()).rejects.toMatchObject({ status: 403, detail: "You don't have access to users." })
+    await expect(api.users.directory()).rejects.toMatchObject({ status: 403, detail: "You don’t have access to users." })
     const sent = await api.chat.send('c-general', 'Morning all', 'client-1')
     await api.users.viewAs('u-1')
     const people = await api.users.directory()
@@ -69,8 +69,8 @@ describe('adding and editing people (slice 3)', () => {
     expect(await detail(api.users.create({ ...newcomer, email: 'MARIAM.FATHY@spark-sys.com' }))).toBe('Mariam Fathy has that email already.')
     expect(await detail(api.users.create({ ...newcomer, title: 'x'.repeat(81) }))).toBe('A title has at most 80 characters.')
     expect(await detail(api.users.create({ ...newcomer, roleIds: [] }))).toBe('Give them at least one role.')
-    expect(await detail(api.users.create({ ...newcomer, roleIds: ['role-gone'] }))).toBe("That role doesn't exist.")
-    expect(await detail(api.users.create({ ...newcomer, teamIds: ['t-gone'] }))).toBe("That team doesn't exist.")
+    expect(await detail(api.users.create({ ...newcomer, roleIds: ['role-gone'] }))).toBe("That role doesn’t exist.")
+    expect(await detail(api.users.create({ ...newcomer, teamIds: ['t-gone'] }))).toBe("That team doesn’t exist.")
     expect((await db.read()).users).toHaveLength(9)
   })
 
@@ -117,7 +117,7 @@ describe('adding and editing people (slice 3)', () => {
 
 describe('deactivating and reactivating (slice 3)', () => {
   it('not yourself; anyone else, with a reason, which the log keeps', async () => {
-    expect(await detail(api.users.deactivate('u-1', ''))).toBe("You can't deactivate yourself.")
+    expect(await detail(api.users.deactivate('u-1', ''))).toBe("You can’t deactivate yourself.")
     expect(await detail(api.users.deactivate('u-3', 'x'.repeat(201)))).toBe('Keep the reason under 200 characters.')
     const off = await api.users.deactivate('u-3', ' Left the company ')
     expect(off.deactivated).toEqual({ at: expect.any(String), by: 'u-1', reason: 'Left the company' })

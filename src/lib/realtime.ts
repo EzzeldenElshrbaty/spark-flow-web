@@ -85,7 +85,7 @@ function createUnconnectedClient(): RealtimeClient {
     async start() {
       if (warned) return
       warned = true
-      console.warn("Real-time over SignalR isn't connected yet.")
+      console.warn("Real-time over SignalR isn’t connected yet.")
     },
     async stop() {},
     joinChannel: noop,

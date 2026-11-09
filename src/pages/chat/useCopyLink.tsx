@@ -24,7 +24,7 @@ export function useCopyLink(link: string): { copy: () => Promise<void>; say: (te
   const copy = () =>
     new Promise<void>((resolve) => resolve(navigator.clipboard.writeText(link))).then(
       () => say('Link copied'),
-      () => say("Couldn't copy the link", true),
+      () => say("Couldn’t copy the link", true),
     )
   return {
     copy,

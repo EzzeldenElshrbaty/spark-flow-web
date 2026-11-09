@@ -76,7 +76,7 @@ export function createSendQueue(deps: { send: (pending: PendingMessage) => Promi
             if (!offline && unreachable(error)) pauseAfterUnreachable()
             if (!items.some((p) => p.clientId === next.clientId)) return
             if (offline || unreachable(error)) patch(next.clientId, { status: 'queued' })
-            else patch(next.clientId, { status: 'failed', error: error instanceof ApiError ? (error.detail ?? error.message) : "Couldn't send it." })
+            else patch(next.clientId, { status: 'failed', error: error instanceof ApiError ? (error.detail ?? error.message) : "Couldn’t send it." })
           },
         )
         .finally(() => {

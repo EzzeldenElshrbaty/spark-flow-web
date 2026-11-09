@@ -28,10 +28,10 @@ const PHASE_STATUSES: readonly PhaseStatus[] = ['notStarted', 'inProgress', 'don
 
 /** A project's people and status point at things that exist. */
 function checkProjectRefs(data: DbData, project: Pick<Project, 'status' | 'managerId' | 'memberIds' | 'teamIds'>) {
-  if (!PROJECT_STATUSES.includes(project.status)) throw badRequest("That isn't a project status.")
+  if (!PROJECT_STATUSES.includes(project.status)) throw badRequest("That isn’t a project status.")
   if (!data.users.some((u) => u.id === project.managerId)) throw badRequest('Pick a project manager.')
-  if (!project.memberIds.every((id) => data.users.some((u) => u.id === id))) throw badRequest("Someone on this list doesn't exist.")
-  if (!project.teamIds.every((id) => data.teams.some((t) => t.id === id))) throw badRequest("That team doesn't exist.")
+  if (!project.memberIds.every((id) => data.users.some((u) => u.id === id))) throw badRequest("Someone on this list doesn’t exist.")
+  if (!project.teamIds.every((id) => data.teams.some((t) => t.id === id))) throw badRequest("That team doesn’t exist.")
 }
 const WATERFALL = ['Analysis', 'Design', 'Build', 'QA', 'Delivery']
 
@@ -58,8 +58,8 @@ function findPhase(data: DbData, id: string): Phase {
 
 /** A phase lies within its project's dates. */
 function checkPhaseInProject(project: Project, startDate: string, dueDate: string) {
-  if (new Date(startDate).getTime() < new Date(project.startDate).getTime()) throw badRequest("A phase can't start before the project.")
-  if (new Date(dueDate).getTime() > new Date(project.dueDate).getTime()) throw badRequest("A phase can't end after the project's due date.")
+  if (new Date(startDate).getTime() < new Date(project.startDate).getTime()) throw badRequest("A phase can’t start before the project.")
+  if (new Date(dueDate).getTime() > new Date(project.dueDate).getTime()) throw badRequest("A phase can’t end after the project’s due date.")
 }
 
 function checkDates(startDate: string, dueDate: string) {
@@ -410,7 +410,7 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
             requireCan(data, 'phase.manage', openProject(data, phase.projectId))
             const next = { ...phase, ...pickPatch(patch, PHASE_FIELDS) } as Phase
             if (!text(next.name, 'Name')) throw badRequest('Give the phase a name.')
-            if (!PHASE_STATUSES.includes(next.status)) throw badRequest("That isn't a phase status.")
+            if (!PHASE_STATUSES.includes(next.status)) throw badRequest("That isn’t a phase status.")
             checkDates(next.startDate, next.dueDate)
             const project = findProject(data, phase.projectId)
             checkPhaseInProject(project, next.startDate, next.dueDate)

@@ -54,7 +54,7 @@ describe('comments', () => {
     const before = await counts()
     const exe = file('setup.exe', ['MZ'], 'application/octet-stream')
     await expect(api.comments.create({ taskKey: 'NEX-101', kind: 'comment', body: 'x', files: [file('empty.png', [], 'image/png')] })).rejects.toMatchObject({ detail: 'That file is empty.' })
-    await expect(api.comments.create({ taskKey: 'NEX-101', kind: 'comment', body: 'x', files: [exe] })).rejects.toMatchObject({ detail: "That type of file can't be added." })
+    await expect(api.comments.create({ taskKey: 'NEX-101', kind: 'comment', body: 'x', files: [exe] })).rejects.toMatchObject({ detail: "That type of file can’t be added." })
     await expect(api.comments.create({ taskKey: 'NEX-101', kind: 'comment', body: 'x', files: Array.from({ length: 6 }, png) })).rejects.toMatchObject({ detail: 'Add up to 5 files at a time.' })
     expect(await counts()).toEqual(before)
   })

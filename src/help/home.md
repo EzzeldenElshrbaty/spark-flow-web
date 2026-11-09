@@ -2,17 +2,17 @@
 title: My work
 group: Work
 order: 1
-summary: Start your timer, see today's time, every open task of yours and who mentioned you.
+summary: Start your timer, see today’s time, every open task of yours and who mentioned you.
 ---
-My work is your day in one place: your timer and today's time, every open task assigned to you, and the latest mentions of you. It's in the sidebar under Work, after the [Dashboard](help:dashboard) you start on; on a phone, it's in **More**.
+My work is your day in one place: your timer and today’s time, every open task assigned to you, and the latest mentions of you. It’s in the sidebar under Work, after the [Dashboard](help:dashboard) you start on; on a phone, it’s in **More**.
 
 ![My work with a running timer](home.jpg "Today, with the timer on a task")
 
 ## Today
 
-Starting a timer starts your day: there's nothing else to do first. **Start timer** asks for a project, then a task (yours first), or **No task** for the whole project. The top bar has the same button on every page.
+Starting a timer starts your day: there’s nothing else to do first. **Start timer** asks for a project, then a task (yours first), or **No task** for the whole project. The top bar has the same button on every page.
 
-The first time, the dialog says what a timer start records: the time, this device's IP address and browser, and your location if your browser allows it. You, the managers of your projects and people who can see everyone's timers see them in [Attendance](help:attendance).
+The first time, the dialog says what a timer start records: the time, this device’s IP address and browser, and your location if your browser allows it. You, the managers of your projects and people who can see everyone’s timers see them in [Attendance](help:attendance).
 
 ## The timer
 
@@ -23,7 +23,7 @@ One timer runs at a time: starting another stops the last.
 - **Switch task**, while paused, starts the timer on another task.
 - A paused timer clears at the end of the day.
 
-The timer also shows in the top bar (and above the bottom bar on phones), so you can pause or stop it from any page. **Add time** logs time you didn't time. See [Time](help:time) for the rules.
+The timer also shows in the top bar (and above the bottom bar on phones), so you can pause or stop it from any page. **Add time** logs time you didn’t time. See [Time](help:time) for the rules.
 
 ## My tasks
 

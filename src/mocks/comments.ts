@@ -34,7 +34,7 @@ function ownComment(data: DbData, id: string): { comment: Comment; task: Ticket 
   if (!task) throw notFound('Ticket', comment.taskId)
   requireCan(data, 'collab.post', openProject(data, task.projectId))
   if (comment.authorId !== currentUser(data).id) throw new ApiError({ title: 'Forbidden', status: 403, detail: 'You can only change your own comments.' })
-  if (comment.deletedAt) throw badRequest("This comment can't be changed.")
+  if (comment.deletedAt) throw badRequest("This comment can’t be changed.")
   if (task.archivedAt) throw badRequest('This task is archived. Restore it first.')
   return { comment, task }
 }

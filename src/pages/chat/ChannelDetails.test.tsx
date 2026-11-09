@@ -459,7 +459,7 @@ describe('Add people with emails and teams (spec 6.10, slice 5)', () => {
     expect(options()).toEqual(['sam@client.comInvite as a guest'])
     fireEvent.keyDown(names, { key: 'Enter' })
     expect(add.getByRole('button', { name: 'Remove sam@client.com' }).parentElement!.textContent).toContain('Guest')
-    expect(add.getByText("sam@client.com isn't in Spark Systems yet. They'll get an email invite as a guest who can see #backend only.")).toBeTruthy()
+    expect(add.getByText("sam@client.com isn’t in Spark Systems yet. They’ll get an email invite as a guest who can see #backend only.")).toBeTruthy()
     await act(async () => fireEvent.click(add.getByRole('button', { name: 'Add 2 people' })))
     expect(onAdd).toHaveBeenCalledWith({ userIds: ['u-4'], emails: ['sam@client.com'] })
   })
@@ -472,7 +472,7 @@ describe('Add people with emails and teams (spec 6.10, slice 5)', () => {
       return add.getByRole('alert').textContent
     }
     expect(answer('zed')).toBe('No one in Spark Systems matches “zed”.')
-    expect(answer('sam@client')).toBe("sam@client isn't an email address.")
+    expect(answer('sam@client')).toBe("sam@client isn’t an email address.")
     expect(answer('lina@partner.io')).toBe('lina@partner.io is already invited to #backend.')
     expect(answer('nour.elsayed@spark-sys.com')).toBe('Nour El-Sayed is already in #backend.')
   })
@@ -575,7 +575,7 @@ describe('Add people after the slice 5 review', () => {
     type('zed@; nour.elsayed@spark-sys.com, mariam@client.com')
     expect(chips()).toContain('Remove mariam@client.com')
     expect((names as HTMLInputElement).value).toBe('zed@, nour.elsayed@spark-sys.com')
-    expect(add.getByRole('alert').textContent).toBe("zed@ isn't an email address.")
+    expect(add.getByRole('alert').textContent).toBe("zed@ isn’t an email address.")
   })
 
   it('what is typed and not yet a chip goes with Add, and counts; text that can’t be added stops the Add and says why', async () => {
@@ -583,7 +583,7 @@ describe('Add people after the slice 5 review', () => {
     type('om')
     fireEvent.keyDown(names, { key: 'Enter' })
     type('sam@client.com')
-    expect(add.getByText("sam@client.com isn't in Spark Systems yet. They'll get an email invite as a guest who can see #backend only.")).toBeTruthy()
+    expect(add.getByText("sam@client.com isn’t in Spark Systems yet. They’ll get an email invite as a guest who can see #backend only.")).toBeTruthy()
     await act(async () => fireEvent.click(add.getByRole('button', { name: 'Add 2 people' })))
     expect(onAdd).toHaveBeenCalledWith({ userIds: ['u-4'], emails: ['sam@client.com'] })
     cleanup()
@@ -607,7 +607,7 @@ describe('Add people errors go with their cause (slice 5 review minors)', () => 
     const type = (text: string) => fireEvent.change(names, { target: { value: text } })
     return { ...handlers, add, names, type }
   }
-  const help = "sam@client.com isn't in Spark Systems yet. They'll get an email invite as a guest who can see #backend only."
+  const help = "sam@client.com isn’t in Spark Systems yet. They’ll get an email invite as a guest who can see #backend only."
 
   it('removing the chip a refusal was about takes the refusal away', async () => {
     const { add, names, type } = openAdd({ onAdd: vi.fn(async () => Promise.reject(new Error('Everyone you picked is already in #backend or invited.'))) })

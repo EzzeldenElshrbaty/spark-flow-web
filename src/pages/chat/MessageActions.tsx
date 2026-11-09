@@ -182,7 +182,7 @@ export function MessageMenu({
         open={confirming}
         onClose={() => setConfirming(false)}
         title="Delete message?"
-        description="Replies in its thread stay. Its files go from this message but stay wherever else they're shared."
+        description="Replies in its thread stay. Its files go from this message but stay wherever else they’re shared."
         footer={
           <>
             <SfButton onClick={() => setConfirming(false)}>Cancel</SfButton>

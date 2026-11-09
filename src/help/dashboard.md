@@ -2,15 +2,15 @@
 title: Dashboard
 group: Work
 order: 0
-summary: Your projects at a glance: hours, tasks by status, overdue tasks, each project's progress, and who is working now.
+summary: Your projects at a glance: hours, tasks by status, overdue tasks, each project’s progress, and who is working now.
 ---
-Everyone has a Dashboard, and it's where you start: after signing in, from the logo, and on the Projects side the first time. It shows the projects you manage or work on, as a member or through a team. People who can see the dashboard for every project see them all. If you're on no project yet, it says so.
+Everyone has a Dashboard, and it’s where you start: after signing in, from the logo, and on the Projects side the first time. It shows the projects you manage or work on, as a member or through a team. People who can see the dashboard for every project see them all. If you’re on no project yet, it says so.
 
-![The Dashboard](dashboard.jpg "Hours, tasks and the projects you're on")
+![The Dashboard](dashboard.jpg "Hours, tasks and the projects you’re on")
 
 ## The charts
 
-- **Hours per day**: the last 14 days. Red is everyone else's time on these projects, grey is yours. The title says the total.
+- **Hours per day**: the last 14 days. Red is everyone else’s time on these projects, grey is yours. The title says the total.
 - **Tasks by status**: the tasks to do and in progress now, and the ones done in the last 14 days.
 - **Hours by project**: the last 14 days, the most first.
 
@@ -22,8 +22,8 @@ Overdue tasks first (past their due date, soonest due first), then tasks over th
 
 ## The projects
 
-Each project shows its phase, progress, hours against its estimate, the expected finish date, and its hours this week. Its manager, and people who can see everyone's time or every project, also see who logged them; anyone else sees their own. People who can see cost also see each project's cost.
+Each project shows its phase, progress, hours against its estimate, the expected finish date, and its hours this week. Its manager, and people who can see everyone’s time or every project, also see who logged them; anyone else sees their own. People who can see cost also see each project’s cost.
 
 ## Working now
 
-Who has a timer running, since when, and what it's on. People who can see everyone's timers see every one; a project's manager sees the timers on the projects they manage. A paused timer isn't listed. More is in [Attendance](help:attendance).
+Who has a timer running, since when, and what it’s on. People who can see everyone’s timers see every one; a project’s manager sees the timers on the projects they manage. A paused timer isn’t listed. More is in [Attendance](help:attendance).

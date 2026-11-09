@@ -105,7 +105,7 @@ describe('chat.messages', () => {
   })
 
   it('throws ApiError 404 for an unknown channel', async () => {
-    await expect(api.chat.messages('nope')).rejects.toMatchObject({ status: 404, detail: "Channel nope doesn't exist." })
+    await expect(api.chat.messages('nope')).rejects.toMatchObject({ status: 404, detail: "Channel nope doesn’t exist." })
   })
 })
 
@@ -161,7 +161,7 @@ describe('chat.channels and unreadCount', () => {
   })
 
   it('throws ApiError 404 for an unknown workspace', async () => {
-    await expect(api.chat.channels('nope')).rejects.toMatchObject({ status: 404, detail: "Workspace nope doesn't exist." })
+    await expect(api.chat.channels('nope')).rejects.toMatchObject({ status: 404, detail: "Workspace nope doesn’t exist." })
   })
 })
 
@@ -178,7 +178,7 @@ describe('chat.message and replies', () => {
   })
 
   it('throws ApiError 404 for an unknown message', async () => {
-    await expect(api.chat.message('nope')).rejects.toMatchObject({ status: 404, detail: "Message nope doesn't exist." })
+    await expect(api.chat.message('nope')).rejects.toMatchObject({ status: 404, detail: "Message nope doesn’t exist." })
     await expect(api.chat.replies('nope')).rejects.toMatchObject({ status: 404 })
   })
 })
@@ -276,8 +276,8 @@ describe('send and reply', () => {
     await expect(api.chat.send('c-general', '  ')).rejects.toMatchObject({ status: 400, detail: 'Write a message first.' })
     await expect(api.chat.send('c-general', 'x'.repeat(40_001))).rejects.toMatchObject({ detail: 'Keep the message under 40000 characters.' })
     await api.users.viewAs('u-8') // Tarek: not on Nexus Core, not in the DM
-    await expect(api.chat.send('c-p-nex', 'x')).rejects.toMatchObject({ status: 403, detail: "You don't have access to this project." })
-    await expect(api.chat.send('c-dm-1', 'x')).rejects.toMatchObject({ status: 403, detail: "You're not in this channel." })
+    await expect(api.chat.send('c-p-nex', 'x')).rejects.toMatchObject({ status: 403, detail: "You don’t have access to this project." })
+    await expect(api.chat.send('c-dm-1', 'x')).rejects.toMatchObject({ status: 403, detail: "You’re not in this channel." })
     expect((await db.read()).messages.filter((m) => m.senderId === 'u-8' && m.content === 'x')).toHaveLength(0)
   })
 
@@ -340,7 +340,7 @@ describe('message actions', () => {
   it('react on a private channel I am not in is refused', async () => {
     const sent = await api.chat.send('c-release', 'Go/no-go at 4')
     await api.users.viewAs('u-3') // Mariam: not in #release-v2
-    await expect(api.chat.react(msg(sent), '👍', true)).rejects.toMatchObject({ status: 403, detail: "You're not in this channel." })
+    await expect(api.chat.react(msg(sent), '👍', true)).rejects.toMatchObject({ status: 403, detail: "You’re not in this channel." })
   })
 
   it('edit re-parses mentions and keys, sets editedAt, keeps keys of tasks made from it', async () => {
@@ -375,7 +375,7 @@ describe('message actions', () => {
     await api.users.viewAs('u-4') // Ahmed manages Mobile App
     await api.comments.create({ taskKey: 'MOB-104', kind: 'comment', body: 'Looks good', files: [] })
     const card = (await db.read()).messages.find((m) => m.commentId && m.senderId === 'u-4')!
-    await expect(api.chat.edit(msg(card), 'Changed')).rejects.toMatchObject({ status: 400, detail: "This message can't be changed." })
+    await expect(api.chat.edit(msg(card), 'Changed')).rejects.toMatchObject({ status: 400, detail: "This message can’t be changed." })
     await expect(api.chat.remove(msg(card))).rejects.toMatchObject({ status: 400 })
   })
 
@@ -465,7 +465,7 @@ describe('channels', () => {
 
   it('project channels and DMs refuse edits', async () => {
     await expect(api.chat.updateChannel('c-p-nex', { topic: 'x' })).rejects.toMatchObject({ status: 400, detail: 'This channel follows its project.' })
-    await expect(api.chat.updateChannel('c-dm-1', { topic: 'x' })).rejects.toMatchObject({ status: 400, detail: "Direct messages can't be edited." })
+    await expect(api.chat.updateChannel('c-dm-1', { topic: 'x' })).rejects.toMatchObject({ status: 400, detail: "Direct messages can’t be edited." })
   })
 
 
@@ -480,7 +480,7 @@ describe('channels', () => {
 
   it('channel() and messages() of a private channel I am not in are refused', async () => {
     await api.users.viewAs('u-3')
-    await expect(api.chat.channel('c-release')).rejects.toMatchObject({ status: 403, detail: "You're not in this channel." })
+    await expect(api.chat.channel('c-release')).rejects.toMatchObject({ status: 403, detail: "You’re not in this channel." })
     await expect(api.chat.messages('c-release')).rejects.toMatchObject({ status: 403 })
   })
 })
@@ -490,7 +490,7 @@ describe('a private thread', () => {
     const secret = await api.chat.send('c-release', 'the secret')
     await api.chat.reply(secret.id, 'secret reply')
     await api.users.viewAs('u-3') // Mariam: not in #release-v2
-    await expect(api.chat.message(secret.id)).rejects.toMatchObject({ status: 403, detail: "You're not in this channel." })
+    await expect(api.chat.message(secret.id)).rejects.toMatchObject({ status: 403, detail: "You’re not in this channel." })
     await expect(api.chat.replies(secret.id)).rejects.toMatchObject({ status: 403 })
     await expect(api.chat.markRead('c-release')).rejects.toMatchObject({ status: 403 })
   })
@@ -583,7 +583,7 @@ describe('archiving channels', () => {
   })
   it("a project channel and a DM can't be archived here", async () => {
     await expect(api.chat.archiveChannel('c-p-nex')).rejects.toMatchObject({ status: 400, detail: 'This channel follows its project.' })
-    await expect(api.chat.archiveChannel('c-dm-1')).rejects.toMatchObject({ status: 400, detail: "Conversations can't be archived." })
+    await expect(api.chat.archiveChannel('c-dm-1')).rejects.toMatchObject({ status: 400, detail: "Conversations can’t be archived." })
   })
   it("a non-member of a private channel can't archive it", async () => {
     await api.users.viewAs('u-3') // not in #release-v2
@@ -612,14 +612,14 @@ describe('joining and leaving channels', () => {
   })
   it('leave a project channel or a DM is refused', async () => {
     await expect(api.chat.leave('c-p-nex')).rejects.toMatchObject({ status: 400, detail: 'This channel follows its project.' })
-    await expect(api.chat.leave('c-dm-1')).rejects.toMatchObject({ status: 400, detail: "You can't leave a conversation." })
+    await expect(api.chat.leave('c-dm-1')).rejects.toMatchObject({ status: 400, detail: "You can’t leave a conversation." })
   })
 })
 
 describe('admins and private channels', () => {
   it("an Admin not in a private channel can't edit or archive it", async () => {
     await db.update((d) => void (d.channels.find((c) => c.id === 'c-release')!.memberIds = ['u-2', 'u-4']))
-    const refused = { status: 403, detail: "You're not in this channel." }
+    const refused = { status: 403, detail: "You’re not in this channel." }
     await expect(api.chat.updateChannel('c-release', { topic: 'x' })).rejects.toMatchObject(refused)
     await expect(api.chat.archiveChannel('c-release')).rejects.toMatchObject(refused)
   })
@@ -730,7 +730,7 @@ describe('read state by seq (spec §7 ChannelMember, §8 read marker)', () => {
   it('markUnread refuses a seq that is no message of the channel, and a channel I may not read', async () => {
     const { lastSeq } = await api.chat.channel('c-frontend')
     for (const seq of [0, lastSeq + 1, 1.5]) {
-      await expect(api.chat.markUnread('c-frontend', seq)).rejects.toMatchObject({ status: 400, detail: "That message isn't in this channel." })
+      await expect(api.chat.markUnread('c-frontend', seq)).rejects.toMatchObject({ status: 400, detail: "That message isn’t in this channel." })
     }
     await expect(api.chat.markUnread('nope', 1)).rejects.toMatchObject({ status: 404 })
     await api.chat.send('c-release', 'the secret')
@@ -893,7 +893,7 @@ describe('sending a body from the composer, and drafts (spec 6.8, §7)', () => {
   })
 
   it('a body that is not one, or is empty, is refused', async () => {
-    await expect(api.chat.send('c-backend', 'x', undefined, [{ type: 'p', children: [{ type: 'link', href: 'javascript:x', text: 'x' }] }] as never)).rejects.toMatchObject({ status: 400, detail: "That message couldn't be read." })
+    await expect(api.chat.send('c-backend', 'x', undefined, [{ type: 'p', children: [{ type: 'link', href: 'javascript:x', text: 'x' }] }] as never)).rejects.toMatchObject({ status: 400, detail: "That message couldn’t be read." })
     await expect(api.chat.send('c-backend', '', undefined, body('   '))).rejects.toMatchObject({ status: 400, detail: 'Write a message first.' })
   })
 
@@ -960,7 +960,7 @@ describe('delete with Undo, admin delete, edit with a body (spec 6.3, §8 restor
 
   it('restore is refused once the window has passed, by someone else, or for a message that is not deleted', async () => {
     const sent = await api.chat.send('c-backend', 'gone for good')
-    await expect(api.chat.restore(target(sent))).rejects.toMatchObject({ status: 400, detail: "This message isn't deleted." })
+    await expect(api.chat.restore(target(sent))).rejects.toMatchObject({ status: 400, detail: "This message isn’t deleted." })
     await api.chat.remove(target(sent))
     await api.users.viewAs('u-2')
     await expect(api.chat.restore(target(sent))).rejects.toMatchObject({ status: 403 })
@@ -968,7 +968,7 @@ describe('delete with Undo, admin delete, edit with a body (spec 6.3, §8 restor
     await db.update((d) => {
       for (const t of d.trash) t.at = new Date(Date.now() - 60_000).toISOString()
     })
-    await expect(api.chat.restore(target(sent))).rejects.toMatchObject({ status: 400, detail: "It's too late to undo that." })
+    await expect(api.chat.restore(target(sent))).rejects.toMatchObject({ status: 400, detail: "It’s too late to undo that." })
   })
 
   it('an admin may delete anyone’s message (not edit it); others only their own (spec §9)', async () => {

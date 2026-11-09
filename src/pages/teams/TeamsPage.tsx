@@ -47,7 +47,7 @@ function MemberRow({ user, workspaceId, workspaceSlug, canMessage }: { user: Use
       </div>
       {open.isError && (
         <p role="alert" className="mt-1 ps-11 text-xs text-red-600 dark:text-red-400">
-          {(open.error as Error).message || "Couldn't open the conversation."}
+          {(open.error as Error).message || "Couldn’t open the conversation."}
         </p>
       )}
     </li>
@@ -185,7 +185,7 @@ export function TeamsPage() {
       <ConfirmDeleteSheet
         open={removing !== null}
         title={`Remove ${removing?.name ?? ''}?`}
-        description="Its people stay; they leave the team. A team a project still uses can't be removed."
+        description="Its people stay; they leave the team. A team a project still uses can’t be removed."
         actionLabel="Remove team"
         pendingLabel="Removing…"
         onConfirm={() => remove.mutateAsync(removing!.id)}

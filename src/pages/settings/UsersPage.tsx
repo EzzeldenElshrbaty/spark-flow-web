@@ -369,7 +369,7 @@ function PersonSheet({
             </Button>
             {reactivate.isError && (
               <p role="alert" className="m-0 w-full text-sm text-red-600 dark:text-red-400">
-                {reactivate.error.message || "Couldn't reactivate them. Try again."}
+                {reactivate.error.message || "Couldn’t reactivate them. Try again."}
               </p>
             )}
           </div>
@@ -476,7 +476,7 @@ function DeactivateSheet({ person, onClose }: { person: PersonRow; onClose: () =
     >
       <div className="space-y-4">
         <ul className="m-0 list-disc space-y-1 ps-5 text-sm text-fg-secondary">
-          <li>They're signed out and leave every picker and View as.</li>
+          <li>They’re signed out and leave every picker and View as.</li>
           <li>A timer they have running stops.</li>
           <li>Their work, time and messages stay. You can reactivate them later.</li>
         </ul>

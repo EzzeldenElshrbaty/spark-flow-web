@@ -76,7 +76,7 @@ export function needsALook(events: AuditEvent[], now: Date): AuditAlert[] {
       alerts.push({ tone: 'amber', at: e.at, seq: e.seq, text })
     } else if (e.record?.type === 'user' && e.changes.some((c) => c.field === 'Roles')) {
       const roles = e.changes.find((c) => c.field === 'Roles')!
-      alerts.push({ tone: 'amber', at: e.at, seq: e.seq, text: `${e.actorName} changed ${e.record.name}'s roles: ${roles.from ?? '—'} → ${roles.to ?? '—'}` })
+      alerts.push({ tone: 'amber', at: e.at, seq: e.seq, text: `${e.actorName} changed ${e.record.name}’s roles: ${roles.from ?? '—'} → ${roles.to ?? '—'}` })
     } else if (e.action === 'exported' && e.record?.type === 'data') {
       alerts.push({ tone: 'amber', at: e.at, seq: e.seq, text: `${e.actorName} exported all the demo data` })
     }
@@ -107,7 +107,7 @@ export function auditApi(db: MockDb, now: () => Date = () => new Date()): Api['a
       const data = await db.read()
       requireView(data)
       const before = cursor ? Number(cursor) : Infinity
-      if (cursor && !Number.isFinite(before)) throw badRequest("That page doesn't exist.")
+      if (cursor && !Number.isFinite(before)) throw badRequest("That page doesn’t exist.")
       const all = filtered(data, filter).filter((e) => e.seq < before)
       const items = all.slice(0, PAGE)
       const pool = data.audit.filter((e) => matches(e, filter, false))
@@ -164,7 +164,7 @@ export function auditApi(db: MockDb, now: () => Date = () => new Date()): Api['a
     },
     async noteExport(what, detail) {
       await delay()
-      if (what !== 'timeCost') throw badRequest("That report doesn't exist.")
+      if (what !== 'timeCost') throw badRequest("That report doesn’t exist.")
       await db.update((data) => {
         const me = currentUser(data)
         if (!can('timeCost.view', { userId: me.id, grants: grantsFor(data, me) })) throw forbidden('time and cost')

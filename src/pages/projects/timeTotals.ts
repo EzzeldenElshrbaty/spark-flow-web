@@ -37,7 +37,7 @@ export function timeHeading(everyone: boolean, shown: { hours: number; cost: num
 /** What an empty Time tab says: when only your own entries show, the project may still have time from others. */
 export function emptyTimeText(everyone: boolean, projectHours: number): string {
   if (everyone || projectHours <= 0) return 'No time logged yet.'
-  return `You haven't logged time here. The project has ${tenth(projectHours)}h logged.`
+  return `You haven’t logged time here. The project has ${tenth(projectHours)}h logged.`
 }
 
 /** The "only you and the manager" line: for people who see only their own entries, once the account is known. */

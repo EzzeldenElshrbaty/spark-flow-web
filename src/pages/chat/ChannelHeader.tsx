@@ -43,7 +43,7 @@ export type ChannelHeaderProps = {
 export function ChannelHeader({ channel, title, members, rights, onDetails, onStar, onMute, onNotifyLevel, preferences, onMarkRead, onCopyLink, onLeave, onArchive, onSearch }: ChannelHeaderProps) {
   const phone = usePhone()
   // What Copy link did, said next to the menu for a moment; there are no toasts outside Undo.
-  const [copied, setCopied] = useState<'' | 'Link copied' | "Couldn't copy the link">('')
+  const [copied, setCopied] = useState<'' | 'Link copied' | "Couldn’t copy the link">('')
   useEffect(() => {
     if (!copied) return
     const timer = setTimeout(() => setCopied(''), COPIED_MS)
@@ -137,7 +137,7 @@ export function ChannelHeader({ channel, title, members, rights, onDetails, onSt
             onSelect={() => {
               onCopyLink().then(
                 () => setCopied('Link copied'),
-                () => setCopied("Couldn't copy the link"),
+                () => setCopied("Couldn’t copy the link"),
               )
             }}
           >

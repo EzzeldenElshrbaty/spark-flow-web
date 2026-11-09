@@ -171,7 +171,7 @@ export function RolesPage() {
       <ConfirmDeleteSheet
         open={deleting !== null}
         title={`Delete ${deleting?.name ?? ''}?`}
-        description="Nobody holds this role. Deleting it can't be undone."
+        description="Nobody holds this role. Deleting it can’t be undone."
         actionLabel="Delete role"
         onConfirm={() => remove.mutateAsync(deleting!.id)}
         onClose={() => setDeleting(null)}
@@ -319,7 +319,7 @@ function AddRoleSheet({ roles, onClose }: { roles: Role[]; onClose: () => void }
       dirty={name.trim() !== '' || copyFrom !== ''}
       discardQuestion="Discard this new role?"
       title="Add role"
-      description="It starts with no permissions, or with another role's."
+      description="It starts with no permissions, or with another role’s."
       footer={
         <>
           <SheetCancelButton />

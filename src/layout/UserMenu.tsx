@@ -147,7 +147,7 @@ export function UserMenu() {
           <MenuHeading>View as</MenuHeading>
           {viewAs.isError && (
             <p role="alert" className="sf-small m-0 px-4 pb-1 text-sf-error">
-              Switching didn't work. Try again.
+              Switching didn’t work. Try again.
             </p>
           )}
           {/* Nobody deactivated (slice 3): they can't act. */}

@@ -195,7 +195,7 @@ export function ProjectPage() {
       )}
 
       {chat ? null : phases.isError ? (
-        <p className="mb-5 text-sm text-red-600 dark:text-red-400">Phases couldn't be loaded.</p>
+        <p className="mb-5 text-sm text-red-600 dark:text-red-400">Phases couldn’t be loaded.</p>
       ) : phases.isPending ? (
         <div className="mb-5 h-11 animate-pulse rounded-lg bg-surface-muted" aria-hidden />
       ) : stages.length > 0 ? (
@@ -266,7 +266,7 @@ export function ProjectPage() {
         open={openSheet === 'archive'}
         tone="primary"
         title={`Archive ${project.name}?`}
-        description="It leaves the lists and the dashboard, and nothing in it can change until it's restored. Its time stays in reports."
+        description="It leaves the lists and the dashboard, and nothing in it can change until it’s restored. Its time stays in reports."
         actionLabel="Archive project"
         pendingLabel="Archiving…"
         askWhy

@@ -30,10 +30,10 @@ describe('UploadTray (spec 6.9 pending tray)', () => {
 
   it('a failed card says why, with Retry; refusals show above the cards', () => {
     const onRetry = vi.fn()
-    render(<UploadTray uploads={[item('scope.pdf', { status: 'failed', error: "Couldn't reach the server" })]} refused={["run.exe: this type of file can't be added."]} onRemove={vi.fn()} onRetry={onRetry} />)
-    expect(screen.getByRole('alert').textContent).toBe("run.exe: this type of file can't be added.")
+    render(<UploadTray uploads={[item('scope.pdf', { status: 'failed', error: "Couldn’t reach the server" })]} refused={["run.exe: this type of file can’t be added."]} onRemove={vi.fn()} onRetry={onRetry} />)
+    expect(screen.getByRole('alert').textContent).toBe("run.exe: this type of file can’t be added.")
     const card = screen.getByRole('listitem')
-    expect(card.textContent).toContain("Couldn't reach the server")
+    expect(card.textContent).toContain("Couldn’t reach the server")
     fireEvent.click(within(card).getByRole('button', { name: 'Retry scope.pdf' }))
     expect(onRetry).toHaveBeenCalledWith('scope.pdf')
   })

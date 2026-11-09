@@ -9,8 +9,8 @@ const v = (over: Partial<ManualEntryValues> = {}): ManualEntryValues => ({ day: 
 describe('manualEntryErrors', () => {
   it('uses the same sentences as the server', () => {
     expect(manualEntryErrors(v({ start: '09:00', end: '09:00' }), now)).toEqual({ end: 'The end is before the start.' })
-    expect(manualEntryErrors(v({ start: '22:00', end: '01:00' }), now)).toEqual({ end: "An entry can't run past midnight. Add it as two entries." })
-    expect(manualEntryErrors(v({ start: '17:00', end: '19:00' }), now)).toEqual({ end: "Time can't be logged in the future." })
+    expect(manualEntryErrors(v({ start: '22:00', end: '01:00' }), now)).toEqual({ end: "An entry can’t run past midnight. Add it as two entries." })
+    expect(manualEntryErrors(v({ start: '17:00', end: '19:00' }), now)).toEqual({ end: "Time can’t be logged in the future." })
     expect(manualEntryErrors(v({ start: '05:00', end: '17:30' }), now)).toEqual({ end: 'One entry can be up to 12 hours.' })
     expect(manualEntryErrors(v({ note: 'x'.repeat(201) }), now)).toEqual({ note: 'Keep the note under 200 characters.' })
     expect(manualEntryErrors(v({ projectId: '', taskId: null }), now)).toEqual({ task: 'Pick a project.' })

@@ -59,7 +59,7 @@ describe('Shift+Esc: Mark everything read (spec 10)', () => {
     vi.spyOn(api.chat, 'markRead').mockImplementation(async (id) => (id === 'd' ? Promise.reject(new Error('no')) : undefined))
     const onClose = show([channel('a', 2), channel('d', 1)])
     fireEvent.click(screen.getByRole('button', { name: 'Mark all read' }))
-    expect(await screen.findByText("Couldn't mark 1 of them read. Try again.")).toBeTruthy()
+    expect(await screen.findByText("Couldn’t mark 1 of them read. Try again.")).toBeTruthy()
     expect(onClose).not.toHaveBeenCalled()
   })
 
@@ -70,7 +70,7 @@ describe('Shift+Esc: Mark everything read (spec 10)', () => {
     useReadHold.getState().hold('a')
     show([channel('a', 2), channel('d', 1)], client)
     fireEvent.click(screen.getByRole('button', { name: 'Mark all read' }))
-    await screen.findByText("Couldn't mark 1 of them read. Try again.")
+    await screen.findByText("Couldn’t mark 1 of them read. Try again.")
     expect(useReadHold.getState().channelId).toBeNull()
     expect(refresh).toHaveBeenCalled()
   })
@@ -80,7 +80,7 @@ describe('Shift+Esc: Mark everything read (spec 10)', () => {
     useReadHold.getState().hold('d')
     show([channel('a', 2), channel('d', 1)])
     fireEvent.click(screen.getByRole('button', { name: 'Mark all read' }))
-    await screen.findByText("Couldn't mark 1 of them read. Try again.")
+    await screen.findByText("Couldn’t mark 1 of them read. Try again.")
     expect(useReadHold.getState().channelId).toBe('d')
   })
 

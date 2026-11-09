@@ -238,8 +238,8 @@ describe('createHttpApi', () => {
   })
 
   it('a refused audit export fails as an ApiError, like any call', async () => {
-    const api = createHttpApi(fetchReturning(403, { title: 'Forbidden', detail: "You don't have access to the audit log." }))
-    await expect(api.audit.export({})).rejects.toMatchObject({ status: 403, detail: "You don't have access to the audit log." })
+    const api = createHttpApi(fetchReturning(403, { title: 'Forbidden', detail: "You don’t have access to the audit log." }))
+    await expect(api.audit.export({})).rejects.toMatchObject({ status: 403, detail: "You don’t have access to the audit log." })
   })
 
   it('maps the M1 writes to their routes, methods and bodies', async () => {
@@ -470,10 +470,10 @@ describe('createHttpApi', () => {
 
 describe('request', () => {
   it('turns ProblemDetails into ApiError', async () => {
-    const failing = fetchReturning(404, { title: 'Not found', status: 404, detail: "Ticket NEX-9 doesn't exist." })
+    const failing = fetchReturning(404, { title: 'Not found', status: 404, detail: "Ticket NEX-9 doesn’t exist." })
     const error = await request('/api/x', undefined, failing).catch((e: unknown) => e)
     expect(error).toBeInstanceOf(ApiError)
-    expect(error).toMatchObject({ status: 404, title: 'Not found', message: "Ticket NEX-9 doesn't exist." })
+    expect(error).toMatchObject({ status: 404, title: 'Not found', message: "Ticket NEX-9 doesn’t exist." })
   })
 
   it('handles a non-JSON error body', async () => {
@@ -496,7 +496,7 @@ describe('request', () => {
     await expect(request('/api/x', undefined, down)).rejects.toMatchObject({
       name: 'ApiError',
       status: 0,
-      title: "Couldn't reach the server",
+      title: "Couldn’t reach the server",
     })
   })
 
@@ -619,6 +619,6 @@ describe('uploading a chat file over HTTP (spec §8)', () => {
     const fetchFn = (async () => new Response(JSON.stringify({ file: { id: 'a1' }, uploadUrl: 'https://storage.example/put/a1' }), { status: 200 })) as typeof fetch
     const api = createHttpApi(fetchFn, fakeXhr(403).make)
     const blob = Object.assign(new Blob(['x']), { name: 'x.txt' })
-    await expect(api.files.uploadForChat('c1', blob)).rejects.toMatchObject({ status: 403, title: "Couldn't upload the file" })
+    await expect(api.files.uploadForChat('c1', blob)).rejects.toMatchObject({ status: 403, title: "Couldn’t upload the file" })
   })
 })

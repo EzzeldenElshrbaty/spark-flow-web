@@ -83,12 +83,12 @@ describe('the sign-in page', () => {
   })
 
   it('a refusal shows under the form', async () => {
-    vi.spyOn(api.auth, 'signIn').mockRejectedValue(new ApiError({ title: 'Bad request', status: 400, detail: "That email and password don't match." }))
+    vi.spyOn(api.auth, 'signIn').mockRejectedValue(new ApiError({ title: 'Bad request', status: 400, detail: "That email and password don’t match." }))
     mount()
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'x@spark-sys.com' } })
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'nope' } })
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }))
-    expect((await screen.findByRole('alert')).textContent).toBe("That email and password don't match.")
+    expect((await screen.findByRole('alert')).textContent).toBe("That email and password don’t match.")
   })
 
   it('after a deactivation, says why I was signed out', async () => {

@@ -101,9 +101,9 @@ describe('Activity (spec 6.12)', () => {
   })
 
   it('while marking it says so, and a failure is said beside it', () => {
-    show({ marking: true, markError: "Couldn't mark them read. Try again." })
+    show({ marking: true, markError: "Couldn’t mark them read. Try again." })
     expect((screen.getByRole('button', { name: 'Marking…' }) as HTMLButtonElement).disabled).toBe(true)
-    expect(screen.getByRole('alert').textContent).toBe("Couldn't mark them read. Try again.")
+    expect(screen.getByRole('alert').textContent).toBe("Couldn’t mark them read. Try again.")
   })
 
   it('a task comment names the task and opens it', () => {

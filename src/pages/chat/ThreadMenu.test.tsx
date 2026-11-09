@@ -58,7 +58,7 @@ describe('the thread panel’s ⋮ (spec 6.7)', () => {
   it('a copy the browser refuses says so, and the words stay', async () => {
     Object.defineProperty(navigator, 'clipboard', { value: { writeText: vi.fn(async () => Promise.reject(new Error('denied'))) }, configurable: true })
     fireEvent.click(within(show()).getByRole('menuitem', { name: 'Copy link' }))
-    expect(await screen.findByText("Couldn't copy the link", { selector: 'p' })).toBeTruthy()
+    expect(await screen.findByText("Couldn’t copy the link", { selector: 'p' })).toBeTruthy()
   })
 
   it('Open in a new window opens the thread’s link there', () => {

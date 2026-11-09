@@ -9,13 +9,12 @@ import { ConfirmDeleteSheet } from '@/components/ConfirmDeleteSheet'
 import { RowMenu } from '@/components/RowMenu'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { FileViewer } from '@/components/ui/FileViewer'
-import { acceptedFiles, allowedFilesHint } from '@/lib/fileTypes'
+import { acceptedFiles, allowedFilesHint, sizeText } from '@/lib/fileTypes'
 import { timeAgo } from '@/lib/format'
 import { rowLabel } from './uploadQueue'
 import { useUploadQueue } from './useUploadQueue'
 import { IconButton } from '@/components/ui/IconButton'
 
-const sizeText = (bytes: number) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`)
 
 /**
  * The project's files: a list that opens each in the viewer, and a drop zone for people who can post. Dropped files go
@@ -41,7 +40,7 @@ export function ProjectFiles({ projectId, people, canUpload, canManage }: { proj
       const url = await openFile(f.attachment.id)
       setViewing({ id: f.attachment.id, name: f.attachment.name, url, sizeKb: Math.round(f.attachment.size / 1024) })
     } catch {
-      setOpenError(`${f.attachment.name} couldn't be opened. Try again.`)
+      setOpenError(`${f.attachment.name} couldn’t be opened. Try again.`)
     }
   }
   const close = () => {
@@ -57,7 +56,7 @@ export function ProjectFiles({ projectId, people, canUpload, canManage }: { proj
         {files.isPending ? (
           <div className="h-12 animate-pulse rounded-lg bg-surface-muted" aria-hidden />
         ) : files.isError ? (
-          <p className="text-sm text-red-600 dark:text-red-400">Files couldn't be loaded.</p>
+          <p className="text-sm text-red-600 dark:text-red-400">Files couldn’t be loaded.</p>
         ) : files.data.length === 0 && rows.length === 0 ? (
           <p className="text-sm text-fg-muted">No files yet.</p>
         ) : (
@@ -143,7 +142,7 @@ export function ProjectFiles({ projectId, people, canUpload, canManage }: { proj
       <ConfirmDeleteSheet
         open={removing !== null}
         title={`Remove ${removing?.attachment.name ?? 'file'}?`}
-        description="It's removed for everyone on the project."
+        description="It’s removed for everyone on the project."
         actionLabel="Remove file"
         pendingLabel="Removing…"
         onConfirm={() => remove.mutateAsync({ projectId: removing!.projectId, fileId: removing!.attachmentId })}

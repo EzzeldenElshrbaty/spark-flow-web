@@ -11,7 +11,7 @@ The audit log records every change in Flow: who, when, from which IP and device,
 
 ## Reading it
 
-Search, or narrow by kind (data, status and archive, access, settings, exports), person, result and period. Click an entry to see each change, from and to. **Needs a look** at the top points out what's unusual, such as several failed sign-ins in a few minutes.
+Search, or narrow by kind (data, status and archive, access, settings, exports), person, result and period. Click an entry to see each change, from and to. **Needs a look** at the top points out what’s unusual, such as several failed sign-ins in a few minutes.
 
 ## The tamper check
 

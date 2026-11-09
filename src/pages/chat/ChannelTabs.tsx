@@ -87,7 +87,7 @@ export function ChannelTabs({
 }
 
 const STUBS: Record<Exclude<ChannelTab, 'messages' | 'pins' | 'files'>, string> = {
-  page: "This channel's page will live here.",
+  page: "This channel’s page will live here.",
 }
 
 /** What Page shows until it's built (Phase 4). */

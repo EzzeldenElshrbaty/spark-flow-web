@@ -643,10 +643,10 @@ describe('RichComposer / shortcuts (spec 6.8)', () => {
   it('an unknown /word keeps the text and says why; one offered elsewhere says it does not work here', async () => {
     const { editor, onSend, run } = await withSlash()
     await userEvent.keyboard('/foo bar{Enter}')
-    await vi.waitFor(() => expect(screen.getByRole('status').textContent).toBe("/foo isn't a shortcut. To send it as a message, start it with a space."))
+    await vi.waitFor(() => expect(screen.getByRole('status').textContent).toBe("/foo isn’t a shortcut. To send it as a message, start it with a space."))
     expect(editor.textContent).toBe('/foo bar')
     await userEvent.keyboard('{Control>}a{/Control}{Backspace}/task Fix it{Enter}')
-    await vi.waitFor(() => expect(screen.getByRole('status').textContent).toBe("/task doesn't work here. To send it as a message, start it with a space."))
+    await vi.waitFor(() => expect(screen.getByRole('status').textContent).toBe("/task doesn’t work here. To send it as a message, start it with a space."))
     expect(run).not.toHaveBeenCalled()
     expect(onSend).not.toHaveBeenCalled()
   })

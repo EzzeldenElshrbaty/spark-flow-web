@@ -60,7 +60,7 @@ export function useUploadQueue<T>(
         latest.current.onDone(result, { id, name: job.file.name, state: 'done', error: null, tag: job.tag })
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') setRow(id, { state: 'cancelled' })
-        else setRow(id, { state: 'failed', error: (error as Error).message || "Couldn't upload." })
+        else setRow(id, { state: 'failed', error: (error as Error).message || "Couldn’t upload." })
       }
     }
     running.current = false

@@ -39,9 +39,9 @@ vi.mock('@/pages/chat/ChannelMessage', () => ({ ChannelMessage: () => null }))
 
 describe('ThreadInspector when I’m taken off the channel (review)', () => {
   it('a channel that answers 403 says I’m not in it, with no Retry that can’t work', () => {
-    channelError = new ApiError({ title: 'Forbidden', status: 403, detail: "You're not in this channel." })
+    channelError = new ApiError({ title: 'Forbidden', status: 403, detail: "You’re not in this channel." })
     render(<MemoryRouter><ThreadInspector messageId="m1" onClose={() => {}} closeTo="/w/engineering" /></MemoryRouter>)
-    expect(screen.getByText("You're not in this channel.")).toBeTruthy()
+    expect(screen.getByText("You’re not in this channel.")).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Retry|Try again/ })).toBeNull()
   })
 })

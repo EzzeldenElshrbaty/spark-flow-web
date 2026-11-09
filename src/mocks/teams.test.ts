@@ -26,9 +26,9 @@ describe('teams (UX Phase 2, 2.4)', () => {
     const made = await api.teams.create('ws-eng', '  Data ')
     expect(made).toMatchObject({ name: 'Data', workspaceId: 'ws-eng', memberIds: [] })
     expect((await api.teams.list('ws-eng')).map((t) => t.name)).toContain('Data')
-    expect(await detail(api.teams.create('ws-eng', 'data'))).toBe("400 There's already a team called data.")
+    expect(await detail(api.teams.create('ws-eng', 'data'))).toBe("400 There’s already a team called data.")
     expect(await detail(api.teams.create('ws-eng', '   '))).toBe('400 Name the team.')
-    expect(await detail(api.teams.create('ws-eng', 'x'.repeat(41)))).toBe("400 A team's name has at most 40 characters.")
+    expect(await detail(api.teams.create('ws-eng', 'x'.repeat(41)))).toBe("400 A team’s name has at most 40 characters.")
     // Another workspace may have its own Data.
     expect((await api.teams.create('ws-design', 'Data')).workspaceId).toBe('ws-design')
   })
@@ -42,7 +42,7 @@ describe('teams (UX Phase 2, 2.4)', () => {
 
   it('renames a team', async () => {
     expect((await api.teams.rename('t-qa', 'Quality')).name).toBe('Quality')
-    expect(await detail(api.teams.rename('t-qa', 'Backend'))).toBe("400 There's already a team called Backend.")
+    expect(await detail(api.teams.rename('t-qa', 'Backend'))).toBe("400 There’s already a team called Backend.")
   })
 
   it('a team a project names can’t be removed; one no project names leaves its people', async () => {

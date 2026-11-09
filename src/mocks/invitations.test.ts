@@ -61,7 +61,7 @@ describe('email invites (spec 6.10, §7 Invitation)', () => {
   })
 
   it('checks every email, and takes at most 20 at a time', async () => {
-    await expect(api.chat.addMembers('c-backend', [], ['sam@client.com', 'sam@client'])).rejects.toMatchObject({ status: 400, detail: "sam@client isn't an email address." })
+    await expect(api.chat.addMembers('c-backend', [], ['sam@client.com', 'sam@client'])).rejects.toMatchObject({ status: 400, detail: "sam@client isn’t an email address." })
     const many = Array.from({ length: 21 }, (_, i) => `guest${i}@client.com`)
     await expect(api.chat.addMembers('c-backend', [], many)).rejects.toMatchObject({ status: 400, detail: 'Invite up to 20 emails at a time.' })
     expect(await api.chat.invitations('c-backend')).toEqual([])
@@ -87,7 +87,7 @@ describe('the invited list and Revoke (spec 6.10 Members)', () => {
     await api.chat.addMembers('c-release', [], ['sam@client.com'])
     expect(await emails('c-release')).toEqual(['sam@client.com'])
     await api.users.viewAs('u-3')
-    await expect(api.chat.invitations('c-release')).rejects.toMatchObject({ status: 403, detail: "You're not in this channel." })
+    await expect(api.chat.invitations('c-release')).rejects.toMatchObject({ status: 403, detail: "You’re not in this channel." })
     await expect(api.chat.invitations('c-backend')).rejects.toMatchObject({ status: 403, detail: 'Only its members can change this channel.' })
   })
 
@@ -117,7 +117,7 @@ describe('default channels (spec 6.10, admin only)', () => {
 
   it('only an Admin sets it, and only on a public channel; other edits leave it be', async () => {
     expect((await api.chat.updateChannel('c-backend', { isDefault: true })).isDefault).toBe(true)
-    await expect(api.chat.updateChannel('c-release', { isDefault: true })).rejects.toMatchObject({ status: 400, detail: "A private channel can't be a default channel." })
+    await expect(api.chat.updateChannel('c-release', { isDefault: true })).rejects.toMatchObject({ status: 400, detail: "A private channel can’t be a default channel." })
     await expect(api.chat.updateChannel('c-backend', { isDefault: 'yes' as never })).rejects.toMatchObject({ status: 400, detail: 'Turn the default channel on or off.' })
     await api.users.viewAs('u-2')
     await expect(api.chat.updateChannel('c-backend', { isDefault: false })).rejects.toMatchObject({ status: 403, detail: 'Only admins can choose default channels.' })
@@ -127,7 +127,7 @@ describe('default channels (spec 6.10, admin only)', () => {
 
 describe('slice 5 review', () => {
   it('an address with a pasted semicolon is refused, not stored beside the real one', async () => {
-    await expect(api.chat.addMembers('c-backend', [], ['sam@client.com;'])).rejects.toMatchObject({ status: 400, detail: "sam@client.com; isn't an email address." })
+    await expect(api.chat.addMembers('c-backend', [], ['sam@client.com;'])).rejects.toMatchObject({ status: 400, detail: "sam@client.com; isn’t an email address." })
     expect(await api.chat.invitations('c-backend')).toEqual([])
   })
 })

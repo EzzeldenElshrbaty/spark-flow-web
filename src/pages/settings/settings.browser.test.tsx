@@ -34,7 +34,7 @@ function auditEvents(): AuditEvent[] {
     { action: 'changed', group: 'data', record: { type: 'project', id: 'p-nex', name: 'Nexus Core' }, changes: [{ field: 'Due date', from: '28 Nov 2026', to: '5 Dec 2026' }, { field: 'Manager', from: 'Nour El-Sayed', to: 'Ahmed Shawky' }], result: 'done', detail: null },
     { action: 'signInFailed', group: 'access', record: null, changes: [], result: 'failed', detail: 'Wrong password' },
     { action: 'archived', group: 'status', record: { type: 'task', id: 'NEX-104', name: 'NEX-104 · Invoice export drops the last row when the month has thirty-one days' }, changes: [], result: 'done', detail: null },
-    { action: 'denied', group: 'access', record: { type: 'request', id: 'rates.list', name: 'rates.list' }, changes: [], result: 'refused', detail: "You don't have access to hourly costs." },
+    { action: 'denied', group: 'access', record: { type: 'request', id: 'rates.list', name: 'rates.list' }, changes: [], result: 'refused', detail: "You don’t have access to hourly costs." },
     { action: 'exported', group: 'exports', record: { type: 'data', id: 'all', name: 'All demo data' }, changes: [], result: 'done', detail: null },
   ] as const
   kinds.forEach((k, i) =>

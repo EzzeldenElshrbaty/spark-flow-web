@@ -144,7 +144,7 @@ describe('ChannelHeader (spec 6.1)', () => {
     header({ onCopyLink: vi.fn(async () => Promise.reject(new Error('denied'))) })
     openMenu()
     await act(async () => fireEvent.click(item('Copy link')))
-    expect(screen.getByRole('status').textContent).toBe("Couldn't copy the link")
+    expect(screen.getByRole('status').textContent).toBe("Couldn’t copy the link")
   })
 
   it('a DM is named after the person, with no members button, edit, leave or archive', () => {

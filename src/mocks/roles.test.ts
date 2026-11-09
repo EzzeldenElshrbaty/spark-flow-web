@@ -52,7 +52,7 @@ describe('roles (slice 1, spec §4.3)', () => {
     expect(empty).toMatchObject({ name: 'QA lead', builtIn: false, grants: [], holders: 0 })
     const copy = await api.roles.create({ name: 'Sales lead', copyFrom: 'sales' })
     expect(copy.grants).toEqual(['dashboard.all', 'projects.create', 'projects.editAll', 'projects.postAll'])
-    expect(await detail(api.roles.create({ name: 'qa LEAD' }))).toBe("There's a role called qa LEAD already.")
+    expect(await detail(api.roles.create({ name: 'qa LEAD' }))).toBe("There’s a role called qa LEAD already.")
     expect(await status(api.roles.create({ name: 'x'.repeat(41) }))).toBe(400)
     expect(await status(api.roles.create({ name: ' ' }))).toBe(400)
     expect(await status(api.roles.create({ name: 'Ghost copy', copyFrom: 'role-gone' }))).toBe(404)
@@ -75,7 +75,7 @@ describe('roles (slice 1, spec §4.3)', () => {
     })
     await api.roles.remove(role.id)
     expect((await api.roles.list()).some((r) => r.id === role.id)).toBe(false)
-    expect(await detail(api.roles.remove('member'))).toBe("Member is built in, so it can't be deleted.")
+    expect(await detail(api.roles.remove('member'))).toBe("Member is built in, so it can’t be deleted.")
   })
 
   it('saves every changed role at once, each change applied to the role as it is now; bad input keeps nothing', async () => {

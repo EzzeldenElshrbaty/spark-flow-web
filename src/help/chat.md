@@ -4,28 +4,28 @@ group: Chat
 order: 1
 summary: Channels and direct messages, writing, mentions, files, shortcuts and the message menu.
 ---
-Chat holds the workspace's channels, every project's channel and your direct messages.
+Chat holds the workspace’s channels, every project’s channel and your direct messages.
 
-![A channel](chat.jpg "Messages, the composer and the channel's tabs")
+![A channel](chat.jpg "Messages, the composer and the channel’s tabs")
 
 ## Channels and direct messages
 
-Channels are listed in the menu on the Chat side; star one to keep it at the top, and drag to reorder. A project's channel holds everyone on the project. **New message** starts a direct message with one or more people.
+Channels are listed in the menu on the Chat side; star one to keep it at the top, and drag to reorder. A project’s channel holds everyone on the project. **New message** starts a direct message with one or more people.
 
-A channel's name at the top opens its details: topic, people, and who can post. People who can change any public channel can archive one; a project's channel follows its project.
+A channel’s name at the top opens its details: topic, people, and who can post. People who can change any public channel can archive one; a project’s channel follows its project.
 
 ## Writing
 
 `Enter` sends, `Shift` + `Enter` starts a new line. **Aa** shows the formatting. Drop or paste files to attach them. A link gets a preview card; the × on the card takes it off.
 
-Write `@` to mention someone (they're told), `@NEX-101` for a task, `@NEX` for a project, or `@all` for everyone in the channel.
+Write `@` to mention someone (they’re told), `@NEX-101` for a task, `@NEX` for a project, or `@all` for everyone in the channel.
 
 ## Shortcuts
 
 Write `/` at the start of a message for shortcuts:
 
 - `/remind` sets a reminder; `/task` creates a task from the message.
-- `/invite` adds people; `/topic` sets the channel's topic.
+- `/invite` adds people; `/topic` sets the channel’s topic.
 - `/mute` and `/leave` act on the channel; `/search` searches it.
 
 ## The message menu
@@ -36,6 +36,6 @@ Point at a message (or tap it on a phone) for reactions, **Reply in thread** and
 - **Create task**, **Copy link** and **Copy text**.
 - **Edit** and **Delete** for your own messages. A deleted message can be brought back with **Undo** for a few seconds.
 
-## The channel's tabs and header
+## The channel’s tabs and header
 
-Under the channel's name, **Messages**, **Files** (in folders if you like) and **Pins**; **+** adds a page of notes. In the header, the bell sets how much of the channel reaches you, 🔍 searches it, and ⋯ holds the rest.
+Under the channel’s name, **Messages**, **Files** (in folders if you like) and **Pins**; **+** adds a page of notes. In the header, the bell sets how much of the channel reaches you, 🔍 searches it, and ⋯ holds the rest.

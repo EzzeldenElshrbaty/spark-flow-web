@@ -99,7 +99,7 @@ const MAX_TASK_FILES = 20
  * one reported.
  */
 function checkAttachments(data: DbData, ticket: Ticket | undefined, ids: unknown, meId: string): string[] {
-  if (!Array.isArray(ids) || !ids.every((id) => typeof id === 'string')) throw badRequest("That isn't a list of files.")
+  if (!Array.isArray(ids) || !ids.every((id) => typeof id === 'string')) throw badRequest("That isn’t a list of files.")
   const unique = [...new Set(ids)]
   if (unique.length > MAX_TASK_FILES) throw badRequest('Attach up to 20 files to a task.')
   const files = unique.map((id) => {
@@ -134,12 +134,12 @@ function checkTaskInput(data: DbData, projectId: string, input: Partial<TicketPa
   if (input.attachmentIds !== undefined) input.attachmentIds = checkAttachments(data, ticket, input.attachmentIds, data.currentUserId)
   if (input.descriptionBody !== undefined) {
     const body = validDescription(input.descriptionBody, new Set(input.attachmentIds ?? ticket?.attachmentIds ?? []))
-    if (!body) throw badRequest("The description couldn't be read. Try again.")
+    if (!body) throw badRequest("The description couldn’t be read. Try again.")
     if (descriptionText(body).length > MAX_DESCRIPTION) throw badRequest('Keep the description under 20,000 characters.')
     input.descriptionBody = body
   }
-  if (input.priority !== undefined && !PRIORITIES.includes(input.priority)) throw badRequest("That isn't a priority.")
-  if (input.type !== undefined && !TYPES.includes(input.type)) throw badRequest("That isn't a task type.")
+  if (input.priority !== undefined && !PRIORITIES.includes(input.priority)) throw badRequest("That isn’t a priority.")
+  if (input.type !== undefined && !TYPES.includes(input.type)) throw badRequest("That isn’t a task type.")
   if (input.assigneeId != null && input.assigneeId !== ticket?.assigneeId) {
     requireActive(data, [input.assigneeId])
     if (!projectPeopleIds(project, data.users).has(input.assigneeId)) throw badRequest('Pick someone on the project.')
@@ -203,8 +203,8 @@ export function tasksApi(db: MockDb, hub: MockHub, now: () => Date): Api['tasks'
         if (input.linkedMessageId) {
           const message = data.messages.find((m) => m.id === input.linkedMessageId)
           // A reply also sent to the chat is listed there, but it's a reply: tasks are made from messages.
-          if (message?.broadcast) throw badRequest("A task can't be made from a thread reply.")
-          if (!message || message.channelId !== project.channelId || message.deletedAt) throw badRequest("This message isn't in the project's chat.")
+          if (message?.broadcast) throw badRequest("A task can’t be made from a thread reply.")
+          if (!message || message.channelId !== project.channelId || message.deletedAt) throw badRequest("This message isn’t in the project’s chat.")
         }
       })
       return taskView(created, await db.read(), now())

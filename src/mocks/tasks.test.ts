@@ -94,14 +94,14 @@ describe('a task from a chat message', () => {
     await api.users.viewAs('u-4')
     const root = await api.chat.send('c-p-mob', 'The build fails at signing')
     const sent = await api.chat.reply(root.id, 'The key expired', undefined, true)
-    await expect(api.tasks.create(newTask({ linkedChannelId: 'c-p-mob', linkedMessageId: sent.id }))).rejects.toMatchObject({ status: 400, detail: "A task can't be made from a thread reply." })
+    await expect(api.tasks.create(newTask({ linkedChannelId: 'c-p-mob', linkedMessageId: sent.id }))).rejects.toMatchObject({ status: 400, detail: "A task can’t be made from a thread reply." })
   })
 
   it("a message from another channel, or a deleted one, is refused", async () => {
     const api = apiAt()
     await api.users.viewAs('u-4')
     const other = await api.chat.send('c-general', 'Not about Mobile App')
-    await expect(api.tasks.create(newTask({ linkedChannelId: 'c-general', linkedMessageId: other.id }))).rejects.toMatchObject({ status: 400, detail: "This message isn't in the project's chat." })
+    await expect(api.tasks.create(newTask({ linkedChannelId: 'c-general', linkedMessageId: other.id }))).rejects.toMatchObject({ status: 400, detail: "This message isn’t in the project’s chat." })
     const gone = await api.chat.send('c-p-mob', 'Oops')
     await api.chat.remove({ kind: 'message', id: gone.id })
     await expect(api.tasks.create(newTask({ linkedChannelId: 'c-p-mob', linkedMessageId: gone.id }))).rejects.toMatchObject({ status: 400 })
@@ -199,13 +199,13 @@ describe('task writes are checked', () => {
   }
   it('refuses fields outside the patch', async () => {
     const api = await asManager()
-    await expect(api.tasks.update('NEX-101', { key: 'X-1' } as never)).rejects.toMatchObject({ status: 400, detail: "Some of these fields can't be changed." })
+    await expect(api.tasks.update('NEX-101', { key: 'X-1' } as never)).rejects.toMatchObject({ status: 400, detail: "Some of these fields can’t be changed." })
   })
   it('refuses bad values', async () => {
     const api = await asManager()
     const refused = async (patch: object, detail: string) => await expect(api.tasks.update('NEX-101', patch as never)).rejects.toMatchObject({ status: 400, detail })
-    await refused({ priority: 'asap' }, "That isn't a priority.")
-    await refused({ type: 'epic' }, "That isn't a task type.")
+    await refused({ priority: 'asap' }, "That isn’t a priority.")
+    await refused({ type: 'epic' }, "That isn’t a task type.")
     await refused({ assigneeId: 'u-8' }, 'Pick someone on the project.')
     await refused({ sprintId: 's-brd-1' }, 'That sprint belongs to another project.')
     await refused({ storyPoints: -1 }, 'Story points are a number, 0 or more.')
@@ -215,7 +215,7 @@ describe('task writes are checked', () => {
     const api = await asManager()
     const base = { projectId: 'p-nex', title: 'New', description: '', status: '', priority: 'medium' as const, storyPoints: null, assigneeId: null, sprintId: null }
     await expect(api.tasks.create({ ...base, assigneeId: 'u-8' })).rejects.toMatchObject({ status: 400, detail: 'Pick someone on the project.' })
-    await expect(api.tasks.create({ ...base, priority: 'asap' as never })).rejects.toMatchObject({ status: 400, detail: "That isn't a priority." })
+    await expect(api.tasks.create({ ...base, priority: 'asap' as never })).rejects.toMatchObject({ status: 400, detail: "That isn’t a priority." })
     await expect(api.tasks.create({ ...base, sprintId: 's-brd-1' })).rejects.toMatchObject({ status: 400, detail: 'That sprint belongs to another project.' })
   })
   it("a board move and the assignee's own move still pass", async () => {
@@ -336,7 +336,7 @@ describe('task descriptions', () => {
     await api.users.viewAs('u-2')
     const nex = { projectId: 'p-nex', phaseId: 'ph-nex-build', assigneeId: 'u-3' }
     await expect(api.tasks.create(newTask({ ...nex, descriptionBody: [{ type: 'p', children: [{ type: 'user', id: 'u-3', name: 'M' }] }] as never }))).rejects.toMatchObject({
-      status: 400, message: "The description couldn't be read. Try again.",
+      status: 400, message: "The description couldn’t be read. Try again.",
     })
     await expect(api.tasks.create(newTask({ ...nex, descriptionBody: textBody('x'.repeat(20_001)) }))).rejects.toMatchObject({
       status: 400, message: 'Keep the description under 20,000 characters.',
@@ -396,7 +396,7 @@ describe('task files on save', () => {
     await expect(api.tasks.create(newTask({ ...nex, attachmentIds: [theirs.id] }))).rejects.toMatchObject({ status: 403, detail: 'You can only attach files you uploaded.' })
     await expect(api.tasks.create(newTask({ ...nex, attachmentIds: [pending.id] }))).rejects.toMatchObject({ status: 400, detail: 'pending.pdf is still being checked.' })
     await expect(api.tasks.create(newTask({ ...nex, attachmentIds: [blocked.id] }))).rejects.toMatchObject({ status: 400, detail: 'blocked.pdf was blocked.' })
-    await expect(api.tasks.create(newTask({ ...nex, descriptionBody: [fileBlock(loose.id)] }))).rejects.toMatchObject({ status: 400, detail: "The description couldn't be read. Try again." })
+    await expect(api.tasks.create(newTask({ ...nex, descriptionBody: [fileBlock(loose.id)] }))).rejects.toMatchObject({ status: 400, detail: "The description couldn’t be read. Try again." })
     await api.users.viewAs('u-4')
     await expect(api.tasks.create(newTask({ attachmentIds: ['a-mob-checklist'] }))).rejects.toMatchObject({ status: 400, detail: 'Upload that file again to attach it here.' })
   })

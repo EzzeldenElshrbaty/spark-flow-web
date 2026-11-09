@@ -26,6 +26,6 @@ export function rowLabel(row: UploadRow): string {
     case 'cancelled':
       return 'Cancelled'
     case 'failed':
-      return row.error ?? "Couldn't upload."
+      return row.error ?? "Couldn’t upload."
   }
 }

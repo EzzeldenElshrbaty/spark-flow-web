@@ -84,7 +84,7 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
       const url = await openFile(file.id)
       setViewing({ id: file.id, name: file.name, url, sizeKb: Math.round(file.size / 1024) })
     } catch {
-      setOpenError(`${file.title} couldn't be opened. Try again.`)
+      setOpenError(`${file.title} couldn’t be opened. Try again.`)
     }
   }
   const closeViewer = () => {
@@ -200,7 +200,7 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
         <ConfirmDeleteSheet
           open={archiving}
           title="Archive this task?"
-          description="It leaves the board, the lists and the project's counts. Its logged time and cost stay. You can restore it."
+          description="It leaves the board, the lists and the project’s counts. Its logged time and cost stay. You can restore it."
           actionLabel="Archive task"
           pendingLabel="Archiving…"
           tone="primary"

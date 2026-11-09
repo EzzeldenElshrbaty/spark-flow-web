@@ -102,7 +102,7 @@ export function CommentRow({ comment, author, mine }: { comment: CommentView; au
       <ConfirmDeleteSheet
         open={confirming}
         title="Delete this comment?"
-        description="It also goes from the project's chat. This can't be undone."
+        description="It also goes from the project’s chat. This can’t be undone."
         actionLabel="Delete comment"
         onConfirm={() => remove.mutateAsync(comment.id)}
         onClose={() => setConfirming(false)}

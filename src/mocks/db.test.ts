@@ -87,7 +87,7 @@ describe('createDb', () => {
       await expect(db.importAll({ app: 'spark-flow', version: 4, exportedAt: 'T', data: broken })).rejects.toMatchObject({
         name: 'ApiError',
         status: 400,
-        detail: "That file isn't a Spark Flow export.",
+        detail: "That file isn’t a Spark Flow export.",
       })
     }
   })
@@ -336,7 +336,7 @@ describe('createDb', () => {
     await expect(db.importAll({ app: 'spark-flow', version: 3, exportedAt: 'T', data: { ...emptyData(), version: 3, users: {} } })).rejects.toMatchObject({
       name: 'ApiError',
       status: 400,
-      detail: "That file isn't a Spark Flow export.",
+      detail: "That file isn’t a Spark Flow export.",
     })
     expect(await db.read()).toEqual(before)
   })

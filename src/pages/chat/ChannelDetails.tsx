@@ -365,7 +365,7 @@ function About({
   onCopyLink: () => Promise<void>
   onLeave: () => void
 }) {
-  const [copied, setCopied] = useState<'' | 'Link copied' | "Couldn't copy the link">('')
+  const [copied, setCopied] = useState<'' | 'Link copied' | "Couldn’t copy the link">('')
   useEffect(() => {
     if (!copied) return
     const timer = setTimeout(() => setCopied(''), COPIED_MS)
@@ -426,7 +426,7 @@ function About({
           onClick={() =>
             onCopyLink().then(
               () => setCopied('Link copied'),
-              () => setCopied("Couldn't copy the link"),
+              () => setCopied("Couldn’t copy the link"),
             )
           }
         >

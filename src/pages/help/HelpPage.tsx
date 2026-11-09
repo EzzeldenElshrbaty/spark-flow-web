@@ -12,9 +12,12 @@ import { HelpDoc } from './HelpDoc'
 import { useParam } from '@/lib/searchParams'
 import { IconButton } from '@/components/ui/IconButton'
 
+/** Lower case, with ’ and ‘ read as ' (help is written with ’; people type '), keeping every index in place. */
+const fold = (text: string) => text.toLowerCase().replace(/[’‘]/g, "'")
+
 /** Words around the first match, for a search result. */
 function snippet(text: string, term: string) {
-  const at = text.toLowerCase().indexOf(term.toLowerCase())
+  const at = fold(text).indexOf(fold(term))
   if (at < 0) return ''
   const start = Math.max(0, at - 50)
   return `${start > 0 ? '…' : ''}${text.slice(start, at + term.length + 70)}…`
@@ -41,7 +44,7 @@ export function HelpPage() {
   const chapter: HelpChapter | undefined = chapterId ? list.find((c) => c.id === chapterId) : list[0]
   const index = chapter ? list.indexOf(chapter) : -1
   const query = term.trim()
-  const results = query.length < 2 ? [] : list.filter((c) => c.text.toLowerCase().includes(query.toLowerCase()))
+  const results = query.length < 2 ? [] : list.filter((c) => fold(c.text).includes(fold(query)))
   const sections = chapter?.blocks.flatMap((b) => (b.type === 'h2' ? [b] : [])) ?? []
 
   // A new chapter starts at its top, or at the section the link named.
@@ -73,7 +76,7 @@ export function HelpPage() {
     return (
       <div className="mx-auto mt-10 max-w-md rounded-xl border border-line bg-surface p-8 text-center shadow-sm">
         <BookOpen className="mx-auto size-8 text-fg-subtle" />
-        <h1 className="mt-3 text-lg font-semibold text-fg">Help didn't load</h1>
+        <h1 className="mt-3 text-lg font-semibold text-fg">Help didn’t load</h1>
         <p className="mt-1 text-sm text-fg-muted">Reload the page to try again.</p>
       </div>
     )
@@ -179,7 +182,7 @@ export function HelpPage() {
                 </section>
               ) : !chapter ? (
                 <p className="text-sm text-fg-muted">
-                  That chapter isn't in your help.{' '}
+                  That chapter isn’t in your help.{' '}
                   <Link to={paths.help(ws)} className="font-medium text-accent">
                     Go to Getting started
                   </Link>

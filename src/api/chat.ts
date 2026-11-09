@@ -105,8 +105,8 @@ export function useMarkAllRead() {
       const failedIds = channelIds.filter((_, i) => results[i].status === 'rejected')
       const failed = failedIds.length
       if (!failed) return
-      if (failed < channelIds.length) throw new MarkAllReadError(`Couldn't mark ${failed} of them read. Try again.`, failedIds)
-      throw new MarkAllReadError(failed === 1 ? "Couldn't mark it read. Try again." : "Couldn't mark them read. Try again.", failedIds)
+      if (failed < channelIds.length) throw new MarkAllReadError(`Couldn’t mark ${failed} of them read. Try again.`, failedIds)
+      throw new MarkAllReadError(failed === 1 ? "Couldn’t mark it read. Try again." : "Couldn’t mark them read. Try again.", failedIds)
     },
     onError: () => queryClient.invalidateQueries(),
   })

@@ -142,7 +142,7 @@ describe('delete (spec 6.3)', () => {
     expect(removed).not.toHaveBeenCalled()
     expect(screen.getByRole('dialog', { name: 'Delete message?' })).toBeTruthy()
     // Since files can be shared in several places (slice 6), deleting a message takes them off it, not out of everywhere.
-    expect(screen.getByRole('dialog', { description: "Replies in its thread stay. Its files go from this message but stay wherever else they're shared." })).toBeTruthy()
+    expect(screen.getByRole('dialog', { description: "Replies in its thread stay. Its files go from this message but stay wherever else they’re shared." })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(removed).not.toHaveBeenCalled()

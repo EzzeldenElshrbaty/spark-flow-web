@@ -40,7 +40,7 @@ describe('timeHeading and emptyTimeText', () => {
   it('an empty list says whose time is missing', () => {
     expect(emptyTimeText(true, 0)).toBe('No time logged yet.')
     expect(emptyTimeText(false, 0)).toBe('No time logged yet.')
-    expect(emptyTimeText(false, 120)).toBe("You haven't logged time here. The project has 120h logged.")
+    expect(emptyTimeText(false, 120)).toBe("You haven’t logged time here. The project has 120h logged.")
   })
 
   it('the privacy line waits for the account, and is only for people who see their own time', () => {

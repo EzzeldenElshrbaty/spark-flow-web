@@ -71,7 +71,7 @@ export function TaskActivity({ task, project, users }: { task: TaskView; project
           }
         />
       ) : (
-        <p className="text-sm text-fg-muted">Only the project's people can comment here.</p>
+        <p className="text-sm text-fg-muted">Only the project’s people can comment here.</p>
       )}
     </div>
   )

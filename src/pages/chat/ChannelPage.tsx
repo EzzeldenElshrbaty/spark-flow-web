@@ -113,7 +113,7 @@ export function ChannelView({ channelId, hideTabs = [] }: { channelId: string | 
     return (
       <Padded>
         <PageHeader title="Private channel" />
-        <p className="text-sm text-fg-muted">You're not in this channel. Ask someone in it to add you.</p>
+        <p className="text-sm text-fg-muted">You’re not in this channel. Ask someone in it to add you.</p>
       </Padded>
     )
   }
@@ -441,7 +441,7 @@ function PaneFeed({
     jumpTarget(channel.id, jumpSince(choice, new Date())).then(
       // Nothing that recent: the newest message is the closest there is.
       (seq) => (seq === null ? setView((v) => ({ from: null, focus: null, nonce: v.nonce + 1, atEnd: true })) : goTo(seq)),
-      () => setJumpError("Couldn't jump there. Try again."),
+      () => setJumpError("Couldn’t jump there. Try again."),
     )
   }
   // A permalink (?message=, from Copy link) opens the channel on that message, once; the address then drops it.
@@ -452,7 +452,7 @@ function PaneFeed({
     if (!linked || (!linkedMessage.data && !linkedMessage.isError)) return
     const m = linkedMessage.data
     if (m && m.channelId === channel.id) goTo(m.seq)
-    else setJumpError("That message isn't in this channel any more.")
+    else setJumpError("That message isn’t in this channel any more.")
     setParams(
       (p) => {
         p.delete('message')

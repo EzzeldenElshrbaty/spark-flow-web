@@ -113,7 +113,7 @@ export function useUploads(channelId: string) {
   const waiting = uploading
     ? `Uploading ${filesWord(uploading)}…`
     : failed.some((i) => i.retryable)
-      ? "Retry or remove the files that didn't upload."
+      ? "Retry or remove the files that didn’t upload."
       : failed.length
         ? 'Remove the files that were blocked.'
         : null

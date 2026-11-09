@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button'
 export function AccountState({ onRetry, retrying }: { error: Error; onRetry: () => void; retrying: boolean }) {
   return (
     <div role="alert" className="mx-auto mt-16 max-w-md rounded-xl border border-line bg-surface p-6 text-center">
-      <h1 className="text-lg font-semibold text-fg">We couldn't load your account.</h1>
+      <h1 className="text-lg font-semibold text-fg">We couldn’t load your account.</h1>
       <p className="mt-1 text-sm text-fg-muted">Check your connection, then try again.</p>
       <div className="mt-4 flex justify-center">
         <Button onClick={onRetry} disabled={retrying}>

@@ -20,7 +20,7 @@ function chain(): AuditEvent[] {
   for (const e of [
     base(1, { record: { type: 'user', id: 'u-1', name: 'Youssef Abdelrahman' }, detail: 'Password' }),
     base(2, { action: 'changed', group: 'data', record: { type: 'project', id: 'p-nex', name: 'Nexus Core' }, changes: [{ field: 'Due date', from: '28 Nov 2026', to: '5 Dec 2026' }, { field: 'Manager', from: 'Nour El-Sayed', to: 'Ahmed Shawky' }] }),
-    base(3, { action: 'denied', actorId: 'u-3', actorName: 'Mariam Fathy', actorRoles: 'Member', record: { type: 'request', id: 'rates.list', name: 'rates.list' }, result: 'refused', detail: "You don't have access to hourly costs." }),
+    base(3, { action: 'denied', actorId: 'u-3', actorName: 'Mariam Fathy', actorRoles: 'Member', record: { type: 'request', id: 'rates.list', name: 'rates.list' }, result: 'refused', detail: "You don’t have access to hourly costs." }),
   ])
     out.push(chainEvent(e, out.at(-1)?.hash ?? GENESIS))
   return out
@@ -169,7 +169,7 @@ describe('Audit log (Admin and help, slice 2)', () => {
     expect(api.audit.get).toHaveBeenCalledWith(9)
     cleanup()
     await mount('?entry=99')
-    expect((await screen.findByRole('alert')).textContent).toBe("There's no entry #99.")
+    expect((await screen.findByRole('alert')).textContent).toBe("There’s no entry #99.")
   })
 
   it('Show more asks for the entries before the last one shown', async () => {

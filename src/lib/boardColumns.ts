@@ -48,7 +48,7 @@ export function columnErrors(columns: BoardColumn[]): string | null {
   if (columns.some((c) => !c.label.trim())) return 'Name each column.'
   if (columns.some((c) => c.label.trim().length > MAX_LABEL)) return `Keep column names under ${MAX_LABEL} characters.`
   const names = columns.map((c) => c.label.trim().toLowerCase())
-  if (new Set(names).size !== names.length) return "Two columns can't share a name."
+  if (new Set(names).size !== names.length) return "Two columns can’t share a name."
   if (CATEGORIES.some(({ category }) => !columns.some((c) => c.category === category))) return 'Each type needs at least one column.'
   if (columns.length > MAX_COLUMNS) return `A board can have up to ${MAX_COLUMNS} columns.`
   return null

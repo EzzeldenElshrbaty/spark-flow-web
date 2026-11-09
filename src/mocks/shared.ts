@@ -7,7 +7,7 @@ export type Thing = 'Workspace' | 'User' | 'Channel' | 'Message' | 'Reply' | 'Co
 
 /** The 404 the mock throws for an unknown id or key. */
 export function notFound(thing: Thing, id: string): ApiError {
-  return new ApiError({ title: 'Not found', status: 404, detail: `${thing} ${id} doesn't exist.` })
+  return new ApiError({ title: 'Not found', status: 404, detail: `${thing} ${id} doesn’t exist.` })
 }
 
 /** A deep copy, so what a caller gets (or a listener hears) is never shared with stored state. */
@@ -29,7 +29,7 @@ export function newId(prefix: string): string {
 
 /** The 403 the mock throws when the current user's role doesn't allow an action (spec §4.3). */
 export function forbidden(thing: string): ApiError {
-  return new ApiError({ title: 'Forbidden', status: 403, detail: `You don't have access to ${thing}.` })
+  return new ApiError({ title: 'Forbidden', status: 403, detail: `You don’t have access to ${thing}.` })
 }
 
 /**
@@ -65,7 +65,7 @@ export function badRequest(detail: string): ApiError {
  */
 export function pickPatch<K extends string>(patch: object, allowed: readonly K[]): Partial<Record<K, unknown>> {
   const entries = Object.entries(patch)
-  if (entries.some(([key]) => !(allowed as readonly string[]).includes(key))) throw badRequest("Some of these fields can't be changed.")
+  if (entries.some(([key]) => !(allowed as readonly string[]).includes(key))) throw badRequest("Some of these fields can’t be changed.")
   return Object.fromEntries(entries.filter(([, value]) => value !== undefined)) as Partial<Record<K, unknown>>
 }
 

@@ -8,7 +8,7 @@ afterEach(cleanup)
 describe('AccountState (slices 3, AB)', () => {
   it('an account that didn’t load offers Try again (signed out goes to Sign in instead, in AppLayout)', () => {
     render(<AccountState error={new Error('Network')} onRetry={() => {}} retrying={false} />)
-    expect(screen.getByRole('heading', { name: "We couldn't load your account." })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: "We couldn’t load your account." })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy()
   })
 })

@@ -43,7 +43,7 @@ function Deliverables({ project, phases, canEdit }: { project: ProjectSummary; p
         {deliverables.isPending ? (
           <div className="my-3 h-10 animate-pulse rounded-lg bg-surface-muted" aria-hidden />
         ) : deliverables.isError ? (
-          <p className="py-3 text-sm text-red-600 dark:text-red-400">Deliverables couldn't be loaded.</p>
+          <p className="py-3 text-sm text-red-600 dark:text-red-400">Deliverables couldn’t be loaded.</p>
         ) : rows.length === 0 ? (
           <p className="py-3 text-sm text-fg-muted">No deliverables yet.</p>
         ) : (
@@ -96,7 +96,7 @@ function Deliverables({ project, phases, canEdit }: { project: ProjectSummary; p
       <ConfirmDeleteSheet
         open={deleting !== null}
         title={`Delete ${deleting?.title ?? 'deliverable'}?`}
-        description="This can't be undone."
+        description="This can’t be undone."
         actionLabel="Delete deliverable"
         onConfirm={() => remove.mutateAsync(deleting!.id)}
         onClose={() => setDeleting(null)}

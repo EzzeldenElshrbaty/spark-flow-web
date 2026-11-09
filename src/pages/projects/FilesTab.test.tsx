@@ -111,7 +111,7 @@ describe('FilesTab (spec 5.3)', () => {
     openFile.mockRejectedValue(new Error('x'))
     show()
     await act(async () => fireEvent.click(within(table()).getByText('scope.pdf')))
-    expect(screen.getByText("scope.pdf couldn't be opened. Try again.")).toBeTruthy()
+    expect(screen.getByText("scope.pdf couldn’t be opened. Try again.")).toBeTruthy()
   })
 
   it('Load more fetches the next page', () => {

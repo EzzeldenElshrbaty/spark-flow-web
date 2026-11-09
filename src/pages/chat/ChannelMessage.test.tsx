@@ -391,9 +391,9 @@ describe('U and L on a focused message (spec 10)', () => {
     try {
       show(message('hi'), { onMarkUnread: vi.fn(async () => Promise.reject(new Error('no'))) })
       fireEvent.keyDown(actions(), { key: 'U' })
-      expect(await screen.findByText("Couldn't mark it unread. Try again.")).toBeTruthy()
+      expect(await screen.findByText("Couldn’t mark it unread. Try again.")).toBeTruthy()
       await act(async () => vi.advanceTimersByTime(3000))
-      expect(screen.getByText("Couldn't mark it unread. Try again.")).toBeTruthy()
+      expect(screen.getByText("Couldn’t mark it unread. Try again.")).toBeTruthy()
     } finally {
       vi.useRealTimers()
     }
@@ -453,7 +453,7 @@ describe('U and L on a focused message (spec 10)', () => {
     clipboard(vi.fn(async () => Promise.reject(new Error('denied'))))
     show(message('hi'))
     fireEvent.keyDown(actions(), { key: 'l' })
-    expect(await screen.findByText("Couldn't copy the link")).toBeTruthy()
+    expect(await screen.findByText("Couldn’t copy the link")).toBeTruthy()
   })
 
   it('L does nothing on a deleted message or one still on its way, or with a modifier', () => {
@@ -537,7 +537,7 @@ describe('Reply in thread and Copy text (spec 6.4, 6.5)', () => {
     show(message('hi'))
     fireEvent.click(screen.getByRole('button', { name: 'More actions' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Copy text' }))
-    expect(await screen.findByText("Couldn't copy the text")).toBeTruthy()
+    expect(await screen.findByText("Couldn’t copy the text")).toBeTruthy()
   })
 
   it('Copy link is in the menu too, with its key', () => {

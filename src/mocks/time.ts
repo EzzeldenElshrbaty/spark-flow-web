@@ -25,7 +25,7 @@ const MAX_NOTE = 200
 function resolveTarget(data: DbData, target: TimeTarget, keepTaskId?: string | null): { projectId: string; taskId: string | null; done: boolean } {
   if ('taskId' in target) {
     const task = data.tickets.find((t) => t.id === target.taskId)
-    if (!task) throw badRequest("That task doesn't exist.")
+    if (!task) throw badRequest("That task doesn’t exist.")
     // New time can't go on an archived task; an entry already on it can still be fixed (keepTaskId).
     if (task.archivedAt && task.id !== keepTaskId) throw badRequest('That task is archived. Restore it to log time.')
     return { projectId: task.projectId, taskId: task.id, done: categoryOf(openProject(data, task.projectId), task.status) === 'done' }
@@ -125,7 +125,7 @@ function checkLocation(value: unknown): CheckLocation {
     typeof fix.lat === 'number' && Math.abs(fix.lat) <= 90 &&
     typeof fix.lng === 'number' && Math.abs(fix.lng) <= 180 &&
     typeof fix.accuracy === 'number' && fix.accuracy >= 0 && Number.isFinite(fix.accuracy)
-  if (!ok) throw badRequest("That location can't be right.")
+  if (!ok) throw badRequest("That location can’t be right.")
   const round = (n: number) => Math.round(n * 100_000) / 100_000
   // To 5 decimals, about a metre: no more than the browser's own accuracy says.
   return { lat: round(fix.lat!), lng: round(fix.lng!), accuracy: Math.round(fix.accuracy!) }
@@ -161,7 +161,7 @@ function checkOn(data: DbData, projectId: string) {
   const me = currentUser(data)
   const project = findProject(data, projectId)
   if (!can('time.logOn', { userId: me.id, grants: grantsFor(data, me), project, userTeamIds: me.teamIds }))
-    throw new ApiError({ title: 'Forbidden', status: 403, detail: "You're not on this project." })
+    throw new ApiError({ title: 'Forbidden', status: 403, detail: "You’re not on this project." })
 }
 
 /**
@@ -220,7 +220,7 @@ function checkEntry(
 ): { projectId: string; taskId: string | null; note: string } {
   const { start, end } = input
   if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) throw badRequest('The end is before the start.')
-  if (end > at) throw badRequest("Time can't be logged in the future.")
+  if (end > at) throw badRequest("Time can’t be logged in the future.")
   if (end - start > MAX_ENTRY_HOURS * HOUR) throw badRequest(`One entry can be up to ${MAX_ENTRY_HOURS} hours.`)
   const note = input.note.trim()
   if (note.length > MAX_NOTE) throw badRequest(`Keep the note under ${MAX_NOTE} characters.`)
@@ -304,7 +304,7 @@ export function timeApi(db: MockDb, hub: MockHub, now: () => Date): Api['time'] 
     pause: () =>
       write((data, me, at) => {
         const paused = stopRunning(data, me.id, at.toISOString(), 'paused')
-        if (!paused) throw badRequest("Your timer isn't running.")
+        if (!paused) throw badRequest("Your timer isn’t running.")
         return paused.projectId
       }),
 
@@ -323,7 +323,7 @@ export function timeApi(db: MockDb, hub: MockHub, now: () => Date): Api['time'] 
         const stopped = stopRunning(data, me.id, at.toISOString(), 'stopped')
         if (stopped) return stopped.projectId
         const paused = pausedEntry(data, me.id, at)
-        if (!paused) throw badRequest("There's no timer to stop.")
+        if (!paused) throw badRequest("There’s no timer to stop.")
         paused.endReason = 'stopped'
         return paused.projectId
       }),
