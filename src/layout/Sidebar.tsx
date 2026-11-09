@@ -24,7 +24,7 @@ import {
 } from '@tabler/icons-react'
 import clsx from 'clsx'
 import { useId, useRef, useState, type ReactNode } from 'react'
-import { Link, NavLink, useLocation } from 'react-router'
+import { Link, NavLink, useLocation, useMatch } from 'react-router'
 import { Avatar } from '@/components/Avatar'
 import { Count } from '@/components/sf/Badge'
 import { IconButton } from '@/components/sf/Button'
@@ -365,7 +365,9 @@ export function SidebarContent({
   const { grants } = useRole()
   const check = usePermission()
   const { workspace, starred, channels, dms, apps, projects, mentions, activityUnread, threadsUnread, customOrder, savedInProgress, draftsAndScheduled, chatLoading, projectsLoading, failed } = useSidebarGroups()
-  const slug = workspace?.slug
+  // While the workspace list loads, the address already names the workspace: Work shows at once (UX Phase 4, 4.5).
+  const inUrl = useMatch({ path: '/w/:ws', end: false })?.params.ws
+  const slug = workspace?.slug ?? inUrl
   const [newChannel, setNewChannel] = useState(false)
   const [newMessage, setNewMessage] = useState(false)
   const row = { collapsed, onNavigate }
@@ -405,11 +407,14 @@ export function SidebarContent({
         )}
 
         {slug && onProjects && check('timeCost.view') && (
-          <SideSection id="manage" label="Manage" {...row}>
-            <li className="flex-none">
-              <SideLink to={paths.timeCost(slug)} label="Time & cost" icon={IconClock} {...row} />
-            </li>
-          </SideSection>
+          // It needs my permissions, so it fades in once they're known.
+          <div className="motion-safe:animate-fade-in">
+            <SideSection id="manage" label="Manage" {...row}>
+              <li className="flex-none">
+                <SideLink to={paths.timeCost(slug)} label="Time & cost" icon={IconClock} {...row} />
+              </li>
+            </SideSection>
+          </div>
         )}
 
         {slug && onChat && (
@@ -520,7 +525,7 @@ export function SidebarContent({
         )}
       </nav>
       {slug && canSee(settingsItem, grants) && (
-        <div className="flex-none border-t border-sf-sidebar-hover pt-2">
+        <div className="flex-none border-t border-sf-sidebar-hover pt-2 motion-safe:animate-fade-in">
           <SideLink to={paths.settings(slug)} label={settingsItem.label} icon={IconSettings} {...row} />
         </div>
       )}

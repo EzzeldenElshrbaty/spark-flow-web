@@ -193,7 +193,8 @@ export function TimeCostPage() {
             </option>
           ))}
         </select>
-        <Button variant="secondary" onClick={exportCsv} disabled={!report.data}>
+        {/* The shown report may be the last period's while the new one loads: nothing to export yet. */}
+        <Button variant="secondary" onClick={exportCsv} disabled={!report.data || report.isPlaceholderData}>
           <Download className="size-4" /> Export CSV
         </Button>
       </div>
@@ -221,33 +222,34 @@ export function TimeCostPage() {
           <TableSkeleton rows={5} />
         </div>
       ) : (
-        <>
-          <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-            <StatTile label="Hours" value={formatHours(r.totals.hours)} />
-            <StatTile label="Cost" value={formatCompact(Math.round(r.totals.cost))} />
-            <StatTile label="Average cost per hour" value={r.totals.hours ? money(r.totals.cost / r.totals.hours) : '—'} />
-            <StatTile label="People who logged time" value={String(r.totals.people)} />
-          </div>
-          <div className="mb-3 flex gap-1 overflow-x-auto border-b border-line" role="tablist" aria-label="Group by">
-            {groupings.map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                role="tab"
-                aria-selected={by === value}
-                onClick={() => set('by', value)}
-                className={clsx(
-                  'relative flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-medium transition-colors',
-                  "after:absolute after:inset-x-2 after:-bottom-px after:h-0.5 after:rounded-full after:bg-brand-500 after:transition-transform after:duration-200 after:content-['']",
-                  by === value ? 'text-fg after:scale-x-100' : 'text-fg-muted after:scale-x-0 hover:text-fg',
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <Body report={r} by={by} ws={ws} people={people} />
-        </>
+        // A new period or project: the last report stays, dimmed, until the new one comes (UX Phase 4, 4.5).
+        <div className={clsx('transition-opacity', report.isPlaceholderData && 'opacity-60')}>
+            <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+              <StatTile label="Hours" value={formatHours(r.totals.hours)} />
+              <StatTile label="Cost" value={formatCompact(Math.round(r.totals.cost))} />
+              <StatTile label="Average cost per hour" value={r.totals.hours ? money(r.totals.cost / r.totals.hours) : '—'} />
+              <StatTile label="People who logged time" value={String(r.totals.people)} />
+            </div>
+            <div className="mb-3 flex gap-1 overflow-x-auto border-b border-line" role="tablist" aria-label="Group by">
+              {groupings.map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="tab"
+                  aria-selected={by === value}
+                  onClick={() => set('by', value)}
+                  className={clsx(
+                    'relative flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-medium transition-colors',
+                    "after:absolute after:inset-x-2 after:-bottom-px after:h-0.5 after:rounded-full after:bg-brand-500 after:transition-transform after:duration-200 after:content-['']",
+                    by === value ? 'text-fg after:scale-x-100' : 'text-fg-muted after:scale-x-0 hover:text-fg',
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <Body report={r} by={by} ws={ws} people={people} />
+        </div>
       )}
     </>
   )

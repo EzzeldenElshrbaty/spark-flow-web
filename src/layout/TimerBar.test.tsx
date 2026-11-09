@@ -13,7 +13,8 @@ let resume = mutation()
 let stop = mutation()
 
 vi.mock('@/layout/useCurrentWorkspace', () => ({ useCurrentWorkspace: () => ({ workspace: { id: 'ws-eng', slug: 'engineering', name: 'Spark Engineering' } }) }))
-vi.mock('@/api/projects', () => ({ useProjectSummaries: () => ({ data: [{ id: 'p-nex', key: 'NEX', name: 'Nexus Core' }] }) }))
+let summariesLoading = false
+vi.mock('@/api/projects', () => ({ useProjectSummaries: () => (summariesLoading ? { data: undefined, isPending: true } : { data: [{ id: 'p-nex', key: 'NEX', name: 'Nexus Core' }], isPending: false }) }))
 vi.mock('@/api/tickets', () => ({ useTickets: () => ({ data: [{ id: 't-101', key: 'NEX-101', title: 'Login page', projectId: 'p-nex' }] }) }))
 vi.mock('@/api/time', () => ({ useMyDay: () => ({ data: { timer } }), usePauseTimer: () => pause, useResumeTimer: () => resume, useStopTimer: () => stop }))
 let logProjects: { id: string }[] = [{ id: 'p-nex' }]
@@ -25,6 +26,7 @@ const running = (over: Partial<MyTimer> = {}): MyTimer => ({ state: 'running', t
 const paused = (over: Partial<MyTimer> = {}): MyTimer => ({ state: 'paused', target: { taskId: 't-101' }, projectId: 'p-nex', entryId: 'te-1', runMs: 45 * MIN, startedAt: null, pausedBy: 'me', ...over })
 
 beforeEach(() => {
+  summariesLoading = false
   timer = null
   pause = mutation()
   resume = mutation()
@@ -37,6 +39,14 @@ const bar = () => document.querySelector<HTMLElement>('[data-timer="bar"]')!
 const show = (ui: React.ReactNode) => render(<MemoryRouter>{ui}</MemoryRouter>)
 
 describe('the top bar timer (timer slice 1)', () => {
+  it('while the projects load, the label is a pulse, never "—" (UX Phase 4, 4.5)', () => {
+    timer = running({ target: { projectId: 'p-nex' } })
+    summariesLoading = true
+    show(<TimerPill />)
+    expect(pill().textContent).not.toContain('—')
+    expect(pill().querySelector('.animate-pulse')).toBeTruthy()
+  })
+
   it('someone with no project to log on gets no Start timer (UX Phase 4, 4.10)', () => {
     logProjects = []
     show(<TimerPill />)

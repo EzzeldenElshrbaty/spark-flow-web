@@ -189,7 +189,7 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
             <span className="tabular-nums">{hoursLabel(t.loggedHours, t.estimateHours)}</span>
             <span className="block text-xs text-fg-muted">logged / estimate</span>
           </Field>
-          {t.sprintId && <Field label="Sprint">{sprint?.name ?? (sprints.isLoading ? 'Loading…' : '—')}</Field>}
+          {t.sprintId && <Field label="Sprint">{sprint?.name ?? (sprints.isLoading ? <span aria-hidden className="inline-block h-3 w-20 animate-pulse rounded bg-surface-strong align-middle" /> : '—')}</Field>}
           <Field label="Created">
             <span className="tabular-nums">{formatDate(t.createdAt)}</span>
           </Field>

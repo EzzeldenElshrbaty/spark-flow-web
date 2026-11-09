@@ -158,29 +158,30 @@ export function FilesTab({ ws, project, users }: { ws: string; project: ProjectS
           )}
         </p>
       ) : (
-        <>
-          <div className="max-sm:hidden">
-            <DataTable columns={columns} rows={rows} rowKey={(r) => r.file.id} onRowClick={(r) => void open(r)} storageKey="spark-flow.table.projectFiles" label="Project files" />
-          </div>
-          <ul className="divide-y divide-line-subtle overflow-hidden rounded-xl border border-line bg-surface sm:hidden">
-            {rows.map((r) => (
-              <li key={r.file.id} className="px-4 py-3">
-                <button type="button" onClick={() => void open(r)} disabled={Boolean(notReady(r.file))} className="block w-full min-w-0 text-start text-sm">
-                  {title(r)}
-                  <span className="mt-0.5 block truncate text-xs text-fg-muted tabular-nums">
-                    {typeLabel(r.file)} · {sizeText(r.file.size)} · {nameOf(r.file.uploadedBy)} · {formatDate(r.file.createdAt)}
-                  </span>
-                </button>
-                <span className="mt-0.5 flex min-w-0 gap-1 text-xs text-fg-muted">From {from(r.source)}</span>
-              </li>
-            ))}
-          </ul>
-          {list.hasNextPage && (
-            <Button variant="secondary" onClick={() => void list.fetchNextPage()} disabled={list.isFetchingNextPage}>
-              {list.isFetchingNextPage ? 'Loading…' : 'Load more'}
-            </Button>
-          )}
-        </>
+        // A new filter: the last rows stay, dimmed, until the new ones come (UX Phase 4, 4.5).
+        <div className={clsx('transition-opacity', list.isPlaceholderData && 'opacity-60')}>
+            <div className="max-sm:hidden">
+              <DataTable columns={columns} rows={rows} rowKey={(r) => r.file.id} onRowClick={(r) => void open(r)} storageKey="spark-flow.table.projectFiles" label="Project files" />
+            </div>
+            <ul className="divide-y divide-line-subtle overflow-hidden rounded-xl border border-line bg-surface sm:hidden">
+              {rows.map((r) => (
+                <li key={r.file.id} className="px-4 py-3">
+                  <button type="button" onClick={() => void open(r)} disabled={Boolean(notReady(r.file))} className="block w-full min-w-0 text-start text-sm">
+                    {title(r)}
+                    <span className="mt-0.5 block truncate text-xs text-fg-muted tabular-nums">
+                      {typeLabel(r.file)} · {sizeText(r.file.size)} · {nameOf(r.file.uploadedBy)} · {formatDate(r.file.createdAt)}
+                    </span>
+                  </button>
+                  <span className="mt-0.5 flex min-w-0 gap-1 text-xs text-fg-muted">From {from(r.source)}</span>
+                </li>
+              ))}
+            </ul>
+            {list.hasNextPage && (
+              <Button variant="secondary" onClick={() => void list.fetchNextPage()} disabled={list.isFetchingNextPage}>
+                {list.isFetchingNextPage ? 'Loading…' : 'Load more'}
+              </Button>
+            )}
+        </div>
       )}
       {openError && <p className="text-sm text-red-600 dark:text-red-400">{openError}</p>}
       {viewing && <FileViewer files={[viewing]} onClose={close} onDownload={() => noteDownload(viewing.id)} />}

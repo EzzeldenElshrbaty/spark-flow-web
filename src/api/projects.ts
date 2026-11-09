@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
 import type { BoardColumn, DeliverablePatch, NewDeliverable, NewPhase, NewProject, PhasePatch, ProjectFileFilter, ProjectPatch, StatusCategory, UploadFile } from '@/api/types'
 import { qk } from '@/api/queryKeys'
 import { retryUnlessNotFound as retry } from '@/api/retry'
@@ -103,6 +103,8 @@ export function useAllProjectFiles(projectId: string | undefined, filter: Omit<P
     getNextPageParam: (last) => last.nextCursor ?? undefined,
     enabled: Boolean(projectId),
     retry,
+    // A new filter keeps the last rows, dimmed, until the new ones come (UX Phase 4, 4.5).
+    placeholderData: keepPreviousData,
   })
 }
 export function useUploadFile() {

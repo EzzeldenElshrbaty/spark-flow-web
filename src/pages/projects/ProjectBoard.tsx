@@ -32,12 +32,17 @@ const HEADER = 'header:'
 const menuItem = 'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start text-sm text-fg-secondary hover:bg-surface-muted'
 const byRank = (a: TaskView, b: TaskView) => a.rank - b.rank
 
-/** Pulse columns while the tickets load. */
+/** Pulse columns while the tickets load, each with a header and two cards (UX Phase 4, 4.5: shaped like the board). */
 export function BoardSkeleton() {
   return (
     <div className="relative flex gap-3 overflow-hidden" aria-busy="true">
       {DEFAULT_COLUMNS.map(({ id }) => (
-        <div key={id} className="h-96 w-[85%] shrink-0 animate-pulse rounded-xl bg-surface-muted md:w-[296px]" />
+        <div key={id} data-pulse="column" className="w-[85%] shrink-0 animate-pulse rounded-xl border border-line bg-surface-muted p-3 md:w-[296px]">
+          <div className="h-4 w-24 rounded bg-surface-strong" />
+          {[0, 1].map((card) => (
+            <div key={card} data-pulse="card" className="mt-3 h-20 rounded-lg bg-surface" />
+          ))}
+        </div>
       ))}
     </div>
   )

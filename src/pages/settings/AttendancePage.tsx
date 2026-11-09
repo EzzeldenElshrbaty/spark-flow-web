@@ -180,7 +180,7 @@ function View({ tab, params, person, nameOf }: ViewProps) {
   return <Loaded what="days" query={days} empty="No timers in this period." render={(rows) => <DaysView rows={rows} nameOf={nameOf} />} />
 }
 
-function Loaded<T>({ what, query, empty, render }: { what: string; query: { data?: T[]; isError: boolean; refetch: () => unknown }; empty: string; render: (rows: T[]) => ReactNode }) {
+function Loaded<T>({ what, query, empty, render }: { what: string; query: { data?: T[]; isError: boolean; isPlaceholderData?: boolean; refetch: () => unknown }; empty: string; render: (rows: T[]) => ReactNode }) {
   if (query.isError) return <QueryError what={what} onRetry={() => void query.refetch()} />
   if (!query.data)
     return (
@@ -197,7 +197,8 @@ function Loaded<T>({ what, query, empty, render }: { what: string; query: { data
         <p className="mt-3 text-sm text-fg-muted">{empty}</p>
       </div>
     )
-  return <>{render(query.data)}</>
+  // Another period or person: the last rows stay, dimmed, until the new ones come (UX Phase 4, 4.5).
+  return <div className={clsx('transition-opacity', query.isPlaceholderData && 'opacity-60')}>{render(query.data)}</div>
 }
 
 /** A desktop table and, on phones, a list with the same facts. */

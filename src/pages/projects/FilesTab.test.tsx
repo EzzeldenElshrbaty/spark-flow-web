@@ -64,6 +64,13 @@ afterEach(cleanup)
 const table = () => screen.getByRole('table', { name: 'Project files' })
 
 describe('FilesTab (spec 5.3)', () => {
+  it('a filter change keeps the old rows, dimmed, until the new ones come (UX Phase 4, 4.5)', () => {
+    query = { ...query, isPlaceholderData: true } as Query
+    show()
+    const table = screen.getByRole('table', { name: 'Project files' })
+    expect(table.closest('.opacity-60')).toBeTruthy()
+  })
+
   it('lists every file with its type, size, uploader, date and where it came from', () => {
     show()
     const headers = within(table()).getAllByRole('columnheader').map((h) => h.textContent)

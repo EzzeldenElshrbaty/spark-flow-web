@@ -180,6 +180,16 @@ describe('Settings → Attendance (Admin and help, slice 5)', () => {
     expect(within(sheet).queryByText('Pick a whole number of hours from 1 to 12.')).toBeNull()
   })
 
+  it('a new period keeps the old days, dimmed, until the new ones come (UX Phase 4, 4.5)', async () => {
+    await mount()
+    await rows('Days')
+    vi.mocked(api.attendance.days).mockReturnValueOnce(new Promise(() => {}))
+    const period = screen.getByRole('combobox', { name: 'Period' }) as HTMLSelectElement
+    const other = [...period.options].find((o) => !o.selected)!.value
+    fireEvent.change(period, { target: { value: other } })
+    await waitFor(() => expect(screen.getByRole('table', { name: 'Days' }).closest('.opacity-60')).toBeTruthy())
+  })
+
   it('someone who sees only themselves gets no person filter and no Change', async () => {
     me = { ...me, id: 'u-5', roleIds: ['member'], grants: [] }
     vi.mocked(api.attendance.scope).mockResolvedValue({ userIds: ['u-5'] })

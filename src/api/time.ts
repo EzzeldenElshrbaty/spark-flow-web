@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
 import type { NewManualEntry, ReportPeriod, TimeEntryPatch, TimeTarget } from '@/api/types'
 import { qk } from '@/api/queryKeys'
 import { retryUnlessNotFound as retry } from '@/api/retry'
@@ -40,5 +40,7 @@ export function useTimeReport(workspaceId: string | undefined, days: ReportPerio
     queryFn: () => api.time.report(workspaceId!, days, projectId ? { projectId } : undefined),
     retry,
     enabled: enabled && Boolean(workspaceId),
+    // A new period or project keeps the last report, dimmed, until the new one comes (UX Phase 4, 4.5).
+    placeholderData: keepPreviousData,
   })
 }

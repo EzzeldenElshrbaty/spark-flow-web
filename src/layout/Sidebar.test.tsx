@@ -20,11 +20,12 @@ const setOrder = vi.fn()
 let customOrder = { starred: false, channels: false, projects: false }
 let orderError: string | null = null
 let dms: unknown[] = []
+let loadingWorkspace = false
 vi.mock('@/api/sidebar', () => ({ useSaveSidebarOrder: () => ({ save: setOrder, error: orderError }) }))
 vi.mock('@/layout/useSidebarGroups', () => ({
   useSidebarGroups: () => ({
     customOrder,
-    workspace,
+    workspace: loadingWorkspace ? undefined : workspace,
     starred: [],
     channels: [channel('c-general', 'general'), channel('c-backend', 'backend')],
     dms,
@@ -49,6 +50,7 @@ beforeEach(() => {
   customOrder = { starred: false, channels: false, projects: false }
   orderError = null
   dms = []
+  loadingWorkspace = false
   setOrder.mockReset()
 })
 afterEach(cleanup)
@@ -181,5 +183,14 @@ describe('my own notes in Direct messages (UX Phase 3 final review: one person, 
     at('/w/engineering/c/c-general', <SidebarContent />)
     const avatar = document.querySelector('a[href="/w/engineering/c/c-me"] .rounded-full')!
     expect(avatar.className).toContain(avatarTone('Hossam Gaber'))
+  })
+})
+
+describe('the sidebar while the workspace list loads (UX Phase 4, 4.5)', () => {
+  it('shows Work at once, its links taken from the address', () => {
+    loadingWorkspace = true
+    at('/w/acme/p/NEX/tasks', <SidebarContent />)
+    expect(within(nav()).getByRole('link', { name: 'Dashboard' }).getAttribute('href')).toBe('/w/acme/dashboard')
+    expect(within(nav()).getByRole('link', { name: 'My work' }).getAttribute('href')).toBe('/w/acme')
   })
 })

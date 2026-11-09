@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
 import { qk } from '@/api/queryKeys'
 import { retryUnlessNotFound as retry } from '@/api/retry'
 import type { AttendanceQuery } from '@/api/types'
@@ -14,21 +14,24 @@ export function useAttendanceScope() {
   return useQuery({ queryKey: qk.attendance('scope'), queryFn: () => api.attendance.scope(), retry })
 }
 
-/** People's days, made from their timer entries (timer slice 3); a running timer's day grows, so it looks again. */
+/**
+ * People's days, made from their timer entries (timer slice 3); a running timer's day grows, so it looks again. These
+ * views keep the last rows, dimmed, while another period or person loads (UX Phase 4, 4.5).
+ */
 export function useAttendanceDays(query: AttendanceQuery, enabled = true) {
-  return useQuery({ queryKey: qk.attendance('days', query.days, query.userId ?? ''), queryFn: () => api.attendance.days(query), retry, enabled, refetchInterval: APP_TIME_MS })
+  return useQuery({ queryKey: qk.attendance('days', query.days, query.userId ?? ''), queryFn: () => api.attendance.days(query), retry, enabled, refetchInterval: APP_TIME_MS, placeholderData: keepPreviousData })
 }
 
 export function useAttendanceDay(day: string, userId: string | undefined, enabled = true) {
-  return useQuery({ queryKey: qk.attendance('day', day, userId ?? ''), queryFn: () => api.attendance.day(day, userId), retry, enabled, refetchInterval: APP_TIME_MS })
+  return useQuery({ queryKey: qk.attendance('day', day, userId ?? ''), queryFn: () => api.attendance.day(day, userId), retry, enabled, refetchInterval: APP_TIME_MS, placeholderData: keepPreviousData })
 }
 
 export function useVisits(query: AttendanceQuery, enabled = true) {
-  return useQuery({ queryKey: qk.attendance('visits', query.days, query.userId ?? ''), queryFn: () => api.attendance.visits(query), retry, enabled, refetchInterval: APP_TIME_MS })
+  return useQuery({ queryKey: qk.attendance('visits', query.days, query.userId ?? ''), queryFn: () => api.attendance.visits(query), retry, enabled, refetchInterval: APP_TIME_MS, placeholderData: keepPreviousData })
 }
 
 export function useAttendanceReport(query: AttendanceQuery, enabled = true) {
-  return useQuery({ queryKey: qk.attendance('report', query.days, query.userId ?? ''), queryFn: () => api.attendance.report(query), retry, enabled, refetchInterval: APP_TIME_MS })
+  return useQuery({ queryKey: qk.attendance('report', query.days, query.userId ?? ''), queryFn: () => api.attendance.report(query), retry, enabled, refetchInterval: APP_TIME_MS, placeholderData: keepPreviousData })
 }
 
 export function useWorkHours() {
