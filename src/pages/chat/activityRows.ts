@@ -1,4 +1,5 @@
 import type { ActivityItem, ActivityItemKind } from '@/api/types'
+import { notificationLine } from '@/lib/mentionLink'
 import { paths } from '@/lib/paths'
 
 export type ActivityTab = 'all' | ActivityItemKind
@@ -7,6 +8,7 @@ export type ActivityTab = 'all' | ActivityItemKind
 export const ACTIVITY_TABS: { id: ActivityTab; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'mention', label: 'Mentions' },
+  { id: 'task', label: 'Tasks' },
   { id: 'reaction', label: 'Reactions' },
   { id: 'thread', label: 'Threads' },
   { id: 'reminder', label: 'Reminders' },
@@ -26,6 +28,7 @@ export function activityKind(item: ActivityItem, place: string | null): string {
   const where = item.taskKey && !item.channelId ? ` on ${item.taskKey}` : place ? ` in ${place}` : ''
   if (item.kind === 'reaction') return `${item.actorName} reacted ${item.emoji ?? ''} to your ${item.replyId ? 'reply' : 'message'}${where}`
   if (item.kind === 'thread') return `Replied in a thread you follow${where}`
+  if (item.kind === 'task') return notificationLine({ source: item.taskEvent ?? 'taskComment', authorName: item.actorName, taskKey: item.taskKey, statusLabel: item.statusLabel ?? null })
   if (item.kind === 'reminder') return `Reminder about a ${item.replyId ? 'reply' : 'message'}${where}`
   return item.keyword ? `Matched “${item.keyword}”${where}` : `Mentioned you${where}`
 }

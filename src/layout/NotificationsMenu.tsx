@@ -1,7 +1,7 @@
 import clsx from 'clsx'
-import { IconAt, IconBell } from '@tabler/icons-react'
+import { IconArrowsExchange, IconAt, IconBell, IconMessage, IconUserCheck, type TablerIcon } from '@tabler/icons-react'
 import { useState } from 'react'
-import { useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { useMarkMentionsRead, useMyMentions } from '@/api/mentions'
 import { useShownError } from '@/lib/useShownError'
 import { useWorkspaces } from '@/api/workspaces'
@@ -11,10 +11,17 @@ import { Icon } from '@/components/sf/Icon'
 import { Popover } from '@/components/sf/Popover'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { timeAgo } from '@/lib/format'
-import { mentionLink } from '@/lib/mentionLink'
+import { mentionLink, notificationLine } from '@/lib/mentionLink'
+import { paths } from '@/lib/paths'
 import { useRole } from '@/lib/useRole'
 
-/** The bell in the top bar: mentions of me, with the unread count, in the redesign's panel (a bottom sheet on phones). */
+/** Each kind of bell item's icon: a mention, or what someone did to a task of mine (UX Phase 2, 2.3). */
+const SOURCE_ICONS: Record<MentionItem['source'], TablerIcon> = { message: IconAt, reply: IconAt, comment: IconAt, assigned: IconUserCheck, status: IconArrowsExchange, taskComment: IconMessage }
+
+/**
+ * The bell in the top bar: mentions of me and task news for me, with the unread count, in the redesign's panel (a
+ * bottom sheet on phones); See all opens this workspace's Activity.
+ */
 export function NotificationsMenu() {
   const { persona } = useRole()
   const { workspace } = useCurrentWorkspace()
@@ -100,7 +107,7 @@ export function NotificationsMenu() {
             <div className="min-h-0 flex-1 overflow-y-auto">
               {!data && mentionsError ? (
                 <div className="flex flex-col items-center gap-3 p-4 text-center" role="alert">
-                  <p className="sf-small m-0 text-sf-text-secondary">Mentions didn't load.</p>
+                  <p className="sf-small m-0 text-sf-text-secondary">Notifications didn’t load.</p>
                   <Button onClick={() => void mentions.refetch()} disabled={mentions.isFetching}>
                     {mentions.isFetching ? 'Trying…' : 'Try again'}
                   </Button>
@@ -112,7 +119,7 @@ export function NotificationsMenu() {
                   ))}
                 </div>
               ) : items.length === 0 ? (
-                <p className="sf-small m-0 px-4 py-8 text-center text-sf-text-muted">{unreadOnly ? 'You’re all caught up.' : 'No mentions yet.'}</p>
+                <p className="sf-small m-0 px-4 py-8 text-center text-sf-text-muted">{unreadOnly ? 'You’re all caught up.' : 'Nothing new.'}</p>
               ) : (
                 <ul className="m-0 list-none divide-y divide-sf-line p-0">
                   {items.map((item) => (
@@ -126,11 +133,11 @@ export function NotificationsMenu() {
                         className={clsx('sf-focus flex w-full cursor-pointer items-start gap-3 px-4 py-3 text-start hover:bg-sf-surface-hover', !item.read && 'bg-sf-surface-mention')}
                       >
                         <span aria-hidden className="mt-0.5 grid size-8 flex-none place-items-center rounded-sf-full bg-sf-surface-mention text-sf-accent">
-                          <Icon icon={IconAt} size={16} />
+                          <Icon icon={SOURCE_ICONS[item.source]} size={16} />
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="flex items-baseline justify-between gap-2">
-                            <span className={clsx('sf-small truncate', item.read ? 'text-sf-text-secondary' : 'font-semibold text-sf-text')}>{item.authorName} mentioned you</span>
+                            <span className={clsx('sf-small truncate', item.read ? 'text-sf-text-secondary' : 'font-semibold text-sf-text')}>{notificationLine(item)}</span>
                             <span className="sf-meta flex-none text-sf-text-muted">{timeAgo(item.createdAt)}</span>
                           </span>
                           <span className="sf-meta mt-0.5 line-clamp-2 block text-sf-text-muted">{item.excerpt}</span>
@@ -142,6 +149,13 @@ export function NotificationsMenu() {
                 </ul>
               )}
             </div>
+            {workspace && (
+              <div className="flex-none border-t border-sf-line px-4 py-2 text-end">
+                <Link to={paths.activity(workspace.slug)} onClick={close} className="sf-focus sf-small rounded-sf-sm font-medium text-sf-accent hover:underline">
+                  See all
+                </Link>
+              </div>
+            )}
           </div>
         )}
       </Popover>

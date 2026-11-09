@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { MentionItem } from '@/api/types'
-import { mentionLink } from './mentionLink'
+import { mentionLink, notificationLine } from './mentionLink'
 
 const item = (over: Partial<MentionItem>): MentionItem => ({ id: 'x', source: 'message', authorId: 'u', excerpt: '', createdAt: '', read: false, workspaceId: 'ws-eng', authorName: 'A', channelId: null, messageId: null, taskKey: null, projectId: null, keyword: null, ...over })
 const workspaces = [{ id: 'ws-eng', slug: 'engineering' }, { id: 'ws-design', slug: 'design' }]
@@ -19,5 +19,22 @@ describe('mentionLink', () => {
   it('an unknown workspace, or a mention with nothing to open, falls back to Home here', () => {
     expect(mentionLink(item({ workspaceId: 'ws-gone', channelId: 'c-x', messageId: 'm' }), workspaces, 'engineering')).toBe('/w/engineering')
     expect(mentionLink(item({ source: 'comment' }), workspaces, 'engineering')).toBe('/w/engineering')
+  })
+})
+
+describe('task news (UX Phase 2, 2.3)', () => {
+  it('opens the task on its project’s Tasks tab, in its own workspace', () => {
+    for (const source of ['assigned', 'status', 'taskComment'] as const) {
+      expect(mentionLink(item({ source, taskKey: 'NEX-106', projectId: 'p-nex', workspaceId: 'ws-design' }), workspaces, 'engineering')).toBe('/w/design/p/NEX/tasks?ticket=NEX-106')
+    }
+  })
+
+  it('says what happened in one line', () => {
+    const who = { authorName: 'Nour El-Sayed', taskKey: 'NEX-106' }
+    expect(notificationLine(item({ ...who, source: 'message' }))).toBe('Nour El-Sayed mentioned you')
+    expect(notificationLine(item({ ...who, source: 'assigned' }))).toBe('Nour El-Sayed assigned you NEX-106')
+    expect(notificationLine(item({ ...who, source: 'status', statusLabel: 'In review' }))).toBe('Nour El-Sayed moved NEX-106 to In review')
+    expect(notificationLine(item({ ...who, source: 'status', statusLabel: null }))).toBe('Nour El-Sayed moved NEX-106')
+    expect(notificationLine(item({ ...who, source: 'taskComment' }))).toBe('Nour El-Sayed commented on NEX-106')
   })
 })

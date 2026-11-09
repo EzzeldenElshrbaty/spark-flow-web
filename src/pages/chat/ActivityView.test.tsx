@@ -39,7 +39,7 @@ describe('Activity (spec 6.12)', () => {
   it('has its title, the tabs, Unread only and Mark all read', () => {
     show()
     expect(screen.getByRole('heading', { level: 1, name: 'Activity' })).toBeTruthy()
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['All', 'Mentions', 'Reactions', 'Threads', 'Reminders'])
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['All', 'Mentions', 'Tasks', 'Reactions', 'Threads', 'Reminders'])
     expect(screen.getByRole('tab', { name: 'All' }).getAttribute('aria-selected')).toBe('true')
     expect(screen.getByRole('switch', { name: 'Unread only' }).getAttribute('aria-checked')).toBe('false')
     expect(screen.getByRole('button', { name: 'Mark all read' })).toBeTruthy()

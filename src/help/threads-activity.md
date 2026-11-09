@@ -18,4 +18,4 @@ To follow one yourself, choose **Get notified about replies** in the message's â
 
 ## Activity
 
-Activity (in the Chat side's menu, or `Ctrl` + `Shift` + `A`) lists what happened to you: mentions, replies in threads you follow, reactions to your messages and reminders. Opening an item reads it; **Mark all read** reads them all.
+Activity (in the Chat side's menu, or `Ctrl` + `Shift` + `A`) lists what happened to you: mentions, task news (someone assigned you a task, moved a task of yours, or commented on one; the **Tasks** tab), replies in threads you follow, reactions to your messages and reminders. Opening an item reads it; **Mark all read** reads them all.

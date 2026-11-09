@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ActivityItem } from '@/api/types'
-import { activityKind, activityLink, shownActivity } from '@/pages/chat/activityRows'
+import { ACTIVITY_TABS, activityKind, activityLink, shownActivity } from '@/pages/chat/activityRows'
 
 let n = 0
 const item = (over: Partial<ActivityItem> = {}): ActivityItem => ({
@@ -67,5 +67,16 @@ describe('activityLink: where opening a row goes', () => {
 
   it('with nowhere to go it stays on Activity', () => {
     expect(activityLink(item({ channelId: null, messageId: null }), 'engineering')).toBe('/w/engineering/activity')
+  })
+})
+
+describe('task news in Activity (UX Phase 2, 2.3)', () => {
+  it('has a Tasks tab after Mentions, and each task row says what happened', () => {
+    expect(ACTIVITY_TABS.map((t) => t.label)).toEqual(['All', 'Mentions', 'Tasks', 'Reactions', 'Threads', 'Reminders'])
+    const row = (over: Partial<ActivityItem>) => ({ id: 'a', kind: 'task', read: false, createdAt: '', workspaceId: 'ws-eng', actorId: 'u-2', actorName: 'Nour El-Sayed', channelId: null, messageId: null, replyId: null, taskKey: 'NEX-106', projectId: 'p-nex', excerpt: 'Badge', emoji: null, ...over }) as ActivityItem
+    expect(activityKind(row({ taskEvent: 'assigned' }), null)).toBe('Nour El-Sayed assigned you NEX-106')
+    expect(activityKind(row({ taskEvent: 'status', statusLabel: 'Done' }), null)).toBe('Nour El-Sayed moved NEX-106 to Done')
+    expect(activityKind(row({ taskEvent: 'taskComment' }), null)).toBe('Nour El-Sayed commented on NEX-106')
+    expect(shownActivity([row({}), { ...row({}), id: 'b', kind: 'mention' }], 'task', false).unread.map((r) => r.id)).toEqual(['a'])
   })
 })

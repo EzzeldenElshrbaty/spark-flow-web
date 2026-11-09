@@ -31,4 +31,4 @@ Every open task assigned to you, across every project: overdue first, then the o
 
 ## Mentions
 
-When someone writes `@` and your name in a message or comment, it shows here and in the bell. Open it to go to the message. **See all** opens [Activity](help:threads-activity).
+When someone writes `@` and your name in a message or comment, it shows here and in the bell. The bell also tells you when someone assigns you a task, moves a task of yours or comments on one; its **See all** opens Activity. Open it to go to the message. **See all** opens [Activity](help:threads-activity).

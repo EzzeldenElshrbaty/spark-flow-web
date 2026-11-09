@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MentionItem } from '@/api/types'
@@ -153,5 +153,24 @@ describe('NotificationsMenu (spec 5.2: the bell)', () => {
     await act(async () => fireEvent.click(screen.getByRole('button', { name: /Nour El-Sayed mentioned you/ })))
     expect(markRead).toHaveBeenLastCalledWith(['m1'])
     expect(navigate).toHaveBeenCalled()
+  })
+
+  it('lists task news beside mentions, says so when there is nothing, and See all opens Activity (UX Phase 2, 2.3)', async () => {
+    const task = (id: string, source: MentionItem['source'], statusLabel: string | null = null): MentionItem => ({ ...item(id, false), source, channelId: null, messageId: null, taskKey: 'NEX-106', projectId: 'p-nex', statusLabel })
+    mentions = [task('t1', 'assigned'), task('t2', 'status', 'In review'), task('t3', 'taskComment')]
+    show(<NotificationsMenu />)
+    await open(/Notifications, 3 unread/)
+    const panel = screen.getByRole('dialog', { name: 'Notifications' })
+    expect(within(panel).getByRole('button', { name: /Nour El-Sayed assigned you NEX-106/ })).toBeTruthy()
+    expect(within(panel).getByRole('button', { name: /Nour El-Sayed moved NEX-106 to In review/ })).toBeTruthy()
+    expect(within(panel).getByRole('button', { name: /Nour El-Sayed commented on NEX-106/ })).toBeTruthy()
+    expect(within(panel).getByRole('link', { name: 'See all' }).getAttribute('href')).toBe('/w/engineering/activity')
+  })
+
+  it('with nothing at all, says "Nothing new."', async () => {
+    mentions = []
+    show(<NotificationsMenu />)
+    await open(/Notifications/)
+    expect(within(screen.getByRole('dialog', { name: 'Notifications' })).getByText('Nothing new.')).toBeTruthy()
   })
 })
