@@ -275,7 +275,7 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
     (now: Body) => {
       const parsed = parseCommand(now)
       if (!slash || !parsed) return
-      if (!slash.commands.some((c) => c.name === parsed.name)) return setNotice(refusal(parsed.name))
+      if (!slash.commands.some((c) => c.name === parsed.name)) return setNotice(refusal(parsed.name, slash.refused))
       setPending(true)
       slash
         .run(parsed, now)

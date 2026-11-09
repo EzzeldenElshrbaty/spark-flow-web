@@ -12,7 +12,8 @@ import { TaskSheet, type TaskDraft } from '@/pages/projects/TaskSheet'
 
 /**
  * "Create task" for the messages of a project's channel, offered to whoever manages that project's tasks: the ⋯ menu
- * item, and the task sheet it opens with the message as the draft. Other channels get neither.
+ * item, and the task sheet it opens with the message as the draft. Other channels get neither, and /task there says
+ * why (`whyNoTask`): no project, or not mine to manage; nothing while the projects load.
  */
 export function useTaskFromMessage(
   channelId: string | undefined,
@@ -22,10 +23,12 @@ export function useTaskFromMessage(
   fromFile?: (file: Attachment, message: ChatMessage) => void
   /** /task (spec 6.8): the sheet with a title and an assignee. */
   fromCommand?: ChannelCommandUi['newTask']
+  whyNoTask?: ChannelCommandUi['whyNoTask']
   sheet: ReactNode
 } {
   const check = usePermission()
-  const project = useProjectSummaries(workspaceId).data?.find((p) => p.channelId === channelId)
+  const projects = useProjectSummaries(workspaceId).data
+  const project = projects?.find((p) => p.channelId === channelId)
   const allowed = project ? check('task.manage', { project }) : false
   const phases = usePhases(allowed ? project?.id : undefined)
   const sprints = useSprints(allowed && project?.methodology === 'agile' ? project.id : undefined)
@@ -34,7 +37,8 @@ export function useTaskFromMessage(
   const [from, setFrom] = useState<{ key: string; draft: (projectId: string) => TaskDraft } | null>(null)
   const fromMessage = (message: ChatMessage, title?: string) => setFrom({ key: message.id, draft: (projectId) => ({ ...taskDraft(message, projectId), ...(title && { title }) }) })
 
-  if (!project || !allowed) return { sheet: null }
+  if (!project) return { sheet: null, whyNoTask: projects ? '/task works in a project’s channel.' : undefined }
+  if (!allowed) return { sheet: null, whyNoTask: `You can’t create tasks in ${project.name}.` }
   const messageActions = (message: ChatMessage) =>
     !canMakeTask(message) ? null : (
       <MenuItem key="task" icon={IconListCheck} onSelect={() => fromMessage(message)}>

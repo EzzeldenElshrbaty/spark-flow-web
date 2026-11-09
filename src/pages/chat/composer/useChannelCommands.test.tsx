@@ -58,6 +58,12 @@ describe('useChannelCommands (spec 6.8)', () => {
     expect(result.current.commands.find((c) => c.name === 'mute')?.description).toBe('Unmute this conversation')
   })
 
+  it('passes on why /task isn’t offered here, when the page knows', () => {
+    const why = 'You can’t create tasks in Nexus Core.'
+    expect(renderHook(() => useChannelCommands(backend, ui({ whyNoTask: why }))).result.current.refused).toEqual({ task: why })
+    expect(renderHook(() => useChannelCommands(backend, ui())).result.current.refused).toEqual({})
+  })
+
   it('/mute mutes and says how to undo it; in a muted DM it unmutes', async () => {
     expect(await run(backend, '/mute')).toEqual({ notice: '#backend is muted. Type /mute to unmute it.' })
     expect(mute).toHaveBeenLastCalledWith({ id: 'c-backend', muted: true })

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { bodyText, parseBody, type Body, type Inline } from '@/lib/messageBody'
-import { COMMANDS, commandOptions, parseCommand, shrugBody } from '@/lib/slashCommands'
+import { COMMANDS, commandOptions, parseCommand, refusal, shrugBody } from '@/lib/slashCommands'
 
 const p = (...children: Inline[]): Body => [{ type: 'p', children }]
 
@@ -48,5 +48,20 @@ describe('shrugBody', () => {
 
   it('on its own it is just the shrug', () => {
     expect(bodyText(shrugBody(parseBody('/shrug')))).toBe('¯\\_(ツ)_/¯')
+  })
+})
+
+describe('refusal', () => {
+  const tail = ' To send it as a message, start it with a space.'
+  it('says an unknown /word isn’t a shortcut, and one not offered here that it doesn’t work here', () => {
+    expect(refusal('foo')).toBe(`/foo isn’t a shortcut.${tail}`)
+    expect(refusal('task')).toBe(`/task doesn’t work here.${tail}`)
+  })
+
+  it('says why instead when the place gives a reason for that shortcut, and only for it', () => {
+    const why = { task: '/task works in a project’s channel.' }
+    expect(refusal('task', why)).toBe(`/task works in a project’s channel.${tail}`)
+    expect(refusal('topic', why)).toBe(`/topic doesn’t work here.${tail}`)
+    expect(refusal('foo', why)).toBe(`/foo isn’t a shortcut.${tail}`)
   })
 })

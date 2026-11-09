@@ -24,7 +24,7 @@ Write `@` to mention someone (they’re told), `@NEX-101` for a task, `@NEX` for
 
 Write `/` at the start of a message for shortcuts:
 
-- `/remind` sets a reminder; `/task` creates a task from the message.
+- `/remind` sets a reminder; in a project’s channel, `/task Fix login @Nour` creates a task with that title and assignee.
 - `/invite` adds people; `/topic` sets the channel’s topic.
 - `/mute` and `/leave` act on the channel; `/search` searches it.
 

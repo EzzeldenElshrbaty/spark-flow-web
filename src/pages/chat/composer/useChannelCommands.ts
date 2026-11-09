@@ -14,6 +14,8 @@ export type ChannelCommandUi = {
   openDetails: (tab: DetailsTab, options?: { editTopic?: boolean; addPeople?: string[] }) => void
   /** /task: the channel's project, where I manage its tasks (spec 6.8 "in the channel's linked project"). */
   newTask?: { projectName: string; open: (draft: { title: string; assigneeId: string | null }) => void }
+  /** Why /task isn't offered here, when the page knows: said instead of "doesn’t work here". */
+  whyNoTask?: string
   /** /remind: the reminder dialog with the words filled in. */
   remind?: (what: string) => void
 }
@@ -84,5 +86,5 @@ export function useChannelCommands(channel: Channel, ui: ChannelCommandUi): Comp
         return {}
     }
   }
-  return { commands, run }
+  return { commands, run, refused: ui.whyNoTask ? { task: ui.whyNoTask } : {} }
 }
