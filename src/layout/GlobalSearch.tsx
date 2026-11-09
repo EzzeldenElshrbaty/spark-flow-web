@@ -327,6 +327,7 @@ export function PhoneSearch({ open, onOpenChange }: { open: boolean; onOpenChang
         type="button"
         onClick={() => onOpenChange(true)}
         aria-label="Search"
+        title="Search"
         className="sf-focus inline-grid size-sf-control flex-none cursor-pointer place-items-center rounded-sf-full border border-sf-line text-sf-text-secondary hover:bg-sf-surface-hover hover:text-sf-text md:hidden"
       >
         <Icon icon={IconSearch} />

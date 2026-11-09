@@ -69,7 +69,7 @@ export function InspectorFrame({
           </h2>
         </div>
         {actions}
-        <button type="button" onClick={onClose} className="-me-1 rounded-md p-1 text-fg-muted hover:bg-surface-muted hover:text-fg" aria-label={`Close ${label.toLowerCase()}`}>
+        <button type="button" onClick={onClose} className="-me-1 rounded-md p-1 text-fg-muted hover:bg-surface-muted hover:text-fg" aria-label={`Close ${label.toLowerCase()}`} title={`Close ${label.toLowerCase()}`}>
           <X className="size-5" />
         </button>
       </div>

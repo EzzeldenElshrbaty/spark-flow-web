@@ -8,6 +8,7 @@ import { $createParagraphNode, $getSelection, $isRangeSelection, FORMAT_TEXT_COM
 import { useEffect, useRef, useState } from 'react'
 import { acceptedFiles } from '@/lib/fileTypes'
 import { $formatState, type FormatState } from '@/pages/chat/composer/FormatBar'
+import { IconButton } from '@/components/ui/IconButton'
 
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
 const mod = isMac ? '⌘' : 'Ctrl+'
@@ -35,9 +36,10 @@ export function DescriptionToolbar({ onLink, onFiles }: { onLink: () => void; on
     editor.dispatchCommand(state.block === kind ? REMOVE_LIST_COMMAND : kind === 'bullet' ? INSERT_UNORDERED_LIST_COMMAND : INSERT_ORDERED_LIST_COMMAND, undefined)
 
   const button = (label: string, Icon: LucideIcon, pressed: boolean | null, run: () => void, keys?: string) => (
-    <button
-      type="button"
-      aria-label={label}
+    <IconButton
+      label={label}
+      icon={Icon}
+      size="sm"
       title={keys ? `${label} (${keys})` : label}
       {...(pressed !== null && { 'aria-pressed': pressed })}
       // Keep the caret (and the selection) in the editor.
@@ -46,10 +48,7 @@ export function DescriptionToolbar({ onLink, onFiles }: { onLink: () => void; on
         run()
         if (pressed !== null) editor.focus()
       }}
-      className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-fg-muted hover:bg-surface-muted hover:text-fg aria-pressed:bg-surface-muted aria-pressed:text-fg"
-    >
-      <Icon className="size-4" aria-hidden />
-    </button>
+    />
   )
   const sep = <span aria-hidden className="mx-1 h-4 w-px shrink-0 bg-line" />
   return (

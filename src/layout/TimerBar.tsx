@@ -47,7 +47,7 @@ export function TimerControls({ timer, layout }: { timer: MyTimer; layout: 'pill
   // In the pill the words show from xl up; below that the top bar has room for icons only, named for screen readers.
   const words = layout === 'pill' ? 'hidden xl:inline' : undefined
   const control = (icon: ReactNode, text: string, onClick: () => void, disabled = false) => (
-    <button type="button" className={button} onClick={onClick} disabled={disabled} aria-label={layout === 'pill' ? text : undefined}>
+    <button type="button" className={button} onClick={onClick} disabled={disabled} aria-label={layout === 'pill' ? text : undefined} title={layout === 'pill' ? text : undefined}>
       {icon} <span className={words}>{text}</span>
     </button>
   )
@@ -60,7 +60,7 @@ export function TimerControls({ timer, layout }: { timer: MyTimer; layout: 'pill
       {control(<Square className="size-3 fill-current" aria-hidden />, stop.isPending ? 'Stopping…' : 'Stop', () => stop.mutate(), stop.isPending)}
       {timer.state === 'paused' &&
         (layout === 'bar' ? (
-          <button type="button" className={button} onClick={() => setSwitching(true)} aria-label="Switch task">
+          <button type="button" className={button} onClick={() => setSwitching(true)} aria-label="Switch task" title="Switch task">
             <ArrowLeftRight className="size-3" aria-hidden />
           </button>
         ) : (

@@ -12,6 +12,7 @@ import { useUiStore } from '@/lib/uiStore'
 import { sectionsOf, useHelpChapters, useMayRead } from '@/lib/useHelp'
 import { useRole } from '@/lib/useRole'
 import { HelpDoc } from '@/pages/help/HelpDoc'
+import { IconButton } from '@/components/ui/IconButton'
 
 /** The "?" button's id: focus goes back to it when the panel closes. */
 export const HELP_BUTTON_ID = 'page-help-button'
@@ -108,9 +109,7 @@ export function PageHelpPanel() {
             {title}
           </h2>
         </div>
-        <button type="button" onClick={close} className="-me-2 grid size-11 shrink-0 place-items-center rounded-md text-fg-muted hover:bg-surface-muted hover:text-fg sm:size-9" aria-label="Close help">
-          <X className="size-5" />
-        </button>
+        <IconButton label="Close help" icon={X} touch onClick={close} className="-me-2" />
       </div>
       <div ref={body} className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
         <HelpDoc compact blocks={sectionsOf(shownChapter, sections)} canOpen={(id) => chapters!.some((c) => c.id === id)} onChapter={(chapter, section) => follow({ chapter, section })} />

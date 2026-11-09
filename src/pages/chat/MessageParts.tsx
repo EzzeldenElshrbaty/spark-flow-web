@@ -149,6 +149,7 @@ export function Reactions({ reactions, users, target, meId, canReact }: { reacti
                 type="button"
                 {...props}
                 aria-label="Add reaction"
+                title="Add reaction"
                 className="sf-focus inline-flex h-6 w-8 items-center justify-center rounded-sf-full border border-sf-line bg-sf-surface text-sf-text-secondary hover:border-sf-line-strong"
               >
                 <Icon icon={IconMoodPlus} size={16} />

@@ -30,7 +30,7 @@ export function SplitButton({
       <Menu
         label={menuLabel}
         trigger={(props) => (
-          <button type="button" aria-label={menuLabel} {...props} className={`${part} border-s border-sf-line px-1`}>
+          <button type="button" aria-label={menuLabel} title={menuLabel} {...props} className={`${part} border-s border-sf-line px-1`}>
             <Icon icon={IconChevronDown} size={16} />
           </button>
         )}

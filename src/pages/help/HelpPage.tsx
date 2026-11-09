@@ -10,6 +10,7 @@ import { NEEDS_TEXT, useHelpChapters } from '@/lib/useHelp'
 import { useRole } from '@/lib/useRole'
 import { HelpDoc } from './HelpDoc'
 import { useParam } from '@/lib/searchParams'
+import { IconButton } from '@/components/ui/IconButton'
 
 /** Words around the first match, for a search result. */
 function snippet(text: string, term: string) {
@@ -93,9 +94,7 @@ export function HelpPage() {
           <Search aria-hidden className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-fg-muted" />
           <input type="search" value={term} onChange={(e) => setTerm(e.target.value)} placeholder="Search help…" className={clsx(inputClass, 'ps-9 pe-9')} />
           {term && (
-            <button type="button" onClick={() => setTerm('')} aria-label="Clear search" className="absolute end-1 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded text-fg-muted hover:text-fg">
-              <X className="size-4" />
-            </button>
+            <IconButton label="Clear search" icon={X} onClick={() => setTerm('')} className="absolute end-1 top-1/2 -translate-y-1/2" />
           )}
         </label>
       </header>

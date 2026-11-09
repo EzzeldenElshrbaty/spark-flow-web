@@ -86,17 +86,17 @@ export function FileViewer({
             <Download className="size-4" /> Download
           </a>
         )}
-        <button type="button" onClick={onClose} className="rounded-full p-2 text-white hover:bg-white/10" aria-label="Close">
+        <button type="button" onClick={onClose} className="rounded-full p-2 text-white hover:bg-white/10" aria-label="Close" title="Close">
           <X className="size-5" />
         </button>
       </div>
       <div className="relative flex min-h-0 flex-1 items-stretch justify-center px-2 pb-2 sm:px-14 sm:pb-4">
         {many && (
           <>
-            <button type="button" onClick={() => step(-1)} className="absolute start-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white hover:bg-black/80 sm:start-3" aria-label="Previous file">
+            <button type="button" onClick={() => step(-1)} className="absolute start-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white hover:bg-black/80 sm:start-3" aria-label="Previous file" title="Previous file">
               <ChevronLeft className="size-6 rtl:-scale-x-100" />
             </button>
-            <button type="button" onClick={() => step(1)} className="absolute end-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white hover:bg-black/80 sm:end-3" aria-label="Next file">
+            <button type="button" onClick={() => step(1)} className="absolute end-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white hover:bg-black/80 sm:end-3" aria-label="Next file" title="Next file">
               <ChevronRight className="size-6 rtl:-scale-x-100" />
             </button>
           </>
@@ -126,11 +126,11 @@ function ImageView({ file }: { file: ViewedFile }) {
         />
       </div>
       <div className="absolute bottom-3 start-1/2 flex -translate-x-1/2 rtl:translate-x-1/2 items-center gap-1 rounded-full bg-black/70 px-2 py-1 text-white">
-        <button type="button" className="rounded-full p-1.5 hover:bg-white/10 disabled:opacity-40" disabled={zoom <= 1} onClick={() => setZoom((value) => Math.max(1, value - 0.5))} aria-label="Zoom out">
+        <button type="button" className="rounded-full p-1.5 hover:bg-white/10 disabled:opacity-40" disabled={zoom <= 1} onClick={() => setZoom((value) => Math.max(1, value - 0.5))} aria-label="Zoom out" title="Zoom out">
           <Minus className="size-4" />
         </button>
         <span className="w-12 text-center text-xs tabular-nums">{Math.round(zoom * 100)}%</span>
-        <button type="button" className="rounded-full p-1.5 hover:bg-white/10 disabled:opacity-40" disabled={zoom >= 4} onClick={() => setZoom((value) => Math.min(4, value + 0.5))} aria-label="Zoom in">
+        <button type="button" className="rounded-full p-1.5 hover:bg-white/10 disabled:opacity-40" disabled={zoom >= 4} onClick={() => setZoom((value) => Math.min(4, value + 0.5))} aria-label="Zoom in" title="Zoom in">
           <Plus className="size-4" />
         </button>
       </div>

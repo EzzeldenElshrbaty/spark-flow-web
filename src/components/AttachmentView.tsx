@@ -47,7 +47,7 @@ function One({ attachment }: { attachment: Attachment }) {
   if (kind === 'image')
     return (
       <>
-        <button type="button" onClick={() => setViewing(true)} className="block overflow-hidden rounded-lg border border-line" aria-label={`Open ${attachment.name}`}>
+        <button type="button" onClick={() => setViewing(true)} className="block overflow-hidden rounded-lg border border-line" aria-label={`Open ${attachment.name}`} title={`Open ${attachment.name}`}>
           {url ? <img src={url} alt={attachment.name} className="max-h-48 max-w-full object-contain" /> : <span className="block h-32 w-48 animate-pulse bg-surface-muted" />}
         </button>
         {viewer}

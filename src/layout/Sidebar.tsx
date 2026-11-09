@@ -112,6 +112,7 @@ export function SideLink({
       end={end}
       onClick={onNavigate}
       aria-label={collapsed ? label : undefined}
+      title={collapsed ? label : undefined}
       aria-describedby={describedBy}
       // A row that drags is ours to drag: the browser mustn't drag (and on a drop, open) the link itself.
       draggable={describedBy ? false : undefined}

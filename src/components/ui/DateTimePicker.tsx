@@ -89,7 +89,7 @@ export function DateTimePicker({
         <span className="truncate">{value ? formatDateTime(value, dateOnly) : placeholder}</span>
       </button>
       {value && (
-        <button type="button" onClick={() => onChange('')} className="absolute end-2 top-1/2 -translate-y-1/2 rounded p-1 text-fg-muted hover:bg-surface-muted hover:text-fg" aria-label="Clear date">
+        <button type="button" onClick={() => onChange('')} className="absolute end-2 top-1/2 -translate-y-1/2 rounded p-1 text-fg-muted hover:bg-surface-muted hover:text-fg" aria-label="Clear date" title="Clear date">
           <X className="size-3.5" />
         </button>
       )}
@@ -270,7 +270,7 @@ function PickerPanel({
         <div className={clsx('min-h-0 overflow-y-auto', phone ? 'flex flex-col' : 'flex')}>
           <div className="p-3 sm:w-72">
             <div className="mb-2 flex items-center gap-1">
-              <button type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))} className="rounded-md p-1.5 text-fg-tertiary hover:bg-surface-muted" aria-label="Previous month">
+              <button type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))} className="rounded-md p-1.5 text-fg-tertiary hover:bg-surface-muted" aria-label="Previous month" title="Previous month">
                 <ChevronLeft className="size-4 rtl:-scale-x-100" />
               </button>
               <div className="flex flex-1 justify-center gap-1.5">
@@ -291,7 +291,7 @@ function PickerPanel({
                   </select>
                 </div>
               </div>
-              <button type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))} className="rounded-md p-1.5 text-fg-tertiary hover:bg-surface-muted" aria-label="Next month">
+              <button type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))} className="rounded-md p-1.5 text-fg-tertiary hover:bg-surface-muted" aria-label="Next month" title="Next month">
                 <ChevronRight className="size-4 rtl:-scale-x-100" />
               </button>
             </div>

@@ -5,6 +5,7 @@ import type { TimeEntry } from '@/api/types'
 import { ConfirmDeleteSheet } from '@/components/ConfirmDeleteSheet'
 import { MenuPanel } from '@/components/ui/Menu'
 import { AddTimeSheet } from '@/pages/time/AddTimeSheet'
+import { IconButton } from '@/components/ui/IconButton'
 
 const item = 'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start text-sm text-fg-secondary hover:bg-surface-muted'
 
@@ -25,18 +26,7 @@ export function EntryActions({ entry, editing = false, onEditingChange }: { entr
   }
   return (
     <div className="relative">
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label="Entry actions"
-        title="Entry actions"
-        className="flex size-8 items-center justify-center rounded-lg text-fg-tertiary hover:bg-surface-muted hover:text-fg max-sm:size-11"
-      >
-        <MoreHorizontal className="size-4" />
-      </button>
+      <IconButton ref={triggerRef} label="Entry actions" icon={MoreHorizontal} size="sm" touch onClick={() => setOpen((v) => !v)} aria-haspopup="menu" aria-expanded={open} />
       <MenuPanel open={open} onClose={() => setOpen(false)} triggerRef={triggerRef} label="Entry actions" className="p-1.5 sm:w-52">
         <button
           type="button"

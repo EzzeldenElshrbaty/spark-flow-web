@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/Badge'
 import { MenuPanel, menuItemClass } from '@/components/ui/Menu'
 import { timeAgo } from '@/lib/format'
 import { Composer } from '@/pages/chat/Composer'
+import { IconButton } from '@/components/ui/IconButton'
 
 /**
  * One comment or bug on a task. Its author (while they can post on the project) edits it in place or deletes it,
@@ -38,18 +39,16 @@ export function CommentRow({ comment, author, mine }: { comment: CommentView; au
           </p>
           {mine && !deleted && !editing && (
             <div className="relative">
-              <button
+              <IconButton
                 ref={triggerRef}
-                type="button"
+                label="Comment actions"
+                icon={MoreHorizontal}
+                size="sm"
                 onClick={() => setOpen((v) => !v)}
                 aria-haspopup="menu"
                 aria-expanded={open}
-                aria-label="Comment actions"
-                title="Comment actions"
-                className="flex size-8 items-center justify-center rounded-lg text-fg-tertiary hover:bg-surface-muted hover:text-fg sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
-              >
-                <MoreHorizontal className="size-4" />
-              </button>
+                className="sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+              />
               <MenuPanel open={open} onClose={() => setOpen(false)} triggerRef={triggerRef} label="Comment actions" className="p-1.5 sm:w-52">
                 <button
                   type="button"

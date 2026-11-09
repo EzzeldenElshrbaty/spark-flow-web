@@ -5,6 +5,7 @@ import type { Attachment } from '@/api/types'
 import { acceptedFiles, allowedFilesHint, sizeText } from '@/lib/fileTypes'
 import { fileIcon } from './fileSources'
 import { rowLabel, type UploadRow } from './uploadQueue'
+import { IconButton } from '@/components/ui/IconButton'
 
 /**
  * A task's files in its sheet (spec 5.1): one row per file with × to take it off (nothing is saved until Save), one row
@@ -52,9 +53,7 @@ export function TaskAttachments({
                 <span className="block text-xs text-fg-muted tabular-nums">{sizeText(f.size)}</span>
               </span>
               {!readOnly && (
-                <button type="button" onClick={() => onRemove(f.id)} aria-label={`Remove ${f.title}`} className="rounded-md p-1 text-fg-tertiary hover:text-fg">
-                  <X className="size-4" />
-                </button>
+                <IconButton label={`Remove ${f.title}`} icon={X} size="sm" onClick={() => onRemove(f.id)} />
               )}
             </li>
             )
@@ -77,9 +76,7 @@ export function TaskAttachments({
                 </button>
               )}
               {(r.state === 'failed' || r.state === 'cancelled') && (
-                <button type="button" onClick={() => onDismiss(r.id)} aria-label={`Dismiss ${r.name}`} className="rounded-md p-1 text-fg-tertiary hover:text-fg">
-                  <X className="size-4" />
-                </button>
+                <IconButton label={`Dismiss ${r.name}`} icon={X} size="sm" onClick={() => onDismiss(r.id)} />
               )}
             </li>
           ))}

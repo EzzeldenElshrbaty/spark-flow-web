@@ -94,7 +94,7 @@ function FileRow({ file, onRemove }: { file: File; onRemove: () => void }) {
       <div className="flex items-center gap-2">
         <span className="min-w-0 flex-1 truncate text-fg">{file.name}</span>
         <span className="shrink-0 text-xs text-fg-muted">{sizeText(file.size)}</span>
-        <button type="button" onClick={onRemove} className="rounded p-1 text-fg-muted hover:bg-surface-muted hover:text-fg" aria-label={`Remove ${file.name}`}>
+        <button type="button" onClick={onRemove} className="rounded p-1 text-fg-muted hover:bg-surface-muted hover:text-fg" aria-label={`Remove ${file.name}`} title={`Remove ${file.name}`}>
           <X className="size-4" />
         </button>
       </div>

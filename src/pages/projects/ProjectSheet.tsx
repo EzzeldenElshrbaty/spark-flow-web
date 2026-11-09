@@ -14,6 +14,7 @@ import { projectPeople } from '@/lib/projectPeople'
 import { usePermission } from '@/lib/usePermission'
 import { keyFromName, validateProject, type ProjectFormErrors, type ProjectFormValues } from './projectForm'
 import { tasksLeftWith } from './taskForm'
+import { IconButton } from '@/components/ui/IconButton'
 
 const statuses: [ProjectStatus, string][] = [
   ['planned', 'Planned'],
@@ -265,9 +266,7 @@ export function ProjectSheet({
               <div key={i} className="flex gap-2">
                 <input className={clsx(inputClass, 'w-1/3')} placeholder="Label" value={link.label} onChange={(e) => set('links', values.links.map((l, j) => (j === i ? { ...l, label: e.target.value } : l)))} />
                 <input className={inputClass} placeholder="https://" value={link.url} onChange={(e) => set('links', values.links.map((l, j) => (j === i ? { ...l, url: e.target.value } : l)))} />
-                <button type="button" aria-label="Remove link" onClick={() => set('links', values.links.filter((_, j) => j !== i))} className="rounded-md p-2 text-fg-muted hover:bg-surface-muted hover:text-fg">
-                  <X className="size-4" />
-                </button>
+                <IconButton label="Remove link" icon={X} onClick={() => set('links', values.links.filter((_, j) => j !== i))} />
               </div>
             ))}
             <button type="button" onClick={() => set('links', [...values.links, { label: '', url: '' }])} className="inline-flex items-center gap-1 text-sm font-medium text-accent hover:text-accent-strong">

@@ -23,6 +23,7 @@ import { useDragSensors } from '@/lib/dragSensors'
 import { boardDrop, prunePending, withPending, type PendingMoves } from '@/pages/projects/boardMove'
 import { TicketRow } from '@/pages/projects/TicketRow'
 import { tintOf } from '@/pages/projects/ticketPills'
+import { IconButton } from '@/components/ui/IconButton'
 
 const nameOf = (users: User[], id: string | null) => (id ? (users.find((u) => u.id === id)?.name ?? 'Unknown person') : null)
 const COLUMN = 'column:'
@@ -106,20 +107,18 @@ function ColumnMenu({
   }
   return (
     <div className="relative">
-      <button
+      <IconButton
         ref={triggerRef}
-        type="button"
+        label={`Column actions: ${label}`}
+        title="Column actions"
+        icon={MoreHorizontal}
+        size="sm"
         onClick={() => setOpen((v) => !v)}
         onPointerDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`Column actions: ${label}`}
-        title="Column actions"
-        className="flex size-7 items-center justify-center rounded-md text-fg-tertiary hover:bg-surface/80 hover:text-fg"
-      >
-        <MoreHorizontal className="size-4" />
-      </button>
+      />
       <MenuPanel open={open} onClose={() => setOpen(false)} triggerRef={triggerRef} label="Column actions" className="p-1.5 sm:w-52">
         <button type="button" role="menuitem" className={menuItem} onClick={pick(onRename)}>
           <Pencil className="size-4 shrink-0" /> Rename column

@@ -43,7 +43,7 @@ export function Pagination({
         of <span className="font-medium text-fg">{number.format(total)}</span>
       </p>
       <div className="flex items-center gap-1.5">
-        <button type="button" className={arrow} onClick={() => onPage(page - 1)} disabled={page <= 1} aria-label="Previous page">
+        <button type="button" className={arrow} onClick={() => onPage(page - 1)} disabled={page <= 1} aria-label="Previous page" title="Previous page">
           <ChevronLeft className="size-4 rtl:-scale-x-100" />
         </button>
         {/* Phones get a compact "Page 3 of 50"; wider screens get page numbers. */}
@@ -69,7 +69,7 @@ export function Pagination({
             ),
           )}
         </span>
-        <button type="button" className={arrow} onClick={() => onPage(page + 1)} disabled={page >= pageCount} aria-label="Next page">
+        <button type="button" className={arrow} onClick={() => onPage(page + 1)} disabled={page >= pageCount} aria-label="Next page" title="Next page">
           <ChevronRight className="size-4 rtl:-scale-x-100" />
         </button>
         <div className="ms-1 w-28 shrink-0">

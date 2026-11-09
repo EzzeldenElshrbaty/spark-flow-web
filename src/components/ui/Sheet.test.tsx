@@ -21,6 +21,8 @@ describe('a changed sheet asks before it closes (UX Phase 1, 1.2)', () => {
   it('closes at once when nothing changed, from ✕ and from Cancel', () => {
     const onClose = vi.fn()
     render(<Form dirty={false} onClose={onClose} />)
+    // Its ✕ says what it does on hover (UX Phase 3, 3.7).
+    expect(screen.getByRole('button', { name: 'Close' }).getAttribute('title')).toBe('Close')
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(onClose).toHaveBeenCalledTimes(2)

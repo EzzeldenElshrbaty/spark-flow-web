@@ -294,7 +294,7 @@ function Chip({ name, value, shown, options, onPick }: { name: string; value: st
         </div>
       </Menu>
       {set && (
-        <button type="button" aria-label={`Remove ${name} filter`} onClick={() => onPick(null)} className="sf-focus relative me-1 inline-grid size-6 cursor-pointer place-items-center rounded-sf-full hover:bg-sf-text-secondary max-md:after:absolute max-md:after:-inset-2.5">
+        <button type="button" aria-label={`Remove ${name} filter`} title={`Remove ${name} filter`} onClick={() => onPick(null)} className="sf-focus relative me-1 inline-grid size-6 cursor-pointer place-items-center rounded-sf-full hover:bg-sf-text-secondary max-md:after:absolute max-md:after:-inset-2.5">
           <Icon icon={IconX} size={16} />
         </button>
       )}

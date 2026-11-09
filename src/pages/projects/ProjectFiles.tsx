@@ -13,6 +13,7 @@ import { acceptedFiles, allowedFilesHint } from '@/lib/fileTypes'
 import { timeAgo } from '@/lib/format'
 import { rowLabel } from './uploadQueue'
 import { useUploadQueue } from './useUploadQueue'
+import { IconButton } from '@/components/ui/IconButton'
 
 const sizeText = (bytes: number) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`)
 
@@ -96,9 +97,7 @@ export function ProjectFiles({ projectId, people, canUpload, canManage }: { proj
                   </button>
                 )}
                 {(r.state === 'failed' || r.state === 'cancelled') && (
-                  <button type="button" onClick={() => queue.dismiss(r.id)} aria-label={`Dismiss ${r.name}`} className="rounded-md p-1 text-fg-tertiary hover:text-fg">
-                    <X className="size-4" />
-                  </button>
+                  <IconButton label={`Dismiss ${r.name}`} icon={X} size="sm" onClick={() => queue.dismiss(r.id)} />
                 )}
               </li>
             ))}

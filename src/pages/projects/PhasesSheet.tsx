@@ -7,6 +7,7 @@ import { DeleteDialog } from '@/components/ui/DeleteDialog'
 import { inputClass, selectClass } from '@/components/ui/Field'
 import { Sheet, useSheetClose } from '@/components/ui/Sheet'
 import { byOrder, moveDown, moveUp } from './phases'
+import { IconButton } from '@/components/ui/IconButton'
 
 const statuses: [PhaseStatus, string][] = [
   ['notStarted', 'Not started'],
@@ -55,15 +56,9 @@ function PhaseRow({
     <li className="space-y-2 py-3">
       <div className="flex items-center gap-2">
         <input className={inputClass} aria-label="Phase name" value={draft.name} onChange={(e) => set('name', e.target.value)} />
-        <button type="button" aria-label={`Move ${phase.name} up`} disabled={first} onClick={() => onMove(-1)} className="rounded-md p-2 text-fg-muted hover:bg-surface-muted hover:text-fg disabled:opacity-40">
-          <ArrowUp className="size-4" />
-        </button>
-        <button type="button" aria-label={`Move ${phase.name} down`} disabled={last} onClick={() => onMove(1)} className="rounded-md p-2 text-fg-muted hover:bg-surface-muted hover:text-fg disabled:opacity-40">
-          <ArrowDown className="size-4" />
-        </button>
-        <button type="button" aria-label={`Delete ${phase.name}`} onClick={onDelete} className="rounded-md p-2 text-fg-muted hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/15 dark:hover:text-red-400">
-          <Trash2 className="size-4" />
-        </button>
+        <IconButton label={`Move ${phase.name} up`} icon={ArrowUp} disabled={first} onClick={() => onMove(-1)} />
+        <IconButton label={`Move ${phase.name} down`} icon={ArrowDown} disabled={last} onClick={() => onMove(1)} />
+        <IconButton label={`Delete ${phase.name}`} icon={Trash2} tone="danger" onClick={onDelete} />
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         <input type="date" className={inputClass} aria-label="Start" value={draft.startDate} onChange={(e) => set('startDate', e.target.value)} />
