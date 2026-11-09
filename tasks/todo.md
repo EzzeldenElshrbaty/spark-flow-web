@@ -2789,3 +2789,24 @@ work; Settings, Preferences and Help always use the Projects sidebar. Plan with 
   `flushSync`); Activity's task rows don't put the title in the actor's mouth; the workspace button is named by its
   text again (axe `label-content-name-mismatch` at 1280). Gates after: unit 2,200/2,200, browser 289/292 (the 3
   known), tsc, lint and `build:prototype` pass.
+
+# UX Phase 3: visual design and consistency — 9 Nov 2026, approved (Q1–Q5 "Yes, recommended")
+
+Audit items 3.1–3.7 with the user's rulings: chat keeps its look, shared pieces become identical (one avatar, one red,
+the shell's font follows the screen; chat's New channel / New message on the chat Modal; Preferences in the kit look);
+one red (brand-500) and one danger style, danger on every delete confirm. Plan with decisions, diagrams and questions:
+`docs/superpowers/plans/2026-11-09-ux-phase-3-visual-consistency.md`. Branch `feat/ux-phase-3` from `origin/dev` (5210cc3).
+
+- [ ] One red, one danger (3.2)
+- [ ] One avatar (3.1)
+- [ ] The font follows the screen (3.1)
+- [ ] New channel and New message on the chat Modal, with the discard guard (3.1)
+- [ ] Preferences in the kit look (3.1)
+- [ ] Red means act or late (3.3)
+- [ ] Dates through lib/format.ts (3.4)
+- [ ] IconButton, and titles on icon buttons (3.5, 3.7)
+- [ ] SegmentedControl (3.5)
+- [ ] StatTile and the main card's corner (3.5)
+- [ ] Dark mode details (3.6)
+- [ ] Copy details: curly apostrophes, one file-size helper (3.7)
+- [ ] Phase check, help pictures, review here
