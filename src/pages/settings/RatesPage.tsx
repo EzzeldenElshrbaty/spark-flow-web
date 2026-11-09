@@ -25,13 +25,18 @@ function RateRow({
   person,
   saved,
   since,
+  justSaved,
   onChanged,
+  onSaved,
 }: {
   person: User
   saved: number | undefined
   since: string | undefined
+  /** Saved a moment ago: the row says so until it changes again (UX Phase 4, 4.10). */
+  justSaved: boolean
   /** Whether this row holds a cost not saved yet, so leaving the page asks first (UX Phase 1, 1.2). */
   onChanged: (changed: boolean) => void
+  onSaved: () => void
 }) {
   const update = useUpdateRate()
   const [value, setValue] = useState(saved === undefined ? '' : String(saved))
@@ -47,9 +52,19 @@ function RateRow({
   }, [changed])
   const number = Number(value)
   const invalid = value.trim() === '' || !Number.isFinite(number) || number < 0
+  const save = () => {
+    if (changed && !invalid && !update.isPending) update.mutate({ userId: person.id, hourlyCost: number }, { onSuccess: onSaved })
+  }
   return (
     <li className="py-3">
-      <div className="flex items-center gap-3">
+      {/* Enter in the cost saves it, as Save does. */}
+      <form
+        className="flex items-center gap-3"
+        onSubmit={(e) => {
+          e.preventDefault()
+          save()
+        }}
+      >
         <Avatar name={person.name} size={24} decorative />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm text-fg">{person.name}</span>
@@ -72,12 +87,18 @@ function RateRow({
             onChange={(e) => setValue(e.target.value)}
           />
         </label>
-        {changed && (
-          <Button variant="ghost" disabled={invalid || update.isPending} onClick={() => update.mutate({ userId: person.id, hourlyCost: number })}>
+        {changed ? (
+          <Button type="submit" variant="ghost" disabled={invalid || update.isPending}>
             {update.isPending ? 'Saving…' : 'Save'}
           </Button>
+        ) : (
+          justSaved && (
+            <span role="status" className="text-sm text-emerald-700 dark:text-emerald-300">
+              Saved.
+            </span>
+          )
         )}
-      </div>
+      </form>
       {changed && invalid && <p className="mt-1 text-end text-xs text-red-600 dark:text-red-400">Hourly cost is 0 or more.</p>}
       {update.error && <p className="mt-1 text-end text-xs text-red-600 dark:text-red-400">{(update.error as Error).message}</p>}
     </li>
@@ -93,13 +114,17 @@ export function RatesPage() {
   const people = useUsers(workspace?.id)
   // Rows with a cost not saved yet (UX Phase 1, 1.2).
   const [changedRows, setChangedRows] = useState<ReadonlySet<string>>(new Set())
-  const markChanged = (userId: string, on: boolean) =>
+  // The row saved last says "Saved." until it changes again; a row starts afresh after a save (its key).
+  const [savedRow, setSavedRow] = useState<string | null>(null)
+  const markChanged = (userId: string, on: boolean) => {
     setChangedRows((all) => {
       const next = new Set(all)
       if (on) next.add(userId)
       else next.delete(userId)
       return next
     })
+    if (on) setSavedRow((row) => (row === userId ? null : row))
+  }
 
   const back = (
     <Link to={paths.settings(ws)} className="mb-3 inline-flex items-center gap-1.5 text-sm text-fg-muted hover:text-fg">
@@ -131,7 +156,17 @@ export function RatesPage() {
             const current = currentRates(rates.data).find((r) => r.userId === person.id)
             const saved = current?.hourlyCost
             // The key carries the saved value, so a row resets to it after a save.
-            return <RateRow key={`${person.id}:${saved ?? ''}`} person={person} saved={saved} since={current?.effectiveFrom} onChanged={(on) => markChanged(person.id, on)} />
+            return (
+              <RateRow
+                key={`${person.id}:${saved ?? ''}`}
+                person={person}
+                saved={saved}
+                since={current?.effectiveFrom}
+                justSaved={savedRow === person.id}
+                onChanged={(on) => markChanged(person.id, on)}
+                onSaved={() => setSavedRow(person.id)}
+              />
+            )
           })}
         </ul>
       </Card>

@@ -55,6 +55,12 @@ const cell = (permission: string, role: string) => within(matrix()).getByRole('c
 const save = () => screen.getByRole('button', { name: /Save changes/ }) as HTMLButtonElement
 
 describe('Roles and permissions (slice 1)', () => {
+  it('Save changes and what’s pending stay in reach down the long table (UX Phase 4, 4.10)', async () => {
+    await mount()
+    expect(save().closest('.sticky')).toBeTruthy()
+    expect(screen.getByRole('status').closest('.sticky')).toBe(save().closest('.sticky'))
+  })
+
   it('shows every permission by group, and each role with how many hold it, ticked by what it grants', async () => {
     await mount()
     const heads = within(matrix()).getAllByRole('columnheader').map((th) => th.textContent)

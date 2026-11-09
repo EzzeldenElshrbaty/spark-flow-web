@@ -90,6 +90,14 @@ describe('Settings → Attendance (Admin and help, slice 5)', () => {
     expect(api.attendance.days).toHaveBeenCalledWith({ days: 7, userId: undefined })
   })
 
+  it('a place reads "Map · ±12 m", with its coordinates on hover (UX Phase 4, 4.8)', async () => {
+    await mount()
+    const [, late] = await rows('Days')
+    const map = within(late!).getByRole('link', { name: /Map/ })
+    expect(map.textContent).toMatch(/^Map · ±12 m/)
+    expect(map.getAttribute('title')).toBe('30.0626, 31.3409 · ±12 m')
+  })
+
   it('?tab=checkins, from before, opens Days', async () => {
     await mount('?tab=checkins')
     expect(await table('Days')).toBeTruthy()

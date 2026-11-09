@@ -133,15 +133,15 @@ export function RolesPage() {
     <>
       {back}
       {/* PageHeader's row, but the buttons wrap under the title on a phone instead of squeezing it. */}
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 flex-[1_1_18rem]">
-          <h1 className="text-2xl font-semibold tracking-tight text-fg">{title}</h1>
-          <p className="mt-1 text-sm text-fg-muted">{subtitle}</p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">{actions}</div>
+      <div className="mb-3 min-w-0">
+        <h1 className="text-2xl font-semibold tracking-tight text-fg">{title}</h1>
+        <p className="mt-1 text-sm text-fg-muted">{subtitle}</p>
       </div>
-      {/* What's pending, or what went wrong, beside the buttons that act on it. */}
-      <div className="-mt-3 mb-4 flex min-h-6 flex-wrap items-center justify-end gap-3 text-sm">
+      {/*
+        What's pending, or what went wrong, beside the buttons that act on it; it sticks under the top bar so Save
+        changes stays in reach down the long table (UX Phase 4, 4.10).
+      */}
+      <div className="sticky top-14 z-20 -mx-4 mb-4 flex min-h-6 flex-wrap items-center justify-end gap-3 bg-canvas/95 px-4 py-2 text-sm backdrop-blur md:-mx-6 md:px-6 lg:top-0 xl:-mx-8 xl:px-8">
         {saveGrants.error ? (
           <p role="alert" className="m-0 text-red-600 dark:text-red-400">
             {saveGrants.error.message}
@@ -163,6 +163,7 @@ export function RolesPage() {
             Discard
           </Button>
         )}
+        <div className="flex shrink-0 items-center gap-2">{actions}</div>
       </div>
       {body}
       <LeaveGuard dirty={changes > 0} description={changes === 1 ? '1 change to roles isn’t saved.' : `${changes} changes to roles aren’t saved.`} />

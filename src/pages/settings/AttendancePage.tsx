@@ -239,16 +239,22 @@ function Seen({ value, fresh }: { value: string | null; fresh: boolean }) {
   )
 }
 
+/**
+ * Where a timer started (UX Phase 4, 4.8): "Map · ±25 m" as the link to Google Maps, the coordinates on hover and for
+ * screen readers. Flow knows no place names without an outside service.
+ */
 function Place({ location }: { location: CheckLocation | null }) {
   if (!isFix(location)) return <span className="text-fg-muted">{placeText(location)}</span>
   return (
-    <a href={mapsUrl(location)} target="_blank" rel="noopener noreferrer" className="inline-flex max-w-full items-center gap-1.5 text-accent hover:text-accent-strong">
+    <a href={mapsUrl(location)} target="_blank" rel="noopener noreferrer" title={placeText(location)} className="inline-flex max-w-full items-center gap-1.5 text-accent hover:text-accent-strong">
       <span className="min-w-0 truncate tabular-nums">
-        {location.lat}, {location.lng}
-        <span className="text-fg-muted"> ±{location.accuracy} m</span>
+        Map<span className="text-fg-muted"> · ±{location.accuracy} m</span>
       </span>
       <ExternalLink aria-hidden className="size-3.5 shrink-0" />
-      <span className="sr-only"> (opens Google Maps)</span>
+      <span className="sr-only">
+        {' '}
+        {location.lat}, {location.lng} (opens Google Maps)
+      </span>
     </a>
   )
 }
@@ -287,7 +293,7 @@ function DaysView({ rows, nameOf }: { rows: AttendanceDay[]; nameOf: (id: string
     { id: 'hours', header: 'Hours', width: 90, align: 'right', cell: (d) => <span className="tabular-nums">{formatHours(d.hours)}</span> },
     { id: 'ip', header: 'IP', width: 140, dropOrder: 2, cell: (d) => <Seen value={d.from?.ip ?? null} fresh={d.newIp} /> },
     { id: 'device', header: 'Device', width: 190, dropOrder: 1, cell: (d) => <Seen value={d.from?.device ?? null} fresh={d.newDevice} /> },
-    { id: 'place', header: 'Location', width: 250, cell: (d) => <Place location={d.from?.location ?? null} /> },
+    { id: 'place', header: 'Location', width: 150, cell: (d) => <Place location={d.from?.location ?? null} /> },
   ]
   return (
     <Both
