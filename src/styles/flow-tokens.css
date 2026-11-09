@@ -119,3 +119,12 @@
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
+
+/*
+ * One font per screen (UX Phase 3, 3.1): outside chat screens the shell and every sf portal (menus, tooltips,
+ * dialogs) take the page's font, Inter (src/index.css --font-sans). AppLayout sets data-font on <html> from the
+ * screen (layout/mainCard.ts screenFont). Kept after the .sf blocks: flowTokens.test.ts reads the first ".sf {".
+ */
+:root[data-font='page'] .sf {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+}

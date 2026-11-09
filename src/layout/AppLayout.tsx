@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { Suspense, useState } from 'react'
+import { Suspense, useLayoutEffect, useState } from 'react'
 import { Announcer } from '@/components/sf/Announcer'
 import { UnsavedChangesBlocker } from './UnsavedChangesBlocker'
 import { ToastProvider, ToastRegion } from '@/components/sf/Toast'
@@ -11,7 +11,7 @@ import { PageHelpPanel } from '@/layout/PageHelpPanel'
 import { PageSkeleton } from '@/layout/PageSkeleton'
 import { MobileBottomBar, MobileDrawer } from '@/layout/MobileNav'
 import { RealtimeBridge } from '@/layout/RealtimeBridge'
-import { isFill, mainCardClass } from '@/layout/mainCard'
+import { isFill, mainCardClass, screenFont } from '@/layout/mainCard'
 import { Sidebar } from '@/layout/Sidebar'
 import { StillWorkingDialog } from '@/layout/StillWorkingDialog'
 import { PhoneTimerBar, TimerAnnouncer } from '@/layout/TimerBar'
@@ -42,6 +42,12 @@ export function AppLayout() {
   const pane = matches.some((match) => (match.handle as { pane?: boolean } | undefined)?.pane)
   // A page that fills the card on the page canvas (the project Chat tab, UX Phase 1, 1.3).
   const fill = !pane && isFill(matches)
+  // One font per screen (UX Phase 3, 3.1): set before paint, so the shell never shows the other font first.
+  const font = screenFont(pane, location.pathname)
+  useLayoutEffect(() => {
+    document.documentElement.dataset.font = font
+  }, [font])
+  useLayoutEffect(() => () => void delete document.documentElement.dataset.font, [])
 
   return (
     // On desktop the content floats as a rounded panel on the sidebar's colour and scrolls on its own.

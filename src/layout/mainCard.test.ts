@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isFill, mainCardClass } from '@/layout/mainCard'
+import { isFill, mainCardClass, screenFont } from '@/layout/mainCard'
 
 describe('mainCardClass (spec 5.3: the main card is on surface)', () => {
   it('a chat pane (a channel, Activity) puts the card on the chat surface, inside the chat tokens', () => {
@@ -21,5 +21,18 @@ describe('isFill (UX Phase 1, 1.3: a page that fills the card)', () => {
     expect(isFill([match(undefined, {}), match(chatOnly, { tab: 'chat' })])).toBe(true)
     expect(isFill([match(chatOnly, { tab: 'tasks' })])).toBe(false)
     expect(isFill([match({ pane: true }, {})])).toBe(false)
+  })
+})
+
+describe('screenFont (UX Phase 3, 3.1: one font per screen)', () => {
+  it('chat pages and the project Chat tab are chat screens; every other page is a page', () => {
+    expect(screenFont(true, '/w/a/c/c-general')).toBe('chat')
+    expect(screenFont(true, '/w/a/search')).toBe('chat')
+    expect(screenFont(false, '/w/a/p/NEX/chat')).toBe('chat')
+    expect(screenFont(false, '/w/a/p/NEX/chat/')).toBe('chat')
+    expect(screenFont(false, '/w/a/dashboard')).toBe('page')
+    expect(screenFont(false, '/w/a/p/NEX/overview')).toBe('page')
+    expect(screenFont(false, '/w/a/p/CHAT/tasks')).toBe('page')
+    expect(screenFont(false, '/w/a/preferences')).toBe('page')
   })
 })

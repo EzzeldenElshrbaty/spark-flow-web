@@ -19,3 +19,12 @@ export function isFill(matches: readonly RouteMatch[]): boolean {
     return typeof fill === 'function' ? fill(params) : fill === true
   })
 }
+
+/**
+ * Which font the whole screen uses (UX Phase 3, 3.1): chat pages (a route with `pane`) and the project's Chat tab are
+ * chat screens, in Readex Pro; on every other page the shell takes the page's Inter. AppLayout puts it on <html> as
+ * `data-font`, which flow-tokens.css reads.
+ */
+export function screenFont(pane: boolean, pathname: string): 'chat' | 'page' {
+  return pane || /\/p\/[^/]+\/chat\/?$/.test(pathname) ? 'chat' : 'page'
+}
