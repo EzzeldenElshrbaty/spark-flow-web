@@ -2797,16 +2797,26 @@ the shell's font follows the screen; chat's New channel / New message on the cha
 one red (brand-500) and one danger style, danger on every delete confirm. Plan with decisions, diagrams and questions:
 `docs/superpowers/plans/2026-11-09-ux-phase-3-visual-consistency.md`. Branch `feat/ux-phase-3` from `origin/dev` (5210cc3).
 
-- [ ] One red, one danger (3.2)
-- [ ] One avatar (3.1)
-- [ ] The font follows the screen (3.1)
-- [ ] New channel and New message on the chat Modal, with the discard guard (3.1)
-- [ ] Preferences in the kit look (3.1)
-- [ ] Red means act or late (3.3)
-- [ ] Dates through lib/format.ts (3.4)
-- [ ] IconButton, and titles on icon buttons (3.5, 3.7)
-- [ ] SegmentedControl (3.5)
-- [ ] StatTile and the main card's corner (3.5)
-- [ ] Dark mode details (3.6)
-- [ ] Copy details: curly apostrophes, one file-size helper (3.7)
-- [ ] Phase check, help pictures, review here
+- [x] One red, one danger (3.2)
+- [x] One avatar (3.1)
+- [x] The font follows the screen (3.1)
+- [x] New channel and New message on the chat Modal, with the discard guard (3.1)
+- [x] Preferences in the kit look (3.1)
+- [x] Red means act or late (3.3)
+- [x] Dates through lib/format.ts (3.4)
+- [x] IconButton, and titles on icon buttons (3.5, 3.7)
+- [x] SegmentedControl (3.5)
+- [x] StatTile and the main card's corner (3.5)
+- [x] Dark mode details (3.6)
+- [x] Copy details: curly apostrophes, one file-size helper (3.7)
+- [x] Phase check, help pictures, review here
+
+## Review — UX Phase 3
+- Gates: `tsc -b` and lint clean; unit 2,244/2,244; browser 293/296 (the known `RichComposer` "unknown /word" and the
+  worktree-only `MessageList` "Jump to latest" ×2); `build:prototype` passes; help pictures retaken.
+- App check on this branch's dev server (port 5177), Admin, light and dark at 1440, phone 375: a channel and Activity
+  are Readex Pro throughout, the Dashboard, a project and Preferences are Inter throughout (shell included); people
+  have one round, coloured avatar everywhere, me dark in the top bar; New channel asks "Discard this new channel?" on
+  Esc with a danger Discard; Preferences matches Settings; progress bars grey on time; chat dividers read "Thursday
+  5 November"; the mode switch and "+" are ink in dark. No sideways scroll; console shows only the worktree's font 403s.
+- Order changed once (ledger): IconButton (Task 8) ran before Preferences (Task 5), which uses it.
