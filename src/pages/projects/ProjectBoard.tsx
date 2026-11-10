@@ -67,7 +67,7 @@ function BoardCard({ ticket, assignee, movable }: { ticket: TaskView; assignee: 
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={clsx('motion-safe:animate-fade-in', movable && 'cursor-grab rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500', isDragging && 'opacity-40')}
+      className={clsx('motion-safe:animate-fade-in', movable && 'cursor-grab rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:focus-visible:ring-brand-400', isDragging && 'opacity-40')}
       {...(movable ? listeners : {})}
       onClickCapture={(e) => {
         if (!dragged.current) return
@@ -263,7 +263,7 @@ function BoardColumn({
               {...sortable.attributes}
               aria-roledescription="movable column"
               onDoubleClick={startRename}
-              className="min-w-0 truncate rounded text-start outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+              className="min-w-0 truncate rounded text-start outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:focus-visible:ring-brand-400"
             >
               {label}
             </button>

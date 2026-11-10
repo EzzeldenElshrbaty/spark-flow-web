@@ -36,7 +36,7 @@ export function TicketRow({ ticket, assignee, variant, project, statusName, stat
         aria-describedby={describedBy}
         aria-current={selected || undefined}
         className={clsx(
-          'block rounded-xl border bg-surface p-3.5 shadow-sm outline-none transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-brand-500/40 active:bg-surface-sunken',
+          'block rounded-xl border bg-surface p-3.5 shadow-sm outline-none transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-brand-500/40 dark:focus-visible:ring-brand-400/40 active:bg-surface-sunken',
           selected ? 'border-brand-500 ring-2 ring-brand-500/30' : 'border-line',
         )}
       >

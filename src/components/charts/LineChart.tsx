@@ -79,7 +79,7 @@ export function LineChart({
           onFocus={() => setActive((current) => current ?? labels.length - 1)}
           onBlur={() => setActive(null)}
           onKeyDown={onKey}
-          className="touch-pan-y overflow-visible rounded-md outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+          className="touch-pan-y overflow-visible rounded-md outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:focus-visible:ring-brand-400"
         >
           {ticks.map((tick) => (
             <g key={tick}>

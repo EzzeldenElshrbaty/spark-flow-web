@@ -10,7 +10,7 @@ export function SkipLink() {
         event.preventDefault()
         document.getElementById('main')?.focus()
       }}
-      className="sr-only focus:not-sr-only focus:fixed focus:start-3 focus:top-3 focus:z-[70] focus:rounded-lg focus:bg-surface focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-fg focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+      className="sr-only focus:not-sr-only focus:fixed focus:start-3 focus:top-3 focus:z-[70] focus:rounded-lg focus:bg-surface focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-fg focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-brand-500 dark:focus:ring-brand-400"
     >
       Skip to content
     </a>

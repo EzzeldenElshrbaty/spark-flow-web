@@ -62,7 +62,7 @@ function Deliverables({ project, phases, canEdit }: { project: ProjectSummary; p
                     onClick={() => update.mutate({ id: d.id, patch: { doneAt: done ? null : new Date().toISOString() } })}
                     className={clsx(
                       'grid size-5 shrink-0 place-items-center rounded-md ring-1 disabled:cursor-default',
-                      done ? 'bg-emerald-600 text-white ring-emerald-600' : 'text-transparent ring-line-strong',
+                      done ? 'bg-emerald-600 text-white ring-emerald-600' : 'text-transparent ring-line-input',
                       canEdit && !done && 'hover:ring-fg-muted',
                     )}
                   >

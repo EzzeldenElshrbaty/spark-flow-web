@@ -63,7 +63,7 @@ export function ColumnChart({
                 onFocus={() => setActive(index)}
                 onBlur={() => setActive(null)}
                 aria-label={`${column.title}: ${series.map((item) => `${column.values[item.key] ?? 0} ${item.label}`).join(', ')}`}
-                className={clsx('flex h-full flex-1 items-end justify-center rounded-t-md outline-none focus-visible:ring-2 focus-visible:ring-brand-500', active === index && 'bg-surface-muted/70')}
+                className={clsx('flex h-full flex-1 items-end justify-center rounded-t-md outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:focus-visible:ring-brand-400', active === index && 'bg-surface-muted/70')}
               >
                 <div className="flex w-full max-w-6 origin-bottom flex-col-reverse gap-0.5 px-[3px] motion-safe:animate-grow-y" style={{ animationDelay: `${index * 25}ms` }}>
                   {series.map((item, at) => {

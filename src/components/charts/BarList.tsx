@@ -41,7 +41,7 @@ export function BarList({ rows, max, color = 'var(--chart-primary)', markerColor
             onMouseLeave={() => setActive(null)}
             onFocus={show(index)}
             onBlur={() => setActive(null)}
-            className="group -mx-2 rounded-md px-2 py-0.5 outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+            className="group -mx-2 rounded-md px-2 py-0.5 outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:focus-visible:ring-brand-400"
             aria-label={`${row.label}: ${row.display}${row.note ? `, ${row.note}` : ''}`}
           >
             <div className="mb-1.5 flex items-baseline justify-between gap-3 text-xs">

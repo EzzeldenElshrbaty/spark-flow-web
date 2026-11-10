@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
-import { Field } from './Field'
+import { Field, inputClass } from './Field'
 
 afterEach(cleanup)
 
@@ -39,3 +39,11 @@ describe('Field for screen readers (UX Phase 5A, 5.9)', () => {
     expect(screen.getByText('Client').closest('label')?.contains(screen.getByRole('textbox'))).toBe(true)
   })
 })
+
+describe('field borders (UX Phase 5B, 5.8)', () => {
+  it('fields use the 3:1 input border, not the light divider line', () => {
+    expect(inputClass).toContain('border-line-input')
+    expect(inputClass).not.toMatch(/border-line(?![-\w])/)
+  })
+})
+

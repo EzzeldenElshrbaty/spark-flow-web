@@ -153,6 +153,8 @@
   --color-line: var(--line);
   --color-line-subtle: var(--line-subtle);
   --color-line-strong: var(--line-strong);
+  /* A field's border, 3:1 on the surfaces fields sit on (UX Phase 5B, 5.8); dividers keep --line. */
+  --color-line-input: var(--line-input);
   --color-fg: var(--fg);
   --color-fg-secondary: var(--fg-secondary);
   --color-fg-tertiary: var(--fg-tertiary);
@@ -187,6 +189,7 @@
   --line: #e2e8f0;
   --line-subtle: #f1f5f9;
   --line-strong: #cbd5e1;
+  --line-input: #7f8ea3;
   --fg: #0f172a;
   --fg-secondary: #334155;
   --fg-tertiary: #475569;
@@ -221,6 +224,7 @@
   --line: #2c2c2f;
   --line-subtle: #232325;
   --line-strong: #3d3d41;
+  --line-input: #76767c;
   --fg: #ececed;
   --fg-secondary: #cdcdd0;
   --fg-tertiary: #b0b0b5;
@@ -431,7 +435,7 @@ html {
 /* Dropdowns: our own chevron, inset from the inline-end edge (pair with pe-9 via selectClass in Field.tsx). */
 @utility select-chevron {
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%2394a3b8' stroke-width='1.7'%3E%3Cpath d='M6 8l4 4 4-4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%2364748b' stroke-width='1.7'%3E%3Cpath d='M6 8l4 4 4-4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 0.75rem center;
   background-size: 1rem;

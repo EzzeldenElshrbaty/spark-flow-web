@@ -49,3 +49,18 @@ describe('reduced motion (5.13)', () => {
     expect(reduced.slice(0, reduced.indexOf('}\n}') + 3)).toMatch(/\.animate-pulse[^{]*\{[^}]*animation:\s*none/)
   })
 })
+
+describe('focus rings show in dark (5.8)', () => {
+  it('a brand focus ring or outline has its dark brand-400 variant on the same line', () => {
+    const focus = /(?:focus-visible|focus):(?:ring|outline)-brand-500/
+    const missing = files.flatMap(({ file, source }) =>
+      source
+        .split('\n')
+        .map((line, i) => ({ line, i }))
+        .filter(({ line }) => focus.test(line) && !/dark:(?:focus-visible|focus):(?:ring|outline)-brand-400/.test(line))
+        .map(({ i }) => `${file}:${i + 1}`),
+    )
+    expect(missing).toEqual([])
+  })
+})
+

@@ -41,7 +41,7 @@ export function ChartCard({
               aria-pressed={asTable}
               title={asTable ? 'View as chart' : 'View as table'}
               aria-label={asTable ? 'View as chart' : 'View as table'}
-              className="-me-1.5 rounded-md p-1.5 text-fg-subtle transition hover:bg-surface-muted hover:text-fg focus-visible:outline-2 focus-visible:outline-brand-500"
+              className="-me-1.5 rounded-md p-1.5 text-fg-subtle transition hover:bg-surface-muted hover:text-fg focus-visible:outline-2 focus-visible:outline-brand-500 dark:focus-visible:outline-brand-400"
             >
               {asTable ? <ChartColumnBig className="size-4" /> : <Table2 className="size-4" />}
             </button>

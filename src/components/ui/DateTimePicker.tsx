@@ -320,7 +320,7 @@ function PickerPanel({
                     disabled={off}
                     onClick={() => pickDay(date)}
                     className={clsx(
-                      'flex h-8 items-center justify-center rounded-md text-sm tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500',
+                      'flex h-8 items-center justify-center rounded-md text-sm tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:focus-visible:ring-brand-400',
                       selected ? 'bg-brand-500 font-semibold text-white' : off ? 'cursor-not-allowed text-fg-subtle/50 line-through' : 'hover:bg-surface-muted',
                       !selected && !off && (outside ? 'text-fg-subtle' : isWeekend(date) ? 'text-fg-muted' : 'text-fg'),
                       isToday && !selected && 'ring-1 ring-brand-500',
