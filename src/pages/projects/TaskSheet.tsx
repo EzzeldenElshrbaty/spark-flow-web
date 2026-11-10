@@ -16,6 +16,7 @@ import { TaskAttachments } from './TaskAttachments'
 import { useUploadQueue } from './useUploadQueue'
 import type { DescriptionEditorHandle } from './description/DescriptionEditor'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
+import { announce } from '@/components/sf/Announcer'
 
 // The editor (Lexical) loads with the sheet, not with the page.
 const DescriptionEditor = lazy(() => import('./description/DescriptionEditor'))
@@ -142,6 +143,12 @@ export function TaskSheet({
   const dirty =
     JSON.stringify(values) !== JSON.stringify(initial) || JSON.stringify(descriptionBody) !== JSON.stringify(initialBody) || added.length > 0 || removed.size > 0 || queue.busy
 
+  // Read out once the sheet has closed (UX Phase 5A, 5.12).
+  const savedTask = () => {
+    onClose()
+    if (task) announce(`Task ${task.key} saved.`)
+  }
+
   const save = () => {
     // ⌘/Ctrl+Enter in the description while a file still uploads, or a second time while saving: Save waits too.
     if (queue.busy || saving) return
@@ -150,7 +157,7 @@ export function TaskSheet({
     if (task && !canManage) {
       const patch = savePatch(opened ?? task, { status: values.status }, false)
       if (Object.keys(patch).length === 0) onClose()
-      else update.mutate({ key: task.key, patch }, { onSuccess: onClose })
+      else update.mutate({ key: task.key, patch }, { onSuccess: savedTask })
       return
     }
     // The description shows only files the task will have (an undo may have brought back one taken off).
@@ -175,7 +182,7 @@ export function TaskSheet({
       const was = opened ?? task
       const patch = savePatch({ ...was, attachmentIds: was.attachments.map((a) => a.id) }, fields, true)
       if (Object.keys(patch).length === 0) onClose()
-      else update.mutate({ key: task.key, patch }, { onSuccess: onClose })
+      else update.mutate({ key: task.key, patch }, { onSuccess: savedTask })
     }
     else
       create.mutate(
@@ -184,6 +191,8 @@ export function TaskSheet({
           onSuccess: (created) => {
             onCreated?.(created)
             onClose()
+            // Read out once the sheet has closed (UX Phase 5A, 5.12).
+            announce(`Task ${created.key} created.`)
           },
         },
       )
@@ -260,6 +269,7 @@ export function TaskSheet({
             onRetry={queue.retry}
             onDismiss={queue.dismiss}
             canRetry={queue.canRetry}
+            notice={queue.notice}
           />
           {queue.busy && <p className="mt-1 text-xs text-fg-muted">Wait for the files to finish uploading.</p>}
         </div>

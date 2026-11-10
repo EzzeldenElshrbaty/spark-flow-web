@@ -34,6 +34,7 @@ import { FormatBar } from '@/pages/chat/composer/FormatBar'
 import { KeysPlugin } from '@/pages/chat/composer/KeysPlugin'
 import { COMPOSER_TRANSFORMERS } from '@/pages/chat/composer/markdown'
 import { CustomReminder } from '@/pages/chat/saved/RemindMenu'
+import { countNotice } from './countNotice'
 
 export type { ComposerDirectory }
 
@@ -544,10 +545,14 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
             !empty && <span className="sf-meta hidden px-2 text-sf-text-muted sm:inline">Shift + Enter for a new line</span>
           )}
           {length > COUNT_FROM && (
-            <span className={clsx('sf-meta px-1 tabular-nums', over ? 'font-semibold text-sf-error' : 'text-sf-text-muted')} aria-live="polite">
+            <span className={clsx('sf-meta px-1 tabular-nums', over ? 'font-semibold text-sf-error' : 'text-sf-text-muted')}>
               {MAX_LENGTH - length}
             </span>
           )}
+          {/* Read at a few steps, not on every key (UX Phase 5A, 5.12). */}
+          <span role="status" className="sr-only">
+            {countNotice(MAX_LENGTH - length)}
+          </span>
           {editing ? (
             <>
               <Button size="sm" variant="ghost" onClick={onCancel}>

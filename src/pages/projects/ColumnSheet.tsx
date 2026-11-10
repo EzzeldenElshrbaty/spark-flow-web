@@ -8,6 +8,7 @@ import { columnProblem, doneChange } from '@/lib/boardColumns'
 import { useFormCheck } from '@/lib/useFormCheck'
 import { CATEGORIES } from '@/lib/statuses'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
+import { announce } from '@/components/sf/Announcer'
 
 /**
  * Add column (a name, a type and where it goes), or a column's details (its name and type). The type decides what
@@ -35,11 +36,16 @@ export function ColumnSheet({ projectId, columns, column, count = 0, onClose }: 
   const about = (field: 'label' | 'category' | 'board') => (problem?.field === field ? problem.message : undefined)
   const { errors, attempt, formRef } = useFormCheck({ label: about('label'), category: about('category'), board: about('board') })
 
+  // Read out once the sheet has closed (UX Phase 5A, 5.12).
+  const done = (sentence: string) => () => {
+    onClose()
+    announce(sentence)
+  }
   const save = () => {
     // Enter again while it saves sends nothing (final review).
     if (pending || !attempt()) return
-    if (column) setBoard.mutate({ id: projectId, columns: next }, { onSuccess: onClose })
-    else add.mutate({ projectId, input: { label: label.trim(), category, after: after || undefined } }, { onSuccess: onClose })
+    if (column) setBoard.mutate({ id: projectId, columns: next }, { onSuccess: done('Column saved.') })
+    else add.mutate({ projectId, input: { label: label.trim(), category, after: after || undefined } }, { onSuccess: done(`Column ${label.trim()} added.`) })
   }
 
   return (

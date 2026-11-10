@@ -262,6 +262,9 @@ describe('RichComposer drafts and limits (spec 6.8)', () => {
   it('counts down in the last 1,000 characters and won’t send past 40,000', async () => {
     const { onSend, editor } = await ready({ initialBody: [{ type: 'p', children: [{ type: 'text', text: 'x'.repeat(39_500) }] }] })
     expect(screen.getByText('500')).toBeTruthy()
+    // The number isn't read on every key; a step sentence is (UX Phase 5A, 5.12).
+    expect(screen.getByText('500').getAttribute('aria-live')).toBeNull()
+    expect(screen.getByRole('status', { name: '' }).textContent).toContain('Fewer than 1,000 characters left.')
     cleanup()
     const over = await ready({ initialBody: [{ type: 'p', children: [{ type: 'text', text: 'x'.repeat(40_010) }] }] })
     expect(screen.getByText('-10')).toBeTruthy()

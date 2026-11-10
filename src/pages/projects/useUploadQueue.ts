@@ -23,6 +23,8 @@ export function useUploadQueue<T>(
   { cancelOnUnmount = false, limit }: { cancelOnUnmount?: boolean; limit?: UploadLimit } = {},
 ) {
   const [rows, setRows] = useState<UploadRow[]>([])
+  // The latest finish or failure, for a screen reader: read once, never the percent (UX Phase 5A, 5.12).
+  const [notice, setNotice] = useState('')
   // A row's file, its Cancel and tag, kept for Try again; the ids waiting their turn; whether one is on its way.
   const jobs = useRef(new Map<string, { file: File; controller: AbortController; tag?: string }>())
   const queue = useRef<string[]>([])
@@ -57,10 +59,15 @@ export function useUploadQueue<T>(
       try {
         const result = await latest.current.upload(job.file, { signal: job.controller.signal, onProgress: (progress) => setRow(id, { progress }) })
         dismiss(id)
+        setNotice(`${job.file.name} uploaded.`)
         latest.current.onDone(result, { id, name: job.file.name, state: 'done', error: null, tag: job.tag })
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') setRow(id, { state: 'cancelled' })
-        else setRow(id, { state: 'failed', error: (error as Error).message || "Couldn’t upload." })
+        else {
+          const sentence = (error as Error).message || "Couldn’t upload."
+          setRow(id, { state: 'failed', error: sentence })
+          setNotice(`${job.file.name}: ${sentence}`)
+        }
       }
     }
     running.current = false
@@ -96,5 +103,5 @@ export function useUploadQueue<T>(
     void pump()
   }
   const busy = pending > 0
-  return { rows, busy, add, cancel, retry, dismiss, canRetry: (id: string) => jobs.current.has(id) }
+  return { rows, busy, notice, add, cancel, retry, dismiss, canRetry: (id: string) => jobs.current.has(id) }
 }

@@ -17,6 +17,7 @@ import { keyFromName, LINK_URL, validateProject, type ProjectFormValues } from '
 import { tasksLeftWith } from './taskForm'
 import { IconButton } from '@/components/ui/IconButton'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
+import { announce } from '@/components/sf/Announcer'
 
 const statuses: [ProjectStatus, string][] = [
   ['planned', 'Planned'],
@@ -99,6 +100,11 @@ export function ProjectSheet({
   const toggle = (field: 'memberIds' | 'teamIds', id: string) =>
     set(field, values[field].includes(id) ? values[field].filter((x) => x !== id) : [...values[field], id])
 
+  // Read out once the sheet has closed (UX Phase 5A, 5.12).
+  const saved = (sentence: string) => (result: Project) => {
+    onSaved(result)
+    announce(sentence)
+  }
   const save = () => {
     // Enter again while it saves sends nothing (final review).
     if (saving || !attempt()) return
@@ -107,9 +113,9 @@ export function ProjectSheet({
     if (project) {
       const { key: _key, methodology: _m, managerId, memberIds, teamIds, ...editable } = values
       const people = canPeople ? { managerId, memberIds, teamIds } : {}
-      update.mutate({ id: project.id, patch: { ...editable, ...people, ...dates, links, status } }, { onSuccess: onSaved })
+      update.mutate({ id: project.id, patch: { ...editable, ...people, ...dates, links, status } }, { onSuccess: saved('Project saved.') })
     } else {
-      create.mutate({ ...values, ...dates, links, workspaceId }, { onSuccess: onSaved })
+      create.mutate({ ...values, ...dates, links, workspaceId }, { onSuccess: saved(`Project ${values.name.trim()} created.`) })
     }
   }
 

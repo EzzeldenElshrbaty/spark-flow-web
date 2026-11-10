@@ -5,6 +5,9 @@ import type { Attachment, Project, TaskView } from '@/api/types'
 import { textBody } from '@/lib/messageBody'
 import { TaskSheet } from './TaskSheet'
 
+const announced = vi.hoisted(() => vi.fn())
+vi.mock('@/components/sf/Announcer', async (original) => ({ ...(await original<typeof import('@/components/sf/Announcer')>()), announce: announced }))
+
 const create = { mutate: vi.fn(), isPending: false, error: null }
 const update = { mutate: vi.fn(), isPending: false, error: null }
 const upload = vi.fn<(projectId: string, file: File) => Promise<Attachment>>()
@@ -312,6 +315,25 @@ describe('TaskSheet for screen readers (UX Phase 5A, 5.9)', () => {
     const title = screen.getByRole('textbox', { name: 'Title', description: 'Give the task a title.' })
     expect(title.getAttribute('aria-required')).toBe('true')
     expect(document.activeElement).toBe(title)
+  })
+})
+
+describe('a save is read out (UX Phase 5A, 5.12)', () => {
+  it('"Task NEX-111 created." after the sheet closes; an edit says "Task NEX-110 saved."', () => {
+    announced.mockClear()
+    const onClose = vi.fn()
+    create.mutate.mockImplementation((_input, opts: { onSuccess: (t: TaskView) => void }) => opts.onSuccess({ key: 'NEX-111' } as TaskView))
+    render(<TaskSheet project={project} phases={[]} sprints={[]} users={[]} onClose={onClose} />)
+    fireEvent.change(screen.getByRole('textbox', { name: /Title/ }), { target: { value: 'New badge' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save task' }))
+    expect(onClose).toHaveBeenCalled()
+    expect(announced).toHaveBeenLastCalledWith('Task NEX-111 created.')
+    cleanup()
+    update.mutate.mockImplementation((_input, opts: { onSuccess: () => void }) => opts.onSuccess())
+    render(<TaskSheet project={project} phases={[]} sprints={[]} users={[]} task={task()} onClose={onClose} />)
+    fireEvent.change(screen.getByRole('textbox', { name: /Title/ }), { target: { value: 'Login v2' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save task' }))
+    expect(announced).toHaveBeenLastCalledWith(`Task ${task().key} saved.`)
   })
 })
 

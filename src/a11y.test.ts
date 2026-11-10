@@ -33,3 +33,12 @@ describe('the shell starts with Skip to content (5.7)', () => {
     expect(layout).toContain('id="main"')
   })
 })
+
+describe('labels only where they’re read (5.12)', () => {
+  it('no aria-label on a span or div without a role: screen readers ignore it there', () => {
+    const tag = /<(span|div)\b[^>]*?\saria-label=[^>]*>/g
+    const found = files.flatMap(({ file, source }) => [...source.matchAll(tag)].filter((m) => !/\srole=/.test(m[0])).map((m) => `${file}: ${m[0].slice(0, 60)}`))
+    expect(found).toEqual([])
+  })
+})
+

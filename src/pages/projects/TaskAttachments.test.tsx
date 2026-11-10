@@ -65,6 +65,14 @@ describe('TaskAttachments', () => {
     expect(container.querySelector('input[type=file]')?.hasAttribute('hidden')).toBe(true)
   })
 
+  it('an uploading row is a named progress bar, not a live region; the notice is read once (UX Phase 5A, 5.12)', () => {
+    const rows: UploadRow[] = [{ id: 'up-1', name: 'a.pdf', state: 'uploading', error: null, progress: 0.5 }]
+    const { container } = render(<TaskAttachments files={[]} rows={rows} readOnly={false} notice="b.pdf uploaded." {...handlers()} />)
+    expect(screen.getByRole('progressbar', { name: 'Uploading a.pdf' }).getAttribute('aria-valuenow')).toBe('50')
+    expect(container.querySelector('[aria-live]')).toBeNull()
+    expect(screen.getByRole('status').textContent).toBe('b.pdf uploaded.')
+  })
+
   it('read-only shows the files without remove or add', () => {
     const { container } = render(<TaskAttachments files={[file('a1', 'flow.pdf', 2048)]} rows={[]} readOnly {...handlers()} />)
     expect(screen.getByText('flow.pdf')).toBeTruthy()

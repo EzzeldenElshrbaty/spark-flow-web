@@ -15,6 +15,7 @@ import { useRole } from '@/lib/useRole'
 import { useFormCheck } from '@/lib/useFormCheck'
 import { defaultTimes, manualEntryErrors, toManualEntry, toPatch, valuesOf, type ManualEntryValues } from './manualEntry'
 import { useLogTargets } from './useLogTargets'
+import { announce } from '@/components/sf/Announcer'
 
 /**
  * Add time after the fact: a task (or the project as a whole), the day, start and end, and a note. An Admin, or the
@@ -54,11 +55,16 @@ export function AddTimeSheet({ projectId: forProject, taskId, entry, onClose }: 
         .sort((a, b) => a.name.localeCompare(b.name))
     : []
 
+  // Read out once the sheet has closed (UX Phase 5A, 5.12).
+  const done = (sentence: string) => () => {
+    onClose()
+    announce(sentence)
+  }
   const save = () => {
     // Enter again while it saves sends nothing (final review).
     if (saving || !attempt()) return
-    if (entry) update.mutate({ id: entry.id, patch: toPatch(values, valuesOf(entry)) }, { onSuccess: onClose })
-    else add.mutate(toManualEntry({ ...values, userId: forOthers ? values.userId : undefined }), { onSuccess: onClose })
+    if (entry) update.mutate({ id: entry.id, patch: toPatch(values, valuesOf(entry)) }, { onSuccess: done('Time entry saved.') })
+    else add.mutate(toManualEntry({ ...values, userId: forOthers ? values.userId : undefined }), { onSuccess: done('Time added.') })
   }
 
   return (

@@ -6,6 +6,7 @@ import { Field, inputClass, selectClass } from '@/components/ui/Field'
 import { Sheet, SheetCancelButton } from '@/components/ui/Sheet'
 import { useFormCheck } from '@/lib/useFormCheck'
 import { byOrder } from './phases'
+import { announce } from '@/components/sf/Announcer'
 
 /** Add a deliverable, or edit one (`deliverable`): what the client gets, when, and in which phase. */
 export function DeliverableSheet({ project, phases, deliverable, onClose }: { project: ProjectSummary; phases: Phase[]; deliverable?: Deliverable; onClose: () => void }) {
@@ -25,18 +26,23 @@ export function DeliverableSheet({ project, phases, deliverable, onClose }: { pr
   // Each error under its own field, from the first Save on (UX Phase 4, 4.4).
   const { errors, attempt, formRef } = useFormCheck(deliverableErrors(title, due))
 
+  // Read out once the sheet has closed (UX Phase 5A, 5.12).
+  const done = (sentence: string) => () => {
+    onClose()
+    announce(sentence)
+  }
   const save = () => {
     // Enter again while it saves sends nothing (final review).
     if (pending || !attempt()) return
     const fields = { title: title.trim(), phaseId: phaseId || null, dueDate: new Date(`${due}T00:00:00.000Z`).toISOString() }
-    if (!deliverable) return create.mutate({ projectId: project.id, ...fields }, { onSuccess: onClose })
+    if (!deliverable) return create.mutate({ projectId: project.id, ...fields }, { onSuccess: done('Deliverable added.') })
     // Only what changed (a due date by its day: a stored one may carry a time).
     const patch: DeliverablePatch = {}
     if (fields.title !== deliverable.title) patch.title = fields.title
     if (fields.phaseId !== deliverable.phaseId) patch.phaseId = fields.phaseId
     if (due !== deliverable.dueDate.slice(0, 10)) patch.dueDate = fields.dueDate
     if (Object.keys(patch).length === 0) return onClose()
-    update.mutate({ id: deliverable.id, patch }, { onSuccess: onClose })
+    update.mutate({ id: deliverable.id, patch }, { onSuccess: done('Deliverable saved.') })
   }
 
   return (

@@ -23,6 +23,7 @@ import { useAccess, usePermission } from '@/lib/usePermission'
 import { useFormCheck } from '@/lib/useFormCheck'
 import { fieldOf, filterPeople, roleNames, teamNames, usersFilterFrom } from './usersView'
 import { quietChange } from '@/lib/searchParams'
+import { announce } from '@/components/sf/Announcer'
 
 const MAX_REASON = 200
 
@@ -276,6 +277,11 @@ function PersonSheet({
   const reactivate = useReactivatePerson()
   const create = useCreatePerson()
   const update = useUpdatePerson()
+  // Read out once the sheet has closed (UX Phase 5A, 5.12).
+  const done = (sentence: string) => () => {
+    onClose()
+    announce(sentence)
+  }
   const save = person ? update : create
   const [opened] = useState<NewPerson>(() => ({
     name: person?.name ?? '',
@@ -305,8 +311,8 @@ function PersonSheet({
     const elsewhere = person?.teamIds.filter((id) => !teams.some((t) => t.id === id)) ?? []
     // A team removed meanwhile (UX Phase 2, 2.4: teams can go) isn't sent: only this workspace's teams as they are now.
     const input = { ...values, teamIds: [...elsewhere, ...values.teamIds.filter((id) => teams.some((t) => t.id === id))] }
-    if (person) update.mutate({ id: person.id, patch: input }, { onSuccess: onClose })
-    else create.mutate(input, { onSuccess: onClose })
+    if (person) update.mutate({ id: person.id, patch: input }, { onSuccess: done('Changes saved.') })
+    else create.mutate(input, { onSuccess: done(`${input.name} added.`) })
   }
 
   return (
@@ -344,7 +350,7 @@ function PersonSheet({
               {deactivatedBy && ` by ${deactivatedBy}`}
               {person.deactivated.reason && ` · ${person.deactivated.reason}`}
             </p>
-            <Button variant="secondary" onClick={() => reactivate.mutate(person.id, { onSuccess: onClose })} disabled={reactivate.isPending}>
+            <Button variant="secondary" onClick={() => reactivate.mutate(person.id, { onSuccess: done(`${person.name} reactivated.`) })} disabled={reactivate.isPending}>
               <RotateCcw className="size-4" /> {reactivate.isPending ? 'Reactivating…' : 'Reactivate'}
             </Button>
             {reactivate.isError && (
@@ -452,7 +458,10 @@ function DeactivateSheet({ person, onClose }: { person: PersonRow; onClose: () =
           <Button variant="secondary" onClick={close}>
             Cancel
           </Button>
-          <Button variant="danger" onClick={() => deactivate.mutate({ id: person.id, reason }, { onSuccess: onClose })} disabled={deactivate.isPending}>
+          <Button variant="danger" onClick={() => deactivate.mutate({ id: person.id, reason }, { onSuccess: () => {
+            onClose()
+            announce(`${person.name} deactivated.`)
+          } })} disabled={deactivate.isPending}>
             {deactivate.isPending ? 'Deactivating…' : 'Deactivate'}
           </Button>
         </>

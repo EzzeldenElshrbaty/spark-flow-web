@@ -131,7 +131,7 @@ export function Reactions({ reactions, users, target, meId, canReact }: { reacti
               </button>
               </Tooltip>
             ) : (
-              <span title={who} aria-label={`${reaction.emoji} ${reaction.userIds.length}: ${who}`} className={pill}>
+              <span role="img" title={who} aria-label={`${reaction.emoji} ${reaction.userIds.length}: ${who}`} className={pill}>
                 {content}
               </span>
             )}

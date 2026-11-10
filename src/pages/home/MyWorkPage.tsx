@@ -165,7 +165,13 @@ export function MyWorkPage() {
                             </span>
                             <span className="mt-0.5 line-clamp-2 block text-xs text-fg-muted">{m.excerpt}</span>
                           </span>
-                          {!m.read && <span className="mt-2 size-2 shrink-0 rounded-full bg-brand-500" aria-label="Unread" />}
+                          {/* The dot is seen; "Unread" is read (UX Phase 5A, 5.12). */}
+                          {!m.read && (
+                            <>
+                              <span className="mt-2 size-2 shrink-0 rounded-full bg-brand-500" aria-hidden />
+                              <span className="sr-only">Unread</span>
+                            </>
+                          )}
                         </button>
                       </li>
                     )

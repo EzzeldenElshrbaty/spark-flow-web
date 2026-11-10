@@ -123,3 +123,20 @@ describe('useUploadQueue with a limit', () => {
     expect(result.current.rows[1]!.error).toBeNull()
   })
 })
+
+describe('useUploadQueue tells a screen reader what finished (UX Phase 5A, 5.12)', () => {
+  it('notice says a file uploaded, or why it didn’t; never the percent', async () => {
+    const { calls, upload } = fakeUpload()
+    const { result } = renderHook(() => useUploadQueue(upload, vi.fn()))
+    act(() => result.current.add([f('a.pdf'), f('b.pdf')]))
+    await waitFor(() => expect(calls).toHaveLength(1))
+    act(() => calls[0]!.onProgress(0.5))
+    expect(result.current.notice).toBe('')
+    await act(async () => calls[0]!.resolve('A'))
+    expect(result.current.notice).toBe('a.pdf uploaded.')
+    await waitFor(() => expect(calls).toHaveLength(2))
+    await act(async () => calls[1]!.reject(new Error('The server refused it.')))
+    expect(result.current.notice).toBe('b.pdf: The server refused it.')
+  })
+})
+

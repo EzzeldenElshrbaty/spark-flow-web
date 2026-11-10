@@ -9,6 +9,9 @@ import { api, ApiError } from '@/lib/api'
 import { ALL_PERMISSIONS, BUILT_IN_ROLES } from '@/lib/permissions'
 import { UsersPage } from './UsersPage'
 
+const announced = vi.hoisted(() => vi.fn())
+vi.mock('@/components/sf/Announcer', async (original) => ({ ...(await original<typeof import('@/components/sf/Announcer')>()), announce: announced }))
+
 window.matchMedia ??= ((media: string) => ({ matches: false, media, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia
 
 const hourAgo = new Date(Date.now() - 3_600_000).toISOString()
@@ -128,6 +131,8 @@ describe('Settings → Users (Admin and help, slice 3)', () => {
     fireEvent.click(within(sheet).getByRole('button', { name: 'Add person' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     expect(create).toHaveBeenLastCalledWith({ name: 'Laila Hamdy', email: 'laila@spark-sys.com', title: '', roleIds: ['member'], teamIds: ['t-backend'] })
+    // Read out once the sheet has closed (UX Phase 5A, 5.12).
+    expect(announced).toHaveBeenLastCalledWith('Laila Hamdy added.')
     expect(location).toBe('')
   })
 

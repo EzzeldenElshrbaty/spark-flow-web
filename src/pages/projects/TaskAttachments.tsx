@@ -5,7 +5,7 @@ import type { Attachment } from '@/api/types'
 import { acceptedFiles, sizeText } from '@/lib/fileTypes'
 import { FileTypesHint } from './FileTypesHint'
 import { fileIcon } from './fileSources'
-import { rowLabel, type UploadRow } from './uploadQueue'
+import { rowLabel, uploadProgress, type UploadRow } from './uploadQueue'
 import { IconButton } from '@/components/ui/IconButton'
 
 /**
@@ -23,6 +23,7 @@ export function TaskAttachments({
   onRetry,
   onDismiss,
   canRetry,
+  notice = '',
 }: {
   files: Attachment[]
   rows: UploadRow[]
@@ -33,6 +34,8 @@ export function TaskAttachments({
   onRetry: (id: string) => void
   onDismiss: (id: string) => void
   canRetry: (id: string) => boolean
+  /** The latest upload that finished or failed, read once (`useUploadQueue`'s notice). */
+  notice?: string
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
@@ -41,6 +44,10 @@ export function TaskAttachments({
   return (
     <section aria-label="Attachments">
       <h3 className="mb-1.5 block text-sm font-medium text-fg-secondary">Attachments</h3>
+      {/* Inside the sheet, which is modal: a live region outside it may not be read (UX Phase 5A, 5.12). */}
+      <p role="status" className="sr-only">
+        {notice}
+      </p>
       {empty && readOnly && <p className="text-sm text-fg-muted">—</p>}
       {!empty && (
         <ul className="mb-2 divide-y divide-line-subtle rounded-lg border border-line">
@@ -60,11 +67,16 @@ export function TaskAttachments({
             )
           })}
           {rows.map((r) => (
-            <li key={r.id} className="flex items-center gap-3 px-3 py-2" aria-live="polite">
+            <li key={r.id} className="flex items-center gap-3 px-3 py-2">
               <Upload className="size-4 shrink-0 text-fg-muted" aria-hidden />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-medium text-fg">{r.name}</span>
-                <span className={clsx('block truncate text-xs tabular-nums', r.state === 'failed' ? 'text-red-600 dark:text-red-400' : 'text-fg-muted')}>{rowLabel(r)}</span>
+                <span
+                  className={clsx('block truncate text-xs tabular-nums', r.state === 'failed' ? 'text-red-600 dark:text-red-400' : 'text-fg-muted')}
+                  {...uploadProgress(r)}
+                >
+                  {rowLabel(r)}
+                </span>
               </span>
               {(r.state === 'queued' || r.state === 'uploading') && (
                 <button type="button" onClick={() => onCancel(r.id)} className="text-sm font-medium text-fg-secondary hover:text-fg">

@@ -15,6 +15,15 @@ export function queueRows(files: File[], accept: (file: File) => string | null):
 }
 
 /** What a row says next to its name. */
+/**
+ * A row going up is a progress bar named after its file (its text shows the percent); nothing is live, so the percent
+ * isn't read on every step (UX Phase 5A, 5.12). Spread on the row's status text.
+ */
+export function uploadProgress(row: UploadRow) {
+  if (row.state !== 'uploading') return {}
+  return { role: 'progressbar', 'aria-label': `Uploading ${row.name}`, 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': row.progress === undefined ? undefined : Math.round(row.progress * 100) } as const
+}
+
 export function rowLabel(row: UploadRow): string {
   switch (row.state) {
     case 'queued':

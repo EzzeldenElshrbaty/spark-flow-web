@@ -12,7 +12,7 @@ import { FileViewer } from '@/components/ui/FileViewer'
 import { acceptedFiles, sizeText } from '@/lib/fileTypes'
 import { FileTypesHint } from './FileTypesHint'
 import { timeAgo } from '@/lib/format'
-import { rowLabel } from './uploadQueue'
+import { rowLabel, uploadProgress } from './uploadQueue'
 import { useUploadQueue } from './useUploadQueue'
 import { IconButton } from '@/components/ui/IconButton'
 
@@ -80,11 +80,13 @@ export function ProjectFiles({ projectId, people, canUpload, canManage }: { proj
               </li>
             ))}
             {rows.map((r) => (
-              <li key={r.id} className="flex items-center gap-3 py-2" aria-live="polite">
+              <li key={r.id} className="flex items-center gap-3 py-2">
                 <Upload className="size-4 shrink-0 text-fg-muted" />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium text-fg">{r.name}</span>
-                  <span className={clsx('block truncate text-xs', r.state === 'failed' ? 'text-red-600 dark:text-red-400' : 'text-fg-muted')}>{rowLabel(r)}</span>
+                  <span className={clsx('block truncate text-xs', r.state === 'failed' ? 'text-red-600 dark:text-red-400' : 'text-fg-muted')} {...uploadProgress(r)}>
+                    {rowLabel(r)}
+                  </span>
                 </span>
                 {(r.state === 'queued' || r.state === 'uploading') && (
                   <button type="button" onClick={() => queue.cancel(r.id)} className="text-sm font-medium text-fg-secondary hover:text-fg">
@@ -103,6 +105,10 @@ export function ProjectFiles({ projectId, people, canUpload, canManage }: { proj
             ))}
           </ul>
         )}
+        {/* What finished or failed, read once (UX Phase 5A, 5.12). */}
+        <p role="status" className="sr-only">
+          {queue.notice}
+        </p>
         {openError && <p className="text-sm text-red-600 dark:text-red-400">{openError}</p>}
 
         {canUpload && (

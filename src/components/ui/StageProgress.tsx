@@ -121,7 +121,7 @@ export function StageProgress({
       </ol>
 
       {/* Phones: the current stage in words and a thin segmented bar. */}
-      <div className="sm:hidden" aria-label={label}>
+      <div className="sm:hidden" role="group" aria-label={label}>
         <p className="flex items-baseline justify-between gap-2 text-sm">
           <span className={clsx('font-semibold', state === 'stopped' ? 'text-red-700 dark:text-red-300' : state === 'paused' ? 'text-amber-700 dark:text-amber-300' : 'text-fg')}>
             {state === 'stopped' ? stopLabel : stages[reached].label}

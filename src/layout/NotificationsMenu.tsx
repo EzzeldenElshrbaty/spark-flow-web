@@ -142,7 +142,13 @@ export function NotificationsMenu() {
                           </span>
                           <span className="sf-meta mt-0.5 line-clamp-2 block text-sf-text-muted">{item.excerpt}</span>
                         </span>
-                        {!item.read && <span className="mt-2 size-2 flex-none rounded-sf-full bg-sf-accent-fill" aria-label="Unread" />}
+                        {/* The dot is seen; "Unread" is read (a label on a plain span isn't, UX Phase 5A, 5.12). */}
+                        {!item.read && (
+                          <>
+                            <span className="mt-2 size-2 flex-none rounded-sf-full bg-sf-accent-fill" aria-hidden />
+                            <span className="sr-only">Unread</span>
+                          </>
+                        )}
                       </button>
                     </li>
                   ))}

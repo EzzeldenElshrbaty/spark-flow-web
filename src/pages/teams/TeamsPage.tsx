@@ -18,6 +18,7 @@ import { QueryError } from '@/components/ui/QueryError'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { paths } from '@/lib/paths'
 import { usePermission } from '@/lib/usePermission'
+import { announce } from '@/components/sf/Announcer'
 
 /**
  * One person in a team, with "Message", which opens (or starts) the conversation with them. The button waits until
@@ -59,14 +60,19 @@ function MemberRow({ user, workspaceId, workspaceSlug, canMessage }: { user: Use
 function TeamNameSheet({ workspaceId, team, onClose }: { workspaceId: string; team?: Team; onClose: () => void }) {
   const create = useCreateTeam()
   const rename = useRenameTeam()
+  // Read out once the sheet has closed (UX Phase 5A, 5.12).
+  const done = (sentence: string) => () => {
+    onClose()
+    announce(sentence)
+  }
   const save = team ? rename : create
   const [name, setName] = useState(team?.name ?? '')
   const [problem, setProblem] = useState<string | null>(null)
   const submit = () => {
     if (!name.trim()) return setProblem('Name the team.')
     setProblem(null)
-    if (team) rename.mutate({ id: team.id, name: name.trim() }, { onSuccess: onClose })
-    else create.mutate({ workspaceId, name: name.trim() }, { onSuccess: onClose })
+    if (team) rename.mutate({ id: team.id, name: name.trim() }, { onSuccess: done('Team saved.') })
+    else create.mutate({ workspaceId, name: name.trim() }, { onSuccess: done(`Team ${name.trim()} created.`) })
   }
   return (
     <Sheet
