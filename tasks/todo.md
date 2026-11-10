@@ -3075,3 +3075,15 @@ Deferred minors (from the final review):
 - A page mention in a public channel stays after the person leaves (chat's rule).
 
 Not pushed; not on dev.
+
+# New-channel intro and page templates (chat spec §6.14) — 11 Nov 2026, approved (Native)
+
+Spec: `docs/superpowers/specs/2026-11-11-channel-intro-and-templates-design.md` (Q1–Q7 "Yes, recommended"). Plan:
+`docs/superpowers/plans/2026-11-11-channel-intro-and-templates.md`. Branch `feat/channel-intro` from dev f6dd880.
+
+- [ ] 1. Who made a channel, and when (DB v34)
+- [ ] 2. The intro row in the message list
+- [ ] 3. The intro (`ChannelIntro`)
+- [ ] 4. Templates and the picker
+- [ ] 5. Wiring, Edit description, in-app bookmarks
+- [ ] 6. Help, docs, gates; one final review
