@@ -332,3 +332,5 @@ Where the build departs from this design:
 - **The read-only view** is `PageReader`, since `PageView` is the data type's name.
 - **Restore** always starts its own history entry, so the state before it stays in history.
 - **In the editor**, headings carry `aria-level` one deeper than their tag, and a checklist's list is a `group` (Lexical makes its items checkboxes), so the channel's name stays the only level-1 heading and axe's list rule holds.
+- **Notifications:** a page mention reaches Activity and the bell (`notificationCreated` refreshes both), but not a browser notification outside the app: `layout/DesktopNotifier.tsx` works from message events.
+- **Leaving the tab** (Page to Messages, Files or Pins) asks through the same question as leaving the channel (`askToLeave` in `lib/unsavedChanges.ts`), since the router doesn't see a tab change as leaving.
