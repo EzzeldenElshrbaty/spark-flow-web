@@ -35,7 +35,8 @@ export function TopBar({
         />
       </span>
 
-      <DesktopSearch />
+      {/* Folded away (a running timer below 1280px), its keys open the search screen (UX Phase 5B final review). */}
+      <DesktopSearch onOpenScreen={() => onSearchOpenChange(true)} />
 
       {/* The search box gives way first; the buttons and the profile keep their size. */}
       <div className="ms-auto flex flex-none items-center gap-2">

@@ -70,3 +70,24 @@ describe('the tab row shows there’s more (UX Phase 5B, 5.2)', () => {
     expect(fade()!.getBoundingClientRect().left).toBeLessThan(rtlRow.getBoundingClientRect().left + 2)
   })
 })
+
+describe('the stuck row keeps the open tab in view (final review)', () => {
+  it('when the project’s name appears, the open tab scrolls back into view', async () => {
+    const { rerender } = render(
+      <MemoryRouter>
+        <div style={{ width: 300 }}>
+          <ProjectTabs ws="engineering" projectKey="NEX" tab="files" sticky />
+        </div>
+      </MemoryRouter>,
+    )
+    await expectInView()
+    rerender(
+      <MemoryRouter>
+        <div style={{ width: 300 }}>
+          <ProjectTabs ws="engineering" projectKey="NEX" tab="files" sticky stuckName="Nexus Core" />
+        </div>
+      </MemoryRouter>,
+    )
+    await expectInView()
+  })
+})

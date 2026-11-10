@@ -142,3 +142,18 @@ describe('the pill’s title fits the top bar (UX Phase 5B, 5.3)', () => {
   })
 })
 
+describe('the phone bar fits when paused (final review)', () => {
+  it('at 360 every part is on screen, the key stays on one line, and the title keeps room', async () => {
+    await page.viewport(360, 800)
+    timer = states[2]![1]()
+    render(
+      <MemoryRouter>
+        <PhoneTimerBar />
+      </MemoryRouter>,
+    )
+    const bar = screen.getByRole('region', { name: 'Timer' })
+    for (const child of bar.children) expect(child.getBoundingClientRect().right, child.textContent ?? '').toBeLessThanOrEqual(360)
+    expect(screen.getByText('NEX-101').getBoundingClientRect().height).toBeLessThanOrEqual(20)
+    expect(screen.getByText(/Login page with a longer title/).getBoundingClientRect().width).toBeGreaterThanOrEqual(40)
+  })
+})

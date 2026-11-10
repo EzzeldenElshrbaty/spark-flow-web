@@ -2933,4 +2933,15 @@ Plan: `docs/superpowers/plans/2026-11-10-ux-phase-5b-phones-and-contrast.md`. Br
 - New shared pieces: `src/test/{contrast,touch}.ts`, `src/styles/kitTokens.test.ts`, `--line-input`, `@utility
   touch-target`, `layout/bottomTab.ts`, `lib/{useScrollEnd,useScrolledPast}.ts`, `dueText`, `presenceNote`,
   `useCompactSearch`, `RecordHeader` `pinned`; rules in `CLAUDE.md`.
+- Final review (Opus): not ready until 7 critical or important findings were fixed, each with a test that failed
+  first. The top bar now wires the folded search's keys to the search screen; the screen closes when it can no longer
+  be seen (timer stopped, wider window), and the folding box hands the caret to the Search button; the Files "From"
+  link is a 44 px row of its own on phones instead of a clipped touch area; the phone timer bar fits at 360 px when
+  paused (icons only below `sm`, "Paused" in the dot's place, the key on one line); every field's dark focus border is
+  `brand-400`; the stuck tab row scrolls the open tab back into view when the project's name takes room; Overview no
+  longer runs wider than a phone (its grid is one column below `lg`, a problem from before this phase).
+- Deferred minors: the stuck name's truncation, touch areas over a neighbour with no `position` (channel name and
+  star; the bookmark strip scrolls 1 px), the search screen's focus return under StrictMode, "· late" wrapping in the
+  120 px Due column, no `scroll-padding-top` for the sticky stack, four comment nits, and narrowed checks (class scans;
+  the light axe sweep skipped Users and Preferences).
 

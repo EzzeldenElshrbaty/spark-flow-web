@@ -47,10 +47,11 @@ export function TimerControls({ timer, layout }: { timer: MyTimer; layout: 'pill
     // The pill sits in the sf top bar, so it takes the sf colours (the app's own accent-soft fails contrast there in dark).
     layout === 'pill' ? 'text-sf-accent hover:bg-sf-surface-hover' : 'text-fg-secondary',
   )
-  // In the pill the words show from xl up; below that the top bar has room for icons only, named for screen readers.
-  const words = layout === 'pill' ? 'hidden xl:inline' : undefined
+  // In the pill the words show from xl up, in the phone bar from sm up (a paused timer's four parts don't fit a 360px
+  // phone with them, UX Phase 5B final review); below that, icons only, named for screen readers.
+  const words = layout === 'pill' ? 'hidden xl:inline' : 'hidden sm:inline'
   const control = (icon: ReactNode, text: string, onClick: () => void, disabled = false) => (
-    <button type="button" className={button} onClick={onClick} disabled={disabled} aria-label={layout === 'pill' ? text : undefined} title={layout === 'pill' ? text : undefined}>
+    <button type="button" className={button} onClick={onClick} disabled={disabled} aria-label={text} title={text}>
       {icon} <span className={words}>{text}</span>
     </button>
   )
@@ -206,11 +207,11 @@ export function PhoneTimerBar() {
       className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 flex h-11 items-center gap-2 border-t border-line bg-surface/95 px-4 text-sm backdrop-blur lg:hidden"
       data-timer="bar"
     >
-      <Dot running={timer.state === 'running'} />
-      {task && <bdi dir="ltr" className="font-mono text-xs text-fg-muted">{task.key}</bdi>}
+      {/* Paused takes the dot's place: the word says it, and the title keeps room on a 360px phone (UX Phase 5B final review). */}
+      {timer.state === 'paused' ? <span className="shrink-0 text-fg-muted">Paused</span> : <Dot running />}
+      {task && <bdi dir="ltr" className="shrink-0 whitespace-nowrap font-mono text-xs text-fg-muted">{task.key}</bdi>}
       <span className="min-w-0 flex-1 truncate text-fg">{label ?? <span aria-hidden className="inline-block h-3 w-24 animate-pulse rounded bg-surface-strong align-middle" />}</span>
-      {timer.state === 'paused' && <span className="shrink-0 text-fg-muted">Paused</span>}
-      <span role="timer" className="tabular-nums text-accent">
+      <span role="timer" className="shrink-0 tabular-nums text-accent">
         {capped ? '12 h limit reached' : formatClock(ms)}
       </span>
       <TimerControls timer={timer} layout="bar" />

@@ -36,7 +36,8 @@ export function ProjectTabs({
     const t = open.current.getBoundingClientRect()
     const by = t.left < r.left ? t.left - r.left : t.right > r.right ? t.right - r.right : 0
     if (by) row.current.scrollBy({ left: by })
-  }, [tab])
+    // Again when the stuck row's name takes room from the tabs (UX Phase 5B final review).
+  }, [tab, Boolean(stuckName)])
   return (
     // `end` sits at the row's end (the Chat tab's Open in Chat, UX Phase 1, 1.3).
     <div className={clsx('mb-5 flex', sticky && 'max-sm:sticky max-sm:top-14 max-sm:z-10 max-sm:-mx-4 max-sm:bg-canvas max-sm:px-4')}>

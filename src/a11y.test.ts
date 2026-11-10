@@ -91,9 +91,22 @@ describe('small controls reach a 44px touch on phones (5.4)', () => {
     ['pages/chat/ChannelTabs.tsx', /label="Add a bookmark".*max-md:touch-target/],
     ['pages/chat/MessageList.tsx', /className={`sf-focus \$\{pillClass\} pe-2 max-md:touch-target`}/],
     ['pages/projects/HistoryList.tsx', /className="font-medium text-accent hover:underline max-md:touch-target"/],
-    ['pages/projects/FilesTab.tsx', /className="truncate text-accent hover:underline max-md:touch-target"/],
+    ['pages/projects/FilesTab.tsx', /className="min-w-0 text-accent hover:underline max-md:inline-flex max-md:min-h-11 max-md:items-center"/],
   ]
   it.each(targets)('%s', (file, pattern) => {
     expect(files.find((f) => f.file === file)?.source ?? '', file).toMatch(pattern)
+  })
+})
+
+describe('focused fields show in dark (final review)', () => {
+  it('a brand focus border has its dark brand-400 variant on the same line', () => {
+    const missing = files.flatMap(({ file, source }) =>
+      source
+        .split('\n')
+        .map((line, i) => ({ line, i }))
+        .filter(({ line }) => /focus:border-brand-500/.test(line) && !/dark:focus:border-brand-400/.test(line))
+        .map(({ i }) => `${file}:${i + 1}`),
+    )
+    expect(missing).toEqual([])
   })
 })

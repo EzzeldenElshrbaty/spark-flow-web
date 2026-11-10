@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation, useNavigate, useSearchParams } from 'react-router'
 import { IconBolt, IconLayoutGrid, IconListCheck, IconSearch, IconUser, IconX, type TablerIcon } from '@tabler/icons-react'
@@ -229,13 +229,16 @@ function useSearchTerm() {
  * Below 1280 while a timer runs the top bar has no room for the search box (the pill takes it): search is then the
  * round button and its screen, as on a phone (UX Phase 5B, 5.3).
  */
+/** The round Search button's id: the folded box hands it the caret (UX Phase 5B final review). */
+const SEARCH_BUTTON_ID = 'top-bar-search'
+
 export function useCompactSearch(): boolean {
   const timer = useMyTimer()
   const wide = useMedia('(min-width: 1280px)')
   return Boolean(timer) && !wide
 }
 
-export function DesktopSearch({ onOpenScreen }: { onOpenScreen?: () => void } = {}) {
+export function DesktopSearch({ onOpenScreen }: { onOpenScreen: () => void }) {
   const compact = useCompactSearch()
   const location = useLocation()
   const navigate = useNavigate()
@@ -261,9 +264,13 @@ export function DesktopSearch({ onOpenScreen }: { onOpenScreen?: () => void } = 
   // Sent here by the channel's 🔍, ⌘F or /search: the caret goes in the box, after the query; with the box folded away,
   // the search screen opens instead (UX Phase 5B, 5.3).
   useFocusOnArrival(inputRef)
+  // Folding away while it has the caret (a timer started elsewhere): the caret goes to the round button, not nowhere.
+  useLayoutEffect(() => {
+    if (compact && document.activeElement === inputRef.current) document.getElementById(SEARCH_BUTTON_ID)?.focus()
+  }, [compact])
   useEffect(() => {
     if (!compact || (location.state as { focus?: string } | null)?.focus !== 'search') return
-    onOpenScreen?.()
+    onOpenScreen()
     navigate({ pathname: location.pathname, search: location.search, hash: location.hash }, { replace: true, state: null })
     // Only on a new arrival.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -275,7 +282,7 @@ export function DesktopSearch({ onOpenScreen }: { onOpenScreen?: () => void } = 
     const onKey = (event: globalThis.KeyboardEvent) => {
       if (opensSearch(event, singleKeys)) {
         event.preventDefault()
-        if (compact) onOpenScreen?.()
+        if (compact) onOpenScreen()
         else inputRef.current?.focus()
       }
     }
@@ -352,10 +359,16 @@ export function DesktopSearch({ onOpenScreen }: { onOpenScreen?: () => void } = 
 export function PhoneSearch({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   // From tablets up the box is the way in, unless a running timer has folded it away (UX Phase 5B, 5.3).
   const compact = useCompactSearch()
+  // The screen never stays open where it can't be seen (the timer stopped, a wider window): it closes.
+  const tablet = useMedia('(min-width: 768px)')
+  useEffect(() => {
+    if (open && tablet && !compact) onOpenChange(false)
+  }, [open, tablet, compact, onOpenChange])
   return (
     <>
       <button
         type="button"
+        id={SEARCH_BUTTON_ID}
         onClick={() => onOpenChange(true)}
         aria-label="Search"
         title="Search"

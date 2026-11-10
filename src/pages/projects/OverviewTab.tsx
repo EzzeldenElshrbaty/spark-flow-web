@@ -183,7 +183,8 @@ export function OverviewTab({
         {project.cost !== null && <StatTile label="Cost so far" value={formatMoney(project.cost)} hint="Hours × hourly cost" />}
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-3">
+      {/* One column that never grows past the screen on phones (UX Phase 5B final review). */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">
           <Card>
             <CardHeader title="About" />

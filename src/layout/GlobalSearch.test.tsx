@@ -36,7 +36,7 @@ async function mount(at = '/w/engineering/c/c-general') {
             path="/w/:ws/*"
             element={
               <>
-                <DesktopSearch />
+                <DesktopSearch onOpenScreen={() => {}} />
                 <Where />
               </>
             }

@@ -255,7 +255,7 @@ function BoardColumn({
               }}
               onPointerDown={(e) => e.stopPropagation()}
               onBlur={() => void finish()}
-              className="min-w-0 flex-1 rounded-md border border-line bg-surface px-2 py-0.5 text-sm font-semibold text-fg focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-accent-soft"
+              className="min-w-0 flex-1 rounded-md border border-line bg-surface px-2 py-0.5 text-sm font-semibold text-fg focus:border-brand-500 dark:focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-accent-soft"
             />
           ) : editable ? (
             <button

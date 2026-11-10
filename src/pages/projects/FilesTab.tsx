@@ -76,8 +76,9 @@ export function FilesTab({ ws, project, users }: { ws: string; project: ProjectS
   }
   const from = (source: ProjectFileSource) => (
     // A link inside a clickable row: it goes where it says, it doesn't open the file.
-    <Link to={hrefOf(source)} className="truncate text-accent hover:underline max-md:touch-target">
-      {sourceLabel(source)}
+    // On a phone it is a full 44px row of its own, so a tap that misses it never opens the file above (UX Phase 5B).
+    <Link to={hrefOf(source)} className="min-w-0 text-accent hover:underline max-md:inline-flex max-md:min-h-11 max-md:items-center">
+      <span className="block min-w-0 truncate">{sourceLabel(source)}</span>
     </Link>
   )
   const title = ({ file }: ProjectFileRow) => {
@@ -182,7 +183,7 @@ export function FilesTab({ ws, project, users }: { ws: string; project: ProjectS
                       {typeLabel(r.file)} · {sizeText(r.file.size)} · {nameOf(r.file.uploadedBy)} · {formatDate(r.file.createdAt)}
                     </span>
                   </button>
-                  <span className="mt-0.5 flex min-w-0 gap-1 text-xs text-fg-muted">From {from(r.source)}</span>
+                  <span className="mt-0.5 flex min-w-0 items-center gap-1 text-xs text-fg-muted">From {from(r.source)}</span>
                 </li>
               ))}
             </ul>

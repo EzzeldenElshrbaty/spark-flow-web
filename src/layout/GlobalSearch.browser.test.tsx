@@ -48,7 +48,7 @@ describe('arriving on Search from the channel’s 🔍 or ⌘F (spec 6.12)', () 
               path="/w/:ws/*"
               element={
                 <div className="sf" style={{ width: 900 }}>
-                  <DesktopSearch />
+                  <DesktopSearch onOpenScreen={() => {}} />
                   <Probe />
                 </div>
               }
@@ -136,3 +136,24 @@ describe('the laptop top bar while a timer runs (UX Phase 5B, 5.3)', () => {
   })
 })
 
+describe('the folded search never stays open hidden, nor drops the caret (final review)', () => {
+  it('a screen open at 1100 closes when the timer stops (the box is back)', async () => {
+    running = true
+    await page.viewport(1100, 800)
+    const { rerender } = render(<Bar />)
+    await userEvent.click(screen.getByRole('button', { name: 'Search' }))
+    await screen.findByRole('dialog', { name: 'Search' })
+    running = false
+    rerender(<Bar />)
+    await vi.waitFor(() => expect(document.querySelector('[role="dialog"][aria-label="Search"]')).toBeNull())
+  })
+
+  it('the box folding away while it has the caret gives focus to the Search button', async () => {
+    await page.viewport(1100, 800)
+    const { rerender } = render(<Bar />)
+    screen.getByRole('combobox').focus()
+    running = true
+    rerender(<Bar />)
+    await vi.waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Search' })))
+  })
+})
