@@ -2956,14 +2956,46 @@ polish items and 28 of the earlier phases' deferred minors are fixed.
 Plan: `docs/superpowers/plans/2026-11-10-ux-phase-6-checks-and-polish.md`. Branch `feat/ux-phase-6` from `origin/dev`
 (9b96ac1, Phase 5B landed).
 
-- [ ] The app harness (6.1)
-- [ ] The page checks (6.1)
-- [ ] The page × role × theme × size matrix (6.1)
-- [ ] The first full run, fixed (6.1)
-- [ ] Every sheet and dialog from the keyboard (6.1)
-- [ ] Role walkthroughs (6.2)
-- [ ] Help and specs (6.3)
-- [ ] Polish (6.4)
-- [ ] Earlier phases' minors: forms, lists, timer, navigation
-- [ ] Earlier phases' minors: screen readers, focus, tidy-ups
-- [ ] Rules, notes and the gate
+- [x] The app harness (6.1)
+- [x] The page checks (6.1)
+- [x] The page × role × theme × size matrix (6.1)
+- [x] The first full run, fixed (6.1)
+- [x] Every sheet and dialog from the keyboard (6.1)
+- [x] Role walkthroughs (6.2)
+- [x] Help and specs (6.3)
+- [x] Polish (6.4)
+- [x] Earlier phases' minors: forms, lists, timer, navigation
+- [x] Earlier phases' minors: screen readers, focus, tidy-ups
+- [x] Rules, notes and the gate
+
+## Review — UX Phase 6
+- Gates: `tsc -b` and lint clean; `npm test` 3,013/3,013 (unit and browser); `npm run test:ux` 968/968 (402 s); `build:prototype`
+  passes. Help pictures not retaken: nothing pictured at 1280 × 800 in light changed.
+- The UX checks: the whole app renders in the browser project as Admin, PM, Member or Sales, light or dark, at 1440,
+  1280 × 720, 768 or 390 (`src/test/app.tsx`), and each load is checked for sideways scroll, axe serious/critical (the
+  audit's tags, `target-size` included), more than one primary button, spinners, console errors and a missing `h1`.
+  `npm test` runs 122 loads (every page as every role, each page in both themes and all four sizes; about 55 s);
+  `npm run test:ux` runs all 968 (about 7 min). The first full run found 20 failing loads: 16 were the task panel's file
+  chip (named by its title only) and 4 were contrast measured while colours were still fading, which the checks now
+  wait out. `uxKnown.ts` is empty.
+- Every sheet and dialog from the keyboard (22): focus in, Tab kept inside, axe clean, Esc/✕/Cancel ask, focus back to
+  the opener. It found that focus went to the page's heading instead of the opener after every sheet and dialog under
+  StrictMode (`useRestoreFocus` re-recorded its opener), New channel's label read its "*", and Start timer's list was
+  an empty list box for someone with no tasks.
+- The four role walkthroughs (Member, PM, Admin, Sales), each at 1440 light and 390 dark, from fresh seed data. They
+  found that a table row's menu (the Time tab's Entry actions) was cut off by its cell on a laptop: `MenuPanel` is now
+  drawn at the page level.
+- Help and specs: getting started says My work is under More and explains unsaved changes; Archived records says
+  Delete for good asks for the key; the company spec §5 and the chat redesign follow the Dashboard-start and My work
+  ruling.
+- Polish: a failed Undo says why in its own toast; Manage phases announces its saves; Start timer says "Pick a
+  project." or "Pick a task."; arrow keys in a segmented control or tab row replace the address entry; Phase 5B's
+  minors (stuck name ellipsis, the star's touch area, Add a bookmark at 44 px, "· late" on one line, focus clear of the
+  sticky rows).
+- Earlier phases' minors: 24 noticeable ones and 4 tidy-ups fixed (sheets compare with the values as opened,
+  Deactivate asks first, a removed team isn't sent, mentions and task news capped apart, Help a Projects place, table
+  layers and the sorted column, stale filters, no 0 before counts are known, Start timer's loading and errors, Back on
+  phase picks, the column strip, Time & cost's dimming, Files after a failed refresh, the composer's length line,
+  repeated upload notices, the column move instructions, focus after Skip, tab titles, the panel's title focus).
+  Left out: the mentions scan cost (backend) and one old test flake.
+
