@@ -10,7 +10,7 @@ const kinds = {
     track: 'inline-flex rounded-lg bg-surface-muted p-0.5 ring-1 ring-line',
     item: 'px-2.5 py-1.5 font-medium',
     on: 'bg-surface text-fg shadow-sm ring-1 ring-line',
-    off: 'text-fg-muted hover:text-fg',
+    off: 'text-fg-tertiary hover:text-fg', // on the tinted track: 6.9:1 (UX Phase 5B, 5.8)
   },
   form: {
     track: 'inline-flex rounded-lg border border-line p-0.5',

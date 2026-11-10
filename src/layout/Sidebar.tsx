@@ -83,6 +83,9 @@ function isIcon(icon: SideLinkProps['icon']): icon is TablerIcon {
 }
 
 /** One 28px row of the sidebar (44px in the phone and tablet drawer, for touch; spec 5.1 and 6.16): read, unread, active, muted, mentions and draft states. */
+/** A row's trailing marks: muted grey, or on the lit active row the sidebar's text, 4.5:1 there (UX Phase 5B, 5.8). */
+const trailInk = (active: boolean) => (active ? 'text-sf-sidebar-text' : 'text-sf-sidebar-text-muted')
+
 export function SideLink({
   to,
   label,
@@ -164,14 +167,14 @@ export function SideLink({
                     <Count value={count} label={count === 1 ? noun[0] : noun[1]} className="ms-auto" />
                   </>
                 ) : muted ? (
-                  <Icon icon={IconBellOff} size={16} className="ms-auto text-sf-sidebar-text-muted" />
+                  <Icon icon={IconBellOff} size={16} className={clsx('ms-auto', trailInk(active))} />
                 ) : draft ? (
                   <span className="ms-auto inline-flex">
-                    <Icon icon={IconPencil} size={16} className="text-sf-sidebar-text-muted" />
+                    <Icon icon={IconPencil} size={16} className={trailInk(active)} />
                     <span className="sr-only">, draft</span>
                   </span>
                 ) : trail ? (
-                  <span className="sf-meta ms-auto text-sf-sidebar-text-muted tabular-nums">
+                  <span className={clsx('sf-meta ms-auto tabular-nums', trailInk(active))}>
                     {trailNoun ? (
                       <>
                         <span className="sr-only">{`, ${trail} ${trailNoun}`}</span>

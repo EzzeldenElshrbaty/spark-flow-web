@@ -83,7 +83,7 @@ export function StageProgress({
     current: 'bg-brand-100 font-semibold text-brand-800 dark:bg-brand-500/25 dark:text-brand-100',
     paused: 'bg-amber-100 font-semibold text-amber-900 dark:bg-amber-500/20 dark:text-amber-100',
     stop: 'bg-red-100 font-semibold text-red-800 dark:bg-red-500/20 dark:text-red-100',
-    upcoming: 'bg-surface-muted text-fg-muted',
+    upcoming: 'bg-surface-muted text-fg-tertiary', // 6.9:1 on the tint (UX Phase 5B, 5.8)
   }
 
   return (
@@ -113,7 +113,7 @@ export function StageProgress({
                 {kind === 'current' && <span className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent motion-safe:animate-shimmer dark:via-white/10" aria-hidden />}
                 {(kind === 'done' || kind === 'done-stopped') && <Check className="size-4 shrink-0" strokeWidth={2.5} />}
                 <span className="relative min-w-0 truncate">{text}</span>
-                {stage.meta && <span className="relative hidden shrink-0 text-xs font-normal opacity-75 lg:inline">{stage.meta}</span>}
+                {stage.meta && <span className="relative hidden shrink-0 text-xs font-normal lg:inline">{stage.meta}</span>}
               </button>
             </li>
           )

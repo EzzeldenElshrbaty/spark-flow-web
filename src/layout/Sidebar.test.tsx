@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { Sidebar, SidebarContent, SidebarHeader } from '@/layout/Sidebar'
+import { SideLink, Sidebar, SidebarContent, SidebarHeader } from '@/layout/Sidebar'
 import { avatarTone } from '@/components/Avatar'
 import { initialUiState, useUiStore } from '@/lib/uiStore'
 import { ALL_PERMISSIONS } from '@/lib/permissions'
@@ -225,5 +225,17 @@ describe('the sidebar while the workspace list loads (UX Phase 4, 4.5)', () => {
     at('/w/acme/p/NEX/tasks', <SidebarContent />)
     expect(within(nav()).getByRole('link', { name: 'Dashboard' }).getAttribute('href')).toBe('/w/acme/dashboard')
     expect(within(nav()).getByRole('link', { name: 'My work' }).getAttribute('href')).toBe('/w/acme')
+  })
+})
+
+describe('the active row stays readable (UX Phase 5B, 5.8)', () => {
+  it('its trailing number uses the sidebar text, not the muted grey', () => {
+    render(
+      <MemoryRouter initialEntries={['/w/eng/drafts']}>
+        <SideLink to="/w/eng/drafts" label="Drafts & sent" trail={3} collapsed={false} />
+      </MemoryRouter>,
+    )
+    expect(screen.getByText('3').closest('.sf-meta')?.className).toContain('text-sf-sidebar-text')
+    expect(screen.getByText('3').closest('.sf-meta')?.className).not.toContain('text-sf-sidebar-text-muted')
   })
 })

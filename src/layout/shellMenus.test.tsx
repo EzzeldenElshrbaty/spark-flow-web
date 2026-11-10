@@ -164,6 +164,14 @@ describe('NotificationsMenu (spec 5.2: the bell)', () => {
     expect(navigate).toHaveBeenCalled()
   })
 
+  it('an unread item’s excerpt uses the darker grey on its tinted row (UX Phase 5B, 5.8)', async () => {
+    mentions = [item('m1', false), item('m2', true)]
+    show(<NotificationsMenu />)
+    await open(/Notifications, 1 unread/)
+    expect(screen.getByText('ping m1').className).toContain('text-sf-text-secondary')
+    expect(screen.getByText('ping m2').className).toContain('text-sf-text-muted')
+  })
+
   it('lists task news beside mentions, says so when there is nothing, and See all opens Activity (UX Phase 2, 2.3)', async () => {
     const task = (id: string, source: MentionItem['source'], statusLabel: string | null = null): MentionItem => ({ ...item(id, false), source, channelId: null, messageId: null, taskKey: 'NEX-106', projectId: 'p-nex', statusLabel })
     mentions = [task('t1', 'assigned'), task('t2', 'status', 'In review'), task('t3', 'taskComment')]

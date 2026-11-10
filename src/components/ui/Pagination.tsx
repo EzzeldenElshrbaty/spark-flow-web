@@ -53,7 +53,7 @@ export function Pagination({
         <span className="hidden items-center gap-1 sm:flex">
           {pageList(page, pageCount).map((item, index) =>
             item === '…' ? (
-              <span key={`gap-${index}`} className="px-1 text-fg-subtle">
+              <span key={`gap-${index}`} className="px-1 text-fg-muted">
                 …
               </span>
             ) : (

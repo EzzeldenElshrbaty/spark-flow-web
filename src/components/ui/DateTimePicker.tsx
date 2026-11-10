@@ -83,7 +83,7 @@ export function DateTimePicker({
         aria-expanded={open}
         aria-label={label ? `${label}: ${value ? formatDateTime(value, dateOnly) : 'not set'}` : undefined}
         aria-invalid={invalid}
-        className={clsx(inputClass, 'flex items-center gap-2 pe-9 text-start', !value && 'text-fg-subtle')}
+        className={clsx(inputClass, 'flex items-center gap-2 pe-9 text-start', !value && 'text-fg-muted')}
       >
         <CalendarDays className="size-4 shrink-0 text-fg-muted" />
         <span className="truncate">{value ? formatDateTime(value, dateOnly) : placeholder}</span>
@@ -297,7 +297,7 @@ function PickerPanel({
             </div>
             <div className="grid grid-cols-7 text-center text-[11px] font-medium text-fg-muted">
               {WEEKDAYS.map((name, index) => (
-                <span key={name} className={clsx('py-1', index === 0 || index === 6 ? 'text-fg-subtle' : undefined)}>
+                <span key={name} className={clsx('py-1', index === 0 || index === 6 ? 'text-fg-muted' : undefined)}>
                   {name}
                 </span>
               ))}
@@ -322,7 +322,7 @@ function PickerPanel({
                     className={clsx(
                       'flex h-8 items-center justify-center rounded-md text-sm tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:focus-visible:ring-brand-400',
                       selected ? 'bg-brand-500 font-semibold text-white' : off ? 'cursor-not-allowed text-fg-subtle/50 line-through' : 'hover:bg-surface-muted',
-                      !selected && !off && (outside ? 'text-fg-subtle' : isWeekend(date) ? 'text-fg-muted' : 'text-fg'),
+                      !selected && !off && (outside ? 'text-fg-muted' : isWeekend(date) ? 'text-fg-muted' : 'text-fg'),
                       isToday && !selected && 'ring-1 ring-brand-500',
                     )}
                   >
@@ -364,7 +364,7 @@ function PickerPanel({
                     className={clsx(
                       'shrink-0 rounded-md px-2.5 py-1.5 text-start text-sm tabular-nums transition-colors',
                       phone ? 'whitespace-nowrap' : 'block w-full',
-                      selected ? 'bg-brand-500 font-semibold text-white' : working ? 'text-fg hover:bg-surface-muted' : 'text-fg-subtle hover:bg-surface-muted',
+                      selected ? 'bg-brand-500 font-semibold text-white' : working ? 'text-fg hover:bg-surface-muted' : 'text-fg-muted hover:bg-surface-muted',
                     )}
                   >
                     {timeLabel(slot)}

@@ -64,3 +64,20 @@ describe('focus rings show in dark (5.8)', () => {
   })
 })
 
+describe('readable text (5.8)', () => {
+  // The faintest grey is for decoration only; what people read is fg-muted or darker. Allowed, with why:
+  const decoration: Record<string, RegExp> = {
+    'pages/help/HelpPage.tsx': /<BookOpen className="mx-auto size-8 text-fg-subtle"/, // the empty state's large icon
+    'components/ui/DateTimePicker.tsx': /text-fg-subtle\/50 line-through/, // a day you can't pick (disabled)
+  }
+  it('no text-fg-subtle or placeholder:text-fg-subtle on text people read', () => {
+    const found = files.flatMap(({ file, source }) =>
+      source
+        .split('\n')
+        .map((line, i) => ({ line, i }))
+        .filter(({ line }) => /text-fg-subtle/.test(line) && !(decoration[file]?.test(line) && line.replace(decoration[file]!, '').search(/text-fg-subtle/) < 0))
+        .map(({ i }) => `${file}:${i + 1}`),
+    )
+    expect(found).toEqual([])
+  })
+})

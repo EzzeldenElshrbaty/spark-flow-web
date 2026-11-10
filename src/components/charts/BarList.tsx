@@ -47,7 +47,7 @@ export function BarList({ rows, max, color = 'var(--chart-primary)', markerColor
             <div className="mb-1.5 flex items-baseline justify-between gap-3 text-xs">
               <span className="min-w-0 truncate font-medium text-fg-secondary">
                 {row.label}
-                {row.note && <span className="font-normal text-fg-subtle"> · {row.note}</span>}
+                {row.note && <span className="font-normal text-fg-muted"> · {row.note}</span>}
               </span>
               <span className="shrink-0 font-semibold tabular-nums text-fg">{row.display}</span>
             </div>

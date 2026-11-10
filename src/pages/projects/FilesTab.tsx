@@ -86,7 +86,7 @@ export function FilesTab({ ws, project, users }: { ws: string; project: ProjectS
     <span className="flex min-w-0 items-center gap-2">
       <Icon className="size-4 shrink-0 text-fg-muted" aria-hidden />
       <span className={clsx('truncate', notReady(file) ? 'text-fg-muted' : 'font-medium text-fg')}>{file.title}</span>
-      {notReady(file) && <span className="shrink-0 rounded-full bg-surface-muted px-2 py-0.5 text-xs text-fg-muted">{notReady(file)}</span>}
+      {notReady(file) && <span className="shrink-0 rounded-full bg-surface-muted px-2 py-0.5 text-xs text-fg-tertiary">{notReady(file)}</span>}
     </span>
     )
   }

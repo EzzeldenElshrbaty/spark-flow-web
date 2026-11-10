@@ -275,7 +275,7 @@ function BoardColumn({
             <ColumnMenu label={label} first={first} last={last} canDelete={canDelete} onRename={startRename} onMove={onMoveSide} onChangeType={onChangeType} onDelete={onDelete} />
           )}
         </h2>
-        <p className="mt-1 ps-4 text-xs tabular-nums text-fg-muted">
+        <p className="mt-1 ps-4 text-xs tabular-nums text-fg-tertiary">
           <span className="font-medium text-fg-secondary">{hours}h</span> logged
         </p>
         {error && (
@@ -290,7 +290,7 @@ function BoardColumn({
             <BoardCard key={ticket.id} ticket={ticket} assignee={nameOf(users, ticket.assigneeId)} movable={canMove(ticket)} />
           ))}
           {items.length === 0 && (
-            <li className="flex flex-col items-center gap-1 rounded-lg border border-dashed border-line-strong/70 px-3 py-8 text-center text-xs text-fg-subtle">
+            <li className="flex flex-col items-center gap-1 rounded-lg border border-dashed border-line-strong/70 px-3 py-8 text-center text-xs text-fg-tertiary">
               <Inbox className="size-5" />
               No tasks here
             </li>

@@ -139,9 +139,10 @@ export function NotificationsMenu() {
                         <span className="min-w-0 flex-1">
                           <span className="flex items-baseline justify-between gap-2">
                             <span className={clsx('sf-small truncate', item.read ? 'text-sf-text-secondary' : 'font-semibold text-sf-text')}>{notificationLine(item)}</span>
-                            <span className="sf-meta flex-none text-sf-text-muted">{timeAgo(item.createdAt)}</span>
+                            <span className={clsx('sf-meta flex-none', item.read ? 'text-sf-text-muted' : 'text-sf-text-secondary')}>{timeAgo(item.createdAt)}</span>
                           </span>
-                          <span className="sf-meta mt-0.5 line-clamp-2 block text-sf-text-muted">{item.excerpt}</span>
+                          {/* On the tinted unread row the muted grey falls under 4.5:1 (UX Phase 5B, 5.8). */}
+                          <span className={clsx('sf-meta mt-0.5 line-clamp-2 block', item.read ? 'text-sf-text-muted' : 'text-sf-text-secondary')}>{item.excerpt}</span>
                         </span>
                         {/* The dot is seen; "Unread" is read (a label on a plain span isn't, UX Phase 5A, 5.12). */}
                         {!item.read && (

@@ -56,3 +56,10 @@ describe('SegmentedControl', () => {
     expect(screen.getByRole('radio', { name: 'Board' }).className).toContain('bg-surface-muted font-medium text-fg')
   })
 })
+
+describe('readable choices (UX Phase 5B, 5.8)', () => {
+  it('a switch’s unpicked options use the darker grey on its tinted track', () => {
+    render(<SegmentedControl kind="switch" label="View" value="board" onChange={() => {}} options={[{ value: 'board', label: 'Board' }, { value: 'list', label: 'List' }]} />)
+    expect(screen.getByRole('radio', { name: 'List' }).className).toContain('text-fg-tertiary')
+  })
+})
