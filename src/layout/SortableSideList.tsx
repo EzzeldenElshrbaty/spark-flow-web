@@ -3,7 +3,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-
 import { CSS } from '@dnd-kit/utilities'
 import clsx from 'clsx'
 import { useRef, type ReactNode } from 'react'
-import { useDragSensors } from '@/lib/dragSensors'
+import { SPACE_DRAG_KEYS, useDragSensors } from '@/lib/dragSensors'
 import { moveInOrder } from '@/lib/sidebarOrder'
 
 export type SortableSideItem = { id: string; label: string; muted: boolean }
@@ -27,7 +27,7 @@ export function SortableSideList({
   children: (item: SortableSideItem, describedBy: string | undefined) => ReactNode
 }) {
   // Space alone starts and ends a drag: Enter on a row is the link's.
-  const sensors = useDragSensors({ start: ['Space'], cancel: ['Escape'], end: ['Space'] })
+  const sensors = useDragSensors(SPACE_DRAG_KEYS)
   const ids = items.map((i) => i.id)
   const nameOf = (id: UniqueIdentifier) => items.find((i) => i.id === id)?.label ?? String(id)
   const place = (id: UniqueIdentifier) => `position ${ids.indexOf(String(id)) + 1} of ${ids.length} in ${label}`

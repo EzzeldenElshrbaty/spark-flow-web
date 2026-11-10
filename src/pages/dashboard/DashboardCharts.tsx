@@ -119,7 +119,7 @@ function OverdueTasks({ overdue, projectName, people }: { overdue: Overdue[]; pr
       header: 'Key',
       width: 100,
       cell: (t) => (
-        <Link to={open(t.key)} onClick={(e) => e.stopPropagation()} className="font-mono text-xs text-fg-secondary hover:underline">
+        <Link to={open(t.key)} className="font-mono text-xs text-fg-secondary hover:underline">
           {t.key}
         </Link>
       ),

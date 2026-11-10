@@ -4,6 +4,9 @@ import { useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEven
 import { nextColumnSort, type ColumnSort, type SortKind } from '@/lib/sorting'
 import { IconButton } from './IconButton'
 
+
+/** What in a row has its own click: a click there isn't the row's (UX Phase 5A, 5.6). */
+const ROW_CONTROLS = 'a, button, input, select, textarea, label, [role="menuitem"]'
 export type Column<T> = {
   id: string
   header: string
@@ -223,7 +226,15 @@ export function DataTable<T>({
             {rows.map((row, index) => (
               <tr
                 key={rowKey(row)}
-                onClick={onRowClick ? () => onRowClick(row) : undefined}
+                onClick={
+                  onRowClick
+                    ? (event) => {
+                        // A link, button or field in the row does its own job (UX Phase 5A, 5.6).
+                        const control = (event.target as Element).closest(ROW_CONTROLS)
+                        if (!control || !event.currentTarget.contains(control)) onRowClick(row)
+                      }
+                    : undefined
+                }
                 className={clsx('group/row transition-colors motion-safe:animate-fade-in', onRowClick && 'cursor-pointer hover:bg-surface-sunken')}
                 style={{ animationDelay: `${Math.min(index, 15) * 18}ms` }}
               >

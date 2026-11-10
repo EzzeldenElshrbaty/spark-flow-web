@@ -114,6 +114,13 @@ describe('FilesTab (spec 5.3)', () => {
     expect(openFile).not.toHaveBeenCalled()
   })
 
+  it('a file’s name in the table is a button that opens it, so the keyboard can (UX Phase 5A, 5.6)', async () => {
+    openFile.mockResolvedValue('blob:http://localhost/a1')
+    show()
+    await act(async () => fireEvent.click(within(table()).getByRole('button', { name: /^flow\.pdf/ })))
+    expect(screen.getByRole('dialog', { name: 'flow.pdf' })).toBeTruthy()
+  })
+
   it('a file that fails to open says so', async () => {
     openFile.mockRejectedValue(new Error('x'))
     show()

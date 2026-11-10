@@ -76,7 +76,7 @@ export function FilesTab({ ws, project, users }: { ws: string; project: ProjectS
   }
   const from = (source: ProjectFileSource) => (
     // A link inside a clickable row: it goes where it says, it doesn't open the file.
-    <Link to={hrefOf(source)} onClick={(e) => e.stopPropagation()} className="truncate text-accent hover:underline">
+    <Link to={hrefOf(source)} className="truncate text-accent hover:underline">
       {sourceLabel(source)}
     </Link>
   )
@@ -92,7 +92,17 @@ export function FilesTab({ ws, project, users }: { ws: string; project: ProjectS
   }
 
   const columns: Column<ProjectFileRow>[] = [
-    { id: 'name', header: 'Name', width: 300, cell: title },
+    {
+      id: 'name',
+      header: 'Name',
+      width: 300,
+      // A button, so the keyboard opens a file too (UX Phase 5A, 5.6); a click on the rest of the row still does.
+      cell: (r) => (
+        <button type="button" onClick={() => void open(r)} disabled={Boolean(notReady(r.file))} className="block w-full min-w-0 text-start">
+          {title(r)}
+        </button>
+      ),
+    },
     { id: 'type', header: 'Type', width: 80, cell: (r) => <span className="text-fg-secondary">{typeLabel(r.file)}</span> },
     { id: 'size', header: 'Size', width: 90, align: 'right', cell: (r) => <span className="tabular-nums text-fg-secondary">{sizeText(r.file.size)}</span> },
     {

@@ -108,7 +108,10 @@ export function ProjectsPage() {
         <span className="flex min-w-0 items-center gap-3">
           <Logo name={p.name} />
           <span className="min-w-0">
-            <span className="block truncate font-medium text-fg">{p.name}</span>
+            {/* A link, so the keyboard opens a project too (UX Phase 5A, 5.6). */}
+            <Link to={paths.project(ws, p.key)} className="block truncate font-medium text-fg hover:underline">
+              {p.name}
+            </Link>
             <span className="block font-mono text-xs text-fg-muted">
               {p.key}
               {p.archivedAt && <span className="ms-2 rounded-full bg-surface-muted px-2 py-0.5 font-sans text-fg-secondary">Archived</span>}

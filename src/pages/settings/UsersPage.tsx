@@ -204,10 +204,7 @@ function Table({ people, roles, teams, onOpen }: { people: PersonRow[]; roles: R
       cell: (p) => (
         <button
           type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            onOpen(p.id)
-          }}
+          onClick={() => onOpen(p.id)}
           className="flex min-w-0 items-center gap-2.5 text-start"
         >
           <Avatar name={p.name} size={24} decorative />

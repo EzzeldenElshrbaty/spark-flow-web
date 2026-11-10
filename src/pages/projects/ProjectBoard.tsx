@@ -20,7 +20,7 @@ import { canDeleteColumn, columnErrors, columnsOf, MAX_COLUMNS, MAX_LABEL, moveC
 import { ColumnSheet } from '@/pages/projects/ColumnSheet'
 import { DeleteColumnSheet } from '@/pages/projects/DeleteColumnSheet'
 import { DEFAULT_COLUMNS } from '@/lib/statuses'
-import { useDragSensors } from '@/lib/dragSensors'
+import { SPACE_DRAG_KEYS, useDragSensors } from '@/lib/dragSensors'
 import { boardDrop, prunePending, withPending, type PendingMoves } from '@/pages/projects/boardMove'
 import { TicketRow } from '@/pages/projects/TicketRow'
 import { tintOf } from '@/pages/projects/ticketPills'
@@ -68,7 +68,7 @@ function BoardCard({ ticket, assignee, movable }: { ticket: TaskView; assignee: 
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={clsx('motion-safe:animate-fade-in', movable && 'cursor-grab rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500', isDragging && 'opacity-40')}
-      {...(movable ? { ...attributes, ...listeners, 'aria-roledescription': 'movable task' } : {})}
+      {...(movable ? listeners : {})}
       onClickCapture={(e) => {
         if (!dragged.current) return
         dragged.current = false
@@ -76,7 +76,8 @@ function BoardCard({ ticket, assignee, movable }: { ticket: TaskView; assignee: 
         e.stopPropagation()
       }}
     >
-      <TicketRow ticket={ticket} assignee={assignee} variant="card" tabIndex={movable ? -1 : undefined} />
+      {/* The card's link is its one Tab stop: Enter opens it, Space (on the row above) picks it up (UX Phase 5A). */}
+      <TicketRow ticket={ticket} assignee={assignee} variant="card" describedBy={movable ? attributes['aria-describedby'] : undefined} />
     </li>
   )
 }
@@ -229,10 +230,10 @@ function BoardColumn({
         sortable.isDragging && 'opacity-40',
       )}
     >
+      {/* A mouse drags the column by its header; the keyboard by the label's button, with the menu beside it (UX Phase 5A, 5.11). */}
       <header
-        ref={sortable.setActivatorNodeRef}
         className={clsx('border-b px-3.5 py-3', tint.head, tint.border, editable && !renaming && 'cursor-grab')}
-        {...(editable && !renaming ? { ...sortable.attributes, ...sortable.listeners, 'aria-roledescription': 'movable column', 'aria-label': `Column ${label}` } : {})}
+        {...(editable && !renaming ? sortable.listeners : {})}
       >
         <h2 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-fg">
           <span className={clsx('size-2 shrink-0 rounded-full', tint.dot)} aria-hidden />
@@ -255,10 +256,19 @@ function BoardColumn({
               onBlur={() => void finish()}
               className="min-w-0 flex-1 rounded-md border border-line bg-surface px-2 py-0.5 text-sm font-semibold text-fg focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-accent-soft"
             />
-          ) : (
-            <span className="truncate" onDoubleClick={editable ? startRename : undefined}>
+          ) : editable ? (
+            <button
+              type="button"
+              ref={sortable.setActivatorNodeRef}
+              {...sortable.attributes}
+              aria-roledescription="movable column"
+              onDoubleClick={startRename}
+              className="min-w-0 truncate rounded text-start outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+            >
               {label}
-            </span>
+            </button>
+          ) : (
+            <span className="truncate">{label}</span>
           )}
           <span className="ms-auto rounded-full bg-surface/80 px-2 py-px text-xs font-medium tabular-nums text-fg-tertiary">{items.length}</span>
           {editable && !renaming && (
@@ -330,7 +340,8 @@ export function ProjectBoard({
   countOf?: (columnId: string) => number
 }) {
   // A press and hold lifts a card on touch screens, so a swipe still scrolls the columns.
-  const sensors = useDragSensors()
+  // Space picks a card or column up; Enter opens the card (UX Phase 5A, 5.6).
+  const sensors = useDragSensors(SPACE_DRAG_KEYS)
   const [activeKey, setActiveKey] = useState<string | null>(null)
   const [overStatus, setOverStatus] = useState<TicketStatus | null>(null)
   // Drops show at once, each until the server's copy of its task changes (the save landed, or someone else moved it),

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ProjectSummary } from '@/api/types'
@@ -71,5 +71,13 @@ describe('Projects list (UX Phase 4)', () => {
     expect(screen.getByText('No projects match “zzz”.')).toBeTruthy()
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Clear search and filters' })))
     expect(router.state.location.search).toBe('')
+  })
+})
+
+describe('Projects opens from the keyboard (UX Phase 5A, 5.6)', () => {
+  it('each project’s name in the table is a link to it', async () => {
+    await open()
+    const table = screen.getByRole('table')
+    expect(within(table).getByRole('link', { name: 'Nexus Core' }).getAttribute('href')).toBe('/w/engineering/p/NEX/overview')
   })
 })

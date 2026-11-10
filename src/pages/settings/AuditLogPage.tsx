@@ -339,10 +339,7 @@ function Table({ items, types, onOpen }: { items: AuditEvent[]; types: Types; on
       cell: (e) => (
         <button
           type="button"
-          onClick={(click) => {
-            click.stopPropagation()
-            onOpen(e.seq)
-          }}
+          onClick={() => onOpen(e.seq)}
           className="font-mono text-xs text-fg-secondary hover:text-accent" aria-label={`Open entry ${e.seq}`}>
           #{e.seq}
         </button>
