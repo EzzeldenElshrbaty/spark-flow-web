@@ -1,6 +1,7 @@
 import '@/index.css'
 import { QueryClient, QueryClientProvider, useInfiniteQuery } from '@tanstack/react-query'
 import { act, cleanup, render, screen } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import { MemoryRouter } from 'react-router'
 import { ToastProvider } from '@/components/sf/Toast'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -74,6 +75,7 @@ function Harness({
   onLatest = vi.fn(),
   holdRead = false,
   onMarkUnread,
+  intro,
 }: {
   data: ReturnType<typeof channel>
   newAfterSeq?: number | null
@@ -86,6 +88,7 @@ function Harness({
   onLatest?: () => void
   holdRead?: boolean
   onMarkUnread?: (message: ChatMessage) => Promise<unknown>
+  intro?: ReactNode
 }) {
   const query = useInfiniteQuery({
     queryKey: ['messages'],
@@ -115,6 +118,7 @@ function Harness({
         onLatest={onLatest}
         scope={scope}
         pending={pending}
+        intro={intro}
       />
     </div>
   )
@@ -466,4 +470,22 @@ describe('MessageList sticky date (spec 6.2)', () => {
     }, list().scrollTop)
     expect(underBar).toBeGreaterThan(0)
   }, SCAN)
+})
+
+describe('the intro row (chat spec 6.14)', () => {
+  it('an empty channel shows the intro, not "No messages here yet."', async () => {
+    mount({ data: channel(0), intro: <p>Intro</p> })
+    expect(await screen.findByText('Intro')).toBeTruthy()
+    expect(screen.queryByText('No messages here yet.')).toBeNull()
+  })
+
+  it('the intro sits above the first day divider', async () => {
+    mount({ data: channel(5), intro: <p>Intro</p> })
+    await still()
+    list().scrollTop = 0
+    await still()
+    const intro = (await screen.findByText('Intro')).getBoundingClientRect()
+    const day = list().querySelector('[role="separator"], [aria-haspopup="menu"]')!.getBoundingClientRect()
+    expect(intro.bottom).toBeLessThanOrEqual(day.top)
+  })
 })

@@ -38,7 +38,7 @@ const asMessage = (p: PendingMessage, meId: string | undefined): ChatMessage => 
   attachments: p.attachments ?? [], reactions: [], threadCount: 0, lastReplyAt: null, linkedTicketKeys: [], mentions: [], editedAt: null, createdAt: p.createdAt,
 })
 
-const estimate = (row: MessageListRow) => (row.kind === 'day' ? 40 : row.kind === 'new' ? 24 : row.continuation ? 24 : 72)
+const estimate = (row: MessageListRow) => (row.kind === 'intro' ? 160 : row.kind === 'day' ? 40 : row.kind === 'new' ? 24 : row.continuation ? 24 : 72)
 
 type MessagesQuery = UseInfiniteQueryResult<InfiniteData<Page<ChatMessage>, unknown>>
 
@@ -71,6 +71,7 @@ export function MessageList({
   pending = [],
   onRetry,
   onDiscard,
+  intro,
 }: {
   query: MessagesQuery
   title: string
@@ -103,6 +104,8 @@ export function MessageList({
   pending?: PendingMessage[]
   onRetry?: (clientId: string) => void
   onDiscard?: (clientId: string) => void
+  /** The channel's intro (chat spec 6.14): heads the history once the list reaches its very start. */
+  intro?: ReactNode
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const messages = useMemo(() => query.data?.pages.flatMap((page) => page.items).reverse() ?? [], [query.data])
@@ -117,8 +120,8 @@ export function MessageList({
   }, [pending, messages, hasNewer])
   const pendingById = useMemo(() => new Map(shownPending.map((p) => [pendingId(p.clientId), p])), [shownPending])
   const rows = useMemo(
-    () => buildRows([...messages, ...shownPending.map((p) => asMessage(p, meId))], { newAfterSeq, meId, hasOlder, now: new Date() }),
-    [messages, shownPending, newAfterSeq, meId, hasOlder],
+    () => buildRows([...messages, ...shownPending.map((p) => asMessage(p, meId))], { newAfterSeq, meId, hasOlder, now: new Date(), intro: Boolean(intro) }),
+    [messages, shownPending, newAfterSeq, meId, hasOlder, intro],
   )
   // On open, older pages load until my first unread message is among them (a few at most), so the list can open there.
   const catchingUp =
@@ -358,7 +361,8 @@ export function MessageList({
 
   if (query.isError && !query.data) return <div className="px-4 pt-4 md:px-6"><QueryError what="Messages" onRetry={() => void query.refetch()} /></div>
   if (!query.data || (catchingUp && !positioned.current)) return <div className="min-h-0 flex-1 px-4 pt-4 md:px-6"><MessageSkeleton /></div>
-  if (messages.length === 0) return <p className="min-h-0 flex-1 px-4 pt-4 text-sm text-fg-muted md:px-6">No messages here yet.</p>
+  if (messages.length === 0)
+    return intro ? <div className="min-h-0 flex-1 overflow-y-auto">{intro}</div> : <p className="min-h-0 flex-1 px-4 pt-4 text-sm text-fg-muted md:px-6">No messages here yet.</p>
 
   const items = virtualizer.getVirtualItems()
   const scrollTop = virtualizer.scrollOffset ?? 0
@@ -390,7 +394,9 @@ export function MessageList({
             const row = rows[v.index]
             return (
               <li key={v.key} data-index={v.index} ref={virtualizer.measureElement} className="absolute inset-x-0 top-0" style={{ transform: `translateY(${v.start}px)` }}>
-                {row.kind === 'day' ? (
+                {row.kind === 'intro' ? (
+                  intro
+                ) : row.kind === 'day' ? (
                   <DayDivider label={row.label} onJump={onJump} underSticky={stickyDay !== null && pillTop(v) <= slot} />
                 ) : row.kind === 'new' ? (
                   <NewLine />

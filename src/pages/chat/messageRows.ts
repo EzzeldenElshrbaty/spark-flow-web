@@ -2,8 +2,9 @@ import type { ChatMessage, ThreadReply } from '@/api/types'
 import { localDay } from '@/lib/dates'
 import { formatDayDivider } from '@/lib/format'
 
-/** One row of a channel's message list: a day's divider, the New line, or a message. */
+/** One row of a channel's message list: the intro at its very start, a day's divider, the New line, or a message. */
 export type MessageListRow =
+  | { kind: 'intro'; key: 'intro' }
   | { kind: 'day'; key: string; label: string }
   | { kind: 'new'; key: string }
   | { kind: 'message'; key: string; message: ChatMessage; continuation: boolean }
@@ -51,9 +52,10 @@ const unread = (m: ChatMessage, newAfterSeq: number | null, meId?: string) => ne
  */
 export function buildRows(
   messages: ChatMessage[],
-  { newAfterSeq, meId, now, hasOlder = false }: { newAfterSeq: number | null; meId?: string; now: Date; hasOlder?: boolean },
+  { newAfterSeq, meId, now, hasOlder = false, intro = false }: { newAfterSeq: number | null; meId?: string; now: Date; hasOlder?: boolean; intro?: boolean },
 ): MessageListRow[] {
-  const rows: MessageListRow[] = []
+  // The channel's intro (chat spec 6.14) heads its history once the list holds the very start.
+  const rows: MessageListRow[] = intro && !hasOlder ? [{ kind: 'intro', key: 'intro' }] : []
   let prev: ChatMessage | null = null
   const markerLoaded = !hasOlder || (newAfterSeq !== null && messages.length > 0 && messages[0].seq <= newAfterSeq)
   let newShown = !markerLoaded

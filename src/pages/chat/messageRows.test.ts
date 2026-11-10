@@ -66,7 +66,15 @@ describe('dayLabel', () => {
 
 describe('buildRows', () => {
   const kinds = (rows: ReturnType<typeof buildRows>) =>
-    rows.map((r) => (r.kind === 'day' ? `day:${r.label}` : r.kind === 'new' ? 'new' : `${r.message.id}${r.continuation ? '+' : ''}`))
+    rows.map((r) => (r.kind === 'day' ? `day:${r.label}` : r.kind === 'new' ? 'new' : r.kind === 'intro' ? 'intro' : `${r.message.id}${r.continuation ? '+' : ''}`))
+
+  it('the intro comes first, and only at the very start (chat spec 6.14)', () => {
+    const a = msg({ id: 'a', createdAt: at(28, 9, 0) })
+    const b = msg({ id: 'b', createdAt: at(28, 9, 1) })
+    expect(kinds(buildRows([a, b], { newAfterSeq: null, now, intro: true }))).toEqual(['intro', 'day:Today', 'a', 'b+'])
+    expect(kinds(buildRows([a, b], { newAfterSeq: null, now, intro: true, hasOlder: true }))).toEqual(['day:Today', 'a', 'b+'])
+    expect(kinds(buildRows([a, b], { newAfterSeq: null, now }))).toEqual(['day:Today', 'a', 'b+'])
+  })
 
   it('wraps each day in a section and marks continuations', () => {
     const a = msg({ id: 'a', createdAt: at(27, 10, 0) })
