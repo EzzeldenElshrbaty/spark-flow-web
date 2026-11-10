@@ -2,6 +2,7 @@ import '@/index.css'
 import { screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { userEvent } from 'vitest/browser'
+import { api } from '@/lib/api'
 import { renderApp } from '@/test/app'
 
 // UX Phase 6, 6.4: the polish items, in the whole app.
@@ -58,15 +59,20 @@ describe('polish', () => {
     expect(document.elementFromPoint(box.right - 2, box.top + box.height / 2)?.closest('button')).toBe(name)
   })
 
-  it('on a phone the bookmark strip scrolls no further than its content (no touch area past its end)', async () => {
+  // Since the phone bookmark row (follow-up to Phase 6) the row ends with a bookmark, and + is in Channel actions.
+  it('on a phone the bookmark row scrolls no further than its content (no touch area past its end)', async () => {
     const app = await renderApp({ path: '/w/engineering/c/c-general', as: 'admin', theme: 'light', size: 'phone' })
     await app.settled()
-    const add = screen.getByRole('button', { name: 'Add a bookmark' })
-    const strip = add.parentElement!
+    // Enough to scroll sideways.
+    for (let n = 1; n <= 6; n++) await api.bookmarks.add('c-general', { title: `Runbook ${n}`, url: `https://wiki.spark-sys.com/runbook-${n}` })
+    await app.queryClient.invalidateQueries()
+    const last = (await screen.findByRole('link', { name: 'Runbook 6' })).closest('li')!
+    const strip = last.closest('ul')!.parentElement!
+    expect(strip.scrollWidth).toBeGreaterThan(strip.clientWidth)
     const box = strip.getBoundingClientRect()
-    const content = add.getBoundingClientRect().right - box.left + strip.scrollLeft + parseFloat(getComputedStyle(strip).paddingInlineEnd)
+    const content = last.getBoundingClientRect().right - box.left + strip.scrollLeft + parseFloat(getComputedStyle(strip).paddingInlineEnd)
     expect(strip.scrollWidth).toBeLessThanOrEqual(Math.ceil(content))
-    expect(add.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
+    expect(last.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
   })
 
   it('a late due date stays on one line in the Projects table', async () => {

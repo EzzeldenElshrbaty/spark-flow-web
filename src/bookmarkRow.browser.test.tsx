@@ -1,7 +1,8 @@
 import '@/index.css'
 import { screen, waitFor, within } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { userEvent } from 'vitest/browser'
+import { api } from '@/lib/api'
 import { renderApp } from '@/test/app'
 import { pageProblems } from '@/test/uxChecks'
 
@@ -11,9 +12,21 @@ import { pageProblems } from '@/test/uxChecks'
 // The list ends with 8px of its own padding.
 const atEnd = (log: HTMLElement) => log.scrollHeight - log.scrollTop - log.clientHeight <= 9
 
+// The mock's data outlives a test file (other files add bookmarks to #general): start from a fresh seed, as the Admin,
+// the only one who may reset it, after whoever the mock acts as signs out.
+beforeEach(async () => {
+  await api.auth.signOut().catch(() => {})
+  localStorage.setItem('spark-flow.session', 'u-1')
+  await api.db.reset()
+})
+
 describe('bookmarks on a phone', () => {
-  it('a bookmark added from Channel actions shows on its own row', async () => {
-    const app = await renderApp({ path: '/w/engineering/c/c-general', as: 'admin', theme: 'dark', size: 'phone' })
+  // A channel, and a project's Chat tab (the same view inside the project's box, without Files; final review).
+  it.each([
+    ['a channel', '/w/engineering/c/c-general'],
+    ['a project’s Chat tab', '/w/engineering/p/NEX/chat'],
+  ])('in %s, a bookmark added from Channel actions shows on its own row', async (_, path) => {
+    const app = await renderApp({ path, as: 'admin', theme: 'dark', size: 'phone' })
     await app.settled()
     expect(screen.queryByRole('list', { name: 'Bookmarks' })).toBeNull()
     const log = screen.getByRole('log', { name: /^Messages in / })
