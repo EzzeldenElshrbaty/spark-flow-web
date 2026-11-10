@@ -2869,14 +2869,28 @@ for single-key shortcuts. Plan with decisions, diagrams and questions:
 `docs/superpowers/plans/2026-11-10-ux-phase-5a-keyboard-and-screen-readers.md`. Branch `feat/ux-phase-5a` from
 `origin/dev` (a621b47, Phase 4 landed). Phase 5B (phones, contrast, colour-only status) is planned separately.
 
-- [ ] Sheets keep focus and give it back (5.5)
-- [ ] The file viewer is a real dialog (5.5)
-- [ ] Menus: arrow keys and focus back on a pick (5.5)
-- [ ] Side panels: focus in, focus back, modal on phones (5.5)
-- [ ] Every record opens from the keyboard, board included (5.6, 5.11)
-- [ ] Skip link, tab titles, focus after a page change (5.7)
-- [ ] Forms for screen readers (5.9)
-- [ ] Structure fixes from axe (5.11)
-- [ ] Announce what changed, and only that (5.12)
-- [ ] Motion and shortcuts (5.13)
-- [ ] Phase check and records
+- [x] Sheets keep focus and give it back (5.5)
+- [x] The file viewer is a real dialog (5.5)
+- [x] Menus: arrow keys and focus back on a pick (5.5)
+- [x] Side panels: focus in, focus back, modal on phones (5.5)
+- [x] Every record opens from the keyboard, board included (5.6, 5.11)
+- [x] Skip link, tab titles, focus after a page change (5.7)
+- [x] Forms for screen readers (5.9)
+- [x] Structure fixes from axe (5.11)
+- [x] Announce what changed, and only that (5.12)
+- [x] Motion and shortcuts (5.13)
+- [x] Phase check and records
+
+## Review — UX Phase 5A
+- Gates: `tsc -b` and lint clean; tests 2,712/2,715 in the full run (the two worktree-only `MessageList` "Jump to latest"
+  failures, and `RichComposer` "# offers channels; Tab picks", the full-run typeahead timing its own comment describes;
+  it passes alone, 3 of 3); `build:prototype` passes. Help pictures unchanged (no pictured page looks different).
+- Looked at in the app (dev build): the first Tab is "Skip to content" and it lands on the page; Projects opens a project
+  from the keyboard with focus on its heading; tab titles ("Nexus Core · Overview · Spark Flow"); Enter on a board card
+  opens it with focus on the panel's heading and Esc gives it back to the card; the column menu moves with ↓ End Home
+  and Rename keeps its field; the task panel on a 375 px phone is a modal sheet over a dimmed page; Preferences →
+  Keyboard. Found and fixed there: the dev build (StrictMode) moved focus to the heading on every first load.
+- New shared pieces: `lib/pageFocus`, `lib/useDocumentTitle`, `layout/{RouteFocus,SkipLink}`, `menuStep`,
+  `SPACE_DRAG_KEYS`, `useInspectorFocus` / `PanelOpened`, `useFormCheck`'s `formRef`, `uploadProgress`, `countNotice`,
+  `src/test/axe.ts`, `src/a11y.test.ts`; `Preferences.singleKeyShortcuts` (DB v32); rules in `CLAUDE.md`.
+
