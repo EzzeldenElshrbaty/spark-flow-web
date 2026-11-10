@@ -38,6 +38,7 @@ import { ChannelHeader } from '@/pages/chat/ChannelHeader'
 import { ChannelDetails, detailsRights, type DetailsTab } from '@/pages/chat/ChannelDetails'
 import { ChannelTabs, tabFromParam, type ChannelTab } from '@/pages/chat/ChannelTabs'
 import { ChannelPageTab } from '@/pages/chat/page/ChannelPageTab'
+import { askToLeave } from '@/lib/unsavedChanges'
 import { ChannelPins } from '@/pages/chat/PinsTab'
 import { ChannelFiles } from '@/pages/chat/files/FilesTab'
 import { useFlowFilePicker } from '@/pages/chat/files/FilePicker'
@@ -98,7 +99,8 @@ export function ChannelView({ channelId, hideTabs = [] }: { channelId: string | 
   const asked = channel.data ? tabFromParam(params.get('tab'), channel.data) : 'messages'
   // A view left out here (a project's chat has no Files) opens Messages instead.
   const tab = hideTabs.includes(asked) ? 'messages' : asked
-  const setTab = (next: ChannelTab) => setParams(next === 'messages' ? {} : { tab: next }, { replace: true })
+  // Leaving the Page tab with changes it doesn't have asks first, as leaving the channel does (spec 6.14 §6.4).
+  const setTab = (next: ChannelTab) => askToLeave(() => setParams(next === 'messages' ? {} : { tab: next }, { replace: true }))
   // An error belongs to the channel it happened in.
   // A channel id from another workspace is not a channel of this one: it reads as not found, and is never marked read.
   const foreign = Boolean(channel.data && workspace && !inWorkspace(channel.data, workspace.id))

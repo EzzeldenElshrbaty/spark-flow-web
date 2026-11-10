@@ -32,7 +32,7 @@ export function PageBar({ line, error, errorActions, editors, people, link, hist
   const { copy, note } = useCopyLink(link)
   const names = editors.map((id) => people.find((u) => u.id === id)?.name ?? 'Someone')
   return (
-    <div role="group" aria-label="Page" className="flex flex-none flex-wrap items-center gap-x-3 gap-y-1 border-b border-sf-line px-4 py-1.5 md:px-6">
+    <div role="group" aria-label="Page" className="relative z-20 flex flex-none flex-wrap items-center gap-x-3 gap-y-1 border-b max-md:gap-y-4 border-sf-line px-4 py-1.5 md:px-6">
       <div className="min-h-8 min-w-0 flex-1 basis-60 py-1">
         {line && <p className="sf-small text-sf-text-secondary">{line}</p>}
         {error && (

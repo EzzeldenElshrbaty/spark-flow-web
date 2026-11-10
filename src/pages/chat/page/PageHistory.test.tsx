@@ -95,7 +95,8 @@ describe('PageHistory (chat spec 6.14 §6.5)', () => {
     fireEvent.click(await within(dialog).findByRole('button', { name: 'Restore this version' }))
     expect(await within(dialog).findByText('Nour El-Sayed is editing. Try again when they’re done.')).toBeTruthy()
     expect(onClose).not.toHaveBeenCalled()
-    expect(screen.getByRole('status').textContent).toBe('')
+    // An error is read out, once (chat spec 6.14 §6.3).
+    expect(screen.getByRole('status').textContent).toBe('Nour El-Sayed is editing. Try again when they’re done.')
     expect(within(dialog).getByRole('button', { name: 'Restore this version' })).toBeTruthy()
   })
 })

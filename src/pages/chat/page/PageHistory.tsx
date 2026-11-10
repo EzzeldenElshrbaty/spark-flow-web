@@ -45,7 +45,9 @@ export function PageHistory({ channelId, ctx, people, mayEdit, currentVersion, o
       announce('Version restored.')
       onClose()
     } catch (e) {
-      setError(e instanceof ApiError ? (e.detail ?? e.title) : 'Couldn’t restore this version. Check your connection.')
+      const sentence = e instanceof ApiError ? (e.detail ?? e.title) : 'Couldn’t restore this version. Check your connection.'
+      setError(sentence)
+      announce(sentence)
     }
   }
 

@@ -120,7 +120,11 @@ export function AutocompletePlugin({
     const command = commands.length > 0 && $getRoot().getTextContent().startsWith(text) ? COMMAND_TRIGGER.exec(text) : null
     const m = command ?? TRIGGER.exec(text) ?? EMOJI_TRIGGER.exec(text)
     // Nothing matches, no list: the editor never points at an empty listbox, and Enter sends.
-    if (!m || choicesFor(m[2] as Sign, m[3], directory, commands, narrowing()).length === 0) return null
+    if (!m || choicesFor(m[2] as Sign, m[3], directory, commands, narrowing()).length === 0) {
+      // No list to show: Link a task's "tasks only" is over (it was for the `@` it typed).
+      if (onlyTasks) onlyTasks.current = false
+      return null
+    }
     trigger.current = m[2] as Sign
     return { leadOffset: m.index + m[1].length, matchingString: m[3], replaceableString: m[2] + m[3] }
   }

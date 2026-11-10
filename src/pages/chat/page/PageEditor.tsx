@@ -12,7 +12,7 @@ import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import { TablePlugin } from '@lexical/react/LexicalTablePlugin'
 import { $isListNode, ListNode } from '@lexical/list'
 import { $isHeadingNode, HeadingNode } from '@lexical/rich-text'
-import { $getNodeByKey, $getSelection, $isRangeSelection, COMMAND_PRIORITY_NORMAL, FORMAT_TEXT_COMMAND, KEY_DOWN_COMMAND } from 'lexical'
+import { $getNodeByKey, $getRoot, $getSelection, $isRangeSelection, COMMAND_PRIORITY_NORMAL, FORMAT_TEXT_COMMAND, KEY_DOWN_COMMAND } from 'lexical'
 import { useEffect, useRef } from 'react'
 import { webAddress } from '@/lib/webAddress'
 import type { PageBody } from '@/lib/pageBody'
@@ -157,12 +157,14 @@ function Inner({ editable, directory, onChange, onBlur }: Props) {
 
   /** Link a task: `@` at the caret (after a space), and the list offers tasks only. */
   const linkTask = () => {
-    onlyTasks.current = true
     editor.update(() => {
+      // Not in the page yet: at its end.
+      if (!$isRangeSelection($getSelection())) $getRoot().selectEnd()
       const selection = $getSelection()
       if (!$isRangeSelection(selection)) return
       const before = selection.anchor.getNode().getTextContent().slice(0, selection.anchor.offset)
       selection.insertText(before === '' || /\s$/.test(before) ? '@' : ' @')
+      onlyTasks.current = true
     })
   }
 

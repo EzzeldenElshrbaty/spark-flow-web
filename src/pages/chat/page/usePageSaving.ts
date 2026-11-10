@@ -10,7 +10,7 @@ import { PAGE_CLAIM_EVERY_MS, PAGE_SAVE_AFTER_MS, pageText, type PageBody } from
  * no retry until I change something); `failed` the network (retried at the next pause, or with Try again).
  */
 export type SaveState = 'idle' | 'saving' | 'saved' | 'conflict' | 'invalid' | 'failed'
-/** `dirty`: I have changes the page doesn't have yet. */
+/** `dirty`: I have changes the page doesn't have yet (a save on its way included). */
 export type SaverSnapshot = { state: SaveState; error: string | null; dirty: boolean }
 
 export const NETWORK_SENTENCE = 'Couldn’t save the page. Check your connection.'
@@ -41,7 +41,7 @@ export function createPageSaver(deps: SaverDeps) {
   let snapshot: SaverSnapshot = { state: 'idle', error: null, dirty: false }
 
   const set = (patch: Partial<Omit<SaverSnapshot, 'dirty'>>) => {
-    snapshot = { ...snapshot, ...patch, dirty: pending !== null }
+    snapshot = { ...snapshot, ...patch, dirty: pending !== null || sending }
     deps.onChange(snapshot)
   }
   const stop = () => {
@@ -75,7 +75,7 @@ export function createPageSaver(deps: SaverDeps) {
       const view = await deps.save(body, base)
       base = view.version
       sending = false
-      if (stopped()) return
+      if (stopped()) return set({})
       set({ state: pending === null ? 'saved' : 'saving' })
       // Typed while it was on its way, with the pause already over: that goes now.
       if (pending !== null && !timer) await flush()

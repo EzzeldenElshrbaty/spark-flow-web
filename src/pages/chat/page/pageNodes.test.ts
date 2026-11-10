@@ -1,4 +1,5 @@
 import { createHeadlessEditor } from '@lexical/headless'
+import { $createCodeNode } from '@lexical/code'
 import { $createListItemNode, $createListNode } from '@lexical/list'
 import { $convertFromMarkdownString } from '@lexical/markdown'
 import { $createTableCellNode, $createTableNode, $createTableRowNode, TableCellHeaderStates } from '@lexical/table'
@@ -61,6 +62,15 @@ describe('page ⇄ editor (chat spec 6.14)', () => {
       $getRoot().append($createParagraphNode(), $createTableNode().append(row), $createListNode('check').append($createListItemNode(false)))
     })
     expect(body).toEqual([{ type: 'table', rows: [[[], t('x')]] }])
+  })
+
+  it('a list or code made inside a cell keeps its text in the cell (final review)', () => {
+    const body = read(() => {
+      const list = $createListNode('bullet').append($createListItemNode().append($createTextNode('buy milk')), $createListItemNode().append($createTextNode('eggs')))
+      const cell = $createTableCellNode(TableCellHeaderStates.ROW).append(list, $createCodeNode().append($createTextNode('npm test')))
+      $getRoot().append($createTableNode().append($createTableRowNode().append(cell)))
+    })
+    expect(body).toEqual([{ type: 'table', rows: [[t('buy milk\neggs\nnpm test')]] }])
   })
 
   it('markdown shortcuts make headings and checklists', () => {

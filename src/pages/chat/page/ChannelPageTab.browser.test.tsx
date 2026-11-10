@@ -1,8 +1,9 @@
 import '@/index.css'
 import { screen, waitFor, within } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import type { Api } from '@/api/types'
+import { qk } from '@/api/queryKeys'
 import { api } from '@/lib/api'
 import type { PageBody } from '@/lib/pageBody'
 import { createMockApi } from '@/mocks'
@@ -39,6 +40,7 @@ beforeEach(async () => {
   localStorage.setItem('spark-flow.session', 'u-1')
   await api.db.reset()
 })
+afterEach(() => vi.restoreAllMocks())
 
 describe('the channel’s page (chat spec 6.14)', () => {
   it('while it loads, the tab shows pulse lines and no spinner', async () => {
@@ -164,6 +166,72 @@ describe('the channel’s page (chat spec 6.14)', () => {
     expect(sidewaysScroll()).toBeNull()
     const buttons = within(screen.getByRole('toolbar', { name: 'Formatting' })).getAllByRole('button')
     for (const button of buttons) expect(answersTouch(button).every(Boolean), button.getAttribute('aria-label') ?? button.textContent ?? '').toBe(true)
+    // The error's buttons too (final review).
+    vi.spyOn(api.pages, 'save').mockRejectedValue(new TypeError('Failed to fetch'))
+    await focusEditor(editor())
+    await userEvent.keyboard('Mine')
+    const retry = await within(bar()).findByRole('button', { name: 'Try again' }, { timeout: 3000 })
+    expect(answersTouch(retry)).toEqual([true, true, true, true])
+    vi.restoreAllMocks()
+  })
+
+  it('when someone else’s hold ends without a save, my editor comes back with my saved text (final review)', async () => {
+    const app = await renderApp({ path: PAGE, as: 'admin', theme: 'light', size: 'desktop' })
+    await app.settled()
+    await focusEditor(editor())
+    await userEvent.keyboard('Mine')
+    await waitFor(() => expect(bar().textContent).toContain('Saved'), { timeout: 3000 })
+    await api.pages.stopEditing('c-general')
+    const nour = await asPerson('u-2')
+    await nour.pages.editing('c-general')
+    await waitFor(() => expect(bar().textContent).toContain('Nour El-Sayed is editing'), { timeout: 3000 })
+    await nour.pages.stopEditing('c-general')
+    await waitFor(() => expect(editor().textContent).toBe('Mine'), { timeout: 3000 })
+  })
+
+  it('a failed reload in the background keeps the editor and my text (final review)', async () => {
+    const app = await renderApp({ path: PAGE, as: 'admin', theme: 'light', size: 'desktop' })
+    await app.settled()
+    await focusEditor(editor())
+    await userEvent.keyboard('Mine')
+    await waitFor(() => expect(bar().textContent).toContain('Saved'), { timeout: 3000 })
+    vi.spyOn(api.pages, 'get').mockRejectedValue(new TypeError('Failed to fetch'))
+    vi.spyOn(api.projects, 'list').mockRejectedValue(new TypeError('Failed to fetch'))
+    await Promise.all([app.queryClient.refetchQueries({ queryKey: qk.page('c-general') }), app.queryClient.refetchQueries({ queryKey: ['tickets', 'projects'] })])
+    await waitFor(() => expect(app.queryClient.getQueryState(qk.page('c-general'))?.status).toBe('error'), { timeout: 8000 })
+    expect(editor().textContent).toBe('Mine')
+    expect(screen.queryByText('Couldn’t load the page.')).toBeNull()
+    vi.restoreAllMocks()
+  }, 15_000)
+
+  it('switching to Messages with a change the page doesn’t have asks first (final review)', async () => {
+    const app = await renderApp({ path: PAGE, as: 'admin', theme: 'light', size: 'desktop' })
+    await app.settled()
+    vi.spyOn(api.pages, 'save').mockRejectedValue(new TypeError('Failed to fetch'))
+    await focusEditor(editor())
+    await userEvent.keyboard('Mine')
+    await waitFor(() => expect(bar().textContent).toContain('Couldn’t save the page.'), { timeout: 3000 })
+    await userEvent.click(screen.getByRole('tab', { name: 'Messages' }))
+    const ask = await screen.findByRole('dialog', { name: 'Leave without saving the page?' })
+    await userEvent.click(within(ask).getByRole('button', { name: 'Stay' }))
+    expect(app.router.state.location.search).toContain('tab=page')
+    expect(editor().textContent).toBe('Mine')
+    await userEvent.click(screen.getByRole('tab', { name: 'Messages' }))
+    await userEvent.click(within(await screen.findByRole('dialog', { name: 'Leave without saving the page?' })).getByRole('button', { name: 'Leave without saving' }))
+    await waitFor(() => expect(app.router.state.location.search).not.toContain('tab=page'))
+    vi.restoreAllMocks()
+  })
+
+  it('Link a task before clicking into the page puts @ at the end; @ then still finds people (final review)', async () => {
+    const app = await renderApp({ path: PAGE, as: 'admin', theme: 'light', size: 'desktop' })
+    await app.settled()
+    await userEvent.click(screen.getByRole('button', { name: 'Link a task' }))
+    const tasks = await screen.findByRole('listbox', { name: 'Link a task' })
+    expect(within(tasks).getAllByRole('option').length).toBeGreaterThan(0)
+    await userEvent.keyboard('{Escape}')
+    await userEvent.keyboard(' @Nou')
+    const people = await screen.findByRole('listbox', { name: 'Mention someone' })
+    expect(within(people).getByRole('option', { name: /Nour El-Sayed/ })).toBeTruthy()
   })
 
   it('axe finds no serious problems', async () => {

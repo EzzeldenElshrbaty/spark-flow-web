@@ -8,7 +8,7 @@ import { Modal } from '@/components/sf/Modal'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { isArchived } from '@/lib/channels'
 import { timeAgo } from '@/lib/format'
-import { pageAsBody, type PageBody } from '@/lib/pageBody'
+import { pageAsBody } from '@/lib/pageBody'
 import { paths } from '@/lib/paths'
 import { useUnsavedChanges } from '@/lib/unsavedChanges'
 import { useBodyContext, useProjectKeys } from '@/pages/chat/useBodyContext'
@@ -51,18 +51,23 @@ function useLiveHold(view: PageView | undefined) {
  */
 export function ChannelPageTab({ channel, people, me }: { channel: Channel; people: User[]; me: string }) {
   const page = usePage(channel.id)
-  const canWrite = useCanWrite(channel)
-  if (page.isError)
+  // Once known, who may edit stays known while a reload fails (its project list), so the editor isn't torn down.
+  const checked = useCanWrite(channel)
+  const known = useRef<{ channelId: string; canWrite: boolean } | null>(null)
+  if (checked !== null) known.current = { channelId: channel.id, canWrite: checked }
+  const canWrite = checked ?? (known.current?.channelId === channel.id ? known.current.canWrite : null)
+  // Only a first load that fails: a failed reload in the background keeps the page and my text on screen.
+  if (page.isError && !page.data)
     return (
       <div className="mx-auto w-full max-w-[760px] px-4 py-6 md:px-6">
         <p className="sf-ui text-sf-error">Couldn’t load the page.</p>
-        <Button size="sm" onClick={() => void page.refetch()}>
+        <Button size="sm" touch onClick={() => void page.refetch()}>
           Try again
         </Button>
       </div>
     )
   if (!page.data || canWrite === null) return <PageSkeleton />
-  return <LoadedPage key={channel.id} channel={channel} view={page.data} people={people} me={me} mayEdit={canWrite === true && !isArchived(channel)} />
+  return <LoadedPage key={channel.id} channel={channel} view={page.data} people={people} me={me} mayEdit={canWrite && !isArchived(channel)} />
 }
 
 function LoadedPage({ channel, view, people, me, mayEdit }: { channel: Channel; view: PageView; people: User[]; me: string; mayEdit: boolean }) {
@@ -72,13 +77,12 @@ function LoadedPage({ channel, view, people, me, mayEdit }: { channel: Channel; 
   const hold = useLiveHold(view)
   const heldBy = hold && hold.userId !== me ? nameOf(hold.userId) : null
 
-  // The editor starts from `initial`; a new key starts it again (Load the latest, or someone else's save).
-  const [initial, setInitial] = useState<PageBody>(view.body)
+  // The editor starts from the page as it is when it mounts (after someone else's hold too: final review); a new key
+  // starts it again (Load the latest, or someone else's save).
   const [editorKey, setEditorKey] = useState(0)
   const reload = (next: PageView) => {
     saver.loadLatest(next.version)
     saver.start(next.body, next.version)
-    setInitial(next.body)
     setEditorKey((k) => k + 1)
   }
   // Someone else saved while I had nothing of my own waiting: my editor shows theirs (mine never reloads under me).
@@ -147,15 +151,15 @@ function LoadedPage({ channel, view, people, me, mayEdit }: { channel: Channel; 
   const line = heldBy && !conflict ? `${heldBy} is editing` : saving.state === 'saving' ? 'Saving…' : saving.state === 'saved' ? 'Saved' : view.updatedAt && view.updatedBy ? `Saved ${timeAgo(view.updatedAt)} by ${view.updatedBy === me ? 'you' : nameOf(view.updatedBy)}` : ''
   const errorActions = conflict ? (
     <>
-      <Button size="sm" onClick={copyMine}>
+      <Button size="sm" touch onClick={copyMine}>
         {copied ? 'Copied' : 'Copy my changes'}
       </Button>
-      <Button size="sm" onClick={() => void loadLatest()}>
+      <Button size="sm" touch onClick={() => void loadLatest()}>
         Load the latest
       </Button>
     </>
   ) : saving.state === 'failed' ? (
-    <Button size="sm" onClick={() => void saver.flush()}>
+    <Button size="sm" touch onClick={() => void saver.flush()}>
       Try again
     </Button>
   ) : null
@@ -188,7 +192,7 @@ function LoadedPage({ channel, view, people, me, mayEdit }: { channel: Channel; 
             </div>
           )
         ) : (
-          <PageEditor key={editorKey} initial={initial} editable={!conflict} directory={directory} onChange={saver.change} onBlur={() => void saver.flush()} />
+          <PageEditor key={editorKey} initial={view.body} editable={!conflict} directory={directory} onChange={saver.change} onBlur={() => void saver.flush()} />
         )}
       </div>
       {showHistory && <PageHistory channelId={channel.id} ctx={ctx} people={people} mayEdit={mayEdit} currentVersion={view.version} onClose={() => setShowHistory(false)} />}

@@ -14,7 +14,7 @@ import {
   TableRowNode,
 } from '@lexical/table'
 import { $createParagraphNode, $getRoot, type Klass, type LexicalNode } from 'lexical'
-import { appendInlines, type Inline } from '@/lib/messageBody'
+import { appendInlines, type Block, type Inline } from '@/lib/messageBody'
 import type { PageBlock, PageBody } from '@/lib/pageBody'
 import { $appendBlock, $blockOf, COMPOSER_NODES, inlineNodes } from '@/pages/chat/composer/bodyEditor'
 import { COMPOSER_TRANSFORMERS } from '@/pages/chat/composer/markdown'
@@ -33,6 +33,15 @@ const inlinesIn = (node: LexicalNode): Inline[] => {
   return block?.type === 'p' ? block.children : []
 }
 
+/** Any block as one run of inlines, its lines a line break apart: what a table cell keeps of a list, quote or code. */
+function flatInlines(block: Block): Inline[] {
+  const lines: Inline[][] =
+    block.type === 'p' ? [block.children] : block.type === 'code' ? [[{ type: 'text', text: block.text }]] : block.type === 'quote' ? block.children.map(flatInlines) : block.items
+  const out: Inline[] = []
+  lines.forEach((line, i) => appendInlines(out, i > 0 ? [{ type: 'text', text: '\n' }, ...line] : line))
+  return out
+}
+
 /** A check list's items, nested ones flattened into it (a page has one level); empty items left out. */
 function checkItems(list: ListNode): { checked: boolean; children: Inline[] }[] {
   return list.getChildren().flatMap((item) => {
@@ -44,12 +53,18 @@ function checkItems(list: ListNode): { checked: boolean; children: Inline[] }[] 
   })
 }
 
-/** A cell's paragraphs as one run of inlines, a line apart (empty ones left out); an empty cell is an empty run. */
+/**
+ * A cell's paragraphs as one run of inlines, a line apart (empty ones left out); an empty cell is an empty run. A list,
+ * quote or code block made in a cell (markdown shortcuts work there) keeps its text as lines.
+ */
 function cellInlines(cell: TableCellNode): Inline[] {
   const out: Inline[] = []
   cell
     .getChildren()
-    .map(inlinesIn)
+    .map((child) => {
+      const block = $blockOf(child)
+      return block ? flatInlines(block) : []
+    })
     .filter((run) => run.length > 0)
     .forEach((run, i) => appendInlines(out, i > 0 ? [{ type: 'text', text: '\n' }, ...run] : run))
   return out

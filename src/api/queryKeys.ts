@@ -157,8 +157,8 @@ function dataKeysFor(event: RealtimeEvent): QueryKey[] {
     case 'readChanged':
       return [qk.channelsAll(), qk.mentions(), qk.activityAll(), qk.threadsAll(), ...(event.channelId ? [qk.channel(event.channelId)] : [])]
     case 'notificationCreated':
-      // Something was stored for me, or a new message or reply mentions me (spec 6.12).
-      return [qk.activityAll()]
+      // Something was stored for me, or a new message, reply or page save mentions me (spec 6.12, 6.14): the bell too.
+      return [qk.activityAll(), qk.mentions()]
     case 'savedChanged':
       return [qk.savedAll()]
     case 'sidebarChanged':

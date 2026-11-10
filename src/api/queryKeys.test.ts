@@ -42,7 +42,7 @@ describe('keysForEvent', () => {
     expect(keysForEvent({ type: 'pageEditing', channelId: 'c1', userId: null, until: null })).toEqual([qk.page('c1')])
     expect(keysForEvent({ type: 'channelChanged', channelId: 'c1' })).toEqual([qk.channelsAll(), qk.channel('c1'), qk.mentions(), qk.activityAll(), qk.invitations('c1'), qk.pins('c1'), qk.bookmarks('c1'), qk.threadsAll(), qk.auditAll(), qk.archiveAll()])
     // Activity (spec 6.12) refreshes when something is stored for me, a mention included, not on every new message.
-    expect(keysForEvent({ type: 'notificationCreated', userId: 'u1' })).toEqual([qk.activityAll()])
+    expect(keysForEvent({ type: 'notificationCreated', userId: 'u1' })).toEqual([qk.activityAll(), qk.mentions()])
     // A file's title, description or deletion changes its details; the messages showing it get messageChanged too.
     expect(keysForEvent({ type: 'fileChanged', fileId: 'a1' })).toEqual([qk.fileDetails('a1'), ['chat', 'files'], ['folders'], ['projects', 'files'], ['tickets'], qk.auditAll()])
     expect(keysForEvent({ type: 'projectChanged', projectId: 'p1' })).toEqual([['tickets'], ['projects'], ['dashboard'], qk.projectHistory('p1'), qk.auditAll(), qk.archiveAll()])

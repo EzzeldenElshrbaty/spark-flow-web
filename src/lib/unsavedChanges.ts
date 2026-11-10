@@ -33,6 +33,16 @@ export function shouldBlock(guards: readonly UnsavedGuard[], nav: Nav): boolean 
   return pickGuard(guards, nav) !== null
 }
 
+/**
+ * A move inside a page that a form would be lost to but the router doesn't see as leaving (a channel's tab, chat spec
+ * 6.14): asks the newest page guard first, then `leave`s; with none, `leave`s at once.
+ */
+export function askToLeave(leave: () => void): void {
+  const guard = [...useUnsavedGuards.getState().guards].reverse().find((g) => g.scope === 'page')
+  if (guard) guard.ask(leave, () => {})
+  else leave()
+}
+
 /** Joins the guards while `dirty`; `ask` is read when asked, so it may change on every render. */
 export function useUnsavedChanges(dirty: boolean, scope: GuardScope, ask: UnsavedGuard['ask']): void {
   const id = useId()
