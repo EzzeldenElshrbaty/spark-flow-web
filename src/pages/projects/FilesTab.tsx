@@ -76,7 +76,7 @@ export function FilesTab({ ws, project, users }: { ws: string; project: ProjectS
   }
   const from = (source: ProjectFileSource) => (
     // A link inside a clickable row: it goes where it says, it doesn't open the file.
-    <Link to={hrefOf(source)} className="truncate text-accent hover:underline">
+    <Link to={hrefOf(source)} className="truncate text-accent hover:underline max-md:touch-target">
       {sourceLabel(source)}
     </Link>
   )

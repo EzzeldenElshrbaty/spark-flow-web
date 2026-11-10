@@ -8,6 +8,7 @@ import type { MyTimer } from '@/api/types'
 import { StartTimerDialog } from '@/layout/StartTimerDialog'
 import { StillWorkingDialog } from '@/layout/StillWorkingDialog'
 import { PhoneTimerBar, TimerPill } from '@/layout/TimerBar'
+import { answersTouch } from '@/test/touch'
 
 // CLAUDE.md: the timer in the top bar, the phone bar and the Start timer dialog read well in light and dark (axe,
 // contrast included) and fit a 390px phone (timer slice 1).
@@ -109,5 +110,18 @@ describe.each([
     const dialog = await screen.findByRole('dialog', { name: 'Still working?' })
     expect(await violations()).toEqual([])
     expect(dialog.getBoundingClientRect().width).toBeLessThanOrEqual(390)
+  })
+})
+
+describe('the phone bar’s buttons answer a 44px touch (UX Phase 5B, 5.4)', () => {
+  it('Pause and Stop: up and down from their centres', async () => {
+    await page.viewport(390, 844)
+    timer = states[1]![1]()
+    render(
+      <MemoryRouter>
+        <PhoneTimerBar />
+      </MemoryRouter>,
+    )
+    for (const name of ['Pause', 'Stop']) expect(answersTouch(screen.getByRole('button', { name })).slice(0, 2), name).toEqual([true, true])
   })
 })

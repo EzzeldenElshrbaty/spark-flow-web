@@ -85,6 +85,7 @@ export function ChannelHeader({ channel, title, members, rights, onDetails, onSt
         pressed={channel.starred}
         size="sm"
         tone="muted"
+        className="max-md:touch-target"
         onClick={() => onStar(!channel.starred)}
       />
       <div className="ms-1 hidden min-w-0 flex-1 border-s border-sf-line ps-3 md:block">

@@ -433,6 +433,23 @@ html {
 }
 
 /* Dropdowns: our own chevron, inset from the inline-end edge (pair with pe-9 via selectClass in Field.tsx). */
+/*
+ * A touch area of at least 44 × 44 around a small control, invisible and without moving the layout (UX Phase 5B,
+ * 5.4). Used on phones: `max-md:touch-target`. The control's own box stays its own beside a neighbour's area.
+ */
+@utility touch-target {
+  position: relative;
+  &::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+}
+
 @utility select-chevron {
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%2364748b' stroke-width='1.7'%3E%3Cpath d='M6 8l4 4 4-4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");

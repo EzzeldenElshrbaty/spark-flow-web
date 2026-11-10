@@ -136,7 +136,7 @@ export function Sheet({
             </h2>
             {description && <p className="mt-0.5 text-sm text-fg-muted">{description}</p>}
           </div>
-          <button type="button" onClick={requestClose} className="-me-1 rounded-md p-1 text-fg-muted hover:bg-surface-muted hover:text-fg" aria-label="Close" title="Close" data-close>
+          <button type="button" onClick={requestClose} className="-me-1 rounded-md p-1 text-fg-muted hover:bg-surface-muted hover:text-fg max-md:touch-target" aria-label="Close" title="Close" data-close>
             <X className="size-5" />
           </button>
         </div>

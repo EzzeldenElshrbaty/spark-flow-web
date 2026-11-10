@@ -58,7 +58,7 @@ export function HistoryList({
                     <p className="text-fg-secondary">
                       {before}
                       {key && (
-                        <Link to={{ search: withInspector(params, { kind: 'ticket', key }).toString() }} className="font-medium text-accent hover:underline">
+                        <Link to={{ search: withInspector(params, { kind: 'ticket', key }).toString() }} className="font-medium text-accent hover:underline max-md:touch-target">
                           <bdi dir="ltr">{key}</bdi>
                         </Link>
                       )}

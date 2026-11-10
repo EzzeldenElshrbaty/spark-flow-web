@@ -24,7 +24,7 @@ export function TopBar({
   return (
     <header className="sf sticky top-0 z-20 flex h-sf-topbar flex-none items-center gap-2 border-b border-sf-line bg-sf-surface ps-3 pe-4">
       <span className="lg:hidden">
-        <IconButton label="Open menu" icon={IconMenu2} onClick={onOpenMenu} />
+        <IconButton label="Open menu" icon={IconMenu2} onClick={onOpenMenu} className="max-md:touch-target" />
       </span>
       <span className="hidden lg:block">
         <IconButton

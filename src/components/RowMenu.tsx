@@ -11,7 +11,7 @@ export function RowMenu({ label, items }: { label: string; items: RowMenuItem[] 
   const triggerRef = useRef<HTMLButtonElement>(null)
   return (
     <div className="relative shrink-0">
-      <IconButton ref={triggerRef} label={label} icon={MoreHorizontal} size="sm" onClick={() => setOpen((v) => !v)} aria-haspopup="menu" aria-expanded={open} />
+      <IconButton ref={triggerRef} label={label} icon={MoreHorizontal} size="sm" touch onClick={() => setOpen((v) => !v)} aria-haspopup="menu" aria-expanded={open} />
       <MenuPanel open={open} onClose={() => setOpen(false)} triggerRef={triggerRef} label={label} className="p-1.5 sm:w-52">
         {items.map(({ label: text, icon: Icon, danger, onSelect }) => (
           <button

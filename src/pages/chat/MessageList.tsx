@@ -486,7 +486,7 @@ function DayMenu({ label, onJump, focusable = true }: { label: string; onJump: (
           type="button"
           {...props}
           tabIndex={focusable ? undefined : -1}
-          className={`sf-focus ${pillClass} pe-2`}
+          className={`sf-focus ${pillClass} pe-2 max-md:touch-target`}
         >
           {label}
           <Icon icon={IconChevronDown} size={16} className="text-sf-text-secondary" />

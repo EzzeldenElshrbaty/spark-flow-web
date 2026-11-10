@@ -78,7 +78,7 @@ export function ChannelTabs({
               ))}
             </ul>
           )}
-          {onAddBookmark && <IconButton label="Add a bookmark" icon={IconPlus} size="sm" tone="muted" onClick={() => setAdding(true)} />}
+          {onAddBookmark && <IconButton label="Add a bookmark" icon={IconPlus} size="sm" tone="muted" onClick={() => setAdding(true)} className="max-md:touch-target" />}
         </div>
       )}
       {adding && onAddBookmark && <AddBookmarkDialog onAdd={onAddBookmark} onClose={() => setAdding(false)} />}

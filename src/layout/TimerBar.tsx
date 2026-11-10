@@ -5,7 +5,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { usePauseTimer, useResumeTimer, useStopTimer } from '@/api/time'
 import type { MyTimer } from '@/api/types'
-import { Button, IconButton } from '@/components/sf/Button'
+import { Button } from '@/components/sf/Button'
 import { Button as CardButton } from '@/components/ui/Button'
 import { useLogTargets } from '@/pages/time/useLogTargets'
 import { StartTimerDialog } from '@/layout/StartTimerDialog'
@@ -14,6 +14,8 @@ import { formatClock } from '@/lib/format'
 import { runningClock } from '@/lib/hours'
 import { withInspector } from '@/lib/inspector'
 import { useNow } from '@/lib/useNow'
+import { Icon } from '@/components/sf/Icon'
+import { roundButton } from '@/layout/roundButton'
 
 /**
  * The run's count: its closed time, plus the running entry so far (held at 12 hours, where it stops counting). A
@@ -41,7 +43,7 @@ export function TimerControls({ timer, layout }: { timer: MyTimer; layout: 'pill
   const failed = [pause, resume, stop].find((m) => m.error)?.error as Error | undefined
   if (layout === 'card') return <CardControls timer={timer} pause={pause} resume={resume} stop={stop} failed={failed} switching={switching} setSwitching={setSwitching} />
   const button = clsx(
-    'inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-xs font-medium hover:bg-surface-muted disabled:opacity-60',
+    'inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-xs font-medium hover:bg-surface-muted disabled:opacity-60 max-md:touch-target',
     // The pill sits in the sf top bar, so it takes the sf colours (the app's own accent-soft fails contrast there in dark).
     layout === 'pill' ? 'text-sf-accent hover:bg-sf-surface-hover' : 'text-fg-secondary',
   )
@@ -116,9 +118,10 @@ function StartTimerButton() {
           Start timer
         </Button>
       </span>
-      <span className="md:hidden">
-        <IconButton label="Start timer" icon={IconPlayerPlay} onClick={() => setOpen(true)} />
-      </span>
+      {/* Round and ringed like the top bar's other buttons, with a 44px touch (UX Phase 5B, 5.2, 5.4). */}
+      <button type="button" aria-label="Start timer" title="Start timer" className={clsx(roundButton, 'md:hidden')} onClick={() => setOpen(true)}>
+        <Icon icon={IconPlayerPlay} />
+      </button>
       {open && <StartTimerDialog open onClose={() => setOpen(false)} />}
     </>
   )

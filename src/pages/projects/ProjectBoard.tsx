@@ -120,6 +120,7 @@ function ColumnMenu({
         title="Column actions"
         icon={MoreHorizontal}
         size="sm"
+        touch
         onClick={() => setOpen((v) => !v)}
         onPointerDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}

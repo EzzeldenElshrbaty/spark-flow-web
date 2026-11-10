@@ -81,3 +81,19 @@ describe('readable text (5.8)', () => {
     expect(found).toEqual([])
   })
 })
+
+describe('small controls reach a 44px touch on phones (5.4)', () => {
+  // Each pair: a file and a piece of its markup that must carry the touch area.
+  const targets: [string, RegExp][] = [
+    ['layout/TopBar.tsx', /label="Open menu"[^>]*max-md:touch-target|max-md:touch-target[^>]*label="Open menu"/],
+    ['layout/TimerBar.tsx', /const button = clsx\(\s*'[^']*max-md:touch-target/],
+    ['pages/chat/ChannelHeader.tsx', /IconStarFilled : IconStar}[\s\S]{0,200}max-md:touch-target/],
+    ['pages/chat/ChannelTabs.tsx', /label="Add a bookmark".*max-md:touch-target/],
+    ['pages/chat/MessageList.tsx', /className={`sf-focus \$\{pillClass\} pe-2 max-md:touch-target`}/],
+    ['pages/projects/HistoryList.tsx', /className="font-medium text-accent hover:underline max-md:touch-target"/],
+    ['pages/projects/FilesTab.tsx', /className="truncate text-accent hover:underline max-md:touch-target"/],
+  ]
+  it.each(targets)('%s', (file, pattern) => {
+    expect(files.find((f) => f.file === file)?.source ?? '', file).toMatch(pattern)
+  })
+})

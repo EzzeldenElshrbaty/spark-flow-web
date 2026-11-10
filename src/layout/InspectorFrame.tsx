@@ -101,7 +101,7 @@ export function InspectorFrame({
             {sub && <span className="sf-small min-w-0 truncate text-sf-text-muted">{sub}</span>}
           </div>
           {actions}
-          <IconButton label={`Close ${label.toLowerCase()}`} icon={IconX} size="sm" tone="muted" onClick={onClose} />
+          <IconButton label={`Close ${label.toLowerCase()}`} icon={IconX} size="sm" tone="muted" onClick={onClose} className="max-md:touch-target" />
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">{children}</div>
       </>,
@@ -117,7 +117,7 @@ export function InspectorFrame({
           </h2>
         </div>
         {actions}
-        <button type="button" onClick={onClose} className="-me-1 rounded-md p-1 text-fg-muted hover:bg-surface-muted hover:text-fg" aria-label={`Close ${label.toLowerCase()}`} title={`Close ${label.toLowerCase()}`}>
+        <button type="button" onClick={onClose} className="-me-1 rounded-md p-1 text-fg-muted hover:bg-surface-muted hover:text-fg max-md:touch-target" aria-label={`Close ${label.toLowerCase()}`} title={`Close ${label.toLowerCase()}`}>
           <X className="size-5" />
         </button>
       </div>
