@@ -30,15 +30,18 @@ export function activityKind(item: ActivityItem, place: string | null): string {
   if (item.kind === 'thread') return `Replied in a thread you follow${where}`
   if (item.kind === 'task') return notificationLine({ source: item.taskEvent ?? 'taskComment', authorName: item.actorName, taskKey: item.taskKey, statusLabel: item.statusLabel ?? null })
   if (item.kind === 'reminder') return `Reminder about a ${item.replyId ? 'reply' : 'message'}${where}`
+  if (item.page) return `Mentioned you on the page${where}`
   return item.keyword ? `Matched “${item.keyword}”${where}` : `Mentioned you${where}`
 }
 
 /**
  * Where opening a row goes: a message opens on it in its channel, a reply opens its thread beside the channel, and a
- * comment opens its task in the project's Tasks tab (a task key starts with its project's key). Activity else.
+ * comment opens its task in the project's Tasks tab (a task key starts with its project's key), a mention on a
+ * channel's page its Page tab. Activity else.
  */
 export function activityLink(item: ActivityItem, ws: string): string {
   if (item.taskKey && !item.channelId) return `${paths.project(ws, item.taskKey.split('-')[0]!, 'tasks')}?ticket=${encodeURIComponent(item.taskKey)}`
+  if (item.page && item.channelId) return `${paths.channel(ws, item.channelId)}?tab=page`
   if (!item.channelId || !item.messageId) return paths.activity(ws)
   if (item.replyId) return `${paths.channel(ws, item.channelId)}?thread=${encodeURIComponent(item.messageId)}`
   return paths.message(ws, item.channelId, item.messageId)

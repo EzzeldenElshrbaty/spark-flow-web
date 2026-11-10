@@ -230,3 +230,29 @@ describe('the inbox caps mentions and task news apart (UX Phase 6, deferred mino
     expect(inbox.map((x) => x.createdAt)).toEqual(inbox.map((x) => x.createdAt).sort().reverse())
   })
 })
+
+describe('mentions on a channel’s page (chat spec 6.14)', () => {
+  const page = (id: string) => [{ type: 'p' as const, children: [{ type: 'text' as const, text: 'Owner: ' }, { type: 'user' as const, id, name: 'Nour El-Sayed' }] }]
+
+  it('a page mention reaches the person, opens the page, and shares the read state', async () => {
+    await api.pages.save('c-general', { body: page('u-2'), baseVersion: 0 })
+    await as('u-2')
+    const [first] = await api.mentions.mine()
+    expect(first).toMatchObject({ source: 'page', authorId: 'u-1', authorName: 'Youssef Abdelrahman', excerpt: 'Owner: @Nour El-Sayed', channelId: 'c-general', messageId: null, taskKey: null, read: false })
+    const [row] = (await api.inbox.list('ws-eng')).filter((a) => a.id === first.id)
+    expect(row).toMatchObject({ kind: 'mention', page: true, channelId: 'c-general', messageId: null, read: false })
+    await api.inbox.markRead('ws-eng', [first.id])
+    expect((await api.mentions.mine()).find((m) => m.id === first.id)?.read).toBe(true)
+  })
+
+  it('a page mention stops showing once the person can’t read the channel', async () => {
+    await api.pages.save('c-release', { body: page('u-2'), baseVersion: 0 })
+    await as('u-2')
+    expect((await api.mentions.mine()).some((m) => m.source === 'page')).toBe(true)
+    await as('u-1')
+    await api.chat.removeMember('c-release', 'u-2')
+    await as('u-2')
+    expect((await api.mentions.mine()).some((m) => m.source === 'page')).toBe(false)
+    expect((await api.inbox.list('ws-eng')).some((a) => a.page)).toBe(false)
+  })
+})

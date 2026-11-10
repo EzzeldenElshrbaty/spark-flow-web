@@ -17,7 +17,7 @@ import { paths } from '@/lib/paths'
 import { useRole } from '@/lib/useRole'
 
 /** Each kind of bell item's icon: a mention, or what someone did to a task of mine (UX Phase 2, 2.3). */
-const SOURCE_ICONS: Record<MentionItem['source'], TablerIcon> = { message: IconAt, reply: IconAt, comment: IconAt, assigned: IconUserCheck, status: IconArrowsExchange, taskComment: IconMessage }
+const SOURCE_ICONS: Record<MentionItem['source'], TablerIcon> = { message: IconAt, reply: IconAt, comment: IconAt, page: IconAt, assigned: IconUserCheck, status: IconArrowsExchange, taskComment: IconMessage }
 
 /**
  * The bell in the top bar: mentions of me and task news for me, with the unread count, in the redesign's panel (a

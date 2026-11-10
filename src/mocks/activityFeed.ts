@@ -26,6 +26,7 @@ export function activityFor(data: DbData, userId: string, workspaceId: string, l
     .map((m) => ({
       id: m.id, kind: 'mention', read: read.has(m.id), createdAt: m.createdAt, workspaceId: m.workspaceId, actorId: m.authorId, actorName: m.authorName,
       channelId: m.channelId, messageId: m.messageId, replyId: m.source === 'reply' ? m.id : null, taskKey: m.taskKey, projectId: m.projectId, excerpt: m.excerpt, emoji: null, keyword: m.keyword,
+      ...(m.source === 'page' && { page: true as const }),
     }))
   // A reply's mention id is the reply's id.
   const mentioned = new Set(mentions.map((m) => m.id))

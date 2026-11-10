@@ -80,3 +80,11 @@ describe('task news in Activity (UX Phase 2, 2.3)', () => {
     expect(shownActivity([row({}), { ...row({}), id: 'b', kind: 'mention' }], 'task', false).unread.map((r) => r.id)).toEqual(['a'])
   })
 })
+
+describe('a mention on a channel’s page (chat spec 6.14)', () => {
+  const onPage = item({ channelId: 'c-general', messageId: null, page: true })
+  it('opens the page and says where', () => {
+    expect(activityLink(onPage, 'engineering')).toBe('/w/engineering/c/c-general?tab=page')
+    expect(activityKind(onPage, '#general')).toBe('Mentioned you on the page in #general')
+  })
+})

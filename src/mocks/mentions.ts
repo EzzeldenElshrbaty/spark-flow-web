@@ -6,7 +6,7 @@ import type { MockHub } from './realtime'
 import { delay } from './latency'
 import { clone, currentUser, excerptOf } from './shared'
 import { projectPeopleIds } from '@/lib/projectPeople'
-import { keywordsSinceOf, prefsOf, silenced, stateOf } from './membership'
+import { canRead, keywordsSinceOf, prefsOf, silenced, stateOf } from './membership'
 import { keywordable } from '@/lib/notifyRules'
 
 const MAX_ITEMS = 50
@@ -85,6 +85,11 @@ export function mentionsFor(data: DbData, userId: string, keep: (item: Omit<Ment
     if (!reaches(mentions, userId, () => projectPeople(data, c.projectId))) continue
     const taskKey = data.tickets.find((t) => t.id === c.taskId)?.key ?? null
     items.push({ id: c.id, source: 'comment', workspaceId: data.projects.find((p) => p.id === c.projectId)?.workspaceId ?? '', authorId: c.authorId, authorName: nameOf(c.authorId), excerpt: excerptOf(c.body), createdAt: c.createdAt, channelId: null, messageId: null, taskKey, projectId: c.projectId, keyword: null })
+  }
+  // A channel's page (chat spec 6.14): each save stored whom it newly named; it shows while they can read the channel.
+  for (const pm of data.pageMentions) {
+    if (pm.userId !== userId || !canRead(data, pm.channelId, userId)) continue
+    items.push({ id: pm.id, source: 'page', workspaceId: pm.workspaceId, authorId: pm.authorId, authorName: nameOf(pm.authorId), excerpt: pm.excerpt, createdAt: pm.createdAt, channelId: pm.channelId, messageId: null, taskKey: null, projectId: null, keyword: null })
   }
   return items.filter(keep).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)).slice(0, limit)
 }

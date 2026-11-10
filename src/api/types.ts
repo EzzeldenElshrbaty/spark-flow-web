@@ -760,6 +760,8 @@ export type ActivityItem = {
   emoji: string | null
   /** A mention row that is one of my keywords instead (spec 6.11): which; absent or null otherwise. */
   keyword?: string | null
+  /** A mention on the channel's page (chat spec 6.14), not in a message: it opens the Page tab. */
+  page?: true
   /** A `task` row (UX Phase 2, 2.3): what happened, and for a move, the column it went to. */
   taskEvent?: 'assigned' | 'status' | 'taskComment'
   statusLabel?: string | null
