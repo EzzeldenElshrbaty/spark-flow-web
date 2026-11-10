@@ -1,7 +1,7 @@
 import clsx from 'clsx'
 import { IconDots, IconLayoutDashboard, IconLayoutKanban, IconMessages, IconX, type TablerIcon } from '@tabler/icons-react'
 import { useRef } from 'react'
-import { NavLink, useLocation, useMatch } from 'react-router'
+import { Link, useLocation } from 'react-router'
 import { IconButton } from '@/components/sf/Button'
 import { Icon } from '@/components/sf/Icon'
 import { WorkspaceModeSwitch } from '@/layout/ModeSwitch'
@@ -10,9 +10,14 @@ import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { useModeTarget } from '@/layout/useGoToMode'
 import { paths } from '@/lib/paths'
 import { useDialogFocus } from '@/lib/useDialogFocus'
-import { modeOf } from '@/lib/workspaceMode'
+import { bottomTab } from './bottomTab'
 
-const itemClass = 'sf-focus flex min-h-11 w-full flex-col items-center gap-1 py-2 font-sf text-[11px]/[14px] font-medium'
+const itemClass = 'sf-focus relative flex min-h-11 w-full flex-col items-center gap-1 py-2 font-sf text-[11px]/[14px] font-medium'
+/** The tab you're in: red, bold and a line along its top, so colour isn't the only sign (UX Phase 5B, 5.10). */
+const current = (active: boolean) =>
+  active
+    ? 'font-semibold text-sf-accent before:absolute before:inset-x-5 before:top-0 before:h-0.5 before:rounded-full before:bg-sf-accent-fill'
+    : 'text-sf-text-muted'
 
 /** A bottom-bar tab that is a link; without a place to go yet (the workspace is still loading) it waits, dimmed. */
 function TabLink({ to, active, icon, label }: { to: string | undefined; active: boolean; icon: TablerIcon; label: string }) {
@@ -24,10 +29,10 @@ function TabLink({ to, active, icon, label }: { to: string | undefined; active: 
       </button>
     )
   return (
-    <NavLink to={to} className={clsx(itemClass, active ? 'text-sf-accent' : 'text-sf-text-muted')}>
+    <Link to={to} aria-current={active ? 'page' : undefined} className={clsx(itemClass, current(active))}>
       <Icon icon={icon} />
       {label}
-    </NavLink>
+    </Link>
   )
 }
 
@@ -39,10 +44,8 @@ function TabLink({ to, active, icon, label }: { to: string | undefined; active: 
 export function MobileBottomBar({ onOpenMore }: { onOpenMore: () => void }) {
   const { workspace } = useCurrentWorkspace()
   const { pathname } = useLocation()
-  const inDashboard = useMatch({ path: '/w/:ws/dashboard', end: true }) !== null
-  const side = modeOf(pathname)
-  const inChat = side === 'chat'
-  const inProjects = side === 'projects' && !inDashboard
+  // The tab that holds this page, from the address (UX Phase 5B, 5.2): My work and Settings are More's.
+  const here = bottomTab(pathname)
 
   const slug = workspace?.slug
   const chatTo = useModeTarget('chat')
@@ -53,16 +56,16 @@ export function MobileBottomBar({ onOpenMore }: { onOpenMore: () => void }) {
     <nav className="sf fixed inset-x-0 bottom-0 z-30 border-t border-sf-line bg-sf-surface pb-[env(safe-area-inset-bottom)] lg:hidden" aria-label="Main">
       <ul className="flex">
         <li className="flex-1">
-          <TabLink to={slug ? paths.start(slug) : undefined} active={inDashboard} icon={IconLayoutDashboard} label="Dashboard" />
+          <TabLink to={slug ? paths.start(slug) : undefined} active={here === 'dashboard'} icon={IconLayoutDashboard} label="Dashboard" />
         </li>
         <li className="flex-1">
-          <TabLink to={projectsTo} active={inProjects} icon={IconLayoutKanban} label="Projects" />
+          <TabLink to={projectsTo} active={here === 'projects'} icon={IconLayoutKanban} label="Projects" />
         </li>
         <li className="flex-1">
-          <TabLink to={chatTo} active={inChat} icon={IconMessages} label="Chat" />
+          <TabLink to={chatTo} active={here === 'chat'} icon={IconMessages} label="Chat" />
         </li>
         <li className="flex-1">
-          <button type="button" onClick={onOpenMore} className={clsx(itemClass, 'cursor-pointer text-sf-text-muted')}>
+          <button type="button" onClick={onOpenMore} aria-current={here === 'more' ? 'page' : undefined} className={clsx(itemClass, 'cursor-pointer', current(here === 'more'))}>
             <Icon icon={IconDots} />
             More
           </button>

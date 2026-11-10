@@ -46,20 +46,30 @@ describe('Phone navigation (spec 5.5, 6.16)', () => {
     expect(tab('Projects').getAttribute('href')).toBe('/w/engineering/projects')
   })
 
-  it('lights Chat on every chat page, Projects on the project pages and Home, and Dashboard on its own', () => {
+  it('marks the tab you’re in with aria-current, a top line and a bold label: Chat, Projects, Dashboard, and More for My work (UX Phase 5B)', () => {
+    const current = () => screen.getByRole('navigation', { name: 'Main' }).querySelectorAll('[aria-current="page"]')
     bar('/w/engineering/saved')
-    expect(tab('Chat').className).toContain('text-sf-accent')
+    expect(tab('Chat').getAttribute('aria-current')).toBe('page')
+    expect(tab('Chat').className).toContain('font-semibold')
+    expect(tab('Chat').className).toContain('before:bg-sf-accent-fill')
     cleanup()
-    bar('/w/engineering/teams')
-    expect(tab('Projects').className).toContain('text-sf-accent')
+    bar('/w/engineering/p/NEX/tasks')
+    expect(tab('Projects').getAttribute('aria-current')).toBe('page')
+    expect(current()).toHaveLength(1)
     cleanup()
     bar('/w/engineering/dashboard')
-    expect(tab('Dashboard').className).toContain('text-sf-accent')
-    expect(tab('Projects').className).not.toContain('text-sf-accent')
+    expect(tab('Dashboard').getAttribute('aria-current')).toBe('page')
+    expect(tab('Projects').getAttribute('aria-current')).toBeNull()
     cleanup()
-    bar('/w/engineering')
-    expect(tab('Projects').className).toContain('text-sf-accent')
-    expect(tab('Dashboard').className).not.toContain('text-sf-accent')
+    // My work and Teams live under More, so More is the tab you're in, not Projects.
+    for (const path of ['/w/engineering', '/w/engineering/teams']) {
+      bar(path)
+      expect(screen.getByRole('button', { name: 'More' }).getAttribute('aria-current'), path).toBe('page')
+      expect(current(), path).toHaveLength(1)
+      cleanup()
+    }
+    bar('/w/engineering/search')
+    expect(current()).toHaveLength(0)
   })
 
   it('the menu drawer has the switch, 48px for touch, above the side’s rows', () => {
