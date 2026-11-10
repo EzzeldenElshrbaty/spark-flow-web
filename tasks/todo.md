@@ -2858,3 +2858,25 @@ Time & cost on one row. Plan with decisions, diagrams and questions:
 - Final review (Opus): no critical, 5 important, all fixed with a test that failed first (48f1b9e): a widened column
   could drop under the pointer; Start timer's highlight could leave the view, and a second pick started a second timer;
   Enter while saving saved twice; a past-due project read "On time". 11 minors deferred (listed in the session's report).
+
+# UX Phase 5A: keyboard and screen readers — 10 Nov 2026, approved (Q1–Q4 "Yes, recommended")
+
+Audit items 5.5, 5.6, 5.7, 5.9, 5.11, 5.12, 5.13: sheets, the file viewer, menus and side panels keep focus and give it
+back; every record opens from the keyboard (tables, Files, board cards with Space to move and Enter to open); a skip
+link, a tab title per page and focus on the new page's heading; fields named, described and required, with the caret on
+the first error; the axe structure fixes; saves and uploads announced once; reduced motion for skeletons and a switch
+for single-key shortcuts. Plan with decisions, diagrams and questions:
+`docs/superpowers/plans/2026-11-10-ux-phase-5a-keyboard-and-screen-readers.md`. Branch `feat/ux-phase-5a` from
+`origin/dev` (a621b47, Phase 4 landed). Phase 5B (phones, contrast, colour-only status) is planned separately.
+
+- [ ] Sheets keep focus and give it back (5.5)
+- [ ] The file viewer is a real dialog (5.5)
+- [ ] Menus: arrow keys and focus back on a pick (5.5)
+- [ ] Side panels: focus in, focus back, modal on phones (5.5)
+- [ ] Every record opens from the keyboard, board included (5.6, 5.11)
+- [ ] Skip link, tab titles, focus after a page change (5.7)
+- [ ] Forms for screen readers (5.9)
+- [ ] Structure fixes from axe (5.11)
+- [ ] Announce what changed, and only that (5.12)
+- [ ] Motion and shortcuts (5.13)
+- [ ] Phase check and records
