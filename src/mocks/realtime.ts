@@ -74,6 +74,8 @@ export function createMockRealtimeClient(hub: MockHub): RealtimeClient {
     onCommentAdded: (cb) => on(hub, 'commentAdded', (e) => cb({ taskKey: e.taskKey, projectId: e.projectId })),
     onMessageChanged: (cb) => on(hub, 'messageChanged', (e) => cb({ channelId: e.channelId, messageId: e.messageId })),
     onChannelChanged: (cb) => on(hub, 'channelChanged', (e) => cb({ channelId: e.channelId })),
+    onPageSaved: (cb) => on(hub, 'pageSaved', (e) => cb({ channelId: e.channelId, version: e.version, userId: e.userId })),
+    onPageEditing: (cb) => on(hub, 'pageEditing', (e) => cb({ channelId: e.channelId, userId: e.userId, until: e.until })),
     onProjectChanged: (cb) => on(hub, 'projectChanged', (e) => cb({ projectId: e.projectId })),
     onRatesChanged: (cb) => on(hub, 'ratesChanged', () => cb()),
     onFilesChanged: (cb) => on(hub, 'filesChanged', (e) => cb({ projectId: e.projectId })),

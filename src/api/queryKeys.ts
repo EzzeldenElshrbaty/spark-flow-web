@@ -23,6 +23,11 @@ export const qk = {
   pins: (channelId: string) => ['chat', 'pins', channelId],
   folders: (workspaceId: string) => ['folders', workspaceId],
   bookmarks: (channelId: string) => ['chat', 'bookmarks', channelId],
+  // Each under its own root: a hold changing (pageEditing) reloads the page, not its history.
+  page: (channelId: string) => ['chat', 'page', channelId],
+  pageHistory: (channelId: string) => ['chat', 'pageHistory', channelId],
+  pageVersions: (channelId: string) => ['chat', 'pageVersion', channelId],
+  pageVersion: (channelId: string, versionId: string) => ['chat', 'pageVersion', channelId, versionId],
   channelFiles: (channelId: string, filter: unknown = undefined) => (filter === undefined ? ['chat', 'files', channelId] : ['chat', 'files', channelId, filter]),
   fileDetails: (fileId: string) => ['chat', 'file', fileId],
   projects: (workspaceId: string) => ['tickets', 'projects', workspaceId],
@@ -128,6 +133,11 @@ function dataKeysFor(event: RealtimeEvent): QueryKey[] {
     case 'projectChanged':
       // Summaries and task lists live under 'tickets'; phases, deliverables and project time under 'projects'.
       return [['tickets'], ['projects'], ['dashboard'], qk.projectHistory(event.projectId)]
+    case 'pageSaved':
+      // A save inside my 10-minute run changes that history entry's body too.
+      return [qk.page(event.channelId), qk.pageHistory(event.channelId), qk.pageVersions(event.channelId)]
+    case 'pageEditing':
+      return [qk.page(event.channelId)]
     case 'channelChanged':
       // Leaving, removal, archiving and privacy decide what my mentions and Activity may show; inviting and revoking
       // change its Invited list (spec 6.10).

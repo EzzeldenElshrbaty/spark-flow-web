@@ -20,6 +20,29 @@ const fetchReturning = (status: number, body: unknown, headers?: HeadersInit) =>
     new Response(body === null ? null : typeof body === 'string' ? body : JSON.stringify(body), { status, headers })) as typeof fetch
 
 describe('createHttpApi', () => {
+  it('maps a channel’s page calls to the routes in the chat spec 6.14 contract', async () => {
+    const { calls, fetchFn } = recordingFetch()
+    const api = createHttpApi(fetchFn)
+    await api.pages.get('c 1')
+    await api.pages.save('c1', { body: [], baseVersion: 2 })
+    await api.pages.editing('c1')
+    await api.pages.stopEditing('c1')
+    await api.pages.history('c1')
+    await api.pages.version('c1', 'v1')
+    await api.pages.restore('c1', { versionId: 'v1', baseVersion: 3 })
+    expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url}`)).toEqual([
+      'GET /api/channels/c%201/page',
+      'PUT /api/channels/c1/page',
+      'POST /api/channels/c1/page/editing',
+      'DELETE /api/channels/c1/page/editing',
+      'GET /api/channels/c1/page/versions',
+      'GET /api/channels/c1/page/versions/v1',
+      'POST /api/channels/c1/page/restore',
+    ])
+    expect(JSON.parse(String(calls[1].init?.body))).toEqual({ body: [], baseVersion: 2 })
+    expect(JSON.parse(String(calls[6].init?.body))).toEqual({ versionId: 'v1', baseVersion: 3 })
+  })
+
   it('maps the M2 time calls to their routes, methods and bodies', async () => {
     const { calls, fetchFn } = recordingFetch()
     const api = createHttpApi(fetchFn)

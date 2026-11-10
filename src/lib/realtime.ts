@@ -20,6 +20,10 @@ export interface RealtimeClient {
   onMessageChanged(cb: (event: { channelId: string; messageId: string }) => void): () => void
   /** A channel was opened or its name, topic or members changed. */
   onChannelChanged(cb: (event: { channelId: string }) => void): () => void
+  /** A channel's page was saved or restored (chat spec 6.14): readers see the new version, history its entry. */
+  onPageSaved(cb: (event: { channelId: string; version: number; userId: string }) => void): () => void
+  /** Someone started or stopped editing a channel's page (one at a time); `userId` null when nobody holds it. */
+  onPageEditing(cb: (event: { channelId: string; userId: string | null; until: string | null }) => void): () => void
   /** A project's details, phases, deliverables or board changed. */
   onProjectChanged(cb: (event: { projectId: string }) => void): () => void
   /** Someone's hourly cost changed: cost everywhere follows. */
@@ -101,6 +105,8 @@ function createUnconnectedClient(): RealtimeClient {
     onCommentAdded: () => noop,
     onMessageChanged: () => noop,
     onChannelChanged: () => noop,
+    onPageSaved: () => noop,
+    onPageEditing: () => noop,
     onProjectChanged: () => noop,
     onRatesChanged: () => noop,
     onFilesChanged: () => noop,

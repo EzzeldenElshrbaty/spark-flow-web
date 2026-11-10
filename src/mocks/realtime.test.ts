@@ -68,6 +68,19 @@ describe('createMockRealtimeClient', () => {
     expect(onTyping).toHaveBeenCalledWith({ channelId: 'c1', userId: 'u2' })
   })
 
+  it('delivers a page’s saves and holds (chat spec 6.14)', () => {
+    const hub = makeHub(uniqueName())
+    const client = createMockRealtimeClient(hub)
+    const onSaved = vi.fn()
+    const onEditing = vi.fn()
+    client.onPageSaved(onSaved)
+    client.onPageEditing(onEditing)
+    hub.publish({ type: 'pageSaved', channelId: 'c1', version: 3, userId: 'u-2' })
+    hub.publish({ type: 'pageEditing', channelId: 'c1', userId: null, until: null })
+    expect(onSaved).toHaveBeenCalledExactlyOnceWith({ channelId: 'c1', version: 3, userId: 'u-2' })
+    expect(onEditing).toHaveBeenCalledExactlyOnceWith({ channelId: 'c1', userId: null, until: null })
+  })
+
   it('unsubscribe stops delivery', () => {
     const hub = makeHub(uniqueName())
     const handler = vi.fn()

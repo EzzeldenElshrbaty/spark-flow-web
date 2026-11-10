@@ -20,6 +20,9 @@ export function createQueryClient(): QueryClient {
     }),
     mutationCache: new MutationCache({
       onSuccess: (_data, _variables, _context, mutation) => {
+        // A page's autosave (chat spec 6.14) writes its own answer into the cache: reloading everything once a second
+        // would be wasted work.
+        if (mutation.meta?.invalidate === false) return undefined
         const reload = queryClient.invalidateQueries()
         return mutation.meta?.closeFirst ? undefined : reload
       },

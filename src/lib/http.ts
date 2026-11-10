@@ -302,6 +302,15 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
       update: (id, patch) => send('PATCH', `/api/bookmarks/${enc(id)}`, patch),
       remove: (id) => send<void>('DELETE', `/api/bookmarks/${enc(id)}`),
     },
+    pages: {
+      get: (channelId) => get(`/api/channels/${enc(channelId)}/page`),
+      save: (channelId, input) => send('PUT', `/api/channels/${enc(channelId)}/page`, input),
+      editing: (channelId) => send('POST', `/api/channels/${enc(channelId)}/page/editing`),
+      stopEditing: (channelId) => send<void>('DELETE', `/api/channels/${enc(channelId)}/page/editing`),
+      history: (channelId) => get(`/api/channels/${enc(channelId)}/page/versions`),
+      version: (channelId, versionId) => get(`/api/channels/${enc(channelId)}/page/versions/${enc(versionId)}`),
+      restore: (channelId, input) => send('POST', `/api/channels/${enc(channelId)}/page/restore`, input),
+    },
     folders: {
       list: (workspaceId) => get(`/api/workspaces/${enc(workspaceId)}/folders`),
       create: (workspaceId, name) => send('POST', `/api/workspaces/${enc(workspaceId)}/folders`, { name }),

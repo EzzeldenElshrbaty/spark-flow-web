@@ -22,6 +22,8 @@ export function RealtimeBridge(): null {
       client.onCommentAdded(({ taskKey, projectId }) => invalidate({ type: 'commentAdded', taskKey, projectId })),
       client.onMessageChanged(({ channelId, messageId }) => invalidate({ type: 'messageChanged', channelId, messageId })),
       client.onChannelChanged(({ channelId }) => invalidate({ type: 'channelChanged', channelId })),
+      client.onPageSaved((e) => invalidate({ type: 'pageSaved', ...e })),
+      client.onPageEditing((e) => invalidate({ type: 'pageEditing', ...e })),
       client.onProjectChanged(({ projectId }) => invalidate({ type: 'projectChanged', projectId })),
       client.onRatesChanged(() => invalidate({ type: 'ratesChanged' })),
       client.onFilesChanged(({ projectId }) => invalidate({ type: 'filesChanged', projectId })),

@@ -38,6 +38,8 @@ describe('keysForEvent', () => {
     expect(keysForEvent({ type: 'messageChanged', channelId: 'c1', messageId: 'm1' })).toEqual([qk.messages('c1'), qk.message('m1'), qk.replies('m1'), qk.mentions(), qk.activityAll(), qk.sentAll(), qk.pins('c1'), qk.channelFiles('c1'), qk.threadsAll(), ['projects', 'files'], qk.auditAll()])
     // Leaving, removal, archiving and privacy decide what my mentions and Activity may show.
     // Inviting and revoking change the channel's Invited list (spec 6.10) too.
+    expect(keysForEvent({ type: 'pageSaved', channelId: 'c1', version: 2, userId: 'u-1' })).toEqual([qk.page('c1'), qk.pageHistory('c1'), qk.pageVersions('c1')])
+    expect(keysForEvent({ type: 'pageEditing', channelId: 'c1', userId: null, until: null })).toEqual([qk.page('c1')])
     expect(keysForEvent({ type: 'channelChanged', channelId: 'c1' })).toEqual([qk.channelsAll(), qk.channel('c1'), qk.mentions(), qk.activityAll(), qk.invitations('c1'), qk.pins('c1'), qk.bookmarks('c1'), qk.threadsAll(), qk.auditAll(), qk.archiveAll()])
     // Activity (spec 6.12) refreshes when something is stored for me, a mention included, not on every new message.
     expect(keysForEvent({ type: 'notificationCreated', userId: 'u1' })).toEqual([qk.activityAll()])
