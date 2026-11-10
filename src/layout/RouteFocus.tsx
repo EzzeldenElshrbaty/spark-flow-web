@@ -18,12 +18,11 @@ function focusInPage(main: HTMLElement | null): boolean {
  */
 export function RouteFocus() {
   const { pathname } = useLocation()
-  const first = useRef(true)
+  // The path focus was last settled for: the first load's, so nothing moves then (StrictMode's second run included).
+  const settled = useRef(pathname)
   useEffect(() => {
-    if (first.current) {
-      first.current = false
-      return
-    }
+    if (settled.current === pathname) return
+    settled.current = pathname
     const main = document.getElementById('main')
     if (focusInPage(main) || focusPageHeading() || !main) return
     const observer = new MutationObserver(() => {

@@ -1,6 +1,6 @@
 import '@/index.css'
 import { act, cleanup, render, screen } from '@testing-library/react'
-import { useEffect, useState } from 'react'
+import { StrictMode, useEffect, useState } from 'react'
 import { createMemoryRouter, Link, Outlet, RouterProvider, useSearchParams } from 'react-router'
 import { afterEach, describe, expect, it } from 'vitest'
 import { userEvent } from 'vitest/browser'
@@ -56,18 +56,24 @@ function Slow() {
   return ready ? <h1>Slow page</h1> : <p>Loading</p>
 }
 
-function mount(at = '/home') {
+function mount(at = '/home', strict = false) {
   const router = createMemoryRouter(
     [{ element: <Shell />, children: [{ path: '/home', element: <h1>Home</h1> }, { path: '/projects', element: <Projects /> }, { path: '/p/:tab', element: <Project /> }, { path: '/slow', element: <Slow /> }] }],
     { initialEntries: [at] },
   )
-  render(<RouterProvider router={router} />)
+  render(strict ? <StrictMode><RouterProvider router={router} /></StrictMode> : <RouterProvider router={router} />)
   return router
 }
 
 describe('focus after a page change (UX Phase 5A, 5.7)', () => {
   it('leaves focus alone on the first load', () => {
     mount('/projects')
+    expect(document.activeElement).toBe(document.body)
+  })
+
+  it('leaves focus alone on the first load in StrictMode too, where effects run twice (the dev build)', async () => {
+    mount('/projects', true)
+    await new Promise((r) => setTimeout(r, 50))
     expect(document.activeElement).toBe(document.body)
   })
 
