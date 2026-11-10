@@ -600,3 +600,15 @@ Design: `docs/superpowers/specs/2026-11-10-channel-page-tab-design.md`.
 - **Mentions:** a save that names someone who wasn't named before (and isn't the saver, can read the channel and is active) stores a mention for them, with the text of the block that names them, cut to 120 characters. It shows in `GET /api/mentions` (`source: "page"`) and Activity (`kind: "mention"`, `page: true`, `messageId: null`) while they can read the channel, and shares their mention read state. It opens `/w/:ws/c/:channelId?tab=page`.
 - **Audit:** page saves, claims and restores are not in the audit log; the page's history is their record.
 - **Events:** `page.saved` (`pageSaved`, `{ channelId, version, userId }`) after a save or restore; `page.editing` (`pageEditing`, `{ channelId, userId, until }`, `userId` and `until` null when let go) when the holder changes; `notification.created` to each person newly mentioned.
+
+## Phase 4 · Slice CI: channel intro (spec 6.14)
+
+Design: `docs/superpowers/specs/2026-11-11-channel-intro-and-templates-design.md`.
+
+| `Channel` field | Type | Rule |
+|---|---|---|
+| `createdAt` | ISO string or `null` | When the channel or conversation was made. Channels made before it was kept are dated by their first message; `null` when they have none. |
+| `createdBy` | user id or `null` | Who made it; `null` when nobody knows (channels made before it was kept). |
+
+- **No new routes.** Pick a template saves through `PUT /api/channels/:id/page`, with save's rules. Link a project adds a bookmark through `POST /api/channels/:id/bookmarks`, titled with the project's name, at the absolute address of its Overview.
+- **Bookmarks to Flow:** a bookmark on the app's own origin is accepted even when its host has no dot (a development server), and the client opens it inside the app.

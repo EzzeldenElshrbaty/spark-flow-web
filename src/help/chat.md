@@ -40,6 +40,14 @@ Point at a message (or tap it on a phone) for reactions, **Reply in thread** and
 
 Under the channel’s name, **Messages**, **Files** (in folders if you like), **Pins** and **Page**; **+** adds a bookmark. In the header, the bell sets how much of the channel reaches you, 🔍 searches it, and ⋯ holds the rest.
 
+## A new channel
+
+A channel’s history starts with where it began: its name, who made it and when, and its description. In a channel of its own (not a project’s), whoever may use them gets three ways to set it up:
+
+- **Add people** opens the channel’s members.
+- **Pick a template** fills the channel’s page with Project kickoff, Incident or Release, and opens it. If the page already has text, it asks first; the old page stays in History.
+- **Link a project** adds a bookmark to the project’s Overview after the tabs. It opens in Flow.
+
 ## The channel’s page
 
 **Page** is one shared page for the channel: plans, checklists, tables and links to tasks. Whoever can post in the channel can edit it, one person at a time. While someone types, everyone else reads it as it changes and sees who is editing. It saves a second after you stop typing, and the bar above it says when it was last saved and by whom.
