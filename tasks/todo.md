@@ -2882,9 +2882,8 @@ for single-key shortcuts. Plan with decisions, diagrams and questions:
 - [x] Phase check and records
 
 ## Review — UX Phase 5A
-- Gates: `tsc -b` and lint clean; tests 2,712/2,715 in the full run (the two worktree-only `MessageList` "Jump to latest"
-  failures, and `RichComposer` "# offers channels; Tab picks", the full-run typeahead timing its own comment describes;
-  it passes alone, 3 of 3); `build:prototype` passes. Help pictures unchanged (no pictured page looks different).
+- Gates (after the fix pass): `tsc -b` and lint clean; tests 2,723/2,725 (only the two worktree-only `MessageList`
+  "Jump to latest" failures); `build:prototype` passes. Help pictures unchanged (no pictured page looks different).
 - Looked at in the app (dev build): the first Tab is "Skip to content" and it lands on the page; Projects opens a project
   from the keyboard with focus on its heading; tab titles ("Nexus Core · Overview · Spark Flow"); Enter on a board card
   opens it with focus on the panel's heading and Esc gives it back to the card; the column menu moves with ↓ End Home
@@ -2893,4 +2892,11 @@ for single-key shortcuts. Plan with decisions, diagrams and questions:
 - New shared pieces: `lib/pageFocus`, `lib/useDocumentTitle`, `layout/{RouteFocus,SkipLink}`, `menuStep`,
   `SPACE_DRAG_KEYS`, `useInspectorFocus` / `PanelOpened`, `useFormCheck`'s `formRef`, `uploadProgress`, `countNotice`,
   `src/test/axe.ts`, `src/a11y.test.ts`; `Preferences.singleKeyShortcuts` (DB v32); rules in `CLAUDE.md`.
+- Final review (Opus): no critical, 7 important, all fixed with a test that failed first: the typeahead misplaced when
+  editing a message in a moved list row; page-change focus taking the search box's caret (⌘F, the channel's 🔍) and focus
+  moved while a heading loaded; closing a lower layer pulling focus out of the one open above it (and a panel pulling it
+  back from a row a person moved to); DeleteDialog's and LeaveGuard's `autoFocus` hiding their opener; a sheet opened
+  by address closing to nothing; `singleKeyShortcuts` missing from the API contract; nothing read after signing in. 12
+  minors deferred (listed in the session's report). Open for the user: the panel is modal below `sm`; 640–1279 px it
+  slides over the page without a trap.
 
