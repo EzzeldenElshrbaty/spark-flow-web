@@ -49,7 +49,7 @@ describe('DescriptionView (spec 5.2)', () => {
   it('files open in the viewer; a picture shows; a file the task no longer has says so', () => {
     const onOpen = vi.fn()
     render(<DescriptionView body={[{ type: 'file', id: 'a-1' }, { type: 'file', id: 'a-2' }, { type: 'file', id: 'a-gone' }]} files={[pdf, png]} onOpen={onOpen} />)
-    fireEvent.click(screen.getByRole('button', { name: 'flow.pdf' }))
+    fireEvent.click(screen.getByRole('button', { name: /^flow\.pdf/ }))
     expect(onOpen).toHaveBeenCalledWith(pdf)
     expect(screen.getByRole('img', { name: 'shot.png' }).getAttribute('src')).toBe('blob:http://localhost/a-2')
     expect(screen.getByText('This file was removed.')).toBeTruthy()

@@ -10,6 +10,24 @@ import { axeProblems } from './axe'
 /** The rule tags the audit ran axe with. */
 export const AUDIT_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice']
 
+const frame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+
+/**
+ * Waits until no animation or transition with an end is running (fades, a staggered entrance, a dim while a list
+ * refetches), so colours are measured as they end up; endless ones (a pulsing dot, a shimmer) don't count. Gives up
+ * after `ms` and lets the checks run on what's there.
+ */
+export async function untilQuiet(ms = 5000): Promise<void> {
+  const until = performance.now() + ms
+  for (;;) {
+    const running = document.getAnimations().filter((a) => a.playState === 'running' && Number.isFinite(a.effect?.getTiming().iterations ?? 1))
+    if (!running.length || performance.now() > until) break
+    await Promise.race([Promise.all(running.map((a) => a.finished.catch(() => undefined))), new Promise((resolve) => setTimeout(resolve, 250))])
+  }
+  await frame()
+  await frame()
+}
+
 const visible = (el: Element) => {
   const box = el.getBoundingClientRect()
   return box.width > 0 && box.height > 0 && getComputedStyle(el).visibility !== 'hidden'
@@ -47,6 +65,7 @@ export const missingH1 = () => !document.querySelector('h1')
 export async function pageProblems(handle: { consoleErrors: string[] }): Promise<string[]> {
   // Hover styles (a row that turns red under the pointer) aren't the page: the pointer moves to the top-left corner.
   await userEvent.hover(document.body, { position: { x: 0, y: 0 } })
+  await untilQuiet()
   const problems: string[] = []
   const wide = sidewaysScroll()
   if (wide) problems.push(wide)

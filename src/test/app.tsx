@@ -11,6 +11,7 @@ import { latency } from '@/mocks/latency'
 import { createQueryClient } from '@/lib/queryClient'
 import { ThemeProvider } from '@/lib/ThemeProvider'
 import { appRoutes } from '@/router'
+import { untilQuiet } from './uxChecks'
 import { ROLE_USER, SIZE, type Role, type Size, type Theme } from './setups'
 
 /**
@@ -42,8 +43,6 @@ function waitingFor(queryClient: QueryClient): string | null {
   if (document.querySelector('[aria-busy="true"]')) return 'a skeleton ([aria-busy])'
   return null
 }
-
-const frame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
 
 export async function renderApp(opts: { path: string; as: Role | null; theme: Theme; size: Size; routes?: RouteObject[] }): Promise<AppHandle> {
   cleanup()
@@ -90,17 +89,18 @@ export async function renderApp(opts: { path: string; as: Role | null; theme: Th
 
   const settled = async () => {
     const until = performance.now() + SETTLE_MS
-    let waiting = waitingFor(queryClient)
-    while (waiting) {
-      if (performance.now() > until) throw new Error(`The page didn’t settle at ${router.state.location.pathname}: still waiting for ${waiting}.`)
-      await new Promise((resolve) => setTimeout(resolve, 50))
-      waiting = waitingFor(queryClient)
+    // Data, then fades and slides (so contrast is measured on the final colours), and again until both hold at once:
+    // a second wave of data (a page's phases after its project) starts new fades.
+    for (;;) {
+      let waiting = waitingFor(queryClient)
+      while (waiting) {
+        if (performance.now() > until) throw new Error(`The page didn’t settle at ${router.state.location.pathname}: still waiting for ${waiting}.`)
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        waiting = waitingFor(queryClient)
+      }
+      await untilQuiet(Math.max(0, until - performance.now()))
+      if (!waitingFor(queryClient) || performance.now() > until) break
     }
-    // Fades and slides finish first, so contrast is measured on the final colours; endless ones (a pulsing dot) don't count.
-    const finite = document.getAnimations().filter((a) => Number.isFinite(a.effect?.getTiming().iterations ?? 1))
-    await Promise.all(finite.map((a) => a.finished.catch(() => undefined)))
-    await frame()
-    await frame()
   }
   return { router, queryClient, consoleErrors, settled }
 }

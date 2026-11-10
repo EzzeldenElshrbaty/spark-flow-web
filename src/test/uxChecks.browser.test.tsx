@@ -1,5 +1,6 @@
 import '@/index.css'
 import { cleanup, render, screen } from '@testing-library/react'
+import { useEffect, useState } from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { axeProblems } from './axe'
@@ -13,6 +14,15 @@ afterEach(async () => {
 })
 
 const clean = { consoleErrors: [] as string[] }
+
+/** Words that fade from pale to dark over 600 ms after they appear, as a staggered fade-in or a dimmed refetch does. */
+function Fading() {
+  const [dark, setDark] = useState(false)
+  useEffect(() => {
+    requestAnimationFrame(() => setDark(true))
+  }, [])
+  return <p style={{ color: dark ? '#111111' : '#dddddd', background: '#ffffff', transition: 'color 600ms linear' }}>Fading words</p>
+}
 
 describe('the page checks', () => {
   it('a box wider than a phone is a sideways scroll', async () => {
@@ -71,6 +81,17 @@ describe('the page checks', () => {
       </main>,
     )
     expect(await pageProblems(clean)).toContain('more than one primary button: Save, Create')
+  })
+
+  it('waits for colours to finish changing before it checks contrast', async () => {
+    render(
+      <main>
+        <h1>Page</h1>
+        <Fading />
+      </main>,
+    )
+    await new Promise((resolve) => setTimeout(resolve, 60))
+    expect(await pageProblems(clean)).toEqual([])
   })
 
   it('finds a spinner', () => {

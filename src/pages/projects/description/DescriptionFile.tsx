@@ -23,8 +23,10 @@ function Chip({ file, onOpen }: { file: DescFile; onOpen?: () => void }) {
     </>
   )
   const cls = 'inline-flex max-w-full items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-start'
+  // Named by what it shows (title and size), so the name contains the visible words (UX Phase 6: axe's
+  // label-content-name-mismatch).
   return onOpen ? (
-    <button type="button" onClick={onOpen} aria-label={file.title} className={clsx(cls, 'hover:bg-surface-muted')}>
+    <button type="button" onClick={onOpen} className={clsx(cls, 'hover:bg-surface-muted')}>
       {inner}
     </button>
   ) : (
