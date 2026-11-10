@@ -101,7 +101,8 @@ export const workspacePages: RouteObject[] = [
   { path: 'help/:chapter', element: <HelpPage /> },
 ]
 
-export const router = createBrowserRouter([
+/** Every route of the app; the browser router below and the whole-app tests (`src/test/app.tsx`, UX Phase 6) use it. */
+export const appRoutes: RouteObject[] = [
   ...devRoutes(),
   // Sign in (slice AB): outside the shell, which needs someone signed in.
   {
@@ -125,4 +126,6 @@ export const router = createBrowserRouter([
       { path: '*', element: <NotFound what="page" backTo="/" backLabel="Back to Dashboard" /> },
     ],
   },
-])
+]
+
+export const router = createBrowserRouter(appRoutes)
