@@ -138,6 +138,11 @@ describe('Channel details: About (spec 6.10)', () => {
     expect(within(card('Description')).getByRole('alert').textContent).toBe('Keep the description under 250 characters.')
   })
 
+  it('opens with the description being edited (chat spec 6.14, the intro)', () => {
+    show({ channel: { ...backend, description: '' }, editDescription: true })
+    expect(document.activeElement).toBe(within(card('Description')).getByRole('textbox', { name: 'Description' }))
+  })
+
   it('opened from Add a topic, the topic field is open and has the caret', () => {
     show({ channel: { ...backend, topic: '' }, editTopic: true })
     expect(document.activeElement).toBe(within(card('Topic')).getByRole('textbox', { name: 'Topic' }))

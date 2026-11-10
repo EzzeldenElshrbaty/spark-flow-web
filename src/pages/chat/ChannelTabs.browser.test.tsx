@@ -1,6 +1,7 @@
 import '@/index.css'
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
+import { MemoryRouter } from 'react-router'
 import { page, userEvent } from 'vitest/browser'
 import type { Bookmark } from '@/api/types'
 import { ChannelTabs } from '@/pages/chat/ChannelTabs'
@@ -18,10 +19,12 @@ const two = [bookmark(1, 'Runbook'), bookmark(2, 'API dashboard')]
 
 function mount(bookmarks: Bookmark[]) {
   render(
-    <div className="sf">
-      <ChannelTabs channel={{ kind: 'channel' }} tab="messages" onChange={() => {}} panelId="p" pinCount={2} bookmarks={bookmarks} onAddBookmark={async () => {}} />
-      <div id="p" role="tabpanel" aria-label="Messages" />
-    </div>,
+    <MemoryRouter>
+      <div className="sf">
+        <ChannelTabs channel={{ kind: 'channel' }} tab="messages" onChange={() => {}} panelId="p" pinCount={2} bookmarks={bookmarks} onAddBookmark={async () => {}} />
+        <div id="p" role="tabpanel" aria-label="Messages" />
+      </div>
+    </MemoryRouter>,
   )
 }
 
@@ -75,5 +78,15 @@ describe('the bookmarks row on phones', () => {
     await page.viewport(390, 844)
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Add a bookmark' })).toBeNull())
     expect((within(screen.getByRole('dialog', { name: 'Add a bookmark' })).getByRole('textbox', { name: 'Address' }) as HTMLInputElement).value).toBe('wiki.spark-sys.com')
+  })
+})
+
+describe('bookmarks to Flow (chat spec 6.14 §8)', () => {
+  it('a bookmark to Flow opens in Flow; others in a new tab', async () => {
+    mount([{ ...bookmark(1, 'Nexus Core'), url: `${location.origin}/w/engineering/p/NEX/overview` }, bookmark(2, 'Runbook')])
+    const flow = screen.getByRole('link', { name: 'Nexus Core' })
+    expect(flow.getAttribute('target')).toBeNull()
+    expect(flow.getAttribute('href')).toBe('/w/engineering/p/NEX/overview')
+    expect(screen.getByRole('link', { name: 'Runbook' }).getAttribute('target')).toBe('_blank')
   })
 })

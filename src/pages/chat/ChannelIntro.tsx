@@ -103,7 +103,7 @@ export function ChannelIntro({ channel, people, me, project, can, linkable, now 
       </p>
       {channel.description && <p className="sf-body mt-1 max-w-[640px] text-sf-text-secondary">{channel.description}</p>}
       {(may.addPeople || may.template || links.length > 0) && (
-        <div className="flex flex-wrap gap-2 pt-4 max-md:gap-3">
+        <div className="flex flex-wrap gap-2 pt-4 max-md:gap-x-3 max-md:gap-y-5 max-md:pt-6">
           {may.addPeople && (
             <Button icon={IconUserPlus} touch onClick={onAddPeople}>
               Add people

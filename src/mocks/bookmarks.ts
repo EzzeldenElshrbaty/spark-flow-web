@@ -1,4 +1,5 @@
 import type { Api, Bookmark } from '@/api/types'
+import { appPath } from '@/lib/appLink'
 import { webAddress } from '@/lib/webAddress'
 import { checkCanWrite, findChannel, readableChannel } from './chat'
 import type { DbData, MockDb } from './db'
@@ -10,7 +11,8 @@ const TITLE_MAX = 60
 
 /** A bookmark's address (http or https only) and title (the host when left empty). */
 function checked(input: { title?: string; url?: string }, current?: Bookmark): { title: string; url: string } {
-  const url = input.url === undefined && current ? current.url : webAddress(input.url ?? '')
+  // An address on Flow's own origin (Link a project, chat spec 6.14) is a bookmark too, even on a dotless host.
+  const url = input.url === undefined && current ? current.url : (webAddress(input.url ?? '') ?? (appPath(input.url ?? '') ? input.url! : null))
   if (!url) throw badRequest('Use a web address (https://…).')
   const title = (input.title === undefined && current ? current.title : (input.title ?? '').trim()) || new URL(url).hostname
   if (title.length > TITLE_MAX) throw badRequest(`Keep the name under ${TITLE_MAX} characters.`)

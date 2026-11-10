@@ -35,6 +35,12 @@ async function press(button: HTMLElement) {
 
 const mainButton = async (name: string | RegExp) => press(await within(main()).findByRole('button', { name }))
 const anyButton = async (name: string | RegExp) => press((await screen.findAllByRole('button', { name }))[0]!)
+/** A channel's intro is at the very start of its history (chat spec 6.14): the list scrolls there first. */
+async function fromIntro(name: string) {
+  const log = await screen.findByRole('log')
+  log.scrollTop = 0
+  return anyButton(name)
+}
 
 async function viaMenu(trigger: string | RegExp, item: string) {
   const button = (await screen.findAllByRole('button', { name: trigger }))[0]!
@@ -110,6 +116,7 @@ const LAYERS: Layer[] = [
   { name: 'Start timer', path: '/w/engineering/c/c-general', open: () => anyButton('Start timer'), kind: 'modal' },
   { name: 'Add a bookmark', path: '/w/engineering/c/c-general', open: () => anyButton('Add a bookmark'), kind: 'modal' },
   { name: 'Page history', path: '/w/engineering/c/c-general?tab=page', open: () => anyButton('History'), kind: 'modal' },
+  { name: 'Pick a template', path: '/w/engineering/c/c-general', open: () => fromIntro('Pick a template'), kind: 'modal' },
   {
     name: 'Jump to a date',
     path: '/w/engineering/c/c-general',

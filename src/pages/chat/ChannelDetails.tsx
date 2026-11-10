@@ -59,6 +59,7 @@ export function ChannelDetails({
   rights,
   tab: firstTab,
   editTopic = false,
+  editDescription = false,
   addPeople,
   bookmarks = [],
   onUpdateBookmark,
@@ -96,6 +97,8 @@ export function ChannelDetails({
   tab: DetailsTab
   /** Opened from "Add a topic": the topic field starts open. */
   editTopic?: boolean
+  /** Opened from the channel's intro (chat spec 6.14): the description field starts open. */
+  editDescription?: boolean
   /** /invite: open on Add people with these people filled in (spec 6.8). */
   addPeople?: string[]
   /** The Tabs tab: the channel's bookmarks; Rename and Remove where I may post. */
@@ -181,7 +184,7 @@ export function ChannelDetails({
       <div id={panelId} role="tabpanel" aria-label={tabs.find((t) => t.id === tab)!.label} className="pt-4">
         {/* About stays mounted behind the other tabs: an open draft survives a switch, and "Add a topic" opens once. */}
         <div hidden={tab !== 'about'}>
-          <About channel={channel} takenNames={takenNames} project={project} rights={rights} editTopic={editTopic} onSave={onSave} onCopyLink={onCopyLink} onLeave={onLeave} />
+          <About channel={channel} takenNames={takenNames} project={project} rights={rights} editTopic={editTopic} editDescription={editDescription} onSave={onSave} onCopyLink={onCopyLink} onLeave={onLeave} />
         </div>
         {tab === 'members' && (
           <Members
@@ -352,6 +355,7 @@ function About({
   project,
   rights,
   editTopic,
+  editDescription,
   onSave,
   onCopyLink,
   onLeave,
@@ -361,6 +365,7 @@ function About({
   project: { name: string; key: string; href: string } | null
   rights: { manage: boolean; leave: boolean }
   editTopic: boolean
+  editDescription: boolean
   onSave: (patch: ChannelPatch) => Promise<unknown>
   onCopyLink: () => Promise<void>
   onLeave: () => void
@@ -372,8 +377,8 @@ function About({
     return () => clearTimeout(timer)
   }, [copied])
   const nameError = (name: string) => channelFormErrors({ name, topic: '', isPrivate: false, memberIds: [] }, takenNames).name
-  // One card edits at a time; opened from "Add a topic", the topic's field starts open.
-  const [editing, setEditing] = useState<'name' | 'topic' | 'description' | null>(editTopic ? 'topic' : null)
+  // One card edits at a time; opened from "Add a topic" (or the intro's description link), that field starts open.
+  const [editing, setEditing] = useState<'name' | 'topic' | 'description' | null>(editTopic ? 'topic' : editDescription ? 'description' : null)
   const cardState = (card: 'name' | 'topic' | 'description') => ({
     opened: editing === card,
     onOpen: (open: boolean) => setEditing((now) => (open ? card : now === card ? null : now)),

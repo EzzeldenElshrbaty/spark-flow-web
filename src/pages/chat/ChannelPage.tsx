@@ -38,6 +38,8 @@ import { ChannelHeader } from '@/pages/chat/ChannelHeader'
 import { ChannelDetails, detailsRights, type DetailsTab } from '@/pages/chat/ChannelDetails'
 import { ChannelTabs, tabFromParam, type ChannelTab } from '@/pages/chat/ChannelTabs'
 import { ChannelPageTab } from '@/pages/chat/page/ChannelPageTab'
+import { TemplatePicker } from '@/pages/chat/page/TemplatePicker'
+import { ChannelIntroRow } from '@/pages/chat/ChannelIntroRow'
 import { askToLeave } from '@/lib/unsavedChanges'
 import { ChannelPins } from '@/pages/chat/PinsTab'
 import { ChannelFiles } from '@/pages/chat/files/FilesTab'
@@ -94,6 +96,7 @@ export function ChannelView({ channelId, hideTabs = [] }: { channelId: string | 
   const [details, setDetails] = useState<OpenDetails | null>(null)
   // /remind: the words to be reminded of, while Set a reminder is open.
   const [reminding, setReminding] = useState<string | null>(null)
+  const [pickingTemplate, setPickingTemplate] = useState(false)
   const noteReminder = useNoteReminder()
   const [params, setParams] = useSearchParams()
   const asked = channel.data ? tabFromParam(params.get('tab'), channel.data) : 'messages'
@@ -175,6 +178,17 @@ export function ChannelView({ channelId, hideTabs = [] }: { channelId: string | 
         key={current.id}
         channel={current}
         title={title}
+        intro={
+          <ChannelIntroRow
+            channel={current}
+            people={people}
+            me={persona.id}
+            ws={ws}
+            onAddPeople={() => setDetails({ tab: 'members' })}
+            onEditDescription={() => setDetails({ tab: 'about', editDescription: true })}
+            onPickTemplate={() => setPickingTemplate(true)}
+          />
+        }
         users={people}
         usersLoading={users.isLoading}
         meId={persona.id}
@@ -222,6 +236,7 @@ export function ChannelView({ channelId, hideTabs = [] }: { channelId: string | 
       )}
       </div>
       {fromMessage.sheet}
+      {pickingTemplate && <TemplatePicker channelId={current.id} onClose={() => setPickingTemplate(false)} onAdded={() => setTab('page')} />}
       {reminding !== null && (
         <RemindDialog
           initialText={reminding}
@@ -243,7 +258,7 @@ function Padded({ children }: { children: ReactNode }) {
 
 /** The header and tabs, with what they open: Channel details, Archive, and errors from their actions near them. */
 /** Channel details as opened: the tab, and what /topic and /invite start it with. */
-type OpenDetails = { tab: DetailsTab; editTopic?: boolean; addPeople?: string[] }
+type OpenDetails = { tab: DetailsTab; editTopic?: boolean; editDescription?: boolean; addPeople?: string[] }
 
 function ChannelTop({
   channel,
@@ -368,6 +383,7 @@ function ChannelTop({
           rights={allowed}
           tab={details.tab}
           editTopic={details.editTopic}
+          editDescription={details.editDescription}
           addPeople={details.addPeople}
           bookmarks={bookmarks.data}
           onUpdateBookmark={mayBookmark ? (id, patch) => updateBookmark.mutateAsync({ id, patch }) : undefined}
@@ -415,9 +431,12 @@ function PaneFeed({
   canPost,
   messageActions,
   composer,
+  intro,
 }: {
   channel: Channel
   title: string
+  /** The channel's intro (chat spec 6.14), at the very start of its history. */
+  intro: ReactNode
   users: User[]
   usersLoading: boolean
   meId: string
@@ -507,6 +526,7 @@ function PaneFeed({
           pending={pending}
           onRetry={queue.retry}
           onDiscard={queue.discard}
+          intro={intro}
         />
       )}
       {jumpError && <p className="sf sf-small flex-none px-4 pt-2 text-sf-error md:px-6">{jumpError}</p>}
