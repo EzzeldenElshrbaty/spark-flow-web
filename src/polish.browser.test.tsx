@@ -93,4 +93,14 @@ describe('polish', () => {
     expect(getComputedStyle(column).overflowY).toBe('auto')
     expect(parseFloat(getComputedStyle(column).scrollPaddingTop)).toBeGreaterThanOrEqual(bar.getBoundingClientRect().height)
   })
+
+  it('a jump to a section lands just under the sticky rows, not lower (UX Phase 6, final review)', async () => {
+    const app = await renderApp({ path: '/w/engineering/dashboard', as: 'admin', theme: 'light', size: 'phone' })
+    await app.settled()
+    const target = document.getElementById('attention')!
+    target.scrollIntoView()
+    const padding = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop)
+    expect(target.getBoundingClientRect().top).toBeLessThanOrEqual(padding + 2)
+  })
 })
+

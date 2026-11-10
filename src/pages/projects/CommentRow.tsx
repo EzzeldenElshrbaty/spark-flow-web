@@ -47,7 +47,8 @@ export function CommentRow({ comment, author, mine }: { comment: CommentView; au
                 onClick={() => setOpen((v) => !v)}
                 aria-haspopup="menu"
                 aria-expanded={open}
-                className="sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+                // Shown while its menu is open too: the menu is drawn outside the row (UX Phase 6, final review).
+                className="sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 sm:aria-expanded:opacity-100"
               />
               <MenuPanel open={open} onClose={() => setOpen(false)} triggerRef={triggerRef} label="Comment actions" className="p-1.5 sm:w-52">
                 <button

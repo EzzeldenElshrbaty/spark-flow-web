@@ -17,13 +17,14 @@ export type ToastInput = {
 }
 
 type ToastState = (ToastInput & { id: number }) | null
-const Ctx = createContext<{ toast: ToastState; show: (t: ToastInput) => void; dismiss: () => void } | null>(null)
+const Ctx = createContext<{ toast: ToastState; show: (t: ToastInput) => void; dismiss: (id: number) => void } | null>(null)
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toast, setToast] = useState<ToastState>(null)
   const next = useRef(0)
   const show = useCallback((t: ToastInput) => setToast({ ...t, id: ++next.current }), [])
-  const dismiss = useCallback(() => setToast(null), [])
+  // By id: an older toast's Undo finishing late doesn't close a newer one (UX Phase 6, final review).
+  const dismiss = useCallback((id: number) => setToast((current) => (current?.id === id ? null : current)), [])
   return <Ctx.Provider value={{ toast, show, dismiss }}>{children}</Ctx.Provider>
 }
 
@@ -43,7 +44,7 @@ export function ToastRegion() {
   const { toast, dismiss } = ctx
   return (
     <div role="status" aria-live="polite" className="sf pointer-events-none fixed inset-x-4 bottom-24 z-[var(--z-toast)] lg:absolute lg:inset-x-auto lg:start-4 lg:bottom-4">
-      {toast && <Toast key={toast.id} toast={toast} onDismiss={dismiss} />}
+      {toast && <Toast key={toast.id} toast={toast} onDismiss={() => dismiss(toast.id)} />}
     </div>
   )
 }
@@ -52,6 +53,11 @@ function Toast({ toast, onDismiss }: { toast: ToastInput; onDismiss: () => void 
   const [paused, setPaused] = useState(0) // counts hover + focus
   const [running, setRunning] = useState(false)
   const [failed, setFailed] = useState<string | null>(null)
+  const root = useRef<HTMLDivElement>(null)
+  // The Undo pressed is gone once it fails: focus goes to Dismiss, beside the sentence, not to the page.
+  useEffect(() => {
+    if (failed) root.current?.querySelector<HTMLButtonElement>('button[aria-label="Dismiss"]')?.focus()
+  }, [failed])
   const act = (action: NonNullable<ToastInput['action']>) => {
     const result = action.onAction()
     if (!(result instanceof Promise)) return onDismiss()
@@ -80,6 +86,7 @@ function Toast({ toast, onDismiss }: { toast: ToastInput; onDismiss: () => void 
 
   return (
     <div
+      ref={root}
       onPointerEnter={pause}
       onPointerLeave={resume}
       onFocus={pause}

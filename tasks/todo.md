@@ -2998,4 +2998,17 @@ Plan: `docs/superpowers/plans/2026-11-10-ux-phase-6-checks-and-polish.md`. Branc
   phase picks, the column strip, Time & cost's dimming, Files after a failed refresh, the composer's length line,
   repeated upload notices, the column move instructions, focus after Skip, tab titles, the panel's title focus).
   Left out: the mentions scan cost (backend) and one old test flake.
+- Final review (Opus): ready with fixes. Fixed, each with a test that failed first: a long menu scrolled back to its
+  first item (focus once per opening; a scroll inside it changes nothing); a menu now closes when its trigger scrolls
+  out of sight instead of floating over the top bar; a menu inside the task panel below 1280px is drawn in that modal
+  dialog; Start timer puts the caret on what's missing and reads why; a failed Undo moves focus to Dismiss and an
+  older Undo can't close a newer toast; a comment's ⋯ stays shown while its menu is open; jump targets (Dashboard,
+  Help) lost their own scroll margins, which now add to the page's. Gates after: lint clean, `npm test` 3,019/3,019,
+  `npm run test:ux` 968/968, `build:prototype` passes.
+- Open design question: on a 390 px phone the channel's tab row leaves the bookmark strip about 19 px, so bookmarks
+  and Add a bookmark sit scrolled out of view (one fix: the strip on its own row under the tabs on phones).
+- Deferred minors: the task panel takes focus only once its title loads (seconds with a slow backend); the
+  walkthroughs reach pages by address, not the phone's More, and check a few results by their announcement; the
+  in-memory UI store and the mock data aren't reset between matrix loads; `settled()` can give up without saying so;
+  Start timer can say "No open tasks" while projects load; a menu reads its direction from its trigger, not the page.
 

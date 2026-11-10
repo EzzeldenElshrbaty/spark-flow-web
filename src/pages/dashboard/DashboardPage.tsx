@@ -226,7 +226,7 @@ export function DashboardPage() {
             </div>
             {seesWorking && (
               // The Working now tile leads here (#working-now, UX Phase 4, 4.6).
-              <div id="working-now" className="scroll-mt-20 xl:w-80 xl:shrink-0 xl:self-start">
+              <div id="working-now" className="xl:w-80 xl:shrink-0 xl:self-start">
                 <Card>
                   <CardHeader title="Working now" />
                   {working.isError ? (

@@ -50,6 +50,17 @@ describe('labels only where they’re read (5.12)', () => {
   })
 })
 
+describe('menu triggers that show on hover (UX Phase 6, final review)', () => {
+  it('stay shown while their menu is open: the menu is drawn outside their row', () => {
+    const found = files.flatMap(({ file, source }) =>
+      [...source.matchAll(/className="[^"]*sm:opacity-0[^"]*"/g)]
+        .filter((m) => source.slice(Math.max(0, m.index! - 400), m.index!).includes('aria-expanded') && !m[0].includes('aria-expanded:opacity-100'))
+        .map((m) => `${file}: ${m[0]}`),
+    )
+    expect(found).toEqual([])
+  })
+})
+
 describe('reduced motion (5.13)', () => {
   it('skeletons stop pulsing for people who ask for less motion, everywhere, not only in chat', () => {
     const css = readFileSync(join(SRC, 'index.css'), 'utf8')

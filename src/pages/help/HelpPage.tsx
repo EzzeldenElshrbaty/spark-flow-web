@@ -87,7 +87,7 @@ export function HelpPage() {
   }
 
   return (
-    <div ref={top} className="scroll-mt-24">
+    <div ref={top}>
       <header className="mb-5 flex flex-col gap-4 border-b border-line-subtle pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
           <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-accent">

@@ -1,6 +1,6 @@
 import '@/index.css'
-import { cleanup, render, screen } from '@testing-library/react'
-import { useRef } from 'react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { useRef, useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { page } from 'vitest/browser'
 import { MenuPanel } from '@/components/ui/Menu'
@@ -35,6 +35,35 @@ function Open({ fromTop, height, scrolls }: { fromTop: number; height: number; s
       {/* A list that scrolls has more below (UX Phase 6: the menu keeps inside lists that scroll, not ones that don't). */}
       {scrolls && <div style={{ height: 1000 }} />}
     </div>
+  )
+}
+
+/** A long menu (12 items) in a list that scrolls, closing itself as its owner would. */
+function Long({ inModal = false }: { inModal?: boolean }) {
+  const trigger = useRef<HTMLButtonElement>(null)
+  const [open, setOpen] = useState(true)
+  const list = (
+    <div data-testid="list" style={{ height: 300, overflowY: 'auto' }}>
+      <div style={{ height: 40 }} />
+      <div className="relative">
+        <button ref={trigger}>Column actions</button>
+        <MenuPanel open={open} onClose={() => setOpen(false)} triggerRef={trigger} label="Column actions">
+          {Array.from({ length: 12 }, (_, i) => (
+            <button key={i} role="menuitem" style={{ display: 'block', height: 40, width: 160 }}>
+              Item {i + 1}
+            </button>
+          ))}
+        </MenuPanel>
+      </div>
+      <div style={{ height: 1000 }} />
+    </div>
+  )
+  return inModal ? (
+    <div role="dialog" aria-modal="true" aria-label="Task">
+      {list}
+    </div>
+  ) : (
+    list
   )
 }
 
@@ -113,6 +142,35 @@ describe('MenuPanel: where it opens', () => {
       const r = item.getBoundingClientRect()
       expect(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2), name).toBe(item)
     }
+  })
+
+  it('scrolling inside a long menu keeps the item you moved to (UX Phase 6, final review)', async () => {
+    await page.viewport(1280, 420)
+    render(<Long />)
+    await untilQuiet()
+    for (let i = 0; i < 6; i++) fireEvent.keyDown(screen.getByRole('menu'), { key: 'ArrowDown' })
+    const seventh = screen.getByRole('menuitem', { name: 'Item 7' })
+    expect(document.activeElement).toBe(seventh)
+    const menu = screen.getByRole('menu')
+    menu.scrollTop = 120
+    fireEvent.scroll(menu)
+    await new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
+    expect(document.activeElement).toBe(seventh)
+  })
+
+  it('closes when its trigger scrolls out of its list, rather than float over the page (UX Phase 6, final review)', async () => {
+    render(<Long />)
+    await untilQuiet()
+    const list = screen.getByTestId('list')
+    list.scrollTop = 200
+    fireEvent.scroll(list)
+    await new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
+    expect(screen.queryByRole('menu')).toBeNull()
+  })
+
+  it('inside a modal dialog it is drawn in that dialog, so screen readers reach it (UX Phase 6, final review)', () => {
+    render(<Long inModal />)
+    expect(screen.getByRole('menu').closest('[aria-modal="true"]')).toBe(screen.getByRole('dialog', { name: 'Task' }))
   })
 })
 

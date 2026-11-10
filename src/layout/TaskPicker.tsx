@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { useEffect, useId, useState, type KeyboardEvent } from 'react'
+import { useEffect, useId, useState, type KeyboardEvent, type Ref } from 'react'
 import type { TargetGroup, TimerTarget } from './timerTargets'
 
 const field =
@@ -18,6 +18,9 @@ export function TaskPicker({
   busy = false,
   tasks = 'ready',
   onRetry,
+  invalid = false,
+  describedBy,
+  boxRef,
 }: {
   groups: TargetGroup[]
   query: string
@@ -28,6 +31,10 @@ export function TaskPicker({
   /** Whether the tasks behind the list have loaded: an empty list only says "No open tasks" once they have (UX Phase 6). */
   tasks?: 'loading' | 'failed' | 'ready'
   onRetry?: () => void
+  /** Start was pressed with nothing picked: the box is marked and reads why (`describedBy`), and takes the caret. */
+  invalid?: boolean
+  describedBy?: string
+  boxRef?: Ref<HTMLInputElement>
 }) {
   const ids = useId()
   const flat = groups.flatMap((g) => g.targets)
@@ -63,6 +70,9 @@ export function TaskPicker({
         aria-controls={`${ids}-list`}
         aria-autocomplete="list"
         aria-activedescendant={flat.length ? optionId(at) : undefined}
+        aria-invalid={invalid || undefined}
+        aria-describedby={describedBy}
+        ref={boxRef}
         autoComplete="off"
         className={field}
         placeholder="Search keys, titles and projects…"

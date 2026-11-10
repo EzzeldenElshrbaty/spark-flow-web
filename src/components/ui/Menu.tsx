@@ -99,34 +99,56 @@ export function MenuPanel({
     const trigger = triggerRef.current
     const panel = panelRef.current
     if (!open || !trigger || !panel) return
+    const same = (a: Place | null, b: Place) => a !== null && a.above === b.above && a.maxHeight === b.maxHeight && a.top === b.top && a.bottom === b.bottom && a.end === b.end
     const measure = () => {
       const room = roomForMenu(trigger)
       const box = trigger.getBoundingClientRect()
       const above = !phone && panel.offsetHeight + GAP + EDGE > room.below && room.above > room.below
       const rtl = getComputedStyle(trigger).direction === 'rtl'
-      setPlace({
+      const next: Place = {
         above,
         maxHeight: Math.max(MIN_HEIGHT, (above ? room.above : room.below) - GAP - EDGE),
         ...(above ? { bottom: window.innerHeight - box.top + GAP } : { top: box.bottom + GAP }),
         // Against the trigger's end edge, but never past either edge of the window.
         end: Math.max(EDGE, Math.min(rtl ? box.left : document.documentElement.clientWidth - box.right, document.documentElement.clientWidth - panel.offsetWidth - EDGE)),
-      })
+      }
+      // Unchanged, it stays the same object: nothing re-renders (and nothing moves focus).
+      setPlace((last) => (same(last, next) ? last : next))
     }
     measure()
     if (phone) return () => setPlace(null)
-    // It sits in the window, so it moves with its trigger when the page or a list scrolls.
-    window.addEventListener('scroll', measure, true)
+    // It sits in the window, so it moves with its trigger when the page or a list scrolls; once its trigger has
+    // scrolled out of sight (out of its list, under the top bar), it closes rather than float over the page. A scroll
+    // inside the panel itself changes nothing (UX Phase 6, final review).
+    const triggerSeen = () => {
+      const room = roomForMenu(trigger)
+      const box = trigger.getBoundingClientRect()
+      const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)
+      return room.above >= 0 && room.below >= 0 && Boolean(hit && (trigger.contains(hit) || panel.contains(hit)))
+    }
+    const onScroll = (event: Event) => {
+      if (event.target instanceof Node && panel.contains(event.target)) return
+      if (!triggerSeen()) onCloseRef.current()
+      else measure()
+    }
+    window.addEventListener('scroll', onScroll, true)
     window.addEventListener('resize', measure)
     return () => {
-      window.removeEventListener('scroll', measure, true)
+      window.removeEventListener('scroll', onScroll, true)
       window.removeEventListener('resize', measure)
       setPlace(null)
     }
   }, [open, phone, triggerRef])
-  // Focus the first item once placed: focusing it where it was first drawn would scroll the list to it.
+  // Focus the first item once it's placed, once per opening: focusing it where it was first drawn would scroll the
+  // list to it, and again later would undo a move down the menu (UX Phase 6, final review).
+  const focused = useRef(false)
   useEffect(() => {
-    if (place) panelRef.current?.querySelector<HTMLElement>('button:not(:disabled)')?.focus()
-  }, [place])
+    if (!open) focused.current = false
+    else if (place && !focused.current) {
+      focused.current = true
+      panelRef.current?.querySelector<HTMLElement>('button:not(:disabled)')?.focus()
+    }
+  }, [open, place])
 
   useEffect(() => {
     if (!open) return
@@ -213,6 +235,7 @@ export function MenuPanel({
     </>
   )
   // At the page level: the top bar's blur would trap a fixed sheet inside it on phones, and a table cell or a box that
-  // clips would cut off a desktop panel (UX Phase 6).
-  return createPortal(content, document.body)
+  // clips would cut off a desktop panel (UX Phase 6). Inside a modal dialog (the task panel below 1280px), it's drawn
+  // in that dialog, so screen readers that keep to the dialog still reach it (final review).
+  return createPortal(content, triggerRef.current?.closest<HTMLElement>('[aria-modal="true"]') ?? document.body)
 }

@@ -147,7 +147,7 @@ function OverdueTasks({ overdue, projectName, people }: { overdue: Overdue[]; pr
 
   return (
     // The Overdue tile leads here (#attention, UX Phase 4, 4.6).
-    <section id="attention" className="mb-6 min-w-0 scroll-mt-20" aria-labelledby="dashboard-overdue">
+    <section id="attention" className="mb-6 min-w-0" aria-labelledby="dashboard-overdue">
       <h2 id="dashboard-overdue" tabIndex={-1} className="mb-3 text-sm font-semibold text-fg outline-none">
         {overdue.length ? `${plural(overdue.length, 'task needs', 'tasks need')} attention` : 'No tasks need attention'}
       </h2>

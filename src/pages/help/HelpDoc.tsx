@@ -55,7 +55,7 @@ export function HelpDoc({ blocks, compact = false, ...links }: { blocks: HelpBlo
         switch (block.type) {
           case 'h2':
             return (
-              <h3 key={i} id={block.id} className={clsx('scroll-mt-24 font-semibold text-fg', compact ? 'pt-2 text-sm' : 'pt-4 text-lg')}>
+              <h3 key={i} id={block.id} className={clsx('font-semibold text-fg', compact ? 'pt-2 text-sm' : 'pt-4 text-lg')}>
                 {block.text}
               </h3>
             )

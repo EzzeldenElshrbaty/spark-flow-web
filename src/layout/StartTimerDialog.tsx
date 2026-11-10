@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useTasksOf } from '@/api/tickets'
 import { useMyDay, useStartTimer } from '@/api/time'
 import { useMe } from '@/api/users'
@@ -63,7 +63,14 @@ export function StartTimerDialog({ open, onClose, title = 'Start timer' }: { ope
   }
   const project = projects.find((p) => p.id === projectId)
   const ready: TimerTarget | null = projectOnly ? (project ? { kind: 'project', id: project.id, projectId: project.id, label: project.name, detail: 'The project only' } : null) : chosen
-  const startNow = () => (ready ? go(ready) : setTried(true))
+  const boxRef = useRef<HTMLInputElement>(null)
+  const projectRef = useRef<HTMLSelectElement>(null)
+  // Nothing to start: say what's missing under it, and put the caret there (UX Phase 6, final review).
+  const startNow = () => {
+    if (ready) return go(ready)
+    setTried(true)
+    ;(projectOnly ? projectRef : boxRef).current?.focus()
+  }
   const missing = tried && !ready
   const switchTo = (only: boolean) => {
     setProjectOnly(only)
@@ -101,6 +108,7 @@ export function StartTimerDialog({ open, onClose, title = 'Start timer' }: { ope
                 Project
               </label>
               <select
+                ref={projectRef}
                 id={`${ids}-project`}
                 className={field}
                 value={projectId}
@@ -135,8 +143,15 @@ export function StartTimerDialog({ open, onClose, title = 'Start timer' }: { ope
                 busy={start.isPending}
                 tasks={tasksOf.isPending ? 'loading' : tasksOf.isError ? 'failed' : 'ready'}
                 onRetry={tasksOf.refetch}
+                invalid={missing}
+                describedBy={missing ? `${ids}-missing-task` : undefined}
+                boxRef={boxRef}
               />
-              {missing && <p className="sf-small mt-1 mb-0 text-sf-error">Pick a task.</p>}
+              {missing && (
+                <p id={`${ids}-missing-task`} className="sf-small mt-1 mb-0 text-sf-error">
+                  Pick a task.
+                </p>
+              )}
               <button type="button" className={link} onClick={() => switchTo(true)}>
                 Log on the project only
               </button>

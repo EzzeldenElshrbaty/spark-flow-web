@@ -127,6 +127,9 @@ describe('StartTimerDialog (UX Phase 4, 4.3: find a task, start in two clicks)',
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Start timer' })))
     expect(start.mutate).not.toHaveBeenCalled()
     expect(screen.getByText('Pick a task.')).toBeTruthy()
+    expect(document.activeElement).toBe(box())
+    expect(box().getAttribute('aria-invalid')).toBe('true')
+    expect(screen.getByRole('combobox', { name: 'Find a task', description: 'Pick a task.' })).toBe(box())
   })
 
   it('Log on the project only: a project, then Start', async () => {
@@ -139,6 +142,9 @@ describe('StartTimerDialog (UX Phase 4, 4.3: find a task, start in two clicks)',
     expect(start.mutate).not.toHaveBeenCalled()
     expect(screen.getByText('Pick a project.')).toBeTruthy()
     expect(project.getAttribute('aria-invalid')).toBe('true')
+    // The caret goes to what's missing, which reads why (UX Phase 6, final review).
+    expect(document.activeElement).toBe(project)
+    expect(screen.getByRole('combobox', { name: 'Project', description: 'Pick a project.' })).toBe(project)
     fireEvent.change(project, { target: { value: 'p-nex' } })
     expect(screen.queryByText('Pick a project.')).toBeNull()
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Start timer' })))
