@@ -1,7 +1,6 @@
 import clsx from 'clsx'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
-import { roomAround } from '@/lib/roomAround'
 
 const phoneQuery = '(max-width: 639px)'
 /** The gap between the trigger and the panel (mt-2 / mb-2), and the panel's distance from the edge of its room. */
@@ -29,6 +28,28 @@ export function menuStep<T>(items: T[], active: T | null, key: string): T | null
   return null
 }
 
+/**
+ * Room above and below `el` in the window and every ancestor that scrolls up and down (a long list keeps its menus
+ * inside it). Ancestors that only hide what overflows them (a table cell, a box that scrolls sideways) don't count: the
+ * panel is drawn at the page level, out of their reach (UX Phase 6).
+ */
+function roomForMenu(el: HTMLElement) {
+  const { top, bottom } = el.getBoundingClientRect()
+  let start = 0
+  let end = window.innerHeight
+  for (let node = el.parentElement; node && node !== document.body; node = node.parentElement) {
+    const overflow = getComputedStyle(node).overflowY
+    if ((overflow !== 'auto' && overflow !== 'scroll') || node.scrollHeight <= node.clientHeight + 1) continue
+    const box = node.getBoundingClientRect()
+    start = Math.max(start, box.top)
+    end = Math.min(end, box.bottom)
+  }
+  return { above: top - start, below: end - bottom }
+}
+
+/** Where a desktop panel goes, in the window: against its trigger's end edge, under it or above it. */
+type Place = { above: boolean; maxHeight: number; top?: number; bottom?: number; end: number }
+
 /** True on phone widths. Phones get the menu as a bottom sheet rendered at the page level. */
 function usePhone() {
   const [phone, setPhone] = useState(() => window.matchMedia(phoneQuery).matches)
@@ -43,11 +64,12 @@ function usePhone() {
 
 /**
  * A dropdown panel for top-bar menus: anchored under its trigger on desktop (above it when it doesn't fit below,
- * as on a list's last row, and never past the room on that side), a bottom sheet on phones.
+ * as on a list's last row, and never past the room on that side), a bottom sheet on phones. Drawn at the page level on
+ * both, so a table cell or a box that clips can't cut it off (UX Phase 6: a table row's menu was hidden by its cell);
+ * on desktop it follows its trigger as the page scrolls.
  * Closes on Escape (focus back to the trigger) and outside clicks, and keeps Tab inside while open. A plain letter
  * picks the item that names it as its key (`aria-keyshortcuts`); ↓ ↑ Home End move between items, and a pick that
  * closes the menu gives focus back to the trigger, so a sheet it opens returns there too (UX Phase 5A, 5.5).
- * Render it inside a `relative` wrapper that also contains the trigger.
  */
 export function MenuPanel({
   open,
@@ -72,15 +94,34 @@ export function MenuPanel({
   })
   // Desktop: opens upward when it doesn't fit below its trigger and there's more room above, and is no taller than
   // the room on the side it opens to. Null until placed.
-  const [place, setPlace] = useState<{ above: boolean; maxHeight: number } | null>(null)
+  const [place, setPlace] = useState<Place | null>(null)
   useLayoutEffect(() => {
     const trigger = triggerRef.current
     const panel = panelRef.current
     if (!open || !trigger || !panel) return
-    const room = roomAround(trigger)
-    const above = !phone && panel.offsetHeight + GAP + EDGE > room.below && room.above > room.below
-    setPlace({ above, maxHeight: Math.max(MIN_HEIGHT, (above ? room.above : room.below) - GAP - EDGE) })
-    return () => setPlace(null)
+    const measure = () => {
+      const room = roomForMenu(trigger)
+      const box = trigger.getBoundingClientRect()
+      const above = !phone && panel.offsetHeight + GAP + EDGE > room.below && room.above > room.below
+      const rtl = getComputedStyle(trigger).direction === 'rtl'
+      setPlace({
+        above,
+        maxHeight: Math.max(MIN_HEIGHT, (above ? room.above : room.below) - GAP - EDGE),
+        ...(above ? { bottom: window.innerHeight - box.top + GAP } : { top: box.bottom + GAP }),
+        // Against the trigger's end edge, but never past either edge of the window.
+        end: Math.max(EDGE, Math.min(rtl ? box.left : document.documentElement.clientWidth - box.right, document.documentElement.clientWidth - panel.offsetWidth - EDGE)),
+      })
+    }
+    measure()
+    if (phone) return () => setPlace(null)
+    // It sits in the window, so it moves with its trigger when the page or a list scrolls.
+    window.addEventListener('scroll', measure, true)
+    window.addEventListener('resize', measure)
+    return () => {
+      window.removeEventListener('scroll', measure, true)
+      window.removeEventListener('resize', measure)
+      setPlace(null)
+    }
   }, [open, phone, triggerRef])
   // Focus the first item once placed: focusing it where it was first drawn would scroll the list to it.
   useEffect(() => {
@@ -141,11 +182,17 @@ export function MenuPanel({
         className={clsx(
           'z-50 overflow-y-auto border border-line bg-surface shadow-xl',
           'max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:max-h-[85vh] max-sm:rounded-t-2xl max-sm:pb-[env(safe-area-inset-bottom)] max-sm:motion-safe:animate-fade-up',
-          'sm:absolute sm:end-0 sm:max-h-[80vh] sm:rounded-xl sm:motion-safe:animate-pop-in',
-          place?.above ? 'sm:bottom-full sm:mb-2' : 'sm:top-full sm:mt-2',
+          'sm:fixed sm:max-h-[80vh] sm:rounded-xl sm:motion-safe:animate-pop-in',
           className,
         )}
-        style={place && !phone ? { maxHeight: `min(80vh, ${place.maxHeight}px)` } : undefined}
+        style={
+          phone
+            ? undefined
+            : place
+              ? { maxHeight: `min(80vh, ${place.maxHeight}px)`, top: place.top, bottom: place.bottom, insetInlineEnd: place.end }
+              : // Measured before it's placed: out of sight until then.
+                { visibility: 'hidden', top: 0, insetInlineEnd: 0 }
+        }
         onKeyDown={(event) => {
           const next = menuStep([...event.currentTarget.querySelectorAll<HTMLElement>(ITEMS)], document.activeElement as HTMLElement | null, event.key)
           if (next) {
@@ -165,6 +212,7 @@ export function MenuPanel({
       </div>
     </>
   )
-  // The top bar's blur would trap a fixed sheet inside it, so on phones the menu renders at the page level.
-  return phone ? createPortal(content, document.body) : content
+  // At the page level: the top bar's blur would trap a fixed sheet inside it on phones, and a table cell or a box that
+  // clips would cut off a desktop panel (UX Phase 6).
+  return createPortal(content, document.body)
 }
