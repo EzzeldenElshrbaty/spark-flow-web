@@ -160,7 +160,7 @@ export function TimerPill() {
       <Dot running={timer.state === 'running'} />
       {task && <bdi dir="ltr" className="font-mono text-xs">{task.key}</bdi>}
       {/* The title only where the top bar has room for it beside the search box; the key and clock always show. */}
-      <span className={clsx('max-w-48 truncate', task && 'hidden xl:inline')}>{label ?? <span aria-hidden className="inline-block h-3 w-24 animate-pulse rounded bg-sf-surface-hover align-middle" />}</span>
+      <span className={clsx('max-w-32 truncate 2xl:max-w-48', task && 'hidden xl:inline')}>{label ?? <span aria-hidden className="inline-block h-3 w-24 animate-pulse rounded bg-sf-surface-hover align-middle" />}</span>
       {/* Paused in words, not only by the dot's colour (UX Phase 5B, 5.10). */}
       {timer.state === 'paused' && <span className="text-sf-text-muted">Paused</span>}
       <span role="timer" className="tabular-nums">

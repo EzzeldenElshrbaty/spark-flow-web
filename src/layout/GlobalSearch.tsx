@@ -18,6 +18,9 @@ import { useWorkspaceMode } from '@/layout/useWorkspaceMode'
 import { paths } from '@/lib/paths'
 import { useFocusOnArrival } from '@/lib/openSearch'
 import { usePreferences } from '@/api/preferences'
+import { useRestoreFocus } from '@/components/sf/layers'
+import { useMedia } from '@/components/sf/usePhone'
+import { useMyTimer } from '@/layout/useMyTimer'
 
 // It jumps to pages, channels, DMs, projects, tasks and people; its last row (and ⌘/Ctrl+Enter) opens Search, which
 // looks through what people wrote (spec 6.12).
@@ -222,7 +225,20 @@ function useSearchTerm() {
   return [term, setTerm] as const
 }
 
-export function DesktopSearch() {
+/**
+ * Below 1280 while a timer runs the top bar has no room for the search box (the pill takes it): search is then the
+ * round button and its screen, as on a phone (UX Phase 5B, 5.3).
+ */
+export function useCompactSearch(): boolean {
+  const timer = useMyTimer()
+  const wide = useMedia('(min-width: 1280px)')
+  return Boolean(timer) && !wide
+}
+
+export function DesktopSearch({ onOpenScreen }: { onOpenScreen?: () => void } = {}) {
+  const compact = useCompactSearch()
+  const location = useLocation()
+  const navigate = useNavigate()
   const side = useWorkspaceMode()
   const [term, setTerm] = useSearchTerm()
   const [open, setOpen] = useState(false)
@@ -242,8 +258,16 @@ export function DesktopSearch() {
   })
   const keys = useKeyboard(groups, go, close)
 
-  // Sent here by the channel's 🔍, ⌘F or /search: the caret goes in the box, after the query.
+  // Sent here by the channel's 🔍, ⌘F or /search: the caret goes in the box, after the query; with the box folded away,
+  // the search screen opens instead (UX Phase 5B, 5.3).
   useFocusOnArrival(inputRef)
+  useEffect(() => {
+    if (!compact || (location.state as { focus?: string } | null)?.focus !== 'search') return
+    onOpenScreen?.()
+    navigate({ pathname: location.pathname, search: location.search, hash: location.hash }, { replace: true, state: null })
+    // Only on a new arrival.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.key, compact])
 
   // "/" can be turned off in Preferences → Keyboard (UX Phase 5A, 5.13); on while they load.
   const singleKeys = usePreferences().data?.singleKeyShortcuts ?? true
@@ -251,7 +275,8 @@ export function DesktopSearch() {
     const onKey = (event: globalThis.KeyboardEvent) => {
       if (opensSearch(event, singleKeys)) {
         event.preventDefault()
-        inputRef.current?.focus()
+        if (compact) onOpenScreen?.()
+        else inputRef.current?.focus()
       }
     }
     const onPointer = (event: PointerEvent) => {
@@ -263,10 +288,10 @@ export function DesktopSearch() {
       document.removeEventListener('keydown', onKey)
       document.removeEventListener('pointerdown', onPointer)
     }
-  }, [singleKeys])
+  }, [singleKeys, compact, onOpenScreen])
 
   return (
-    <div ref={boxRef} className="relative hidden w-full max-w-[440px] min-w-0 md:block">
+    <div ref={boxRef} className={clsx('relative hidden w-full max-w-[440px] min-w-0', !compact && 'md:block')}>
       <Icon icon={IconSearch} size={18} className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-sf-text-muted" />
       <input
         ref={inputRef}
@@ -325,6 +350,8 @@ export function DesktopSearch() {
 
 /** Phones: a round search button that opens search full screen. */
 export function PhoneSearch({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  // From tablets up the box is the way in, unless a running timer has folded it away (UX Phase 5B, 5.3).
+  const compact = useCompactSearch()
   return (
     <>
       <button
@@ -332,17 +359,19 @@ export function PhoneSearch({ open, onOpenChange }: { open: boolean; onOpenChang
         onClick={() => onOpenChange(true)}
         aria-label="Search"
         title="Search"
-        className={clsx(roundButton, 'md:hidden')}
+        className={clsx(roundButton, !compact && 'md:hidden')}
       >
         <Icon icon={IconSearch} />
       </button>
-      {open && createPortal(<SearchScreen onClose={() => onOpenChange(false)} />, document.body)}
+      {open && createPortal(<SearchScreen everywhere={compact} onClose={() => onOpenChange(false)} />, document.body)}
     </>
   )
 }
 
-function SearchScreen({ onClose }: { onClose: () => void }) {
-  const [term, setTerm] = useState('')
+function SearchScreen({ onClose, everywhere = false }: { onClose: () => void; everywhere?: boolean }) {
+  // It starts with Search's query, as the box does (spec 5.2), and gives focus back when it closes (UX Phase 5B).
+  const [term, setTerm] = useSearchTerm()
+  useRestoreFocus(true)
   const inputRef = useRef<HTMLInputElement>(null)
   const listId = useId()
   const { groups, term: shownTerm } = useSearch(term)
@@ -355,7 +384,7 @@ function SearchScreen({ onClose }: { onClose: () => void }) {
 
   return (
     // Portaled to the page's end, so it brings the chat tokens with it.
-    <div className="sf fixed inset-0 z-[var(--z-modal)] flex flex-col bg-sf-surface text-sf-text md:hidden" role="dialog" aria-modal="true" aria-label="Search">
+    <div className={clsx('sf fixed inset-0 z-[var(--z-modal)] flex flex-col bg-sf-surface text-sf-text', !everywhere && 'md:hidden')} role="dialog" aria-modal="true" aria-label="Search">
       <div className="flex flex-none items-center gap-2 border-b border-sf-line px-3 pt-[calc(0.5rem+env(safe-area-inset-top))] pb-2">
         <div className="relative flex-1">
           <Icon icon={IconSearch} size={18} className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-sf-text-muted" />

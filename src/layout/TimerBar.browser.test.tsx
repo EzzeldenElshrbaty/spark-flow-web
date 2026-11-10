@@ -125,3 +125,20 @@ describe('the phone bar’s buttons answer a 44px touch (UX Phase 5B, 5.4)', () 
     for (const name of ['Pause', 'Stop']) expect(answersTouch(screen.getByRole('button', { name })).slice(0, 2), name).toEqual([true, true])
   })
 })
+
+describe('the pill’s title fits the top bar (UX Phase 5B, 5.3)', () => {
+  it('at 1280 a long task title is cut to 128px', async () => {
+    await page.viewport(1280, 800)
+    timer = states[1]![1]()
+    render(
+      <MemoryRouter>
+        <header className="sf flex h-14 items-center">
+          <TimerPill />
+        </header>
+      </MemoryRouter>,
+    )
+    const title = await screen.findByText(/Login page with a longer title/)
+    expect(title.getBoundingClientRect().width).toBeLessThanOrEqual(128)
+  })
+})
+

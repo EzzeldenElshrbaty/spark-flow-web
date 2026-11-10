@@ -1,13 +1,18 @@
 import '@/index.css'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, render, screen } from '@testing-library/react'
+import { useState } from 'react'
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { page } from 'vitest/browser'
+import { page, userEvent } from 'vitest/browser'
 import type { Me } from '@/api/types'
 import { api } from '@/lib/api'
-import { DesktopSearch } from '@/layout/GlobalSearch'
+import { DesktopSearch, PhoneSearch } from '@/layout/GlobalSearch'
 import { ALL_PERMISSIONS } from '@/lib/permissions'
+
+// A running timer or none, for the top bar's room (UX Phase 5B, 5.3).
+let running = false
+vi.mock('@/layout/useMyTimer', () => ({ useMyTimer: () => (running ? { timer: { state: 'running' }, task: undefined, label: 'Login' } : null) }))
 
 const me = { id: 'u-1', name: 'Youssef Abdelrahman', email: 'y@spark-sys.com', roleIds: ['admin'], grants: [...ALL_PERMISSIONS], teamIds: [] } as unknown as Me
 beforeEach(async () => {
@@ -20,6 +25,7 @@ beforeEach(async () => {
   vi.spyOn(api.projects, 'list').mockResolvedValue([])
 })
 afterEach(async () => {
+  running = false
   await page.viewport(414, 896)
   cleanup()
   vi.restoreAllMocks()
@@ -62,3 +68,71 @@ describe('arriving on Search from the channel’s 🔍 or ⌘F (spec 6.12)', () 
     expect(document.activeElement).not.toBe(box)
   })
 })
+
+/** The top bar's two ways in, as TopBar wires them: the box, and the round button with its screen. */
+function Bar({ at = '/w/engineering/dashboard', state }: { at?: string; state?: unknown }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <QueryClientProvider client={new QueryClient()}>
+      <MemoryRouter initialEntries={[{ pathname: at.split('?')[0]!, search: at.includes('?') ? `?${at.split('?')[1]}` : '', state }]}>
+        <Routes>
+          <Route
+            path="/w/:ws/*"
+            element={
+              <header className="sf flex items-center gap-2">
+                <DesktopSearch onOpenScreen={() => setOpen(true)} />
+                <PhoneSearch open={open} onOpenChange={setOpen} />
+              </header>
+            }
+          />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>
+  )
+}
+
+const shown = (el: Element | null) => Boolean(el && el.getClientRects().length > 0)
+
+describe('the laptop top bar while a timer runs (UX Phase 5B, 5.3)', () => {
+  it('below 1280 with a timer: a round Search button instead of the box; ⌘K opens the search screen; Escape gives focus back', async () => {
+    running = true
+    await page.viewport(1100, 800)
+    render(<Bar />)
+    expect(shown(screen.queryByRole('combobox'))).toBe(false)
+    const button = screen.getByRole('button', { name: 'Search' })
+    expect(shown(button)).toBe(true)
+    await userEvent.keyboard('{Meta>}k{/Meta}')
+    const dialog = await screen.findByRole('dialog', { name: 'Search' })
+    expect(dialog.contains(document.activeElement)).toBe(true)
+    await userEvent.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog', { name: 'Search' })).toBeNull()
+    await userEvent.click(button)
+    await screen.findByRole('dialog', { name: 'Search' })
+    await userEvent.keyboard('{Escape}')
+    expect(document.activeElement).toBe(button)
+  })
+
+  it('below 1280 without a timer, and at 1440 with one: the box shows', async () => {
+    await page.viewport(1100, 800)
+    render(<Bar />)
+    const box = screen.getByRole('combobox')
+    expect(shown(box)).toBe(true)
+    expect(box.getBoundingClientRect().width).toBeGreaterThanOrEqual(200)
+    cleanup()
+    running = true
+    await page.viewport(1440, 900)
+    render(<Bar />)
+    expect(shown(screen.getByRole('combobox'))).toBe(true)
+  })
+
+  it('arriving with the caret for search (⌘F, the channel’s 🔍) opens the screen with the query', async () => {
+    running = true
+    await page.viewport(1100, 800)
+    render(<Bar at={`/w/engineering/search?q=${encodeURIComponent('in:#backend ')}`} state={{ focus: 'search' }} />)
+    const dialog = await screen.findByRole('dialog', { name: 'Search' })
+    const field = dialog.querySelector('input')!
+    await vi.waitFor(() => expect(document.activeElement).toBe(field))
+    expect(field.value).toBe('in:#backend ')
+  })
+})
+
