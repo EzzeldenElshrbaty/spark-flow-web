@@ -13,6 +13,22 @@ const MIN_HEIGHT = 40
 /** A row in a MenuPanel (RowMenu, comment and entry menus). */
 export const menuItemClass = 'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-start text-sm text-fg-secondary hover:bg-surface-muted'
 
+const ITEMS = '[role="menuitem"]:not(:disabled), [role="menuitemradio"]:not(:disabled), [role="menuitemcheckbox"]:not(:disabled)'
+
+/**
+ * Where ↓, ↑, Home or End moves from `active` among a menu's items: round from one end to the other; from outside the
+ * items (nothing yet) ↓ and Home go to the first, ↑ and End to the last. null for any other key (UX Phase 5A, 5.5).
+ */
+export function menuStep<T>(items: T[], active: T | null, key: string): T | null {
+  if (items.length === 0) return null
+  const at = active === null ? -1 : items.indexOf(active)
+  if (key === 'Home') return items[0]
+  if (key === 'End') return items[items.length - 1]
+  if (key === 'ArrowDown') return items[(at + 1) % items.length]
+  if (key === 'ArrowUp') return items[at <= 0 ? items.length - 1 : at - 1]
+  return null
+}
+
 /** True on phone widths. Phones get the menu as a bottom sheet rendered at the page level. */
 function usePhone() {
   const [phone, setPhone] = useState(() => window.matchMedia(phoneQuery).matches)
@@ -29,7 +45,8 @@ function usePhone() {
  * A dropdown panel for top-bar menus: anchored under its trigger on desktop (above it when it doesn't fit below,
  * as on a list's last row, and never past the room on that side), a bottom sheet on phones.
  * Closes on Escape (focus back to the trigger) and outside clicks, and keeps Tab inside while open. A plain letter
- * picks the item that names it as its key (`aria-keyshortcuts`).
+ * picks the item that names it as its key (`aria-keyshortcuts`); ↓ ↑ Home End move between items, and a pick that
+ * closes the menu gives focus back to the trigger, so a sheet it opens returns there too (UX Phase 5A, 5.5).
  * Render it inside a `relative` wrapper that also contains the trigger.
  */
 export function MenuPanel({
@@ -72,9 +89,14 @@ export function MenuPanel({
 
   useEffect(() => {
     if (!open) return
+    // An outside click leaves focus where it put it; any other close (a pick) gives it back to the trigger.
+    let clickedOutside = false
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target as Node
-      if (!panelRef.current?.contains(target) && !triggerRef.current?.contains(target)) onCloseRef.current()
+      if (!panelRef.current?.contains(target) && !triggerRef.current?.contains(target)) {
+        clickedOutside = true
+        onCloseRef.current()
+      }
     }
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -101,6 +123,9 @@ export function MenuPanel({
     return () => {
       document.removeEventListener('pointerdown', onPointerDown)
       document.removeEventListener('keydown', onKeyDown)
+      // Runs before a sheet the pick opened remembers what had focus. Focus a pick moved on (a rename field) stays.
+      const focused = document.activeElement
+      if (!clickedOutside && (!focused || focused === document.body || !focused.isConnected)) triggerRef.current?.focus()
     }
   }, [open, triggerRef])
 
@@ -122,6 +147,12 @@ export function MenuPanel({
         )}
         style={place && !phone ? { maxHeight: `min(80vh, ${place.maxHeight}px)` } : undefined}
         onKeyDown={(event) => {
+          const next = menuStep([...event.currentTarget.querySelectorAll<HTMLElement>(ITEMS)], document.activeElement as HTMLElement | null, event.key)
+          if (next) {
+            event.preventDefault()
+            next.focus()
+            return
+          }
           if (event.altKey || event.ctrlKey || event.metaKey || event.repeat || event.key.length !== 1) return
           const key = event.key.toLowerCase()
           const item = [...event.currentTarget.querySelectorAll<HTMLElement>('[aria-keyshortcuts]')].find((el) => el.getAttribute('aria-keyshortcuts')?.toLowerCase() === key)
