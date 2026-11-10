@@ -41,6 +41,10 @@ Your name at the top right opens:
 
 Drag a column’s edge to make it wider; double-click to reset it. Click a header to sort. Filters and searches stay in the address, so a link you share opens the same view.
 
+## Unsaved changes
+
+A form you’ve started doesn’t lose what you typed by accident. A click outside it never closes it, and neither does **Esc** on a page’s forms (in chat’s dialogs, **Esc** works like Cancel). **Cancel**, **✕** or your browser’s Back ask “Discard your changes?” first: **Keep editing** takes you back to the form, and **Discard** closes it without saving. A form you haven’t changed closes straight away.
+
 ## On a phone
 
-The bar at the bottom holds Dashboard, Projects, Chat and More; Home is in More. Tables become lists, and sheets fill the screen. Everything else works the same.
+The bar at the bottom holds Dashboard, Projects, Chat and More; More holds My work, Time & cost, Teams, Settings and Help. Tables become lists, and sheets fill the screen. Everything else works the same.

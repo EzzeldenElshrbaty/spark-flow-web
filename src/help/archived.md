@@ -15,7 +15,7 @@ Every archived project, task and channel in one list, with when, by whom and why
 
 ## Deleting for good
 
-Records are kept for a number of days after archiving (365 unless changed with **Change**); after that, **Delete…** removes one for good, with its tasks, comments, phases and files. It asks first and can’t be undone; the audit log keeps a line saying so.
+Records are kept for a number of days after archiving (365 unless changed with **Change**); after that, **Delete…** removes one for good, with its tasks, comments, phases and files. It asks you to type the record’s key (such as `NEX` or `NEX-101`) first, and can’t be undone; the audit log keeps a line saying so.
 
 Some are always kept:
 

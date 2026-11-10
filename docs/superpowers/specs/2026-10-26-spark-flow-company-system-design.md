@@ -439,17 +439,16 @@ chapter (`help:id#section`) or to https, and `![alt](name.jpg "caption")` from `
 
 ## 5. Screens (copy the named Spark CRM screen in `design/screenshots/`)
 
-Sidebar groups: **WORK** Home, Projects, My tasks, Dashboard (moved from Manage, 5 Nov 2026) · **TEAM** Chat, Teams ·
-**MANAGE** Time & cost ·
-Settings (with Database) pinned at the bottom. Group/items hidden per §4.3. The Phases 1+2 channel/DM/project lists move
+Sidebar groups: **WORK** Dashboard, My work, Projects, Teams · **MANAGE** Time & cost · Settings (with Database)
+pinned at the bottom. The Dashboard is everyone's start page, and My work is Home and My tasks in one (UX Phase 2,
+9 Nov 2026; it replaced the earlier WORK Home, Projects, My tasks, Dashboard · TEAM Chat, Teams). Group/items hidden per §4.3. The Phases 1+2 channel/DM/project lists move
 inside Chat and Projects.
 
 | Screen | Route | Copy | Content |
 |---|---|---|---|
-| Home / My day | `/w/:ws` | `01-home-light` | Today card: the timer with Pause / Resume / Stop, or Start timer, and today's hours (replaced the check-in card, 5 Nov 2026); my tasks due today/overdue, mentions of me |
+| My work | `/w/:ws` | `01-home-light` | Home and My tasks in one (UX Phase 2): the Today card (the timer with Pause / Resume / Stop, or Start timer, and today's hours; it replaced the check-in card, 5 Nov 2026), my open tasks across projects (overdue first) and mentions of me |
 | Projects | `/w/:ws/projects` | `03-leads-list` | Stat cards (active, overdue, due this month, on hold); DataTable: logo+name, client, PM, current phase, due, progress, hours (+ cost for Admin), overdue count; "New project" Sheet |
 | Project | `/w/:ws/p/:key/:tab` (`overview` \| `tasks` \| `chat` \| `time`) | `05-lead-detail` + `07-opportunities-board` | RecordHeader (logo, client, links, PM); **StageProgress = phases**; Overview: about, deliverables, team, files; Tasks: Board \| List grouped by phase (sprint filter when agile); Chat: project channel; Time: entries (+ cost for Admin) |
-| My tasks | `/w/:ws/tasks` | `03-leads-list` | My open tasks across projects, overdue first |
 | Task inspector | `?ticket=KEY` (unchanged) | `27-page-help-panel` | Fields (editable per role), Start timer / Add time, logged vs estimate, **Activity**: comments, bugs, attachments (image preview, video `<video controls>`, files) with a drop zone |
 | Chat | `/w/:ws/c/:channelId` (unchanged) | existing | Composer with `@` autocomplete (people, projects, tasks, @all); mention chips open the project/task |
 | Teams | `/w/:ws/teams` | `09-clients-list` | Teams and members (Admin edits) |
@@ -457,10 +456,10 @@ inside Chat and Projects.
 | Time & cost | `/w/:ws/time` | `12-payments` | Hours and cost by project / person / week; rates editor |
 | Database | `/w/:ws/settings/database` | `16-settings` | Export (downloads `spark-flow-export-<date>.json`), Reload seed, Reset (DeleteDialog confirm) |
 
-Phone (390px): bottom bar **Home · Projects · Chat · More**; the running timer is a slim bar above it.
+Phone (390px): bottom bar **Dashboard · Projects · Chat · More** (More holds My work, Time & cost, Teams, Settings, Preferences and Help; UX Phase 2); the running timer is a slim bar above it.
 
 Route changes from Phases 1+2:
-- `/w/:ws` becomes Home (it used to redirect to the last place). `/` still goes to the last workspace, landing on its Home.
+- `/w/:ws` is My work (it used to redirect to the last place), and `/w/:ws/tasks` redirects to it. `/` and a plain sign-in open the last workspace's Dashboard (UX Phase 2).
 - `/w/:ws/p/:key/board` and `/backlog` redirect to `/w/:ws/p/:key/tasks?view=board` and `?view=list`.
 - `lastVisited` / `validSavedPlace` keep working for channel and project paths.
 

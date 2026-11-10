@@ -26,7 +26,7 @@ Make Flow's chat match the standard of Slack-class chat tools: fast to scan, act
 
 **What stays the same**
 
-- The sidebar structure: logo header; Work (Home, Projects, My tasks, Teams); Manage (Dashboard, Time & cost); Channels; Direct messages; Projects; Settings at the bottom.
+- The sidebar structure: logo header; Work (Dashboard, My work, Projects, Teams); Manage (Time & cost); Channels; Direct messages; Projects; Settings at the bottom. (UX Phase 2, 9 Nov 2026: the Dashboard is everyone's start, and My work is Home and My tasks in one.)
 - The top bar's items: sidebar toggle, search, notifications bell, the "SE" control, and the profile (avatar, name, role, chevron).
 - The main pane as a rounded card on the dark frame.
 
@@ -229,7 +229,7 @@ Project work and chat are two sides of one workspace. Each side owns the whole s
 
 | Side | Addresses |
 |---|---|
-| Projects | Home, Projects, My tasks, Teams, Dashboard, Time and cost, every project tab (its Chat tab included) |
+| Projects | Dashboard, My work, Projects, Teams, Time and cost, every project tab (its Chat tab included), and Settings, Preferences and Help (UX Phase 2) |
 | Chat | Channels and DMs, Threads, Activity, Drafts & sent, Saved |
 | Neither | Search and anything else: the side you were on stays. *Amended 9 Nov 2026 (UX Phase 2, 2.2):* Settings, Preferences and Help always use the Projects side. |
 
@@ -246,11 +246,11 @@ Project work and chat are two sides of one workspace. Each side owns the whole s
 - Sizes: 40px tall in the sidebar; upright 48×88 with screen-reader-only names in the collapsed sidebar; 48px tall in the phone drawer, which stays open after a switch.
 - Tooltip: the side's name, or "Switch to Chat" with the shortcut.
 
-**Where a switch goes:** the last place opened on that side in this workspace (`uiStore.lastByMode`, persisted), while it still exists; else #general for Chat and Home for Projects. Waits while the channel or project lists it must check are loading.
+**Where a switch goes:** the last place opened on that side in this workspace (`uiStore.lastByMode`, persisted), while it still exists; else #general for Chat and the Dashboard for Projects (UX Phase 2). Waits while the channel or project lists it must check are loading.
 
 **Keys:** G then P opens Projects, G then C opens Chat, within a second, by key position so any keyboard layout works. Not while typing, with a modifier, on a repeat or with a dialog open. Taken in the capture phase, so the P never also pins a focused message.
 
-**Phone:** the bottom bar (Home · Projects · Chat · More) lights Chat on any chat page and Projects on any projects page but Home; its Projects tab never goes to Home, which has its own tab. The drawer shows the switch under its header.
+**Phone:** the bottom bar (Dashboard · Projects · Chat · More; UX Phase 2) marks the tab that holds the page (UX Phase 5B): Dashboard on the Dashboard, Projects on the projects list and every project tab, Chat on any chat page, and More on My work, Time & cost, Teams, Settings, Preferences and Help. The drawer shows the switch under its header.
 
 **Search** stays global; only the placeholder follows the side ("Search projects, tasks, people…" / "Search channels, people, tasks…").
 
