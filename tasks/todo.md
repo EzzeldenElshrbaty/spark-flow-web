@@ -3051,3 +3051,27 @@ Spec: `docs/superpowers/specs/2026-11-10-channel-page-tab-design.md` (Q1–Q7 "Y
 - [x] 7. The tab: editor, toolbar, autosave, page bar
 - [x] 8. Page history and restore
 - [x] 9. Whole app (UX matrix, walkthroughs), help, API contract, rules; gates; one final review
+
+## Review (10 Nov 2026)
+
+Built on `feat/channel-page` (17 commits from b6b6804). Every channel's Page tab is a shared page: whoever may post
+edits it, one person at a time (60 s hold), autosave a second after typing, live reading, history and restore,
+mentions in Activity and the bell, Copy link. Final Opus review: ready with fixes; 2 critical and 6 important fixed in
+4556f57 (stale editor after someone else's hold, blocks in table cells, failed reloads, leaving the tab, Link a task,
+the bell, restore errors read out, 44 px error buttons). Gates: `npm test` 3,111/3,111, `npm run test:ux` 1,000/1,000,
+`build:prototype`, lint and tsc clean.
+
+Deferred minors (from the final review):
+- Unmount lets go of my hold even from a tab that never claimed it; a release can beat an in-flight save.
+- Closing the browser tab only flushes (no best-effort release).
+- A newer edit queued behind a 400 waits for the next change.
+- History shows tasks named only in older versions as plain text.
+- The reader's wide-table scroll box isn't keyboard-focusable.
+- The table menu allows an 11th column or 101st row (then "too long").
+- Load the latest failing is silent.
+- Hold renewals don't publish `pageEditing`; readers' expiry uses their own clock.
+- Losing edit rights with unsaved text hides that text.
+- Help says History lists "every version" (it lists 10-minute runs, newest 100).
+- A page mention in a public channel stays after the person leaves (chat's rule).
+
+Not pushed; not on dev.
