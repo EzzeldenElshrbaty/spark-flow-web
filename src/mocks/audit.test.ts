@@ -134,7 +134,15 @@ const RECORDED: Record<string, Recorded> = {
 const READ = 'a read'
 const MESSAGE = 'messages, replies and what they carry are not in the log (spec §11: only deleting someone else’s)'
 const MINE = 'my own choice or state (preferences, reads, saved items, drafts, order): not in the log'
+const PAGE = 'a channel’s page is its content; its history is its record'
 const NOT_RECORDED: Record<string, string> = {
+  'pages.get': PAGE,
+  'pages.editing': PAGE,
+  'pages.stopEditing': PAGE,
+  'pages.save': PAGE,
+  'pages.history': PAGE,
+  'pages.version': PAGE,
+  'pages.restore': PAGE,
   'workspaces.list': READ,
   'users.me': READ,
   'users.list': READ,

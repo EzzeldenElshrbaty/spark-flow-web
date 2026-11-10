@@ -1,6 +1,7 @@
 import type { FileKind } from '@/lib/fileTypes'
 import type { Permission } from '@/lib/permissions'
 import type { Body, DescBody } from '@/lib/messageBody'
+import type { PageBody } from '@/lib/pageBody'
 
 export type { Permission }
 
@@ -591,6 +592,25 @@ export type ProjectFileFilter = { from?: ProjectFileSource['kind']; type?: FileK
 export type ShareableFile = { file: Attachment; channelId: string | null; projectId: string | null }
 /** A link in a channel's tabs row (spec 6.1 +, §7 Bookmark): http or https only, in the order added. */
 export type Bookmark = { id: string; channelId: string; title: string; url: string; createdBy: string; createdAt: string }
+/** Who holds a channel's page (chat spec 6.14), until when; a hold past its time counts as none. */
+export type PageHold = { userId: string; until: string }
+/** A channel's page as stored: created by the first claim or save; `version` is 0 until the first save. */
+export type StoredPage = {
+  id: string; channelId: string; workspaceId: string; body: PageBody; version: number
+  createdAt: string; createdBy: string; updatedAt: string | null; updatedBy: string | null
+  editing: PageHold | null
+}
+/** One version in a page's history: a person's saves within 10 minutes of `firstSavedAt` are one, `savedAt` its last. */
+export type PageVersion = { id: string; pageId: string; version: number; body: PageBody; savedBy: string; firstSavedAt: string; savedAt: string }
+/** A person a save newly mentioned on a page, for their Activity and bell; `excerpt` is the block that names them. */
+export type StoredPageMention = { id: string; pageId: string; channelId: string; workspaceId: string; userId: string; authorId: string; excerpt: string; createdAt: string }
+/** What the Page tab reads. `editors`: people who saved versions, newest first, at most 10. */
+export type PageView = {
+  channelId: string; body: PageBody; version: number; updatedAt: string | null; updatedBy: string | null
+  editors: string[]; editing: PageHold | null
+}
+export type PageVersionSummary = { id: string; version: number; savedAt: string; savedBy: string }
+export type PageVersionDetail = PageVersionSummary & { body: PageBody }
 /** A message pinned to its channel (spec §7 Pin). */
 export type Pin = { channelId: string; messageId: string; pinnedBy: string; pinnedAt: string }
 /** The Pins tab's row: the message as the channel shows it, and who pinned it when. */
@@ -715,7 +735,7 @@ export type DashboardStats = {
  * from the task history and comments; it shares the mentions' read state.
  */
 export type MentionItem = {
-  id: string; source: 'message' | 'reply' | 'comment' | 'assigned' | 'status' | 'taskComment'; authorId: string; excerpt: string; createdAt: string; read: boolean
+  id: string; source: 'message' | 'reply' | 'comment' | 'assigned' | 'status' | 'taskComment' | 'page'; authorId: string; excerpt: string; createdAt: string; read: boolean
   workspaceId: string                                    // where it opens; the bell lists every workspace's
   authorName: string                                     // so a mention from another workspace still names its author
   channelId: string | null; messageId: string | null; taskKey: string | null; projectId: string | null
@@ -1108,6 +1128,24 @@ export interface Api {
     add(channelId: string, bookmark: { title: string; url: string }): Promise<Bookmark>
     update(id: string, patch: { title?: string; url?: string }): Promise<Bookmark>
     remove(id: string): Promise<void>
+  }
+  /**
+   * A channel's page (chat spec 6.14): whoever may post edits it, one person at a time. Typing claims it for 60 s
+   * (`editing`); a save names the version it started from and is refused (409) when another person holds the page or
+   * it has moved on. Anyone who can read the channel reads it, its history and any version.
+   */
+  pages: {
+    get(channelId: string): Promise<PageView>
+    /** Claims or renews my hold; while another person holds it, changes nothing and returns their hold. */
+    editing(channelId: string): Promise<{ editing: PageHold | null }>
+    /** Lets my hold go at once; nothing when I don't hold it. */
+    stopEditing(channelId: string): Promise<void>
+    save(channelId: string, input: { body: PageBody; baseVersion: number }): Promise<PageView>
+    /** Newest first, at most 100. */
+    history(channelId: string): Promise<PageVersionSummary[]>
+    version(channelId: string, versionId: string): Promise<PageVersionDetail>
+    /** Saves an old version's body as a new version, with save's rules; newer versions stay. */
+    restore(channelId: string, input: { versionId: string; baseVersion: number }): Promise<PageView>
   }
   /** Folders for files (spec 6.9), one list per workspace, by name. */
   folders: {

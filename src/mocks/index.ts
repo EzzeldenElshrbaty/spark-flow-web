@@ -1,3 +1,4 @@
+import { pagesApi } from './pages'
 import { bookmarksApi } from './bookmarks'
 import { foldersApi } from './folders'
 import { pinsApi } from './pins'
@@ -86,6 +87,7 @@ export function createMockApi(db: MockDb, hub: MockHub, now: () => Date = () => 
     roles: rolesApi(db, hub),
     folders: foldersApi(db),
     bookmarks: bookmarksApi(db, hub),
+    pages: pagesApi(db, hub, now),
     dashboard: dashboardApi(db, now),
     files: filesApi(db, hub, now),
     audit: auditApi(db, now),

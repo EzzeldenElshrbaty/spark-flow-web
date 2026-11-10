@@ -26,6 +26,12 @@ const V24_ROLES = [
 ]
 
 export const migrations: Record<number, (doc: Record<string, unknown>) => void> = {
+  // 33: channel pages (chat spec 6.14); no channel has one yet.
+  32: (doc) => {
+    doc.pages = []
+    doc.pageVersions = []
+    doc.pageMentions = []
+  },
   // 32: single-key shortcuts can be turned off (UX Phase 5A, 5.13); everyone keeps them on.
   31: (doc) => {
     if (!Array.isArray(doc.notificationPrefs)) return

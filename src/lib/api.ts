@@ -46,6 +46,7 @@ export const api: Api = {
   get roles() { return resolve().roles },
   get folders() { return resolve().folders },
   get bookmarks() { return resolve().bookmarks },
+  get pages() { return resolve().pages },
   get dashboard() { return resolve().dashboard },
   get files() { return resolve().files },
   get audit() { return resolve().audit },

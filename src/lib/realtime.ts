@@ -61,6 +61,8 @@ export type RealtimeEvent =
   | { type: 'commentAdded'; taskKey: string; projectId: string }
   | { type: 'messageChanged'; channelId: string; messageId: string }
   | { type: 'channelChanged'; channelId: string }
+  | { type: 'pageSaved'; channelId: string; version: number; userId: string }
+  | { type: 'pageEditing'; channelId: string; userId: string | null; until: string | null }
   | { type: 'projectChanged'; projectId: string }
   | { type: 'ratesChanged' }
   | { type: 'filesChanged'; projectId: string }

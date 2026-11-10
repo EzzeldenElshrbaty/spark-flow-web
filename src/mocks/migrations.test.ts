@@ -309,3 +309,9 @@ describe('31 → 32 (single-key shortcuts, UX Phase 5A 5.13)', () => {
     })
   })
 })
+
+describe('32 → 33 (channel pages, chat spec 6.14)', () => {
+  it('32 → 33 adds pages, pageVersions and pageMentions', () => {
+    expect(migrate({ version: 32, bookmarks: [] }, 33)).toEqual({ version: 33, bookmarks: [], pages: [], pageVersions: [], pageMentions: [] })
+  })
+})
