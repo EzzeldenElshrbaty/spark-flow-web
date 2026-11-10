@@ -3042,12 +3042,12 @@ Fixes the Phase 6 open design question: at 390 px the bookmark strip after the t
 Spec: `docs/superpowers/specs/2026-11-10-channel-page-tab-design.md` (Q1–Q7 "Yes, recommended"). Plan:
 `docs/superpowers/plans/2026-11-10-channel-page-tab.md`. Branch `feat/channel-page` from dev b6b6804.
 
-- [ ] 1. Page content rules (`lib/pageBody.ts`)
-- [ ] 2. Pages in the mock (DB v33, `api.pages`: hold, versions, restore, mentions stored)
-- [ ] 3. Routes, live events, hooks (autosave skips the global invalidate)
-- [ ] 4. Page mentions in Activity and the bell
-- [ ] 5. Read-only page (`PageReader`)
-- [ ] 6. Editor content and conversions (`@lexical/table`, check lists, headings)
-- [ ] 7. The tab: editor, toolbar, autosave, page bar
-- [ ] 8. Page history and restore
-- [ ] 9. Whole app (UX matrix, walkthroughs), help, API contract, rules; gates; one final review
+- [x] 1. Page content rules (`lib/pageBody.ts`)
+- [x] 2. Pages in the mock (DB v33, `api.pages`: hold, versions, restore, mentions stored)
+- [x] 3. Routes, live events, hooks (autosave skips the global invalidate)
+- [x] 4. Page mentions in Activity and the bell
+- [x] 5. Read-only page (`PageReader`)
+- [x] 6. Editor content and conversions (`@lexical/table`, check lists, headings)
+- [x] 7. The tab: editor, toolbar, autosave, page bar
+- [x] 8. Page history and restore
+- [x] 9. Whole app (UX matrix, walkthroughs), help, API contract, rules; gates; one final review

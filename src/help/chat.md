@@ -38,4 +38,14 @@ Point at a message (or tap it on a phone) for reactions, **Reply in thread** and
 
 ## The channel’s tabs and header
 
-Under the channel’s name, **Messages**, **Files** (in folders if you like) and **Pins**; **+** adds a page of notes. In the header, the bell sets how much of the channel reaches you, 🔍 searches it, and ⋯ holds the rest.
+Under the channel’s name, **Messages**, **Files** (in folders if you like), **Pins** and **Page**; **+** adds a bookmark. In the header, the bell sets how much of the channel reaches you, 🔍 searches it, and ⋯ holds the rest.
+
+## The channel’s page
+
+**Page** is one shared page for the channel: plans, checklists, tables and links to tasks. Whoever can post in the channel can edit it, one person at a time. While someone types, everyone else reads it as it changes and sees who is editing. It saves a second after you stop typing, and the bar above it says when it was last saved and by whom.
+
+- **Formatting:** the row above the page sets headings, lists, bold and italic, and adds a checklist or a table. `#`, `##`, `###`, `-`, `1.` and `[ ]` at the start of a line work too.
+- **Mentions and tasks:** @ names someone, who hears about it in Activity. **Link a task** puts a task on the page.
+- **If someone saved first:** your text stays where it is. **Copy my changes** keeps it, and **Load the latest** shows the page as it is now.
+- **History** lists every version. Pick one to read it, and **Restore this version** saves it as the newest; nothing newer is lost.
+- **Copy link** copies the page’s address.

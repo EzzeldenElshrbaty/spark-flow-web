@@ -31,6 +31,7 @@ export const UX_PAGES: string[] = [
   'p/NEX/history',
   'p/NEX/files',
   'c/c-general',
+  'c/c-general?tab=page',
   'activity',
   'threads',
   'search?q=login',

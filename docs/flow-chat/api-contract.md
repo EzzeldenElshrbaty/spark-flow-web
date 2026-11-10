@@ -55,6 +55,8 @@ The client's handler names stay as they are; the wire names are the spec's (§8)
 | `onMessageReceived` | `message.created` | The message, with `seq`. Clients order by `seq` and refetch when they see a gap. |
 | `onMessageChanged` | `message.updated`, `message.deleted` | `{ channelId, messageId }` |
 | `onReadChanged` | `read.marker_updated` | `{ userId, channelId?, seq? }`, sent only to `userId`'s own connections. `seq` is set for a new read marker; star and mute changes send `channelId` without `seq`. Mention reads send `userId` alone. |
+| `onPageSaved` | `page.saved` | `{ channelId, version, userId }`, to everyone who can read the channel (Phase 4 · Slice PG) |
+| `onPageEditing` | `page.editing` | `{ channelId, userId, until }`; `userId` and `until` are null when the page is let go (Phase 4 · Slice PG) |
 
 On reconnect the client expects missed `message.created` events replayed in `seq` order per channel (spec §8, transport rules).
 
@@ -575,3 +577,26 @@ Rules:
 - **Records:** `Attachment.folderId` (null for none); a message's `pin: { by, at }` is worked out on read (absent when not pinned); deleting a message unpins it.
 - **Sending files I didn't upload:** `fileIds` may name a file an Admin can see (the Share rule); anyone else only their own.
 - **Events:** pins and bookmarks send `channel.updated` (`channelChanged`), pins also `message.updated`; filing a file sends `file.updated`. New messages, replies and file changes refresh a channel's Files list.
+
+## Phase 4 · Slice PG: channel page (spec 6.14)
+
+Design: `docs/superpowers/specs/2026-11-10-channel-page-tab-design.md`.
+
+| What | Route | Body | Answer |
+|---|---|---|---|
+| Read | `GET /api/channels/:id/page` | | `PageView` (`{ channelId, body, version, updatedAt, updatedBy, editors, editing }`); a channel without a page is version 0, an empty body |
+| Save | `PUT /api/channels/:id/page` | `{ body, baseVersion }` | `PageView`; `409` while someone else holds it or a newer version exists; `400` "This page is too long. Shorten it to save." or "Something on this page can’t be saved."; `400` "This channel is archived."; `403` for someone who may not post |
+| Claim | `POST /api/channels/:id/page/editing` | | `{ editing }`: my hold, renewed for 60 s, or the other person's (no error) |
+| Let go | `DELETE /api/channels/:id/page/editing` | | `204`; nothing when I don't hold it |
+| History | `GET /api/channels/:id/page/versions` | | `PageVersionSummary[]` (`{ id, version, savedAt, savedBy }`), newest first, 100 at most |
+| A version | `GET /api/channels/:id/page/versions/:versionId` | | `{ id, version, savedAt, savedBy, body }`; `404` for an unknown one |
+| Restore | `POST /api/channels/:id/page/restore` | `{ versionId, baseVersion }` | `PageView`, by save's rules; `409` "Nour El-Sayed is editing. Try again when they’re done." |
+
+- **Records:** `Page` (`body`, `version`, `editing: { userId, until } | null`), `PageVersion` and `PageMention`. The body is `PageBody`: the message body's blocks plus `h1`–`h3`, `check` (`items: { checked, children }`) and `table` (`rows` of cells of inlines, the first row the header), checked by the rules of `validPage` (`src/lib/pageBody.ts`): no `@channel` or `@here`, tables 1–10 columns and up to 100 rows, all rows the same width, at most 2,000 blocks and 50,000 characters. The server is the authority.
+- **Who:** anyone who can read the channel reads the page, its history and any version; whoever may post a message edits it (`403` otherwise).
+- **Hold:** one editor at a time. A claim or a save holds the page for 60 s; an expired hold counts as none. A save checks, in order: who may post, the body, another person's hold (`409`), then `baseVersion` against the page's version (`409`, an optimistic-concurrency check).
+- **409 detail:** the sentence the page shows: "Nour El-Sayed started editing first. Your last changes aren’t saved.", "Nour El-Sayed saved changes before you. Your last changes aren’t saved.", or, when the newer version is the caller's own (another tab), "You changed this page in another tab. Your last changes here aren’t saved." The client offers the same two buttons for any of them; the spec's `{ code, by }` is not needed.
+- **Versions:** one person's saves within 10 minutes of their first make one history entry (its `savedAt` is the last); another person, or a save after that, starts a new one. The newest 100 are kept. A restore always starts its own entry and never removes newer ones. Saving the same body again changes nothing.
+- **Mentions:** a save that names someone who wasn't named before (and isn't the saver, can read the channel and is active) stores a mention for them, with the text of the block that names them, cut to 120 characters. It shows in `GET /api/mentions` (`source: "page"`) and Activity (`kind: "mention"`, `page: true`, `messageId: null`) while they can read the channel, and shares their mention read state. It opens `/w/:ws/c/:channelId?tab=page`.
+- **Audit:** page saves, claims and restores are not in the audit log; the page's history is their record.
+- **Events:** `page.saved` (`pageSaved`, `{ channelId, version, userId }`) after a save or restore; `page.editing` (`pageEditing`, `{ channelId, userId, until }`, `userId` and `until` null when let go) when the holder changes; `notification.created` to each person newly mentioned.

@@ -321,3 +321,14 @@ These each wait for their own spec:
 - Files and images in a page.
 - The new-channel intro and templates (§6.14).
 - Task list (Pro) and Automations.
+
+## As built (10 Nov 2026, plan `docs/superpowers/plans/2026-11-10-channel-page-tab.md`)
+
+Where the build departs from this design:
+
+- **Archived channels** answer `400` "This channel is archived." (the mock's `checkCanWrite`, one rule for the whole channel), not `403`.
+- **A 409's body** carries the whole sentence in `detail`; there is no `{ code, by }`. The page offers the same two buttons for any 409, and a stale save from my own other tab reads "You changed this page in another tab. Your last changes here aren’t saved."
+- **Mentions** are stored as `pageMentions` records on save and read by `mentionsFor` as `source: 'page'` (chat's mentions are worked out on read), not stored as Activity items.
+- **The read-only view** is `PageReader`, since `PageView` is the data type's name.
+- **Restore** always starts its own history entry, so the state before it stays in history.
+- **In the editor**, headings carry `aria-level` one deeper than their tag, and a checklist's list is a `group` (Lexical makes its items checkboxes), so the channel's name stays the only level-1 heading and axe's list rule holds.

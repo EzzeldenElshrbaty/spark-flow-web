@@ -55,7 +55,16 @@ async function go(app: AppHandle, path: string, heading: string) {
 const timer = (size: Size) => document.querySelector<HTMLElement>(size === 'phone' ? '[data-timer="bar"]' : '[data-timer="pill"]')
 
 describe.each(SETUPS)('Member (Mariam) at %s in %s', (size, theme) => {
-  it('signs in, times NEX-106, comments with a file, moves it, stops, and fixes a wrong entry', async () => {
+  it('signs in, times NEX-106, comments with a file, moves it, stops, fixes a wrong entry, and reads #general’s page', async () => {
+    // #general's page, written before she signs in (chat spec 6.14); nobody is editing it now.
+    await api.pages.save('c-general', {
+      body: [
+        { type: 'h2', children: [{ type: 'text', text: 'Launch checklist' }] },
+        { type: 'check', items: [{ checked: false, children: [{ type: 'text', text: 'Book the venue' }] }] },
+      ],
+      baseVersion: 0,
+    })
+    await api.pages.stopEditing('c-general')
     const app = await renderApp({ path: '/signin', as: null, theme, size })
     await app.settled()
     await press('button', /^Mariam Fathy/)
@@ -102,11 +111,16 @@ describe.each(SETUPS)('Member (Mariam) at %s in %s', (size, theme) => {
     await userEvent.click(within(edit).getByRole('button', { name: 'Save' }))
     expect(await said('Time entry saved.')).toBeTruthy()
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Edit entry' })).toBeNull())
+
+    // #general's page: its heading under the channel's name, and the checklist with its state.
+    await app.router.navigate('/w/engineering/c/c-general?tab=page')
+    expect(await screen.findByRole('heading', { level: 3, name: 'Launch checklist' }, { timeout: 10_000 })).toBeTruthy()
+    expect(screen.getByRole('checkbox', { name: 'Book the venue' }).getAttribute('aria-checked')).toBe('false')
   }, 90_000)
 })
 
 describe.each(SETUPS)('PM (Nour) at %s in %s', (size, theme) => {
-  it('creates a task with a description and a file, cancels by mistake, assigns it, adds time for Mariam, reads the Dashboard', async () => {
+  it('creates a task with a description and a file, cancels by mistake, assigns it, adds time for Mariam, reads the Dashboard, starts #general’s page', async () => {
     const app = await renderApp({ path: '/w/engineering/p/NEX/tasks', as: 'pm', theme, size })
     await app.settled()
     await press('button', 'New task', screen.getByRole('main'))
@@ -150,6 +164,22 @@ describe.each(SETUPS)('PM (Nour) at %s in %s', (size, theme) => {
 
     await go(app, '/w/engineering/dashboard', 'Dashboard')
     expect(await seen('link', /^NC Nexus Core/, screen.getByRole('main'))).toBeTruthy()
+
+    // She starts #general's page (chat spec 6.14): a heading and a checklist, saved as she types.
+    await app.router.navigate('/w/engineering/c/c-general?tab=page')
+    const page = await screen.findByRole('textbox', { name: 'Channel page' }, { timeout: 10_000 })
+    await app.settled()
+    await focusEditor(page)
+    await userEvent.keyboard('## Launch checklist{Enter}[[ ] Book the venue')
+    await waitFor(
+      async () =>
+        expect((await api.pages.get('c-general')).body).toEqual([
+          { type: 'h2', children: [{ type: 'text', text: 'Launch checklist' }] },
+          { type: 'check', items: [{ checked: false, children: [{ type: 'text', text: 'Book the venue' }] }] },
+        ]),
+      { timeout: 5000 },
+    )
+    expect(within(screen.getByRole('group', { name: 'Page' })).getByText('Saved')).toBeTruthy()
   }, 90_000)
 })
 

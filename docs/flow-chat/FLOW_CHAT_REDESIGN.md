@@ -594,6 +594,7 @@ Each view has a 52px header with a `title`, an optional tabs row, and a scrollin
   - Editor toolbar: text style, bold, italic, checklist, table, link task; save state ("Saved · Nour is editing"); collaborators; Share; history.
   - Content is a 760px column with headings, lists, tables, checklists, task chips and @mentions.
   - Reuse Flow's existing Pages editor if one exists.
+  - Built (channel page, 10 Nov 2026): every channel's Page tab is one shared page (`docs/superpowers/specs/2026-11-10-channel-page-tab-design.md`). Whoever may post edits it, one person at a time (a 60 s hold, claimed by typing; everyone else reads it live with "Nour El-Sayed is editing"); it autosaves a second after typing stops, with a version check. Text style, bold, italic, checklist, table and Link a task in the toolbar, markdown shortcuts, @mentions that reach Activity and the bell. History lists versions (one person's 10-minute run is one) and restores one as the newest. Copy link copies `?tab=page`. Share and templates wait.
 - **New channel intro:**
   - At the start of history: `display` "# name", then "You created this channel today. This is the very beginning of #name. Edit description".
   - Buttons: Add people, Pick a template, Link a project.
