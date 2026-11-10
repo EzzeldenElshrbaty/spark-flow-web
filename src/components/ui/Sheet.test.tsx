@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useUnsavedGuards } from '@/lib/unsavedChanges'
 import { Sheet, SheetCancelButton } from './Sheet'
@@ -73,3 +75,62 @@ describe('a changed sheet asks before it closes (UX Phase 1, 1.2)', () => {
   })
 })
 
+
+describe('a sheet keeps focus and gives it back (UX Phase 5A, 5.5)', () => {
+  function Opener({ portaled = false }: { portaled?: boolean }) {
+    const [open, setOpen] = useState(false)
+    const [opener, setOpener] = useState(true)
+    return (
+      <main>
+        <h1>Projects</h1>
+        {opener && <button onClick={() => setOpen(true)}>New project</button>}
+        {open && (
+          <Sheet open title="New project" onClose={() => setOpen(false)} footer={<><SheetCancelButton /><button>Save</button></>}>
+            <input aria-label="Name" />
+            <button onClick={() => setOpener(false)}>Remove opener</button>
+            {portaled && createPortal(<button>Picker day</button>, document.body)}
+          </Sheet>
+        )}
+      </main>
+    )
+  }
+
+  it('Tab from the last control goes to the first (the ✕), and Shift+Tab from the first goes to the last', () => {
+    render(<Opener />)
+    fireEvent.click(screen.getByRole('button', { name: 'New project' }))
+    const save = screen.getByRole('button', { name: 'Save' })
+    save.focus()
+    fireEvent.keyDown(save, { key: 'Tab' })
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Close' }))
+    fireEvent.keyDown(document.activeElement!, { key: 'Tab', shiftKey: true })
+    expect(document.activeElement).toBe(save)
+  })
+
+  it('gives focus back to what opened it on Cancel', () => {
+    render(<Opener />)
+    const opener = screen.getByRole('button', { name: 'New project' })
+    opener.focus()
+    fireEvent.click(opener)
+    expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Name' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(document.activeElement).toBe(opener)
+  })
+
+  it('puts focus on the page’s heading when what opened it is gone', () => {
+    render(<Opener />)
+    const opener = screen.getByRole('button', { name: 'New project' })
+    opener.focus()
+    fireEvent.click(opener)
+    fireEvent.click(screen.getByRole('button', { name: 'Remove opener' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Projects' }))
+  })
+
+  it('leaves Tab alone in something portaled out of the sheet (a picker), which handles its own keys', () => {
+    render(<Opener portaled />)
+    fireEvent.click(screen.getByRole('button', { name: 'New project' }))
+    const day = screen.getByRole('button', { name: 'Picker day' })
+    day.focus()
+    expect(fireEvent.keyDown(day, { key: 'Tab' })).toBe(true)
+  })
+})

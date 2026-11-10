@@ -2,6 +2,8 @@ import clsx from 'clsx'
 import { X } from 'lucide-react'
 import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { trapTab, useRestoreFocus } from '@/components/sf/layers'
+import { focusPageHeading } from '@/lib/pageFocus'
 import { useUnsavedChanges } from '@/lib/unsavedChanges'
 import { Button } from './Button'
 
@@ -33,6 +35,8 @@ export function SheetCancelButton({ children = 'Cancel', disabled }: { children?
  * `discardQuestion` in the footer (Keep editing · Discard) before anything is thrown away (UX Phase 1, 1.2).
  * It renders at the end of the page, so the dimmed backdrop covers the whole screen even when it is opened from
  * the top bar (whose blur would otherwise keep the backdrop inside the bar).
+ * Tab stays inside it, and closing gives focus back to what opened it, or to the page's heading when that's gone
+ * (UX Phase 5A, 5.5).
  */
 export function Sheet({
   open,
@@ -90,6 +94,9 @@ export function Sheet({
     }),
   )
 
+  // Before focus moves in below, so it remembers what had focus.
+  useRestoreFocus(open, focusPageHeading)
+
   useEffect(() => {
     if (!open) return
     const onKeyDown = (event: KeyboardEvent) => {
@@ -111,6 +118,10 @@ export function Sheet({
       <div
         ref={panelRef}
         tabIndex={-1}
+        onKeyDown={(event) => {
+          // Keys in something portaled out of the sheet (a date picker, a phone menu) are its own.
+          if (panelRef.current?.contains(event.target as Node)) trapTab(event, panelRef.current)
+        }}
         className={clsx(
           'relative flex w-full flex-col bg-surface shadow-xl outline-none max-sm:h-full',
           variant === 'drawer'
