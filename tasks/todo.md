@@ -2945,3 +2945,25 @@ Plan: `docs/superpowers/plans/2026-11-10-ux-phase-5b-phones-and-contrast.md`. Br
   120 px Due column, no `scroll-padding-top` for the sticky stack, four comment nits, and narrowed checks (class scans;
   the light axe sweep skipped Users and Preferences).
 
+
+# UX Phase 6: checks in the test suite, role walkthroughs and polish — 10 Nov 2026, approved (Q1–Q6 "Yes, recommended")
+
+Audit items 6.1–6.4: the whole app renders in the browser test project, so the audit's checks (sideways scroll, axe
+serious/critical with `target-size`, one primary button, no spinners, no console errors, an `h1`) run for every page,
+role, theme and size — a pairwise set in `npm test`, the whole matrix in `npm run test:ux`; every sheet and dialog is
+checked from the keyboard; the four role walkthroughs are tests; help and specs follow the earlier rulings; the open
+polish items and 28 of the earlier phases' deferred minors are fixed.
+Plan: `docs/superpowers/plans/2026-11-10-ux-phase-6-checks-and-polish.md`. Branch `feat/ux-phase-6` from `origin/dev`
+(9b96ac1, Phase 5B landed).
+
+- [ ] The app harness (6.1)
+- [ ] The page checks (6.1)
+- [ ] The page × role × theme × size matrix (6.1)
+- [ ] The first full run, fixed (6.1)
+- [ ] Every sheet and dialog from the keyboard (6.1)
+- [ ] Role walkthroughs (6.2)
+- [ ] Help and specs (6.3)
+- [ ] Polish (6.4)
+- [ ] Earlier phases' minors: forms, lists, timer, navigation
+- [ ] Earlier phases' minors: screen readers, focus, tidy-ups
+- [ ] Rules, notes and the gate
