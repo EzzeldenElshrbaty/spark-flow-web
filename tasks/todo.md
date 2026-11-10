@@ -2911,13 +2911,26 @@ composer's formatting row behind Aa on phones; a laptop top bar that fits a runn
 Plan: `docs/superpowers/plans/2026-11-10-ux-phase-5b-phones-and-contrast.md`. Branch `feat/ux-phase-5b` from `origin/dev`
 (351eaa4, Phase 5A landed).
 
-- [ ] Contrast helpers, field borders, dark focus rings (5.8)
-- [ ] Text readable in both themes (5.8)
-- [ ] Late, paused and presence in words (5.10)
-- [ ] The bottom bar marks the right tab (5.2, 5.10)
-- [ ] 44 px touch areas; a round play button (5.4, 5.2)
-- [ ] The phone project page starts in the top third (5.1, 5.2)
-- [ ] The composer's formatting row waits for Aa on phones (5.2)
-- [ ] A laptop top bar that fits a running timer (5.3)
-- [ ] The panel is a modal wherever it covers the page (5A)
-- [ ] Phase check and records
+- [x] Contrast helpers, field borders, dark focus rings (5.8)
+- [x] Text readable in both themes (5.8)
+- [x] Late, paused and presence in words (5.10)
+- [x] The bottom bar marks the right tab (5.2, 5.10)
+- [x] 44 px touch areas; a round play button (5.4, 5.2)
+- [x] The phone project page starts in the top third (5.1, 5.2)
+- [x] The composer's formatting row waits for Aa on phones (5.2)
+- [x] A laptop top bar that fits a running timer (5.3)
+- [x] The panel is a modal wherever it covers the page (5A)
+- [x] Phase check and records
+
+## Review — UX Phase 5B
+- Gates: `tsc -b` and lint clean; tests 2,777/2,777 (unit and browser, no known failures now); `build:prototype`
+  passes; help pictures retaken.
+- Looked at in the app (dev build): a project's Overview on a 390 px phone starts its content at 261 of 947 px (28%),
+  Details folds the facts, the tab row sticks at 56 px with "Nexus Core" once the header scrolls away, and the play
+  button is round; the bottom bar marks Projects with a line on a project; fields show the darker border. axe (contrast
+  on) finds nothing serious or critical on Dashboard, Projects, Overview, Board, My work, a channel, Users and Preferences
+  in dark, and on the first six in light.
+- New shared pieces: `src/test/{contrast,touch}.ts`, `src/styles/kitTokens.test.ts`, `--line-input`, `@utility
+  touch-target`, `layout/bottomTab.ts`, `lib/{useScrollEnd,useScrolledPast}.ts`, `dueText`, `presenceNote`,
+  `useCompactSearch`, `RecordHeader` `pinned`; rules in `CLAUDE.md`.
+
