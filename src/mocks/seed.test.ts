@@ -255,3 +255,14 @@ describe('seed task files', () => {
     expect(t.descriptionBody).toContainEqual({ type: 'file', id: 'a-nex-101-flow' })
   })
 })
+
+describe('channels (chat spec 6.14, the intro)', () => {
+  it('every seeded channel says who made it and when', () => {
+    for (const c of data.channels) {
+      expect(c.memberIds, c.id).toContain(c.createdBy)
+      const first = data.messages.filter((m) => m.channelId === c.id).map((m) => m.createdAt).sort()[0]
+      expect(c.createdAt, c.id).toBeTruthy()
+      if (first) expect(c.createdAt! <= first, c.id).toBe(true)
+    }
+  })
+})

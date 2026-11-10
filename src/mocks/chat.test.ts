@@ -1164,3 +1164,16 @@ describe('Also send to #channel: a broadcast reply (spec 6.7)', () => {
   })
 })
 
+describe('who made a channel (chat spec 6.14, the intro)', () => {
+  it('a new channel and a new conversation say who made them, and when', async () => {
+    const before = Date.now()
+    const channel = await api.chat.createChannel({ workspaceId: 'ws-eng', name: 'launch-week', topic: '', isPrivate: false, memberIds: [] })
+    const dm = await api.chat.openDm('ws-eng', ['u-3', 'u-4'])
+    for (const c of [channel, dm]) {
+      expect(c.createdBy).toBe('u-1')
+      expect(Date.parse(c.createdAt!)).toBeGreaterThanOrEqual(before - 1000)
+      expect(Date.parse(c.createdAt!)).toBeLessThanOrEqual(Date.now())
+    }
+    expect((await api.chat.openDm('ws-eng', ['u-4', 'u-3'])).createdAt).toBe(dm.createdAt)
+  })
+})

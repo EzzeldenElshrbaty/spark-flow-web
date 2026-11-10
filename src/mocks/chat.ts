@@ -386,7 +386,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         if (same) return { channel: withUnread(data, same), created: false }
         // A conversation that exists stays open to read; nobody deactivated is in a new one.
         requireActive(data, others)
-        const dm: StoredChannel = { id: newId('c'), workspaceId, kind: 'dm', name: null, topic: '', description: '', whoCanPost: 'everyone', isDefault: false, memberIds: [me.id, ...others], isPrivate: true, lastMessageAt: null }
+        const dm: StoredChannel = { id: newId('c'), workspaceId, kind: 'dm', name: null, topic: '', description: '', whoCanPost: 'everyone', isDefault: false, memberIds: [me.id, ...others], isPrivate: true, lastMessageAt: null, createdAt: new Date().toISOString(), createdBy: me.id }
         data.channels.push(dm)
         return { channel: withUnread(data, dm), created: true }
       })
@@ -403,7 +403,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
         const others = [...new Set(input.memberIds)].filter((id) => id !== me.id)
         checkChannel(data, { workspaceId: input.workspaceId, name, topic, isPrivate: input.isPrivate, others })
         requireActive(data, others)
-        const created: StoredChannel = { id: newId('c'), workspaceId: input.workspaceId, kind: 'channel', name, topic, description: '', whoCanPost: 'everyone', isDefault: false, memberIds: [me.id, ...others], isPrivate: input.isPrivate, lastMessageAt: null }
+        const created: StoredChannel = { id: newId('c'), workspaceId: input.workspaceId, kind: 'channel', name, topic, description: '', whoCanPost: 'everyone', isDefault: false, memberIds: [me.id, ...others], isPrivate: input.isPrivate, lastMessageAt: null, createdAt: new Date().toISOString(), createdBy: me.id }
         data.channels.push(created)
         audit(data, { action: 'created', group: 'data', record: recordOf.channel(created), changes: changesBetween(data, {}, created, CHANNEL_LOGGED) })
         return withUnread(data, created)

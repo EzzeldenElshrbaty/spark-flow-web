@@ -89,11 +89,14 @@ function buildReplies(raw: RawReply[], messages: RawMessage[]): ThreadReply[] {
 }
 
 /** lastMessageAt is the newest message or reply in the channel. */
-function buildChannels(raw: RawChannel[], messages: ChatMessage[], replies: ThreadReply[]): StoredChannel[] {
+function buildChannels(raw: RawChannel[], messages: ChatMessage[], replies: ThreadReply[], now: Date): StoredChannel[] {
   return raw.map((c) => ({
     description: '',
     whoCanPost: 'everyone' as const,
     isDefault: false,
+    // Made by its first member: on its first message's day, or two months ago (chat spec 6.14, the intro).
+    createdBy: c.memberIds[0] ?? null,
+    createdAt: messages.filter((m) => m.channelId === c.id).map((m) => m.createdAt).sort()[0] ?? new Date(now.getTime() - 60 * 86_400_000).toISOString(),
     ...c,
     lastMessageAt: latestOf([
       ...messages.filter((m) => m.channelId === c.id).map((m) => m.createdAt),
@@ -462,7 +465,7 @@ export function seed(now: Date): SeedResult {
     const project = projects.find((p) => p.channelId === c.id)
     if (project) c.memberIds = [...projectPeopleIds(project, users)]
   }
-  const channels = buildChannels(rawChannels, messages, replies)
+  const channels = buildChannels(rawChannels, messages, replies, now)
   const tickets = buildTickets(rawTickets)
 
   // ── Work: timers on the last 5 working days (Sun–Thu), 05:50–15:05 UTC: Attendance's days come from them ──

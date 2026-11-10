@@ -331,6 +331,12 @@ export type Channel = {
   whoCanPost: WhoCanPost
   /** New people in the workspace join it (spec 6.10, a default channel): Admins choose it, public channels only. */
   isDefault: boolean
+  /**
+   * When and by whom it was made (chat spec 6.14, the intro; DB v34). Null (or absent) when nobody knows: a channel
+   * made before v34 is dated by its first message and has no creator.
+   */
+  createdAt?: string | null
+  createdBy?: string | null
 } & ChannelMemberState
 
 export type WhoCanPost = 'everyone' | 'admins'

@@ -315,3 +315,23 @@ describe('32 → 33 (channel pages, chat spec 6.14)', () => {
     expect(migrate({ version: 32, bookmarks: [] }, 33)).toEqual({ version: 33, bookmarks: [], pages: [], pageVersions: [], pageMentions: [] })
   })
 })
+
+describe('33 → 34 (who made a channel)', () => {
+  it('a channel is dated by its first message; the creator is unknown', () => {
+    const doc = migrate(
+      {
+        version: 33,
+        channels: [{ id: 'c1' }, { id: 'c2' }],
+        messages: [
+          { channelId: 'c1', createdAt: '2026-10-02T09:00:00.000Z' },
+          { channelId: 'c1', createdAt: '2026-10-01T09:00:00.000Z' },
+        ],
+      },
+      34,
+    )!
+    expect(doc.channels).toEqual([
+      { id: 'c1', createdAt: '2026-10-01T09:00:00.000Z', createdBy: null },
+      { id: 'c2', createdAt: null, createdBy: null },
+    ])
+  })
+})

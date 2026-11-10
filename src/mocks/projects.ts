@@ -255,6 +255,8 @@ export function projectsApi(db: MockDb, hub: MockHub, now: () => Date): Pick<Api
               memberIds: [],
               isPrivate: false,
               lastMessageAt: null,
+              createdAt: now().toISOString(),
+              createdBy: data.currentUserId,
             })
             // Its name and people, worked out the same way every later edit keeps them.
             syncProjectChannel(data, project, true)

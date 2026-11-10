@@ -26,6 +26,16 @@ const V24_ROLES = [
 ]
 
 export const migrations: Record<number, (doc: Record<string, unknown>) => void> = {
+  // 34: who made each channel, and when (chat spec 6.14, the intro): dated by its first message, its maker unknown.
+  33: (doc) => {
+    if (!Array.isArray(doc.channels)) return
+    const messages = Array.isArray(doc.messages) ? (doc.messages as Record<string, unknown>[]) : []
+    for (const c of doc.channels as Record<string, unknown>[]) {
+      const dates = messages.filter((m) => m.channelId === c.id).map((m) => String(m.createdAt)).sort()
+      c.createdAt = dates[0] ?? null
+      c.createdBy = null
+    }
+  },
   // 33: channel pages (chat spec 6.14); no channel has one yet.
   32: (doc) => {
     doc.pages = []
