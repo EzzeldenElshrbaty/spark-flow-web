@@ -236,7 +236,7 @@ export function ChannelView({ channelId, hideTabs = [] }: { channelId: string | 
       )}
       </div>
       {fromMessage.sheet}
-      {pickingTemplate && <TemplatePicker channelId={current.id} onClose={() => setPickingTemplate(false)} onAdded={() => setTab('page')} />}
+      {pickingTemplate && <TemplatePicker channelId={current.id} people={people} me={persona.id} onClose={() => setPickingTemplate(false)} onAdded={() => setTab('page')} />}
       {reminding !== null && (
         <RemindDialog
           initialText={reminding}

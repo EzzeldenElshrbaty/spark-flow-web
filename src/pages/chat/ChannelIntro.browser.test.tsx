@@ -83,6 +83,17 @@ describe('the channel intro (chat spec 6.14)', () => {
     }
   })
 
+  it('a long description wraps on a phone instead of scrolling sideways (final review)', async () => {
+    const made = await api.chat.createChannel({ workspaceId: 'ws-eng', name: 'docs-links', topic: '', isPrivate: false, memberIds: [] })
+    await api.chat.updateChannel(made.id, { description: `Read first:\nhttps://wiki.spark-sys.com/${'very-long-section-name-'.repeat(6)}end` })
+    const app = await renderApp({ path: `/w/engineering/c/${made.id}`, as: 'admin', theme: 'light', size: 'phone' })
+    await app.settled()
+    await screen.findByRole('heading', { level: 2, name: /docs-links/ })
+    expect(sidewaysScroll()).toBeNull()
+    expect(screen.getByText(/^Read first:/).textContent).toContain('\n')
+    expect(getComputedStyle(screen.getByText(/^Read first:/)).whiteSpace).toBe('pre-line')
+  })
+
   it('axe finds no serious problems', async () => {
     for (const theme of ['light', 'dark'] as const) {
       await newChannel('desktop', theme)

@@ -1,17 +1,19 @@
 import clsx from 'clsx'
-import { useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useLatestPage, useSavePage } from '@/api/pages'
+import type { User } from '@/api/types'
 import { announce } from '@/components/sf/Announcer'
 import { Button } from '@/components/sf/Button'
 import { Modal, ModalCancelButton } from '@/components/sf/Modal'
 import { ApiError } from '@/lib/apiError'
+import { senderName } from '@/lib/flowbot'
 import { PAGE_TEMPLATES, type PageTemplate } from '@/lib/pageTemplates'
 
 /**
  * Pick a template (chat spec 6.14 §6): one of the ready pages becomes the channel's page. A page with text asks first
  * (the old one stays in History); a refusal stays here as its sentence, read out.
  */
-export function TemplatePicker({ channelId, onClose, onAdded }: { channelId: string; onClose: () => void; onAdded: () => void }) {
+export function TemplatePicker({ channelId, people, me, onClose, onAdded }: { channelId: string; people: User[]; me: string; onClose: () => void; onAdded: () => void }) {
   const name = useId()
   const latest = useLatestPage()
   const save = useSavePage()
@@ -21,6 +23,20 @@ export function TemplatePicker({ channelId, onClose, onAdded }: { channelId: str
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const template = PAGE_TEMPLATES.find((t) => t.id === chosen)!
+  // Closed (Cancel, Esc, ✕) while the page was being read: nothing is saved after all (final review).
+  const closed = useRef(false)
+  const close = () => {
+    closed.current = true
+    onClose()
+  }
+  // The question's buttons go when it's answered: focus comes back to Use template, never to the page behind.
+  const useButton = useRef<HTMLButtonElement>(null)
+  const [refocus, setRefocus] = useState(false)
+  useEffect(() => {
+    if (!refocus || asking !== null) return
+    useButton.current?.focus()
+    setRefocus(false)
+  }, [refocus, asking])
 
   const refuse = (e: unknown) => {
     const sentence = e instanceof ApiError ? (e.detail ?? e.title) : 'Couldn’t add the template. Check your connection.'
@@ -29,9 +45,11 @@ export function TemplatePicker({ channelId, onClose, onAdded }: { channelId: str
   }
   const put = async (baseVersion: number) => {
     setAsking(null)
+    setRefocus(true)
     setBusy(true)
     try {
       await save.mutateAsync({ channelId, body: template.body, baseVersion })
+      if (closed.current) return
       onAdded()
       onClose()
       announce('Template added to the page.')
@@ -42,10 +60,19 @@ export function TemplatePicker({ channelId, onClose, onAdded }: { channelId: str
     }
   }
   const use = async () => {
+    if (busy) return
     setError(null)
     setBusy(true)
     try {
       const page = await latest(channelId)
+      if (closed.current) return
+      // Someone else holds the page: say so in the picker's words, before anything is saved (final review).
+      const holder = page.editing && page.editing.userId !== me && Date.parse(page.editing.until) > Date.now() ? page.editing.userId : null
+      if (holder) {
+        setBusy(false)
+        refuse(new ApiError({ title: 'Conflict', status: 409, detail: `${senderName(holder, people)} is editing the page. Try again when they’re done.` }))
+        return
+      }
       if (page.body.length > 0) {
         setBusy(false)
         setAsking(page.version)
@@ -61,15 +88,24 @@ export function TemplatePicker({ channelId, onClose, onAdded }: { channelId: str
   return (
     <Modal
       open
-      onClose={onClose}
+      onClose={close}
       title="Pick a template"
       description="It fills the channel’s page. You can change everything after."
       wide
       footer={
         asking !== null ? (
           <>
-            <p className="sf-ui-medium me-auto mb-0 text-sf-text">Replace the channel’s page? The current one stays in History.</p>
-            <Button touch autoFocus onClick={() => setAsking(null)}>
+            <p className="sf-ui-medium me-auto mb-0 text-sf-text" role="status">
+              Replace the channel’s page? The current one stays in History.
+            </p>
+            <Button
+              touch
+              autoFocus
+              onClick={() => {
+                setAsking(null)
+                setRefocus(true)
+              }}
+            >
               Keep the page
             </Button>
             <Button touch variant="primary" onClick={() => void put(asking)}>
@@ -80,7 +116,8 @@ export function TemplatePicker({ channelId, onClose, onAdded }: { channelId: str
           <>
             {error && <p className="sf-small me-auto mb-0 text-sf-error">{error}</p>}
             <ModalCancelButton touch />
-            <Button touch variant="primary" disabled={busy} onClick={() => void use()}>
+            {/* aria-disabled, not disabled, while it works: a disabled button would drop the focus behind the dialog. */}
+            <Button ref={useButton} touch variant="primary" aria-disabled={busy} onClick={() => void use()}>
               {busy ? 'Adding…' : 'Use template'}
             </Button>
           </>

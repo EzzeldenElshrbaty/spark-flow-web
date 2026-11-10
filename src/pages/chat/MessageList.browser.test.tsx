@@ -479,6 +479,14 @@ describe('the intro row (chat spec 6.14)', () => {
     expect(screen.queryByText('No messages here yet.')).toBeNull()
   })
 
+  it('a first message on its way in an empty channel shows under the intro, with Retry when it fails (final review)', async () => {
+    const failed: PendingMessage = { clientId: 'k1', channelId: 'c1', content: 'Hello channel', body: parseBody('Hello channel'), createdAt: new Date().toISOString(), status: 'failed' }
+    mount({ data: channel(0), intro: <p>Intro</p>, pending: [failed] })
+    expect(await screen.findByText('Intro')).toBeTruthy()
+    expect(await screen.findByText('Hello channel')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Retry/ })).toBeTruthy()
+  })
+
   it('the intro sits above the first day divider', async () => {
     mount({ data: channel(5), intro: <p>Intro</p> })
     await still()

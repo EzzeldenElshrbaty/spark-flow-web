@@ -361,7 +361,8 @@ export function MessageList({
 
   if (query.isError && !query.data) return <div className="px-4 pt-4 md:px-6"><QueryError what="Messages" onRetry={() => void query.refetch()} /></div>
   if (!query.data || (catchingUp && !positioned.current)) return <div className="min-h-0 flex-1 px-4 pt-4 md:px-6"><MessageSkeleton /></div>
-  if (messages.length === 0)
+  // A first message on its way (or not sent) shows in the list, under the intro, with its Retry (final review).
+  if (messages.length === 0 && shownPending.length === 0)
     return intro ? <div className="min-h-0 flex-1 overflow-y-auto">{intro}</div> : <p className="min-h-0 flex-1 px-4 pt-4 text-sm text-fg-muted md:px-6">No messages here yet.</p>
 
   const items = virtualizer.getVirtualItems()
