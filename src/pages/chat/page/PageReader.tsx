@@ -62,7 +62,7 @@ function PageBlockView({ block, ctx }: { block: PageBlock; ctx: BodyContext }) {
             <thead>
               <tr>
                 {head!.map((cell, i) => (
-                  <th key={i} scope="col" dir="auto" className="sf-body-strong border border-sf-line bg-sf-surface-sunken px-2 py-1 text-start align-top whitespace-pre-wrap">
+                  <th key={i} scope="col" dir="auto" className="sf-body-strong h-8 min-w-16 border border-sf-line bg-sf-surface-sunken px-2 py-1 text-start align-top whitespace-pre-wrap">
                     <Inlines nodes={cell} ctx={ctx} />
                   </th>
                 ))}
@@ -72,7 +72,7 @@ function PageBlockView({ block, ctx }: { block: PageBlock; ctx: BodyContext }) {
               {rows.map((row, r) => (
                 <tr key={r}>
                   {row.map((cell, i) => (
-                    <td key={i} dir="auto" className="border border-sf-line px-2 py-1 align-top whitespace-pre-wrap">
+                    <td key={i} dir="auto" className="h-8 min-w-16 border border-sf-line px-2 py-1 align-top whitespace-pre-wrap">
                       <Inlines nodes={cell} ctx={ctx} />
                     </td>
                   ))}
