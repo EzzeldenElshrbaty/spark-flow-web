@@ -10,6 +10,13 @@ describe('appPath (chat spec 6.14 §8: bookmarks to Flow open in Flow)', () => {
     }
   })
 
+  it('a path that a router would read as another site is not an app path (security review)', () => {
+    const origin = 'https://flow.spark-sys.com'
+    for (const url of ['https://flow.spark-sys.com//evil.example/x', 'https://flow.spark-sys.com/\\evil.example/x', 'https://flow.spark-sys.com/%5Cevil.example']) {
+      expect(appPath(url, origin), url).toBeNull()
+    }
+  })
+
   it('with no origin (no window, as in the mock’s own tests) nothing is an app path', () => {
     expect(appPath('https://flow.spark-sys.com/w', '')).toBeNull()
   })
