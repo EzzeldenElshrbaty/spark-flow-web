@@ -10,6 +10,7 @@ import { useChannels, useOpenDm } from '@/api/chat'
 import { useProjects, useTasksOf } from '@/api/tickets'
 import { useUsers } from '@/api/users'
 import { isActive } from '@/lib/people'
+import { roundButton } from '@/layout/roundButton'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { useRole } from '@/lib/useRole'
 import { findShortcuts, opensSearch, peopleShortcuts, searchPlaceholder, shortcutsFor, taskShortcuts, workspaceShortcuts } from '@/layout/searchShortcuts'
@@ -328,7 +329,7 @@ export function PhoneSearch({ open, onOpenChange }: { open: boolean; onOpenChang
         onClick={() => onOpenChange(true)}
         aria-label="Search"
         title="Search"
-        className="sf-focus inline-grid size-sf-control flex-none cursor-pointer place-items-center rounded-sf-full border border-sf-line text-sf-text-secondary hover:bg-sf-surface-hover hover:text-sf-text md:hidden"
+        className={clsx(roundButton, 'md:hidden')}
       >
         <Icon icon={IconSearch} />
       </button>

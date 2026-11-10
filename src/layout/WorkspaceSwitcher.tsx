@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router'
 import type { Workspace } from '@/api/types'
 import { Icon } from '@/components/sf/Icon'
 import { Menu, MenuHeading, MenuItem } from '@/components/sf/Menu'
+import { round, roundButton } from '@/layout/roundButton'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { paths } from '@/lib/paths'
 
@@ -16,9 +17,6 @@ const initialsOf = (name: string) =>
     .join('')
     .slice(0, 2)
     .toUpperCase()
-
-/** The top bar's round buttons (spec 5.2): 36px, a hairline ring, the surface on hover. */
-const round = 'sf-focus inline-grid size-sf-control flex-none place-items-center rounded-sf-full border border-sf-line'
 
 /** Round workspace button in the top bar; its menu lists the workspaces, with a check on the open one. */
 export function WorkspaceSwitcher() {
@@ -40,7 +38,7 @@ export function WorkspaceSwitcher() {
           type="button"
           {...props}
           title={`Workspace: ${workspace.name}`}
-          className={clsx(round, 'cursor-pointer text-sf-text-secondary hover:bg-sf-surface-hover hover:text-sf-text min-[1440px]:inline-flex min-[1440px]:w-auto min-[1440px]:max-w-48 min-[1440px]:items-center min-[1440px]:gap-1 min-[1440px]:px-3')}
+          className={clsx(roundButton, 'min-[1440px]:inline-flex min-[1440px]:w-auto min-[1440px]:max-w-48 min-[1440px]:items-center min-[1440px]:gap-1 min-[1440px]:px-3')}
         >
           <span aria-hidden className="font-sf text-[11px]/none font-semibold tracking-tight min-[1440px]:hidden">
             {initialsOf(workspace.name)}

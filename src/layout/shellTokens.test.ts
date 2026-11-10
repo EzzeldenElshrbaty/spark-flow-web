@@ -10,6 +10,8 @@ const SHELL = [
   'layout/WorkspaceSwitcher.tsx',
   'layout/NotificationsMenu.tsx',
   'layout/GlobalSearch.tsx',
+  'layout/HelpButton.tsx',
+  'layout/roundButton.ts',
   'layout/searchShortcuts.ts',
   'layout/MobileNav.tsx',
   'navigation.ts',
