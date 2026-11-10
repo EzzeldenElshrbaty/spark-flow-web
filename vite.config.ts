@@ -60,6 +60,8 @@ export default defineConfig(({ mode }) => {
           test: {
             name: 'browser',
             setupFiles: ['src/test/signedIn.ts'],
+            // How much of the UX matrix runs (UX Phase 6): a pairwise set, or every load with UX_MATRIX=full (`npm run test:ux`).
+            provide: { uxMatrix: process.env.UX_MATRIX === 'full' ? 'full' : 'pairwise' },
             include: ['src/**/*.browser.test.tsx'],
             // One file at a time: they share one browser tab, and focus (which editors and scrolling need) is one too.
             fileParallelism: false,

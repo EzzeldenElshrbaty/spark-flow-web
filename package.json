@@ -9,6 +9,7 @@
     "build:prototype": "tsc -b && vite build --mode prototype",
     "lint": "oxlint",
     "test": "vitest run",
+    "test:ux": "UX_MATRIX=full vitest run --project browser src/ux.browser.test.tsx",
     "preview": "vite preview",
     "preview:prototype": "vite preview --mode prototype",
     "help:shots": "npm run build:prototype && node scripts/help-shots.mjs"

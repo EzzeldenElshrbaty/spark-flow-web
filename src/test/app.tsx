@@ -11,6 +11,7 @@ import { latency } from '@/mocks/latency'
 import { createQueryClient } from '@/lib/queryClient'
 import { ThemeProvider } from '@/lib/ThemeProvider'
 import { appRoutes } from '@/router'
+import { ROLE_USER, SIZE, type Role, type Size, type Theme } from './setups'
 
 /**
  * The whole app in the browser project (UX Phase 6, 6.1): the real routes in a memory router, the real query client
@@ -18,25 +19,7 @@ import { appRoutes } from '@/router'
  * sheet and dialog keyboard tests and the role walkthroughs all start here.
  */
 
-export type Role = 'admin' | 'pm' | 'member' | 'sales'
-export type Theme = 'light' | 'dark'
-export type Size = 'desktop' | 'laptop' | 'tablet' | 'phone'
-
-/** The seeded person who plays each role. */
-export const ROLE_USER: Record<Role, { id: string; name: string; email: string }> = {
-  admin: { id: 'u-1', name: 'Youssef Abdelrahman', email: 'youssef.abdelrahman@spark-sys.com' },
-  pm: { id: 'u-2', name: 'Nour El-Sayed', email: 'nour.elsayed@spark-sys.com' },
-  member: { id: 'u-3', name: 'Mariam Fathy', email: 'mariam.fathy@spark-sys.com' },
-  sales: { id: 'u-9', name: 'Karim Hassan', email: 'karim.hassan@spark-sys.com' },
-}
-
-/** The audit's four screens (width × height). */
-export const SIZE: Record<Size, [number, number]> = {
-  desktop: [1440, 900],
-  laptop: [1280, 720],
-  tablet: [768, 1024],
-  phone: [390, 844],
-}
+export { ROLE_USER, SIZE, type Role, type Size, type Theme } from './setups'
 
 export type AppHandle = {
   router: ReturnType<typeof createMemoryRouter>
