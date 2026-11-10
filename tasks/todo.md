@@ -3022,3 +3022,17 @@ Fixes the Phase 6 open design question: at 390 px the bookmark strip after the t
 - [x] 1. `ChannelTabs`: below 768 px the bookmarks get their own 44 px row under the tabs, only when there are some; no + on phones. Tests: `ChannelTabs.browser.test.tsx` (5).
 - [x] 2. `ChannelHeader`: "Add a bookmark" in Channel actions (⋮) on phones; `ChannelPage` passes the save to both; spec §6.16, CLAUDE.md. Tests: `ChannelHeader.test.tsx` (2), `src/bookmarkRow.browser.test.tsx` (1). Found on the way: the message list didn't stay at its end when it got shorter (a row above it, a taller composer); it does now (`MessageList` `watchLog`, 2 tests in `MessageList.browser.test.tsx`).
 - [ ] Gates: lint, tsc, `npm test`, `npm run test:ux`, `build:prototype`; one Opus final review.
+
+## Review — channel bookmarks on phones
+
+- Built on `fix/chat-bookmark-row` from dev ea3458a. Below 768 px a channel's bookmarks get their own 44 px row under
+  the tabs, only when there are some; Add a bookmark is in Channel actions (⋮) on phones. The row's line is an inset
+  shadow like the tabs', so 44 px links no longer make it scroll 1 px.
+- Found on the way: the message list didn't follow its end when it got shorter, so the new row (or a taller composer)
+  hid the newest message; it does now (`MessageList` `watchLog`, a `ResizeObserver` on the log's ref).
+- Final review (Opus): ready with fixes. Fixed: the project Chat tab case wasn't really covered (no seeded bookmarks);
+  `src/bookmarkRow.browser.test.tsx` now runs there too, from a fresh seed. Phase 6's polish check for the strip now
+  checks the row. Gates: lint, tsc, `npm test` 3,029/3,029, `npm run test:ux` 968/968, `build:prototype`.
+- Deferred minors: one painted frame with the newest message cut before the list follows a shrink (a composer line
+  jitters); `watchLog` has no `ResizeObserver` guard for jsdom; `usePhone` (`max-width: 767px`) and `max-md`
+  (`< 48rem`) differ between 767 and 768 px at some zoom levels (project-wide); the 768 px breakpoint isn't tested.
