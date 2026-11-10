@@ -35,6 +35,7 @@ import { KeysPlugin } from '@/pages/chat/composer/KeysPlugin'
 import { COMPOSER_TRANSFORMERS } from '@/pages/chat/composer/markdown'
 import { CustomReminder } from '@/pages/chat/saved/RemindMenu'
 import { countNotice } from './countNotice'
+import { usePhone } from '@/components/sf/usePhone'
 
 export type { ComposerDirectory }
 
@@ -97,7 +98,7 @@ export function RichComposer({
   error,
   directory,
   autoFocus = false,
-  showFormatting = true,
+  showFormatting,
   files,
   allowEmpty = false,
   onSchedule,
@@ -139,6 +140,7 @@ export function RichComposer({
    */
   linkPreview?: (url: string, onRemove: () => void) => ReactNode
 }) {
+  const phone = usePhone()
   const config = {
     namespace: 'flow-composer',
     nodes: COMPOSER_NODES,
@@ -162,7 +164,8 @@ export function RichComposer({
         error={error}
         directory={directory}
         autoFocus={autoFocus}
-        showFormatting={showFormatting}
+        // On a phone the formatting row waits for Aa, so the box keeps its room (UX Phase 5B, 5.2).
+        showFormatting={showFormatting ?? !phone}
         files={files}
         allowEmpty={allowEmpty}
         onSchedule={onSchedule}

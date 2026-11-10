@@ -1,7 +1,7 @@
 import '@/index.css'
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { userEvent } from 'vitest/browser'
+import { page, userEvent } from 'vitest/browser'
 import type { User } from '@/api/types'
 import { bodyText, parseBody, type Body } from '@/lib/messageBody'
 import { opensSearch } from '@/layout/searchShortcuts'
@@ -12,7 +12,10 @@ import { axeProblems } from '@/test/axe'
 
 // A real browser: the editor needs real keyboard events, selection and layout.
 
-afterEach(cleanup)
+afterEach(async () => {
+  cleanup()
+  await page.viewport(414, 896)
+})
 // The list opens after the editor's update; give it time when the whole suite is running.
 const LIST_WAIT = { timeout: 3000 }
 
@@ -165,6 +168,8 @@ describe('RichComposer formatting (spec 6.8)', () => {
   })
 
   it('the formatting row applies bold and shows it pressed', async () => {
+    // A laptop: on a phone the row waits for Aa (UX Phase 5B, 5.2).
+    await page.viewport(1280, 800)
     const { onSend, editor } = await ready()
     await focusEditor(editor)
     const bold = screen.getByRole('button', { name: 'Bold' })
@@ -358,6 +363,8 @@ describe('RichComposer formatting row (spec 6.7, 6.8)', () => {
   })
 
   it('the channel’s box starts with it', async () => {
+    // A laptop: on a phone the row waits for Aa (UX Phase 5B, 5.2).
+    await page.viewport(1280, 800)
     await ready()
     expect(screen.getByRole('toolbar', { name: 'Formatting' })).toBeTruthy()
   })
@@ -519,6 +526,8 @@ describe('RichComposer metrics (spec 6.8, reference .sf-cbar, .sf-send, .sf-plus
   })
 
   it('formatting icons go from text-muted to text-secondary while the composer has focus', async () => {
+    // A laptop: on a phone the row waits for Aa (UX Phase 5B, 5.2).
+    await page.viewport(1280, 800)
     const { editor } = mount()
     const bold = screen.getByRole('button', { name: 'Bold' })
     expect(getComputedStyle(bold).color).toBe(token('--text-muted'))
@@ -916,6 +925,25 @@ describe('the suggestion list in a moved row (final review)', () => {
     expect(menu.bottom).toBeLessThanOrEqual(box.top)
     expect(menu.bottom).toBeGreaterThan(box.top - 60)
     expect(Math.abs(menu.left - box.left)).toBeLessThan(40)
+  })
+})
+
+describe('the formatting row on phones (UX Phase 5B, 5.2)', () => {
+  it('at 390 it waits for Aa; at 1280 it shows from the start, with Aa pressed', async () => {
+    await page.viewport(390, 844)
+    try {
+      await ready()
+      expect(screen.queryByRole('toolbar', { name: 'Formatting' })).toBeNull()
+      await userEvent.click(screen.getByRole('button', { name: 'Show formatting' }))
+      expect(screen.getByRole('toolbar', { name: 'Formatting' })).toBeTruthy()
+      cleanup()
+      await page.viewport(1280, 800)
+      await ready()
+      expect(screen.getByRole('toolbar', { name: 'Formatting' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Hide formatting' }).getAttribute('aria-pressed')).toBe('true')
+    } finally {
+      await page.viewport(414, 896)
+    }
   })
 })
 
