@@ -97,7 +97,7 @@ export type InlineReader = {
   text: (text: string, marks: Mark[]) => Inline[]
   link: (href: string, text: string, marks: Mark[]) => Inline
 }
-const CHAT_READER: InlineReader = { text: autoInlines, link: (href, text) => ({ type: 'link', href, text }) }
+export const CHAT_READER: InlineReader = { text: autoInlines, link: (href, text) => ({ type: 'link', href, text }) }
 
 const marksOf = (node: TextNode): Mark[] => FORMATS.filter(([f]) => node.hasFormat(f)).map(([, m]) => m)
 
@@ -179,7 +179,7 @@ function textNodes(text: string, marks: Mark[] = []): LexicalNode[] {
   })
 }
 
-function inlineNodes(inlines: Inline[]): LexicalNode[] {
+export function inlineNodes(inlines: Inline[]): LexicalNode[] {
   return inlines.flatMap((n): LexicalNode[] => {
     if (n.type === 'text') return textNodes(n.text, n.marks)
     if (n.type === 'link') return [$createLinkNode(n.href).append(...textNodes(n.text, n.marks))]
