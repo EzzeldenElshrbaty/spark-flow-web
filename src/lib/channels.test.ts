@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Channel, MentionItem } from '@/api/types'
 import { FLOWBOT_ID } from '@/lib/flowbot'
-import { channelLabel, chatCount, countNoun, onlyAdminsLine, cantWriteLine, inWorkspace, mutedLast, mustJoin, readOnlyFor, sidebarChannels, sidebarRowState, sortChannels, unreadMentions, unreadTaskMentions } from '@/lib/channels'
+import { channelLabel, channelSections, chatCount, projectOrderFrom, countNoun, onlyAdminsLine, cantWriteLine, inWorkspace, mutedLast, mustJoin, readOnlyFor, sidebarChannels, sidebarRowState, sortChannels, unreadMentions, unreadTaskMentions } from '@/lib/channels'
 import { seed } from '@/mocks/seed'
 
 const data = seed(new Date('2026-10-26T09:00:00Z')).data
@@ -111,6 +111,29 @@ describe('sidebarChannels', () => {
   it("keeps my channels and my projects' channels, not other public or archived ones", () => {
     const list = [ch('mine', ['u1']), ch('other', ['u2']), ch('proj', ['u2']), ch('old', ['u1'], '2026-10-01T00:00:00.000Z')]
     expect(sidebarChannels(list, 'u1', new Set(['proj'])).map((c) => c.id)).toEqual(['mine', 'proj'])
+  })
+})
+
+describe('channelSections (spec 5.1: Channels, then Project channels)', () => {
+  const r = (id: string, over: Partial<Channel> = {}) => ({ channel: { ...channel(id), id, ...over } })
+  const projects = [{ channelId: 'c-p-mob' }, { channelId: 'c-p-nex' }, { channelId: 'c-p-des' }, { channelId: 'c-p-old' }]
+
+  it('lists a project’s chat under Project channels only, in the projects’ order', () => {
+    const { channels, projectChannels } = channelSections([r('c-general'), r('c-p-nex'), r('c-backend'), r('c-p-mob')], projects)
+    expect(channels.map((x) => x.channel.id)).toEqual(['c-general', 'c-backend'])
+    expect(projectChannels.map((x) => x.channel.id)).toEqual(['c-p-mob', 'c-p-nex'])
+  })
+
+  it('leaves a starred one under Starred, and puts muted ones last', () => {
+    const rows = [r('c-p-mob', { muted: true }), r('c-p-nex'), r('c-p-des', { starred: true }), r('c-general', { starred: true })]
+    const { channels, projectChannels } = channelSections(rows, projects)
+    expect(channels).toEqual([])
+    expect(projectChannels.map((x) => x.channel.id)).toEqual(['c-p-nex', 'c-p-mob'])
+  })
+
+  it('turns a drop there into the Projects side’s order, by project', () => {
+    const list = [{ id: 'p-mob', channelId: 'c-p-mob' }, { id: 'p-nex', channelId: 'c-p-nex' }]
+    expect(projectOrderFrom(['c-p-nex', 'c-gone', 'c-p-mob'], list)).toEqual(['p-nex', 'p-mob'])
   })
 })
 

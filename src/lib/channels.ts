@@ -37,11 +37,34 @@ export function sortChannels(channels: Channel[]): { channels: Channel[]; dms: C
 }
 
 /**
- * The channels the sidebar lists: the ones I'm in, and the chats of my projects; never archived ones. Other public
- * channels are found through search, where Join adds them.
+ * The channels the sidebar lists: the ones I'm in, and the chats of the projects it lists; never archived ones. Other
+ * public channels are found through search, where Join adds them.
  */
-export function sidebarChannels(channels: Channel[], meId: string, myProjectChannelIds: Set<string>): Channel[] {
-  return channels.filter((c) => !isArchived(c) && (c.memberIds.includes(meId) || myProjectChannelIds.has(c.id)))
+export function sidebarChannels(channels: Channel[], meId: string, projectChannelIds: Set<string>): Channel[] {
+  return channels.filter((c) => !isArchived(c) && (c.memberIds.includes(meId) || projectChannelIds.has(c.id)))
+}
+
+/**
+ * The Chat side's Channels and Project channels (spec 5.1): a project's chat goes under Project channels, in the order
+ * of the Projects side's list, muted ones last; every other channel under Channels. A starred one is in neither: it's
+ * listed once, under Starred.
+ */
+export function channelSections<R extends { channel: Pick<Channel, 'id' | 'starred' | 'muted'> }>(
+  rows: R[],
+  projects: { channelId: string }[],
+): { channels: R[]; projectChannels: R[] } {
+  const shown = rows.filter((r) => !r.channel.starred)
+  const owned = new Set(projects.map((p) => p.channelId))
+  const inOrder = projects.flatMap((p) => shown.filter((r) => r.channel.id === p.channelId))
+  return {
+    channels: shown.filter((r) => !owned.has(r.channel.id)),
+    projectChannels: [...inOrder.filter((r) => !r.channel.muted), ...inOrder.filter((r) => r.channel.muted)],
+  }
+}
+
+/** A drop in Project channels, as the Projects side's order: the one order both sides share is of projects. */
+export function projectOrderFrom(channelIds: string[], projects: { id: string; channelId: string }[]): string[] {
+  return channelIds.flatMap((channelId) => projects.filter((p) => p.channelId === channelId).map((p) => p.id))
 }
 
 /** Whether a channel belongs to the workspace in the URL. One from another workspace is treated as not found there. */

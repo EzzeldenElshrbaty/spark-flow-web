@@ -10,7 +10,7 @@ Chat holds the workspace’s channels, every project’s channel and your direct
 
 ## Channels and direct messages
 
-Channels are listed in the menu on the Chat side; star one to keep it at the top, and drag to reorder. A project’s channel holds everyone on the project. **New message** starts a direct message with one or more people.
+Channels are listed in the menu on the Chat side; star one to keep it at the top, and drag to reorder. A project’s channel holds everyone on the project; every project’s channel is under **Project channels**, in the order of the Projects side. **New message** starts a direct message with one or more people.
 
 A channel’s name at the top opens its details: topic, people, and who can post. People who can change any public channel can archive one; a project’s channel follows its project.
 
