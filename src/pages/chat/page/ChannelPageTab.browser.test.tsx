@@ -116,6 +116,9 @@ describe('the channel’s page (chat spec 6.14)', () => {
     await focusEditor(editor())
     // `[[` is a plain "[" to userEvent.
     await userEvent.keyboard('## Plan{Enter}[[ ] Ship{Enter}{Enter}')
+    // The screen's h1 is the channel's name: a page's Heading 2 reads as a level 3 heading, in the editor too.
+    expect(within(editor()).getByRole('heading', { level: 3, name: 'Plan' })).toBeTruthy()
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
     await userEvent.click(screen.getByRole('button', { name: 'Table' }))
     await userEvent.keyboard('A{Tab}B')
     await waitFor(async () =>

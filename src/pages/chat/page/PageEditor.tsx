@@ -11,6 +11,7 @@ import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import { TablePlugin } from '@lexical/react/LexicalTablePlugin'
 import { $isListNode, ListNode } from '@lexical/list'
+import { $isHeadingNode, HeadingNode } from '@lexical/rich-text'
 import { $getNodeByKey, $getSelection, $isRangeSelection, COMMAND_PRIORITY_NORMAL, FORMAT_TEXT_COMMAND, KEY_DOWN_COMMAND } from 'lexical'
 import { useEffect, useRef } from 'react'
 import { webAddress } from '@/lib/webAddress'
@@ -117,6 +118,21 @@ function Inner({ editable, directory, onChange, onBlur }: Props) {
             if (!$isListNode(node) || !dom) continue
             if (node.getListType() === 'check') dom.setAttribute('role', 'group')
             else dom.removeAttribute('role')
+          }
+        }),
+      ),
+    [editor],
+  )
+
+  // The screen's h1 is the channel's name: a page's Heading 1 reads as level 2, and so on (as the read-only view).
+  useEffect(
+    () =>
+      editor.registerMutationListener(HeadingNode, (mutations) =>
+        editor.getEditorState().read(() => {
+          for (const [key, mutation] of mutations) {
+            const node = mutation === 'destroyed' ? null : $getNodeByKey(key)
+            const dom = editor.getElementByKey(key)
+            if ($isHeadingNode(node) && dom) dom.setAttribute('aria-level', String(Number(node.getTag().slice(1)) + 1))
           }
         }),
       ),
