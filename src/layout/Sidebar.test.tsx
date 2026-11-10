@@ -20,6 +20,7 @@ const setOrder = vi.fn()
 let customOrder = { starred: false, channels: false, projects: false }
 let orderError: string | null = null
 let dms: unknown[] = []
+let projectChannels: unknown[] = []
 let loadingWorkspace = false
 vi.mock('@/api/sidebar', () => ({ useSaveSidebarOrder: () => ({ save: setOrder, error: orderError }) }))
 vi.mock('@/layout/useSidebarGroups', () => ({
@@ -28,6 +29,7 @@ vi.mock('@/layout/useSidebarGroups', () => ({
     workspace: loadingWorkspace ? undefined : workspace,
     starred: [],
     channels: [channel('c-general', 'general'), channel('c-backend', 'backend')],
+    projectChannels,
     dms,
     apps: [],
     projects: [{ id: 'p-nex', key: 'NEX', name: 'Nexus Core', managerId: 'u-1' }],
@@ -50,6 +52,7 @@ beforeEach(() => {
   customOrder = { starred: false, channels: false, projects: false }
   orderError = null
   dms = []
+  projectChannels = []
   loadingWorkspace = false
   setOrder.mockReset()
 })
@@ -174,6 +177,36 @@ describe('my order of Projects (slice Y+)', () => {
     orderError = 'projects'
     at('/w/engineering/p/NEX/tasks', <SidebarContent />)
     expect(screen.getByRole('alert').textContent).toBe('Couldn’t save the order. Try again.')
+  })
+})
+
+describe('Project channels on the Chat side (spec 5.1)', () => {
+  const sections = () => within(nav()).getAllByRole('button', { name: /^(Starred|Channels|Project channels|Direct messages)$/ }).map((b) => b.textContent)
+
+  it('lists every project’s chat after Channels and before Direct messages', () => {
+    projectChannels = [channel('c-p-mob', 'mobile-app'), channel('c-p-nex', 'nexus-core')]
+    at('/w/engineering/c/c-general', <SidebarContent />)
+    expect(sections()).toEqual(['Channels', 'Project channels', 'Direct messages'])
+    const list = document.getElementById(screen.getByRole('button', { name: 'Project channels' }).getAttribute('aria-controls')!)!
+    expect(within(list).getAllByRole('link').map((a) => a.getAttribute('href'))).toEqual(['/w/engineering/c/c-p-mob', '/w/engineering/c/c-p-nex'])
+  })
+
+  it('isn’t there without project chats, nor on the Projects side', () => {
+    at('/w/engineering/c/c-general', <SidebarContent />)
+    expect(within(nav()).queryByRole('button', { name: 'Project channels' })).toBeNull()
+    cleanup()
+    projectChannels = [channel('c-p-nex', 'nexus-core')]
+    at('/w/engineering/p/NEX/tasks', <SidebarContent />)
+    expect(within(nav()).queryByRole('button', { name: 'Project channels' })).toBeNull()
+  })
+
+  it('shares the Projects side’s order: Reset order there goes back to the default', () => {
+    projectChannels = [channel('c-p-nex', 'nexus-core')]
+    customOrder = { starred: false, channels: false, projects: true }
+    at('/w/engineering/c/c-general', <SidebarContent />)
+    fireEvent.click(screen.getByRole('button', { name: 'Project channels options' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Reset order' }))
+    expect(setOrder).toHaveBeenCalledWith('projects', [])
   })
 })
 

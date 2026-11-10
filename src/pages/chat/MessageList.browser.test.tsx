@@ -39,14 +39,26 @@ function channel(count: number, apartMs = 60_000) {
     })
   }
   for (let i = 0; i < count; i++) add(Math.floor(i / 3) % 2 ? 'u-1' : 'u-2')
+  /** Pages wait for this while it is set: a test can look at the list with a page on its way. */
+  let held: Promise<void> | null = null
+  /** Holds pages back until the returned function lets them land. */
+  const hold = () => {
+    let land = () => {}
+    held = new Promise((r) => (land = r))
+    return () => {
+      held = null
+      land()
+    }
+  }
   /** Newest first, older than `before` (a seq). */
   const page = async (before?: string): Promise<Page<ChatMessage>> => {
     await new Promise((r) => setTimeout(r, 200))
+    await held
     const older = messages.filter((m) => before === undefined || m.seq < Number(before)).sort((a, b) => b.seq - a.seq)
     const items = older.slice(0, PAGE)
     return { items, nextCursor: older.length > PAGE ? String(items[items.length - 1].seq) : null }
   }
-  return { messages, add, page }
+  return { messages, add, hold, page }
 }
 
 const scope = { projectKeys: new Set<string>(), ws: 'engineering', workspaceId: 'ws-eng' }
@@ -68,7 +80,7 @@ function Harness({
   totalUnread?: number
   onMarkRead?: (seq?: number) => void
   focusSeq?: number | null
-  /** A jump's window: newer messages are said to be still unloaded below. */
+  /** A jump's window: newer messages are said to be still unloaded below, however many newer pages load. */
   jumped?: boolean
   pending?: PendingMessage[]
   onLatest?: () => void
@@ -80,7 +92,9 @@ function Harness({
     queryFn: ({ pageParam }) => (pageParam === 'newer' ? Promise.resolve({ items: [], nextCursor: null }) : data.page(pageParam)),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (page) => page.nextCursor ?? undefined,
-    getPreviousPageParam: (first) => (jumped && first.items.length > 0 ? 'newer' : undefined),
+    // Not "until an empty page": whether the list comes near enough to the end to ask for one depends on how tall
+    // the rows are, and the jump must not end on that.
+    getPreviousPageParam: () => (jumped ? 'newer' : undefined),
   })
   return (
     <div className="flex flex-col" style={{ height: 600, width: 720 }}>
@@ -106,8 +120,12 @@ function Harness({
   )
 }
 
+/** The query client of the list mounted last. */
+let current: QueryClient
+
 function mount(props: Parameters<typeof Harness>[0]) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  current = client
   const tree = (p: Parameters<typeof Harness>[0]) => (
     <QueryClientProvider client={client}>
       <ToastProvider>
@@ -122,7 +140,24 @@ function mount(props: Parameters<typeof Harness>[0]) {
 }
 
 const list = () => screen.getByRole('log') as HTMLElement
-const settle = (ms = 400) => new Promise((r) => setTimeout(r, ms))
+const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+/**
+ * Waits until the list is still: drawn, its fonts in, nothing loading (with `loading`, a page may be on its way) and
+ * the same scroll place and height three frames running. Opening takes a page or two (200ms each here), then frames
+ * of measuring and scrolling there; in a full run, with the unit tests busy beside it, a fixed pause can end first.
+ */
+async function still({ loading = false } = {}) {
+  const until = performance.now() + 10_000
+  for (let last = '', same = 0; same < 3; ) {
+    if (performance.now() > until) throw new Error(`The list kept moving (${last || 'not drawn, loading or fonts on their way'})`)
+    await frame()
+    const el = document.querySelector<HTMLElement>('[role="log"]')
+    const ready = el && document.fonts.status === 'loaded' && (loading || current.isFetching() === 0)
+    const now = ready ? `${el.scrollTop} ${el.scrollHeight}` : ''
+    same = now !== '' && now === last ? same + 1 : 0
+    last = now
+  }
+}
 const distanceFromEnd = () => list().scrollHeight - list().scrollTop - list().clientHeight
 const seqOf = (li: Element) => Number(li.textContent?.match(/Message (\d+)/)?.[1] ?? NaN)
 /** Where message `seq`'s row is, from the list's top; null when it isn't drawn. */
@@ -146,40 +181,44 @@ describe('MessageList announcements (spec 10)', () => {
     // The last of 43 is Nour's, so opening could read it out.
     const data = channel(43)
     const client = mount({ data })
-    await vi.waitFor(() => expect(topOf(43)).not.toBeNull())
-    await settle()
+    await still()
+    expect(topOf(43)).not.toBeNull()
     expect(list().getAttribute('aria-live')).toBe('off')
     // Opening the channel reads nothing out.
     expect(announcer().textContent).toBe('')
     data.add()
     await client.invalidateQueries()
-    await vi.waitFor(() => expect(announcer().textContent).toBe('Nour El-Sayed: Message 44 — a longer one that wraps onto a second line when the list is narrow enough to need it'))
+    await still()
+    expect(announcer().textContent).toBe('Nour El-Sayed: Message 44 — a longer one that wraps onto a second line when the list is narrow enough to need it')
   })
 })
 
 describe('MessageList scrolling (spec 6.2)', () => {
   it('opens at the newest message', async () => {
     mount({ data: channel(80) })
-    await vi.waitFor(() => expect(topOf(80)).not.toBeNull())
-    await settle()
+    await still()
+    expect(topOf(80)).not.toBeNull()
     expect(distanceFromEnd()).toBeLessThan(32)
   })
 
   it('keeps the view in place when a page of older messages lands above it', async () => {
-    mount({ data: channel(80) })
-    await vi.waitFor(() => expect(topOf(80)).not.toBeNull())
-    await settle()
+    const data = channel(80)
+    mount({ data })
+    // Messages 21–80 are in (a page shorter than two screens fetches the next one on open).
+    await still()
     const height = list().scrollHeight
+    // Scrolling up asks for 1–20, held back until the view is measured.
+    const land = data.hold()
     list().scrollTop = 200
-    await settle(50)
+    await still({ loading: true })
+    expect(current.isFetching({ queryKey: ['messages'] })).toBe(1)
     const anchor = firstOnScreen()
-    // Messages 21–80 are in (a page shorter than two screens fetches the next one on open); scrolling up asks for
-    // 1–20, which land above this row.
     expect(anchor).toBeGreaterThan(20)
     const before = topOf(anchor)!
-    // The older page arrives 200ms later and is measured over the next frames.
-    await vi.waitFor(() => expect(list().scrollHeight).toBeGreaterThan(height + 500), { timeout: 3000 })
-    await settle()
+    // 1–20 land above this row and are measured over the next frames.
+    land()
+    await still()
+    expect(list().scrollHeight).toBeGreaterThan(height + 500)
     const after = topOf(anchor)
     expect(after).not.toBeNull()
     expect(Math.abs(after! - before)).toBeLessThanOrEqual(2)
@@ -188,27 +227,28 @@ describe('MessageList scrolling (spec 6.2)', () => {
   it('follows a new message while at the end', async () => {
     const data = channel(40)
     const client = mount({ data })
-    await vi.waitFor(() => expect(topOf(40)).not.toBeNull())
-    await settle()
+    await still()
     data.add()
     await client.invalidateQueries()
-    await vi.waitFor(() => expect(topOf(41)).not.toBeNull())
-    await settle()
+    await still()
+    expect(topOf(41)).not.toBeNull()
     expect(distanceFromEnd()).toBeLessThan(32)
   })
 
   it('stays put when scrolled up, and offers Jump to latest with the count', async () => {
     const data = channel(40)
     const client = mount({ data })
-    await vi.waitFor(() => expect(topOf(40)).not.toBeNull())
-    await settle()
-    list().scrollTop = 300
-    await settle(100)
+    await still()
+    // The top: more than a screen from the end however tall the rows are, so Jump to latest shows. The older page
+    // that asks for lands above.
+    list().scrollTop = 0
+    await still()
     const anchor = firstOnScreen()
     const before = topOf(anchor)!
     data.add()
     await client.invalidateQueries()
-    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Jump to latest · 1 new' })).toBeTruthy())
+    await still()
+    expect(screen.getByRole('button', { name: 'Jump to latest · 1 new' })).toBeTruthy()
     const after = topOf(anchor)
     expect(after).not.toBeNull()
     expect(Math.abs(after! - before)).toBeLessThanOrEqual(2)
@@ -216,13 +256,12 @@ describe('MessageList scrolling (spec 6.2)', () => {
 
   it('an edit started in the thread panel doesn’t move the channel; one started here brings its message into view', async () => {
     mount({ data: channel(60) })
-    await vi.waitFor(() => expect(topOf(60)).not.toBeNull())
-    await settle()
+    await still()
     const before = list().scrollTop
     try {
       // Message 35 is loaded (the newest 30 are) but off screen, above.
       act(() => useEditing.getState().start('m35', 'thread'))
-      await settle(200)
+      await still()
       expect(list().scrollTop).toBe(before)
       act(() => useEditing.getState().start('m35', 'channel'))
       await vi.waitFor(() => expect(list().scrollTop).toBeLessThan(before))
@@ -233,25 +272,20 @@ describe('MessageList scrolling (spec 6.2)', () => {
 
   it('opens at the New line with the unread bar when the unread messages fill more than a screen', async () => {
     mount({ data: channel(80), newAfterSeq: 30, totalUnread: 50 })
-    await vi.waitFor(() => expect(screen.getByText(/50 new messages since/)).toBeTruthy())
-    // Waits for the scroll to land rather than a fixed pause: under a full run, layout can take longer (slice AA).
-    await vi.waitFor(
-      () => {
-        const line = screen.getByRole('separator', { name: 'New messages' })
-        const top = line.getBoundingClientRect().top - list().getBoundingClientRect().top
-        // Just under the bar (which takes the top 40px), not scrolled away.
-        expect(top).toBeGreaterThanOrEqual(24)
-        expect(top).toBeLessThan(120)
-      },
-      { timeout: 3000 },
-    )
+    await still()
+    expect(screen.getByText(/50 new messages since/)).toBeTruthy()
+    const line = screen.getByRole('separator', { name: 'New messages' })
+    const top = line.getBoundingClientRect().top - list().getBoundingClientRect().top
+    // Just under the bar (which takes the top 40px), not scrolled away.
+    expect(top).toBeGreaterThanOrEqual(24)
+    expect(top).toBeLessThan(120)
   })
 
   it('on desktop the New line is inset 24px, like the rows (.sf-newdiv)', async () => {
     await page.viewport(1280, 800)
     try {
       mount({ data: channel(80), newAfterSeq: 30, totalUnread: 50 })
-      await vi.waitFor(() => expect(screen.getByRole('separator', { name: 'New messages' })).toBeTruthy())
+      await still()
       const line = screen.getByRole('separator', { name: 'New messages' })
       expect(getComputedStyle(line).paddingLeft).toBe('24px')
       expect(getComputedStyle(line).paddingRight).toBe('24px')
@@ -263,29 +297,28 @@ describe('MessageList scrolling (spec 6.2)', () => {
   it('my own new message brings me down to it, even when scrolled up', async () => {
     const data = channel(42)
     const client = mount({ data })
-    await vi.waitFor(() => expect(topOf(42)).not.toBeNull())
-    await settle()
+    await still()
     list().scrollTop = 200
-    await settle(100)
+    await still()
     data.add('u-1')
     await client.invalidateQueries()
-    await vi.waitFor(() => expect(topOf(43)).not.toBeNull())
-    await settle()
+    await still()
+    expect(topOf(43)).not.toBeNull()
     expect(distanceFromEnd()).toBeLessThan(32)
   })
 
   it('sending while a jump is open goes back to the live end, where the message shows', async () => {
     const onLatest = vi.fn()
     const view = mount({ data: channel(40), focusSeq: 15, jumped: true, onLatest })
-    await vi.waitFor(() => expect(topOf(15)).not.toBeNull())
-    await settle()
+    await still()
+    expect(topOf(15)).not.toBeNull()
     const sending: PendingMessage = { clientId: 'k1', channelId: 'c1', content: 'hi', body: [], createdAt: new Date().toISOString(), status: 'sending' }
     view.update({ pending: [sending] })
     await vi.waitFor(() => expect(onLatest).toHaveBeenCalledOnce())
     // Retrying or deleting one already on its way isn't a new send.
     view.update({ pending: [{ ...sending, status: 'failed' }] })
     view.update({ pending: [] })
-    await settle(50)
+    await still()
     expect(onLatest).toHaveBeenCalledOnce()
   })
 
@@ -293,20 +326,16 @@ describe('MessageList scrolling (spec 6.2)', () => {
     const data = channel(40)
     expect(data.messages.at(-1)!.senderId).toBe('u-1')
     mount({ data, focusSeq: 15 })
-    // Waits for the scroll to land rather than a fixed pause (slice AA: a full run can be slower).
-    await vi.waitFor(
-      () => {
-        expect(topOf(15)).toBeGreaterThanOrEqual(0)
-        expect(topOf(15)).toBeLessThan(120)
-      },
-      { timeout: 3000 },
-    )
+    await still()
+    expect(topOf(15)).toBeGreaterThanOrEqual(0)
+    expect(topOf(15)).toBeLessThan(120)
   })
 
   it('the unread bar offers Mark as unread (opening the channel marked it read, spec 6.2): it puts back the first new message', async () => {
     const onMarkUnread = vi.fn(async (_message: ChatMessage) => {})
     mount({ data: channel(80), newAfterSeq: 30, totalUnread: 50, onMarkUnread })
-    await vi.waitFor(() => expect(screen.getByText(/50 new messages since/)).toBeTruthy())
+    await still()
+    expect(screen.getByText(/50 new messages since/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Mark as read' })).toBeNull()
     await userEvent.click(screen.getByRole('button', { name: 'Mark as unread' }))
     expect(onMarkUnread).toHaveBeenCalledOnce()
@@ -319,8 +348,8 @@ describe('MessageList scrolling (spec 6.2)', () => {
     vi.spyOn(document, 'hasFocus').mockReturnValue(true)
     const onMarkRead = vi.fn()
     mount({ data: channel(80), newAfterSeq: 30, totalUnread: 50, onMarkRead })
-    await vi.waitFor(() => expect(screen.getByText(/50 new messages since/)).toBeTruthy())
-    await settle()
+    await still()
+    expect(screen.getByText(/50 new messages since/)).toBeTruthy()
     expect(onMarkRead).not.toHaveBeenCalled()
     // Nothing has come in since I opened it.
     // A way back, not an action: a secondary pill, not a red one (UX Phase 3, 3.3).
@@ -333,15 +362,16 @@ describe('MessageList scrolling (spec 6.2)', () => {
     vi.spyOn(document, 'hasFocus').mockReturnValue(true)
     const onMarkRead = vi.fn()
     mount({ data: channel(40), newAfterSeq: 38, totalUnread: 2, onMarkRead })
-    await vi.waitFor(() => expect(onMarkRead).toHaveBeenCalledWith(40))
+    await still()
+    expect(onMarkRead).toHaveBeenCalledWith(40)
   })
 
   it('while the read is held (after U), being at the end marks nothing read; once the hold ends it does', async () => {
     vi.spyOn(document, 'hasFocus').mockReturnValue(true)
     const onMarkRead = vi.fn()
     const view = mount({ data: channel(40), newAfterSeq: 36, totalUnread: 3, onMarkRead, holdRead: true })
-    await vi.waitFor(() => expect(screen.getByText(/^Message 40/)).toBeTruthy())
-    await settle()
+    await still()
+    expect(screen.getByText(/^Message 40/)).toBeTruthy()
     expect(onMarkRead).not.toHaveBeenCalled()
     view.update({ holdRead: false })
     await vi.waitFor(() => expect(onMarkRead).toHaveBeenCalledWith(40))
@@ -349,7 +379,6 @@ describe('MessageList scrolling (spec 6.2)', () => {
 })
 
 describe('MessageList sticky date (spec 6.2)', () => {
-  const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
   const shown = (el: Element) => {
     for (let e: Element | null = el; e; e = e.parentElement) if (getComputedStyle(e).opacity === '0' || getComputedStyle(e).visibility === 'hidden') return false
     return true
@@ -378,8 +407,8 @@ describe('MessageList sticky date (spec 6.2)', () => {
   it('shows each day once at the top while scrolling across days, and the next day pushes it out instead of covering it', async () => {
     // Four days of messages, every 3 hours, in one page.
     mount({ data: channel(28, 3 * 3_600_000) })
-    await vi.waitFor(() => expect(topOf(28)).not.toBeNull())
-    await settle()
+    await still()
+    expect(topOf(28)).not.toBeNull()
     let pinned = 0
     await scrollThrough((at) => {
       const pills = topPills(80)
@@ -393,8 +422,8 @@ describe('MessageList sticky date (spec 6.2)', () => {
 
   it('with the unread bar open, the date sits under the bar and still shows each day once', async () => {
     mount({ data: channel(28, 3 * 3_600_000), newAfterSeq: 14, totalUnread: 14 })
-    await vi.waitFor(() => expect(screen.getByText(/14 new messages since/)).toBeTruthy())
-    await settle()
+    await still()
+    expect(screen.getByText(/14 new messages since/)).toBeTruthy()
     // Hit-testing needs the bar on screen: earlier tests may have left the page scrolled.
     window.scrollTo(0, 0)
     let underBar = 0

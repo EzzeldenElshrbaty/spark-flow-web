@@ -7,3 +7,5 @@ dist
 
 # Vitest browser-mode failure screenshots
 .vitest/
+# The browser test project's Vite cache (vite.config.ts `cacheDir`), one per checkout
+/.vite/

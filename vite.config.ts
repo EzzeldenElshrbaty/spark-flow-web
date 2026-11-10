@@ -1,9 +1,10 @@
 /// <reference types="vitest/config" />
+import { realpathSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { playwright } from '@vitest/browser-playwright'
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig, loadEnv, searchForWorkspaceRoot } from 'vite'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -21,6 +22,9 @@ export default defineConfig(({ mode }) => {
       alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
     },
     server: {
+      // A worktree's node_modules links to the main checkout's, outside the worktree: without its real folder here,
+      // files read from packages (the Readex Pro font) aren't served, and chat lays out in a fallback font.
+      fs: { allow: [searchForWorkspaceRoot(process.cwd()), realpathSync(fileURLToPath(new URL('./node_modules', import.meta.url)))] },
       // Forward API and SignalR calls to the ASP.NET Core backend during development.
       proxy: {
         '/api': 'http://localhost:5080',
@@ -46,6 +50,10 @@ export default defineConfig(({ mode }) => {
           // What needs real layout (scrolling, sizes) runs in headless Chromium: `npx playwright install
           // chromium-headless-shell` once per machine.
           extends: true,
+          // The bundled dependencies stay in this checkout (`.vite/vitest/<hash>/deps`), not in node_modules/.vite:
+          // worktrees link node_modules to the main checkout's, and a run elsewhere rebundling them halfway through this
+          // one left its files with two copies of React.
+          cacheDir: '.vite',
           // Bundled before the run: found halfway, Vite rebuilt them and reloaded the tab, and every file loading then
           // failed (two copies of React).
           optimizeDeps: { include: ['react-dom/client', 'react-router/dom'] },

@@ -9,9 +9,8 @@ import { applyOrder } from '@/lib/sidebarOrder'
 import { useMyMentions } from '@/api/mentions'
 import { useProjects } from '@/api/tickets'
 import { useUsers } from '@/api/users'
-import { channelLabel, chatCount, sidebarChannels, sortChannels, unreadMentions, unreadTaskMentions } from '@/lib/channels'
+import { channelLabel, channelSections, chatCount, sidebarChannels, sortChannels, unreadMentions, unreadTaskMentions } from '@/lib/channels'
 import { isFlowbotDm } from '@/lib/flowbot'
-import { projectPeopleIds } from '@/lib/projectPeople'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { useRole } from '@/lib/useRole'
 
@@ -39,8 +38,9 @@ export function useSidebarGroups() {
 
   const users = usersQuery.data ?? []
   const sorted = sortChannels(channelsQuery.data ?? [])
-  // Channels I'm in, and my projects' chats (their members follow the project).
-  const myProjectChannelIds = new Set((projectsQuery.data ?? []).filter((p) => projectPeopleIds(p, users).has(persona.id)).map((p) => p.channelId))
+  // Channels I'm in, and the chat of every project the Projects side lists (spec 5.1, Project channels): a project's
+  // people follow it, and its chat is public, so anyone who sees the project may read and post there.
+  const projectChannelIds = new Set((projectsQuery.data ?? []).map((p) => p.channelId))
   const row = (channel: Channel): ChannelRow => {
     const other = channel.memberIds.find((id) => id !== persona.id) ?? persona.id
     return { channel, label: channelLabel(channel, users, persona.id), presence: users.find((u) => u.id === other)?.presence ?? 'offline', group: channel.memberIds.length > 2, otherId: other, otherName: users.find((u) => u.id === other)?.name ?? channelLabel(channel, users, persona.id), draft: drafted.has(channel.id) }
@@ -49,7 +49,7 @@ export function useSidebarGroups() {
   let projects: Project[] = projectsQuery.data ?? []
 
   // A starred channel or DM is listed once, under Starred (spec §5.1).
-  const listed = [...sidebarChannels(sorted.channels, persona.id, myProjectChannelIds), ...sorted.dms, ...sorted.apps].map(row)
+  const listed = [...sidebarChannels(sorted.channels, persona.id, projectChannelIds), ...sorted.dms, ...sorted.apps].map(row)
 
   const mentions = unreadMentions(mentionsQuery.data, workspace?.id)
   const idOf = (r: ChannelRow) => r.channel.id
@@ -58,7 +58,12 @@ export function useSidebarGroups() {
   const ownOrder = (rows: ChannelRow[], saved: string[] | undefined) => Boolean(saved?.some((id) => rows.some((r) => r.channel.id === id)))
   const isMuted = (r: ChannelRow) => r.channel.muted
   const starred = applyOrder(listed.filter((r) => r.channel.starred), order?.starred, idOf, isMuted)
-  const channels = applyOrder(listed.filter((r) => r.channel.kind === 'channel' && !r.channel.starred), order?.channels, idOf, isMuted)
+  const sections = channelSections(
+    listed.filter((r) => r.channel.kind === 'channel'),
+    projects,
+  )
+  const channels = applyOrder(sections.channels, order?.channels, idOf, isMuted)
+  const projectChannels = sections.projectChannels
   const dms = listed.filter((r) => r.channel.kind === 'dm' && !isFlowbotDm(r.channel) && !r.channel.starred)
   const apps = listed.filter((r) => isFlowbotDm(r.channel) && !r.channel.starred)
   // As the rows show them: Starred and Channels count my mentions there, DMs and Apps their messages.
@@ -69,6 +74,8 @@ export function useSidebarGroups() {
     workspace,
     starred,
     channels,
+    /** The chat of each project the Projects side lists, in its order (spec 5.1); starred ones stay under Starred. */
+    projectChannels,
     dms,
     /** Flowbot's DM (spec 5.1 Apps), once Flowbot has written. */
     apps,
@@ -76,7 +83,7 @@ export function useSidebarGroups() {
     /** My unread mentions here: each channel row's badge. */
     mentions,
     /** The Chat side's count on the workspace switch (spec 5.5): every chat row's red count. */
-    chatCount: chatCount([...starred.map(withMentions), ...channels.map(withMentions), ...dms.map(ownCount), ...apps.map(ownCount)]),
+    chatCount: chatCount([...starred.map(withMentions), ...channels.map(withMentions), ...projectChannels.map(withMentions), ...dms.map(ownCount), ...apps.map(ownCount)]),
     /** My unread mentions in task comments here: the Projects side's dot (spec 5.5). */
     projectNews: unreadTaskMentions(mentionsQuery.data, workspace?.id),
     /** Unread items in my Activity here (spec 6.12): its row's count. */
@@ -94,8 +101,8 @@ export function useSidebarGroups() {
     /** My drafts plus scheduled messages here (spec 5.1): the Drafts & sent row's muted count. */
     draftsAndScheduled: (drafts.data?.length ?? 0) + (scheduledQuery.data?.length ?? 0),
     // The channel list and the people behind DM names arrive separately; show rows only when both are there.
-    // My order too, so the rows don't jump from A–Z into it.
-    chatLoading: workspaceLoading || (Boolean(workspace) && (channelsQuery.isPending || usersQuery.isPending || orderQuery.isPending)),
+    // My order too, so the rows don't jump from A–Z into it, and the projects, so their chats don't start in Channels.
+    chatLoading: workspaceLoading || (Boolean(workspace) && (channelsQuery.isPending || usersQuery.isPending || orderQuery.isPending || projectsQuery.isPending)),
     projectsLoading: workspaceLoading || (Boolean(workspace) && (projectsQuery.isPending || orderQuery.isPending)),
     failed: channelsQuery.isError || projectsQuery.isError,
   }

@@ -2,12 +2,14 @@ import { IconListCheck } from '@tabler/icons-react'
 import { useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router'
 import { usePhases, useProjectSummaries } from '@/api/projects'
+import { useSendQueue } from '@/api/sendQueue'
 import { useSprints } from '@/api/tickets'
 import type { Attachment, ChatMessage, ProjectSummary } from '@/api/types'
 import type { ChannelCommandUi } from '@/pages/chat/composer/useChannelCommands'
 import { useUsers } from '@/api/users'
 import { MenuItem } from '@/components/sf/Menu'
 import { withInspector } from '@/lib/inspector'
+import { bodyText, type Body } from '@/lib/messageBody'
 import { usePermission } from '@/lib/usePermission'
 import { canMakeTask, taskDraft } from '@/pages/chat/taskDraft'
 import { TaskSheet, type TaskDraft } from '@/pages/projects/TaskSheet'
@@ -19,7 +21,8 @@ type Opened = { key: string; draft: TaskDraft; picked?: ProjectSummary }
 /**
  * "Create task" in chat. In a project's channel, for whoever manages that project's tasks: the ⋯ menu item, Create
  * task from file and /task, each opening the task sheet on that project. In a channel or DM with no project, /task
- * opens it on the first project I may add tasks to, with a Project field; the ⋯ menu stays in project channels, as
+ * opens it on the first project I may add tasks to, with a Project field, and the new task is announced here as
+ * "Created NEX-112" (its card shows under it); the ⋯ menu stays in project channels, as
  * the server takes a task's message only from its project's chat. Where /task isn't offered it says why
  * (`whyNoTask`), and nothing while the projects load.
  */
@@ -46,6 +49,11 @@ export function useTaskFromMessage(
   const sprints = useSprints(project?.methodology === 'agile' ? project.id : undefined)
   const users = useUsers(project ? workspaceId : undefined)
   const [, setParams] = useSearchParams()
+  const queue = useSendQueue()
+  const announce = (channel: string, key: string) => {
+    const body: Body = [{ type: 'p', children: [{ type: 'text', text: 'Created ' }, { type: 'task', key }] }]
+    queue.enqueue({ clientId: crypto.randomUUID(), channelId: channel, content: bodyText(body), body })
+  }
 
   const sheet = opened && project && (
     <TaskSheet
@@ -57,8 +65,12 @@ export function useTaskFromMessage(
       draft={opened.draft}
       {...(opened.picked && {
         projectChoice: { projects: mine ?? [], onPick: (id: string) => setOpened({ ...opened, picked: mine?.find((p) => p.id === id) ?? opened.picked }) },
-        // Its card goes to the project's chat, not this one: the new task opens beside the chat instead (UX Phase 1, 1.5).
-        onCreated: (task: { key: string }) => setParams((prev) => withInspector(prev, { kind: 'ticket', key: task.key })),
+        // Its Created card goes to the project's chat, so here it opens beside the chat (UX Phase 1, 1.5), and I say
+        // "Created NEX-112" in this channel: a message like any other (Retry if it fails), shown with the task's card.
+        onCreated: (task: { key: string }) => {
+          setParams((prev) => withInspector(prev, { kind: 'ticket', key: task.key }))
+          if (channelId) announce(channelId, task.key)
+        },
       })}
       onClose={() => setOpened(null)}
     />

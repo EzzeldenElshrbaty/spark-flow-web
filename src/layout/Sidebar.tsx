@@ -37,7 +37,7 @@ import { WorkspaceModeSwitch } from '@/layout/ModeSwitch'
 import { NewTaskButton } from '@/layout/NewTaskButton'
 import { useSidebarGroups, type ChannelRow } from '@/layout/useSidebarGroups'
 import { useWorkspaceMode } from '@/layout/useWorkspaceMode'
-import { countNoun, sidebarRowState } from '@/lib/channels'
+import { countNoun, projectOrderFrom, sidebarRowState } from '@/lib/channels'
 import { isFlowbot } from '@/lib/flowbot'
 import { paths } from '@/lib/paths'
 import { SIDEBAR_WIDTH, useUiStore } from '@/lib/uiStore'
@@ -364,7 +364,7 @@ export function SidebarContent({
 }) {
   const { grants } = useRole()
   const check = usePermission()
-  const { workspace, starred, channels, dms, apps, projects, mentions, activityUnread, threadsUnread, customOrder, savedInProgress, draftsAndScheduled, chatLoading, projectsLoading, failed } = useSidebarGroups()
+  const { workspace, starred, channels, projectChannels, dms, apps, projects, mentions, activityUnread, threadsUnread, customOrder, savedInProgress, draftsAndScheduled, chatLoading, projectsLoading, failed } = useSidebarGroups()
   // While the workspace list loads, the address already names the workspace: Work shows at once (UX Phase 4, 4.5).
   const inUrl = useMatch({ path: '/w/:ws', end: false })?.params.ws
   const slug = workspace?.slug ?? inUrl
@@ -473,6 +473,28 @@ export function SidebarContent({
                 </li>
               </>
             )}
+          </SideSection>
+        )}
+
+        {slug && workspace && onChat && !chatLoading && projectChannels.length > 0 && (
+          // Every project's chat (spec 5.1), in the Projects side's order: a drop here reorders the projects there too.
+          <SideSection
+            id="projectChannels"
+            label="Project channels"
+            actions={customOrder.projects && <OrderMenu label="Project channels" reset="Reset order" onReset={() => reorder('projects', [])} />}
+            {...row}
+          >
+            <OrderedRows
+              section="projects"
+              label="Project channels"
+              rows={projectChannels}
+              slug={slug}
+              mentions={mentions.byChannel}
+              onReorder={(section, ids) => reorder(section, projectOrderFrom(ids, projects))}
+              collapsed={collapsed}
+              onNavigate={onNavigate}
+            />
+            {orderProblem('projects')}
           </SideSection>
         )}
 

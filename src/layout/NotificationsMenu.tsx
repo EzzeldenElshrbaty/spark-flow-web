@@ -9,6 +9,7 @@ import type { MentionItem } from '@/api/types'
 import { Button } from '@/components/sf/Button'
 import { Icon } from '@/components/sf/Icon'
 import { Popover } from '@/components/sf/Popover'
+import { roundButton } from '@/layout/roundButton'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { timeAgo } from '@/lib/format'
 import { mentionLink, notificationLine } from '@/lib/mentionLink'
@@ -56,7 +57,7 @@ export function NotificationsMenu() {
               if (!props['aria-expanded']) void mentions.refetch()
               props.onClick()
             }}
-            className="sf-focus relative inline-grid size-sf-control flex-none cursor-pointer place-items-center rounded-sf-full border border-sf-line text-sf-text-secondary transition-colors duration-150 ease-sf hover:bg-sf-surface-hover hover:text-sf-text"
+            className={clsx(roundButton, 'relative')}
             aria-label={unread ? `Notifications, ${unread} unread` : 'Notifications'}
             title="Notifications"
           >
