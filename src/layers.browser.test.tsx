@@ -109,6 +109,7 @@ const LAYERS: Layer[] = [
   },
   { name: 'Start timer', path: '/w/engineering/c/c-general', open: () => anyButton('Start timer'), kind: 'modal' },
   { name: 'Add a bookmark', path: '/w/engineering/c/c-general', open: () => anyButton('Add a bookmark'), kind: 'modal' },
+  { name: 'Page history', path: '/w/engineering/c/c-general?tab=page', open: () => anyButton('History'), kind: 'modal' },
   {
     name: 'Jump to a date',
     path: '/w/engineering/c/c-general',

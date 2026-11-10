@@ -1,3 +1,4 @@
+import { IconHistory } from '@tabler/icons-react'
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useLatestPage, usePage } from '@/api/pages'
 import type { Channel, PageView, User } from '@/api/types'
@@ -15,6 +16,7 @@ import { useCanWrite } from '@/pages/chat/useCanPost'
 import { useComposerDirectory } from '@/pages/chat/useComposerDirectory'
 import { PageBar } from './PageBar'
 import { PageEditor } from './PageEditor'
+import { PageHistory } from './PageHistory'
 import { PageReader } from './PageReader'
 import { usePageSaving } from './usePageSaving'
 
@@ -138,6 +140,7 @@ function LoadedPage({ channel, view, people, me, mayEdit }: { channel: Channel; 
     reload(await latestPage(channel.id))
   }
 
+  const [showHistory, setShowHistory] = useState(false)
   const conflict = saving.state === 'conflict'
   // Someone else holds the page and I have nothing waiting: I read it, live.
   const reading = !mayEdit || (heldBy !== null && !saving.dirty && !conflict)
@@ -159,7 +162,19 @@ function LoadedPage({ channel, view, people, me, mayEdit }: { channel: Channel; 
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <PageBar line={line} error={saving.error} errorActions={errorActions} editors={view.editors} people={people} link={link} />
+      <PageBar
+        line={line}
+        error={saving.error}
+        errorActions={errorActions}
+        editors={view.editors}
+        people={people}
+        link={link}
+        history={
+          <Button variant="ghost" size="sm" icon={IconHistory} touch onClick={() => setShowHistory(true)}>
+            History
+          </Button>
+        }
+      />
       <div className="min-h-0 flex-1 overflow-y-auto">
         {reading ? (
           view.body.length === 0 && !mayEdit ? (
@@ -176,6 +191,7 @@ function LoadedPage({ channel, view, people, me, mayEdit }: { channel: Channel; 
           <PageEditor key={editorKey} initial={initial} editable={!conflict} directory={directory} onChange={saver.change} onBlur={() => void saver.flush()} />
         )}
       </div>
+      {showHistory && <PageHistory channelId={channel.id} ctx={ctx} people={people} mayEdit={mayEdit} currentVersion={view.version} onClose={() => setShowHistory(false)} />}
       <Modal
         open={asked !== null}
         onClose={() => answer('stay')}
