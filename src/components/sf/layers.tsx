@@ -43,10 +43,20 @@ export function useRestoreFocus(active: boolean, fallback?: () => HTMLElement | 
   useEffect(() => {
     fallbackRef.current = fallback
   })
+  const opener = useRef<HTMLElement | null>(null)
+  // StrictMode runs the effect again straight after its cleanup, when focus is already inside the layer: that run keeps
+  // the first run's opener (UX Phase 6; it lost focus to the page's heading in dev and in the whole-app tests).
+  const again = useRef(false)
   useEffect(() => {
     if (!active) return
-    const previous = document.activeElement as HTMLElement | null
+    if (!again.current) opener.current = document.activeElement as HTMLElement | null
+    again.current = false
     return () => {
+      again.current = true
+      queueMicrotask(() => {
+        again.current = false
+      })
+      const previous = opener.current
       const now = document.activeElement
       if (now && now !== document.body && now.isConnected) return
       if (previous && previous !== document.body && previous.isConnected) previous.focus()

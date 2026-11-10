@@ -51,7 +51,8 @@ export function TaskPicker({ groups, query, onQuery, onPick, chosen, busy = fals
         onChange={(e) => onQuery(e.target.value)}
         onKeyDown={onKeyDown}
       />
-      <div id={`${ids}-list`} role="listbox" aria-label="Tasks" aria-busy={busy} className="mt-2 max-h-72 overflow-y-auto rounded-sf-md border border-sf-line p-1">
+      {/* A list box only while it holds tasks: an empty one with a sentence in it isn't a list (UX Phase 6, axe). */}
+      <div id={`${ids}-list`} role={groups.length ? 'listbox' : undefined} aria-label={groups.length ? 'Tasks' : undefined} aria-busy={busy} className="mt-2 max-h-72 overflow-y-auto rounded-sf-md border border-sf-line p-1">
         {groups.length === 0 && (
           <p className="sf-ui m-0 px-2 py-3 text-sf-text-muted">{query.trim() ? `No open tasks match “${query.trim()}”.` : 'No open tasks of yours yet. Search for one, or log on the project only.'}</p>
         )}

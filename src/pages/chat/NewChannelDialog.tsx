@@ -78,7 +78,10 @@ export function NewChannelDialog({ workspaceId, workspaceSlug, onClose }: { work
         <div>
           <label htmlFor={`${ids}-name`} className={labelClass}>
             Name
-            <span className="text-sf-accent"> *</span>
+            {/* Seen, not read: the box says it's required (UX Phase 6, like the kit's Field). */}
+            <span className="text-sf-accent" aria-hidden>
+              {' *'}
+            </span>
           </label>
           <span className="flex items-center gap-1.5">
             <span className="sf-ui text-sf-text-muted" aria-hidden>
@@ -88,6 +91,7 @@ export function NewChannelDialog({ workspaceId, workspaceSlug, onClose }: { work
               id={`${ids}-name`}
               className={fieldClass}
               value={values.name}
+              aria-required
               aria-invalid={Boolean(errors.name)}
               aria-describedby={`${ids}-name-hint`}
               onChange={(e) => set('name', e.target.value.toLowerCase().replace(/\s+/g, '-'))}
