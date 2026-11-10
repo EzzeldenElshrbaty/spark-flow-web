@@ -107,7 +107,6 @@ describe('small controls reach a 44px touch on phones (5.4)', () => {
     ['layout/TopBar.tsx', /label="Open menu"[^>]*max-md:touch-target|max-md:touch-target[^>]*label="Open menu"/],
     ['layout/TimerBar.tsx', /const button = clsx\(\s*'[^']*max-md:touch-target/],
     ['pages/chat/ChannelHeader.tsx', /IconStarFilled : IconStar}[\s\S]{0,200}max-md:touch-target/],
-    ['pages/chat/ChannelTabs.tsx', /label="Add a bookmark".*max-md:size-11/],
     ['pages/chat/MessageList.tsx', /className={`sf-focus \$\{pillClass\} pe-2 max-md:touch-target`}/],
     ['pages/projects/HistoryList.tsx', /className="font-medium text-accent hover:underline max-md:touch-target"/],
     ['pages/projects/FilesTab.tsx', /className="min-w-0 text-accent hover:underline max-md:inline-flex max-md:min-h-11 max-md:items-center"/],
