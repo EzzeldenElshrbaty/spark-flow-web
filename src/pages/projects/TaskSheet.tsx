@@ -69,6 +69,7 @@ export function TaskSheet({
   users,
   task,
   draft,
+  projectChoice,
   onCreated,
   onClose,
 }: {
@@ -79,6 +80,11 @@ export function TaskSheet({
   task?: TaskView
   /** Starts a new task from these values and links it back to where it came from. */
   draft?: TaskDraft
+  /**
+   * /task in a channel or DM with no project: a Project field first, from these. A pick goes to the opener, which shows
+   * the sheet on that project; what I wrote stays, and what belongs to a project (status, phase, sprint) starts over.
+   */
+  projectChoice?: { projects: Pick<Project, 'id' | 'name'>[]; onPick: (projectId: string) => void }
   /** A new task was saved: the opener shows it (UX Phase 1, 1.5), before the sheet closes. */
   onCreated?: (task: TaskView) => void
   onClose: () => void
@@ -91,6 +97,12 @@ export function TaskSheet({
   // What the sheet opened with, to tell whether closing would throw anything away (UX Phase 1, 1.2).
   const [initial] = useState(() => valuesOf(task, project.currentPhaseId ?? null, startColumn(project), draft))
   const [values, setValues] = useState(initial)
+  // A Project field's pick (projectChoice) brings another project: its own status, phase and sprint start over.
+  const [shownProject, setShownProject] = useState(project.id)
+  if (shownProject !== project.id) {
+    setShownProject(project.id)
+    setValues((v) => ({ ...v, status: startColumn(project), phaseId: project.currentPhaseId ?? '', sprintId: '' }))
+  }
   // The task as it was when the sheet opened: the prop follows live updates, so it can't tell what I changed.
   const [opened] = useState(task)
   // Errors show from the first Save and follow each change after it (UX Phase 4, 4.4).
@@ -122,6 +134,8 @@ export function TaskSheet({
     editor.current?.removeFile(id)
   }
   const people = projectPeople(project, users)
+  // Files are uploaded to the project picked: the project stays while the task has any.
+  const projectLocked = attachments.length > 0 || queue.busy
   const saving = create.isPending || update.isPending
   const failure = (create.error ?? update.error) as Error | null
   const ro = !canManage
@@ -201,6 +215,20 @@ export function TaskSheet({
         }}
       >
         {ro && <p className="rounded-lg bg-surface-muted px-3 py-2 text-sm text-fg-secondary">{canStatus ? 'You can change the status. The project manager changes the rest.' : 'Only the project manager changes this task.'}</p>}
+        {projectChoice && (
+          <div>
+            <Field label="Project">
+              <select className={selectClass} value={project.id} disabled={projectLocked} onChange={(e) => projectChoice.onPick(e.target.value)}>
+                {projectChoice.projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            {projectLocked && <p className="mt-1 text-xs text-fg-muted">Take the files off to change the project.</p>}
+          </div>
+        )}
         <Field label="Title" required error={errors.title}>
           <input className={inputClass} value={values.title} disabled={ro} aria-invalid={Boolean(errors.title)} onChange={(e) => set('title', e.target.value)} />
         </Field>
@@ -280,7 +308,8 @@ export function TaskSheet({
           <Field label="Assignee">
             <select className={selectClass} value={values.assigneeId} disabled={ro} onChange={(e) => set('assigneeId', e.target.value)}>
               <option value="">Unassigned</option>
-              {assigneeOptions(people, users, task?.assigneeId ?? null).map((o) => (
+              {/* A new task's person from the draft (/task @Nour) shows too when they aren't on the project, said so. */}
+              {assigneeOptions(people, users, (task ? task.assigneeId : draft?.assigneeId) ?? null).map((o) => (
                 <option key={o.id} value={o.id}>
                   {o.label}
                 </option>

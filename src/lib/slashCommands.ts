@@ -79,11 +79,19 @@ export function shrugBody(body: Body): Body {
 /** What a command did: a line for me under the box, or a message for the box to send (its prompts included). */
 export type CommandOutcome = { notice?: string; send?: Body }
 
-/** The shortcuts a box offers and what runs them (the page decides both). */
-export type ComposerSlash = { commands: SlashCommand[]; run: (command: ParsedCommand, body: Body) => Promise<CommandOutcome> }
+/**
+ * The shortcuts a box offers and what runs them (the page decides both); `refused`, the page's reason a shortcut it
+ * doesn't offer isn't here ("/task works in a project’s channel."), said instead of "doesn’t work here".
+ */
+export type ComposerSlash = {
+  commands: SlashCommand[]
+  run: (command: ParsedCommand, body: Body) => Promise<CommandOutcome>
+  refused?: Partial<Record<CommandName, string>>
+}
 
-/** Why a `/word` at the start didn't run: it isn't a shortcut, or not one this place offers. */
-export function refusal(name: string): string {
-  const known = COMMANDS.some((c) => c.name === name)
-  return `/${name} ${known ? "doesn’t work here" : "isn’t a shortcut"}. To send it as a message, start it with a space.`
+/** Why a `/word` at the start didn't run: it isn't a shortcut, or not one this place offers (with the page's reason). */
+export function refusal(name: string, refused?: ComposerSlash['refused']): string {
+  const known = COMMANDS.find((c) => c.name === name)
+  const why = !known ? `/${name} isn’t a shortcut.` : (refused?.[known.name] ?? `/${name} doesn’t work here.`)
+  return `${why} To send it as a message, start it with a space.`
 }

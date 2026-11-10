@@ -46,6 +46,9 @@ export default defineConfig(({ mode }) => {
           // What needs real layout (scrolling, sizes) runs in headless Chromium: `npx playwright install
           // chromium-headless-shell` once per machine.
           extends: true,
+          // Bundled before the run: found halfway, Vite rebuilt them and reloaded the tab, and every file loading then
+          // failed (two copies of React).
+          optimizeDeps: { include: ['react-dom/client', 'react-router/dom'] },
           test: {
             name: 'browser',
             setupFiles: ['src/test/signedIn.ts'],

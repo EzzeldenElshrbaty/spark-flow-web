@@ -5,7 +5,7 @@ import { userEvent } from 'vitest/browser'
 import type { User } from '@/api/types'
 import { bodyText, parseBody, type Body } from '@/lib/messageBody'
 import { opensSearch } from '@/layout/searchShortcuts'
-import { COMMANDS, type CommandOutcome, type ParsedCommand } from '@/lib/slashCommands'
+import { COMMANDS, type CommandOutcome, type ComposerSlash, type ParsedCommand } from '@/lib/slashCommands'
 import { RichComposer, type ComposerDirectory } from '@/pages/chat/composer/RichComposer'
 import { focusEditor } from '@/pages/chat/composer/focusEditor.testkit'
 
@@ -601,9 +601,12 @@ describe('RichComposer : emoji (spec 6.8)', () => {
 })
 
 describe('RichComposer / shortcuts (spec 6.8)', () => {
-  const withSlash = async (run: (c: ParsedCommand, b: Body) => Promise<CommandOutcome> = async () => ({ notice: '#backend is muted. Type /mute to unmute it.' })) => {
+  const withSlash = async (
+    run: (c: ParsedCommand, b: Body) => Promise<CommandOutcome> = async () => ({ notice: '#backend is muted. Type /mute to unmute it.' }),
+    refused?: ComposerSlash['refused'],
+  ) => {
     const spy = vi.fn(run)
-    const mounted = await ready({ slash: { commands: COMMANDS.filter((c) => c.name !== 'task'), run: spy } })
+    const mounted = await ready({ slash: { commands: COMMANDS.filter((c) => c.name !== 'task'), run: spy, refused } })
     await userEvent.click(mounted.editor)
     return { ...mounted, run: spy }
   }
@@ -640,13 +643,30 @@ describe('RichComposer / shortcuts (spec 6.8)', () => {
     expect(run).not.toHaveBeenCalled()
   })
 
-  it('an unknown /word keeps the text and says why; one offered elsewhere says it does not work here', async () => {
+  // One box per case: Control+A isn't Select all on a Mac, so clearing the box between them failed there.
+  it('an unknown /word keeps the text and says why', async () => {
     const { editor, onSend, run } = await withSlash()
     await userEvent.keyboard('/foo bar{Enter}')
-    await vi.waitFor(() => expect(screen.getByRole('status').textContent).toBe("/foo isn’t a shortcut. To send it as a message, start it with a space."))
+    await vi.waitFor(() => expect(screen.getByRole('status').textContent).toBe('/foo isn’t a shortcut. To send it as a message, start it with a space.'))
     expect(editor.textContent).toBe('/foo bar')
-    await userEvent.keyboard('{Control>}a{/Control}{Backspace}/task Fix it{Enter}')
-    await vi.waitFor(() => expect(screen.getByRole('status').textContent).toBe("/task doesn’t work here. To send it as a message, start it with a space."))
+    expect(run).not.toHaveBeenCalled()
+    expect(onSend).not.toHaveBeenCalled()
+  })
+
+  it('one offered elsewhere keeps the text and says it doesn’t work here', async () => {
+    const { editor, onSend, run } = await withSlash()
+    await userEvent.keyboard('/task Fix it{Enter}')
+    await vi.waitFor(() => expect(screen.getByRole('status').textContent).toBe('/task doesn’t work here. To send it as a message, start it with a space.'))
+    expect(editor.textContent).toBe('/task Fix it')
+    expect(run).not.toHaveBeenCalled()
+    expect(onSend).not.toHaveBeenCalled()
+  })
+
+  it('one offered elsewhere says why instead, when the place gives a reason', async () => {
+    const { editor, onSend, run } = await withSlash(undefined, { task: '/task works in a project’s channel.' })
+    await userEvent.keyboard('/task Fix it{Enter}')
+    await vi.waitFor(() => expect(screen.getByRole('status').textContent).toBe('/task works in a project’s channel. To send it as a message, start it with a space.'))
+    expect(editor.textContent).toBe('/task Fix it')
     expect(run).not.toHaveBeenCalled()
     expect(onSend).not.toHaveBeenCalled()
   })

@@ -192,7 +192,7 @@ export function ChannelView({ channelId, hideTabs = [] }: { channelId: string | 
               channel={current}
               placeholder={`Message ${title}`}
               uploads={uploads}
-              commandUi={{ openDetails: (on, options) => setDetails({ tab: on, ...options }), newTask: fromMessage.fromCommand, remind: setReminding }}
+              commandUi={{ openDetails: (on, options) => setDetails({ tab: on, ...options }), newTask: fromMessage.fromCommand, whyNoTask: fromMessage.whyNoTask, remind: setReminding }}
               onTyping={() => realtime.sendTyping(current.id, persona.id)}
               // Shown at once and sent in the background (spec 6.2), with its files; a failure shows on the message, with Retry.
               onSend={async (body) => {
