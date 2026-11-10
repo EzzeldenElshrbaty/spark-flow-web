@@ -77,7 +77,11 @@ describe('project sheets ask before discarding', () => {
 
 // UX Phase 4, 4.4: errors show from the first Save, leave as soon as the field is fixed, sit under their own field,
 // and Enter in a field saves (the form holds a submit button, as Users' sheet does).
-const fieldOf = (text: string) => screen.getByText(text).closest('label')
+// A field and what's under it (UX Phase 5A: the error sits after the label, inside the Field).
+const fieldOf = (text: string) => {
+  const found = screen.getByText(text)
+  return (found.closest('label') ?? found).parentElement
+}
 const hasSubmit = (input: HTMLElement) => (input as HTMLInputElement).form?.querySelector('button[type="submit"]')
 const board = [
   { id: 'todo', label: 'To do', category: 'todo' as const },
@@ -128,7 +132,7 @@ describe('project sheets check as you fix (UX Phase 4)', () => {
 describe('optional fields say so (UX Phase 4, 4.9)', () => {
   it('New project: Client, About and Links say "Optional"', () => {
     render(<ProjectSheet workspaceId="ws-eng" takenKeys={[]} onClose={() => {}} onSaved={() => {}} />)
-    for (const name of ['Client', 'About']) expect(screen.getByText(name).closest('label')?.textContent).toContain('Optional')
+    for (const name of ['Client', 'About']) expect(screen.getByText(name).closest('label')?.parentElement?.textContent).toContain('Optional')
     expect(screen.getByRole('group', { name: /^Links/ }).textContent).toContain('Optional')
   })
 })
@@ -161,3 +165,17 @@ describe('Enter while saving (final review)', () => {
     mutation.isPending = false
   })
 })
+
+describe('project links for screen readers (UX Phase 5A, 5.9)', () => {
+  it('each link’s two boxes have names; a bad address marks that box, so Save puts the caret there when it’s the only error', () => {
+    render(<ProjectSheet workspaceId="ws-eng" takenKeys={[]} onClose={() => {}} onSaved={() => {}} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Add link' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Link 1 label' }), { target: { value: 'Docs' } })
+    fireEvent.change(screen.getByRole('textbox', { name: 'Link 1 web address' }), { target: { value: 'docs.spark' } })
+    fireEvent.click(screen.getByRole('button', { name: /Create project|Save/ }))
+    expect(screen.getByRole('textbox', { name: 'Link 1 web address' }).getAttribute('aria-invalid')).toBe('true')
+    expect(screen.getByRole('textbox', { name: 'Link 1 label' }).getAttribute('aria-invalid')).toBe('false')
+    expect(screen.getByRole('group', { name: /^Links/, description: 'Links must start with https://.' })).toBeTruthy()
+  })
+})
+

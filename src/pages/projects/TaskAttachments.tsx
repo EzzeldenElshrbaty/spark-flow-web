@@ -107,8 +107,7 @@ export function TaskAttachments({
             type="file"
             multiple
             accept={acceptedFiles}
-            className="sr-only"
-            tabIndex={-1}
+            hidden
             onChange={(e) => {
               if (e.target.files) onAdd([...e.target.files])
               e.target.value = ''

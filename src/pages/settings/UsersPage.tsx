@@ -288,7 +288,7 @@ function PersonSheet({
   // Closing with changes asks first (UX Phase 1, 1.2).
   const dirty = JSON.stringify(values) !== JSON.stringify(opened)
   // Errors show from the first Save and follow each change after it (UX Phase 4, 4.4).
-  const { errors: checked, attempt } = useFormCheck<Partial<Record<keyof NewPerson, string>>>({
+  const { errors: checked, attempt, formRef } = useFormCheck<Partial<Record<keyof NewPerson, string>>>({
     name: values.name.trim() ? undefined : 'Give their name.',
     email: values.email.trim() ? undefined : 'Give their email.',
     roleIds: values.roleIds.length ? undefined : 'Give them at least one role.',
@@ -330,6 +330,7 @@ function PersonSheet({
       }
     >
       <form
+        ref={formRef}
         className="space-y-4"
         onSubmit={(e) => {
           e.preventDefault()
@@ -363,9 +364,13 @@ function PersonSheet({
         <Field label="Title" hint="Optional" error={errorOf('title')}>
           <input className={inputClass} value={values.title} maxLength={80} placeholder="Frontend Engineer" aria-invalid={Boolean(errorOf('title'))} onChange={(e) => set('title', e.target.value)} />
         </Field>
-        <fieldset aria-describedby={errorOf('roleIds') ? 'person-roles-error' : undefined}>
+        <fieldset aria-describedby={errorOf('roleIds') ? 'person-roles-error' : undefined} data-invalid={errorOf('roleIds') ? '' : undefined}>
           <legend className="mb-1.5 text-sm font-medium text-fg-secondary">
-            Roles<span className="text-accent"> *</span>
+            Roles
+            <span className="text-accent" aria-hidden>
+              {' '}
+              *
+            </span>
           </legend>
           <div className="grid gap-1 rounded-lg border border-line p-2 sm:grid-cols-2">
             {roles.map((r) => (
@@ -382,7 +387,7 @@ function PersonSheet({
           )}
         </fieldset>
         {teams.length > 0 && (
-          <fieldset aria-describedby={errorOf('teamIds') ? 'person-teams-error' : undefined}>
+          <fieldset aria-describedby={errorOf('teamIds') ? 'person-teams-error' : undefined} data-invalid={errorOf('teamIds') ? '' : undefined}>
             <legend className="mb-1.5 text-sm font-medium text-fg-secondary">Teams</legend>
             <div className="grid gap-1 rounded-lg border border-line p-2 sm:grid-cols-2">
               {teams.map((t) => (

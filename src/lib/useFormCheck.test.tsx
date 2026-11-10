@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
-import { act, renderHook } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { act, cleanup, fireEvent, render, renderHook, screen } from '@testing-library/react'
+import { afterEach, describe, expect, it } from 'vitest'
 import { useFormCheck } from './useFormCheck'
+
+afterEach(cleanup)
 
 type Errors = { title?: string; estimate?: string }
 const rules = (title: string): Errors => (title.trim() ? {} : { title: 'Give the task a title.' })
@@ -45,5 +47,35 @@ describe('useFormCheck (UX Phase 4, 4.4)', () => {
     })
     act(() => result.current.reset())
     expect(result.current.errors).toEqual({})
+  })
+})
+
+describe('the caret goes to the first error (UX Phase 5A, 5.9)', () => {
+  function Form({ name, roles }: { name: string; roles: string[] }) {
+    const { errors, attempt, formRef } = useFormCheck({ name: name ? undefined : 'Give their name.', roles: roles.length ? undefined : 'Give them a role.' })
+    return (
+      <form ref={formRef}>
+        <input aria-label="Name" aria-invalid={Boolean(errors.name)} defaultValue={name} />
+        <fieldset data-invalid={errors.roles ? '' : undefined}>
+          <legend>Roles</legend>
+          <input type="checkbox" aria-label="Admin" />
+        </fieldset>
+        <button type="button" onClick={() => attempt()}>
+          Save
+        </button>
+      </form>
+    )
+  }
+
+  it('a failed Save focuses the first field marked invalid', () => {
+    render(<Form name="" roles={[]} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Name' }))
+  })
+
+  it('with only a group wrong, its first control', () => {
+    render(<Form name="Laila" roles={[]} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(document.activeElement).toBe(screen.getByRole('checkbox', { name: 'Admin' }))
   })
 })

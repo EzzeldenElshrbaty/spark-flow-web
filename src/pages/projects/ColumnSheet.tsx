@@ -33,7 +33,7 @@ export function ColumnSheet({ projectId, columns, column, count = 0, onClose }: 
   // Each problem shows by what it's about, from the first Save on (UX Phase 4, 4.4).
   const problem = columnProblem(next)
   const about = (field: 'label' | 'category' | 'board') => (problem?.field === field ? problem.message : undefined)
-  const { errors, attempt } = useFormCheck({ label: about('label'), category: about('category'), board: about('board') })
+  const { errors, attempt, formRef } = useFormCheck({ label: about('label'), category: about('category'), board: about('board') })
 
   const save = () => {
     // Enter again while it saves sends nothing (final review).
@@ -60,6 +60,7 @@ export function ColumnSheet({ projectId, columns, column, count = 0, onClose }: 
       }
     >
       <form
+        ref={formRef}
         className="space-y-4"
         onSubmit={(e) => {
           e.preventDefault()
@@ -69,10 +70,14 @@ export function ColumnSheet({ projectId, columns, column, count = 0, onClose }: 
         <Field label="Name" required error={errors.label}>
           <input className={inputClass} value={label} maxLength={30} aria-invalid={Boolean(errors.label)} onChange={(e) => setLabel(e.target.value)} placeholder="QA" />
         </Field>
-        <fieldset>
+        <fieldset aria-describedby={errors.category ? 'column-type-error' : undefined} data-invalid={errors.category ? '' : undefined}>
           <legend className="mb-1.5 text-sm font-medium text-fg-secondary">Type</legend>
           <SegmentedControl kind="form" label="Type" value={category} onChange={setCategory} options={CATEGORIES.map((c) => ({ value: c.category, label: c.label }))} />
-          {errors.category && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.category}</p>}
+          {errors.category && (
+            <p id="column-type-error" className="mt-1 text-xs text-red-600 dark:text-red-400">
+              {errors.category}
+            </p>
+          )}
           {/* Before what counts as done changes for the tasks already here (UX Phase 4, 4.10). */}
           {column && doneChange(column.category, category, count) && <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">{doneChange(column.category, category, count)}</p>}
         </fieldset>

@@ -183,7 +183,8 @@ describe('Settings → Attendance (Admin and help, slice 5)', () => {
     expect(field.form?.querySelector('button[type="submit"]')).toBeTruthy()
     fireEvent.change(field, { target: { value: '0' } })
     fireEvent.click(within(sheet).getByRole('button', { name: 'Save' }))
-    expect(within(sheet).getByText('Pick a whole number of hours from 1 to 12.').closest('label')).toBe(field.closest('label'))
+    // Under its field, and read as its description (UX Phase 5A, 5.9).
+    expect(within(sheet).getByRole('spinbutton', { name: /^Pause timers after/, description: 'Pick a whole number of hours from 1 to 12.' })).toBe(field)
     fireEvent.change(field, { target: { value: '3' } })
     expect(within(sheet).queryByText('Pick a whole number of hours from 1 to 12.')).toBeNull()
   })

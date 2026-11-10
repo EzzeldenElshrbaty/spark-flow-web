@@ -129,8 +129,7 @@ export function ProjectFiles({ projectId, people, canUpload, canManage }: { proj
               type="file"
               multiple
               accept={acceptedFiles}
-              className="sr-only"
-              tabIndex={-1}
+              hidden
               onChange={(e) => {
                 queue.add(e.target.files)
                 e.target.value = ''

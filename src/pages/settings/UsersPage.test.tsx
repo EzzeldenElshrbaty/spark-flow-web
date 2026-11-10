@@ -202,6 +202,20 @@ describe('Settings → Users (Admin and help, slice 3)', () => {
   })
 })
 
+describe('Add person for screen readers (UX Phase 5A, 5.9)', () => {
+  it('with only the roles missing, Save puts focus on the first role, and the Roles group reads why', async () => {
+    await mount()
+    await table()
+    fireEvent.click(screen.getByRole('button', { name: 'Add person' }))
+    const sheet = await screen.findByRole('dialog', { name: 'Add person' })
+    fireEvent.change(within(sheet).getByRole('textbox', { name: /Name/ }), { target: { value: 'Laila Hamdy' } })
+    fireEvent.change(within(sheet).getByRole('textbox', { name: /Email/ }), { target: { value: 'laila@spark-sys.com' } })
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Add person' }))
+    const roles = within(sheet).getByRole('group', { name: 'Roles', description: 'Give them at least one role.' })
+    expect(document.activeElement).toBe(within(roles).getAllByRole('checkbox')[0])
+  })
+})
+
 describe('Add person asks before Back throws it away (UX Phase 1, 1.2)', () => {
   async function mountRouted() {
     const client: QueryClient = new QueryClient({ mutationCache: new MutationCache({ onSuccess: () => client.invalidateQueries() }) })

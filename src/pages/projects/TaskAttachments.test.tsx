@@ -60,6 +60,11 @@ describe('TaskAttachments', () => {
     expect(h.onAdd).toHaveBeenCalledTimes(2)
   })
 
+  it('its file input is hidden from screen readers; Add files is the way in (UX Phase 5A, 5.9)', () => {
+    const { container } = render(<TaskAttachments files={[]} rows={[]} readOnly={false} {...handlers()} />)
+    expect(container.querySelector('input[type=file]')?.hasAttribute('hidden')).toBe(true)
+  })
+
   it('read-only shows the files without remove or add', () => {
     const { container } = render(<TaskAttachments files={[file('a1', 'flow.pdf', 2048)]} rows={[]} readOnly {...handlers()} />)
     expect(screen.getByText('flow.pdf')).toBeTruthy()

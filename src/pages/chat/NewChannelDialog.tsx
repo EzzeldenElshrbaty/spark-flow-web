@@ -26,7 +26,7 @@ export function NewChannelDialog({ workspaceId, workspaceSlug, onClose }: { work
   const create = useCreateChannel()
   const [values, setValues] = useState<ChannelValues>({ name: '', topic: '', isPrivate: false, memberIds: [] })
   // Errors show from the first Create and follow each change after it (UX Phase 4, 4.4).
-  const { errors, attempt } = useFormCheck(channelFormErrors(values, taken))
+  const { errors, attempt, formRef } = useFormCheck(channelFormErrors(values, taken))
   const set = <K extends keyof ChannelValues>(k: K, v: ChannelValues[K]) => setValues((s) => ({ ...s, [k]: v }))
   const pending = create.isPending
   const failure = create.error as Error | null
@@ -68,6 +68,7 @@ export function NewChannelDialog({ workspaceId, workspaceSlug, onClose }: { work
       }
     >
       <form
+        ref={formRef}
         className="space-y-4"
         onSubmit={(e) => {
           e.preventDefault()
@@ -121,7 +122,7 @@ export function NewChannelDialog({ workspaceId, workspaceSlug, onClose }: { work
             <span className="sf-meta block text-sf-text-muted">Only the people you add see it. This can’t be changed later.</span>
           </span>
         </label>
-        <fieldset className="m-0 border-0 p-0" aria-describedby={errors.members ? `${ids}-members-error` : undefined}>
+        <fieldset className="m-0 border-0 p-0" aria-describedby={errors.members ? `${ids}-members-error` : undefined} data-invalid={errors.members ? '' : undefined}>
           <legend className={labelClass}>People</legend>
           <ul className="m-0 max-h-72 list-none space-y-0.5 overflow-y-auto rounded-sf-md border border-sf-line p-1">
             {/* I'm in a channel I make. */}

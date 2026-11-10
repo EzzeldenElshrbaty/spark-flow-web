@@ -437,7 +437,7 @@ function WorkHoursForm({ current, timeoutHours, onClose }: { current: WorkHours;
   const [timeout, setTimeoutHours] = useState(String(timeoutHours))
   const hours = timeout.trim() === '' ? NaN : Number(timeout)
   // The timeout's error shows under it from the first Save, and leaves once it's fixed (UX Phase 4, 4.4).
-  const { errors, attempt } = useFormCheck({ timeout: timeoutProblem(hours) ?? undefined })
+  const { errors, attempt, formRef } = useFormCheck({ timeout: timeoutProblem(hours) ?? undefined })
   const pending = save.isPending || saveTimer.isPending
   // Closing with changes asks first (UX Phase 1, 1.2).
   const dirty = [...days].sort((a, b) => a - b).join() !== [...current.days].sort((a, b) => a - b).join() || start !== current.start || end !== current.end || timeout !== String(timeoutHours)
@@ -474,6 +474,7 @@ function WorkHoursForm({ current, timeoutHours, onClose }: { current: WorkHours;
       }
     >
       <form
+        ref={formRef}
         className="space-y-4"
         onSubmit={(e) => {
           e.preventDefault()

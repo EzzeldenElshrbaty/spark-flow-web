@@ -1,6 +1,9 @@
 import type { NewProject } from '@/api/types'
 
 /** What the New/Edit project form holds; dates are yyyy-mm-dd, as date inputs give them. */
+
+/** A link's address: https only. */
+export const LINK_URL = /^https:\/\/[^\s]+$/
 export type ProjectFormValues = Omit<NewProject, 'workspaceId'>
 export type ProjectFormErrors = Partial<Record<keyof ProjectFormValues, string>>
 
@@ -25,6 +28,6 @@ export function validateProject(values: ProjectFormValues, takenKeys: string[]):
   if (!values.dueDate) errors.dueDate = 'Pick a due date.'
   else if (values.startDate && values.dueDate < values.startDate) errors.dueDate = 'The due date is before the start date.'
   if (values.links.some((l) => !l.label.trim())) errors.links = 'Give every link a label.'
-  else if (values.links.some((l) => !/^https:\/\/[^\s]+$/.test(l.url.trim()))) errors.links = 'Links must start with https://.'
+  else if (values.links.some((l) => !LINK_URL.test(l.url.trim()))) errors.links = 'Links must start with https://.'
   return errors
 }

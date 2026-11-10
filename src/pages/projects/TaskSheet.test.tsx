@@ -304,3 +304,14 @@ describe('TaskSheet Project field (/task in a channel with no project)', () => {
     expect(assignee.selectedOptions[0]!.textContent).toBe('Nour El-Sayed (not on this project)')
   })
 })
+
+describe('TaskSheet for screen readers (UX Phase 5A, 5.9)', () => {
+  it('Save with no title puts the caret in Title, which says it’s required and why', () => {
+    render(<TaskSheet project={project} phases={[]} sprints={[]} users={[]} onClose={() => {}} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Save task' }))
+    const title = screen.getByRole('textbox', { name: 'Title', description: 'Give the task a title.' })
+    expect(title.getAttribute('aria-required')).toBe('true')
+    expect(document.activeElement).toBe(title)
+  })
+})
+

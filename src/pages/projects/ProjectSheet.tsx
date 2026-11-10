@@ -13,7 +13,7 @@ import { toLocalInput } from '@/lib/format'
 import { projectPeople } from '@/lib/projectPeople'
 import { usePermission } from '@/lib/usePermission'
 import { useFormCheck } from '@/lib/useFormCheck'
-import { keyFromName, validateProject, type ProjectFormValues } from './projectForm'
+import { keyFromName, LINK_URL, validateProject, type ProjectFormValues } from './projectForm'
 import { tasksLeftWith } from './taskForm'
 import { IconButton } from '@/components/ui/IconButton'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
@@ -81,7 +81,7 @@ export function ProjectSheet({
   // People and teams are assigned by the manager and Admin; Sales picks them only when creating (spec §4.3).
   const canPeople = project ? check('phase.manage', { project }) : true
   // Errors show from the first Save and follow each change after it (UX Phase 4, 4.4).
-  const { errors, attempt } = useFormCheck(validateProject(values, project ? [] : takenKeys))
+  const { errors, attempt, formRef } = useFormCheck(validateProject(values, project ? [] : takenKeys))
   const saving = create.isPending || update.isPending
   const failure = (create.error ?? update.error) as Error | null
   // A key taken in another workspace is only known to the server: show it where the key is.
@@ -132,6 +132,7 @@ export function ProjectSheet({
       }
     >
       <form
+        ref={formRef}
         className="space-y-4"
         onSubmit={(event) => {
           event.preventDefault()
@@ -251,22 +252,41 @@ export function ProjectSheet({
         )}
         {leftWith && <p className="text-sm text-amber-700 dark:text-amber-300">{leftWith}</p>}
 
-        <fieldset>
+        <fieldset aria-describedby={errors.links ? 'project-links-error' : undefined}>
           <legend className="mb-1.5 text-sm font-medium text-fg-secondary">
             Links <span className="font-normal text-fg-muted">· Optional</span>
           </legend>
           <div className="space-y-2">
             {values.links.map((link, i) => (
               <div key={i} className="flex gap-2">
-                <input className={clsx(inputClass, 'w-1/3')} placeholder="Label" value={link.label} onChange={(e) => set('links', values.links.map((l, j) => (j === i ? { ...l, label: e.target.value } : l)))} />
-                <input className={inputClass} placeholder="https://" value={link.url} onChange={(e) => set('links', values.links.map((l, j) => (j === i ? { ...l, url: e.target.value } : l)))} />
+                {/* Named for screen readers; the one marked wrong takes the caret on Save (UX Phase 5A, 5.9). */}
+                <input
+                  className={clsx(inputClass, 'w-1/3')}
+                  placeholder="Label"
+                  aria-label={`Link ${i + 1} label`}
+                  aria-invalid={Boolean(errors.links) && !link.label.trim()}
+                  value={link.label}
+                  onChange={(e) => set('links', values.links.map((l, j) => (j === i ? { ...l, label: e.target.value } : l)))}
+                />
+                <input
+                  className={inputClass}
+                  placeholder="https://"
+                  aria-label={`Link ${i + 1} web address`}
+                  aria-invalid={Boolean(errors.links) && values.links.every((l) => l.label.trim()) && !LINK_URL.test(link.url.trim())}
+                  value={link.url}
+                  onChange={(e) => set('links', values.links.map((l, j) => (j === i ? { ...l, url: e.target.value } : l)))}
+                />
                 <IconButton label="Remove link" icon={X} onClick={() => set('links', values.links.filter((_, j) => j !== i))} />
               </div>
             ))}
             <button type="button" onClick={() => set('links', [...values.links, { label: '', url: '' }])} className="inline-flex items-center gap-1 text-sm font-medium text-accent hover:text-accent-strong">
               <Plus className="size-4" /> Add link
             </button>
-            {errors.links && <p className="text-xs text-red-600 dark:text-red-400">{errors.links}</p>}
+            {errors.links && (
+              <p id="project-links-error" className="text-xs text-red-600 dark:text-red-400">
+                {errors.links}
+              </p>
+            )}
           </div>
         </fieldset>
 

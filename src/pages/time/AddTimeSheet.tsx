@@ -33,7 +33,7 @@ export function AddTimeSheet({ projectId: forProject, taskId, entry, onClose }: 
   // Closing with changes asks first (UX Phase 1, 1.2).
   const dirty = JSON.stringify(values) !== JSON.stringify(initial)
   // Errors show from the first Save and follow each change after it (UX Phase 4, 4.4).
-  const { errors, attempt } = useFormCheck(manualEntryErrors(values, new Date()))
+  const { errors, attempt, formRef } = useFormCheck(manualEntryErrors(values, new Date()))
   // Only projects I'm on (or every one, for an Admin): the server refuses the others.
   const { projects, tasks: listed } = useLogTargets(values.projectId, entry?.projectId)
   // An entry's own task stays pickable even once archived (the list leaves archived tasks out).
@@ -79,6 +79,7 @@ export function AddTimeSheet({ projectId: forProject, taskId, entry, onClose }: 
       }
     >
       <form
+        ref={formRef}
         className="space-y-4"
         onSubmit={(e) => {
           e.preventDefault()

@@ -106,7 +106,7 @@ export function TaskSheet({
   // The task as it was when the sheet opened: the prop follows live updates, so it can't tell what I changed.
   const [opened] = useState(task)
   // Errors show from the first Save and follow each change after it (UX Phase 4, 4.4).
-  const { errors, attempt } = useFormCheck(taskFormErrors(values))
+  const { errors, attempt, formRef } = useFormCheck(taskFormErrors(values))
   const set = <K extends keyof Values>(k: K, v: Values[K]) => setValues((s) => ({ ...s, [k]: v }))
   // The description as the editor has it; sent only when it differs from the task's (deep, on an edit).
   const [initialBody] = useState<DescBody>(() => task?.descriptionBody ?? draft?.descriptionBody ?? [])
@@ -208,6 +208,7 @@ export function TaskSheet({
       }
     >
       <form
+        ref={formRef}
         className="space-y-4"
         onSubmit={(e) => {
           e.preventDefault()

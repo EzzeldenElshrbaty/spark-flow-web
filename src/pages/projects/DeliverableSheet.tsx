@@ -23,7 +23,7 @@ export function DeliverableSheet({ project, phases, deliverable, onClose }: { pr
   const failure = (create.error ?? update.error) as Error | null
 
   // Each error under its own field, from the first Save on (UX Phase 4, 4.4).
-  const { errors, attempt } = useFormCheck(deliverableErrors(title, due))
+  const { errors, attempt, formRef } = useFormCheck(deliverableErrors(title, due))
 
   const save = () => {
     // Enter again while it saves sends nothing (final review).
@@ -57,6 +57,7 @@ export function DeliverableSheet({ project, phases, deliverable, onClose }: { pr
       }
     >
       <form
+        ref={formRef}
         className="space-y-4"
         onSubmit={(e) => {
           e.preventDefault()
