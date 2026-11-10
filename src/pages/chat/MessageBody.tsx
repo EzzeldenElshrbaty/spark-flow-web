@@ -97,7 +97,7 @@ function marked(text: string, marks: Mark[] | undefined, key: number): ReactNode
   return <Fragment key={key}>{node}</Fragment>
 }
 
-function Inlines({ nodes, ctx }: { nodes: Inline[]; ctx: BodyContext }) {
+export function Inlines({ nodes, ctx }: { nodes: Inline[]; ctx: BodyContext }) {
   return (
     <>
       {nodes.map((n, i) => {
@@ -157,7 +157,7 @@ function Inlines({ nodes, ctx }: { nodes: Inline[]; ctx: BodyContext }) {
 }
 
 /** `tail` ("(edited)") ends the last paragraph's line; after any other last block it takes its own line. */
-function Blocks({ blocks, ctx, tail }: { blocks: Block[]; ctx: BodyContext; tail?: ReactNode }) {
+export function Blocks({ blocks, ctx, tail }: { blocks: Block[]; ctx: BodyContext; tail?: ReactNode }) {
   const last = blocks.length - 1
   return (
     <>
