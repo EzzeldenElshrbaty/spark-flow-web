@@ -18,8 +18,11 @@ export type InspectorBodyProps = {
  */
 export const PanelOpened = createContext(false)
 
-/** The panel is a bottom sheet below `sm`: there it is a modal dialog (UX Phase 5A, 5.5). */
-const SHEET_QUERY = '(max-width: 639px)'
+/**
+ * Below `xl` the panel covers the page (a bottom sheet below `sm`, a side sheet up to 1279px): there it is a modal
+ * dialog over a dimmed page (UX Phase 5A, 5.5; tablets too, UX Phase 5B).
+ */
+const OVERLAY_QUERY = '(max-width: 1279px)'
 
 /** Where the inspector sits: beside the content on wide screens (xl), sliding over from the end side on tablets and laptops (no dimming), a bottom sheet on phones. */
 const PLACE =
@@ -29,8 +32,9 @@ const PLACE =
  * The inspector's frame, after the Spark CRM page help panel (see PLACE). The body scrolls on its own. A chat panel
  * (`sub` given) takes the chat redesign's header instead (spec 6.7, .sf-panel-head): a 52px row with the title and a
  * muted subline, then the actions and Close.
- * Opened by a person, it puts focus on its title, unless something inside took it first (a reply box). On a phone it
- * is a modal bottom sheet over a dimmed page: Tab stays inside, and a tap on the dimmed part closes it (UX Phase 5A).
+ * Opened by a person, it puts focus on its title, unless something inside took it first (a reply box). Wherever it
+ * covers the page (below 1280px) it is a modal over a dimmed page: Tab stays inside, and a tap on the dimmed part
+ * closes it (UX Phase 5A; tablets too, UX Phase 5B).
  */
 export function InspectorFrame({
   label,
@@ -70,7 +74,7 @@ export function InspectorFrame({
       cancelled = true
     }
   }, [focusAtStart])
-  const sheet = useMedia(SHEET_QUERY)
+  const sheet = useMedia(OVERLAY_QUERY)
   // The phone's sheet is a dialog; elsewhere the panel sits beside the page. One element either way, so a resize
   // keeps what's typed in it.
   const frame = (className: string, content: ReactNode) => (

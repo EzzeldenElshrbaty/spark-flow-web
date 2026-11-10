@@ -87,3 +87,23 @@ describe('the side panel leaves focus a person moved on (final review)', () => {
   })
 })
 
+describe('the panel wherever it covers the page (UX Phase 5B)', () => {
+  it('at 1024 it is a modal: a dialog with a dimmed page, Tab kept inside; at 1280 it sits beside the page', async () => {
+    await page.viewport(1024, 768)
+    render(<Board />)
+    await userEvent.click(screen.getByRole('button', { name: 'NEX-1 Login' }))
+    const sheet = screen.getByRole('dialog', { name: 'Task' })
+    expect(sheet.getAttribute('aria-modal')).toBe('true')
+    expect(document.querySelector('[data-scrim]')).not.toBeNull()
+    screen.getByRole('button', { name: 'Go to NEX-2' }).focus()
+    await userEvent.keyboard('{Tab}{Tab}{Tab}')
+    expect(sheet.contains(document.activeElement)).toBe(true)
+    cleanup()
+    await page.viewport(1280, 800)
+    render(<Board />)
+    await userEvent.click(screen.getByRole('button', { name: 'NEX-1 Login' }))
+    expect(screen.getByRole('complementary', { name: 'Task' })).toBeTruthy()
+    expect(document.querySelector('[data-scrim]')).toBeNull()
+  })
+})
+
