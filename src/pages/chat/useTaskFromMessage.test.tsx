@@ -13,6 +13,8 @@ vi.mock('@/api/projects', () => ({ useProjectSummaries: () => ({ data: projects 
 vi.mock('@/api/tickets', () => ({ useSprints: () => ({ data: [] }) }))
 vi.mock('@/api/users', () => ({ useUsers: () => ({ data: [] }) }))
 vi.mock('@/lib/usePermission', () => ({ usePermission: () => (_action: string, ctx: { project: { id: string } }) => manages.has(ctx.project.id) }))
+const queue = vi.hoisted(() => ({ enqueue: vi.fn() }))
+vi.mock('@/api/sendQueue', () => ({ useSendQueue: () => queue }))
 // The sheet itself is tested on its own: here it only shows what it was given.
 type SheetProps = Parameters<typeof TaskSheet>[0]
 const shown = vi.hoisted(() => ({ props: null as SheetProps | null }))
@@ -44,6 +46,7 @@ beforeEach(() => {
   manages.add('p-nex')
   shown.props = null
   where = ''
+  queue.enqueue.mockClear()
 })
 afterEach(cleanup)
 
@@ -57,6 +60,8 @@ describe('useTaskFromMessage: /task in a project’s channel (spec 6.8)', () => 
     expect(shown.props?.project.id).toBe('p-nex')
     expect(shown.props?.projectChoice).toBeUndefined()
     expect(shown.props?.draft).toMatchObject({ title: 'Fix login', assigneeId: 'u-5' })
+    // The project's own Created card is already here: nothing more is posted.
+    expect(shown.props?.onCreated).toBeUndefined()
   })
 
   it('where I can’t manage its tasks, names the project and offers no other', () => {
@@ -91,6 +96,21 @@ describe('useTaskFromMessage: /task in a channel or DM with no project', () => {
     render(<>{result.current.sheet}</>, { wrapper })
     act(() => shown.props!.onCreated!({ key: 'NEX-112' } as never))
     expect(where).toContain('ticket=NEX-112')
+  })
+
+  it('says "Created NEX-112" in this channel, as me, so it shows the task’s card here too', () => {
+    const { result } = inChannel('c-general')
+    act(() => result.current.fromCommand!.open({ title: 'update login', assigneeId: null }))
+    render(<>{result.current.sheet}</>, { wrapper })
+    act(() => shown.props!.onCreated!({ key: 'NEX-112' } as never))
+    expect(queue.enqueue).toHaveBeenCalledTimes(1)
+    expect(queue.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        channelId: 'c-general',
+        body: [{ type: 'p', children: [{ type: 'text', text: 'Created ' }, { type: 'task', key: 'NEX-112' }] }],
+        content: 'Created NEX-112',
+      }),
+    )
   })
 
   it('with no project I may add tasks to, says so; while the projects load, says nothing', () => {
