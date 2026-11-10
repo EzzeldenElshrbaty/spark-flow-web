@@ -105,9 +105,10 @@ describe('File details Access after the slice 6 review', () => {
 })
 
 describe('File details panel focus (slice 6 review)', () => {
-  it('opening it puts focus on its heading, so the keyboard carries on there', () => {
+  it('opening it puts focus on its heading, so the keyboard carries on there', async () => {
     show()
-    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Release scope' }))
+    // A moment later, once the Inspector has noted what opened it (UX Phase 5A, 5.5).
+    await vi.waitFor(() => expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Release scope' })))
   })
 })
 
