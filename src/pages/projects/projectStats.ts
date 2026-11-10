@@ -51,3 +51,9 @@ export function finishHint(p: Pick<ProjectSummary, 'status' | 'dueDate' | 'expec
   if (!late && p.expectedFinish && p.expectedFinish.slice(0, 10) === p.dueDate.slice(0, 10)) return 'On time'
   return `Due ${formatDate(p.dueDate)}${late ? ' · late' : ''}`
 }
+
+/** A due date with " · late" when it's past, so late is said in words, not only in red (UX Phase 5B, 5.10). */
+export function dueText(dueDate: string, late: boolean): string {
+  return late ? `${formatDate(dueDate)} · late` : formatDate(dueDate)
+}
+

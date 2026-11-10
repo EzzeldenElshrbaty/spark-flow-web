@@ -239,3 +239,15 @@ describe('the active row stays readable (UX Phase 5B, 5.8)', () => {
     expect(screen.getByText('3').closest('.sf-meta')?.className).not.toContain('text-sf-sidebar-text-muted')
   })
 })
+
+describe('presence in words (UX Phase 5B, 5.10)', () => {
+  it('a DM row reads the person’s state; an offline one says nothing more', () => {
+    dms = [
+      { channel: { id: 'c-n', kind: 'dm', memberIds: ['u-2'], muted: false }, label: 'Nour El-Sayed', presence: 'away', group: false, otherId: 'u-2', otherName: 'Nour El-Sayed', draft: false },
+      { channel: { id: 'c-m', kind: 'dm', memberIds: ['u-3'], muted: false }, label: 'Mariam Fathy', presence: 'offline', group: false, otherId: 'u-3', otherName: 'Mariam Fathy', draft: false },
+    ]
+    at('/w/engineering/c/c-general', <SidebarContent />)
+    expect(screen.getByRole('link', { name: 'Nour El-Sayed, away' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Mariam Fathy' })).toBeTruthy()
+  })
+})

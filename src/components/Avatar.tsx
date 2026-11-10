@@ -30,6 +30,11 @@ const tones = [
 
 const presenceLabels: Record<Presence, string> = { active: 'active', away: 'away', offline: 'offline' }
 
+/** What a screen reader hears after a name beside a decorative avatar: ", active", ", away", or nothing (UX Phase 5B). */
+export function presenceNote(presence?: Presence): string {
+  return presence && presence !== 'offline' ? `, ${presenceLabels[presence]}` : ''
+}
+
 /** Two initials, without a leading "Dr." or "Eng.". */
 export function initials(name: string): string {
   return name

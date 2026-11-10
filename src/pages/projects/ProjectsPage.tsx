@@ -15,12 +15,12 @@ import { ProgressBar } from '@/components/ui/ProgressBar'
 import { QueryError } from '@/components/ui/QueryError'
 import { SearchBox } from '@/components/ui/SearchBox'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
-import { formatDate, formatMoney } from '@/lib/format'
+import { formatMoney } from '@/lib/format'
 import { paths } from '@/lib/paths'
 import { columnSortFrom, sortByColumn, sortParams, type SortKeys } from '@/lib/sorting'
 import { usePermission } from '@/lib/usePermission'
 import { ProjectSheet } from './ProjectSheet'
-import { dueLate, progressTone, projectStats, type ProjectFilter } from './projectStats'
+import { dueLate, dueText, progressTone, projectStats, type ProjectFilter } from './projectStats'
 import { useParamState } from '@/lib/searchParams'
 
 // The kit's attention tiles (UX Phase 4, 4.2): red for late, sky for due soon, amber for waiting.
@@ -128,7 +128,7 @@ export function ProjectsPage() {
       header: 'Due',
       width: 120,
       sort: 'date',
-      cell: (p) => <span className={clsx('tabular-nums', dueLate(p, now) ? 'text-red-600 dark:text-red-400' : 'text-fg-secondary')}>{formatDate(p.dueDate)}</span>,
+      cell: (p) => <span className={clsx('tabular-nums', dueLate(p, now) ? 'text-red-600 dark:text-red-400' : 'text-fg-secondary')}>{dueText(p.dueDate, dueLate(p, now))}</span>,
     },
     {
       id: 'progress',
@@ -232,7 +232,7 @@ export function ProjectsPage() {
                           {p.key} · {p.clientName.trim() || '—'} · {Math.round(p.progress * 100)}%
                         </span>
                       </span>
-                      <span className={clsx('text-xs tabular-nums', dueLate(p, now) ? 'text-red-600 dark:text-red-400' : 'text-fg-muted')}>{formatDate(p.dueDate)}</span>
+                      <span className={clsx('text-xs tabular-nums', dueLate(p, now) ? 'text-red-600 dark:text-red-400' : 'text-fg-muted')}>{dueText(p.dueDate, dueLate(p, now))}</span>
                     </Link>
                   </li>
                 ))}

@@ -2,7 +2,7 @@ import { IconEye, IconMail, IconUserPlus } from '@tabler/icons-react'
 import { isActive } from '@/lib/people'
 import { useEffect, useId, useRef, useState } from 'react'
 import type { Channel, ChannelPatch, Invitation, Team, User } from '@/api/types'
-import { Avatar } from '@/components/Avatar'
+import { Avatar, presenceNote } from '@/components/Avatar'
 import { Tag } from '@/components/sf/Badge'
 import { Button } from '@/components/sf/Button'
 import { Icon } from '@/components/sf/Icon'
@@ -95,6 +95,8 @@ export function Members({
                 {person.name}
                 {person.id === meId && ' (you)'}
               </span>
+              {/* The avatar is decorative here: its presence is read after the name (UX Phase 5B, 5.10). */}
+              <span className="sr-only">{presenceNote(person.presence)}</span>
               {person.title && <span className="sf-small block truncate text-sf-text-secondary">{person.title}</span>}
             </span>
             {changeable && person.id !== meId && (

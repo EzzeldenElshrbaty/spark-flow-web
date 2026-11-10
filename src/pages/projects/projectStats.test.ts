@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ProjectSummary } from '@/api/types'
-import { behindSchedule, dueLate, isLate, progressTone, projectStats, finishHint } from './projectStats'
+import { behindSchedule, dueLate, dueText, isLate, progressTone, projectStats, finishHint } from './projectStats'
 
 const now = new Date('2026-10-26T12:00:00Z')
 const p = (over: Partial<ProjectSummary>): ProjectSummary =>
@@ -68,5 +68,12 @@ describe('finishHint past the due date (final review)', () => {
   it('a project past due and not delivered is late, never "On time", even when expected to finish that day', () => {
     const now = new Date('2026-11-09T10:00:00.000Z')
     expect(finishHint({ status: 'active', dueDate: '2026-11-03T00:00:00.000Z', expectedFinish: '2026-11-03T00:00:00.000Z' } as never, now)).toBe('Due 3 Nov 2026 · late')
+  })
+})
+
+describe('dueText (UX Phase 5B, 5.10): late in words, not only red', () => {
+  it('adds "· late" to a late date, as finishHint does', () => {
+    expect(dueText('2026-10-03T12:00:00.000Z', true)).toBe('3 Oct 2026 · late')
+    expect(dueText('2026-10-03T12:00:00.000Z', false)).toBe('3 Oct 2026')
   })
 })

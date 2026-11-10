@@ -15,6 +15,7 @@ import { ProjectFiles } from './ProjectFiles'
 import { isPastDue } from '@/lib/dates'
 import { usePermission } from '@/lib/usePermission'
 import { StatTile } from '@/components/ui/StatTile'
+import { dueText } from './projectStats'
 
 function Deliverables({ project, phases, canEdit }: { project: ProjectSummary; phases: Phase[]; canEdit: boolean }) {
   const deliverables = useDeliverables(project.id)
@@ -73,7 +74,7 @@ function Deliverables({ project, phases, canEdit }: { project: ProjectSummary; p
                     <span className="block truncate text-xs text-fg-muted">{phaseName(d.phaseId)}</span>
                   </span>
                   <span className={clsx('shrink-0 text-xs tabular-nums', late ? 'font-medium text-red-600 dark:text-red-400' : 'text-fg-muted')}>
-                    {done ? `Done ${formatDate(d.doneAt!)}` : formatDate(d.dueDate)}
+                    {done ? `Done ${formatDate(d.doneAt!)}` : dueText(d.dueDate, late)}
                   </span>
                   {canEdit && (
                     <RowMenu

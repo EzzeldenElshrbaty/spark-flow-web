@@ -25,7 +25,7 @@ import {
 import clsx from 'clsx'
 import { useId, useRef, useState, type ReactNode } from 'react'
 import { Link, NavLink, useLocation, useMatch } from 'react-router'
-import { Avatar } from '@/components/Avatar'
+import { Avatar, presenceNote } from '@/components/Avatar'
 import { Count } from '@/components/sf/Badge'
 import { IconButton } from '@/components/sf/Button'
 import { Menu, MenuItem } from '@/components/sf/Menu'
@@ -70,6 +70,8 @@ type SideLinkProps = {
   within?: string
   /** Active only on this exact path (Home, whose path is the start of every other). */
   end?: boolean
+  /** Read after the label only (a DM's presence, UX Phase 5B, 5.10). */
+  note?: string
   /** Overrides the route match (a row that borrows another page's link never lights up). */
   active?: boolean
   collapsed: boolean
@@ -100,6 +102,7 @@ export function SideLink({
   within,
   end,
   active: forced,
+  note,
   collapsed,
   onNavigate,
   describedBy,
@@ -159,7 +162,10 @@ export function SideLink({
               (count > 0 || unread) && !muted && <span className="sr-only">{count > 0 ? `, ${counted}` : ', unread'}</span>
             ) : (
               <>
-                <span className="min-w-0 flex-1 truncate">{label}</span>
+                <span className="min-w-0 flex-1 truncate">
+                  {label}
+                  {note && <span className="sr-only">{note}</span>}
+                </span>
                 {count > 0 ? (
                   <>
                     {/* Read as "backend, 3 mentions". */}
@@ -272,6 +278,7 @@ function ChannelLink({ slug, row: r, mentions, collapsed, onNavigate, describedB
       noun={countNoun(channel)}
       muted={state.muted}
       draft={r.draft}
+      note={channel.kind === 'dm' && !group ? presenceNote(presence) || undefined : undefined}
       collapsed={Boolean(collapsed)}
       onNavigate={onNavigate}
       describedBy={describedBy}

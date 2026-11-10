@@ -136,3 +136,21 @@ describe('the top bar timer (timer slice 1)', () => {
     expect(live()).toBe('Timer stopped')
   })
 })
+
+describe('paused in words (UX Phase 5B, 5.10)', () => {
+  it('the pill and the phone bar say "Paused" while paused, not only by the dot', () => {
+    timer = paused()
+    show(
+      <>
+        <TimerPill />
+        <PhoneTimerBar />
+      </>,
+    )
+    expect(within(pill()).getByText('Paused')).toBeTruthy()
+    expect(within(screen.getByRole('region', { name: 'Timer' })).getByText('Paused')).toBeTruthy()
+    cleanup()
+    timer = running()
+    show(<TimerPill />)
+    expect(within(pill()).queryByText('Paused')).toBeNull()
+  })
+})
