@@ -17,6 +17,7 @@ import { Sheet, SheetCancelButton } from '@/components/ui/Sheet'
 import { paths } from '@/lib/paths'
 import { ALL_PERMISSIONS, PERMISSION_GROUPS, type Permission } from '@/lib/permissions'
 import { useAccess } from '@/lib/usePermission'
+import { useDocumentTitle } from '@/lib/useDocumentTitle'
 
 /** The ticks I changed, by role: what each should be. Only those are sent, onto the role as the server has it then. */
 type Draft = Record<string, Partial<Record<Permission, boolean>>>
@@ -52,6 +53,7 @@ export function RolesPage() {
     </Link>
   )
   const title = 'Roles and permissions'
+  useDocumentTitle([title])
   const subtitle = 'Choose what each role may do. People get every permission of every role they hold.'
 
   if (access === 'denied') {

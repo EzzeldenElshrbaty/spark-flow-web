@@ -3,7 +3,7 @@ import { useEffect, useRef, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { paths, projectTabs, type ProjectTab } from '@/lib/paths'
 
-const tabLabels: Record<ProjectTab, string> = { overview: 'Overview', tasks: 'Tasks', chat: 'Chat', time: 'Time', history: 'History', files: 'Files' }
+export const tabLabels: Record<ProjectTab, string> = { overview: 'Overview', tasks: 'Tasks', chat: 'Chat', time: 'Time', history: 'History', files: 'Files' }
 
 /** A project's tabs, under its header. On a phone the row scrolls sideways, and the open tab comes into view. */
 export function ProjectTabs({ ws, projectKey, tab, end }: { ws: string; projectKey: string; tab: ProjectTab; end?: ReactNode }) {

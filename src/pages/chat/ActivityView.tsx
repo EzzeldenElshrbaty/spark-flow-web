@@ -12,6 +12,7 @@ import { timeAgo } from '@/lib/format'
 import { useNow } from '@/lib/useNow'
 import { ACTIVITY_TABS, activityKind, activityLink, shownActivity, type ActivityTab } from '@/pages/chat/activityRows'
 import { useParam } from '@/lib/searchParams'
+import { useDocumentTitle } from '@/lib/useDocumentTitle'
 
 const KIND_ICONS: Record<ActivityItemKind, TablerIcon> = { mention: IconAt, reaction: IconMoodSmile, thread: IconMessages, reminder: IconAlarm, task: IconSubtask }
 
@@ -45,6 +46,7 @@ export function ActivityView({
   marking: boolean
   markError: string | null
 }) {
+  useDocumentTitle(['Activity'])
   // A page people leave open: "3 min ago" moves on by itself.
   const now = useNow(60_000).getTime()
   // In the address (UX Phase 2, 2.7): a reload, Back or a shared link keeps the tab and Unread only.

@@ -1,0 +1,35 @@
+import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { join, relative } from 'node:path'
+import { describe, expect, it } from 'vitest'
+
+// Scans of the source for accessibility rules (UX Phase 5A).
+
+const SRC = join(process.cwd(), 'src')
+
+function pages(dir: string): string[] {
+  return readdirSync(dir).flatMap((name) => {
+    const path = join(dir, name)
+    if (statSync(path).isDirectory()) return pages(path)
+    return name.endsWith('.tsx') && !name.includes('.test.') && !name.includes('.testkit.') ? [path] : []
+  })
+}
+
+const files = pages(SRC).map((path) => ({ file: relative(SRC, path), source: readFileSync(path, 'utf8') }))
+
+describe('every page names its browser tab (5.7)', () => {
+  // RecordHeader draws a project's h1; its page, ProjectPage, names the tab with the open tab too.
+  const named = new Set(['components/ui/RecordHeader.tsx'])
+  it('a file that draws an h1 calls useDocumentTitle', () => {
+    const unnamed = files.filter(({ file, source }) => /<h1[\s>]/.test(source) && !source.includes('useDocumentTitle(') && !named.has(file)).map(({ file }) => file)
+    expect(unnamed).toEqual([])
+  })
+})
+
+describe('the shell starts with Skip to content (5.7)', () => {
+  it('AppLayout renders the skip link before the sidebar, and its main has the id the link goes to', () => {
+    const layout = files.find(({ file }) => file === 'layout/AppLayout.tsx')!.source
+    expect(layout.indexOf('<SkipLink />')).toBeGreaterThan(-1)
+    expect(layout.indexOf('<SkipLink />')).toBeLessThan(layout.indexOf('<Sidebar '))
+    expect(layout).toContain('id="main"')
+  })
+})

@@ -21,6 +21,7 @@ import { ThreadCardView } from '@/pages/chat/threads/ThreadCardView'
 import { useSeen } from '@/pages/chat/threads/useSeen'
 import { useCanPost } from '@/pages/chat/useCanPost'
 import { useBodyContext, useProjectKeys } from '@/pages/chat/useBodyContext'
+import { useDocumentTitle } from '@/lib/useDocumentTitle'
 
 /**
  * Threads (spec 6.12) for the workspace on screen: every thread I follow, unread first. While the view is open it keeps every card it has shown (so one the server
@@ -29,6 +30,7 @@ import { useBodyContext, useProjectKeys } from '@/pages/chat/useBodyContext'
  * starts afresh.
  */
 export function ThreadsPage() {
+  useDocumentTitle(['Threads'])
   const { workspace } = useCurrentWorkspace()
   const { persona } = useRole()
   const threads = useThreads(workspace?.id)

@@ -9,6 +9,8 @@ import { DesktopNotifier } from '@/layout/DesktopNotifier'
 import { Inspector } from '@/layout/Inspector'
 import { PageHelpPanel } from '@/layout/PageHelpPanel'
 import { PageSkeleton } from '@/layout/PageSkeleton'
+import { RouteFocus } from '@/layout/RouteFocus'
+import { SkipLink } from '@/layout/SkipLink'
 import { MobileBottomBar, MobileDrawer } from '@/layout/MobileNav'
 import { RealtimeBridge } from '@/layout/RealtimeBridge'
 import { isFill, mainCardClass, screenFont } from '@/layout/mainCard'
@@ -54,6 +56,8 @@ export function AppLayout() {
     // The panel is "relative" so hidden screen-reader text inside it cannot stretch the page below it.
     <ToastProvider>
       <div className={clsx('flex lg:h-screen lg:overflow-hidden', pane || fill ? 'h-dvh overflow-hidden' : 'min-h-screen')}>
+        {/* The first Tab stop (UX Phase 5A, 5.7). */}
+        <SkipLink />
         {/* The dark frame behind the sidebar and the card. Its own .sf element, so the chat tokens don't reach the pages. */}
         <div aria-hidden className="sf fixed inset-0 -z-10 hidden bg-sf-app-frame lg:block" />
         <RealtimeBridge />
@@ -75,7 +79,10 @@ export function AppLayout() {
           {/* The scroller has no padding of its own, so sticky parts of a page (the channel composer) stick to its edge. */}
           <div className={clsx('flex flex-1 flex-col', pane || fill ? 'min-h-0' : 'lg:min-h-0 lg:overflow-y-auto')}>
             <main
-              className={
+              id="main"
+              tabIndex={-1}
+              className={clsx(
+                'outline-none',
                 pane
                   ? // The phone bottom bar (and the timer bar) cover the page's end; the pane stops above them.
                     'flex min-h-0 w-full flex-1 flex-col pb-[calc(3.5rem+var(--timer-bar,0px)+env(safe-area-inset-bottom))] lg:pb-0'
@@ -83,8 +90,8 @@ export function AppLayout() {
                     ? // The page's padding, its content filling the height left, above the phone bars; it scrolls only
                       // when a short screen can't fit the content's floor.
                       'flex min-h-0 w-full flex-1 flex-col overflow-y-auto px-4 pb-[calc(4rem+var(--timer-bar,0px)+env(safe-area-inset-bottom))] pt-4 md:px-6 lg:pb-4 lg:pt-6 xl:px-8'
-                    : 'w-full flex-1 px-4 pb-[calc(6rem+var(--timer-bar,0px))] pt-6 md:px-6 lg:pb-10 xl:px-8'
-              }
+                    : 'w-full flex-1 px-4 pb-[calc(6rem+var(--timer-bar,0px))] pt-6 md:px-6 lg:pb-10 xl:px-8',
+              )}
             >
               {/* Each page's code loads when it's first opened; this shows meanwhile (usually a blink). */}
               {signedOut ? (
@@ -106,6 +113,7 @@ export function AppLayout() {
         {!account.error && <Inspector />}
         {/* Help for the page: beside the card from 1536px, over it narrower, rising from the bottom on phones. */}
         {!account.error && <PageHelpPanel />}
+        <RouteFocus />
         <PhoneTimerBar />
         <TimerAnnouncer />
         {!account.error && <StillWorkingDialog />}

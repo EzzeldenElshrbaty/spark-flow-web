@@ -1,5 +1,6 @@
 import { SearchX } from 'lucide-react'
 import { Link } from 'react-router'
+import { useDocumentTitle } from '@/lib/useDocumentTitle'
 
 const sentence = {
   page: "This page doesn’t exist.",
@@ -8,6 +9,7 @@ const sentence = {
 
 /** A channel, project, ticket, message, page or workspace that isn't there, with a way back. */
 export function NotFound({ what, backTo, backLabel }: { what: 'channel' | 'project' | 'ticket' | 'message' | 'file' | 'page' | 'workspace'; backTo: string; backLabel: string }) {
+  useDocumentTitle(['Not found'])
   return (
     <div className="mx-auto flex max-w-md flex-col items-center rounded-xl border border-dashed border-line-strong px-6 py-14 text-center motion-safe:animate-fade-in">
       <span className="rounded-full bg-accent-soft p-3 text-accent">

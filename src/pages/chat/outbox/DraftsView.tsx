@@ -13,6 +13,7 @@ import { schedulePresets } from '@/lib/remindTimes'
 import { useNow } from '@/lib/useNow'
 import { CustomReminder } from '@/pages/chat/saved/RemindMenu'
 import { useParam } from '@/lib/searchParams'
+import { useDocumentTitle } from '@/lib/useDocumentTitle'
 
 type Tab = 'drafts' | 'scheduled' | 'sent'
 
@@ -70,6 +71,7 @@ export function DraftsView({
   onEdit: (item: ScheduledMessage) => void
   onDelete: (id: string) => void
 }) {
+  useDocumentTitle(['Drafts & sent'])
   const now = useNow(60_000)
   // In the address (UX Phase 2, 2.7).
   const [tabParam, setTabParam] = useParam('tab')

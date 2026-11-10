@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react'
+import { useDocumentTitle } from '@/lib/useDocumentTitle'
 
 /** Page title on the left, its actions on the right of the same row at every width. */
 export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: ReactNode }) {
+  // The page's title names its browser tab too (UX Phase 5A, 5.7).
+  useDocumentTitle([title])
   return (
     <div className="mb-6 flex items-start justify-between gap-3">
       <div className="min-w-0">

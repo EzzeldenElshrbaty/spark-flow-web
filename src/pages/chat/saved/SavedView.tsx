@@ -15,6 +15,7 @@ import { dueSoon } from '@/lib/remindTimes'
 import { useNow } from '@/lib/useNow'
 import { CustomReminder, RemindItems } from '@/pages/chat/saved/RemindMenu'
 import { useParam } from '@/lib/searchParams'
+import { useDocumentTitle } from '@/lib/useDocumentTitle'
 
 type Patch = { status?: SavedStatus; remindAt?: string | null }
 
@@ -63,6 +64,7 @@ export function SavedView({
   onUpdate: (id: string, patch: Patch) => void
   onRemove: (id: string) => void
 }) {
+  useDocumentTitle(['Saved'])
   const now = useNow(60_000)
   // In the address (UX Phase 2, 2.7).
   const [tabParam, setTabParam] = useParam('tab')

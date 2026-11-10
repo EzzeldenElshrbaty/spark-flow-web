@@ -8,6 +8,7 @@ import { Menu, MenuHeading, MenuItem, MenuSeparator, Submenu } from '@/component
 import { usePhone } from '@/components/sf/usePhone'
 import type { DetailsTab } from '@/pages/chat/ChannelDetails'
 import { NotifyLevelItems, NotifyLevelMenu, type PreferencesLink } from '@/pages/chat/NotifyLevelMenu'
+import { useDocumentTitle } from '@/lib/useDocumentTitle'
 
 const COPIED_MS = 2000
 
@@ -41,6 +42,7 @@ export type ChannelHeaderProps = {
  * the more menu, with channel search before the menu (spec 6.1). Call comes in a later phase.
  */
 export function ChannelHeader({ channel, title, members, rights, onDetails, onStar, onMute, onNotifyLevel, preferences, onMarkRead, onCopyLink, onLeave, onArchive, onSearch }: ChannelHeaderProps) {
+  useDocumentTitle([channel.kind === 'channel' ? `#${title}` : title])
   const phone = usePhone()
   // What Copy link did, said next to the menu for a moment; there are no toasts outside Undo.
   const [copied, setCopied] = useState<'' | 'Link copied' | "Couldn’t copy the link">('')

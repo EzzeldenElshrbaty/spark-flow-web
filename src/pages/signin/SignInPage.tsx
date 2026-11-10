@@ -11,6 +11,7 @@ import { api, backendOn } from '@/lib/api'
 import { DEMO_PASSWORD } from '@/lib/demo'
 import { paths } from '@/lib/paths'
 import { useTheme } from '@/lib/useTheme'
+import { useDocumentTitle } from '@/lib/useDocumentTitle'
 
 /**
  * Where to go after signing in: a path inside the app only ("/w/…"), never another site. A workspace's own address,
@@ -29,6 +30,7 @@ export function safeReturn(value: string | null): string {
  * page sends people here with `returnTo`; they go back there after signing in.
  */
 export function SignInPage() {
+  useDocumentTitle(['Sign in'])
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()

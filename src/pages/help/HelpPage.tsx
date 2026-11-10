@@ -11,6 +11,7 @@ import { useRole } from '@/lib/useRole'
 import { HelpDoc } from './HelpDoc'
 import { useParam } from '@/lib/searchParams'
 import { IconButton } from '@/components/ui/IconButton'
+import { useDocumentTitle } from '@/lib/useDocumentTitle'
 
 /** Lower case, with ’ and ‘ read as ' (help is written with ’; people type '), keeping every index in place. */
 const fold = (text: string) => text.toLowerCase().replace(/[’‘]/g, "'")
@@ -28,6 +29,7 @@ function snippet(text: string, term: string) {
  * sidebar, one at a time, with group chips, a search across them, "On this page" and Previous / Next.
  */
 export function HelpPage() {
+  useDocumentTitle(['Help centre'])
   const { ws = '', chapter: chapterId } = useParams()
   const { hash } = useLocation()
   const navigate = useNavigate()

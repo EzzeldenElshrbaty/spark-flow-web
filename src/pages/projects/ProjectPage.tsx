@@ -20,7 +20,7 @@ import { usePermission } from '@/lib/usePermission'
 import { NotFound } from '@/pages/NotFound'
 import { OverviewTab } from './OverviewTab'
 import { PhasesSheet } from './PhasesSheet'
-import { ProjectTabs } from './ProjectTabs'
+import { ProjectTabs, tabLabels } from './ProjectTabs'
 import { ProjectSheet } from './ProjectSheet'
 import { stagesOf } from './phases'
 import { TaskSheet } from './TaskSheet'
@@ -30,6 +30,7 @@ import { HistoryTab } from '@/pages/projects/HistoryTab'
 import { FilesTab } from '@/pages/projects/FilesTab'
 import { TimeTab } from './TimeTab'
 import { useParamState } from '@/lib/searchParams'
+import { useDocumentTitle } from '@/lib/useDocumentTitle'
 
 const statusBadge: Record<ProjectStatus, [string, BadgeTone]> = {
   planned: ['Planned', 'neutral'],
@@ -107,6 +108,8 @@ export function ProjectPage() {
   const archive = useArchiveProject()
   const [, setParams] = useSearchParams()
   const restore = useRestoreProject()
+  // "Nexus Core · Tasks · Spark Flow" (UX Phase 5A, 5.7).
+  useDocumentTitle([project?.name, tabLabels[tab]])
 
   if (summary.isError) {
     return (

@@ -24,6 +24,7 @@ import { filterOf, parseQuery, withFilter, withoutFilter, type FilterKey } from 
 import { useRole } from '@/lib/useRole'
 import { handleOf, resolveSearch } from '@/pages/chat/search/resolveSearch'
 import { SearchResultCard } from '@/pages/chat/search/SearchResultCard'
+import { useDocumentTitle } from '@/lib/useDocumentTitle'
 
 const TABS: { id: SearchTab; label: string }[] = [
   { id: 'messages', label: 'Messages' },
@@ -67,6 +68,7 @@ export function SearchPage() {
   const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
   const q = params.get('q') ?? ''
+  useDocumentTitle([q.trim() ? `Results for “${q.trim()}”` : 'Search'])
   const tab: SearchTab = isTab(params.get('tab')) ? (params.get('tab') as SearchTab) : 'messages'
   const sort: SearchSort = params.get('sort') === 'newest' ? 'newest' : 'relevant'
   const users = useUsers(workspace?.id).data

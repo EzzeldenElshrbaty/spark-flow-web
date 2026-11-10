@@ -30,6 +30,7 @@ import { Checkbox, Toggle } from '@/components/sf/Toggle'
 import { TokenInput, type Suggestion, type Token } from '@/components/sf/TokenInput'
 import { Tooltip } from '@/components/sf/Tooltip'
 import { SideLink } from '@/layout/Sidebar'
+import { useDocumentTitle } from '@/lib/useDocumentTitle'
 
 // Dev-only page (not in production builds): every Phase 0 primitive and state, light and dark side by side.
 
@@ -289,6 +290,7 @@ function Column({ theme }: { theme: 'Light' | 'Dark' }) {
 }
 
 export function UiGallery() {
+  useDocumentTitle(['UI gallery'])
   // The light column needs light tokens, so the page drops the app's dark class while it is open.
   useEffect(() => {
     const html = document.documentElement
