@@ -3012,3 +3012,12 @@ Plan: `docs/superpowers/plans/2026-11-10-ux-phase-6-checks-and-polish.md`. Branc
   in-memory UI store and the mock data aren't reset between matrix loads; `settled()` can give up without saying so;
   Start timer can say "No open tasks" while projects load; a menu reads its direction from its trigger, not the page.
 
+
+# Channel bookmarks on their own row on phones — 10 Nov 2026, approved (Q1 A, Q2 Native: "Yes, recommended")
+
+Plan: `docs/superpowers/plans/2026-11-10-chat-bookmark-row-on-phones.md` (branch `fix/chat-bookmark-row` from dev ea3458a).
+Fixes the Phase 6 open design question: at 390 px the bookmark strip after the tabs is about 19 px wide.
+
+- [ ] 1. `ChannelTabs`: below 768 px the bookmarks get their own 44 px row under the tabs, only when there are some; no + on phones. Tests: `ChannelTabs.browser.test.tsx` (5).
+- [ ] 2. `ChannelHeader`: "Add a bookmark" in Channel actions (⋮) on phones; `ChannelPage` passes the save to both; spec §6.16, CLAUDE.md. Tests: `ChannelHeader.test.tsx` (2), `src/bookmarkRow.browser.test.tsx` (1).
+- [ ] Gates: lint, tsc, `npm test`, `npm run test:ux`, `build:prototype`; one Opus final review.
