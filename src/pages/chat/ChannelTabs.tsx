@@ -89,12 +89,3 @@ export function ChannelTabs({
     </div>
   )
 }
-
-const STUBS: Record<Exclude<ChannelTab, 'messages' | 'pins' | 'files'>, string> = {
-  page: "This channel’s page will live here.",
-}
-
-/** What Page shows until it's built (Phase 4). */
-export function TabStub({ tab }: { tab: Exclude<ChannelTab, 'messages' | 'pins' | 'files'> }) {
-  return <p className="sf-ui px-6 py-8 text-sf-text-muted">{STUBS[tab]}</p>
-}

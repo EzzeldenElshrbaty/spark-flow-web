@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Inline } from '@/lib/messageBody'
-import { MAX_PAGE_BLOCKS, MAX_PAGE_TEXT, pageMentions, pageText, pageTooLong, validPage, type PageBody } from '@/lib/pageBody'
+import { MAX_PAGE_BLOCKS, MAX_PAGE_TEXT, pageAsBody, pageMentions, pageText, pageTooLong, validPage, type PageBody } from '@/lib/pageBody'
 
 const t = (text: string): Inline => ({ type: 'text', text })
 const p = (...children: Inline[]) => ({ type: 'p' as const, children })
@@ -68,6 +68,12 @@ describe('reading a page', () => {
     ]
     expect(pageText(body)).toBe('Plan\n☑ Ship it\nA\tB\nC\tD')
     expect(pageText([{ type: 'check', items: [{ checked: false, children: cell('Later') }] }])).toBe('☐ Later')
+  })
+
+  it('pageAsBody hands chat its inlines (a task in a heading, a check item and a cell)', () => {
+    const task = (key: string): Inline[] => [{ type: 'task', key }]
+    const body: PageBody = [{ type: 'h1', children: task('NEX-1') }, { type: 'check', items: [{ checked: false, children: task('NEX-2') }] }, { type: 'table', rows: [[task('NEX-3')]] }]
+    expect(pageAsBody(body)).toEqual([{ type: 'p', children: task('NEX-1') }, { type: 'ul', items: [task('NEX-2')] }, { type: 'ul', items: [task('NEX-3')] }])
   })
 
   it('pageMentions lists people once, in order', () => {

@@ -46,12 +46,15 @@ type Sign = '@' | '#' | ':' | '/'
 /** How many emoji `:` offers. */
 const EMOJI_SHOWN = 8
 
+/** What the `@` list leaves out: @channel and @here (`groups: false`), or all but tasks (`onlyTasks`). */
+type Narrowing = { groups: boolean; onlyTasks: boolean }
+
 /** What `@`, `#` or `:` followed by `q` offers. */
-function choicesFor(sign: Sign, q: string, directory: ComposerDirectory, commands: SlashCommand[]) {
+function choicesFor(sign: Sign, q: string, directory: ComposerDirectory, commands: SlashCommand[], narrow: Narrowing = { groups: true, onlyTasks: false }) {
   if (sign === '/') return commandOptions(q, commands).map((command) => new Choice({ kind: 'command', command }))
   if (sign === ':') return searchEmoji(q).slice(0, EMOJI_SHOWN).map((emoji) => new Choice({ kind: 'emoji', emoji }))
   if (sign === '#') return channelOptions(q, directory.channels).map((c) => new Choice({ kind: 'channel', id: c.id, name: c.name }))
-  return mentionOptions(q, directory).map((o) => {
+  return mentionOptions(q, directory, { groups: narrow.groups, ...(narrow.onlyTasks && { only: 'task' as const }) }).map((o) => {
     if (o.kind !== 'user') return new Choice(o)
     const user = directory.users.find((u) => u.id === o.id)!
     return new Choice({ kind: 'user', user, inChannel: !directory.memberIds || directory.memberIds.includes(o.id) })
@@ -92,12 +95,18 @@ export function AutocompletePlugin({
   menuOpen,
   anchor,
   commands = [],
+  groups = true,
+  onlyTasks,
 }: {
   directory: ComposerDirectory
   menuOpen: RefObject<boolean>
   anchor: RefObject<HTMLElement | null>
   /** The `/` shortcuts offered here; none, no list. */
   commands?: SlashCommand[]
+  /** False where @channel and @here don't belong (a channel's page, chat spec 6.14). */
+  groups?: boolean
+  /** While true, `@` offers tasks only (the page's Link a task); back to false when the list closes. */
+  onlyTasks?: RefObject<boolean>
 }) {
   const [editor] = useLexicalComposerContext()
   const [query, setQuery] = useState<string | null>(null)
@@ -105,17 +114,19 @@ export function AutocompletePlugin({
   const [open, setOpen] = useState(false)
   const trigger = useRef<Sign>('@')
 
+  const narrowing = (): Narrowing => ({ groups, onlyTasks: onlyTasks?.current === true })
   const triggerFn = (text: string): MenuTextMatch | null => {
     // A command only as the start of the box: the text up to the caret is the box's first characters.
     const command = commands.length > 0 && $getRoot().getTextContent().startsWith(text) ? COMMAND_TRIGGER.exec(text) : null
     const m = command ?? TRIGGER.exec(text) ?? EMOJI_TRIGGER.exec(text)
     // Nothing matches, no list: the editor never points at an empty listbox, and Enter sends.
-    if (!m || choicesFor(m[2] as Sign, m[3], directory, commands).length === 0) return null
+    if (!m || choicesFor(m[2] as Sign, m[3], directory, commands, narrowing()).length === 0) return null
     trigger.current = m[2] as Sign
     return { leadOffset: m.index + m[1].length, matchingString: m[3], replaceableString: m[2] + m[3] }
   }
 
-  const options = useMemo(() => (query === null ? [] : choicesFor(trigger.current, query, directory, commands)), [query, directory, commands])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- onlyTasks is a ref, read as the query changes
+  const options = useMemo(() => (query === null ? [] : choicesFor(trigger.current, query, directory, commands, narrowing())), [query, directory, commands, groups])
   menuOpen.current = open && query !== null && options.length > 0
   // Lexical opens the list in a transition, and a key typed before it lands can't close it (the close still sees no
   // list), which leaves an empty listbox the editor points at. Open with no match means that happened: touch the
@@ -159,6 +170,7 @@ export function AutocompletePlugin({
       onOpen={() => setOpen(true)}
       onClose={() => {
         menuOpen.current = false
+        if (onlyTasks) onlyTasks.current = false
         setOpen(false)
       }}
       commandPriority={COMMAND_PRIORITY_LOW}
@@ -170,7 +182,7 @@ export function AutocompletePlugin({
         if (!container) return null
         // Lexical's container is the listbox the editor points at (aria-controls, aria-activedescendant): name it, even
         // while its choices are still coming (slice AA: it read "Typeahead menu" until then).
-        container.setAttribute('aria-label', trigger.current === '#' ? 'Link a channel' : trigger.current === ':' ? 'Emoji' : trigger.current === '/' ? 'Shortcuts' : 'Mention someone')
+        container.setAttribute('aria-label', trigger.current === '#' ? 'Link a channel' : trigger.current === ':' ? 'Emoji' : trigger.current === '/' ? 'Shortcuts' : onlyTasks?.current ? 'Link a task' : 'Mention someone')
         container.id = 'typeahead-menu'
         if (options.length === 0) return null
         const box = anchor.current?.getBoundingClientRect()

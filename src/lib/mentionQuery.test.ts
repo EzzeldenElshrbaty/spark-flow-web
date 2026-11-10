@@ -81,3 +81,14 @@ describe('channelOptions (spec 6.8: # channels)', () => {
     expect(channelOptions('', Array.from({ length: 12 }, (_, i) => ({ id: `c${i}`, name: `ch${i}` })))).toHaveLength(8)
   })
 })
+
+describe('mentionOptions on a channel’s page (chat spec 6.14)', () => {
+  it('groups false offers no @channel or @here; only task offers tasks only', () => {
+    expect(mentionOptions('', from, { groups: false }).some((o) => o.kind === 'all' || o.kind === 'here')).toBe(false)
+    expect(mentionOptions('a', from, { groups: false })[0]).toMatchObject({ kind: 'user', id: 'u-4' })
+    const tasks = mentionOptions('', from, { only: 'task' })
+    expect(tasks.length).toBeGreaterThan(0)
+    expect(tasks.every((o) => o.kind === 'task')).toBe(true)
+    expect(mentionOptions('nex', from, { only: 'task' }).every((o) => o.kind === 'task')).toBe(true)
+  })
+})

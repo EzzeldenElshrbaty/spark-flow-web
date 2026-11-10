@@ -139,5 +139,22 @@ function pageInlines(body: PageBody): Inline[] {
   return body.flatMap(of)
 }
 
+/** A page as chat blocks (headings as paragraphs, checklists and table cells as list items), for what reads inlines only. */
+export const pageAsBody = (body: PageBody): Block[] =>
+  body.map((b): Block => {
+    switch (b.type) {
+      case 'h1':
+      case 'h2':
+      case 'h3':
+        return { type: 'p', children: b.children }
+      case 'check':
+        return { type: 'ul', items: b.items.map((item) => item.children) }
+      case 'table':
+        return { type: 'ul', items: b.rows.flat() }
+      default:
+        return b
+    }
+  })
+
 /** The people a page names, each once, in reading order. */
 export const pageMentions = (body: PageBody): string[] => [...new Set(pageInlines(body).flatMap((n) => (n.type === 'user' ? [n.id] : [])))]

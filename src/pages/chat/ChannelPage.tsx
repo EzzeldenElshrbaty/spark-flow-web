@@ -36,7 +36,8 @@ import { useChannelCommands, type ChannelCommandUi } from '@/pages/chat/composer
 import { ArchiveChannelModal, ArchivedChannelLine, JoinChannelLine, useChannelProject, useChannelRights } from '@/pages/chat/ChannelActions'
 import { ChannelHeader } from '@/pages/chat/ChannelHeader'
 import { ChannelDetails, detailsRights, type DetailsTab } from '@/pages/chat/ChannelDetails'
-import { ChannelTabs, TabStub, tabFromParam, type ChannelTab } from '@/pages/chat/ChannelTabs'
+import { ChannelTabs, tabFromParam, type ChannelTab } from '@/pages/chat/ChannelTabs'
+import { ChannelPageTab } from '@/pages/chat/page/ChannelPageTab'
 import { ChannelPins } from '@/pages/chat/PinsTab'
 import { ChannelFiles } from '@/pages/chat/files/FilesTab'
 import { useFlowFilePicker } from '@/pages/chat/files/FilePicker'
@@ -163,9 +164,9 @@ export function ChannelView({ channelId, hideTabs = [] }: { channelId: string | 
         <div className="sf flex min-h-0 flex-1 flex-col">
           <ChannelFiles channel={current} users={people} />
         </div>
-      ) : tab !== 'messages' ? (
-        <div className="sf">
-          <TabStub tab={tab} />
+      ) : tab === 'page' ? (
+        <div className="sf flex min-h-0 flex-1 flex-col">
+          <ChannelPageTab channel={current} people={people} me={persona.id} />
         </div>
       ) : (
       <PaneFeed

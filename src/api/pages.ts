@@ -10,6 +10,12 @@ export function usePage(channelId: string | undefined) {
   return useQuery({ queryKey: qk.page(channelId ?? ''), queryFn: () => api.pages.get(channelId!), retry, enabled: Boolean(channelId) })
 }
 
+/** Reads the page from the server now (Load the latest), and keeps it as the page's data. */
+export function useLatestPage() {
+  const queryClient = useQueryClient()
+  return (channelId: string) => queryClient.fetchQuery({ queryKey: qk.page(channelId), queryFn: () => api.pages.get(channelId), staleTime: 0 })
+}
+
 /** The page's versions, newest first; read only while History is open. */
 export function usePageHistory(channelId: string, enabled: boolean) {
   return useQuery({ queryKey: qk.pageHistory(channelId), queryFn: () => api.pages.history(channelId), retry, enabled })

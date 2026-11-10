@@ -56,7 +56,9 @@ export default defineConfig(({ mode }) => {
           cacheDir: '.vite',
           // Bundled before the run: found halfway, Vite rebuilt them and reloaded the tab, and every file loading then
           // failed (two copies of React).
-          optimizeDeps: { include: ['react-dom/client', 'react-router/dom'] },
+          // The page's table and checklist plugins too (chat spec 6.14): found later, @lexical/table was bundled with its
+          // own copy of lexical, whose nodes the editor refused.
+          optimizeDeps: { include: ['react-dom/client', 'react-router/dom', '@lexical/table', '@lexical/react/LexicalTablePlugin', '@lexical/react/LexicalCheckListPlugin'] },
           test: {
             name: 'browser',
             setupFiles: ['src/test/signedIn.ts'],

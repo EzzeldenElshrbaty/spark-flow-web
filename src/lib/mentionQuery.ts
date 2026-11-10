@@ -31,16 +31,22 @@ const matches = (query: string, ...texts: string[]) => {
 export function mentionOptions(
   query: string,
   from: { users: User[]; projects: { key: string; name: string }[]; tasks: { key: string; title: string }[] },
-  /** `here: false` where @here reaches nobody (a task comment: its people aren't a channel's). */
-  opts: { here?: boolean } = {},
+  /**
+   * `here: false` where @here reaches nobody (a task comment: its people aren't a channel's); `groups: false` where
+   * neither @channel nor @here belongs (a channel's page, chat spec 6.14); `only: 'task'` for its Link a task.
+   */
+  opts: { here?: boolean; groups?: boolean; only?: 'task' } = {},
 ): MentionOption[] {
   const options: MentionOption[] = []
   const q = query.toLowerCase()
+  const everyone = opts.groups !== false && opts.only === undefined
   // "al" still finds @channel: it was @all before (spec 6.8 names it @channel).
-  if ('channel'.startsWith(q) || 'all'.startsWith(q)) options.push({ kind: 'all' })
-  if (opts.here !== false && 'here'.startsWith(q)) options.push({ kind: 'here' })
-  for (const u of from.users) if (matches(query, u.name)) options.push({ kind: 'user', id: u.id, name: u.name, title: u.title })
-  for (const p of from.projects) if (matches(query, p.key, p.name)) options.push({ kind: 'project', key: p.key, name: p.name })
+  if (everyone && ('channel'.startsWith(q) || 'all'.startsWith(q))) options.push({ kind: 'all' })
+  if (everyone && opts.here !== false && 'here'.startsWith(q)) options.push({ kind: 'here' })
+  if (opts.only === undefined) {
+    for (const u of from.users) if (matches(query, u.name)) options.push({ kind: 'user', id: u.id, name: u.name, title: u.title })
+    for (const p of from.projects) if (matches(query, p.key, p.name)) options.push({ kind: 'project', key: p.key, name: p.name })
+  }
   for (const t of from.tasks) if (matches(query, t.key, t.title)) options.push({ kind: 'task', key: t.key, title: t.title })
   return options.slice(0, MAX_OPTIONS)
 }
