@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import { trapTab, useRestoreFocus } from '@/components/sf/layers'
 import { downloadUrl, previewOf, sizeText } from '@/lib/fileTypes'
 import { fetchCredentials, type ViewedFile } from '@/lib/fileView'
-import { focusPageHeading } from '@/lib/pageFocus'
+import { focusAfterLayer } from '@/lib/pageFocus'
 import { isPdf } from '@/lib/pdfSignature'
 import { safeFileUrl } from '@/lib/safeFileUrl'
 
@@ -50,7 +50,7 @@ export function FileViewer({
   const step = (by: number) => setIndex((current) => (current + by + files.length) % files.length)
   const dialogRef = useRef<HTMLDivElement>(null)
   // Before focus moves in below, so it remembers what had focus.
-  useRestoreFocus(true, focusPageHeading)
+  useRestoreFocus(true, focusAfterLayer)
   useEffect(() => {
     dialogRef.current?.focus()
   }, [])

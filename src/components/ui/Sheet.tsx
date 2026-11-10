@@ -3,7 +3,7 @@ import { X } from 'lucide-react'
 import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { trapTab, useRestoreFocus } from '@/components/sf/layers'
-import { focusPageHeading } from '@/lib/pageFocus'
+import { focusAfterLayer } from '@/lib/pageFocus'
 import { useUnsavedChanges } from '@/lib/unsavedChanges'
 import { Button } from './Button'
 
@@ -95,7 +95,7 @@ export function Sheet({
   )
 
   // Before focus moves in below, so it remembers what had focus.
-  useRestoreFocus(open, focusPageHeading)
+  useRestoreFocus(open, focusAfterLayer)
 
   useEffect(() => {
     if (!open) return

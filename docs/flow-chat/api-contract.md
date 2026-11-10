@@ -181,11 +181,11 @@ Messages read from the API carry `replyUserIds`: who replied last, newest first,
 | Mine | `GET /api/me/preferences` | `Preferences` |
 | Change some | `PATCH /api/me/preferences` with any of the fields | `Preferences` as stored |
 
-- **One record per person**, across every workspace. Without one, the defaults: `defaultLevel: "mentions"`, `keywords: []`, `desktop: false`, `push: true`, `emailDigest: "daily"`, `dndUntil: null`, `dndSchedule: { on: false, from: "18:00", to: "09:00", days: [0,1,2,3,4], tz: "Africa/Cairo" }` (Sunday to Thursday is Spark's week; the backend may start `tz` from the person's own zone).
+- **One record per person**, across every workspace. Without one, the defaults: `defaultLevel: "mentions"`, `keywords: []`, `desktop: false`, `push: true`, `emailDigest: "daily"`, `dndUntil: null`, `dndSchedule: { on: false, from: "18:00", to: "09:00", days: [0,1,2,3,4], tz: "Africa/Cairo" }` (Sunday to Thursday is Spark's week; the backend may start `tz` from the person's own zone), `singleKeyShortcuts: true` (UX Phase 5A: `/` for search and G then P / G then C; off turns those off, never the ⌘/Ctrl ones). A stored record from before the field reads it as `true` (the mock's v32 migration).
 - **Fields and their checks** (`400` with the sentence in `src/mocks/preferences.ts`):
   - `defaultLevel`: `"all" | "mentions" | "none"`.
   - `keywords`: up to 20, each trimmed and at most 40 characters; empty ones are dropped and duplicates (ignoring case) kept once.
-  - `desktop`, `push`: booleans. `emailDigest`: `"off" | "hourly" | "daily"`.
+  - `desktop`, `push`, `singleKeyShortcuts`: booleans. `emailDigest`: `"off" | "hourly" | "daily"`.
   - `dndUntil`: an ISO time with a time part, or `null` (Resume).
   - `dndSchedule`: `from` and `to` as `HH:MM` and not the same time, `days` 0 (Sunday) to 6, at least one day while `on`, and `tz` a real IANA zone.
 - It sends `preferencesChanged { userId }` to that person's connections only; channel lists and open channels, the bell, Activity and Threads reload with it.

@@ -73,7 +73,7 @@ export function DeleteDialog({
           </div>
         </div>
         <Field label={`Type ${confirmText} to confirm`} required error={(remove.error as Error | null)?.message}>
-          <input className={inputClass} value={typed} onChange={(event) => setTyped(event.target.value)} autoComplete="off" autoFocus />
+          <input className={inputClass} value={typed} onChange={(event) => setTyped(event.target.value)} autoComplete="off" />
         </Field>
       </form>
     </Sheet>

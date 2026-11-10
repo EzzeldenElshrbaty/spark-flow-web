@@ -1,7 +1,7 @@
 import '@/index.css'
 import { act, cleanup, render, screen } from '@testing-library/react'
 import { StrictMode, useEffect, useState } from 'react'
-import { createMemoryRouter, Link, Outlet, RouterProvider, useSearchParams } from 'react-router'
+import { createMemoryRouter, Link, Outlet, RouterProvider, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { afterEach, describe, expect, it } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { RouteFocus } from './RouteFocus'
@@ -11,12 +11,38 @@ import { RouteFocus } from './RouteFocus'
 
 afterEach(cleanup)
 
+/** The top bar's search box: it takes the caret when a page sends it there (⌘F, the channel's 🔍, /search). */
+function TopSearch() {
+  const location = useLocation()
+  return (
+    <input
+      aria-label="Search everything"
+      ref={(el) => {
+        if (el && (location.state as { focus?: string } | null)?.focus === 'search') el.focus()
+      }}
+    />
+  )
+}
+
+function SignIn() {
+  const navigate = useNavigate()
+  return (
+    <button type="button" onClick={() => navigate('/home', { replace: true })}>
+      Sign in
+    </button>
+  )
+}
+
 function Shell() {
   return (
     <>
+      <TopSearch />
       <nav aria-label="Workspace">
         <Link to="/projects">Projects</Link>
         <Link to="/slow">Slow page</Link>
+        <Link to="/projects" state={{ focus: 'search' }}>
+          Search from here
+        </Link>
       </nav>
       <main id="main" tabIndex={-1}>
         <Outlet />
@@ -58,7 +84,7 @@ function Slow() {
 
 function mount(at = '/home', strict = false) {
   const router = createMemoryRouter(
-    [{ element: <Shell />, children: [{ path: '/home', element: <h1>Home</h1> }, { path: '/projects', element: <Projects /> }, { path: '/p/:tab', element: <Project /> }, { path: '/slow', element: <Slow /> }] }],
+    [{ path: '/signin', element: <SignIn /> }, { element: <Shell />, children: [{ path: '/home', element: <h1>Home</h1> }, { path: '/projects', element: <Projects /> }, { path: '/p/:tab', element: <Project /> }, { path: '/slow', element: <Slow /> }] }],
     { initialEntries: [at] },
   )
   render(strict ? <StrictMode><RouterProvider router={router} /></StrictMode> : <RouterProvider router={router} />)
@@ -105,3 +131,29 @@ describe('focus after a page change (UX Phase 5A, 5.7)', () => {
     expect(document.activeElement).toBe(screen.getByRole('link', { name: 'Board tab' }))
   })
 })
+
+describe('focus a person or a page put elsewhere stays (final review)', () => {
+  it('a page sent with the caret for the search box keeps it there', async () => {
+    mount()
+    await userEvent.click(screen.getByRole('link', { name: 'Search from here' }))
+    await new Promise((r) => setTimeout(r, 100))
+    expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Search everything' }))
+  })
+
+  it('focus moved while the page’s heading is on its way stays where it was moved', async () => {
+    mount()
+    await userEvent.click(screen.getByRole('link', { name: 'Slow page' }))
+    screen.getByRole('textbox', { name: 'Search everything' }).focus()
+    await screen.findByRole('heading', { name: 'Slow page' }, { timeout: 2000 })
+    await new Promise((r) => setTimeout(r, 50))
+    expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Search everything' }))
+  })
+
+  it('after signing in (a move into the app, not a page load) focus goes to the page’s heading', async () => {
+    mount('/signin')
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }))
+    await expect.poll(() => document.activeElement?.tagName).toBe('H1')
+    expect(document.activeElement?.textContent).toBe('Home')
+  })
+})
+

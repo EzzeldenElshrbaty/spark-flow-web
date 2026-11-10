@@ -72,6 +72,21 @@ const COMMAND_TRIGGER = /^()(\/)([a-z]{0,20})$/
  * the composer; arrow keys move, Enter or Tab picks, Escape closes; picking puts a pill (or a task key) in place of
  * what was typed. `menuOpen` tells the composer not to send on Enter while it's open.
  */
+
+/**
+ * What `position: fixed` measures from inside `el`: the viewport, or an ancestor that makes its own containing block
+ * (a transform, a filter, `contain`): a panel sliding in, a moved row. Its left and bottom edges, in viewport pixels.
+ */
+function fixedFrame(el: Element): { left: number; bottom: number } {
+  for (let at = el.parentElement; at; at = at.parentElement) {
+    const s = getComputedStyle(at)
+    if (s.transform !== 'none' || s.filter !== 'none' || s.perspective !== 'none' || s.backdropFilter !== 'none' || /paint|layout|strict|content/.test(s.contain) || s.willChange.includes('transform')) {
+      const r = at.getBoundingClientRect()
+      return { left: r.left + at.clientLeft, bottom: r.top + at.clientTop + at.clientHeight }
+    }
+  }
+  return { left: 0, bottom: window.innerHeight }
+}
 export function AutocompletePlugin({
   directory,
   menuOpen,
@@ -147,9 +162,9 @@ export function AutocompletePlugin({
         setOpen(false)
       }}
       commandPriority={COMMAND_PRIORITY_LOW}
-      // Inside the composer, so the list is part of the page's landmark, not loose at the end of the page (UX Phase 5A,
-      // 5.11); it is placed on screen by itself (fixed), so where it sits in the page doesn't move it.
-      parent={anchor.current ?? undefined}
+      // In the composer's landmark (the page, a panel, a dialog), not loose at the end of the page (UX Phase 5A, 5.11),
+      // and above any moved row it sits in (a virtual list's, final review); `fixedFrame` places it from there.
+      parent={anchor.current?.closest<HTMLElement>('main, [role="complementary"], [role="dialog"]') ?? undefined}
       menuRenderFn={(anchorElementRef, { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex }) => {
         const container = anchorElementRef.current
         if (!container) return null
@@ -159,11 +174,12 @@ export function AutocompletePlugin({
         container.id = 'typeahead-menu'
         if (options.length === 0) return null
         const box = anchor.current?.getBoundingClientRect()
+        const frame = fixedFrame(container)
         return createPortal(
           <div className="sf">
             <div
               className="fixed z-[var(--z-menu)] flex max-w-[calc(100vw-16px)] flex-col overflow-hidden rounded-sf-lg bg-sf-surface-raised pt-2 shadow-sf-menu"
-              style={box ? { left: Math.max(8, box.left), bottom: window.innerHeight - box.top + 8, width: Math.min(380, box.width) } : undefined}
+              style={box ? { left: Math.max(8, box.left) - frame.left, bottom: frame.bottom - box.top + 8, width: Math.min(380, box.width) } : undefined}
             >
               {trigger.current === '/' && (
                 <p aria-hidden className="sf-label mx-4 mb-1 text-sf-text-muted uppercase">

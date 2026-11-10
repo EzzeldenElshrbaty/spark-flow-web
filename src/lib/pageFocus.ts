@@ -9,3 +9,16 @@ export function focusPageHeading(): HTMLElement | null {
   heading.focus({ preventScroll: true })
   return heading
 }
+
+/**
+ * Where focus goes when a layer closes and what opened it is gone: into the top-most layer still open (a sheet under
+ * the one that closed), else the page's heading. Never the page behind an open dialog (UX Phase 5A, final review).
+ */
+export function focusAfterLayer(): HTMLElement | null {
+  const open = [...document.querySelectorAll<HTMLElement>('[aria-modal="true"]')].at(-1)
+  if (!open) return focusPageHeading()
+  const target = open.querySelector<HTMLElement>('[tabindex="-1"]') ?? open
+  target.focus({ preventScroll: true })
+  return target
+}
+

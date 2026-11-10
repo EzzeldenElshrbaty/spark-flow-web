@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useSearchParams } from 'react-router'
 import { hasOpenLayer, useRestoreFocus } from '@/components/sf/layers'
-import { focusPageHeading } from '@/lib/pageFocus'
+import { focusAfterLayer } from '@/lib/pageFocus'
 import { parseInspector, withInspector } from '@/lib/inspector'
 import { watchDialogAtKeyDown } from '@/lib/keyStart'
 import { FileInspector } from '@/pages/chat/files/FileInspector'
@@ -55,7 +55,7 @@ export function useInspectorEscape(open: boolean, close: () => void) {
  * gone), and one opened after the page loaded takes focus. Returns that, for `PanelOpened`.
  */
 export function useInspectorFocus(open: boolean): boolean {
-  useRestoreFocus(open, focusPageHeading)
+  useRestoreFocus(open, focusAfterLayer)
   const [loaded, setLoaded] = useState(false)
   useEffect(() => setLoaded(true), [])
   return loaded

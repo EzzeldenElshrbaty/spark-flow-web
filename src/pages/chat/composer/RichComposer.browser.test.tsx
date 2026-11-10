@@ -895,3 +895,27 @@ describe('the suggestion list sits inside the page (UX Phase 5A, 5.11: axe "regi
   })
 })
 
+describe('the suggestion list in a moved row (final review)', () => {
+  it('editing a message in a virtual list row (transformed) still opens the list just above the box', async () => {
+    render(
+      <main>
+        <ul style={{ position: 'relative', height: 700, margin: 0, padding: 0 }}>
+          <li className="sf" style={{ position: 'absolute', top: 0, width: 720, transform: 'translateY(380px)' }}>
+            <RichComposer placeholder="Edit message" onSend={vi.fn(async () => {})} onDraft={vi.fn()} directory={directory} />
+          </li>
+        </ul>
+      </main>,
+    )
+    const editor = screen.getByRole('textbox', { name: 'Edit message' })
+    await vi.waitFor(() => expect(editor.getAttribute('data-lexical-editor')).toBe('true'))
+    await focusEditor(editor)
+    await userEvent.keyboard('@No')
+    await openList({ name: 'Mention someone' })
+    const menu = screen.getByRole('option', { name: /Nour El-Sayed/ }).closest('ul')!.parentElement!.getBoundingClientRect()
+    const box = editor.getBoundingClientRect()
+    expect(menu.bottom).toBeLessThanOrEqual(box.top)
+    expect(menu.bottom).toBeGreaterThan(box.top - 60)
+    expect(Math.abs(menu.left - box.left)).toBeLessThan(40)
+  })
+})
+

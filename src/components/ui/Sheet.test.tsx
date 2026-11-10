@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -132,5 +132,86 @@ describe('a sheet keeps focus and gives it back (UX Phase 5A, 5.5)', () => {
     const day = screen.getByRole('button', { name: 'Picker day' })
     day.focus()
     expect(fireEvent.keyDown(day, { key: 'Tab' })).toBe(true)
+  })
+})
+
+describe('stacked sheets and odd openers (final review)', () => {
+  it('a sheet that closes after another opened over it leaves focus in the one still open', () => {
+    function Users() {
+      const [person, setPerson] = useState(false)
+      const [deactivating, setDeactivating] = useState(false)
+      return (
+        <main>
+          <h1>Users</h1>
+          <button onClick={() => setPerson(true)}>Nour</button>
+          {person && (
+            <Sheet open title="Edit person" onClose={() => setPerson(false)} footer={<SheetCancelButton />}>
+              <button onClick={() => setDeactivating(true)}>Deactivate</button>
+              <button onClick={() => setPerson(false)}>Close behind</button>
+            </Sheet>
+          )}
+          {deactivating && (
+            <Sheet open title="Deactivate Nour?" onClose={() => setDeactivating(false)} footer={<SheetCancelButton />}>
+              <input aria-label="Reason" />
+            </Sheet>
+          )}
+        </main>
+      )
+    }
+    render(<Users />)
+    const nour = screen.getByRole('button', { name: 'Nour' })
+    nour.focus()
+    fireEvent.click(nour)
+    fireEvent.click(screen.getByRole('button', { name: 'Deactivate' }))
+    expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Reason' }))
+    // The person sheet closes in a later step (a router change), while Deactivate is open.
+    fireEvent.click(screen.getByRole('button', { name: 'Close behind' }))
+    expect(screen.getByRole('dialog', { name: 'Deactivate Nour?' }).contains(document.activeElement)).toBe(true)
+  })
+
+  it('when what opened a sheet is gone and another sheet is still open, focus goes into that sheet, not the page behind', () => {
+    function Phases() {
+      const [deleting, setDeleting] = useState(false)
+      return (
+        <main>
+          <h1>Nexus Core</h1>
+          <Sheet open title="Manage phases" onClose={() => {}} footer={<SheetCancelButton />}>
+            <input aria-label="Phase name" />
+            {!deleting && <button onClick={() => setDeleting(true)}>Delete Design</button>}
+          </Sheet>
+          {deleting && (
+            <Sheet open title="Delete Design?" onClose={() => setDeleting(false)} footer={<SheetCancelButton />}>
+              <input aria-label="Type Design" />
+            </Sheet>
+          )}
+        </main>
+      )
+    }
+    render(<Phases />)
+    const del = screen.getByRole('button', { name: 'Delete Design' })
+    del.focus()
+    fireEvent.click(del)
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Delete Design?' })).getByRole('button', { name: 'Cancel' }))
+    expect(screen.getByRole('dialog', { name: 'Manage phases' }).contains(document.activeElement)).toBe(true)
+  })
+
+  it('a sheet open as the page loads (focus on the page itself) closes to the page’s heading, not to nothing', () => {
+    function Loaded() {
+      const [open, setOpen] = useState(true)
+      return (
+        <main>
+          <h1>Projects</h1>
+          {open && (
+            <Sheet open title="New project" onClose={() => setOpen(false)} footer={<SheetCancelButton />} focusFirstField={false}>
+              <p>Form</p>
+            </Sheet>
+          )}
+        </main>
+      )
+    }
+    ;(document.activeElement as HTMLElement | null)?.blur()
+    render(<Loaded />)
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Projects' }))
   })
 })

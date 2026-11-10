@@ -68,6 +68,8 @@ export function AppLayout() {
         <Announcer />
         {/* Unsaved forms ask before Back or another page takes them away (UX Phase 1, 1.2). */}
         <UnsavedChangesBlocker />
+        {/* Before the top bar: a place that takes the caret on arrival (the search box) does so after it (UX Phase 5A). */}
+        <RouteFocus />
         <Sidebar collapsed={collapsed} />
         {/* The main card (spec 5.3); the top bar stays put and the page scrolls under it. */}
         <div className={mainCardClass(pane)}>
@@ -115,7 +117,6 @@ export function AppLayout() {
         {!account.error && <Inspector />}
         {/* Help for the page: beside the card from 1536px, over it narrower, rising from the bottom on phones. */}
         {!account.error && <PageHelpPanel />}
-        <RouteFocus />
         <PhoneTimerBar />
         <TimerAnnouncer />
         {!account.error && <StillWorkingDialog />}

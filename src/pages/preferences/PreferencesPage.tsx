@@ -68,7 +68,7 @@ export function PreferencesPage() {
             <SwitchRow
               label="Single-key shortcuts"
               help="Press / to search, G then P for Projects, G then C for Chat. Turn them off if they get in the way of a screen reader or voice control."
-              checked={p.singleKeyShortcuts}
+              checked={p.singleKeyShortcuts ?? true}
               onChange={(singleKeyShortcuts) => save('keyboard', { singleKeyShortcuts })}
             />
           </Section>

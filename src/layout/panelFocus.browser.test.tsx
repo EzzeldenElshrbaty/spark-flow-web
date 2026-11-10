@@ -22,6 +22,7 @@ function Board({ start = null }: { start?: string | null }) {
       <button type="button" onClick={() => setKey('NEX-1')}>
         NEX-1 Login
       </button>
+      <button type="button">NEX-7 Billing</button>
       {key && (
         <PanelOpened.Provider value={opened}>
           <InspectorFrame key={key} label="Task" title={key} onClose={() => setKey(null)}>
@@ -72,3 +73,17 @@ describe('the side panel’s focus (UX Phase 5A, 5.5)', () => {
     expect(screen.queryByRole('dialog', { name: 'Task' })).toBeNull()
   })
 })
+
+describe('the side panel leaves focus a person moved on (final review)', () => {
+  it('at 1280, focus moved to another row stays there when Esc closes the panel', async () => {
+    await page.viewport(1280, 800)
+    render(<Board />)
+    await userEvent.click(screen.getByRole('button', { name: 'NEX-1 Login' }))
+    const other = screen.getByRole('button', { name: 'NEX-7 Billing' })
+    other.focus()
+    await userEvent.keyboard('{Escape}')
+    expect(screen.queryByRole('complementary', { name: 'Task' })).toBeNull()
+    expect(document.activeElement).toBe(other)
+  })
+})
+

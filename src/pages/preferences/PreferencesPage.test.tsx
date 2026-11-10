@@ -209,3 +209,11 @@ describe('Keyboard (UX Phase 5A, 5.13)', () => {
     expect(update).toHaveBeenCalledWith({ singleKeyShortcuts: false })
   })
 })
+
+describe('a server that doesn’t send the setting yet (final review)', () => {
+  it('reads it as on, as the shortcuts are', async () => {
+    delete (stored as Partial<Preferences>).singleKeyShortcuts
+    await mount()
+    expect(within(section('Keyboard')).getByRole('switch', { name: 'Single-key shortcuts' }).getAttribute('aria-checked')).toBe('true')
+  })
+})

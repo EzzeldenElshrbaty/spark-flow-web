@@ -33,7 +33,11 @@ export function useEscapeLayer(active: boolean, onEscape: () => void) {
   }, [active])
 }
 
-/** While `active`, remembers what had focus and gives focus back to it on close, or to `fallback` when it's gone. */
+/**
+ * While `active`, remembers what had focus and gives focus back to it on close, or to `fallback` when it's gone (or was
+ * the page itself, `body`). Only focus the close lost is given back: focus a person moved on (another row, beside a
+ * panel) or that another open layer holds stays where it is (UX Phase 5A, final review).
+ */
 export function useRestoreFocus(active: boolean, fallback?: () => HTMLElement | null | undefined) {
   const fallbackRef = useRef(fallback)
   useEffect(() => {
@@ -43,7 +47,9 @@ export function useRestoreFocus(active: boolean, fallback?: () => HTMLElement | 
     if (!active) return
     const previous = document.activeElement as HTMLElement | null
     return () => {
-      if (previous?.isConnected) previous.focus()
+      const now = document.activeElement
+      if (now && now !== document.body && now.isConnected) return
+      if (previous && previous !== document.body && previous.isConnected) previous.focus()
       else fallbackRef.current?.()?.focus()
     }
   }, [active])

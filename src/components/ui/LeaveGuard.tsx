@@ -23,7 +23,7 @@ export function LeaveGuard({ dirty, description }: { dirty: boolean; description
       description={description}
       footer={
         <>
-          <Button variant="secondary" autoFocus onClick={() => answer('stay')}>
+          <Button variant="secondary" onClick={() => answer('stay')}>
             Stay
           </Button>
           <Button variant="danger" onClick={() => answer('leave')}>
