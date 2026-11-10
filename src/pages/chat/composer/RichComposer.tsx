@@ -549,10 +549,13 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
               {MAX_LENGTH - length}
             </span>
           )}
-          {/* Read at a few steps, not on every key (UX Phase 5A, 5.12). */}
-          <span role="status" className="sr-only">
-            {countNotice(MAX_LENGTH - length)}
-          </span>
+          {/* Read at a few steps, not on every key (UX Phase 5A, 5.12); there only while there's a step to say, as the
+              composer's other status lines. */}
+          {countNotice(MAX_LENGTH - length) && (
+            <span role="status" className="sr-only">
+              {countNotice(MAX_LENGTH - length)}
+            </span>
+          )}
           {editing ? (
             <>
               <Button size="sm" variant="ghost" onClick={onCancel}>
