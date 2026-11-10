@@ -3081,9 +3081,30 @@ Not pushed; not on dev.
 Spec: `docs/superpowers/specs/2026-11-11-channel-intro-and-templates-design.md` (Q1–Q7 "Yes, recommended"). Plan:
 `docs/superpowers/plans/2026-11-11-channel-intro-and-templates.md`. Branch `feat/channel-intro` from dev f6dd880.
 
-- [ ] 1. Who made a channel, and when (DB v34)
-- [ ] 2. The intro row in the message list
-- [ ] 3. The intro (`ChannelIntro`)
-- [ ] 4. Templates and the picker
-- [ ] 5. Wiring, Edit description, in-app bookmarks
-- [ ] 6. Help, docs, gates; one final review
+- [x] 1. Who made a channel, and when (DB v34)
+- [x] 2. The intro row in the message list
+- [x] 3. The intro (`ChannelIntro`)
+- [x] 4. Templates and the picker
+- [x] 5. Wiring, Edit description, in-app bookmarks
+- [x] 6. Help, docs, gates; one final review
+
+## Review (11 Nov 2026)
+
+Built on `feat/channel-intro` (11 commits from f6dd880). A channel's history starts with its intro: "# name", who made
+it and when (DB v34), its description or Edit description, and Add people, Pick a template (Project kickoff, Incident,
+Release fill the page and open it) and Link a project (a bookmark to its Overview that opens in Flow) for whoever may.
+A project's channel and a conversation say where they begin. An automated security review caught protocol-relative
+bookmark paths (fixed). Final Opus review: ready with fixes; 1 important and 4 re-graded minors fixed (the picker's
+question read out and focus kept, cancel saves nothing, the picker's own "is editing" sentence, long descriptions wrap,
+a first message on its way shows in an empty channel). Gates: `npm test` 3,152/3,152, `npm run test:ux` 1,000/1,000,
+`build:prototype`, lint and tsc clean.
+
+Deferred minors (from the final review):
+- The date menu's "The very beginning" scrolls to the first message, with the intro just above it.
+- Link a project is offered while bookmarks load; two quick picks make two bookmarks.
+- Add people opens the members list, not its add form.
+- An open template picker follows Back to another channel.
+- The message list's rows rebuild on every parent render.
+- Details › Tabs still opens a Flow bookmark in a new browser tab.
+
+Not pushed; not on dev.
