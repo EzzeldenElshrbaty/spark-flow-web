@@ -1,9 +1,11 @@
 import clsx from 'clsx'
 import { ChevronLeft, ChevronRight, Download, FileText, Minus, Plus, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { trapTab, useRestoreFocus } from '@/components/sf/layers'
 import { downloadUrl, previewOf, sizeText } from '@/lib/fileTypes'
 import { fetchCredentials, type ViewedFile } from '@/lib/fileView'
+import { focusPageHeading } from '@/lib/pageFocus'
 import { isPdf } from '@/lib/pdfSignature'
 import { safeFileUrl } from '@/lib/safeFileUrl'
 
@@ -23,6 +25,8 @@ const kbText = (sizeKb?: number) => (sizeKb === undefined ? '' : sizeText(sizeKb
 /**
  * Full-screen preview of a file inside the CRM: images, PDFs, text and CSV. Other types show a card to download.
  * With several files (one upload), arrows and the keyboard's left and right keys step through them.
+ * It takes focus when it opens (so its name is read and the keys work), keeps Tab inside, and gives focus back to what
+ * opened it when it closes (UX Phase 5A, 5.5).
  */
 export function FileViewer({
   files,
@@ -44,6 +48,12 @@ export function FileViewer({
   const preview = url ? (shown.preview ?? previewOf(file.name)) : 'none'
   const many = files.length > 1
   const step = (by: number) => setIndex((current) => (current + by + files.length) % files.length)
+  const dialogRef = useRef<HTMLDivElement>(null)
+  // Before focus moves in below, so it remembers what had focus.
+  useRestoreFocus(true, focusPageHeading)
+  useEffect(() => {
+    dialogRef.current?.focus()
+  }, [])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -63,10 +73,15 @@ export function FileViewer({
   return createPortal(
     // Any Download inside (the bar's, or a preview's own when it can't show the file) is one download of this file.
     <div
-      className="fixed inset-0 z-[60] flex flex-col bg-black/85"
+      ref={dialogRef}
+      tabIndex={-1}
+      className="fixed inset-0 z-[60] flex flex-col bg-black/85 outline-none"
       role="dialog"
       aria-modal="true"
       aria-label={file.name}
+      onKeyDown={(event) => {
+        if (dialogRef.current?.contains(event.target as Node)) trapTab(event, dialogRef.current)
+      }}
       onClick={(event) => {
         if (onDownload && (event.target as Element).closest('a[download]')) onDownload(index)
       }}
