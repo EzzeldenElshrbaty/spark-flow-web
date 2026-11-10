@@ -2900,3 +2900,24 @@ for single-key shortcuts. Plan with decisions, diagrams and questions:
   minors deferred (listed in the session's report). Open for the user: the panel is modal below `sm`; 640–1279 px it
   slides over the page without a trap.
 
+
+# UX Phase 5B: phones, tap targets and contrast — 10 Nov 2026, approved (Q1–Q7 "Yes, recommended")
+
+Audit items 5.1–5.4, 5.8, 5.10 and 5A's open tablet question: contrast fixed where colours are used (tokens stay
+CRM's; a darker `line-input` for field borders; dark focus rings; axe's contrast rule back on); late, paused and presence
+said in words; the bottom bar marks the tab you're in; 44 px touch areas (`touch-target`); a phone project page that
+starts in the top third (Details, sticky tabs with the name, pinned action on Overview and Tasks, a tab-row fade); the
+composer's formatting row behind Aa on phones; a laptop top bar that fits a running timer; the panel modal below 1280.
+Plan: `docs/superpowers/plans/2026-11-10-ux-phase-5b-phones-and-contrast.md`. Branch `feat/ux-phase-5b` from `origin/dev`
+(351eaa4, Phase 5A landed).
+
+- [ ] Contrast helpers, field borders, dark focus rings (5.8)
+- [ ] Text readable in both themes (5.8)
+- [ ] Late, paused and presence in words (5.10)
+- [ ] The bottom bar marks the right tab (5.2, 5.10)
+- [ ] 44 px touch areas; a round play button (5.4, 5.2)
+- [ ] The phone project page starts in the top third (5.1, 5.2)
+- [ ] The composer's formatting row waits for Aa on phones (5.2)
+- [ ] A laptop top bar that fits a running timer (5.3)
+- [ ] The panel is a modal wherever it covers the page (5A)
+- [ ] Phase check and records
