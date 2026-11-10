@@ -1,10 +1,13 @@
 import clsx from 'clsx'
 
-/** A progress bar. Red is for late work (UX Phase 3, 3.3): `neutral` on time, `danger` behind, `success` done. */
-export function ProgressBar({ value, tone = 'brand' }: { value: number; tone?: 'brand' | 'neutral' | 'danger' | 'success' | 'warning' }) {
+/**
+ * A progress bar. Red is for late work (UX Phase 3, 3.3): `neutral` on time, `danger` behind, `success` done. `label`
+ * names it for screen readers (UX Phase 5A, 5.11).
+ */
+export function ProgressBar({ value, label, tone = 'brand' }: { value: number; label: string; tone?: 'brand' | 'neutral' | 'danger' | 'success' | 'warning' }) {
   const clamped = Math.max(0, Math.min(100, value))
   return (
-    <div className="h-2 w-full overflow-hidden rounded-full bg-surface-muted" role="progressbar" aria-valuenow={clamped} aria-valuemin={0} aria-valuemax={100}>
+    <div className="h-2 w-full overflow-hidden rounded-full bg-surface-muted" role="progressbar" aria-label={label} aria-valuenow={clamped} aria-valuemin={0} aria-valuemax={100}>
       <div
         className={clsx('h-full rounded-full', {
           'bg-brand-500': tone === 'brand',

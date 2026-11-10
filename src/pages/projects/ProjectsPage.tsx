@@ -138,7 +138,7 @@ export function ProjectsPage() {
       cell: (p) => (
         <span className="flex items-center gap-2">
           <span className="w-20">
-            <ProgressBar value={p.progress * 100} tone={progressTone(p, now)} />
+            <ProgressBar value={p.progress * 100} label="Progress" tone={progressTone(p, now)} />
           </span>
           <span className="text-xs tabular-nums text-fg-muted">{Math.round(p.progress * 100)}%</span>
         </span>

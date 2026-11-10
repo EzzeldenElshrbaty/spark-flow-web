@@ -71,7 +71,9 @@ export function SortableSideList({
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onDragCancel={stopCancelling}
-      accessibility={{ announcements, screenReaderInstructions: { draggable: 'To move it in the list, press Space, then the up and down arrows, and Space again. Escape puts it back.' } }}
+      // The announcer and instructions go at the end of the page: inside the section's list they'd be its only non-rows
+      // (UX Phase 5A, 5.11).
+      accessibility={{ announcements, container: document.body, screenReaderInstructions: { draggable: 'To move it in the list, press Space, then the up and down arrows, and Space again. Escape puts it back.' } }}
     >
       <SortableContext items={ids} strategy={verticalListSortingStrategy}>
         {items.map((item) => (

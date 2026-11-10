@@ -11,9 +11,9 @@ describe('ProgressBar tones', () => {
   it('neutral is grey, danger red, success green', () => {
     render(
       <>
-        <ProgressBar value={20} tone="neutral" />
-        <ProgressBar value={20} tone="danger" />
-        <ProgressBar value={100} tone="success" />
+        <ProgressBar value={20} tone="neutral" label="Progress" />
+        <ProgressBar value={20} tone="danger" label="Progress" />
+        <ProgressBar value={100} tone="success" label="Progress" />
       </>,
     )
     const fills = screen.getAllByRole('progressbar').map((bar) => bar.firstElementChild!.className)
@@ -22,3 +22,11 @@ describe('ProgressBar tones', () => {
     expect(fills[2]).toContain('bg-emerald-500')
   })
 })
+
+describe('ProgressBar is named (UX Phase 5A, 5.11: axe "aria-progressbar-name")', () => {
+  it('reads its label and value', () => {
+    render(<ProgressBar value={20} label="Progress" />)
+    expect(screen.getByRole('progressbar', { name: 'Progress' }).getAttribute('aria-valuenow')).toBe('20')
+  })
+})
+

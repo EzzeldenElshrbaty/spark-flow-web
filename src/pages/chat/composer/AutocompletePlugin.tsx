@@ -147,6 +147,9 @@ export function AutocompletePlugin({
         setOpen(false)
       }}
       commandPriority={COMMAND_PRIORITY_LOW}
+      // Inside the composer, so the list is part of the page's landmark, not loose at the end of the page (UX Phase 5A,
+      // 5.11); it is placed on screen by itself (fixed), so where it sits in the page doesn't move it.
+      parent={anchor.current ?? undefined}
       menuRenderFn={(anchorElementRef, { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex }) => {
         const container = anchorElementRef.current
         if (!container) return null

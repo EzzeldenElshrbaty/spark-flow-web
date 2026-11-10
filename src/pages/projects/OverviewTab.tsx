@@ -174,7 +174,7 @@ export function OverviewTab({
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile label="Progress" value={`${Math.round(project.progress * 100)}%`}>
           <div className="mt-2">
-            <ProgressBar value={project.progress * 100} tone={progressTone(project, now)} />
+            <ProgressBar value={project.progress * 100} label="Progress" tone={progressTone(project, now)} />
           </div>
         </StatTile>
         <StatTile label="Hours logged" value={formatHours(project.loggedHours)} hint={`${project.taskCount} tasks · ${project.overdueCount} overdue${project.overEstimateCount ? ` · ${project.overEstimateCount} over estimate` : ''}`} />

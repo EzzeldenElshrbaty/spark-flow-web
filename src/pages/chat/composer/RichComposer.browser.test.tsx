@@ -8,6 +8,7 @@ import { opensSearch } from '@/layout/searchShortcuts'
 import { COMMANDS, type CommandOutcome, type ComposerSlash, type ParsedCommand } from '@/lib/slashCommands'
 import { RichComposer, type ComposerDirectory } from '@/pages/chat/composer/RichComposer'
 import { focusEditor } from '@/pages/chat/composer/focusEditor.testkit'
+import { axeProblems } from '@/test/axe'
 
 // A real browser: the editor needs real keyboard events, selection and layout.
 
@@ -869,3 +870,25 @@ describe('the link preview above the box (spec 6.3)', () => {
     expect(screen.queryByTestId('preview')).toBeNull()
   })
 })
+
+describe('the suggestion list sits inside the page (UX Phase 5A, 5.11: axe "region")', () => {
+  it('opens inside the page’s landmark, above the box at the caret, and axe finds no content outside a landmark', async () => {
+    render(
+      <main>
+        <div className="sf" style={{ width: 720, paddingTop: 320 }}>
+          <RichComposer placeholder="Message #backend" onSend={vi.fn(async () => {})} onDraft={vi.fn()} directory={directory} />
+        </div>
+      </main>,
+    )
+    const editor = screen.getByRole('textbox', { name: 'Message #backend' })
+    await vi.waitFor(() => expect(editor.getAttribute('data-lexical-editor')).toBe('true'))
+    await focusEditor(editor)
+    await userEvent.keyboard('@No')
+    const list = await openList({ name: 'Mention someone' })
+    expect(list.closest('main')).not.toBeNull()
+    const menu = screen.getByRole('option', { name: /Nour El-Sayed/ }).closest('ul')!.parentElement!
+    expect(menu.getBoundingClientRect().bottom).toBeLessThanOrEqual(editor.getBoundingClientRect().top)
+    expect((await axeProblems(document)).filter((p) => p.startsWith('region'))).toEqual([])
+  })
+})
+
