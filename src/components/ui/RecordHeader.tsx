@@ -1,6 +1,6 @@
 import clsx from 'clsx'
-import { MoreHorizontal, type LucideIcon } from 'lucide-react'
-import { useRef, useState, type ReactNode } from 'react'
+import { ChevronDown, MoreHorizontal, type LucideIcon } from 'lucide-react'
+import { useId, useRef, useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/Button'
 import { MenuPanel } from '@/components/ui/Menu'
 
@@ -11,7 +11,8 @@ export type RecordMeta = { icon: ReactNode; label: ReactNode; title?: string; on
 /**
  * The top of a record page (lead, opportunity, client): avatar, name and status, a row of small facts,
  * and actions on one line — a primary button, optional secondary ones, and the rest under "⋯".
- * On phones the actions move to a bar pinned above the bottom navigation.
+ * On phones the actions move to a bar pinned above the bottom navigation, and the facts fold behind "Details" so the
+ * page's content starts in the top third (UX Phase 5B, 5.1).
  */
 export function RecordHeader({
   avatar,
@@ -22,6 +23,7 @@ export function RecordHeader({
   secondary = [],
   more = [],
   compact = false,
+  pinned = true,
 }: {
   avatar: ReactNode
   title: string
@@ -35,13 +37,19 @@ export function RecordHeader({
    * sit under ⋯ on the title row instead of a bar pinned above the bottom navigation.
    */
   compact?: boolean
+  /** The phone bar pinned above the bottom navigation; off, the actions sit under ⋯ on the title row (UX Phase 5B). */
+  pinned?: boolean
 }) {
   const hasActions = !!primary || secondary.length > 0 || more.length > 0
+  // Phones: the facts row folds behind Details (UX Phase 5B, 5.1); from sm it always shows.
+  const [details, setDetails] = useState(false)
+  const factsId = useId()
+  const underMore = compact || !pinned
   return (
     <>
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex min-w-0 items-start gap-3">
-          {compact && hasActions && (
+          {underMore && hasActions && (
             <div className="order-last ms-auto sm:hidden">
               <MoreMenu actions={[...(primary ? [primary] : []), ...secondary, ...more]} />
             </div>
@@ -52,8 +60,20 @@ export function RecordHeader({
               <h1 className="truncate text-xl font-semibold tracking-tight text-fg sm:text-2xl">{title}</h1>
               {badges}
             </div>
+            {!compact && meta.length > 0 && (
+              <button
+                type="button"
+                aria-expanded={details}
+                aria-controls={factsId}
+                onClick={() => setDetails((open) => !open)}
+                className="mt-1 inline-flex items-center gap-1 text-sm text-fg-muted hover:text-fg sm:hidden max-md:touch-target"
+              >
+                Details
+                <ChevronDown className={clsx('size-4 transition-transform motion-reduce:transition-none', details && 'rotate-180')} aria-hidden />
+              </button>
+            )}
             {!compact && (
-              <ul className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 text-sm text-fg-muted">
+              <ul id={factsId} className={clsx('mt-1.5 flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 text-sm text-fg-muted', !details && 'max-sm:hidden')}>
                 {meta.map((item, index) => {
                   const content = (
                     <>
@@ -99,9 +119,9 @@ export function RecordHeader({
       </div>
 
       {/* Phones: the main action and "⋯" pinned above the bottom navigation (compact: ⋯ on the title row). */}
-      {hasActions && !compact && (
+      {hasActions && !underMore && (
         <>
-          <div className="fixed inset-x-0 bottom-[calc(3.5rem+var(--timer-bar,0px)+env(safe-area-inset-bottom))] z-20 flex gap-2 border-t border-line bg-surface/95 px-4 py-2.5 backdrop-blur sm:hidden">
+          <div data-pinned-actions className="fixed inset-x-0 bottom-[calc(3.5rem+var(--timer-bar,0px)+env(safe-area-inset-bottom))] z-20 flex gap-2 border-t border-line bg-surface/95 px-4 py-2.5 backdrop-blur sm:hidden">
             {primary && (
               <Button className="flex-1" onClick={primary.onSelect}>
                 <primary.icon className="size-4" /> {primary.label}

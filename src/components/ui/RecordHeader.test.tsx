@@ -35,3 +35,31 @@ describe('RecordHeader compact (UX Phase 1, 1.3: the project Chat tab)', () => {
     expect(screen.getAllByRole('menuitem').map((i) => i.textContent)).toEqual(['New task', 'Edit project'])
   })
 })
+
+describe('RecordHeader on phones (UX Phase 5B, 5.1)', () => {
+  it('the facts fold behind Details below sm; Details opens them; from sm they show without it', () => {
+    header()
+    const details = screen.getByRole('button', { name: 'Details' })
+    expect(details.className).toContain('sm:hidden')
+    expect(details.getAttribute('aria-expanded')).toBe('false')
+    const facts = document.getElementById(details.getAttribute('aria-controls')!)!
+    expect(facts.className).toContain('max-sm:hidden')
+    fireEvent.click(details)
+    expect(details.getAttribute('aria-expanded')).toBe('true')
+    expect(facts.className).not.toContain('max-sm:hidden')
+  })
+
+  it('pinned={false} puts the actions under ⋯ on the title row and keeps the facts', () => {
+    render(
+      <RecordHeader
+        avatar={<span>NC</span>}
+        title="Nexus Core"
+        meta={[{ icon: <Pencil />, label: 'Spark Systems (internal)' }]}
+        primary={{ label: 'New task', icon: Plus, onSelect: vi.fn() }}
+        pinned={false}
+      />,
+    )
+    expect(document.querySelector('[data-pinned-actions]')).toBeNull()
+    expect(screen.getByText('Spark Systems (internal)')).toBeTruthy()
+  })
+})

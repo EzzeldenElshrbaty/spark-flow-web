@@ -31,6 +31,7 @@ import { FilesTab } from '@/pages/projects/FilesTab'
 import { TimeTab } from './TimeTab'
 import { useParamState } from '@/lib/searchParams'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
+import { useScrolledPast } from '@/lib/useScrolledPast'
 
 const statusBadge: Record<ProjectStatus, [string, BadgeTone]> = {
   planned: ['Planned', 'neutral'],
@@ -108,6 +109,8 @@ export function ProjectPage() {
   const archive = useArchiveProject()
   const [, setParams] = useSearchParams()
   const restore = useRestoreProject()
+  // Phones: once the header has scrolled under the top bar (56px), the sticky tab row names the project (UX Phase 5B).
+  const [headerRef, scrolledPast] = useScrolledPast(56)
   // "Nexus Core · Tasks · Spark Flow" (UX Phase 5A, 5.7).
   useDocumentTitle([project?.name, tabLabels[tab]])
 
@@ -161,6 +164,7 @@ export function ProjectPage() {
 
   // The Chat tab fills the card (UX Phase 1, 1.3): a compact header, no phase bar, and the channel takes the rest.
   const chat = tab === 'chat'
+  const pinned = tab === 'overview' || tab === 'tasks'
   const phaseList = phases.data ?? []
   const stages = stagesOf(phaseList, tasks.data ?? [], now)
   const currentIndex = Math.max(0, stages.findIndex((s) => s.id === project.currentPhaseId))
@@ -168,6 +172,8 @@ export function ProjectPage() {
 
   return (
     <>
+      {/* Watched for the sticky tab row's name on phones (UX Phase 5B, 5.1). */}
+      <div ref={headerRef}>
       <RecordHeader
         avatar={<span className="grid place-items-center rounded-full bg-accent-soft font-semibold text-accent">{initials(project.name)}</span>}
         title={project.name}
@@ -183,7 +189,10 @@ export function ProjectPage() {
         secondary={secondary}
         more={more}
         compact={chat}
+        // The phone's pinned bar only where its New task belongs (UX Phase 5B, 5.1).
+        pinned={pinned}
       />
+      </div>
 
       {project.archivedAt && (
         <div className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface-muted px-4 py-3">
@@ -228,7 +237,14 @@ export function ProjectPage() {
         </div>
       ) : null}
 
-      <ProjectTabs ws={ws} projectKey={project.key} tab={tab} end={chat ? <OpenInChatLink ws={ws} channelId={project.channelId} /> : undefined} />
+      <ProjectTabs
+        ws={ws}
+        projectKey={project.key}
+        tab={tab}
+        end={chat ? <OpenInChatLink ws={ws} channelId={project.channelId} /> : undefined}
+        sticky={!chat}
+        stuckName={!chat && scrolledPast ? project.name : undefined}
+      />
 
       {tab === 'overview' && <OverviewTab project={project} phases={phaseList} people={people} teams={teams} canEdit={canEdit} canPost={canPost} />}
       {tab === 'tasks' && <TasksTab project={project} people={people} phases={phaseList} />}
@@ -237,7 +253,7 @@ export function ProjectPage() {
       {tab === 'history' && <HistoryTab project={project} people={people} phases={phaseList} />}
       {tab === 'files' && <FilesTab ws={ws} project={project} users={people} />}
 
-      {!chat && <RecordActionBarSpacer />}
+      {pinned && <RecordActionBarSpacer />}
 
       {openSheet === 'edit' && <ProjectSheet workspaceId={workspace.id} project={project} takenKeys={[]} onClose={() => setSheet(null)} onSaved={() => setSheet(null)} />}
       {openSheet === 'task' && (

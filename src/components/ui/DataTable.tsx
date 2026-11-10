@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, ChevronRight, ChevronsUpDown } from 'lucide-react'
 import { useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
 import { nextColumnSort, type ColumnSort, type SortKind } from '@/lib/sorting'
 import { IconButton } from './IconButton'
+import { useScrollEnd } from '@/lib/useScrollEnd'
 
 
 /** What in a row has its own click: a click there isn't the row's (UX Phase 5A, 5.6). */
@@ -94,13 +95,10 @@ export function DataTable<T>({
   // The box's width decides which columns show; while it still scrolls, the end edge says so (UX Phase 4, 4.1).
   const scroller = useRef<HTMLDivElement>(null)
   const [boxWidth, setBoxWidth] = useState(0)
-  const [more, setMore] = useState(false)
+  // More columns past the end edge: the fade and the arrow (UX Phase 4; the rule is shared, UX Phase 5B).
+  const more = useScrollEnd(scroller)
   const shown = visibleColumns(columns, widths, boxWidth)
   const total = shown.reduce((sum, column) => sum + widthOf(column), 0)
-  const checkMore = () => {
-    const box = scroller.current
-    if (box) setMore(box.scrollWidth - box.clientWidth - Math.abs(box.scrollLeft) > 1)
-  }
   useLayoutEffect(() => {
     const box = scroller.current
     if (!box || typeof ResizeObserver === 'undefined') return
@@ -108,7 +106,6 @@ export function DataTable<T>({
     observer.observe(box)
     return () => observer.disconnect()
   }, [])
-  useLayoutEffect(checkMore, [total, boxWidth])
   const scrollOn = () => {
     const box = scroller.current
     if (!box) return
@@ -161,7 +158,7 @@ export function DataTable<T>({
 
   return (
     <div className="relative">
-      <div ref={scroller} onScroll={checkMore} className="overflow-x-auto border border-line bg-surface">
+      <div ref={scroller} className="overflow-x-auto border border-line bg-surface">
         <table className="table-fixed border-collapse text-sm" style={{ width: total, minWidth: '100%' }} aria-label={label}>
           <colgroup>
             {shown.map((column) => (

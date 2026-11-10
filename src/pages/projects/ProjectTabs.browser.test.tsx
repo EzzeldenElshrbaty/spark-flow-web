@@ -52,3 +52,21 @@ describe('ProjectTabs on a phone', () => {
     expect(row.scrollLeft).toBe(0)
   })
 })
+
+describe('the tab row shows there’s more (UX Phase 5B, 5.2)', () => {
+  it('an end fade while tabs are out of view, none at the end, and on the left in RTL', async () => {
+    render(shown('overview'))
+    const fade = () => document.querySelector<HTMLElement>('[data-more-tabs]')
+    await vi.waitFor(() => expect(fade()).not.toBeNull())
+    const row = screen.getByRole('navigation', { name: 'Project' })
+    expect(fade()!.getBoundingClientRect().right).toBeGreaterThan(row.getBoundingClientRect().right - 2)
+    row.scrollLeft = row.scrollWidth
+    row.dispatchEvent(new Event('scroll'))
+    await vi.waitFor(() => expect(fade()).toBeNull())
+    cleanup()
+    render(shown('overview', 'rtl'))
+    await vi.waitFor(() => expect(fade()).not.toBeNull())
+    const rtlRow = screen.getByRole('navigation', { name: 'Project' })
+    expect(fade()!.getBoundingClientRect().left).toBeLessThan(rtlRow.getBoundingClientRect().left + 2)
+  })
+})
