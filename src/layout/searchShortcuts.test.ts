@@ -78,6 +78,11 @@ describe('opensSearch (spec 10: ⌘/Ctrl+K)', () => {
     expect(opensSearch(key({ key: 'k' }))).toBe(false)
   })
 
+  it('with single-key shortcuts off, / types; ⌘K still opens (UX Phase 5A, 5.13)', () => {
+    expect(opensSearch(key({ key: '/' }), false)).toBe(false)
+    expect(opensSearch(key({ key: 'k', metaKey: true }), false)).toBe(true)
+  })
+
   it('leaves a key that a control already took, like ⌘K for Link in the composer (spec 6.8)', () => {
     expect(opensSearch(key({ key: 'k', metaKey: true }, null, true))).toBe(false)
   })

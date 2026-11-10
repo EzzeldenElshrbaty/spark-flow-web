@@ -710,6 +710,7 @@ describe('the shell around the chat (spec 10)', () => {
     vi.spyOn(api.preferences, 'get').mockResolvedValue({
       defaultLevel: 'mentions', keywords: [], desktop: true, push: true, emailDigest: 'daily', dndUntil: new Date(Date.now() + 3_600_000).toISOString(),
       dndSchedule: { on: false, from: '18:00', to: '09:00', days: [0, 1, 2, 3, 4], tz: 'Africa/Cairo' },
+      singleKeyShortcuts: true,
     })
     mount(
       <ThemeProvider>

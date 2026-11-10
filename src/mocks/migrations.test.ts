@@ -301,3 +301,11 @@ describe('30 → 31 (task files, formatted descriptions)', () => {
     })
   })
 })
+
+describe('31 → 32 (single-key shortcuts, UX Phase 5A 5.13)', () => {
+  it('every stored preferences record gets single-key shortcuts on', () => {
+    expect(migrate({ version: 31, notificationPrefs: [{ id: 'u-1', desktop: true }] }, 32)).toEqual({
+      version: 32, notificationPrefs: [{ id: 'u-1', desktop: true, singleKeyShortcuts: true }],
+    })
+  })
+})

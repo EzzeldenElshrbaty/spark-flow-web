@@ -25,6 +25,7 @@ describe('preferences (spec 6.11, §7 NotificationPref)', () => {
     expect(await api.preferences.get()).toEqual({
       defaultLevel: 'mentions', keywords: [], desktop: false, push: true, emailDigest: 'daily', dndUntil: null,
       dndSchedule: { on: false, from: '18:00', to: '09:00', days: [0, 1, 2, 3, 4], tz: 'Africa/Cairo' },
+      singleKeyShortcuts: true,
     })
   })
 
@@ -54,6 +55,7 @@ describe('preferences (spec 6.11, §7 NotificationPref)', () => {
       { dndSchedule: { on: true, from: '18:00', to: '09:00', days: [9], tz: 'Africa/Cairo' } },
       { dndSchedule: { on: true, from: '18:00', to: '09:00', days: [1], tz: 'Mars/Base' } },
       { dndSchedule: { on: true, from: '09:00', to: '09:00', days: [1], tz: 'Africa/Cairo' } },
+      { singleKeyShortcuts: 'no' },
     ]) {
       await expect(api.preferences.update(bad as never), JSON.stringify(bad)).rejects.toMatchObject({ status: 400 })
     }
@@ -162,5 +164,12 @@ describe('keywords count like mentions (spec 6.11 “Mentions and keywords”)',
     } finally {
       vi.useRealTimers()
     }
+  })
+})
+
+describe('single-key shortcuts (UX Phase 5A, 5.13)', () => {
+  it('are on until turned off, and stay off', async () => {
+    expect((await api.preferences.update({ singleKeyShortcuts: false })).singleKeyShortcuts).toBe(false)
+    expect((await api.preferences.get()).singleKeyShortcuts).toBe(false)
   })
 })

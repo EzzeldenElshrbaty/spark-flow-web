@@ -26,6 +26,11 @@ const V24_ROLES = [
 ]
 
 export const migrations: Record<number, (doc: Record<string, unknown>) => void> = {
+  // 32: single-key shortcuts can be turned off (UX Phase 5A, 5.13); everyone keeps them on.
+  31: (doc) => {
+    if (!Array.isArray(doc.notificationPrefs)) return
+    for (const p of doc.notificationPrefs as Record<string, unknown>[]) p.singleKeyShortcuts = true
+  },
   // 31: task files and formatted descriptions: a plain description becomes paragraphs, and a task has no files yet.
   30: (doc) => {
     if (!Array.isArray(doc.tickets)) return

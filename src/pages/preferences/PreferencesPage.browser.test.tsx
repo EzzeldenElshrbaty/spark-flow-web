@@ -16,6 +16,7 @@ const prefs = (over: Partial<Preferences> = {}): Preferences => ({
   defaultLevel: 'mentions', keywords: ['deploy', 'release notes'], desktop: false, push: true, emailDigest: 'daily',
   dndUntil: new Date(Date.now() + 60 * 60_000).toISOString(),
   dndSchedule: { on: true, from: '18:00', to: '09:00', days: [0, 1, 2, 3, 4], tz: 'Africa/Cairo' },
+  singleKeyShortcuts: true,
   ...over,
 })
 

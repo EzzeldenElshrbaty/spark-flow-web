@@ -19,3 +19,7 @@ Pauses notifications for 30 minutes, 1 or 2 hours, or until tomorrow at 9:00 AM.
 ## Browser notifications
 
 With Flow not in front, your browser can show new mentions and direct messages. Your browser asks you to allow it first.
+
+## Keyboard
+
+**Single-key shortcuts** are on at first: **/** opens search, **G** then **P** opens Projects and **G** then **C** opens Chat. Turn them off if they get in the way of a screen reader or voice control; **⌘K** (Ctrl+K on Windows) still opens search.

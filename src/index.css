@@ -387,6 +387,10 @@
     transition: none !important;
     animation: none !important;
   }
+  /* Loading skeletons everywhere hold still (UX Phase 5A, 5.13). */
+  .animate-pulse {
+    animation: none !important;
+  }
 }
 
 body {

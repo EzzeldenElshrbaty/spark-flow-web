@@ -84,6 +84,7 @@ beforeEach(() => {
   prefs = {
     defaultLevel: 'mentions', keywords: [], desktop: true, push: true, emailDigest: 'daily', dndUntil: null,
     dndSchedule: { on: false, from: '18:00', to: '09:00', days: [0, 1, 2, 3, 4], tz: 'Africa/Cairo' },
+    singleKeyShortcuts: true,
   }
   channels = { 'c-backend': channel() }
   mutedRoots = new Set()

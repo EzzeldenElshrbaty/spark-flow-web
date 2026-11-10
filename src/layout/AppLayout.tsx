@@ -24,6 +24,7 @@ import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { useUiStore } from '@/lib/uiStore'
 import { useRole } from '@/lib/useRole'
 import { AccountState } from '@/layout/AccountState'
+import { usePreferences } from '@/api/preferences'
 
 export function AppLayout() {
   const collapsed = useUiStore((state) => state.sidebarCollapsed)
@@ -34,7 +35,8 @@ export function AppLayout() {
   // ⌘/Ctrl+Shift+A for Activity and ⌘/Ctrl+Shift+T for Threads, anywhere in the workspace (spec 10, 6.12).
   useAppShortcuts(useCurrentWorkspace().workspace?.slug)
   // G then P / G then C: the two sides of Flow (spec 5.5).
-  useModeShortcuts()
+  // …unless single-key shortcuts are off in Preferences (UX Phase 5A, 5.13); on while they load.
+  useModeShortcuts(usePreferences().data?.singleKeyShortcuts ?? true)
   // Without an account nothing below can be decided: say why instead of refusing every page.
   const account = useRole()
   const signedOut = account.signedOut

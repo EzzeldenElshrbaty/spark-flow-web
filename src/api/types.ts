@@ -566,6 +566,8 @@ export type Preferences = {
   /** Notifications paused until then; null when not paused. */
   dndUntil: string | null
   dndSchedule: DndSchedule
+  /** "/" for search and G then P / G then C (UX Phase 5A, 5.13, WCAG 2.1.4): on unless turned off. ⌘/Ctrl shortcuts stay. */
+  singleKeyShortcuts: boolean
 }
 
 export type ChatTarget = { kind: 'message' | 'reply'; id: string }

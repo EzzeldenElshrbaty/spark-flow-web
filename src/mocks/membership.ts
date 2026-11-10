@@ -11,6 +11,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   dndUntil: null,
   // Spark's working week is Sunday to Thursday (report weeks start on Sunday).
   dndSchedule: { on: false, from: '18:00', to: '09:00', days: [0, 1, 2, 3, 4], tz: 'Africa/Cairo' },
+  singleKeyShortcuts: true,
 }
 
 /** This person's preferences, or the defaults. */

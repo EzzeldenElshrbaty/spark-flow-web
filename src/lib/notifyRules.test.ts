@@ -5,7 +5,7 @@ import { clockLabel, desktopNote, dndEndLabel, dndState, notifies, pausePresets 
 
 const prefs = (over: Partial<Preferences> = {}): Preferences => ({
   defaultLevel: 'mentions', keywords: [], desktop: true, push: true, emailDigest: 'daily', dndUntil: null,
-  dndSchedule: { on: false, from: '18:00', to: '09:00', days: [0, 1, 2, 3, 4], tz: 'Africa/Cairo' }, ...over,
+  dndSchedule: { on: false, from: '18:00', to: '09:00', days: [0, 1, 2, 3, 4], tz: 'Africa/Cairo' }, singleKeyShortcuts: true, ...over,
 })
 // Riyadh is UTC+3 all year (Cairo's summer time would move these tests with the date).
 const at = (riyadh: string) => new Date(`${riyadh}+03:00`)

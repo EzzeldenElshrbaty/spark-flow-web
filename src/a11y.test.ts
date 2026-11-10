@@ -42,3 +42,10 @@ describe('labels only where they’re read (5.12)', () => {
   })
 })
 
+describe('reduced motion (5.13)', () => {
+  it('skeletons stop pulsing for people who ask for less motion, everywhere, not only in chat', () => {
+    const css = readFileSync(join(SRC, 'index.css'), 'utf8')
+    const reduced = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'))
+    expect(reduced.slice(0, reduced.indexOf('}\n}') + 3)).toMatch(/\.animate-pulse[^{]*\{[^}]*animation:\s*none/)
+  })
+})

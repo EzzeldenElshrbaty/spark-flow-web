@@ -16,7 +16,7 @@ import { dndEndLabel, dndState, pausePresets } from '@/lib/notifyRules'
 import { useNow } from '@/lib/useNow'
 import { NOTIFY_LEVELS } from '@/pages/chat/NotifyLevelMenu'
 
-type Part = 'notify' | 'keywords' | 'delivery' | 'dnd'
+type Part = 'notify' | 'keywords' | 'delivery' | 'dnd' | 'keyboard'
 const DIGESTS: { id: EmailDigest; label: string }[] = [
   { id: 'off', label: 'Off' },
   { id: 'hourly', label: 'Hourly' },
@@ -63,6 +63,15 @@ export function PreferencesPage() {
           <KeywordsSection prefs={p} error={errors.keywords} onError={(text) => setErrors((e) => ({ ...e, keywords: text }))} onSave={(patch) => save('keywords', patch)} />
           <DeliverySection prefs={p} error={errors.delivery} onError={(text) => setErrors((e) => ({ ...e, delivery: text }))} onSave={(patch) => save('delivery', patch)} />
           <DndSection prefs={p} error={errors.dnd} onError={(text) => setErrors((e) => ({ ...e, dnd: text }))} onSave={(patch) => save('dnd', patch)} />
+          {/* WCAG 2.1.4: one-key shortcuts can be turned off (UX Phase 5A, 5.13). */}
+          <Section title="Keyboard" error={errors.keyboard}>
+            <SwitchRow
+              label="Single-key shortcuts"
+              help="Press / to search, G then P for Projects, G then C for Chat. Turn them off if they get in the way of a screen reader or voice control."
+              checked={p.singleKeyShortcuts}
+              onChange={(singleKeyShortcuts) => save('keyboard', { singleKeyShortcuts })}
+            />
+          </Section>
         </div>
       )}
     </>

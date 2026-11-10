@@ -193,3 +193,17 @@ describe('Help search is in the address (UX Phase 2, 2.7)', () => {
     expect(await screen.findByRole('button', { name: /Audit log/ })).toBeTruthy()
   })
 })
+
+describe('Help’s in-page links and reduced motion (UX Phase 5A, 5.13)', () => {
+  it('jumps without the smooth scroll for someone who asks for less motion', async () => {
+    const reduce = vi.fn((media: string) => ({ matches: media.includes('reduce'), media, addEventListener() {}, removeEventListener() {} }))
+    vi.stubGlobal('matchMedia', reduce)
+    const scroll = vi.spyOn(Element.prototype, 'scrollIntoView')
+    mount('/w/engineering/help/time')
+    const toc = await screen.findByRole('complementary', { name: 'On this page' })
+    fireEvent.click(within(toc).getAllByRole('link')[0]!)
+    expect(scroll).toHaveBeenLastCalledWith({ behavior: 'auto', block: 'start' })
+    vi.unstubAllGlobals()
+  })
+})
+

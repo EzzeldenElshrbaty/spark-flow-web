@@ -12,6 +12,7 @@ import { HelpDoc } from './HelpDoc'
 import { useParam } from '@/lib/searchParams'
 import { IconButton } from '@/components/ui/IconButton'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
+import { prefersReducedMotion } from '@/components/charts/chartUtils'
 
 /** Lower case, with ’ and ‘ read as ' (help is written with ’; people type '), keeping every index in place. */
 const fold = (text: string) => text.toLowerCase().replace(/[’‘]/g, "'")
@@ -227,7 +228,7 @@ export function HelpPage() {
                 <ul className="m-0 list-none space-y-1 border-s border-line-subtle p-0">
                   {sections.map((s) => (
                     <li key={s.id}>
-                      <a href={`#${s.id}`} onClick={(e) => (e.preventDefault(), document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }))} className="-ms-px block border-s-2 border-transparent py-1 ps-3 text-sm text-fg-muted hover:border-line-strong hover:text-fg">
+                      <a href={`#${s.id}`} onClick={(e) => (e.preventDefault(), document.getElementById(s.id)?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' }))} className="-ms-px block border-s-2 border-transparent py-1 ps-3 text-sm text-fg-muted hover:border-line-strong hover:text-fg">
                         {s.text}
                       </a>
                     </li>

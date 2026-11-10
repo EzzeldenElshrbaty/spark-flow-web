@@ -73,7 +73,7 @@ export function preferencesApi(db: MockDb, hub: MockHub): Api['preferences'] {
         next.defaultLevel = patch.defaultLevel
       }
       if (patch.keywords !== undefined) next.keywords = checkKeywords(patch.keywords)
-      for (const key of ['desktop', 'push'] as const) {
+      for (const key of ['desktop', 'push', 'singleKeyShortcuts'] as const) {
         if (patch[key] === undefined) continue
         if (typeof patch[key] !== 'boolean') throw badRequest('Turn it on or off.')
         next[key] = patch[key]

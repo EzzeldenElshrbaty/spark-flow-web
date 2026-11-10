@@ -17,6 +17,7 @@ afterEach(() => {
 const prefs = (dndUntil: string | null): Preferences => ({
   defaultLevel: 'mentions', keywords: [], desktop: false, push: true, emailDigest: 'daily', dndUntil,
   dndSchedule: { on: false, from: '18:00', to: '09:00', days: [0, 1, 2, 3, 4], tz: 'Africa/Cairo' },
+  singleKeyShortcuts: true,
 })
 
 describe('useDndEnd (the bell’s note and the avatar’s moon, spec 6.11)', () => {

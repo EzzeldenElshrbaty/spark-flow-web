@@ -16,6 +16,7 @@ import { findShortcuts, opensSearch, peopleShortcuts, searchPlaceholder, shortcu
 import { useWorkspaceMode } from '@/layout/useWorkspaceMode'
 import { paths } from '@/lib/paths'
 import { useFocusOnArrival } from '@/lib/openSearch'
+import { usePreferences } from '@/api/preferences'
 
 // It jumps to pages, channels, DMs, projects, tasks and people; its last row (and ⌘/Ctrl+Enter) opens Search, which
 // looks through what people wrote (spec 6.12).
@@ -243,9 +244,11 @@ export function DesktopSearch() {
   // Sent here by the channel's 🔍, ⌘F or /search: the caret goes in the box, after the query.
   useFocusOnArrival(inputRef)
 
+  // "/" can be turned off in Preferences → Keyboard (UX Phase 5A, 5.13); on while they load.
+  const singleKeys = usePreferences().data?.singleKeyShortcuts ?? true
   useEffect(() => {
     const onKey = (event: globalThis.KeyboardEvent) => {
-      if (opensSearch(event)) {
+      if (opensSearch(event, singleKeys)) {
         event.preventDefault()
         inputRef.current?.focus()
       }
@@ -259,7 +262,7 @@ export function DesktopSearch() {
       document.removeEventListener('keydown', onKey)
       document.removeEventListener('pointerdown', onPointer)
     }
-  }, [])
+  }, [singleKeys])
 
   return (
     <div ref={boxRef} className="relative hidden w-full max-w-[440px] min-w-0 md:block">

@@ -15,11 +15,13 @@ function typingIn(target: EventTarget | null) {
 /**
  * G then P opens the Projects side, G then C the Chat side (spec 5.5), within a second, by the keys' place (`code`)
  * so any layout works. Not while typing, with a modifier, on repeats or with a dialog open. Decided in the capture
- * phase, so the second key never reaches a focused message too (P there pins it).
+ * phase, so the second key never reaches a focused message too (P there pins it). Off with `enabled` false.
  */
-export function useModeShortcuts() {
+export function useModeShortcuts(enabled = true) {
   const goTo = useGoToMode()
   useEffect(() => {
+    // Off in Preferences → Keyboard (UX Phase 5A, 5.13).
+    if (!enabled) return
     let armedAt = 0
     const onKey = (event: KeyboardEvent) => {
       if (event.repeat || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey || typingIn(event.target) || document.querySelector('[aria-modal="true"]')) {
@@ -38,5 +40,5 @@ export function useModeShortcuts() {
     }
     document.addEventListener('keydown', onKey, true)
     return () => document.removeEventListener('keydown', onKey, true)
-  }, [goTo])
+  }, [goTo, enabled])
 }

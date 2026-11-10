@@ -15,6 +15,7 @@ beforeEach(() => {
   stored = {
     defaultLevel: 'mentions', keywords: ['deploy'], desktop: false, push: true, emailDigest: 'daily', dndUntil: null,
     dndSchedule: { on: false, from: '18:00', to: '09:00', days: [0, 1, 2, 3, 4], tz: 'Africa/Cairo' },
+    singleKeyShortcuts: true,
   }
   vi.spyOn(api.preferences, 'get').mockImplementation(async () => structuredClone(stored))
   update = vi.fn(async (patch: Partial<Preferences>) => (stored = { ...stored, ...patch }))
@@ -195,5 +196,16 @@ describe('Preferences: Do Not Disturb (spec 6.11)', () => {
     await act(async () => fireEvent.click(within(section('Do Not Disturb')).getByRole('button', { name: 'Pause' })))
     expect(update).not.toHaveBeenCalled()
     expect(within(section('Do Not Disturb')).getByRole('alert').textContent).toBe('Pick a time after now.')
+  })
+})
+
+describe('Keyboard (UX Phase 5A, 5.13)', () => {
+  it('single-key shortcuts are on, and the switch turns them off', async () => {
+    await mount()
+    const keyboard = section('Keyboard')
+    const keys = within(keyboard).getByRole('switch', { name: 'Single-key shortcuts' })
+    expect(keys.getAttribute('aria-checked')).toBe('true')
+    await act(async () => fireEvent.click(keys))
+    expect(update).toHaveBeenCalledWith({ singleKeyShortcuts: false })
   })
 })

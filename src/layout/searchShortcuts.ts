@@ -139,13 +139,14 @@ export function findShortcuts(all: { pages: Shortcut[]; actions: Shortcut[] }, r
 
 /**
  * Whether a key opens the top-bar search (spec 10): ⌘/Ctrl+K anywhere, or / when not typing. Not a key a control has
- * already taken: in the composer ⌘K is Link (spec 6.8).
+ * already taken: in the composer ⌘K is Link (spec 6.8). With single-key shortcuts off (Preferences, UX Phase 5A, 5.13)
+ * / types, and ⌘/Ctrl+K still opens.
  */
-export function opensSearch(event: KeyboardEvent): boolean {
+export function opensSearch(event: KeyboardEvent, singleKeys = true): boolean {
   if (event.defaultPrevented) return false
   const target = event.target as HTMLElement | null
   const typing = Boolean(target && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)))
-  return (event.key === 'k' && (event.metaKey || event.ctrlKey)) || (event.key === '/' && !typing)
+  return (event.key === 'k' && (event.metaKey || event.ctrlKey)) || (singleKeys && event.key === '/' && !typing)
 }
 
 /** The search box's hint on each side of Flow (spec 5.5). Both sides search everything; the hint leads with theirs. */

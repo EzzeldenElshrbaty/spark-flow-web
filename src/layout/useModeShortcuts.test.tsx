@@ -22,6 +22,15 @@ const press = (code: string, init: KeyboardEventInit = {}, target: EventTarget =
   return event
 }
 
+describe('single-key shortcuts off (UX Phase 5A, 5.13)', () => {
+  it('G then P does nothing while they’re off', () => {
+    renderHook(() => useModeShortcuts(false))
+    press('KeyG')
+    expect(press('KeyP').defaultPrevented).toBe(false)
+    expect(goTo).not.toHaveBeenCalled()
+  })
+})
+
 describe('useModeShortcuts (spec 5.5: G then P, G then C)', () => {
   it('G then P goes to Projects and G then C to Chat, taking the second key', () => {
     renderHook(() => useModeShortcuts())
