@@ -13,6 +13,7 @@ describe('ProjectTabs end slot (UX Phase 1, 1.3)', () => {
         <ProjectTabs ws="engineering" projectKey="NEX" tab="chat" end={<a href="/w/engineering/c/c-p-nex">Open in Chat</a>} />
       </MemoryRouter>,
     )
-    expect(within(screen.getByRole('navigation', { name: 'Project' }).parentElement!).getByRole('link', { name: 'Open in Chat' })).toBeTruthy()
+    // The row: the nav sits in a wrapper that holds its end fade (UX Phase 5B).
+    expect(within(screen.getByRole('navigation', { name: 'Project' }).parentElement!.parentElement!).getByRole('link', { name: 'Open in Chat' })).toBeTruthy()
   })
 })
