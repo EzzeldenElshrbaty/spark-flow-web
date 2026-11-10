@@ -307,6 +307,29 @@ describe('MessageList scrolling (spec 6.2)', () => {
     expect(distanceFromEnd()).toBeLessThan(32)
   })
 
+  it('at the end, a shorter list stays at the end: a row above it or a taller composer doesn’t hide the newest', async () => {
+    mount({ data: channel(42) })
+    await still()
+    const end = distanceFromEnd()
+    expect(end).toBeLessThan(32)
+    const box = list().closest<HTMLElement>('div[style]')!
+    box.style.height = '556px'
+    await still()
+    expect(distanceFromEnd()).toBeLessThanOrEqual(end + 1)
+  })
+
+  it('scrolled up, a shorter list keeps its place', async () => {
+    mount({ data: channel(42) })
+    await still()
+    list().scrollTop = 200
+    await still()
+    const place = list().scrollTop
+    const box = list().closest<HTMLElement>('div[style]')!
+    box.style.height = '556px'
+    await still()
+    expect(list().scrollTop).toBe(place)
+  })
+
   it('sending while a jump is open goes back to the live end, where the message shows', async () => {
     const onLatest = vi.fn()
     const view = mount({ data: channel(40), focusSeq: 15, jumped: true, onLatest })

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Channel } from '@/api/types'
 import { ChannelHeader, type ChannelHeaderProps } from '@/pages/chat/ChannelHeader'
@@ -276,5 +276,40 @@ describe('channel tabs (spec 6.1)', () => {
     header({ channel: dm, title: 'Nour El-Sayed', members: people.slice(0, 2), rights: { manage: false, leave: false, archive: false } })
     fireEvent.click(screen.getByRole('button', { name: 'Conversation notifications: muted' }))
     expect(screen.getByRole('menu', { name: 'Conversation notifications' })).toBeTruthy()
+  })
+})
+
+describe('Add a bookmark on phones (§6.16; follow-up to UX Phase 6)', () => {
+  const phoneScreen = (phone: boolean) =>
+    vi.stubGlobal('matchMedia', (media: string) => ({ matches: phone && media === '(max-width: 767px)', media, addEventListener() {}, removeEventListener() {} }))
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('on a phone, Channel actions offers Add a bookmark and it saves', async () => {
+    phoneScreen(true)
+    const onAddBookmark = vi.fn(async (_b: { title: string; url: string }) => {})
+    header({ onAddBookmark })
+    openMenu()
+    fireEvent.click(item('Add a bookmark'))
+    const dialog = screen.getByRole('dialog', { name: 'Add a bookmark' })
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Address' }), { target: { value: 'grafana.spark-sys.com/d/api' } })
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }))
+    })
+    expect(onAddBookmark).toHaveBeenCalledWith({ title: '', url: 'grafana.spark-sys.com/d/api' })
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('not on a laptop, and not where I can’t post', () => {
+    phoneScreen(false)
+    header({ onAddBookmark: vi.fn(async () => {}) })
+    openMenu()
+    expect(screen.queryByRole('menuitem', { name: 'Add a bookmark' })).toBeNull()
+    cleanup()
+    phoneScreen(true)
+    header()
+    openMenu()
+    expect(screen.queryByRole('menuitem', { name: 'Add a bookmark' })).toBeNull()
   })
 })

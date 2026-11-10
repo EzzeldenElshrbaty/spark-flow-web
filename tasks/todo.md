@@ -3006,7 +3006,8 @@ Plan: `docs/superpowers/plans/2026-11-10-ux-phase-6-checks-and-polish.md`. Branc
   Help) lost their own scroll margins, which now add to the page's. Gates after: lint clean, `npm test` 3,019/3,019,
   `npm run test:ux` 968/968, `build:prototype` passes.
 - Open design question: on a 390 px phone the channel's tab row leaves the bookmark strip about 19 px, so bookmarks
-  and Add a bookmark sit scrolled out of view (one fix: the strip on its own row under the tabs on phones).
+  and Add a bookmark sit scrolled out of view (one fix: the strip on its own row under the tabs on phones) → fixed
+  on `fix/chat-bookmark-row` (Q1 A).
 - Deferred minors: the task panel takes focus only once its title loads (seconds with a slow backend); the
   walkthroughs reach pages by address, not the phone's More, and check a few results by their announcement; the
   in-memory UI store and the mock data aren't reset between matrix loads; `settled()` can give up without saying so;
@@ -3018,6 +3019,6 @@ Plan: `docs/superpowers/plans/2026-11-10-ux-phase-6-checks-and-polish.md`. Branc
 Plan: `docs/superpowers/plans/2026-11-10-chat-bookmark-row-on-phones.md` (branch `fix/chat-bookmark-row` from dev ea3458a).
 Fixes the Phase 6 open design question: at 390 px the bookmark strip after the tabs is about 19 px wide.
 
-- [ ] 1. `ChannelTabs`: below 768 px the bookmarks get their own 44 px row under the tabs, only when there are some; no + on phones. Tests: `ChannelTabs.browser.test.tsx` (5).
-- [ ] 2. `ChannelHeader`: "Add a bookmark" in Channel actions (⋮) on phones; `ChannelPage` passes the save to both; spec §6.16, CLAUDE.md. Tests: `ChannelHeader.test.tsx` (2), `src/bookmarkRow.browser.test.tsx` (1).
+- [x] 1. `ChannelTabs`: below 768 px the bookmarks get their own 44 px row under the tabs, only when there are some; no + on phones. Tests: `ChannelTabs.browser.test.tsx` (5).
+- [x] 2. `ChannelHeader`: "Add a bookmark" in Channel actions (⋮) on phones; `ChannelPage` passes the save to both; spec §6.16, CLAUDE.md. Tests: `ChannelHeader.test.tsx` (2), `src/bookmarkRow.browser.test.tsx` (1). Found on the way: the message list didn't stay at its end when it got shorter (a row above it, a taller composer); it does now (`MessageList` `watchLog`, 2 tests in `MessageList.browser.test.tsx`).
 - [ ] Gates: lint, tsc, `npm test`, `npm run test:ux`, `build:prototype`; one Opus final review.

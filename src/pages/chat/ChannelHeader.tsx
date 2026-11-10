@@ -1,4 +1,4 @@
-import { IconArchive, IconBell, IconBellOff, IconChecks, IconChevronDown, IconDotsVertical, IconHash, IconInfoCircle, IconLink, IconLock, IconLogout, IconSearch, IconStar, IconStarFilled } from '@tabler/icons-react'
+import { IconArchive, IconBell, IconBellOff, IconChecks, IconChevronDown, IconDotsVertical, IconHash, IconInfoCircle, IconLink, IconLock, IconLogout, IconPlus, IconSearch, IconStar, IconStarFilled } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
 import type { Channel, NotifyLevel } from '@/api/types'
 import { Avatar } from '@/components/Avatar'
@@ -6,6 +6,7 @@ import { IconButton } from '@/components/sf/Button'
 import { Icon } from '@/components/sf/Icon'
 import { Menu, MenuHeading, MenuItem, MenuSeparator, Submenu } from '@/components/sf/Menu'
 import { usePhone } from '@/components/sf/usePhone'
+import { AddBookmarkDialog } from '@/pages/chat/AddBookmarkDialog'
 import type { DetailsTab } from '@/pages/chat/ChannelDetails'
 import { NotifyLevelItems, NotifyLevelMenu, type PreferencesLink } from '@/pages/chat/NotifyLevelMenu'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
@@ -33,19 +34,23 @@ export type ChannelHeaderProps = {
   onArchive: () => void
   /** Search in this channel (spec 6.1); no button without it (a group conversation). */
   onSearch?: () => void
+  /** Add a bookmark, where I may post: in the more menu on phones, where the tabs row has no room for + (§6.16). */
+  onAddBookmark?: (bookmark: { title: string; url: string }) => Promise<unknown>
 }
 
 /**
  * The 52px channel header (spec 6.1): name, star, topic, then members, the notifications bell (spec 6.11) and the more
  * menu at the end. A channel's name opens Channel details for everyone who can read it. It never wraps: the topic
  * truncates first, then the members button goes (Members is in Channel details too). On phones the topic moves into
- * the more menu, with channel search before the menu (spec 6.1). Call comes in a later phase.
+ * the more menu, with channel search before the menu (spec 6.1), and so does Add a bookmark (follow-up to UX Phase 6).
+ * Call comes in a later phase.
  */
-export function ChannelHeader({ channel, title, members, rights, onDetails, onStar, onMute, onNotifyLevel, preferences, onMarkRead, onCopyLink, onLeave, onArchive, onSearch }: ChannelHeaderProps) {
+export function ChannelHeader({ channel, title, members, rights, onDetails, onStar, onMute, onNotifyLevel, preferences, onMarkRead, onCopyLink, onLeave, onArchive, onSearch, onAddBookmark }: ChannelHeaderProps) {
   useDocumentTitle([channel.kind === 'channel' ? `#${title}` : title])
   const phone = usePhone()
   // What Copy link did, said next to the menu for a moment; there are no toasts outside Undo.
   const [copied, setCopied] = useState<'' | 'Link copied' | "Couldn’t copy the link">('')
+  const [addingBookmark, setAddingBookmark] = useState(false)
   useEffect(() => {
     if (!copied) return
     const timer = setTimeout(() => setCopied(''), COPIED_MS)
@@ -147,6 +152,11 @@ export function ChannelHeader({ channel, title, members, rights, onDetails, onSt
           >
             Copy link
           </MenuItem>
+          {phone && onAddBookmark && (
+            <MenuItem icon={IconPlus} onSelect={() => setAddingBookmark(true)}>
+              Add a bookmark
+            </MenuItem>
+          )}
           <MenuItem icon={IconChecks} disabled={channel.unreadCount === 0} onSelect={onMarkRead}>
             Mark all read
           </MenuItem>
@@ -163,6 +173,7 @@ export function ChannelHeader({ channel, title, members, rights, onDetails, onSt
           )}
         </Menu>
       </div>
+      {addingBookmark && onAddBookmark && <AddBookmarkDialog onAdd={onAddBookmark} onClose={() => setAddingBookmark(false)} />}
     </header>
   )
 }

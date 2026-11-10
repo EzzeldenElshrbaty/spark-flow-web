@@ -2,7 +2,7 @@ import clsx from 'clsx'
 import { IconArrowDown, IconCalendarEvent, IconChevronDown } from '@tabler/icons-react'
 import type { InfiniteData, UseInfiniteQueryResult } from '@tanstack/react-query'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { ChatMessage, Page, User } from '@/api/types'
 import { senderName } from '@/lib/flowbot'
 import type { PendingMessage } from '@/lib/sendQueue'
@@ -270,6 +270,30 @@ export function MessageList({
     // Only a new edit moves the view.
   }, [editingId])
 
+  // A shorter list (a row above it, such as a phone's bookmarks; a taller composer) keeps me at the end when I was
+  // there too: the virtualizer only follows new rows. The log is drawn after the first page, so its ref watches it.
+  const keepEnd = useRef(() => {})
+  useLayoutEffect(() => {
+    keepEnd.current = () => {
+      if (positioned.current && atBottomRef.current && !hasNewer) scrollToBottom()
+    }
+  })
+  const watchLog = useCallback((el: HTMLDivElement | null) => {
+    scrollRef.current = el
+    if (!el) return
+    let height = el.clientHeight
+    const observer = new ResizeObserver(() => {
+      const shorter = el.clientHeight < height
+      height = el.clientHeight
+      if (shorter) keepEnd.current()
+    })
+    observer.observe(el)
+    return () => {
+      observer.disconnect()
+      scrollRef.current = null
+    }
+  }, [])
+
   // A new message at the end keeps me at the end when I was there (with followOnAppend as the first line of it).
   const lastKey = rows.at(-1)?.key
   useLayoutEffect(() => {
@@ -360,7 +384,7 @@ export function MessageList({
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
-      <div ref={scrollRef} onScroll={onScroll} role="log" aria-live="off" aria-label={`Messages in ${title}`} tabIndex={0} className="min-h-0 flex-1 overflow-y-auto outline-none [overflow-anchor:none]">
+      <div ref={watchLog} onScroll={onScroll} role="log" aria-live="off" aria-label={`Messages in ${title}`} tabIndex={0} className="min-h-0 flex-1 overflow-y-auto outline-none [overflow-anchor:none]">
         <ol className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
           {items.map((v) => {
             const row = rows[v.index]

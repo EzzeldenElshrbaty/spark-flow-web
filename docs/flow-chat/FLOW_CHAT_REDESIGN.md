@@ -618,6 +618,7 @@ Each view has a 52px header with a `title`, an optional tabs row, and a scrollin
   - A compose button (56px, `accent-fill`, `radius-lg`).
   - Bottom tabs: Home, Chat, Activity, Tasks, More.
 - **Channel:** header with back, `# name`, "8 members · 5 active", call and search. Messages at 16px side padding. Composer: round +, a pill-shaped input, and mic or send.
+  - *Amended after UX Phase 6:* the channel's bookmarks get their own 44px row under the tabs, only when there are some, and "Add a bookmark" is in the channel's more menu (⋮). From 768px the tabs row keeps its bookmarks and + (6.1). A list scrolled to its end stays at its end when the space above or below it changes.
 - **Thread:** composer with "Also send to #channel" as a 44px checkbox row.
 
 ## 7. Data model changes (add what is missing; keep existing names where equivalent)

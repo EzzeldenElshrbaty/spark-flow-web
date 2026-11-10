@@ -302,6 +302,8 @@ function ChannelTop({
   const removeBookmark = useRemoveBookmark()
   // "Only admins can post" holds for bookmarks too (the server checks the same).
   const mayBookmark = useCanWrite(channel) === true && !isArchived(channel)
+  // The tabs' + adds one; on phones the header's more menu does (follow-up to UX Phase 6).
+  const addBookmarkTo = mayBookmark ? (bookmark: { title: string; url: string }) => addBookmark.mutateAsync({ channelId: channel.id, bookmark }) : undefined
   const top = useRef<HTMLDivElement>(null)
   // The details change the star, level and mute too: while they're open, these errors show under their header.
   const headerError = (star.error ?? mute.error ?? level.error) as Error | null
@@ -337,6 +339,7 @@ function ChannelTop({
         onLeave={leaveChannel}
         onArchive={() => setArchiving(true)}
         onSearch={scope ? () => openSearch(scope) : undefined}
+        onAddBookmark={addBookmarkTo}
       />
       <ChannelTabs
         channel={channel}
@@ -346,7 +349,7 @@ function ChannelTop({
         pinCount={pins.data?.length}
         hidden={hideTabs}
         bookmarks={bookmarks.data}
-        onAddBookmark={mayBookmark ? (bookmark) => addBookmark.mutateAsync({ channelId: channel.id, bookmark }) : undefined}
+        onAddBookmark={addBookmarkTo}
       />
       {error && !details && <p className="sf-small px-4 pt-2 text-sf-error">{error.message}</p>}
       {details && channel.kind === 'channel' && (
