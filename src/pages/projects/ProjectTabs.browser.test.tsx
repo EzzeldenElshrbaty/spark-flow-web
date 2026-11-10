@@ -90,4 +90,18 @@ describe('the stuck row keeps the open tab in view (final review)', () => {
     )
     await expectInView()
   })
+
+  it('a long project name in the stuck row ends in an ellipsis (UX Phase 6)', () => {
+    render(
+      <MemoryRouter>
+        <div style={{ width: 360 }}>
+          <ProjectTabs ws="engineering" projectKey="NEX" tab="overview" sticky stuckName={'A project with a very long name that will not fit'} />
+        </div>
+      </MemoryRouter>,
+    )
+    const name = document.querySelector('[data-stuck-name] > span') as HTMLElement
+    expect(name).toBeTruthy()
+    expect(getComputedStyle(name).textOverflow).toBe('ellipsis')
+    expect(name.scrollWidth).toBeGreaterThan(name.clientWidth)
+  })
 })

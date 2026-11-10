@@ -42,8 +42,9 @@ export function ProjectTabs({
     // `end` sits at the row's end (the Chat tab's Open in Chat, UX Phase 1, 1.3).
     <div className={clsx('mb-5 flex', sticky && 'max-sm:sticky max-sm:top-14 max-sm:z-10 max-sm:-mx-4 max-sm:bg-canvas max-sm:px-4')}>
       {stuckName && (
-        <span data-stuck-name className="flex max-w-[40%] shrink-0 items-center truncate border-b border-line pe-2 text-sm font-semibold text-fg sm:hidden">
-          {stuckName}
+        <span data-stuck-name className="flex max-w-[40%] shrink-0 items-center border-b border-line pe-2 text-sm font-semibold text-fg sm:hidden">
+          {/* The ellipsis needs a block inside the flex box (UX Phase 6). */}
+          <span className="min-w-0 truncate">{stuckName}</span>
         </span>
       )}
       <div className="relative flex min-w-0 flex-1">

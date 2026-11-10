@@ -35,7 +35,8 @@ export function SegmentedControl<T extends string>({
   label: string
   options: SegmentedOption<T>[]
   value: T
-  onChange: (value: T) => void
+  /** `keys` when an arrow key moved the choice: the address replaces its entry then, so Back isn't one step per key (UX Phase 6). */
+  onChange: (value: T, how?: { keys: true }) => void
   kind?: keyof typeof kinds
   disabled?: boolean
 }) {
@@ -46,7 +47,7 @@ export function SegmentedControl<T extends string>({
     if (!step) return
     event.preventDefault()
     const at = (index + step + options.length) % options.length
-    onChange(options[at]!.value)
+    onChange(options[at]!.value, { keys: true })
     event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role=radio]')[at]?.focus()
   }
   return (

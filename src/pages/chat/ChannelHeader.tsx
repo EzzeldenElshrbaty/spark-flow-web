@@ -66,7 +66,8 @@ export function ChannelHeader({ channel, title, members, rights, onDetails, onSt
             type="button"
             onClick={() => onDetails('about')}
             aria-label={title}
-            className="sf-focus sf-heading inline-flex h-8 max-w-[40cqw] items-center gap-1 rounded-sf-md px-2 whitespace-nowrap text-sf-text hover:bg-sf-surface-hover"
+            // Above the star's touch area beside it, so a tap on the name opens the name (UX Phase 6).
+            className="sf-focus sf-heading relative z-[1] inline-flex h-8 max-w-[40cqw] items-center gap-1 rounded-sf-md px-2 whitespace-nowrap text-sf-text hover:bg-sf-surface-hover"
           >
             {icon}
             <span className="truncate">{title}</span>

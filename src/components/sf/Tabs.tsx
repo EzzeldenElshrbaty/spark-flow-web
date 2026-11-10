@@ -10,7 +10,7 @@ export type TabItem<T extends string> = { id: T; label: string; icon?: TablerIco
  * The 40px tab row under a header (spec 6.1, 6.12). Arrow keys move to the next tab and open it (one tab stop for the
  * row); Home and End go to the ends. `panelId` is the tab panel the tabs control.
  */
-export function Tabs<T extends string>({ label, tabs, tab, onChange, panelId }: { label: string; tabs: TabItem<T>[]; tab: T; onChange: (tab: T) => void; panelId: string }) {
+export function Tabs<T extends string>({ label, tabs, tab, onChange, panelId }: { label: string; tabs: TabItem<T>[]; tab: T; onChange: (tab: T, how?: { keys: true }) => void; panelId: string }) {
   const refs = useRef<(HTMLButtonElement | null)[]>([])
   const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
     const rtl = getComputedStyle(event.currentTarget).direction === 'rtl'
@@ -19,7 +19,8 @@ export function Tabs<T extends string>({ label, tabs, tab, onChange, panelId }: 
     if (next === null) return
     event.preventDefault()
     refs.current[next]?.focus()
-    onChange(tabs[next].id)
+    // `keys`: an arrow, Home or End moved the choice, so the address replaces its entry (UX Phase 6).
+    onChange(tabs[next].id, { keys: true })
   }
   return (
     // The row's line is an inset shadow, inside its box: the selected tab's rule covers it without the row scrolling.

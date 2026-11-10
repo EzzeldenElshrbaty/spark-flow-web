@@ -76,7 +76,7 @@ export function DraftsView({
   // In the address (UX Phase 2, 2.7).
   const [tabParam, setTabParam] = useParam('tab')
   const tab: Tab = tabParam === 'scheduled' || tabParam === 'sent' ? tabParam : 'drafts'
-  const setTab = (next: Tab) => setTabParam(next === 'drafts' ? '' : next)
+  const setTab = (next: Tab, how?: { keys: true }) => setTabParam(next === 'drafts' ? '' : next, { replace: Boolean(how?.keys) })
   const [custom, setCustom] = useState<string | null>(null)
   const panelId = useId()
   const where = (channelId: string, rootId: string | null) => {

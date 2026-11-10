@@ -34,12 +34,15 @@ function ViewSwitch({ view }: { view: ProjectView }) {
     <SegmentedControl
       label="View"
       value={view}
-      onChange={(next) =>
-        setParams((prev) => {
-          const params = new URLSearchParams(prev)
-          params.set('view', next)
-          return params
-        })
+      onChange={(next, how) =>
+        setParams(
+          (prev) => {
+            const params = new URLSearchParams(prev)
+            params.set('view', next)
+            return params
+          },
+          { replace: Boolean(how?.keys) },
+        )
       }
       options={views.map(([value, label, icon]) => ({ value, label, icon, iconOnlyOnPhone: true }))}
     />

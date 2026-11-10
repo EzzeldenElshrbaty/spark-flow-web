@@ -69,7 +69,7 @@ export function SavedView({
   // In the address (UX Phase 2, 2.7).
   const [tabParam, setTabParam] = useParam('tab')
   const tab: SavedStatus = tabParam === 'archived' || tabParam === 'completed' ? tabParam : 'inProgress'
-  const setTab = (next: SavedStatus) => setTabParam(next === 'inProgress' ? '' : next)
+  const setTab = (next: SavedStatus, how?: { keys: true }) => setTabParam(next === 'inProgress' ? '' : next, { replace: Boolean(how?.keys) })
   const [custom, setCustom] = useState<string | null>(null)
   const panelId = useId()
   const shown = items?.filter((item) => item.status === tab)

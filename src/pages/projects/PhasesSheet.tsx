@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { DeleteDialog } from '@/components/ui/DeleteDialog'
 import { inputClass, selectClass } from '@/components/ui/Field'
 import { Sheet, useSheetClose } from '@/components/ui/Sheet'
+import { announce } from '@/components/sf/Announcer'
 import { byOrder, moveDown, moveUp } from './phases'
 import { IconButton } from '@/components/ui/IconButton'
 
@@ -80,7 +81,7 @@ function PhaseRow({
           <Button
             variant="secondary"
             disabled={Boolean(invalid) || update.isPending}
-            onClick={() => update.mutate({ id: phase.id, patch: { ...draft, name: draft.name.trim(), startDate: toIso(draft.startDate), dueDate: toIso(draft.dueDate) } })}
+            onClick={() => update.mutate({ id: phase.id, patch: { ...draft, name: draft.name.trim(), startDate: toIso(draft.startDate), dueDate: toIso(draft.dueDate) } }, { onSuccess: () => announce('Phase saved.') })}
           >
             {update.isPending ? 'Saving…' : 'Save phase'}
           </Button>
@@ -119,7 +120,13 @@ export function PhasesSheet({ project, phases, onClose }: { project: ProjectSumm
   const add = () => {
     if (!name.trim()) return
     const start = last ? last.dueDate : project.startDate
-    create.mutate({ projectId: project.id, name: name.trim(), startDate: start, dueDate: project.dueDate > start ? project.dueDate : start }, { onSuccess: () => setName('') })
+    create.mutate({ projectId: project.id, name: name.trim(), startDate: start, dueDate: project.dueDate > start ? project.dueDate : start }, {
+        onSuccess: () => {
+          setName('')
+          // Said once, as each sheet's save is (UX Phase 5A, D9; Manage phases joins in UX Phase 6).
+          announce('Phase added.')
+        },
+      })
   }
   const move = (id: string, by: -1 | 1) => reorder.mutate({ projectId: project.id, ids: by < 0 ? moveUp(ids, id) : moveDown(ids, id) })
   const failure = (reorder.error ?? create.error) as Error | null

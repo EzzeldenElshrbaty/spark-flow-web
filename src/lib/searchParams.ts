@@ -13,9 +13,10 @@ export function quietChange(values: Record<string, string | null | undefined>, {
 }
 
 /** The page's query, and a setter that sets or (empty or null) clears keys, pushing or replacing by `quietChange`. */
-export function useParamState(options: ParamOptions = {}): [URLSearchParams, (values: Record<string, string | null | undefined>) => void] {
+export function useParamState(options: ParamOptions = {}): [URLSearchParams, (values: Record<string, string | null | undefined>, how?: { replace?: boolean }) => void] {
   const [params, setParams] = useSearchParams()
-  const set = (values: Record<string, string | null | undefined>) => {
+  // `replace`: a choice moved by arrow keys replaces the entry too (UX Phase 6).
+  const set = (values: Record<string, string | null | undefined>, how: { replace?: boolean } = {}) => {
     // Choosing what is already chosen adds no step.
     if (Object.entries(values).every(([key, value]) => (params.get(key) ?? '') === (value ?? ''))) return
     setParams(
@@ -28,7 +29,7 @@ export function useParamState(options: ParamOptions = {}): [URLSearchParams, (va
         return next
       },
       // Typing updates the address at once (not in a transition), so the box's caret stays where the key went in.
-      { replace: quietChange(values, options), flushSync: Object.keys(values).every((key) => options.typed?.includes(key)) },
+      { replace: Boolean(how.replace) || quietChange(values, options), flushSync: Object.keys(values).every((key) => options.typed?.includes(key)) },
     )
   }
   return [params, set]
@@ -38,7 +39,7 @@ export function useParamState(options: ParamOptions = {}): [URLSearchParams, (va
  * One key of the address as a string ('' when it's absent), and its setter; `typed` for a search box (replaces the
  * entry), else each change is a step Back undoes. Setting '' clears the key.
  */
-export function useParam(key: string, { typed = false }: { typed?: boolean } = {}): [string, (value: string) => void] {
+export function useParam(key: string, { typed = false }: { typed?: boolean } = {}): [string, (value: string, how?: { replace?: boolean }) => void] {
   const [params, set] = useParamState(typed ? { typed: [key] } : {})
-  return [params.get(key) ?? '', (value) => set({ [key]: value })]
+  return [params.get(key) ?? '', (value, how) => set({ [key]: value }, how)]
 }

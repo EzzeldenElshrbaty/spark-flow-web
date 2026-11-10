@@ -189,7 +189,7 @@ export function TimeCostPage() {
   const report = useTimeReport(workspace?.id, days, access === 'allowed', projectId || undefined)
   const people = useUsers(workspace?.id).data ?? []
   const allProjects = [...(useProjectSummaries(workspace?.id).data ?? []), ...(useArchivedProjects(workspace?.id, true).data ?? [])]
-  const set = (key: string, value: string) =>
+  const set = (key: string, value: string, how?: { keys: true }) =>
     setParams(
       (prev) => {
         const next = new URLSearchParams(prev)
@@ -197,8 +197,8 @@ export function TimeCostPage() {
         else next.delete(key)
         return next
       },
-      // A choice is a step Back undoes (UX Phase 2, 2.7).
-      { replace: false },
+      // A choice is a step Back undoes (UX Phase 2, 2.7), unless arrow keys moved it (UX Phase 6).
+      { replace: Boolean(how?.keys) },
     )
   // The table on screen as a CSV file.
   const exportCsv = () => {
@@ -238,7 +238,7 @@ export function TimeCostPage() {
       {header}
       {/* One row (UX Phase 4, 4.7): period · project · Export CSV at the end. */}
       <div className="mb-5 flex flex-wrap items-center gap-3">
-        <SegmentedControl label="Period" value={String(days)} onChange={(value) => set('days', value)} options={periods.map(([value, label]) => ({ value: String(value), label }))} />
+        <SegmentedControl label="Period" value={String(days)} onChange={(value, how) => set('days', value, how)} options={periods.map(([value, label]) => ({ value: String(value), label }))} />
         <select className={clsx(selectInlineClass, 'w-56 max-sm:w-full')} aria-label="Project" value={projectId} onChange={(e) => set('project', e.target.value)}>
           <option value="">All projects</option>
           {allProjects.map((p) => (

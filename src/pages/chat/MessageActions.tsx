@@ -98,7 +98,8 @@ export function MessageMenu({
       toast({
         message: 'Message deleted',
         icon: IconTrash,
-        action: { label: 'Undo', onAction: () => restore.mutate(target, { onError: (e) => toast({ message: (e as Error).message }) }) },
+        // A failed Undo says why in this toast, beside the Undo pressed (UX Phase 6), not in a second one.
+        action: { label: 'Undo', pendingLabel: 'Undoing…', onAction: () => restore.mutateAsync(target) },
       })
     })
   }

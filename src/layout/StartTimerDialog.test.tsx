@@ -98,8 +98,13 @@ describe('StartTimerDialog (UX Phase 4, 4.3: find a task, start in two clicks)',
     fireEvent.click(screen.getByRole('button', { name: 'Log on the project only' }))
     const project = screen.getByRole('combobox', { name: 'Project' }) as HTMLSelectElement
     expect(within(project).getAllByRole('option').map((o) => o.textContent)).toEqual(['Choose…', 'Nexus Core'])
-    expect((screen.getByRole('button', { name: 'Start timer' }) as HTMLButtonElement).disabled).toBe(true)
+    // Start says why it can't start yet, under the picker (UX Phase 6), instead of sitting disabled.
+    fireEvent.click(screen.getByRole('button', { name: 'Start timer' }))
+    expect(start.mutate).not.toHaveBeenCalled()
+    expect(screen.getByText('Pick a project.')).toBeTruthy()
+    expect(project.getAttribute('aria-invalid')).toBe('true')
     fireEvent.change(project, { target: { value: 'p-nex' } })
+    expect(screen.queryByText('Pick a project.')).toBeNull()
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Start timer' })))
     expect(start.mutate).toHaveBeenCalledWith({ projectId: 'p-nex' }, expect.anything())
   })

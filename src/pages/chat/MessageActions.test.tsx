@@ -14,7 +14,7 @@ const restored = vi.fn()
 vi.mock('@/api/chat', async (original) => ({
   ...(await original<typeof import('@/api/chat')>()),
   useDeleteMessage: () => ({ mutateAsync: removed, isPending: false, error: null }),
-  useRestoreMessage: () => ({ mutate: restored }),
+  useRestoreMessage: () => ({ mutateAsync: restored }),
 }))
 
 afterEach(cleanup)
@@ -133,7 +133,7 @@ describe('delete (spec 6.3)', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(screen.getByRole('status').textContent).toContain('Message deleted')
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
-    expect(restored).toHaveBeenCalledWith({ kind: 'message', id: 'm1' }, expect.anything())
+    expect(restored).toHaveBeenCalledWith({ kind: 'message', id: 'm1' })
   })
 
   it('one with replies or files asks first; Cancel keeps it', async () => {

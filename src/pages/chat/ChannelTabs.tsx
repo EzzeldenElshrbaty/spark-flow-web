@@ -78,7 +78,8 @@ export function ChannelTabs({
               ))}
             </ul>
           )}
-          {onAddBookmark && <IconButton label="Add a bookmark" icon={IconPlus} size="sm" tone="muted" onClick={() => setAdding(true)} className="max-md:touch-target" />}
+          {/* A real 44px button on phones: a touch area past its edge would widen the strip it scrolls in (UX Phase 6). */}
+          {onAddBookmark && <IconButton label="Add a bookmark" icon={IconPlus} size="sm" tone="muted" onClick={() => setAdding(true)} className="max-md:size-11" />}
         </div>
       )}
       {adding && onAddBookmark && <AddBookmarkDialog onAdd={onAddBookmark} onClose={() => setAdding(false)} />}

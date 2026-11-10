@@ -128,7 +128,8 @@ export function ProjectsPage() {
       header: 'Due',
       width: 120,
       sort: 'date',
-      cell: (p) => <span className={clsx('tabular-nums', dueLate(p, now) ? 'text-red-600 dark:text-red-400' : 'text-fg-secondary')}>{dueText(p.dueDate, dueLate(p, now))}</span>,
+      // One line: "3 Oct 2026 · late" doesn't wrap in the 120px column (UX Phase 6).
+      cell: (p) => <span className={clsx('whitespace-nowrap tabular-nums', dueLate(p, now) ? 'text-red-600 dark:text-red-400' : 'text-fg-secondary')}>{dueText(p.dueDate, dueLate(p, now))}</span>,
     },
     {
       id: 'progress',

@@ -80,13 +80,17 @@ export function SearchPage() {
   const panelId = useId()
   const ws = workspace?.slug ?? ''
 
-  const set = (next: Record<string, string | null>) =>
-    setParams((p) => {
-      const out = new URLSearchParams(p)
-      for (const [k, v] of Object.entries(next)) if (v === null) out.delete(k)
-      else out.set(k, v)
-      return out
-    })
+  const set = (next: Record<string, string | null>, how?: { keys: true }) =>
+    setParams(
+      (p) => {
+        const out = new URLSearchParams(p)
+        for (const [k, v] of Object.entries(next)) if (v === null) out.delete(k)
+        else out.set(k, v)
+        return out
+      },
+      // Arrow keys across the tabs replace the entry (UX Phase 6).
+      { replace: Boolean(how?.keys) },
+    )
   const setFilter = (key: FilterKey, value: string | null) => set({ q: value === null ? withoutFilter(q, key) : withFilter(q, key, value) })
 
   const pages = search.data?.pages
@@ -124,7 +128,7 @@ export function SearchPage() {
           </Menu>
         </header>
         <PhoneQuery q={q} onSearch={(next) => set({ q: next.trim() ? next : null })} />
-        <Tabs label="Results" tabs={tabs} tab={tab} onChange={(t) => set({ tab: t === 'messages' ? null : t })} panelId={panelId} />
+        <Tabs label="Results" tabs={tabs} tab={tab} onChange={(t, how) => set({ tab: t === 'messages' ? null : t }, how)} panelId={panelId} />
         <div role="group" aria-label="Filters" className="flex flex-none flex-wrap items-center gap-2 px-4 pt-3 sm:px-6">
           <Chip
             name="From"

@@ -52,7 +52,7 @@ export function ActivityView({
   // In the address (UX Phase 2, 2.7): a reload, Back or a shared link keeps the tab and Unread only.
   const [tabParam, setTabParam] = useParam('tab')
   const tab: ActivityTab = ACTIVITY_TABS.some((t) => t.id === tabParam) ? (tabParam as ActivityTab) : 'all'
-  const setTab = (next: ActivityTab) => setTabParam(next === 'all' ? '' : next)
+  const setTab = (next: ActivityTab, how?: { keys: true }) => setTabParam(next === 'all' ? '' : next, { replace: Boolean(how?.keys) })
   const [unreadParam, setUnreadParam] = useParam('unread')
   const unreadOnly = unreadParam === '1'
   const setUnreadOnly = (on: boolean) => setUnreadParam(on ? '1' : '')

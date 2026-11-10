@@ -411,6 +411,12 @@ html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   overscroll-behavior-y: none;
+  /*
+   * Below lg the page itself scrolls under the sticky top bar (56px) and a sticky row (a filter row that wraps to two
+   * lines, or the project's tabs): what Tab reaches is scrolled clear of them (UX Phase 6; WCAG 2.4.11). From lg the
+   * page column scrolls instead (AppLayout's lg:scroll-pt-24).
+   */
+  scroll-padding-top: 12rem;
 }
 
 /*

@@ -81,7 +81,8 @@ export function AppLayout() {
             onSearchOpenChange={setSearchOpen}
           />
           {/* The scroller has no padding of its own, so sticky parts of a page (the channel composer) stick to its edge. */}
-          <div className={clsx('flex flex-1 flex-col', pane || fill ? 'min-h-0' : 'lg:min-h-0 lg:overflow-y-auto')}>
+          {/* The page column scrolls on laptops: what Tab reaches stops below its sticky filter row (UX Phase 6). */}
+          <div className={clsx('flex flex-1 flex-col', pane || fill ? 'min-h-0' : 'lg:min-h-0 lg:overflow-y-auto lg:scroll-pt-24')}>
             <main
               id="main"
               tabIndex={-1}

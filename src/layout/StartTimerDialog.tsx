@@ -26,6 +26,8 @@ export function StartTimerDialog({ open, onClose, title = 'Start timer' }: { ope
   const [projectOnly, setProjectOnly] = useState(false)
   const [projectId, setProjectId] = useState('')
   const [chosen, setChosen] = useState<TimerTarget | null>(null)
+  // Start pressed with nothing to start: it says what's missing under the picker (UX Phase 6, the form rule of Phase 4).
+  const [tried, setTried] = useState(false)
   const { workspace } = useCurrentWorkspace()
   const { projects, loaded } = useLogTargets('')
   const tasks = useTasksOf(projects.map((p) => p.id)).data
@@ -55,6 +57,12 @@ export function StartTimerDialog({ open, onClose, title = 'Start timer' }: { ope
   }
   const project = projects.find((p) => p.id === projectId)
   const ready: TimerTarget | null = projectOnly ? (project ? { kind: 'project', id: project.id, projectId: project.id, label: project.name, detail: 'The project only' } : null) : chosen
+  const startNow = () => (ready ? go(ready) : setTried(true))
+  const missing = tried && !ready
+  const switchTo = (only: boolean) => {
+    setProjectOnly(only)
+    setTried(false)
+  }
 
   return (
     <Modal
@@ -65,7 +73,7 @@ export function StartTimerDialog({ open, onClose, title = 'Start timer' }: { ope
         <>
           <Button onClick={onClose}>Cancel</Button>
           {!none && (projectOnly || firstStart) && (
-            <Button variant="primary" disabled={!ready || start.isPending} onClick={() => ready && go(ready)}>
+            <Button variant="primary" disabled={start.isPending} onClick={startNow}>
               {start.isPending ? 'Starting…' : 'Start timer'}
             </Button>
           )}
@@ -78,7 +86,7 @@ export function StartTimerDialog({ open, onClose, title = 'Start timer' }: { ope
         <form
           onSubmit={(event) => {
             event.preventDefault()
-            if (ready && !start.isPending) go(ready)
+            if (!start.isPending) startNow()
           }}
         >
           {projectOnly ? (
@@ -86,7 +94,14 @@ export function StartTimerDialog({ open, onClose, title = 'Start timer' }: { ope
               <label htmlFor={`${ids}-project`} className={label}>
                 Project
               </label>
-              <select id={`${ids}-project`} className={field} value={projectId} onChange={(event) => setProjectId(event.target.value)}>
+              <select
+                id={`${ids}-project`}
+                className={field}
+                value={projectId}
+                aria-invalid={missing || undefined}
+                aria-describedby={missing ? `${ids}-missing` : undefined}
+                onChange={(event) => setProjectId(event.target.value)}
+              >
                 <option value="">Choose…</option>
                 {projects.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -94,14 +109,20 @@ export function StartTimerDialog({ open, onClose, title = 'Start timer' }: { ope
                   </option>
                 ))}
               </select>
-              <button type="button" className={link} onClick={() => setProjectOnly(false)}>
+              {missing && (
+                <p id={`${ids}-missing`} className="sf-small mt-1 mb-0 text-sf-error">
+                  Pick a project.
+                </p>
+              )}
+              <button type="button" className={link} onClick={() => switchTo(false)}>
                 Find a task instead
               </button>
             </>
           ) : (
             <>
               <TaskPicker groups={groups} query={query} onQuery={setQuery} onPick={pick} chosen={chosen} busy={start.isPending} />
-              <button type="button" className={link} onClick={() => setProjectOnly(true)}>
+              {missing && <p className="sf-small mt-1 mb-0 text-sf-error">Pick a task.</p>}
+              <button type="button" className={link} onClick={() => switchTo(true)}>
                 Log on the project only
               </button>
             </>

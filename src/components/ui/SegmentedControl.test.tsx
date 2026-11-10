@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { List } from 'lucide-react'
 import { useState } from 'react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SegmentedControl } from './SegmentedControl'
 
 // UX Phase 3 (3.5): one segmented control, the kit's kinds B (switch) and D (inside forms).
@@ -48,6 +48,15 @@ describe('SegmentedControl', () => {
     expect(document.activeElement).toBe(screen.getByRole('radio', { name: 'Board' }))
     fireEvent.keyDown(screen.getByRole('radio', { name: 'Board' }), { key: 'ArrowLeft' })
     expect(screen.getByRole('radio', { name: 'Table' }).getAttribute('aria-checked')).toBe('true')
+  })
+
+  it('says whether an arrow key or a click chose, so the address can replace or add a step (UX Phase 6)', () => {
+    const onChange = vi.fn()
+    render(<SegmentedControl label="View" value="board" onChange={onChange} options={[{ value: 'board', label: 'Board' }, { value: 'list', label: 'List' }]} />)
+    fireEvent.keyDown(screen.getByRole('radio', { name: 'Board' }), { key: 'ArrowRight' })
+    expect(onChange).toHaveBeenLastCalledWith('list', { keys: true })
+    fireEvent.click(screen.getByRole('radio', { name: 'List' }))
+    expect(onChange).toHaveBeenLastCalledWith('list')
   })
 
   it('inside a form it is the bordered kind with a muted choice', () => {
