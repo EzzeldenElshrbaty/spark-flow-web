@@ -166,7 +166,7 @@ export function parseBody(content: string): Body {
   return parseBlocks(content.trim())
 }
 
-function inlineText(nodes: Inline[]): string {
+export function inlineText(nodes: Inline[]): string {
   return nodes
     .map((n) =>
       n.type === 'text' || n.type === 'link' ? n.text : n.type === 'user' ? `@${n.name}` : n.type === 'all' ? '@channel' : n.type === 'here' ? '@here' : n.type === 'channel' ? `#${n.name}` : n.type === 'task' ? n.key : `@${n.key}`,
@@ -198,11 +198,11 @@ const ID = /^[\w-]{1,100}$/
 const MAX_BLOCKS = 2000
 const MAX_TEXT = 40_000
 /** Blocks, list items and inlines together: empty ones cost no text, but every viewer draws each one. */
-const MAX_NODES = 10_000
+export const MAX_NODES = 10_000
 
 /** What a body may still hold while it's checked; spending past it refuses the body. */
-type Budget = { left: number }
-const spend = (budget: Budget, n: number) => (budget.left -= n) >= 0
+export type Budget = { left: number }
+export const spend = (budget: Budget, n: number) => (budget.left -= n) >= 0
 
 const isText = (v: unknown, max = MAX_TEXT): v is string => typeof v === 'string' && v.length <= max
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -222,12 +222,13 @@ function validMarks(marks: unknown): Mark[] | null {
   return [...new Set(marks as Mark[])]
 }
 
-function validInline(n: unknown): Inline | null {
+/** One inline, checked; `maxText` is how long its text may be (a channel's page allows more than a message). */
+export function validInline(n: unknown, maxText = MAX_TEXT): Inline | null {
   if (!isRecord(n)) return null
   switch (n.type) {
     case 'text': {
       const marks = validMarks(n.marks)
-      if (!isText(n.text) || !marks) return null
+      if (!isText(n.text, maxText) || !marks) return null
       return marks.length ? { type: 'text', text: n.text, marks } : { type: 'text', text: n.text }
     }
     case 'link': {
@@ -252,31 +253,31 @@ function validInline(n: unknown): Inline | null {
   }
 }
 
-function validInlines(list: unknown, budget: Budget): Inline[] | null {
+export function validInlines(list: unknown, budget: Budget, maxText = MAX_TEXT): Inline[] | null {
   if (!Array.isArray(list) || !spend(budget, list.length)) return null
-  const out = list.map(validInline)
+  const out = list.map((n) => validInline(n, maxText))
   return out.every(Boolean) ? (out as Inline[]) : null
 }
 
-function validBlock(b: unknown, inQuote: boolean, budget: Budget): Block | null {
+export function validBlock(b: unknown, inQuote: boolean, budget: Budget, maxText = MAX_TEXT): Block | null {
   if (!isRecord(b)) return null
   switch (b.type) {
     case 'p': {
-      const children = validInlines(b.children, budget)
+      const children = validInlines(b.children, budget, maxText)
       return children && { type: 'p', children }
     }
     case 'code':
-      return isText(b.text) ? { type: 'code', text: b.text } : null
+      return isText(b.text, maxText) ? { type: 'code', text: b.text } : null
     case 'ul':
     case 'ol': {
       if (!Array.isArray(b.items) || !spend(budget, b.items.length)) return null
-      const items = b.items.map((item) => validInlines(item, budget))
+      const items = b.items.map((item) => validInlines(item, budget, maxText))
       return items.every(Boolean) ? { type: b.type, items: items as Inline[][] } : null
     }
     case 'quote': {
       // Quotes don't nest (the composer can't make one inside another).
       if (inQuote || !Array.isArray(b.children) || !spend(budget, b.children.length)) return null
-      const children = b.children.map((c) => validBlock(c, true, budget))
+      const children = b.children.map((c) => validBlock(c, true, budget, maxText))
       return children.every(Boolean) ? { type: 'quote', children: children as Block[] } : null
     }
     default:
