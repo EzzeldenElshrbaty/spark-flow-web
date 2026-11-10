@@ -1,8 +1,12 @@
+import { useDocumentTitle } from '@/lib/useDocumentTitle'
+
 /**
  * Shown while a page, or what a page needs to decide where to go, is loading: shaped like a page (UX Phase 4, 4.5) —
  * a title, four tiles and a few rows — so the screen doesn't jump from one grey block to something else.
  */
 export function PageSkeleton() {
+  // The tab doesn't keep the last page's name while this one loads (UX Phase 6).
+  useDocumentTitle([])
   return (
     <div aria-hidden="true" className="animate-pulse">
       <div className="h-7 w-48 rounded-lg bg-surface-strong" />

@@ -48,6 +48,9 @@ const directory: ComposerDirectory = {
   memberIds: ['u-1', 'u-2'],
 }
 
+/** The composer's status line that answers a shortcut (the length line is always there too, UX Phase 6). */
+const said = () => screen.getAllByRole('status').find((s) => !s.hasAttribute('data-length-status'))!
+
 function mount(props: Partial<Parameters<typeof RichComposer>[0]> = {}) {
   const onSend = vi.fn(async (_body: Body) => {})
   const onDraft = vi.fn()
@@ -637,7 +640,7 @@ describe('RichComposer / shortcuts (spec 6.8)', () => {
     expect(run.mock.calls[0]![0]).toEqual({ name: 'mute', args: '', text: '', userIds: [] })
     expect(onSend).not.toHaveBeenCalled()
     await vi.waitFor(() => expect(editor.textContent).toBe(''))
-    expect(screen.getByRole('status').textContent).toBe('#backend is muted. Type /mute to unmute it.')
+    expect(said().textContent).toBe('#backend is muted. Type /mute to unmute it.')
   })
 
   it('a shortcut not offered here is not in the list', async () => {
@@ -660,7 +663,7 @@ describe('RichComposer / shortcuts (spec 6.8)', () => {
   it('an unknown /word keeps the text and says why', async () => {
     const { editor, onSend, run } = await withSlash()
     await userEvent.keyboard('/foo bar{Enter}')
-    await vi.waitFor(() => expect(screen.getByRole('status').textContent).toBe('/foo isn’t a shortcut. To send it as a message, start it with a space.'))
+    await vi.waitFor(() => expect(said().textContent).toBe('/foo isn’t a shortcut. To send it as a message, start it with a space.'))
     expect(editor.textContent).toBe('/foo bar')
     expect(run).not.toHaveBeenCalled()
     expect(onSend).not.toHaveBeenCalled()
@@ -669,7 +672,7 @@ describe('RichComposer / shortcuts (spec 6.8)', () => {
   it('one offered elsewhere keeps the text and says it doesn’t work here', async () => {
     const { editor, onSend, run } = await withSlash()
     await userEvent.keyboard('/task Fix it{Enter}')
-    await vi.waitFor(() => expect(screen.getByRole('status').textContent).toBe('/task doesn’t work here. To send it as a message, start it with a space.'))
+    await vi.waitFor(() => expect(said().textContent).toBe('/task doesn’t work here. To send it as a message, start it with a space.'))
     expect(editor.textContent).toBe('/task Fix it')
     expect(run).not.toHaveBeenCalled()
     expect(onSend).not.toHaveBeenCalled()
@@ -678,7 +681,7 @@ describe('RichComposer / shortcuts (spec 6.8)', () => {
   it('one offered elsewhere says why instead, when the place gives a reason', async () => {
     const { editor, onSend, run } = await withSlash(undefined, { task: '/task works in a project’s channel.' })
     await userEvent.keyboard('/task Fix it{Enter}')
-    await vi.waitFor(() => expect(screen.getByRole('status').textContent).toBe('/task works in a project’s channel. To send it as a message, start it with a space.'))
+    await vi.waitFor(() => expect(said().textContent).toBe('/task works in a project’s channel. To send it as a message, start it with a space.'))
     expect(editor.textContent).toBe('/task Fix it')
     expect(run).not.toHaveBeenCalled()
     expect(onSend).not.toHaveBeenCalled()
@@ -947,3 +950,12 @@ describe('the formatting row on phones (UX Phase 5B, 5.2)', () => {
   })
 })
 
+
+describe('the length notice (UX Phase 6, deferred minor #24)', () => {
+  it('its status line is there, empty, before any text, so its first step is read', () => {
+    mount()
+    const status = document.querySelector('[data-length-status]')
+    expect(status?.getAttribute('role')).toBe('status')
+    expect(status?.textContent).toBe('')
+  })
+})

@@ -8,7 +8,8 @@ const WAIT_MS = 5000
 /** Focus is in the page itself (a tab, a field, a composer that focused itself), not left behind elsewhere. */
 function focusInPage(main: HTMLElement | null): boolean {
   const active = document.activeElement
-  return Boolean(main && active && active !== document.body && active.isConnected && main.contains(active))
+  // <main> itself (where Skip to content leaves focus) is the page's frame, not a place in it (UX Phase 6).
+  return Boolean(main && active && active !== document.body && active !== main && active.isConnected && main.contains(active))
 }
 
 /** A field someone is typing in (the top bar's search): never taken from them. */

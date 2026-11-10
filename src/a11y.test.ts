@@ -34,11 +34,19 @@ describe('the shell starts with Skip to content (5.7)', () => {
   })
 })
 
+/** A span or div with an aria-label and no role; an arrow (`=>`) inside the tag isn't its end (UX Phase 6). */
+const unreadLabels = (source: string) =>
+  [...source.matchAll(/<(span|div)\b(?:=>|[^>])*?\saria-label=(?:=>|[^>])*>/g)].filter((m) => !/\srole=/.test(m[0])).map((m) => m[0])
+
 describe('labels only where they’re read (5.12)', () => {
   it('no aria-label on a span or div without a role: screen readers ignore it there', () => {
-    const tag = /<(span|div)\b[^>]*?\saria-label=[^>]*>/g
-    const found = files.flatMap(({ file, source }) => [...source.matchAll(tag)].filter((m) => !/\srole=/.test(m[0])).map((m) => `${file}: ${m[0].slice(0, 60)}`))
+    const found = files.flatMap(({ file, source }) => unreadLabels(source).map((tag) => `${file}: ${tag.slice(0, 60)}`))
     expect(found).toEqual([])
+  })
+
+  it('the scan sees past an arrow function before the label (UX Phase 6)', () => {
+    expect(unreadLabels('<span onClick={() => x} aria-label="y">')).toHaveLength(1)
+    expect(unreadLabels('<span role="img" onClick={() => x} aria-label="y">')).toHaveLength(0)
   })
 })
 

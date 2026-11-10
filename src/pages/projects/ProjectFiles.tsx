@@ -107,7 +107,7 @@ export function ProjectFiles({ projectId, people, canUpload, canManage }: { proj
         )}
         {/* What finished or failed, read once (UX Phase 5A, 5.12). */}
         <p role="status" className="sr-only">
-          {queue.notice}
+          <span key={queue.noticeId}>{queue.notice}</span>
         </p>
         {openError && <p className="text-sm text-red-600 dark:text-red-400">{openError}</p>}
 

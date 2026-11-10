@@ -111,8 +111,9 @@ export function ProjectPage() {
   const restore = useRestoreProject()
   // Phones: once the header has scrolled under the top bar (56px), the sticky tab row names the project (UX Phase 5B).
   const [headerRef, scrolledPast] = useScrolledPast(56)
-  // "Nexus Core · Tasks · Spark Flow" (UX Phase 5A, 5.7).
-  useDocumentTitle([project?.name, tabLabels[tab]])
+  // "Nexus Core · Tasks · Spark Flow" (UX Phase 5A, 5.7); while it loads just "Spark Flow", not a tab with no project,
+  // and Not found names itself (UX Phase 6).
+  useDocumentTitle(project ? [project.name, tabLabels[tab]] : [])
 
   if (summary.isError) {
     return (

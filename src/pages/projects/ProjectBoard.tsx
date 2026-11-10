@@ -26,6 +26,9 @@ import { TicketRow } from '@/pages/projects/TicketRow'
 import { tintOf } from '@/pages/projects/ticketPills'
 import { IconButton } from '@/components/ui/IconButton'
 
+/** The id of the board's column-moving instructions, read with each column's move button (UX Phase 6). */
+const COLUMN_MOVE_HELP = 'board-column-move-help'
+
 const nameOf = (users: User[], id: string | null) => (id ? (users.find((u) => u.id === id)?.name ?? 'Unknown person') : null)
 const COLUMN = 'column:'
 const HEADER = 'header:'
@@ -262,6 +265,8 @@ function BoardColumn({
               type="button"
               ref={sortable.setActivatorNodeRef}
               {...sortable.attributes}
+              // Its own instructions, not the tasks' that the board's drag context gives every sortable (UX Phase 6).
+              aria-describedby={COLUMN_MOVE_HELP}
               aria-roledescription="movable column"
               onDoubleClick={startRename}
               className="min-w-0 truncate rounded text-start outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:focus-visible:ring-brand-400"
@@ -479,6 +484,9 @@ export function ProjectBoard({
           {error || boardError}
         </p>
       )}
+      <p id={COLUMN_MOVE_HELP} hidden>
+        To move a column, press Space, use the arrow keys, and press Space again. Press Escape to cancel.
+      </p>
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}

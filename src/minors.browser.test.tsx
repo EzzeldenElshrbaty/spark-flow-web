@@ -79,3 +79,26 @@ describe('Back undoes a phase pick (#17)', () => {
     expect(second).toBeTruthy()
   })
 })
+
+describe('tab titles (#30)', () => {
+  it('a project that isn’t there says Not found, not its parent’s tab', async () => {
+    const app = await renderApp({ path: '/w/engineering/p/NOPE/overview', as: 'admin', theme: 'light', size: 'desktop' })
+    await app.settled()
+    await waitFor(() => expect(document.title).toBe('Not found · Spark Flow'))
+  })
+
+  it('a help chapter names itself', async () => {
+    const app = await renderApp({ path: '/w/engineering/help/tasks', as: 'admin', theme: 'light', size: 'desktop' })
+    await app.settled()
+    await waitFor(() => expect(document.title).toBe('Board and tasks · Help centre · Spark Flow'))
+  })
+
+  it('a page still loading doesn’t keep the last page’s name', async () => {
+    vi.spyOn(api.projects, 'get').mockImplementation(() => new Promise(() => {}))
+    const app = await renderApp({ path: '/w/engineering/projects', as: 'admin', theme: 'light', size: 'desktop' })
+    await app.settled()
+    expect(document.title).toBe('Projects · Spark Flow')
+    await app.router.navigate('/w/engineering/p/NEX/overview')
+    await waitFor(() => expect(document.title).toBe('Spark Flow'))
+  })
+})

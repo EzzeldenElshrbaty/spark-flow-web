@@ -24,6 +24,7 @@ export function TaskAttachments({
   onDismiss,
   canRetry,
   notice = '',
+  noticeId = 0,
 }: {
   files: Attachment[]
   rows: UploadRow[]
@@ -36,6 +37,8 @@ export function TaskAttachments({
   canRetry: (id: string) => boolean
   /** The latest upload that finished or failed, read once (`useUploadQueue`'s notice). */
   notice?: string
+  /** A new number for each notice, so the same words twice are read twice (UX Phase 6). */
+  noticeId?: number
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
@@ -46,7 +49,7 @@ export function TaskAttachments({
       <h3 className="mb-1.5 block text-sm font-medium text-fg-secondary">Attachments</h3>
       {/* Inside the sheet, which is modal: a live region outside it may not be read (UX Phase 5A, 5.12). */}
       <p role="status" className="sr-only">
-        {notice}
+        <span key={noticeId}>{notice}</span>
       </p>
       {empty && readOnly && <p className="text-sm text-fg-muted">—</p>}
       {!empty && (

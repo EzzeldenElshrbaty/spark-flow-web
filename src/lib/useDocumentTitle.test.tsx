@@ -2,6 +2,7 @@
 import { cleanup, render } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { PageHeader } from '@/components/ui/PageHeader'
+import { PageSkeleton } from '@/layout/PageSkeleton'
 import { useDocumentTitle } from './useDocumentTitle'
 
 afterEach(cleanup)
@@ -24,4 +25,11 @@ describe('useDocumentTitle (UX Phase 5A, 5.7)', () => {
     render(<PageHeader title="Projects" />)
     expect(document.title).toBe('Projects · Spark Flow')
   })
+
+  it('a page still loading reads Spark Flow, not the last page’s name (UX Phase 6)', () => {
+    document.title = 'Projects · Spark Flow'
+    render(<PageSkeleton />)
+    expect(document.title).toBe('Spark Flow')
+  })
 })
+

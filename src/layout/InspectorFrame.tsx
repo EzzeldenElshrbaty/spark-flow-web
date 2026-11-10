@@ -63,17 +63,23 @@ export function InspectorFrame({
   const opened = useContext(PanelOpened)
   // Decided once, as the frame mounts (the Inspector remounts it for each record).
   const [focusAtStart] = useState(focusTitle || opened)
+  // Once: the title takes focus when it has loaded, never while it's still the pulse placeholder, which says nothing
+  // to a screen reader (UX Phase 6).
+  const focusedOnce = useRef(false)
   useEffect(() => {
-    if (!focusAtStart) return
+    if (!focusAtStart || focusedOnce.current) return
     // After every effect of this render, so the Inspector first notes what opened the panel (to give focus back).
     let cancelled = false
     queueMicrotask(() => {
-      if (!cancelled && !rootRef.current?.contains(document.activeElement)) titleRef.current?.focus({ preventScroll: true })
+      const heading = titleRef.current
+      if (cancelled || focusedOnce.current || !heading?.textContent?.trim()) return
+      focusedOnce.current = true
+      if (!rootRef.current?.contains(document.activeElement)) heading.focus({ preventScroll: true })
     })
     return () => {
       cancelled = true
     }
-  }, [focusAtStart])
+  }, [focusAtStart, title])
   const sheet = useMedia(OVERLAY_QUERY)
   // The phone's sheet is a dialog; elsewhere the panel sits beside the page. One element either way, so a resize
   // keeps what's typed in it.

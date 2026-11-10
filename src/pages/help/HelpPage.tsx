@@ -30,7 +30,6 @@ function snippet(text: string, term: string) {
  * sidebar, one at a time, with group chips, a search across them, "On this page" and Previous / Next.
  */
 export function HelpPage() {
-  useDocumentTitle(['Help centre'])
   const { ws = '', chapter: chapterId } = useParams()
   const { hash } = useLocation()
   const navigate = useNavigate()
@@ -46,6 +45,8 @@ export function HelpPage() {
   const shown = group ? list.filter((c) => c.group === group) : list
   const chapter: HelpChapter | undefined = chapterId ? list.find((c) => c.id === chapterId) : list[0]
   const index = chapter ? list.indexOf(chapter) : -1
+  // A chapter names its tab: "Board and tasks · Help centre · Spark Flow" (UX Phase 6).
+  useDocumentTitle([chapterId ? chapter?.title : undefined, 'Help centre'])
   const query = term.trim()
   const results = query.length < 2 ? [] : list.filter((c) => fold(c.text).includes(fold(query)))
   const sections = chapter?.blocks.flatMap((b) => (b.type === 'h2' ? [b] : [])) ?? []

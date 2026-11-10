@@ -89,11 +89,11 @@ export function RecordHeader({
                         </button>
                       ) : (
                         content
-            )}
-                  </li>
-                )
-              })}
-            </ul>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
             )}
           </div>
         </div>

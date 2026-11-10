@@ -24,7 +24,10 @@ export function useUploadQueue<T>(
 ) {
   const [rows, setRows] = useState<UploadRow[]>([])
   // The latest finish or failure, for a screen reader: read once, never the percent (UX Phase 5A, 5.12).
-  const [notice, setNotice] = useState('')
+  // Each notice is new, even with the same words (a second "notes.pdf uploaded."), so screen readers read it: the
+  // status line is keyed by `noticeId` (UX Phase 6).
+  const [{ notice, noticeId }, setNoticeState] = useState({ notice: '', noticeId: 0 })
+  const setNotice = (text: string) => setNoticeState((last) => ({ notice: text, noticeId: last.noticeId + 1 }))
   // A row's file, its Cancel and tag, kept for Try again; the ids waiting their turn; whether one is on its way.
   const jobs = useRef(new Map<string, { file: File; controller: AbortController; tag?: string }>())
   const queue = useRef<string[]>([])
@@ -103,5 +106,5 @@ export function useUploadQueue<T>(
     void pump()
   }
   const busy = pending > 0
-  return { rows, busy, notice, add, cancel, retry, dismiss, canRetry: (id: string) => jobs.current.has(id) }
+  return { rows, busy, notice, noticeId, add, cancel, retry, dismiss, canRetry: (id: string) => jobs.current.has(id) }
 }

@@ -138,5 +138,20 @@ describe('useUploadQueue tells a screen reader what finished (UX Phase 5A, 5.12)
     await act(async () => calls[1]!.reject(new Error('The server refused it.')))
     expect(result.current.notice).toBe('b.pdf: The server refused it.')
   })
+
+  it('the same file name uploaded twice gives a new notice each time, so the second is read (UX Phase 6, #26)', async () => {
+    const { calls, upload } = fakeUpload()
+    const { result } = renderHook(() => useUploadQueue(upload, () => {}))
+    act(() => result.current.add([f('notes.pdf')], 'editor'))
+    await waitFor(() => expect(calls).toHaveLength(1))
+    await act(async () => calls[0]!.resolve('A'))
+    await waitFor(() => expect(result.current.notice).toBe('notes.pdf uploaded.'))
+    const first = result.current.noticeId
+    act(() => result.current.add([f('notes.pdf')], 'editor'))
+    await waitFor(() => expect(calls).toHaveLength(2))
+    await act(async () => calls[1]!.resolve('B'))
+    await waitFor(() => expect(result.current.noticeId).not.toBe(first))
+    expect(result.current.notice).toBe('notes.pdf uploaded.')
+  })
 })
 

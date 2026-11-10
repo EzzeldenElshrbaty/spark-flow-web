@@ -2,7 +2,7 @@ import '@/index.css'
 import { act, cleanup, render, screen } from '@testing-library/react'
 import { StrictMode, useEffect, useState } from 'react'
 import { createMemoryRouter, Link, Outlet, RouterProvider, useLocation, useNavigate, useSearchParams } from 'react-router'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { RouteFocus } from './RouteFocus'
 
@@ -101,6 +101,13 @@ describe('focus after a page change (UX Phase 5A, 5.7)', () => {
     mount('/projects', true)
     await new Promise((r) => setTimeout(r, 50))
     expect(document.activeElement).toBe(document.body)
+  })
+
+  it('after Skip to content (focus on <main> itself), G then P still puts focus on the new heading (UX Phase 6, #29)', async () => {
+    const router = mount('/home')
+    document.getElementById('main')!.focus()
+    await act(() => router.navigate('/projects'))
+    await vi.waitFor(() => expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Projects' })))
   })
 
   it('a sidebar link puts focus on the new page’s heading', async () => {

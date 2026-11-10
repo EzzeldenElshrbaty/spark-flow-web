@@ -74,4 +74,13 @@ describe('the board from the keyboard (UX Phase 5A)', () => {
     expect(move.contains(within(column).getByRole('button', { name: /Column actions|More/ }))).toBe(false)
     expect(await axeProblems(document, { skip: ['region'] })).toEqual([])
   })
+
+  it('a column’s move button says how to move a column, not a task (UX Phase 6, deferred minor #27)', () => {
+    mount()
+    const column = screen.getAllByRole('button').find((b) => b.getAttribute('aria-roledescription') === 'movable column')!
+    const said = (column.getAttribute('aria-describedby') ?? '').split(' ').map((id) => document.getElementById(id)?.textContent ?? '').join(' ')
+    expect(said).not.toContain('To move a task')
+    expect(said).toContain('To move a column')
+  })
 })
+

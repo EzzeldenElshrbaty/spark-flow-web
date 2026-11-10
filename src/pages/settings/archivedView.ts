@@ -24,7 +24,6 @@ export function deletableText(r: ArchivedRecord, now: Date): { text: string; now
   return { text: `From ${formatDate(r.deletableFrom)}`, now: false }
 }
 
-/** What deleting a record takes with it, as a sentence: "its 12 tasks, 3 files and 5 phases", or null. */
 /** What goes with a record deleted for good, one part each: "12 tasks", "1 file"; nothing for none. */
 export function goesWithParts(r: ArchivedRecord): string[] {
   return (
@@ -40,6 +39,10 @@ export function goesWithParts(r: ArchivedRecord): string[] {
     .map(([n, word]) => `${n} ${word}${n === 1 ? '' : 's'}`)
 }
 
+/**
+ * What deleting a record takes with it, as a sentence: "its 12 tasks, 3 files and 5 phases", or null. The page lists
+ * the parts (`goesWithParts`); this sentence form is kept for a confirm that says it in words.
+ */
 export function goesWith(r: ArchivedRecord): string | null {
   const parts = goesWithParts(r)
   if (parts.length === 0) return null

@@ -270,6 +270,7 @@ export function TaskSheet({
             onDismiss={queue.dismiss}
             canRetry={queue.canRetry}
             notice={queue.notice}
+            noticeId={queue.noticeId}
           />
           {queue.busy && <p className="mt-1 text-xs text-fg-muted">Wait for the files to finish uploading.</p>}
         </div>

@@ -91,13 +91,13 @@ function PhaseRow({
   )
 }
 
-/** Manage phases: rename, change dates and status, move up or down, add, delete. Each change saves on its own. */
 /** Done closes the sheet, asking first while an edit isn't saved. */
 function DoneButton() {
   const close = useSheetClose()
   return <Button onClick={close}>Done</Button>
 }
 
+/** Manage phases: rename, change dates and status, move up or down, add, delete. Each change saves on its own. */
 export function PhasesSheet({ project, phases, onClose }: { project: ProjectSummary; phases: Phase[]; onClose: () => void }) {
   const ordered = byOrder(phases)
   const ids = ordered.map((p) => p.id)
