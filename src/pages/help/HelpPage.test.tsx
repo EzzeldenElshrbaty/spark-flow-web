@@ -121,6 +121,18 @@ describe('who reads what', () => {
 })
 
 describe('the help panel beside a page', () => {
+  it('opened by a person, it puts focus on its heading; open as the page loads, it leaves focus (UX Phase 5A, 5.5)', async () => {
+    mount('/w/engineering/threads')
+    act(() => useUiStore.setState({ helpOpen: true }))
+    const panel = await screen.findByRole('complementary', { name: 'Help for this page' })
+    await vi.waitFor(() => expect(document.activeElement).toBe(within(panel).getByRole('heading', { level: 2 })))
+    cleanup()
+    ;(document.activeElement as HTMLElement | null)?.blur()
+    mount('/w/engineering/threads')
+    await screen.findByRole('complementary', { name: 'Help for this page' })
+    expect(document.activeElement).toBe(document.body)
+  })
+
   it('shows the page’s sections only, follows a link inside with a way back, and leads to the help centre', async () => {
     useUiStore.setState({ helpOpen: true })
     mount('/w/engineering/threads')

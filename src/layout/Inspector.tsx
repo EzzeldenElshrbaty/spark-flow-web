@@ -1,17 +1,22 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation, useSearchParams } from 'react-router'
-import { hasOpenLayer } from '@/components/sf/layers'
+import { hasOpenLayer, useRestoreFocus } from '@/components/sf/layers'
+import { focusPageHeading } from '@/lib/pageFocus'
 import { parseInspector, withInspector } from '@/lib/inspector'
 import { watchDialogAtKeyDown } from '@/lib/keyStart'
 import { FileInspector } from '@/pages/chat/files/FileInspector'
 import { ThreadInspector } from '@/pages/chat/ThreadInspector'
 import { TicketInspector } from '@/pages/projects/TicketInspector'
+import { PanelOpened } from './InspectorFrame'
+
+/** What counts as a dialog above the panel: not the panel itself, which is one on a phone (UX Phase 5A, 5.5). */
+export const DIALOGS_ABOVE_PANEL = '[aria-modal="true"]:not([data-inspector])'
 
 /** Typing in a field (a message, search) owns Escape; so does an open dialog or menu (it's above the panel). */
 function escapeBelongsElsewhere(dialogAtKeyDown: boolean): boolean {
   const active = document.activeElement
   const typing = active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement || active instanceof HTMLSelectElement || (active instanceof HTMLElement && active.isContentEditable)
-  return typing || dialogAtKeyDown || hasOpenLayer() || Boolean(document.querySelector('[aria-modal="true"], [role="menu"]'))
+  return typing || dialogAtKeyDown || hasOpenLayer() || Boolean(document.querySelector(`${DIALOGS_ABOVE_PANEL}, [role="menu"]`))
 }
 
 /**
@@ -35,7 +40,7 @@ export function useInspectorEscape(open: boolean, close: () => void) {
     // On the document, so it runs before the channel's keys (on window) and its Esc isn't also a mark read. A layer
     // opened after the panel has its own listener after this one: while one is open, the panel leaves Esc to it
     // (spec 10: the top-most layer first). A dialog that closes on the key is seen as it was when the key went down.
-    const dialog = watchDialogAtKeyDown()
+    const dialog = watchDialogAtKeyDown(DIALOGS_ABOVE_PANEL)
     const onKeyDown = (event: KeyboardEvent) => onInspectorEscape(event, () => latest.current(), dialog.open())
     document.addEventListener('keydown', onKeyDown)
     return () => {
@@ -43,6 +48,17 @@ export function useInspectorEscape(open: boolean, close: () => void) {
       document.removeEventListener('keydown', onKeyDown)
     }
   }, [open])
+}
+
+/**
+ * The panel's focus (UX Phase 5A, 5.5): closing it gives focus back to what opened it (the page's heading when that's
+ * gone), and one opened after the page loaded takes focus. Returns that, for `PanelOpened`.
+ */
+export function useInspectorFocus(open: boolean): boolean {
+  useRestoreFocus(open, focusPageHeading)
+  const [loaded, setLoaded] = useState(false)
+  useEffect(() => setLoaded(true), [])
+  return loaded
 }
 
 /** The right-side panel for a thread, a ticket or a file. Opened and closed only through the URL (`?thread=`, `?ticket=`, `?file=`). */
@@ -57,12 +73,18 @@ export function Inspector() {
   const onClose = () => setParams(withInspector(params, null))
 
   useInspectorEscape(open, () => setParams((current) => withInspector(current, null)))
+  const opened = useInspectorFocus(open)
 
   if (!target) return null
-  if (target.kind === 'file') return <FileInspector key={target.fileId} fileId={target.fileId} onClose={onClose} closeTo={closeTo} />
-  return target.kind === 'thread' ? (
-    <ThreadInspector key={target.messageId} messageId={target.messageId} onClose={onClose} closeTo={closeTo} />
-  ) : (
-    <TicketInspector key={target.key} ticketKey={target.key} onClose={onClose} closeTo={closeTo} />
+  return (
+    <PanelOpened.Provider value={opened}>
+      {target.kind === 'file' ? (
+        <FileInspector key={target.fileId} fileId={target.fileId} onClose={onClose} closeTo={closeTo} />
+      ) : target.kind === 'thread' ? (
+        <ThreadInspector key={target.messageId} messageId={target.messageId} onClose={onClose} closeTo={closeTo} />
+      ) : (
+        <TicketInspector key={target.key} ticketKey={target.key} onClose={onClose} closeTo={closeTo} />
+      )}
+    </PanelOpened.Provider>
   )
 }

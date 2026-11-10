@@ -1,7 +1,9 @@
 import { IconX } from '@tabler/icons-react'
 import { X } from 'lucide-react'
-import { useEffect, useRef, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { IconButton } from '@/components/sf/Button'
+import { trapTab } from '@/components/sf/layers'
+import { useMedia } from '@/components/sf/usePhone'
 
 export type InspectorBodyProps = {
   /** Removes the inspector's param and keeps the rest of the URL. */
@@ -9,6 +11,15 @@ export type InspectorBodyProps = {
   /** The same place as a link (for NotFound's way back). */
   closeTo: string
 }
+
+/**
+ * Whether the panel was opened (or moved to another record) after the page loaded: then it takes focus, so the
+ * keyboard carries on in it (UX Phase 5A, 5.5). The Inspector provides it from `useInspectorFocus`.
+ */
+export const PanelOpened = createContext(false)
+
+/** The panel is a bottom sheet below `sm`: there it is a modal dialog (UX Phase 5A, 5.5). */
+const SHEET_QUERY = '(max-width: 639px)'
 
 /** Where the inspector sits: beside the content on wide screens (xl), sliding over from the end side on tablets and laptops (no dimming), a bottom sheet on phones. */
 const PLACE =
@@ -18,6 +29,8 @@ const PLACE =
  * The inspector's frame, after the Spark CRM page help panel (see PLACE). The body scrolls on its own. A chat panel
  * (`sub` given) takes the chat redesign's header instead (spec 6.7, .sf-panel-head): a 52px row with the title and a
  * muted subline, then the actions and Close.
+ * Opened by a person, it puts focus on its title, unless something inside took it first (a reply box). On a phone it
+ * is a modal bottom sheet over a dimmed page: Tab stays inside, and a tap on the dimmed part closes it (UX Phase 5A).
  */
 export function InspectorFrame({
   label,
@@ -41,26 +54,61 @@ export function InspectorFrame({
   focusTitle?: boolean
   children: ReactNode
 }) {
+  const rootRef = useRef<HTMLDivElement>(null)
   const titleRef = useRef<HTMLHeadingElement>(null)
+  const opened = useContext(PanelOpened)
+  // Decided once, as the frame mounts (the Inspector remounts it for each record).
+  const [focusAtStart] = useState(focusTitle || opened)
   useEffect(() => {
-    if (focusTitle) titleRef.current?.focus({ preventScroll: true })
-  }, [focusTitle])
+    if (!focusAtStart) return
+    // After every effect of this render, so the Inspector first notes what opened the panel (to give focus back).
+    let cancelled = false
+    queueMicrotask(() => {
+      if (!cancelled && !rootRef.current?.contains(document.activeElement)) titleRef.current?.focus({ preventScroll: true })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [focusAtStart])
+  const sheet = useMedia(SHEET_QUERY)
+  // The phone's sheet is a dialog; elsewhere the panel sits beside the page. One element either way, so a resize
+  // keeps what's typed in it.
+  const frame = (className: string, content: ReactNode) => (
+    <>
+      {sheet && <div className="fixed inset-0 z-40 bg-black/40 motion-safe:animate-fade-in" aria-hidden data-scrim onClick={onClose} />}
+      <div
+        ref={rootRef}
+        role={sheet ? 'dialog' : 'complementary'}
+        aria-modal={sheet || undefined}
+        aria-label={label}
+        data-inspector
+        className={className}
+        onKeyDown={(event) => {
+          if (sheet && rootRef.current?.contains(event.target as Node)) trapTab(event, rootRef.current)
+        }}
+      >
+        {content}
+      </div>
+    </>
+  )
   if (sub !== undefined)
-    return (
-      <aside aria-label={label} className={`sf ${PLACE} border-sf-line bg-sf-surface`}>
+    return frame(
+      `sf ${PLACE} border-sf-line bg-sf-surface`,
+      <>
         <header className="flex h-sf-header flex-none items-center gap-2 border-b border-sf-line ps-4 pe-2">
           <div className="flex min-w-0 flex-1 items-baseline gap-2">
-            <h2 className="m-0 flex-none font-sf text-[16px]/[24px] font-semibold text-sf-text">{title}</h2>
+            <h2 ref={titleRef} tabIndex={-1} className="m-0 flex-none font-sf text-[16px]/[24px] font-semibold text-sf-text outline-none">{title}</h2>
             {sub && <span className="sf-small min-w-0 truncate text-sf-text-muted">{sub}</span>}
           </div>
           {actions}
           <IconButton label={`Close ${label.toLowerCase()}`} icon={IconX} size="sm" tone="muted" onClick={onClose} />
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">{children}</div>
-      </aside>
+      </>,
     )
-  return (
-    <aside aria-label={label} className={`${PLACE} border-line bg-surface`}>
+  return frame(
+    `${PLACE} border-line bg-surface`,
+    <>
       <div className="flex shrink-0 items-start gap-3 border-b border-line-subtle px-5 py-4">
         <div className="min-w-0 flex-1">
           <p className="truncate text-xs font-semibold uppercase tracking-wider text-accent">{eyebrow}</p>
@@ -74,7 +122,7 @@ export function InspectorFrame({
         </button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">{children}</div>
-    </aside>
+    </>,
   )
 }
 

@@ -29,7 +29,8 @@ export function usePageHelp() {
  * Help beside the page (Admin and help, slice 6, as the CRM's PageHelpPanel): the help for the page you're on, opened by
  * the round "?" in the top bar. From 1536px it sits beside the page, so people read and work at once; narrower it slides
  * over the page, and on phones it rises from the bottom. It doesn't dim the page, and stays open from page to page. One
- * side panel at a time: a thread, task or file opening closes it, and opening it closes them.
+ * side panel at a time: a thread, task or file opening closes it, and opening it closes them. Opened, it takes focus;
+ * closed, it gives focus back to its button.
  */
 export function PageHelpPanel() {
   const open = useUiStore((state) => state.helpOpen)
@@ -47,6 +48,21 @@ export function PageHelpPanel() {
   const followed = other?.key === location.key ? other : null
   const body = useRef<HTMLDivElement>(null)
   const heading = useRef<HTMLHeadingElement>(null)
+
+  // Opened by a person (not already open as the page loads), it puts focus on its heading once that shows, so the
+  // keyboard carries on in it (UX Phase 5A, 5.5).
+  const wasOpen = useRef(open)
+  const focusPending = useRef(false)
+  useEffect(() => {
+    if (open && !wasOpen.current) focusPending.current = true
+    wasOpen.current = open
+  }, [open])
+  useEffect(() => {
+    if (focusPending.current && heading.current) {
+      focusPending.current = false
+      heading.current.focus({ preventScroll: true })
+    }
+  })
 
   const close = () => {
     setOther(null)

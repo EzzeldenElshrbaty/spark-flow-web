@@ -1017,7 +1017,8 @@ describe('files on a phone (spec 10, 6.16, slice 6)', () => {
       cleanup()
       mount(<FileInspector fileId="a-scope" onClose={vi.fn()} closeTo="/w/engineering/c/c-backend" />, false)
       await screen.findByText('Uploaded by', undefined, { timeout: 3000 })
-      const panel = screen.getByRole('complementary', { name: 'File details' })
+      // On a phone the panel is a modal bottom sheet (UX Phase 5A, 5.5).
+      const panel = screen.getByRole('dialog', { name: 'File details' })
       expect(panel.getBoundingClientRect().right).toBeLessThanOrEqual(390)
       expect(panel.scrollWidth).toBeLessThanOrEqual(panel.clientWidth)
       for (const name of ['Download', 'Share', 'Open', 'Edit file details']) expect(answers(screen.getByRole('button', { name })), name).toEqual([true, true])
