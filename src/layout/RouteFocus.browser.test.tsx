@@ -74,8 +74,9 @@ describe('focus after a page change (UX Phase 5A, 5.7)', () => {
   it('a sidebar link puts focus on the new page’s heading', async () => {
     mount()
     await userEvent.click(screen.getByRole('link', { name: 'Projects' }))
-    await expect.poll(() => document.activeElement?.textContent).toBe('Projects')
-    expect(document.activeElement?.tagName).toBe('H1')
+    // The link reads "Projects" too: wait for the heading itself.
+    await expect.poll(() => document.activeElement?.tagName).toBe('H1')
+    expect(document.activeElement?.textContent).toBe('Projects')
   })
 
   it('waits for a heading that shows after the page loads', async () => {
