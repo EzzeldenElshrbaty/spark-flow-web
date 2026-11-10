@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { useTasksOf } from '@/api/tickets'
 import { useMyDay, useStartTimer } from '@/api/time'
 import { useMe } from '@/api/users'
@@ -30,7 +30,8 @@ export function StartTimerDialog({ open, onClose, title = 'Start timer' }: { ope
   const [tried, setTried] = useState(false)
   const { workspace } = useCurrentWorkspace()
   const { projects, loaded } = useLogTargets('')
-  const tasks = useTasksOf(projects.map((p) => p.id)).data
+  const tasksOf = useTasksOf(projects.map((p) => p.id))
+  const tasks = tasksOf.data
   const me = useMe().data
   const firstStart = useMyDay().data?.firstStart ?? false
   const start = useStartTimer()
@@ -39,6 +40,11 @@ export function StartTimerDialog({ open, onClose, title = 'Start timer' }: { ope
   const noteRecent = useUiStore((state) => state.noteRecentTimer)
   const groups = timerTargets({ meId: me?.id ?? '', tasks, projects, recent, q: query })
   const none = loaded && projects.length === 0
+  // A first start's pick that the search no longer shows is let go: Start never starts a task off screen (UX Phase 6).
+  const pickShown = Boolean(chosen && groups.some((g) => g.targets.some((t) => t.kind === chosen.kind && t.id === chosen.id)))
+  useEffect(() => {
+    if (chosen && !pickShown) setChosen(null)
+  }, [chosen, pickShown])
 
   // One start at a time: finding where I am can take seconds, and a second pick would start a second timer (final review).
   const go = (target: TimerTarget) =>
@@ -120,7 +126,16 @@ export function StartTimerDialog({ open, onClose, title = 'Start timer' }: { ope
             </>
           ) : (
             <>
-              <TaskPicker groups={groups} query={query} onQuery={setQuery} onPick={pick} chosen={chosen} busy={start.isPending} />
+              <TaskPicker
+                groups={groups}
+                query={query}
+                onQuery={setQuery}
+                onPick={pick}
+                chosen={chosen}
+                busy={start.isPending}
+                tasks={tasksOf.isPending ? 'loading' : tasksOf.isError ? 'failed' : 'ready'}
+                onRetry={tasksOf.refetch}
+              />
               {missing && <p className="sf-small mt-1 mb-0 text-sf-error">Pick a task.</p>}
               <button type="button" className={link} onClick={() => switchTo(true)}>
                 Log on the project only

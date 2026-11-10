@@ -41,3 +41,12 @@ describe('history by person and by day (UX Phase 4, 4.10)', () => {
     ])
   })
 })
+
+describe('the empty note names the person filter (UX Phase 6, deferred minor #14)', () => {
+  it('with a person chosen it says nothing by them', () => {
+    expect(emptyNote('all', false, 'Mariam Fathy')).toBe('Nothing by Mariam Fathy here yet.')
+    expect(emptyNote('tasks', true, 'Mariam Fathy')).toBe('Nothing by Mariam Fathy in what is loaded. Load older to see more.')
+    expect(emptyNote('all', false)).toBe('Nothing has happened here yet.')
+  })
+})
+

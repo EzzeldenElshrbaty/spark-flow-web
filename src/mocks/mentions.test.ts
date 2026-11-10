@@ -217,3 +217,16 @@ describe('@here in Activity (spec 6.8, §7)', () => {
     expect((await api.mentions.mine()).some((m) => m.id === reply.id)).toBe(true)
   })
 })
+
+describe('the inbox caps mentions and task news apart (UX Phase 6, deferred minor #9)', () => {
+  it('60 newer task news items don’t push out an older mention', async () => {
+    const { capEach } = await import('./mentions')
+    const item = (id: string, source: string, at: number) => ({ id, source, createdAt: new Date(Date.UTC(2026, 10, 1) + at * 60_000).toISOString() })
+    const mentions = [item('m-1', 'message', 0)]
+    const news = Array.from({ length: 60 }, (_, i) => item(`t-${i}`, 'taskStatus', i + 1))
+    const inbox = capEach(mentions, news, 50)
+    expect(inbox.some((x) => x.id === 'm-1')).toBe(true)
+    expect(inbox.filter((x) => x.source === 'taskStatus')).toHaveLength(50)
+    expect(inbox.map((x) => x.createdAt)).toEqual(inbox.map((x) => x.createdAt).sort().reverse())
+  })
+})

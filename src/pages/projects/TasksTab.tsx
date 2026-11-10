@@ -66,6 +66,21 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
   const phase = phases.some((p) => p.id === picked.phase) ? picked.phase : null
   const sprint = agile ? validSprint(picked.sprint, sprints.data ?? []) : null
 
+  // A remembered phase or sprint is written into the address as the tab opens (replacing the entry), so Back after
+  // another pick returns to it (UX Phase 6).
+  useEffect(() => {
+    if ((params.has('phase') || !phase) && (params.has('sprint') || !sprint)) return
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        if (phase && !next.has('phase')) next.set('phase', phase)
+        if (sprint && !next.has('sprint')) next.set('sprint', sprint)
+        return next
+      },
+      { replace: true },
+    )
+  }, [params, phase, sprint, setParams])
+
   // Remember the view shown so the tab reopens it.
   useEffect(() => setProjectView(project.key, view), [view, project.key, setProjectView])
 
@@ -118,6 +133,11 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
   useEffect(() => {
     if (staleArchived) setParam('archived', null, true)
   }, [staleArchived])
+  // Someone the address names who isn't among the people (an old link) leaves it, and the filter reads Anyone (UX Phase 6).
+  const staleAssignee = Boolean(query.assignee) && people.length > 0 && query.assignee !== 'me' && query.assignee !== 'none' && !people.some((u) => u.id === query.assignee)
+  useEffect(() => {
+    if (staleAssignee) setParam('assignee', null, true)
+  }, [staleAssignee])
   const archived = filterTasks(archivedAll, { phase, sprint })
   const showArchived = showArchivedAsked && archived.length > 0
   let body
@@ -176,7 +196,7 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
           <ViewSwitch view={view} />
         </div>
       </div>
-      <FilterBar sticky={false} shown={shown.length} total={all.length} noun={['task', 'tasks']} active={active} onClear={clear}>
+      <FilterBar sticky={false} shown={shown.length} total={tickets.data ? all.length : undefined} noun={['task', 'tasks']} active={active} onClear={clear}>
         <SearchBox label="Search tasks" placeholder="Search keys and titles…" value={query.q ?? ''} onChange={(q) => setFilters({ q })} className="col-span-2 sm:min-w-48 sm:flex-1" />
         {select('Assignee', 'assignee', query.assignee, [
           ['', 'Anyone'],

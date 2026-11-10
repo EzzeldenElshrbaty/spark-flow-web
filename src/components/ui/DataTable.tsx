@@ -28,14 +28,15 @@ export type Column<T> = {
 /**
  * The columns that fit a box `boxWidth` px wide, leaving out the lowest `dropOrder` first; all of them while the width
  * isn't known. A column someone set the width of never drops (final review): the one being dragged stays under the
- * pointer, and a widened one isn't the first to go.
+ * pointer, and a widened one isn't the first to go. Nor does the column the rows are sorted by (`sortedBy`), so the
+ * sort always shows (UX Phase 6).
  */
-export function visibleColumns<T>(columns: Column<T>[], widths: Record<string, number>, boxWidth: number): Column<T>[] {
+export function visibleColumns<T>(columns: Column<T>[], widths: Record<string, number>, boxWidth: number, sortedBy?: string): Column<T>[] {
   if (boxWidth <= 0) return columns
   const widthOf = (column: Column<T>) => widths[column.id] ?? column.width
   let total = columns.reduce((sum, column) => sum + widthOf(column), 0)
   const left = new Set<string>()
-  for (const column of columns.filter((c) => c.dropOrder !== undefined && widths[c.id] === undefined).sort((a, b) => a.dropOrder! - b.dropOrder!)) {
+  for (const column of columns.filter((c) => c.dropOrder !== undefined && widths[c.id] === undefined && c.id !== sortedBy).sort((a, b) => a.dropOrder! - b.dropOrder!)) {
     if (total <= boxWidth) break
     left.add(column.id)
     total -= widthOf(column)
@@ -97,7 +98,7 @@ export function DataTable<T>({
   const [boxWidth, setBoxWidth] = useState(0)
   // More columns past the end edge: the fade and the arrow (UX Phase 4; the rule is shared, UX Phase 5B).
   const more = useScrollEnd(scroller)
-  const shown = visibleColumns(columns, widths, boxWidth)
+  const shown = visibleColumns(columns, widths, boxWidth, sort?.by)
   const total = shown.reduce((sum, column) => sum + widthOf(column), 0)
   useLayoutEffect(() => {
     const box = scroller.current
@@ -179,7 +180,8 @@ export function DataTable<T>({
                       'select-none px-4 py-2.5 text-xs font-medium text-fg-muted',
                       column.align === 'right' ? 'text-end' : 'text-start',
                       // The first column stays put while the rest scroll under it.
-                      index === 0 ? 'sticky start-0 z-[2] bg-surface-sunken' : 'relative',
+                      // Above the resize handles that scroll under it (UX Phase 6).
+                      index === 0 ? 'sticky start-0 z-[3] bg-surface-sunken' : 'relative',
                     )}
                   >
                     {column.sort && onSort ? (
@@ -208,7 +210,9 @@ export function DataTable<T>({
                       title="Drag to resize · double-click to reset"
                       // The last one stays inside the table, so it doesn't make the box scroll by its overhang.
                       className={clsx(
-                        'group/handle absolute top-0 z-10 flex h-full w-3 cursor-col-resize touch-none justify-center focus-visible:outline-none',
+                        // Over its neighbour cell only: below the sticky first header, the scroll arrow and a sticky
+                        // filter row (UX Phase 6).
+                        'group/handle absolute top-0 z-[1] flex h-full w-3 cursor-col-resize touch-none justify-center focus-visible:outline-none',
                         index === shown.length - 1 ? 'end-0' : '-end-1.5',
                       )}
                     >
@@ -254,8 +258,8 @@ export function DataTable<T>({
       </div>
       {more && (
         <>
-          <span aria-hidden className="pointer-events-none absolute inset-y-px end-px w-12 bg-linear-to-l from-surface rtl:bg-linear-to-r" />
-          <IconButton label="Scroll to more columns" icon={ChevronRight} size="sm" onClick={scrollOn} className="absolute end-1 top-1 bg-surface shadow-sm rtl:[&_svg]:-scale-x-100" />
+          <span aria-hidden className="pointer-events-none absolute inset-y-px end-px z-[4] w-12 bg-linear-to-l from-surface rtl:bg-linear-to-r" />
+          <IconButton label="Scroll to more columns" icon={ChevronRight} size="sm" onClick={scrollOn} className="absolute end-1 top-1 z-[4] bg-surface shadow-sm rtl:[&_svg]:-scale-x-100" />
         </>
       )}
     </div>

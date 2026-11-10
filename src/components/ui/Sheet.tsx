@@ -15,6 +15,17 @@ export function useSheetClose() {
   return useContext(SheetClose)
 }
 
+/** How a control leaves the sheet for something else: asking first, then running that instead of closing. */
+const SheetLeave = createContext<(then: () => void) => void>((then) => then())
+
+/**
+ * Leaves the sheet for another step (Edit person's Deactivate…): asks "Discard …?" first when its form has changes,
+ * then runs `then` instead of the sheet's own close (UX Phase 6).
+ */
+export function useSheetLeave() {
+  return useContext(SheetLeave)
+}
+
 /** A sheet's Cancel: closes it, asking "Discard …?" first when its form has changes. */
 export function SheetCancelButton({ children = 'Cancel', disabled }: { children?: ReactNode; disabled?: boolean }) {
   const close = useSheetClose()
@@ -79,6 +90,7 @@ export function Sheet({
   // The open "Discard …?" question: what Discard and Keep editing do.
   const [asking, setAsking] = useState<{ discard: () => void; keep: () => void } | null>(null)
   const requestClose = () => (dirty ? setAsking({ discard: () => onCloseRef.current(), keep: () => {} }) : onCloseRef.current())
+  const leave = (then: () => void) => (dirty ? setAsking({ discard: then, keep: () => {} }) : then())
   const requestCloseRef = useRef(requestClose)
   useEffect(() => {
     requestCloseRef.current = requestClose
@@ -142,7 +154,9 @@ export function Sheet({
         </div>
         {/* On phones the last row clears the home bar (safe-area inset). */}
         <div className={clsx('min-h-0 flex-1 overflow-y-auto px-5 pt-4', footer ? 'pb-4' : 'pb-[calc(1rem+env(safe-area-inset-bottom))]')}>
-          <SheetClose.Provider value={requestClose}>{children}</SheetClose.Provider>
+          <SheetClose.Provider value={requestClose}>
+            <SheetLeave.Provider value={leave}>{children}</SheetLeave.Provider>
+          </SheetClose.Provider>
         </div>
         {(footer || asking) && (
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-line-subtle px-5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3">

@@ -1,5 +1,5 @@
 import '@/index.css'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import axe from 'axe-core'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { page } from 'vitest/browser'
@@ -84,5 +84,34 @@ describe('DataTable fits its box (UX Phase 4)', () => {
       expect(result.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id)).toEqual([])
       cleanup()
     }
+  })
+})
+
+describe('the table’s layers and its sort (UX Phase 6, deferred minors #13 and #21)', () => {
+  it('a resize handle scrolled under the sticky first header doesn’t draw over it, nor over the scroll arrow', async () => {
+    mount(520)
+    const box = scroller()
+    await waitFor(() => expect(headers().some((h) => h?.startsWith('Client'))).toBe(false))
+    const [first, second] = screen.getAllByRole('columnheader')
+    // Scroll until the second column's end (and its handle) sits under the first column.
+    const f = first!.getBoundingClientRect()
+    box.scrollLeft = second!.getBoundingClientRect().right - (f.right - 8)
+    fireEvent.scroll(box)
+    await waitFor(() => expect(second!.getBoundingClientRect().right).toBeLessThan(f.right))
+    const edge = second!.getBoundingClientRect().right
+    for (let x = edge - 6; x <= edge + 6; x += 2) expect(first!.contains(document.elementFromPoint(x, f.top + f.height / 2)), `x ${x}`).toBe(true)
+    const arrow = await screen.findByRole('button', { name: 'Scroll to more columns' })
+    const a = arrow.getBoundingClientRect()
+    expect(arrow.contains(document.elementFromPoint(a.left + 2, a.top + a.height / 2))).toBe(true)
+  })
+
+  it('the column it’s sorted by never drops', async () => {
+    render(
+      <div style={{ width: 900 }}>
+        <DataTable columns={columns.map((c) => ({ ...c, sort: 'text' as const }))} rows={rows} rowKey={(r) => r.id} storageKey="test-table-sorted" label="Projects" sort={{ by: 'client', dir: 'asc' }} onSort={() => {}} />
+      </div>,
+    )
+    await waitFor(() => expect(headers().some((h) => h?.startsWith('Manager'))).toBe(false))
+    expect(headers().some((h) => h?.startsWith('Client'))).toBe(true)
   })
 })

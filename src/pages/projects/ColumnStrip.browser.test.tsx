@@ -7,7 +7,7 @@ import { ColumnStripBar, useColumnStrip } from './ColumnStrip'
 
 // UX Phase 4, 4.1: the board says which of its columns are in view, and from md has arrows to the others.
 
-function Board({ count }: { count: number }) {
+function Board({ count, addTile = false }: { count: number; addTile?: boolean }) {
   const scroller = useRef<HTMLDivElement>(null)
   const strip = useColumnStrip(scroller, count)
   return (
@@ -18,6 +18,11 @@ function Board({ count }: { count: number }) {
           {Array.from({ length: count }, (_, i) => (
             <section key={i} aria-label={`Column ${i}`} className="h-40 w-[85%] shrink-0 snap-start rounded-xl border md:w-[296px]" />
           ))}
+          {addTile && (
+            <button type="button" className="h-40 w-[296px] shrink-0 rounded-xl border">
+              Add column
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -59,5 +64,14 @@ describe('the board’s column strip', () => {
     render(<Board count={6} />)
     await expect.poll(() => screen.queryByText('Column 1 of 6')).toBeTruthy()
     expect(getComputedStyle(screen.getByRole('button', { name: 'Later columns', hidden: true }).parentElement!).display).toBe('none')
+  })
+
+  it('every column in view with only Add column past the edge says nothing (UX Phase 6, deferred minor #19)', async () => {
+    await page.viewport(1280, 800)
+    render(<Board count={3} addTile />)
+    const scroller = screen.getByTestId('scroller')
+    await expect.poll(() => scroller.scrollWidth > scroller.clientWidth).toBe(true)
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    expect(screen.queryByText(/Columns? \d/)).toBeNull()
   })
 })

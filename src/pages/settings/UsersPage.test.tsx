@@ -69,6 +69,7 @@ async function mount(search = '') {
     </QueryClientProvider>,
   )
   await screen.findByRole('heading', { name: 'Users', level: 1 })
+  return client
 }
 const table = () => screen.findByRole('table', { name: 'People' })
 const names = async () => within(await table()).getAllByRole('row').slice(1).map((r) => within(r).getAllByRole('cell')[0]!.textContent)
@@ -165,6 +166,34 @@ describe('Settings → Users (Admin and help, slice 3)', () => {
     fireEvent.click(within(sheet).getByRole('button', { name: 'Save changes' }))
     await waitFor(() => expect(update).toHaveBeenCalled())
     expect(update.mock.calls[0]![1].teamIds).toEqual(['t-elsewhere', 't-frontend'])
+  })
+
+  it('a team removed while Edit is open isn’t sent, though their saved teams still name it (UX Phase 6, deferred minor #8)', async () => {
+    const update = vi.spyOn(api.users, 'update').mockImplementation(async (id, patch) => ({ ...people.find((p) => p.id === id)!, ...patch }))
+    const client = await mount('?person=u-3')
+    const sheet = await screen.findByRole('dialog', { name: 'Edit Mariam Fathy' })
+    // Frontend is removed elsewhere: the teams come back without it before Mariam's row does.
+    vi.mocked(api.teams.list).mockResolvedValue([{ id: 't-backend', workspaceId: 'ws-eng', name: 'Backend', memberIds: ['u-2'] }])
+    await act(() => client.invalidateQueries())
+    await waitFor(() => expect(within(sheet).queryByRole('checkbox', { name: 'Frontend' })).toBeNull())
+    fireEvent.change(within(sheet).getByRole('textbox', { name: /Title/ }), { target: { value: 'Lead' } })
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Save changes' }))
+    await waitFor(() => expect(update).toHaveBeenCalled())
+    expect(update.mock.calls[0]![1].teamIds).toEqual(['t-elsewhere'])
+  })
+
+  it('Deactivate… in a changed Edit asks before the edits go (UX Phase 6, deferred minor #6)', async () => {
+    await mount('?person=u-3')
+    const edit = await screen.findByRole('dialog', { name: 'Edit Mariam Fathy' })
+    fireEvent.change(within(edit).getByRole('textbox', { name: /Title/ }), { target: { value: 'Lead' } })
+    fireEvent.click(within(edit).getByRole('button', { name: /Deactivate/ }))
+    expect(within(edit).getByText('Discard your changes?')).toBeTruthy()
+    expect(screen.queryByRole('dialog', { name: 'Deactivate Mariam Fathy?' })).toBeNull()
+    fireEvent.click(within(edit).getByRole('button', { name: 'Keep editing' }))
+    expect((within(edit).getByRole('textbox', { name: /Title/ }) as HTMLInputElement).value).toBe('Lead')
+    fireEvent.click(within(edit).getByRole('button', { name: /Deactivate/ }))
+    fireEvent.click(within(edit).getByRole('button', { name: 'Discard' }))
+    expect(await screen.findByRole('dialog', { name: 'Deactivate Mariam Fathy?' })).toBeTruthy()
   })
 
   it('a deactivated person’s Edit says when, by whom and why', async () => {

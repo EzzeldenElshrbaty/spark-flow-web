@@ -71,11 +71,11 @@ export function landingPath(workspaceSlug: string, lastVisited: Record<string, s
   return target ? paths.channel(workspaceSlug, target.id) : paths.settings(workspaceSlug)
 }
 
-const PLACE = /^\/w\/[^/]+\/(?:c\/([^/]+)|p\/([^/]+)\/([^/?]+)(?:\?.*)?|settings(?:\/(?:database|rates|roles|audit|users|archived|attendance))?|projects|tasks|dashboard|time|teams|activity|threads|preferences|saved|drafts)$/
+const PLACE = /^\/w\/[^/]+\/(?:c\/([^/]+)|p\/([^/]+)\/([^/?]+)(?:\?.*)?|settings(?:\/(?:database|rates|roles|audit|users|archived|attendance))?|projects|tasks|dashboard|time|teams|activity|threads|preferences|saved|drafts|help(?:\/[a-z0-9-]+)?)$/
 
 /**
  * Whether a saved place still leads somewhere: a channel that is still in the list, a project that still exists on
- * one of its views, or Settings. A removed channel or project (or a mangled path) would otherwise land on a dead end.
+ * one of its views, or Settings. Help and its chapters count too: they are on the Projects side (UX Phase 6). A removed channel or project (or a mangled path) would otherwise land on a dead end.
  */
 export function validSavedPlace(path: string, channels: Channel[], projects: Project[]): boolean {
   const match = PLACE.exec(path)

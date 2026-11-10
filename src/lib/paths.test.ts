@@ -68,6 +68,9 @@ describe('validSavedPlace', () => {
     expect(paths.rates('engineering')).toBe('/w/engineering/settings/rates')
     expect(paths.roles('engineering')).toBe('/w/engineering/settings/roles')
     expect(validSavedPlace('/w/engineering/settings/roles', engineering, engineeringProjects)).toBe(true)
+    // Help is a Projects place (UX Phase 6, deferred minor #11): G then P on Help stays there.
+    expect(validSavedPlace('/w/engineering/help', engineering, engineeringProjects)).toBe(true)
+    expect(validSavedPlace('/w/engineering/help/tasks', engineering, engineeringProjects)).toBe(true)
     expect(paths.home('engineering')).toBe('/w/engineering')
     expect(paths.dashboard('engineering')).toBe('/w/engineering/dashboard')
     // Where everyone lands (dashboard start): the Dashboard.

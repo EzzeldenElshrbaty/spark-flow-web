@@ -9,7 +9,26 @@ const field =
  * Start timer's search list (UX Phase 4, 4.3): a box that filters the list under it, always open, in groups. ↑ and ↓
  * move through every option, Enter or a click picks one; the box keeps the focus (`aria-activedescendant`).
  */
-export function TaskPicker({ groups, query, onQuery, onPick, chosen, busy = false }: { groups: TargetGroup[]; query: string; onQuery: (q: string) => void; onPick: (target: TimerTarget) => void; chosen?: TimerTarget | null; busy?: boolean }) {
+export function TaskPicker({
+  groups,
+  query,
+  onQuery,
+  onPick,
+  chosen,
+  busy = false,
+  tasks = 'ready',
+  onRetry,
+}: {
+  groups: TargetGroup[]
+  query: string
+  onQuery: (q: string) => void
+  onPick: (target: TimerTarget) => void
+  chosen?: TimerTarget | null
+  busy?: boolean
+  /** Whether the tasks behind the list have loaded: an empty list only says "No open tasks" once they have (UX Phase 6). */
+  tasks?: 'loading' | 'failed' | 'ready'
+  onRetry?: () => void
+}) {
   const ids = useId()
   const flat = groups.flatMap((g) => g.targets)
   const [active, setActive] = useState(0)
@@ -53,7 +72,22 @@ export function TaskPicker({ groups, query, onQuery, onPick, chosen, busy = fals
       />
       {/* A list box only while it holds tasks: an empty one with a sentence in it isn't a list (UX Phase 6, axe). */}
       <div id={`${ids}-list`} role={groups.length ? 'listbox' : undefined} aria-label={groups.length ? 'Tasks' : undefined} aria-busy={busy} className="mt-2 max-h-72 overflow-y-auto rounded-sf-md border border-sf-line p-1">
-        {groups.length === 0 && (
+        {groups.length === 0 && tasks === 'loading' && (
+          <div aria-hidden className="space-y-1 p-1">
+            {[0, 1, 2].map((row) => (
+              <div key={row} className="h-9 animate-pulse rounded-sf-md bg-sf-surface-hover" />
+            ))}
+          </div>
+        )}
+        {groups.length === 0 && tasks === 'failed' && (
+          <p className="sf-ui m-0 flex items-center gap-2 px-2 py-3 text-sf-text-secondary">
+            Your tasks didn’t load.
+            <button type="button" onClick={onRetry} className="sf-focus cursor-pointer rounded-sf-sm border-0 bg-transparent p-0 font-medium text-sf-accent hover:underline">
+              Try again
+            </button>
+          </p>
+        )}
+        {groups.length === 0 && tasks === 'ready' && (
           <p className="sf-ui m-0 px-2 py-3 text-sf-text-muted">{query.trim() ? `No open tasks match “${query.trim()}”.` : 'No open tasks of yours yet. Search for one, or log on the project only.'}</p>
         )}
         {groups.map((group) => (

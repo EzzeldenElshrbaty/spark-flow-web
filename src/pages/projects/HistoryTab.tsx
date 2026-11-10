@@ -1,4 +1,5 @@
 import clsx from 'clsx'
+import { useEffect } from 'react'
 import { useSearchParams } from 'react-router'
 import { useProjectHistory } from '@/api/activity'
 import type { Phase, ProjectSummary, User } from '@/api/types'
@@ -24,7 +25,9 @@ export function HistoryTab({ project, people, phases }: { project: ProjectSummar
   // One person's entries (UX Phase 4, 4.10): whoever appears in what's loaded, by name.
   const who = params.get('who') ?? ''
   const nameOf = (id: string) => people.find((u) => u.id === id)?.name ?? 'Someone'
-  const actors = [...new Set(loaded.map((e) => e.actorId))].sort((a, b) => nameOf(a).localeCompare(nameOf(b)))
+  // The person asked for stays in the list though nothing loaded is theirs; someone unknown leaves the address (UX Phase 6).
+  const known = Boolean(who) && people.some((u) => u.id === who)
+  const actors = [...new Set([...loaded.map((e) => e.actorId), ...(known ? [who] : [])])].sort((a, b) => nameOf(a).localeCompare(nameOf(b)))
   const entries = historyFilter(loaded, show, who)
   // A choice is a step Back undoes (UX Phase 2, 2.7).
   const setParam = (key: string, value: string) =>
@@ -38,6 +41,18 @@ export function HistoryTab({ project, people, phases }: { project: ProjectSummar
       { replace: false },
     )
   const pick = (value: HistoryShow) => setParam('show', value === 'all' ? '' : value)
+  const staleWho = Boolean(who) && people.length > 0 && !known
+  useEffect(() => {
+    if (staleWho)
+      setParams(
+        (prev) => {
+          const next = new URLSearchParams(prev)
+          next.delete('who')
+          return next
+        },
+        { replace: true },
+      )
+  }, [staleWho, setParams])
   const chip = (active: boolean) =>
     clsx('shrink-0 rounded-full border px-3 py-1.5 text-sm', active ? 'border-brand-500 bg-accent-soft font-medium text-fg' : 'border-line text-fg-secondary hover:bg-surface-muted')
 
@@ -77,7 +92,7 @@ export function HistoryTab({ project, people, phases }: { project: ProjectSummar
           withKey
           onLoadMore={history.hasNextPage ? () => void history.fetchNextPage() : undefined}
           loadingMore={history.isFetchingNextPage}
-          emptyText={emptyNote(show, Boolean(history.hasNextPage))}
+          emptyText={emptyNote(show, Boolean(history.hasNextPage), known ? nameOf(who) : undefined)}
         />
       )}
     </div>

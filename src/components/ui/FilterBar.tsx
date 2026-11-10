@@ -17,7 +17,8 @@ export function FilterBar({
 }: {
   children: ReactNode
   shown: number
-  total: number
+  /** Undefined while the list loads: the count waits rather than saying 0 (UX Phase 6). */
+  total: number | undefined
   /** The thing counted, one and many: ['task', 'tasks']. */
   noun: [string, string]
   /** How many filters are on; Clear filters shows while any are. */
@@ -25,12 +26,12 @@ export function FilterBar({
   onClear: () => void
   sticky?: boolean
 }) {
-  const word = (n: number) => (n === 1 ? noun[0] : noun[1])
+  const word = (n: number | undefined) => (n === 1 ? noun[0] : noun[1])
   return (
     <div className={clsx(sticky ? 'sticky top-14 z-10 -mx-4 mb-3 bg-canvas/95 px-4 pb-3 pt-1 backdrop-blur md:-mx-6 md:px-6 lg:top-0 xl:-mx-8 xl:px-8' : 'mb-3')}>
       <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">{children}</div>
       <p role="status" className="mt-2 text-xs text-fg-muted tabular-nums">
-        {active > 0 ? (
+        {total === undefined ? null : active > 0 ? (
           <>
             Showing {shown} of {total} {word(total)} ·{' '}
             <button type="button" onClick={onClear} className="font-medium text-accent hover:underline">

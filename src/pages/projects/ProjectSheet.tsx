@@ -75,9 +75,10 @@ export function ProjectSheet({
   const [opened] = useState<ProjectFormValues>(() => initial(project))
   const [values, setValues] = useState(opened)
   const [keyTouched, setKeyTouched] = useState(Boolean(project))
-  const [status, setStatus] = useState<ProjectStatus>(project?.status ?? 'planned')
-  // Closing with changes asks first (UX Phase 1, 1.2).
-  const dirty = JSON.stringify(values) !== JSON.stringify(opened) || status !== (project?.status ?? 'planned')
+  const [openedStatus] = useState<ProjectStatus>(project?.status ?? 'planned')
+  const [status, setStatus] = useState<ProjectStatus>(openedStatus)
+  // Closing with changes asks first (UX Phase 1, 1.2), against the values as opened (UX Phase 6).
+  const dirty = JSON.stringify(values) !== JSON.stringify(opened) || status !== openedStatus
   const check = usePermission()
   // People and teams are assigned by the manager and Admin; Sales picks them only when creating (spec §4.3).
   const canPeople = project ? check('phase.manage', { project }) : true
@@ -271,6 +272,8 @@ export function ProjectSheet({
                   placeholder="Label"
                   aria-label={`Link ${i + 1} label`}
                   aria-invalid={Boolean(errors.links) && !link.label.trim()}
+                  // The box marked wrong says why, as the group does (UX Phase 6).
+                  aria-describedby={errors.links && !link.label.trim() ? 'project-links-error' : undefined}
                   value={link.label}
                   onChange={(e) => set('links', values.links.map((l, j) => (j === i ? { ...l, label: e.target.value } : l)))}
                 />
@@ -279,6 +282,7 @@ export function ProjectSheet({
                   placeholder="https://"
                   aria-label={`Link ${i + 1} web address`}
                   aria-invalid={Boolean(errors.links) && values.links.every((l) => l.label.trim()) && !LINK_URL.test(link.url.trim())}
+                  aria-describedby={errors.links && values.links.every((l) => l.label.trim()) && !LINK_URL.test(link.url.trim()) ? 'project-links-error' : undefined}
                   value={link.url}
                   onChange={(e) => set('links', values.links.map((l, j) => (j === i ? { ...l, url: e.target.value } : l)))}
                 />

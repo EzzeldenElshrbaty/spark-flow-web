@@ -20,8 +20,10 @@ export function ColumnSheet({ projectId, columns, column, count = 0, onClose }: 
   const [label, setLabel] = useState(column?.label ?? '')
   const [category, setCategory] = useState<StatusCategory>(column?.category ?? 'inProgress')
   const [after, setAfter] = useState(columns.at(-1)?.id ?? '')
-  // Closing with changes asks first (UX Phase 1, 1.2).
-  const dirty = label !== (column?.label ?? '') || category !== (column?.category ?? 'inProgress') || after !== (columns.at(-1)?.id ?? '')
+  // Closing with changes asks first (UX Phase 1, 1.2), against the values as opened: a change from another tab isn't
+  // mine (UX Phase 6).
+  const [opened] = useState({ label, category, after })
+  const dirty = label !== opened.label || category !== opened.category || after !== opened.after
   const pending = add.isPending || setBoard.isPending
   const failure = (add.error ?? setBoard.error) as Error | null
 

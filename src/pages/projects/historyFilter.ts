@@ -3,8 +3,12 @@ import { formatDayDivider } from '@/lib/format'
 
 export type HistoryShow = 'all' | 'tasks' | 'board' | 'comments'
 
-/** What an empty (filtered) history says: with older pages left, that there may be more; else that there is nothing. */
-export function emptyNote(show: HistoryShow, hasMore: boolean): string {
+/**
+ * What an empty (filtered) history says: with older pages left, that there may be more; else that there is nothing.
+ * With a person chosen, it names them (UX Phase 6).
+ */
+export function emptyNote(show: HistoryShow, hasMore: boolean, whoName?: string): string {
+  if (whoName) return hasMore ? `Nothing by ${whoName} in what is loaded. Load older to see more.` : `Nothing by ${whoName} here yet.`
   if (hasMore) return 'Nothing like this in what is loaded. Load older to see more.'
   return show === 'all' ? 'Nothing has happened here yet.' : 'Nothing like this here yet.'
 }

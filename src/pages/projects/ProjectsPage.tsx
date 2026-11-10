@@ -92,7 +92,8 @@ export function ProjectsPage() {
   }
   const pool = showArchived ? (archived.data ?? []) : stats.filter(filter)
   const rows = sortByColumn(pool.filter((p) => matches(p, words)), sort, sortKeys)
-  const total = showArchived ? (archived.data ?? []).length : list.length
+  // Undefined while the list loads, so no count says 0 before it's known (UX Phase 6).
+  const total = showArchived ? archived.data?.length : projects.data?.length
   const active = Number(Boolean(filter) && !showArchived) + Number(Boolean(words))
   const clear = () => set({ show: null, q: null })
   const showCost = list.some((p) => p.cost !== null)

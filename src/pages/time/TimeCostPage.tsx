@@ -1,6 +1,6 @@
 import clsx from 'clsx'
 import { Download, Wallet } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { useArchivedProjects, useProjectSummaries } from '@/api/projects'
 import { useTimeReport } from '@/api/time'
@@ -189,6 +189,10 @@ export function TimeCostPage() {
   const report = useTimeReport(workspace?.id, days, access === 'allowed', projectId || undefined)
   const people = useUsers(workspace?.id).data ?? []
   const allProjects = [...(useProjectSummaries(workspace?.id).data ?? []), ...(useArchivedProjects(workspace?.id, true).data ?? [])]
+  // The period and project of the report on screen: while the next one loads, the last one shows, and its words follow
+  // it (UX Phase 6).
+  const [shownFor, setShownFor] = useState({ days, projectId })
+  if (!report.isPlaceholderData && (shownFor.days !== days || shownFor.projectId !== projectId)) setShownFor({ days, projectId })
   const set = (key: string, value: string, how?: { keys: true }) =>
     setParams(
       (prev) => {
@@ -256,7 +260,8 @@ export function TimeCostPage() {
         // People with no hourly cost count 0 EGP: say so, with the way to set them.
         const missing = report.data ? missingRateLine(report.data.byPerson) : null
         return missing ? (
-          <p className="mb-4 text-sm text-amber-700 dark:text-amber-300">
+          // It belongs to the report shown, so it dims with it while the next one loads (UX Phase 6).
+          <p className={clsx('mb-4 text-sm text-amber-700 transition-opacity dark:text-amber-300', report.isPlaceholderData && 'opacity-60')}>
             {missing.text} ·{' '}
             <Link to={paths.rates(ws)} className="font-medium underline">
               {missing.action}
@@ -316,7 +321,7 @@ export function TimeCostPage() {
                 }
                 return out
               })}
-              empty={`No time logged${projectId ? ` on ${allProjects.find((p) => p.id === projectId)?.name ?? 'this project'}` : ''} in the last ${days} days.`}
+              empty={`No time logged${shownFor.projectId ? ` on ${allProjects.find((p) => p.id === shownFor.projectId)?.name ?? 'this project'}` : ''} in the last ${shownFor.days} days.`}
             />
         </div>
       )}

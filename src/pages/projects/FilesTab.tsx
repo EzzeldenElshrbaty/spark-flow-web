@@ -169,8 +169,17 @@ export function FilesTab({ ws, project, users }: { ws: string; project: ProjectS
           )}
         </p>
       ) : (
-        // A new filter: the last rows stay, dimmed, until the new ones come (UX Phase 4, 4.5).
+        // A new filter: the last rows stay, dimmed, until the new ones come (UX Phase 4, 4.5). A refresh that failed
+        // keeps them too, saying so above them (UX Phase 6).
         <div className={clsx('transition-opacity', list.isPlaceholderData && 'opacity-60')}>
+          {list.isError && (
+            <p className="mb-2 text-sm text-fg-secondary">
+              These files may be out of date.{' '}
+              <button type="button" onClick={() => void list.refetch()} className="font-medium text-accent hover:text-accent-strong">
+                Try again
+              </button>
+            </p>
+          )}
             <div className="max-sm:hidden">
               <DataTable columns={columns} rows={rows} rowKey={(r) => r.file.id} onRowClick={(r) => void open(r)} storageKey="spark-flow.table.projectFiles" label="Project files" />
             </div>

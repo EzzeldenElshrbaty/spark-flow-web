@@ -71,6 +71,15 @@ describe('FilesTab (spec 5.3)', () => {
     expect(table.closest('.opacity-60')).toBeTruthy()
   })
 
+  it('a refresh that fails keeps the rows and says they may be out of date, with Try again (UX Phase 6, deferred minor #23)', () => {
+    query = { ...query, isError: true }
+    show()
+    expect(screen.getByRole('table', { name: 'Project files' })).toBeTruthy()
+    expect(screen.getByText('These files may be out of date.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(query.refetch).toHaveBeenCalled()
+  })
+
   it('lists every file with its type, size, uploader, date and where it came from', () => {
     show()
     const headers = within(table()).getAllByRole('columnheader').map((h) => h.textContent)

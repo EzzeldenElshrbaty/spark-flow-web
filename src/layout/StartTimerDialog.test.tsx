@@ -10,13 +10,20 @@ let projects: P[] = []
 let tasks: Record<string, T[]> = {}
 const loggable = new Set<string>()
 let firstStart = false
+let tasksState: 'ok' | 'pending' | 'error' = 'ok'
+const refetchTasks = vi.fn()
 const start = { mutate: vi.fn(), isPending: false, error: null as Error | null }
 
 vi.mock('@/layout/useCurrentWorkspace', () => ({ useCurrentWorkspace: () => ({ workspace: { id: 'ws-eng', slug: 'engineering', name: 'Spark Engineering' } }) }))
 vi.mock('@/api/projects', () => ({ useProjectSummaries: () => ({ data: projects }) }))
 vi.mock('@/api/tickets', () => ({
   useTickets: (projectId?: string) => ({ data: projectId ? tasks[projectId] : undefined }),
-  useTasksOf: (projectIds: string[]) => ({ data: projectIds.flatMap((id) => tasks[id] ?? []), isPending: false }),
+  useTasksOf: (projectIds: string[]) =>
+    tasksState === 'pending'
+      ? { data: [], isPending: true, isError: false, refetch: refetchTasks }
+      : tasksState === 'error'
+        ? { data: [], isPending: false, isError: true, refetch: refetchTasks }
+        : { data: projectIds.flatMap((id) => tasks[id] ?? []), isPending: false, isError: false, refetch: refetchTasks },
 }))
 vi.mock('@/api/users', () => ({ useMe: () => ({ data: { id: 'u-1', teamIds: [] } }) }))
 vi.mock('@/lib/usePermission', () => ({ usePermission: () => (_action: string, ctx: { project: P }) => loggable.has(ctx.project.id) }))
@@ -37,6 +44,8 @@ beforeEach(() => {
   loggable.clear()
   loggable.add('p-nex')
   firstStart = false
+  tasksState = 'ok'
+  refetchTasks.mockReset()
   start.mutate.mockReset()
   start.isPending = false
   start.error = null
@@ -91,6 +100,33 @@ describe('StartTimerDialog (UX Phase 4, 4.3: find a task, start in two clicks)',
     expect(start.mutate).not.toHaveBeenCalled()
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Start timer' })))
     expect(start.mutate).toHaveBeenCalledWith({ taskId: 't-102' }, expect.anything())
+  })
+
+  it('while my tasks load it shows pulse rows, not “No open tasks” (UX Phase 6, deferred minor #16)', () => {
+    tasksState = 'pending'
+    show()
+    expect(screen.queryByText(/No open tasks of yours yet/)).toBeNull()
+    expect(screen.getByRole('dialog').querySelector('.animate-pulse')).toBeTruthy()
+  })
+
+  it('if my tasks didn’t load it says so, with Try again (UX Phase 6, deferred minor #16)', () => {
+    tasksState = 'error'
+    show()
+    expect(screen.queryByText(/No open tasks of yours yet/)).toBeNull()
+    expect(screen.getByText('Your tasks didn’t load.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(refetchTasks).toHaveBeenCalled()
+  })
+
+  it('on a first start, a pick the search hides is let go, so Start can’t start a task off screen (UX Phase 6, #18)', async () => {
+    firstStart = true
+    show()
+    await act(async () => fireEvent.click(screen.getByRole('option')))
+    fireEvent.change(box(), { target: { value: 'login' } })
+    expect(options()).toEqual(['NEX-101 · Login pageNexus Core'])
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Start timer' })))
+    expect(start.mutate).not.toHaveBeenCalled()
+    expect(screen.getByText('Pick a task.')).toBeTruthy()
   })
 
   it('Log on the project only: a project, then Start', async () => {

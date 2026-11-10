@@ -1,6 +1,6 @@
 import clsx from 'clsx'
 import { ArrowLeft, Inbox, Plus, RotateCcw, UserX, Users as UsersIcon, Wallet, X } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
 import { useTeams } from '@/api/projects'
 import { useRoles } from '@/api/roles'
@@ -15,7 +15,7 @@ import { SearchBox } from '@/components/ui/SearchBox'
 import { NoAccess } from '@/components/ui/NoAccess'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { QueryError } from '@/components/ui/QueryError'
-import { Sheet, SheetCancelButton } from '@/components/ui/Sheet'
+import { Sheet, SheetCancelButton, useSheetLeave } from '@/components/ui/Sheet'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { formatDate, timeAgo } from '@/lib/format'
 import { paths } from '@/lib/paths'
@@ -304,11 +304,16 @@ function PersonSheet({
   const refused = save.error?.message ?? null
   const errorOf = (key: keyof NewPerson) => checked[key] ?? (refused && fieldOf(refused) === key ? refused : undefined)
   const deactivatedBy = person?.deactivated && people.find((p) => p.id === person.deactivated!.by)?.name
+  const seenTeams = useRef(new Set<string>())
+  useEffect(() => {
+    for (const team of teams) seenTeams.current.add(team.id)
+  }, [teams])
 
   const submit = () => {
     if (!attempt()) return
-    // Teams in other workspaces aren't shown here, and stay.
-    const elsewhere = person?.teamIds.filter((id) => !teams.some((t) => t.id === id)) ?? []
+    // Teams in other workspaces aren't shown here, and stay; one this workspace listed while the sheet was open and that
+    // has since gone is this workspace's, and is dropped (UX Phase 6: their row may still name it).
+    const elsewhere = person?.teamIds.filter((id) => !teams.some((t) => t.id === id) && !seenTeams.current.has(id)) ?? []
     // A team removed meanwhile (UX Phase 2, 2.4: teams can go) isn't sent: only this workspace's teams as they are now.
     const input = { ...values, teamIds: [...elsewhere, ...values.teamIds.filter((id) => teams.some((t) => t.id === id))] }
     if (person) update.mutate({ id: person.id, patch: input }, { onSuccess: done('Changes saved.') })
@@ -429,11 +434,7 @@ function PersonSheet({
               <Wallet className="size-4" /> Hourly cost
             </Link>
           )}
-          {!person.deactivated && person.id !== meId && onDeactivate && (
-            <button type="button" onClick={onDeactivate} className="ms-auto inline-flex min-h-11 items-center gap-1.5 font-medium text-red-700 hover:text-red-800 dark:text-red-300 dark:hover:text-red-200">
-              <UserX className="size-4" /> Deactivate…
-            </button>
-          )}
+          {!person.deactivated && person.id !== meId && onDeactivate && <DeactivateButton onDeactivate={onDeactivate} />}
         </div>
       )}
     </Sheet>
@@ -478,5 +479,15 @@ function DeactivateSheet({ person, onClose }: { person: PersonRow; onClose: () =
         </Field>
       </div>
     </Sheet>
+  )
+}
+
+/** Deactivate… inside Edit: a changed form asks "Discard …?" first, so the edits never go without a word (UX Phase 6). */
+function DeactivateButton({ onDeactivate }: { onDeactivate: () => void }) {
+  const leave = useSheetLeave()
+  return (
+    <button type="button" onClick={() => leave(onDeactivate)} className="ms-auto inline-flex min-h-11 items-center gap-1.5 font-medium text-red-700 hover:text-red-800 dark:text-red-300 dark:hover:text-red-200">
+      <UserX className="size-4" /> Deactivate…
+    </button>
   )
 }

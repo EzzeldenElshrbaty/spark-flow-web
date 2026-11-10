@@ -28,7 +28,8 @@ export function useColumnStrip(ref: RefObject<HTMLElement | null>, count: number
       first: whole[0] ?? 1,
       last: whole.at(-1) ?? whole[0] ?? 1,
       total: sections.length,
-      overflows: spare > 1,
+      // Some column isn't wholly in view: the Add column tile alone past the edge doesn't count (UX Phase 6).
+      overflows: spare > 1 && whole.length < sections.length,
       atStart: offset < 1,
       atEnd: spare - offset < 1,
     })

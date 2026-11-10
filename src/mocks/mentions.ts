@@ -133,9 +133,19 @@ export function taskEventsFor(data: DbData, userId: string): Omit<MentionItem, '
   return items
 }
 
+const newestFirst = <T extends { createdAt: string }>(a: T, b: T) => (a.createdAt < b.createdAt ? 1 : -1)
+
+/**
+ * The newest `limit` mentions and the newest `limit` task news, together newest first: each kind keeps its own room, so
+ * a busy day of task news never pushes mentions of me out of My work (UX Phase 6).
+ */
+export function capEach<T extends { createdAt: string }>(mentions: T[], news: T[], limit: number): T[] {
+  return [...[...mentions].sort(newestFirst).slice(0, limit), ...[...news].sort(newestFirst).slice(0, limit)].sort(newestFirst)
+}
+
 /** Mentions of me and task news for me, newest first: the bell's list (UX Phase 2, 2.3). */
 export function inboxFor(data: DbData, userId: string, keep: (item: Omit<MentionItem, 'read'>) => boolean = () => true, limit = MAX_ITEMS): Omit<MentionItem, 'read'>[] {
-  return [...mentionsFor(data, userId, keep, Infinity), ...taskEventsFor(data, userId).filter(keep)].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)).slice(0, limit)
+  return capEach(mentionsFor(data, userId, keep, Infinity), taskEventsFor(data, userId).filter(keep), limit)
 }
 
 /** Mentions of me, for the bell and Home, with their read state (kept per person). */

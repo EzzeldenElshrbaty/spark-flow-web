@@ -73,6 +73,8 @@ export function MyWorkPage() {
   // The bell also lists task news (UX Phase 2, 2.3); this card keeps to mentions of me.
   const mentionsOnly = (mentions.data ?? []).filter((m) => m.source === 'message' || m.source === 'reply' || m.source === 'comment')
   const loading = day.isPending || projects.isPending || tasks.isPending
+  // A failed load shows its sentence below; the tiles show a dash, not 0 (UX Phase 6).
+  const failed = projects.isError || tasks.isError
 
   return (
     <>
@@ -86,7 +88,7 @@ export function MyWorkPage() {
             ['overEstimate', 'Over estimate', Hourglass, 'amber'],
           ] as const
         ).map(([key, label, icon, tone]) => (
-          <FilterTile key={key} label={label} icon={icon} tone={tone} count={loading ? undefined : tiles[key]} pressed={tile === key} onClick={() => setParams({ show: tile === key ? null : key })} />
+          <FilterTile key={key} label={label} icon={icon} tone={tone} count={loading || failed ? undefined : tiles[key]} pressed={tile === key} onClick={() => setParams({ show: tile === key ? null : key })} />
         ))}
       </div>
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">

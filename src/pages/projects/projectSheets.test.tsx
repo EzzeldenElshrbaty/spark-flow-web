@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { Phase, ProjectSummary } from '@/api/types'
+import type { BoardColumn, Phase, ProjectSummary } from '@/api/types'
 import { ColumnSheet } from './ColumnSheet'
 import { DeleteColumnSheet } from './DeleteColumnSheet'
 import { DeliverableSheet } from './DeliverableSheet'
@@ -176,6 +176,41 @@ describe('project links for screen readers (UX Phase 5A, 5.9)', () => {
     expect(screen.getByRole('textbox', { name: 'Link 1 web address' }).getAttribute('aria-invalid')).toBe('true')
     expect(screen.getByRole('textbox', { name: 'Link 1 label' }).getAttribute('aria-invalid')).toBe('false')
     expect(screen.getByRole('group', { name: /^Links/, description: 'Links must start with https://.' })).toBeTruthy()
+    // The box marked wrong says why too (UX Phase 6, deferred minor #28).
+    expect(screen.getByRole('textbox', { name: 'Link 1 web address', description: 'Links must start with https://.' })).toBeTruthy()
+  })
+})
+
+describe('an untouched sheet doesn’t ask after a change from elsewhere (UX Phase 6, deferred minor #3)', () => {
+  const columns = [
+    { id: 'todo', label: 'To do', category: 'todo' },
+    { id: 'doing', label: 'In progress', category: 'inProgress' },
+  ] as BoardColumn[]
+
+  it('Column details: the column renamed in another tab, then ✕, closes', () => {
+    const onClose = vi.fn()
+    const { rerender } = render(<ColumnSheet projectId="p-nex" columns={columns} column={columns[0]} onClose={onClose} />)
+    const renamed = [{ ...columns[0]!, label: 'Ready' }, columns[1]!, { id: 'qa', label: 'QA', category: 'inProgress' }] as BoardColumn[]
+    rerender(<ColumnSheet projectId="p-nex" columns={renamed} column={renamed[0]} onClose={onClose} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('Add deliverable: the project’s due date moved elsewhere, then ✕, closes', () => {
+    const onClose = vi.fn()
+    const { rerender } = render(<DeliverableSheet project={project} phases={[phase]} onClose={onClose} />)
+    rerender(<DeliverableSheet project={{ ...project, dueDate: '2026-12-20T00:00:00.000Z', currentPhaseId: 'ph-1' }} phases={[phase]} onClose={onClose} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('Edit project: its status changed elsewhere, then ✕, closes', () => {
+    const onClose = vi.fn()
+    const live = { ...project, status: 'active', clientName: '', description: '', links: [], startDate: '2026-10-01T00:00:00.000Z', methodology: 'agile' } as unknown as ProjectSummary
+    const { rerender } = render(<ProjectSheet workspaceId="ws-eng" project={live} takenKeys={[]} onClose={onClose} onSaved={() => {}} />)
+    rerender(<ProjectSheet workspaceId="ws-eng" project={{ ...live, status: 'onHold' } as ProjectSummary} takenKeys={[]} onClose={onClose} onSaved={() => {}} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(onClose).toHaveBeenCalledTimes(1)
   })
 })
 

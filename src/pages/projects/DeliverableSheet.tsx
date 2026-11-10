@@ -15,11 +15,10 @@ export function DeliverableSheet({ project, phases, deliverable, onClose }: { pr
   const [title, setTitle] = useState(deliverable?.title ?? '')
   const [phaseId, setPhaseId] = useState(deliverable ? (deliverable.phaseId ?? '') : (project.currentPhaseId ?? ''))
   const [due, setDue] = useState((deliverable?.dueDate ?? project.dueDate).slice(0, 10))
-  // Closing with changes asks first (UX Phase 1, 1.2).
-  const dirty =
-    title !== (deliverable?.title ?? '') ||
-    phaseId !== (deliverable ? (deliverable.phaseId ?? '') : (project.currentPhaseId ?? '')) ||
-    due !== (deliverable?.dueDate ?? project.dueDate).slice(0, 10)
+  // Closing with changes asks first (UX Phase 1, 1.2), against the values as opened: a change from another tab isn't
+  // mine (UX Phase 6).
+  const [opened] = useState({ title, phaseId, due })
+  const dirty = title !== opened.title || phaseId !== opened.phaseId || due !== opened.due
   const pending = create.isPending || update.isPending
   const failure = (create.error ?? update.error) as Error | null
 

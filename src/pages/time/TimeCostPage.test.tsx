@@ -84,4 +84,21 @@ describe('Time & cost (UX Phase 4)', () => {
     await open()
     expect((screen.getByRole('button', { name: /Export CSV/ }) as HTMLButtonElement).disabled).toBe(true)
   })
+
+  it('while the last period’s report shows, its missing-rate line dims with it (UX Phase 6, deferred minor #20)', async () => {
+    query.data = { ...report, byPerson: [{ userId: 'u-3', rate: 0, hours: 12, cost: 0 }] }
+    query.isPlaceholderData = true
+    await open()
+    expect(screen.getByText(/1 person has no hourly cost/).closest('p')!.className).toContain('opacity-60')
+  })
+
+  it('the empty text names the period on screen, not the one still loading (UX Phase 6, deferred minor #20)', async () => {
+    query.data = { ...report, byProject: [], byPerson: [], totals: { hours: 0, cost: 0, people: 0 } }
+    const router = await open('?days=7')
+    expect(screen.getByText('No time logged in the last 7 days.')).toBeTruthy()
+    query.isPlaceholderData = true
+    await act(() => router.navigate('/w/engineering/time?days=30'))
+    expect(screen.getByText('No time logged in the last 7 days.')).toBeTruthy()
+  })
 })
+
