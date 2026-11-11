@@ -487,7 +487,7 @@ export function SidebarContent({
         )}
 
         {slug && workspace && onChat && !chatLoading && projectChannels.length > 0 && (
-          // Every project's chat (spec 5.1), in the Projects side's order: a drop here reorders the projects there too.
+          // The chat of each project I may write in (spec 5.1), in the Projects side's order: a drop here reorders the projects there too.
           <SideSection
             id="projectChannels"
             label="Project channels"

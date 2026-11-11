@@ -3121,6 +3121,29 @@ sheet opens over the page I'm on, Save opens the new project, Cancel leaves me w
 - [x] Browser check: desktop light and dark, 390 px
 - [x] Gates: lint, tsc, `npm test` 3,158/3,158
 
+# Project channels list only chats I may write in — 11 Nov 2026, approved ("Yes, recommended")
+
+Branch `fix/project-channels-mine` from dev 9823599. Reported: Hossam (Member, Backend team) saw #el-moasser under
+Project channels though only its project's people may write there. Project channels mirrored the Projects side, which
+lists every project; the sidebar comment still said anyone who sees a project may post in its chat.
+
+- [x] Tests first: `withoutReadOnlyChats`, `projectOrderFrom` keeps unlisted projects in place (`lib/channels.test.ts`);
+      whole app as Member and Admin, and a starred read-only chat (`src/projectChannels.browser.test.tsx`)
+- [x] `useSidebarGroups` leaves out project chats where `collab.post` is false, unless starred; comments and CLAUDE.md
+- [x] Browser check: Hossam sees nexus-core and mobile-app, #el-moasser still opens read-only; Youssef sees every one
+- [x] Gates: lint, tsc, `npm test` 3,163/3,163
+
+## Admin sees every public channel — 11 Nov 2026, approved ("Yes, public only")
+
+Same branch. Channels lists the channels I'm in plus those I may manage without being in them: `sidebarChannels`'
+`mayManage` is `channel.manage`, so whoever holds `channels.manageAll` (Admin) sees every public channel, joined or not,
+and never a private one he isn't in. Opening one he hasn't joined shows Join channel, as before.
+
+- [x] Tests first: `sidebarChannels` with `mayManage` (`lib/channels.test.ts`); whole app as Admin (left #frontend-dev,
+      Nour's new public and private channels) and as Member (`src/projectChannels.browser.test.tsx`)
+- [x] Browser check: Youssef left #frontend-dev, it stays under Channels and opens with Join channel; rejoined
+- [x] Gates: lint, tsc, `npm test` 3,166/3,166
+
 # Chat polish pass: the Page tab's and the intro's deferred minors — 11 Nov 2026, approved (Native)
 
 Branch `fix/chat-polish` from dev 32e7f6a. User answers Q1–Q5 "Yes, recommended": a page mention stays after the person

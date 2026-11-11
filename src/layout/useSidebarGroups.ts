@@ -8,10 +8,11 @@ import { useThreads } from '@/api/threads'
 import { applyOrder } from '@/lib/sidebarOrder'
 import { useMyMentions } from '@/api/mentions'
 import { useProjects } from '@/api/tickets'
-import { useUsers } from '@/api/users'
-import { channelLabel, channelSections, chatCount, sidebarChannels, sortChannels, unreadMentions, unreadTaskMentions } from '@/lib/channels'
+import { useMe, useUsers } from '@/api/users'
+import { channelLabel, channelSections, chatCount, sidebarChannels, sortChannels, unreadMentions, unreadTaskMentions, withoutReadOnlyChats } from '@/lib/channels'
 import { isFlowbotDm } from '@/lib/flowbot'
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
+import { usePermission } from '@/lib/usePermission'
 import { useRole } from '@/lib/useRole'
 
 /** group: a direct message with more than one other person, so no one presence stands for it. */
@@ -21,6 +22,8 @@ export type ChannelRow = { channel: Channel; label: string; presence: Presence; 
 export function useSidebarGroups() {
   const { workspace, isPending: workspaceLoading } = useCurrentWorkspace()
   const { persona } = useRole()
+  const me = useMe().data
+  const check = usePermission()
   const channelsQuery = useChannels(workspace?.id)
   const drafts = useDrafts(workspace?.id)
   const drafted = new Set((drafts.data ?? []).map((d) => d.channelId))
@@ -38,9 +41,13 @@ export function useSidebarGroups() {
 
   const users = usersQuery.data ?? []
   const sorted = sortChannels(channelsQuery.data ?? [])
-  // Channels I'm in, and the chat of every project the Projects side lists (spec 5.1, Project channels): a project's
-  // people follow it, and its chat is public, so anyone who sees the project may read and post there.
+  // Channels I'm in, and the chat of each project the Projects side lists (spec 5.1, Project channels). Anyone who sees
+  // a project may read its chat, but only its people (and whoever may post on every project) write there, so a chat I
+  // may only read stays out unless I starred it (11 Nov 2026). Nothing is left out until I'm known.
   const projectChannelIds = new Set((projectsQuery.data ?? []).map((p) => p.channelId))
+  const readOnlyChats = new Set(
+    me ? (projectsQuery.data ?? []).filter((project) => !check('collab.post', { project, userTeamIds: me.teamIds })).map((p) => p.channelId) : [],
+  )
   const row = (channel: Channel): ChannelRow => {
     const other = channel.memberIds.find((id) => id !== persona.id) ?? persona.id
     return { channel, label: channelLabel(channel, users, persona.id), presence: users.find((u) => u.id === other)?.presence ?? 'offline', group: channel.memberIds.length > 2, otherId: other, otherName: users.find((u) => u.id === other)?.name ?? channelLabel(channel, users, persona.id), draft: drafted.has(channel.id) }
@@ -49,7 +56,9 @@ export function useSidebarGroups() {
   let projects: Project[] = projectsQuery.data ?? []
 
   // A starred channel or DM is listed once, under Starred (spec §5.1).
-  const listed = [...sidebarChannels(sorted.channels, persona.id, projectChannelIds), ...sorted.dms, ...sorted.apps].map(row)
+  // Whoever may manage every public channel (Admin) sees each of them, joined or not (11 Nov 2026).
+  const mayManage = (channel: Channel) => check('channel.manage', { channel })
+  const listed = [...withoutReadOnlyChats(sidebarChannels(sorted.channels, persona.id, projectChannelIds, mayManage), readOnlyChats), ...sorted.dms, ...sorted.apps].map(row)
 
   const mentions = unreadMentions(mentionsQuery.data, workspace?.id)
   const idOf = (r: ChannelRow) => r.channel.id
@@ -74,7 +83,7 @@ export function useSidebarGroups() {
     workspace,
     starred,
     channels,
-    /** The chat of each project the Projects side lists, in its order (spec 5.1); starred ones stay under Starred. */
+    /** The chat of each project the Projects side lists that I may write in, in its order (spec 5.1); starred ones stay under Starred. */
     projectChannels,
     dms,
     /** Flowbot's DM (spec 5.1 Apps), once Flowbot has written. */

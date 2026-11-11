@@ -37,11 +37,12 @@ export function sortChannels(channels: Channel[]): { channels: Channel[]; dms: C
 }
 
 /**
- * The channels the sidebar lists: the ones I'm in, and the chats of the projects it lists; never archived ones. Other
- * public channels are found through search, where Join adds them.
+ * The channels the sidebar lists: the ones I'm in, the chats of the projects it lists, and the ones I may manage
+ * without being in them (`mayManage`: `channel.manage`, so every public one for the Admin, never a private one I'm
+ * not in); never archived ones. Anyone else finds other public channels through search, where Join adds them.
  */
-export function sidebarChannels(channels: Channel[], meId: string, projectChannelIds: Set<string>): Channel[] {
-  return channels.filter((c) => !isArchived(c) && (c.memberIds.includes(meId) || projectChannelIds.has(c.id)))
+export function sidebarChannels(channels: Channel[], meId: string, projectChannelIds: Set<string>, mayManage: (channel: Channel) => boolean = () => false): Channel[] {
+  return channels.filter((c) => !isArchived(c) && (c.memberIds.includes(meId) || projectChannelIds.has(c.id) || mayManage(c)))
 }
 
 /**
@@ -62,9 +63,24 @@ export function channelSections<R extends { channel: Pick<Channel, 'id' | 'starr
   }
 }
 
-/** A drop in Project channels, as the Projects side's order: the one order both sides share is of projects. */
+/**
+ * A drop in Project channels, as the Projects side's order: the one order both sides share is of projects. The listed
+ * projects take their new order in the places they held; a project whose chat isn't there (one I may only read, or a
+ * starred one) keeps its place, so the Projects side moves only what was dragged.
+ */
 export function projectOrderFrom(channelIds: string[], projects: { id: string; channelId: string }[]): string[] {
-  return channelIds.flatMap((channelId) => projects.filter((p) => p.channelId === channelId).map((p) => p.id))
+  const dropped = channelIds.flatMap((channelId) => projects.filter((p) => p.channelId === channelId))
+  const listed = new Set(dropped.map((p) => p.id))
+  let next = 0
+  return projects.map((p) => (listed.has(p.id) ? dropped[next++].id : p.id))
+}
+
+/**
+ * The sidebar lists a project's chat only where I may write (11 Nov 2026): one I may only read stays out unless I
+ * starred it. Its address, the project's Chat tab and search still open it.
+ */
+export function withoutReadOnlyChats<C extends Pick<Channel, 'id' | 'starred'>>(channels: C[], readOnlyIds: Set<string>): C[] {
+  return channels.filter((c) => c.starred || !readOnlyIds.has(c.id))
 }
 
 /** Whether a channel belongs to the workspace in the URL. One from another workspace is treated as not found there. */
