@@ -40,6 +40,7 @@ export function Modal({
   wide = false,
   dirty = false,
   discardQuestion = 'Discard your changes?',
+  keepLabel = 'Keep editing',
   children,
 }: {
   open: boolean
@@ -57,6 +58,8 @@ export function Modal({
   /** The form has changes: closing asks `discardQuestion` first. */
   dirty?: boolean
   discardQuestion?: string
+  /** The button that goes back from `discardQuestion` (voice messages: "Keep recording"). */
+  keepLabel?: string
   children?: ReactNode
 }) {
   const titleId = useId()
@@ -161,7 +164,7 @@ export function Modal({
                         panelRef.current?.focus()
                       }}
                     >
-                      Keep editing
+                      {keepLabel}
                     </Button>
                     <Button
                       touch

@@ -27,6 +27,15 @@ function Form({ dirty, onClose, inner }: { dirty: boolean; onClose: () => void; 
 }
 
 describe('a changed dialog asks before it closes', () => {
+  it('keepLabel names the button that goes back (voice messages: Keep recording)', () => {
+    render(
+      <Modal open title="Record a voice message" onClose={vi.fn()} dirty discardQuestion="Discard the recording?" keepLabel="Keep recording" footer={<ModalCancelButton />} />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.getByRole('button', { name: 'Keep recording' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Keep editing' })).toBeNull()
+  })
+
   it('unchanged, Cancel, × and Esc close at once', () => {
     const onClose = vi.fn()
     render(<Form dirty={false} onClose={onClose} />)
