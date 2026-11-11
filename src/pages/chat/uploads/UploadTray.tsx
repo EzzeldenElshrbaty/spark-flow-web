@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/sf/Button'
 import { Icon } from '@/components/sf/Icon'
 import { Tooltip } from '@/components/sf/Tooltip'
+import { clipLabel } from '@/lib/clips'
 import { fileSubline, previewOf } from '@/lib/fileTypes'
 import { useUploadProgress } from '@/pages/chat/uploads/uploadProgress'
 import type { Upload } from '@/pages/chat/uploads/useUploads'
@@ -53,7 +54,7 @@ function Card({ upload, onRemove, onRetry }: { upload: Upload; onRemove: (key: s
             <span className="block h-full rounded-sf-full bg-sf-accent-fill transition-[width] duration-150 ease-sf" style={{ width: `${percent}%` }} />
           </span>
         )}
-        {status === 'ready' && <span className="sf-meta text-sf-text-muted">{fileSubline(file.name, upload.uploaded?.size ?? file.size)}</span>}
+        {status === 'ready' && <span className="sf-meta text-sf-text-muted">{upload.clip ? clipLabel(upload.clip) : fileSubline(file.name, upload.uploaded?.size ?? file.size)}</span>}
         {status === 'failed' && (
           <span className="flex min-w-0 items-center gap-1">
             <span className="sf-meta min-w-0 truncate text-sf-error">{error}</span>

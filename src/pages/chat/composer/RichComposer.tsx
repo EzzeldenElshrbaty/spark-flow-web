@@ -11,7 +11,7 @@ import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPl
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import { $findMatchingParent } from '@lexical/utils'
-import { IconAt, IconCalendarEvent, IconChevronDown, IconClock, IconCode, IconFiles, IconLetterCase, IconMoodSmile, IconPlus, IconSend, IconSlash, IconUpload, IconX } from '@tabler/icons-react'
+import { IconAt, IconCalendarEvent, IconChevronDown, IconClock, IconCode, IconFiles, IconLetterCase, IconMicrophone, IconMoodSmile, IconPlus, IconSend, IconSlash, IconUpload, IconVideo, IconX } from '@tabler/icons-react'
 import clsx from 'clsx'
 import { $createTextNode, $getSelection, $insertNodes, $isRangeSelection, $setSelection, type BaseSelection, type EditorState, type LexicalEditor } from 'lexical'
 import { useCallback, useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react'
@@ -34,6 +34,9 @@ import { FormatBar } from '@/pages/chat/composer/FormatBar'
 import { KeysPlugin } from '@/pages/chat/composer/KeysPlugin'
 import { COMPOSER_TRANSFORMERS } from '@/pages/chat/composer/markdown'
 import { CustomReminder } from '@/pages/chat/saved/RemindMenu'
+import type { Clip, ClipKind } from '@/api/types'
+import { canRecord } from '@/lib/recorder'
+import { RecordDialog } from '@/pages/chat/clips/RecordDialog'
 import { countNotice } from './countNotice'
 import { usePhone } from '@/components/sf/usePhone'
 
@@ -75,7 +78,12 @@ export type ComposerFiles = {
   waiting: string | null
   /** Add from Flow files (spec 6.8): the page opens its picker. */
   fromFlow?: () => void
+  /** A voice or video message recorded here goes to the tray (chat spec 6.9); without it, no record buttons. */
+  onRecorded?: (file: File, clip: Clip) => void
 }
+
+const RECORD_LABELS = { video: 'Record a video message', voice: 'Record a voice message' } as const
+const RECORD_ICONS = { video: IconVideo, voice: IconMicrophone } as const
 
 /** Whether a drag carries files (not text or a link being dragged). */
 const carriesFiles = (event: DragEvent) => event.dataTransfer?.types.includes('Files') ?? false
@@ -205,6 +213,11 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
   const [body, setBody] = useState<Body>(initialBody ?? [])
   const [formatting, setFormatting] = useState(showFormatting)
   const [pending, setPending] = useState(false)
+  // Record a voice or video message (chat spec 6.9): in the row from md, in the + menu on phones.
+  const phone = usePhone()
+  const [recordable] = useState(() => ({ video: canRecord('video'), voice: canRecord('voice') }))
+  const records = files?.onRecorded ? (['video', 'voice'] as const).filter((kind) => recordable[kind]) : []
+  const [recording, setRecording] = useState<ClipKind | null>(null)
   // When the last box I scheduled goes out: said under the box until I write again.
   const [scheduledFor, setScheduledFor] = useState<Date | null>(null)
   const [customTime, setCustomTime] = useState(false)
@@ -477,6 +490,12 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
                     Text snippet
                   </MenuItem>
                 )}
+                {phone &&
+                  records.map((kind) => (
+                    <MenuItem key={kind} icon={RECORD_ICONS[kind]} onSelect={() => setRecording(kind)}>
+                      {RECORD_LABELS[kind]}
+                    </MenuItem>
+                  ))}
               </Menu>
               <input
                 ref={picker}
@@ -519,6 +538,15 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
               editor.focus()
             }}
           />
+          {!phone && records.length > 0 && (
+            <>
+              <span aria-hidden className="mx-1 h-4 w-px flex-none bg-sf-line" />
+              {records.map((kind) => (
+                <IconButton key={kind} label={RECORD_LABELS[kind]} icon={RECORD_ICONS[kind]} size="sm" tone="muted" onClick={() => setRecording(kind)} />
+              ))}
+            </>
+          )}
+          {recording && files?.onRecorded && <RecordDialog kind={recording} onAttach={files.onRecorded} onClose={() => setRecording(null)} />}
           {slash && (
             <>
               <span aria-hidden className="mx-1 h-4 w-px flex-none bg-sf-line" />

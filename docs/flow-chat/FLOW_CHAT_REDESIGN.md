@@ -496,6 +496,7 @@ Order, with separators shown as —:
   - Record in the browser after permission prompts, preview, re-record, then attach.
   - The player is a 32px `accent-fill` play button, a waveform in `line-strong` that turns `accent` as it plays, and the duration.
   - "Show transcript" appears when a transcript exists (**OPEN**: transcription provider).
+  - Built (voice and video messages, 11 Nov 2026): Record a video message and Record a voice message after @ in the channel and thread boxes (in the + menu on phones) open a dialog that records, then shows the recording with Re-record and Attach (`docs/superpowers/specs/2026-11-11-voice-and-video-messages-design.md`). Voice up to 5 minutes, video up to 2. A recording is a chat file with `clip` data; voice plays from the `sf-clip` player (waveform slider), video inline. Show transcript and playback speed wait.
 
 ### 6.10 Modals (`sf-modal`)
 

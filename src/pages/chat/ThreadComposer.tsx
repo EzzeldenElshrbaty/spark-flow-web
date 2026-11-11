@@ -102,6 +102,7 @@ export function ThreadComposer({
           files={{
             tray: <UploadTray uploads={uploads.items} refused={uploads.refused} onRemove={uploads.remove} onRetry={uploads.retry} />,
             onAdd: uploads.add,
+            onRecorded: uploads.addClip,
             ready: uploads.ready.length,
             waiting: uploads.waiting,
             fromFlow: flowFiles.open,

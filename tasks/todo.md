@@ -3205,3 +3205,19 @@ see keeps the plain card.
 - [x] `TaskCard` with an optional last line; `TaskEventCard` uses it
 - [x] Browser check: /task in #sela-booking, then a move; desktop light, 390 px dark; the card opens the panel
 - [x] Gates: lint, tsc, `npm test` 3,172/3,172
+
+# Voice and video messages (chat spec §6.9) — 11 Nov 2026, approved (Native)
+
+Branch `feat/voice-messages` from dev e86d1c6. Spec `docs/superpowers/specs/2026-11-11-voice-and-video-messages-design.md`,
+plan `docs/superpowers/plans/2026-11-11-voice-and-video-messages.md`. User answers Q1–Q7 "Yes, recommended": voice and
+video together; the record buttons after @ from md, in the + menu on phones, in channel and thread boxes; an sf Modal
+recorder (record, check, Re-record, Attach); voice 5 minutes, video 2; a waveform player for voice, inline video;
+uploaded audio stays a file card; no playback speed or transcript yet.
+
+- [x] Task 1 — clip data on chat files (DB v35), the Audio kind, the seeded voice note on m-g04, contract Slice VM
+- [x] Task 2 — `lib/recorder.ts`, with a real recording through Chromium's fake devices
+- [x] Task 3 — the voice player and clips in messages
+- [x] Task 4 — the record dialog, Modal `keepLabel`
+- [x] Task 5 — the composer's buttons and menu items, the tray, help and rules
+- [ ] Final review, fixes, gates (lint, tsc, npm test, test:ux, build:prototype)
+
