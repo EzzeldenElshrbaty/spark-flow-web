@@ -66,8 +66,9 @@ export function TemplatePicker({ channelId, people, me, onClose, onAdded }: { ch
     try {
       const page = await latest(channelId)
       if (closed.current) return
-      // Someone else holds the page: say so in the picker's words, before anything is saved (final review).
-      const holder = page.editing && page.editing.userId !== me && Date.parse(page.editing.until) > Date.now() ? page.editing.userId : null
+      // Someone else holds the page (the server reports only a live hold): say so in the picker's words, before anything
+      // is saved (final review).
+      const holder = page.editing && page.editing.userId !== me ? page.editing.userId : null
       if (holder) {
         setBusy(false)
         refuse(new ApiError({ title: 'Conflict', status: 409, detail: `${senderName(holder, people)} is editing the page. Try again when they’re done.` }))

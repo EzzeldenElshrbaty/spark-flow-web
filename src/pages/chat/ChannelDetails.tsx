@@ -203,7 +203,7 @@ export function ChannelDetails({
             onSave={onSave}
           />
         )}
-        {tab === 'tabs' && <BookmarksPanel bookmarks={bookmarks} onUpdate={onUpdateBookmark} onRemove={onRemoveBookmark} />}
+        {tab === 'tabs' && <BookmarksPanel bookmarks={bookmarks} onUpdate={onUpdateBookmark} onRemove={onRemoveBookmark} onFollow={onClose} />}
         {tab === 'settings' && rights.manage && <Settings channel={channel} restrictPosting={rights.restrictPosting} onSave={onSave} onArchive={rights.archive ? onArchive : undefined} />}
       </div>
     </Modal>

@@ -2,6 +2,7 @@ import { IconCheck } from '@tabler/icons-react'
 import clsx from 'clsx'
 import { useId, type ReactNode } from 'react'
 import { Icon } from '@/components/sf/Icon'
+import { inlineText } from '@/lib/messageBody'
 import type { PageBlock, PageBody } from '@/lib/pageBody'
 import { Blocks, Inlines, type BodyContext } from '@/pages/chat/MessageBody'
 
@@ -56,8 +57,11 @@ function PageBlockView({ block, ctx }: { block: PageBlock; ctx: BodyContext }) {
       )
     case 'table': {
       const [head, ...rows] = block.rows
+      // A Tab stop, so a wide table scrolls from the keyboard too (polish pass); a group named by its header row, or
+      // plain "Table", never a landmark (final review).
+      const named = head!.map(inlineText).filter((text) => text.trim() !== '')
       return (
-        <div className="my-2 overflow-x-auto">
+        <div role="group" aria-label={named.length > 0 ? `Table: ${named.join(', ')}` : 'Table'} tabIndex={0} className="sf-focus my-2 overflow-x-auto rounded-sf-sm">
           <table className="border-collapse">
             <thead>
               <tr>

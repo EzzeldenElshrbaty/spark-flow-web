@@ -110,7 +110,8 @@ describe('saving', () => {
     const view = await api.pages.save('c-general', { body: text('Same'), baseVersion: 1 })
     expect(view.version).toBe(1)
     expect(await api.pages.history('c-general')).toHaveLength(1)
-    expect(pageEvents()).toEqual([])
+    // No pageSaved; it renews my hold, which readers hear (final review).
+    expect(pageEvents()).toEqual([{ type: 'pageEditing', channelId: 'c-general', userId: 'u-1', until: view.editing!.until }])
   })
 
   it('editors lists distinct savers, newest first', async () => {
@@ -140,6 +141,16 @@ describe('one editor at a time', () => {
     later(MINUTE + 1)
     expect((await api.pages.get('c-general')).editing).toBeNull()
     expect((await api.pages.save('c-general', { body: text('Mine'), baseVersion: 0 })).version).toBe(1)
+  })
+
+  it('each renewal publishes the hold again, so readers hear it go on (polish pass)', async () => {
+    await asNour()
+    await api.pages.editing('c-general')
+    later(5_000)
+    events = []
+    await api.pages.editing('c-general')
+    const until = new Date(now.getTime() + MINUTE).toISOString()
+    expect(pageEvents()).toEqual([{ type: 'pageEditing', channelId: 'c-general', userId: 'u-2', until }])
   })
 
   it('stopEditing lets the page go at once', async () => {

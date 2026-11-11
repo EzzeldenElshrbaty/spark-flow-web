@@ -116,15 +116,16 @@ export function pagesApi(db: MockDb, hub: MockHub, now: () => Date): Api['pages'
     },
     async editing(channelId) {
       await delay()
-      const { editing, changed } = await db.update((data) => {
+      const { editing, mine } = await db.update((data) => {
         const me = editor(data, channelId)
         const page = pageFor(data, channelId, me.id)
         const holder = holdOf(page)
-        if (holder && holder.userId !== me.id) return { editing: holder, changed: false }
+        if (holder && holder.userId !== me.id) return { editing: holder, mine: false }
         hold(page, me.id)
-        return { editing: page.editing!, changed: !holder }
+        return { editing: page.editing!, mine: true }
       })
-      if (changed) hub.publish({ type: 'pageEditing', channelId, userId: editing.userId, until: editing.until })
+      // Each claim of mine, a renewal too, is news: readers time the hold from when they hear of it (polish pass).
+      if (mine) hub.publish({ type: 'pageEditing', channelId, userId: editing.userId, until: editing.until })
       return { editing: clone(editing) }
     },
     async stopEditing(channelId) {
@@ -148,12 +149,14 @@ export function pagesApi(db: MockDb, hub: MockHub, now: () => Date): Api['pages'
         checkTurn(data, page, me.id, baseVersion, false)
         if (page.version > 0 && same(page.body, valid)) {
           hold(page, me.id)
-          return { view: viewOf(data, channelId), named: null }
+          return { view: viewOf(data, channelId), named: null, renewed: true }
         }
         const named = write(data, page, valid, me.id, false)
         return { view: viewOf(data, channelId), named }
       })
       if (result.named) published(channelId, result.view.version, result.view.updatedBy!, result.named)
+      // Nothing new to save still renews my hold: readers hear it, as they hear a claim (final review).
+      if ('renewed' in result) hub.publish({ type: 'pageEditing', channelId, userId: result.view.editing!.userId, until: result.view.editing!.until })
       return clone(result.view)
     },
     async history(channelId) {

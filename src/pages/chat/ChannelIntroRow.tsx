@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useAddBookmark, useBookmarks } from '@/api/bookmarks'
 import { useProjectSummaries } from '@/api/projects'
 import type { Channel, User } from '@/api/types'
@@ -32,7 +33,24 @@ export function ChannelIntroRow({ channel, people, me, ws, onAddPeople, onEditDe
   // Templates and links are for a channel of its own: a project sets up its channel, a conversation has no page.
   const setUp = canWrite === true && open && channel.kind === 'channel' && !project
   const linked = new Set((bookmarks.data ?? []).map((b) => appPath(b.url)))
-  const linkable = setUp ? (projects.data ?? []).filter((p) => !linked.has(paths.project(ws, p.key))).map((p) => ({ key: p.key, name: p.name })) : []
+  // A pick counts at once: it stays out of the menu until the next list of bookmarks (which has it) arrives, so two
+  // quick picks can't make two bookmarks; a refusal puts it back (polish pass).
+  const [picked, setPicked] = useState<{ key: string; listAt: number }[]>([])
+  const picking = new Set(picked.filter((p) => p.listAt === bookmarks.dataUpdatedAt).map((p) => p.key))
+  // Offered once the bookmarks are known, so a project already linked never shows.
+  const linkable =
+    setUp && bookmarks.isSuccess
+      ? (projects.data ?? []).filter((p) => !linked.has(paths.project(ws, p.key)) && !picking.has(p.key)).map((p) => ({ key: p.key, name: p.name }))
+      : []
+  const link = async (p: { key: string; name: string }) => {
+    setPicked((all) => [...all, { key: p.key, listAt: bookmarks.dataUpdatedAt }])
+    try {
+      return await addBookmark.mutateAsync({ channelId: channel.id, bookmark: { title: p.name, url: `${window.location.origin}${paths.project(ws, p.key)}` } })
+    } catch (error) {
+      setPicked((all) => all.filter((one) => one.key !== p.key))
+      throw error
+    }
+  }
   return (
     <ChannelIntro
       channel={channel}
@@ -44,7 +62,7 @@ export function ChannelIntroRow({ channel, people, me, ws, onAddPeople, onEditDe
       onAddPeople={onAddPeople}
       onEditDescription={onEditDescription}
       onPickTemplate={onPickTemplate}
-      onLinkProject={(p) => addBookmark.mutateAsync({ channelId: channel.id, bookmark: { title: p.name, url: `${window.location.origin}${paths.project(ws, p.key)}` } })}
+      onLinkProject={link}
     />
   )
 }

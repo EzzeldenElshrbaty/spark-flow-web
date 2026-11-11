@@ -1,6 +1,7 @@
 import { useId, useState } from 'react'
 import type { Bookmark } from '@/api/types'
 import { Button } from '@/components/sf/Button'
+import { BookmarkLink } from '@/pages/chat/BookmarkLink'
 
 /**
  * Channel details › Tabs (spec 6.10): the channel's bookmarks, each with Rename and Remove for whoever may post (the
@@ -10,8 +11,11 @@ export function BookmarksPanel({
   bookmarks,
   onUpdate,
   onRemove,
+  onFollow,
 }: {
   bookmarks: Bookmark[]
+  /** A bookmark to Flow was followed: the details close (final review). */
+  onFollow?: () => void
   onUpdate?: (id: string, patch: { title: string }) => Promise<unknown>
   onRemove?: (id: string) => Promise<unknown>
 }) {
@@ -50,9 +54,9 @@ export function BookmarksPanel({
               </>
             ) : (
               <>
-                <a href={b.url} target="_blank" rel="noopener noreferrer" className="sf-focus sf-ui min-w-0 flex-1 truncate rounded-sf-sm text-sf-accent underline">
+                <BookmarkLink url={b.url} onFollow={onFollow} className="sf-focus sf-ui min-w-0 flex-1 truncate rounded-sf-sm text-sf-accent underline">
                   {b.title}
-                </a>
+                </BookmarkLink>
                 <span className="sf-meta hidden min-w-0 max-w-48 truncate text-sf-text-muted sm:inline">{new URL(b.url).hostname}</span>
                 {onUpdate && (
                   <Button size="sm" aria-label={`Rename ${b.title}`} onClick={() => setRenaming({ id: b.id, title: b.title })}>

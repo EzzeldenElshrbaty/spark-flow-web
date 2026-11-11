@@ -1,5 +1,5 @@
 import { IconHistory } from '@tabler/icons-react'
-import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLatestPage, usePage } from '@/api/pages'
 import type { Channel, PageView, User } from '@/api/types'
 import { announce } from '@/components/sf/Announcer'
@@ -18,7 +18,11 @@ import { PageBar } from './PageBar'
 import { PageEditor } from './PageEditor'
 import { PageHistory } from './PageHistory'
 import { PageReader } from './PageReader'
+import { useLiveHold } from './useLiveHold'
 import { usePageSaving } from './usePageSaving'
+
+const LOAD_FAILED = 'Couldn’t load the latest page. Check your connection.'
+const LOST_RIGHTS = 'You can’t edit this page anymore. Your last changes aren’t saved.'
 
 /** Pulse lines while the page loads: no spinner. */
 function PageSkeleton() {
@@ -29,20 +33,6 @@ function PageSkeleton() {
       ))}
     </div>
   )
-}
-
-/** The hold while it lasts; re-renders when it runs out, so "… is editing" goes by itself. */
-function useLiveHold(view: PageView | undefined) {
-  const [, tick] = useReducer((n: number) => n + 1, 0)
-  const until = view?.editing?.until
-  useEffect(() => {
-    if (!until) return
-    const ms = Date.parse(until) - Date.now()
-    if (ms <= 0) return
-    const timer = setTimeout(tick, ms + 50)
-    return () => clearTimeout(timer)
-  }, [until])
-  return view?.editing && Date.parse(view.editing.until) > Date.now() ? view.editing : null
 }
 
 /**
@@ -67,14 +57,14 @@ export function ChannelPageTab({ channel, people, me }: { channel: Channel; peop
       </div>
     )
   if (!page.data || canWrite === null) return <PageSkeleton />
-  return <LoadedPage key={channel.id} channel={channel} view={page.data} people={people} me={me} mayEdit={canWrite && !isArchived(channel)} />
+  return <LoadedPage key={channel.id} channel={channel} view={page.data} receivedAt={page.dataUpdatedAt} people={people} me={me} mayEdit={canWrite && !isArchived(channel)} />
 }
 
-function LoadedPage({ channel, view, people, me, mayEdit }: { channel: Channel; view: PageView; people: User[]; me: string; mayEdit: boolean }) {
+function LoadedPage({ channel, view, receivedAt, people, me, mayEdit }: { channel: Channel; view: PageView; receivedAt: number; people: User[]; me: string; mayEdit: boolean }) {
   const nameOf = (id: string) => people.find((u) => u.id === id)?.name ?? 'Someone'
   const saving = usePageSaving({ channelId: channel.id, view, me, nameOf })
   const { saver } = saving
-  const hold = useLiveHold(view)
+  const hold = useLiveHold(view.editing, receivedAt)
   const heldBy = hold && hold.userId !== me ? nameOf(hold.userId) : null
 
   // The editor starts from the page as it is when it mounts (after someone else's hold too: final review); a new key
@@ -113,14 +103,9 @@ function LoadedPage({ channel, view, people, me, mayEdit }: { channel: Channel; 
     const ask = (event: BeforeUnloadEvent) => {
       if (dirty.current) event.preventDefault()
     }
-    const hide = () => void saver.flush()
     addEventListener('beforeunload', ask)
-    addEventListener('pagehide', hide)
-    return () => {
-      removeEventListener('beforeunload', ask)
-      removeEventListener('pagehide', hide)
-    }
-  }, [saver])
+    return () => removeEventListener('beforeunload', ask)
+  }, [])
 
   const { workspace } = useCurrentWorkspace()
   const projectKeys = useProjectKeys(channel.workspaceId)
@@ -131,6 +116,7 @@ function LoadedPage({ channel, view, people, me, mayEdit }: { channel: Channel; 
 
   const latestPage = useLatestPage()
   const [copied, setCopied] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const copyMine = () =>
     void navigator.clipboard.writeText(saver.myText()).then(
       () => {
@@ -141,13 +127,26 @@ function LoadedPage({ channel, view, people, me, mayEdit }: { channel: Channel; 
     )
   const loadLatest = async () => {
     setCopied(false)
-    reload(await latestPage(channel.id))
+    setLoadError(null)
+    try {
+      reload(await latestPage(channel.id))
+    } catch {
+      // My text stays; the sentence says why nothing changed (polish pass).
+      setLoadError(LOAD_FAILED)
+      announce(LOAD_FAILED)
+    }
   }
 
   const [showHistory, setShowHistory] = useState(false)
   const conflict = saving.state === 'conflict'
+  // I may no longer edit (the channel archived, or I left it) with changes the page doesn't have: my editor stays,
+  // read-only, with Copy my changes, as after a 409 (polish pass).
+  const lost = !mayEdit && (saving.dirty || conflict)
+  useEffect(() => {
+    if (!mayEdit && saver.snapshot().dirty && saver.snapshot().state !== 'conflict') saver.lose(LOST_RIGHTS)
+  }, [mayEdit, saver])
   // Someone else holds the page and I have nothing waiting: I read it, live.
-  const reading = !mayEdit || (heldBy !== null && !saving.dirty && !conflict)
+  const reading = mayEdit ? heldBy !== null && !saving.dirty && !conflict : !lost
   const line = heldBy && !conflict ? `${heldBy} is editing` : saving.state === 'saving' ? 'Saving…' : saving.state === 'saved' ? 'Saved' : view.updatedAt && view.updatedBy ? `Saved ${timeAgo(view.updatedAt)} by ${view.updatedBy === me ? 'you' : nameOf(view.updatedBy)}` : ''
   const errorActions = conflict ? (
     <>
@@ -168,7 +167,7 @@ function LoadedPage({ channel, view, people, me, mayEdit }: { channel: Channel; 
     <div className="flex min-h-0 flex-1 flex-col">
       <PageBar
         line={line}
-        error={saving.error}
+        error={loadError ?? saving.error}
         errorActions={errorActions}
         editors={view.editors}
         people={people}
@@ -195,7 +194,7 @@ function LoadedPage({ channel, view, people, me, mayEdit }: { channel: Channel; 
           <PageEditor key={editorKey} initial={view.body} editable={!conflict} directory={directory} onChange={saver.change} onBlur={() => void saver.flush()} />
         )}
       </div>
-      {showHistory && <PageHistory channelId={channel.id} ctx={ctx} people={people} mayEdit={mayEdit} currentVersion={view.version} onClose={() => setShowHistory(false)} />}
+      {showHistory && <PageHistory channelId={channel.id} scope={scope} people={people} mayEdit={mayEdit} currentVersion={view.version} onClose={() => setShowHistory(false)} />}
       <Modal
         open={asked !== null}
         onClose={() => answer('stay')}

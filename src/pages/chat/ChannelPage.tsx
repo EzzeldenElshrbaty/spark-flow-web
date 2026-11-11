@@ -93,10 +93,16 @@ export function ChannelView({ channelId, hideTabs = [] }: { channelId: string | 
   useEffect(() => void loadComposer(), [])
   const panelId = useId()
   // Channel details: from the header, and from /invite and /topic in the box (spec 6.8).
-  const [details, setDetails] = useState<OpenDetails | null>(null)
+  // Channel details belong to the channel they were opened in: they close when Back or a link moves on (final review).
+  const [openDetails, setOpenDetails] = useState<{ in: string | undefined; details: OpenDetails } | null>(null)
+  if (openDetails !== null && openDetails.in !== channelId) setOpenDetails(null)
+  const details = openDetails?.details ?? null
+  const setDetails = (next: OpenDetails | null) => setOpenDetails(next ? { in: channelId, details: next } : null)
   // /remind: the words to be reminded of, while Set a reminder is open.
   const [reminding, setReminding] = useState<string | null>(null)
-  const [pickingTemplate, setPickingTemplate] = useState(false)
+  // The channel the template picker was opened in: it closes when Back or a link moves to another (polish pass).
+  const [pickingIn, setPickingIn] = useState<string | null>(null)
+  if (pickingIn !== null && pickingIn !== channelId) setPickingIn(null)
   const noteReminder = useNoteReminder()
   const [params, setParams] = useSearchParams()
   const asked = channel.data ? tabFromParam(params.get('tab'), channel.data) : 'messages'
@@ -184,9 +190,9 @@ export function ChannelView({ channelId, hideTabs = [] }: { channelId: string | 
             people={people}
             me={persona.id}
             ws={ws}
-            onAddPeople={() => setDetails({ tab: 'members' })}
+            onAddPeople={() => setDetails({ tab: 'members', addPeople: [] })}
             onEditDescription={() => setDetails({ tab: 'about', editDescription: true })}
-            onPickTemplate={() => setPickingTemplate(true)}
+            onPickTemplate={() => setPickingIn(channelId ?? null)}
           />
         }
         users={people}
@@ -236,7 +242,7 @@ export function ChannelView({ channelId, hideTabs = [] }: { channelId: string | 
       )}
       </div>
       {fromMessage.sheet}
-      {pickingTemplate && <TemplatePicker channelId={current.id} people={people} me={persona.id} onClose={() => setPickingTemplate(false)} onAdded={() => setTab('page')} />}
+      {pickingIn === current.id && <TemplatePicker channelId={current.id} people={people} me={persona.id} onClose={() => setPickingIn(null)} onAdded={() => setTab('page')} />}
       {reminding !== null && (
         <RemindDialog
           initialText={reminding}

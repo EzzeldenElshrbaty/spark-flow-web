@@ -1,4 +1,5 @@
 import type { Api, Bookmark } from '@/api/types'
+import { ApiError } from '@/lib/apiError'
 import { appPath } from '@/lib/appLink'
 import { webAddress } from '@/lib/webAddress'
 import { checkCanWrite, findChannel, readableChannel } from './chat'
@@ -17,6 +18,12 @@ function checked(input: { title?: string; url?: string }, current?: Bookmark): {
   const title = (input.title === undefined && current ? current.title : (input.title ?? '').trim()) || new URL(url).hostname
   if (title.length > TITLE_MAX) throw badRequest(`Keep the name under ${TITLE_MAX} characters.`)
   return { title, url }
+}
+
+/** A channel holds each address once (polish pass): two quick Link a project picks make one bookmark. */
+function checkNew(data: DbData, channelId: string, url: string, id?: string) {
+  if (data.bookmarks.some((b) => b.channelId === channelId && b.url === url && b.id !== id))
+    throw new ApiError({ title: 'Conflict', status: 409, detail: 'That link is already a bookmark here.' })
 }
 
 /** Channel bookmarks (spec 6.1): links after the tabs, in the order added; whoever may post manages them. */
@@ -42,6 +49,7 @@ export function bookmarksApi(db: MockDb, hub: MockHub): Api['bookmarks'] {
         readableChannel(data, channelId)
         const me = checkCanWrite(data, findChannel(data, channelId))
         const made: Bookmark = { id: crypto.randomUUID(), channelId, ...checked(input), createdBy: me.id, createdAt: new Date().toISOString() }
+        checkNew(data, channelId, made.url)
         data.bookmarks.push(made)
         return made
       })
@@ -52,7 +60,10 @@ export function bookmarksApi(db: MockDb, hub: MockHub): Api['bookmarks'] {
       await delay()
       const bookmark = await db.update((data) => {
         const found = mine(data, id)
-        Object.assign(found, checked(patch, found))
+        const next = checked(patch, found)
+        // Only a new address is checked: a rename keeps working on twins made before the rule (final review).
+        if (next.url !== found.url) checkNew(data, found.channelId, next.url, found.id)
+        Object.assign(found, next)
         return found
       })
       changed(bookmark.channelId)

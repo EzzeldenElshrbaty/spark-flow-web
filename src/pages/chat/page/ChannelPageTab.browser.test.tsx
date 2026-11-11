@@ -133,6 +133,25 @@ describe('the channel’s page (chat spec 6.14)', () => {
     )
   })
 
+  it('the table menu stops at 10 columns and says why (polish pass)', async () => {
+    const app = await renderApp({ path: PAGE, as: 'admin', theme: 'light', size: 'desktop' })
+    await app.settled()
+    await focusEditor(editor())
+    await userEvent.click(screen.getByRole('button', { name: 'Table' }))
+    const addColumn = async () => {
+      await userEvent.click(screen.getByRole('button', { name: 'Table' }))
+      return screen.findByRole('menuitem', { name: /^Add column after/ })
+    }
+    for (let n = 3; n < 10; n++) {
+      await userEvent.click(await addColumn())
+      await waitFor(() => expect(within(editor()).getAllByRole('columnheader')).toHaveLength(n + 1))
+    }
+    const item = await addColumn()
+    expect(item.getAttribute('aria-disabled')).toBe('true')
+    expect(item.textContent).toContain('10 columns at most')
+    expect(screen.getByRole('menuitem', { name: /^Add row below/ }).getAttribute('aria-disabled')).toBeNull()
+  })
+
   it('a reader who can’t post sees the view and No page yet.', async () => {
     await api.chat.updateChannel('c-general', { whoCanPost: 'admins' })
     const app = await renderApp({ path: PAGE, as: 'member', theme: 'light', size: 'desktop' })
@@ -232,6 +251,93 @@ describe('the channel’s page (chat spec 6.14)', () => {
     await userEvent.keyboard(' @Nou')
     const people = await screen.findByRole('listbox', { name: 'Mention someone' })
     expect(within(people).getByRole('option', { name: /Nour El-Sayed/ })).toBeTruthy()
+  })
+
+  it('a tab that never claimed the page leaves my other tab’s hold alone (polish pass)', async () => {
+    const otherTab = await asPerson('u-1')
+    await otherTab.pages.editing('c-general')
+    const app = await renderApp({ path: PAGE, as: 'admin', theme: 'light', size: 'desktop' })
+    await app.settled()
+    await screen.findByRole('textbox', { name: 'Channel page' })
+    const release = vi.spyOn(api.pages, 'stopEditing')
+    await userEvent.click(screen.getByRole('tab', { name: 'Messages' }))
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    expect(release).not.toHaveBeenCalled()
+    expect((await api.pages.get('c-general')).editing?.userId).toBe('u-1')
+  })
+
+  it('leaving after typing lets my hold go once the save has landed (polish pass)', async () => {
+    const app = await renderApp({ path: PAGE, as: 'admin', theme: 'light', size: 'desktop' })
+    await app.settled()
+    await focusEditor(editor())
+    await userEvent.keyboard('Mine')
+    await waitFor(() => expect(bar().textContent).toContain('Saved'), { timeout: 3000 })
+    await userEvent.click(screen.getByRole('tab', { name: 'Messages' }))
+    await waitFor(async () => expect((await api.pages.get('c-general')).editing).toBeNull(), { timeout: 3000 })
+  })
+
+  it('leaving while a save is on its way lets the hold go only after it lands (final review)', async () => {
+    const app = await renderApp({ path: PAGE, as: 'admin', theme: 'light', size: 'desktop' })
+    await app.settled()
+    const save = api.pages.save.bind(api.pages)
+    let land = () => {}
+    vi.spyOn(api.pages, 'save').mockImplementationOnce(async (...args) => {
+      await new Promise<void>((resolve) => (land = resolve))
+      return save(...args)
+    })
+    await focusEditor(editor())
+    await userEvent.keyboard('Mine')
+    await waitFor(() => expect(bar().textContent).toContain('Saving…'), { timeout: 3000 })
+    const release = vi.spyOn(api.pages, 'stopEditing')
+    await userEvent.click(screen.getByRole('tab', { name: 'Messages' }))
+    await userEvent.click(within(await screen.findByRole('dialog', { name: 'Leave without saving the page?' })).getByRole('button', { name: 'Leave without saving' }))
+    await new Promise((resolve) => setTimeout(resolve, 200))
+    expect(release).not.toHaveBeenCalled()
+    land()
+    await waitFor(() => expect(release).toHaveBeenCalledWith('c-general'))
+    expect((await api.pages.get('c-general')).body).toEqual(text('Mine'))
+  })
+
+  it('closing the browser tab lets my hold go when everything is saved (polish pass)', async () => {
+    const app = await renderApp({ path: PAGE, as: 'admin', theme: 'light', size: 'desktop' })
+    await app.settled()
+    await focusEditor(editor())
+    await userEvent.keyboard('Mine')
+    await waitFor(() => expect(bar().textContent).toContain('Saved'), { timeout: 3000 })
+    const release = vi.spyOn(api.pages, 'stopEditing')
+    dispatchEvent(new PageTransitionEvent('pagehide'))
+    await waitFor(() => expect(release).toHaveBeenCalledWith('c-general'))
+  })
+
+  it('Load the latest failing says so (polish pass)', async () => {
+    const app = await renderApp({ path: PAGE, as: 'admin', theme: 'light', size: 'desktop' })
+    await app.settled()
+    const otherTab = await asPerson('u-1')
+    await focusEditor(editor())
+    await userEvent.keyboard('Mine')
+    await otherTab.pages.save('c-general', { body: text('Other tab'), baseVersion: 0 })
+    await waitFor(() => expect(within(bar()).getByRole('button', { name: 'Load the latest' })).toBeTruthy(), { timeout: 3000 })
+    vi.spyOn(api.pages, 'get').mockRejectedValue(new TypeError('Failed to fetch'))
+    await userEvent.click(within(bar()).getByRole('button', { name: 'Load the latest' }))
+    await waitFor(() => expect(bar().textContent).toContain('Couldn’t load the latest page. Check your connection.'))
+    expect(editor().textContent).toBe('Mine')
+    vi.restoreAllMocks()
+  })
+
+  it('losing edit rights keeps my unsaved text, read-only, with Copy my changes (polish pass)', async () => {
+    const made = await api.chat.createChannel({ workspaceId: 'ws-eng', name: 'launch-week', topic: '', isPrivate: false, memberIds: [] })
+    const app = await renderApp({ path: `/w/engineering/c/${made.id}?tab=page`, as: 'admin', theme: 'light', size: 'desktop' })
+    await app.settled()
+    vi.spyOn(api.pages, 'save').mockRejectedValue(new TypeError('Failed to fetch'))
+    await focusEditor(editor())
+    await userEvent.keyboard('Mine')
+    await waitFor(() => expect(bar().textContent).toContain('Couldn’t save the page.'), { timeout: 3000 })
+    await api.chat.archiveChannel(made.id, 'Launch is over')
+    await waitFor(() => expect(bar().textContent).toContain('You can’t edit this page anymore. Your last changes aren’t saved.'), { timeout: 3000 })
+    expect(editor().textContent).toBe('Mine')
+    expect(editor().getAttribute('contenteditable')).toBe('false')
+    expect(within(bar()).getByRole('button', { name: 'Copy my changes' })).toBeTruthy()
+    vi.restoreAllMocks()
   })
 
   it('axe finds no serious problems', async () => {

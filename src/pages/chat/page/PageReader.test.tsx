@@ -43,6 +43,20 @@ describe('PageReader (chat spec 6.14)', () => {
     expect(screen.getAllByRole('cell').map((c) => c.textContent)).toEqual(['C', 'D'])
   })
 
+  it('a wide table’s scroll box is a Tab stop named by its header (polish pass)', () => {
+    show([{ type: 'table', rows: [[t('Role'), t('Person')], [t('PM'), t('')]] }])
+    // A group, not a landmark: two tables with the same header don't make two landmarks of one name (final review).
+    const box = screen.getByRole('group', { name: 'Table: Role, Person' })
+    expect(box.tabIndex).toBe(0)
+    expect(box.querySelector('table')).not.toBeNull()
+  })
+
+  it('a table with an empty header is named Table (final review)', () => {
+    show([{ type: 'table', rows: [[t(''), [], t('Notes')], [t('A'), t('B'), t('C')]] }, { type: 'table', rows: [[[], []], [t('A'), t('B')]] }])
+    expect(screen.getByRole('group', { name: 'Table: Notes' })).toBeTruthy()
+    expect(screen.getByRole('group', { name: 'Table' })).toBeTruthy()
+  })
+
   it('chips render as in messages', () => {
     show([{ type: 'p', children: [{ type: 'user', id: 'u-2', name: 'Nour' }, { type: 'text', text: ' owns ' }, { type: 'task', key: 'NEX-999' }] }])
     expect(screen.getByText('@Nour El-Sayed')).toBeTruthy()

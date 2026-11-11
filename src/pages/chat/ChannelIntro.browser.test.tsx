@@ -56,6 +56,63 @@ describe('the channel intro (chat spec 6.14)', () => {
     await waitFor(() => expect(app.router.state.location.pathname).toBe('/w/engineering/p/NEX/overview'))
   })
 
+  it('Link a project waits for the bookmarks, and a pick counts at once (polish pass)', async () => {
+    let land = () => {}
+    const list = api.bookmarks.list.bind(api.bookmarks)
+    vi.spyOn(api.bookmarks, 'list').mockImplementation(async (id) => {
+      await new Promise<void>((resolve) => (land = resolve))
+      return list(id)
+    })
+    const made = await api.chat.createChannel({ workspaceId: 'ws-eng', name: 'launch-week', topic: '', isPrivate: false, memberIds: [] })
+    await renderApp({ path: `/w/engineering/c/${made.id}`, as: 'admin', theme: 'light', size: 'desktop' })
+    await screen.findByRole('heading', { level: 2, name: /launch-week/ })
+    expect(screen.queryByRole('button', { name: 'Link a project' })).toBeNull()
+    vi.mocked(api.bookmarks.list).mockImplementation(list)
+    land()
+    const add = api.bookmarks.add.bind(api.bookmarks)
+    let added = () => {}
+    vi.spyOn(api.bookmarks, 'add').mockImplementation(async (id, input) => {
+      await new Promise<void>((resolve) => (added = resolve))
+      return add(id, input)
+    })
+    await userEvent.click(await screen.findByRole('button', { name: 'Link a project' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Nexus Core' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Link a project' }))
+    await screen.findAllByRole('menuitem')
+    expect(screen.queryByRole('menuitem', { name: 'Nexus Core' })).toBeNull()
+    await userEvent.keyboard('{Escape}')
+    added()
+    await within(await screen.findByRole('list', { name: 'Bookmarks' })).findByRole('link', { name: 'Nexus Core' })
+  })
+
+  it('Add people opens the Add people dialog (polish pass)', async () => {
+    await newChannel()
+    await userEvent.click(screen.getByRole('button', { name: 'Add people' }))
+    expect(await screen.findByRole('dialog', { name: 'Add people to #launch-week' })).toBeTruthy()
+  })
+
+  it('an open template picker closes when the channel changes (polish pass)', async () => {
+    const { app, made } = await newChannel()
+    await userEvent.click(screen.getByRole('button', { name: 'Pick a template' }))
+    await screen.findByRole('dialog', { name: 'Pick a template' })
+    await app.router.navigate('/w/engineering/c/c-general')
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Pick a template' })).toBeNull())
+    await app.router.navigate(`/w/engineering/c/${made.id}`)
+    await screen.findByRole('heading', { level: 2, name: /launch-week/ })
+    expect(screen.queryByRole('dialog', { name: 'Pick a template' })).toBeNull()
+  })
+
+  it('Channel details close when the channel changes (final review)', async () => {
+    const { app, made } = await newChannel()
+    await userEvent.click(screen.getByRole('button', { name: 'Add a description' }))
+    await screen.findByRole('textbox', { name: 'Description' })
+    await app.router.navigate('/w/engineering/c/c-general')
+    await waitFor(() => expect(screen.queryByRole('textbox', { name: 'Description' })).toBeNull())
+    await app.router.navigate(`/w/engineering/c/${made.id}`)
+    await screen.findByRole('heading', { level: 2, name: /launch-week/ })
+    expect(screen.queryByRole('textbox', { name: 'Description' })).toBeNull()
+  })
+
   it('Edit description opens About editing it', async () => {
     await newChannel()
     await userEvent.click(screen.getByRole('button', { name: 'Add a description' }))

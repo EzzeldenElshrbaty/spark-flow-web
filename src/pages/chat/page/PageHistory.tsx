@@ -1,6 +1,6 @@
 import { IconArrowLeft } from '@tabler/icons-react'
 import clsx from 'clsx'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { usePageHistory, usePageVersion, useRestorePage } from '@/api/pages'
 import type { User } from '@/api/types'
 import { announce } from '@/components/sf/Announcer'
@@ -10,16 +10,18 @@ import { Modal, ModalCancelButton } from '@/components/sf/Modal'
 import { usePhone } from '@/components/sf/usePhone'
 import { ApiError } from '@/lib/apiError'
 import { formatWhen } from '@/lib/format'
-import type { BodyContext } from '@/pages/chat/MessageBody'
+import { pageAsBody } from '@/lib/pageBody'
+import { useBodyContext, type BodyScope } from '@/pages/chat/useBodyContext'
 import { PageReader } from './PageReader'
 
 /**
  * A page's history (chat spec 6.14 §6.5): its versions, newest first, beside the one picked, read-only. Whoever may
  * edit restores an older one as a new version; a refusal stays here as its sentence. On phones the list comes first.
+ * The tasks a version names are looked up from that version, so one named only in an older version is a chip too.
  */
-export function PageHistory({ channelId, ctx, people, mayEdit, currentVersion, onClose }: {
+export function PageHistory({ channelId, scope, people, mayEdit, currentVersion, onClose }: {
   channelId: string
-  ctx: BodyContext
+  scope: BodyScope
   people: User[]
   mayEdit: boolean
   currentVersion: number
@@ -31,6 +33,7 @@ export function PageHistory({ channelId, ctx, people, mayEdit, currentVersion, o
   const [picked, setPicked] = useState<string | null>(null)
   const selected = picked ?? versions[0]?.id ?? null
   const version = usePageVersion(channelId, selected)
+  const ctx = useBodyContext(useMemo(() => (version.data ? [pageAsBody(version.data.body)] : []), [version.data]), scope)
   const restore = useRestorePage()
   const [error, setError] = useState<string | null>(null)
   const nameOf = (id: string) => people.find((u) => u.id === id)?.name ?? 'Someone'

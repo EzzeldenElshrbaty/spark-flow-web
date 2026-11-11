@@ -306,7 +306,8 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
       get: (channelId) => get(`/api/channels/${enc(channelId)}/page`),
       save: (channelId, input) => send('PUT', `/api/channels/${enc(channelId)}/page`, input),
       editing: (channelId) => send('POST', `/api/channels/${enc(channelId)}/page/editing`),
-      stopEditing: (channelId) => send<void>('DELETE', `/api/channels/${enc(channelId)}/page/editing`),
+      // keepalive: it may be the last call a closing tab makes.
+      stopEditing: (channelId) => request<void>(`/api/channels/${enc(channelId)}/page/editing`, { method: 'DELETE', keepalive: true }, fetchFn),
       history: (channelId) => get(`/api/channels/${enc(channelId)}/page/versions`),
       version: (channelId, versionId) => get(`/api/channels/${enc(channelId)}/page/versions/${enc(versionId)}`),
       restore: (channelId, input) => send('POST', `/api/channels/${enc(channelId)}/page/restore`, input),
