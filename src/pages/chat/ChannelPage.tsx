@@ -82,7 +82,7 @@ export function ChannelView({ channelId, hideTabs = [] }: { channelId: string | 
   const queue = useSendQueue()
   const queryClient = useQueryClient()
   const readOnly = useReadOnlyLine(channel.data)
-  const fromMessage = useTaskFromMessage(channelId, workspace?.id)
+  const fromMessage = useTaskFromMessage(channelId, workspace?.id, channel.data?.kind === 'channel')
   const projects = useProjectSummaries(workspace?.id)
   const realtime = useRealtime()
   // The composer's tray (spec 6.9): its own per channel.

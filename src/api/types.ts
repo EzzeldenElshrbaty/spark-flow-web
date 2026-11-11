@@ -1161,6 +1161,11 @@ export interface Api {
     get(channelId: string): Promise<TaskList>
     /** An existing task of the channel's workspace, added last. */
     add(channelId: string, taskKey: string): Promise<TaskListEntry>
+    /**
+     * Makes a task by `tasks.create`'s rules, with `linkedChannelId` = the channel, and adds it, in one write. Returns
+     * the task, as `tasks.create` does.
+     */
+    addNew(channelId: string, input: NewTicket): Promise<TaskView>
     remove(channelId: string, taskKey: string): Promise<void>
   }
   /**

@@ -195,18 +195,7 @@ export function tasksApi(db: MockDb, hub: MockHub, now: () => Date): Api['tasks'
       await delay()
       const input = { ...given } // its description is swapped for the checked copy
       // Rights and values are checked in the write that creates it, on the data it sees.
-      const created = await createTicket(db, hub, input, now, (data) => {
-        const project = openProject(data, input.projectId)
-        requireCan(data, 'task.manage', project)
-        checkTaskInput(data, input.projectId, input)
-        // A task made from a chat message: that message is in this project's chat, and still there.
-        if (input.linkedMessageId) {
-          const message = data.messages.find((m) => m.id === input.linkedMessageId)
-          // A reply also sent to the chat is listed there, but it's a reply: tasks are made from messages.
-          if (message?.broadcast) throw badRequest("A task can’t be made from a thread reply.")
-          if (!message || message.channelId !== project.channelId || message.deletedAt) throw badRequest("This message isn’t in the project’s chat.")
-        }
-      })
+      const created = await createTicket(db, hub, input, now, (data) => checkNewTask(data, input))
       return taskView(created, await db.read(), now())
     },
     async update(key, patch) {
@@ -256,8 +245,34 @@ export function tasksApi(db: MockDb, hub: MockHub, now: () => Date): Api['tasks'
 
 // ── Mutations (not on Api until Phase 4) ──────────────────────────────────
 
-/** Opens a ticket as the current user: next key for the project, last in its column; posts a Created card. */
-export async function createTicket(db: MockDb, hub: MockHub, input: NewTicket, clock: () => Date = () => new Date(), check?: (data: DbData) => void): Promise<Ticket> {
+/**
+ * Whether I may make this task, on the data the write sees: an open project I manage, values that pass, and a source
+ * message (if any) in this project's chat and still there. `tasks.create` and `taskLists.addNew` both check it.
+ */
+export function checkNewTask(data: DbData, input: NewTicket) {
+  const project = openProject(data, input.projectId)
+  requireCan(data, 'task.manage', project)
+  checkTaskInput(data, input.projectId, input)
+  if (input.linkedMessageId) {
+    const message = data.messages.find((m) => m.id === input.linkedMessageId)
+    // A reply also sent to the chat is listed there, but it's a reply: tasks are made from messages.
+    if (message?.broadcast) throw badRequest("A task can’t be made from a thread reply.")
+    if (!message || message.channelId !== project.channelId || message.deletedAt) throw badRequest("This message isn’t in the project’s chat.")
+  }
+}
+
+/**
+ * Opens a ticket as the current user: next key for the project, last in its column; posts a Created card. `check` runs
+ * first and `then` after the task is in, both inside the same write, so a refusal from either leaves nothing.
+ */
+export async function createTicket(
+  db: MockDb,
+  hub: MockHub,
+  input: NewTicket,
+  clock: () => Date = () => new Date(),
+  check?: (data: DbData) => void,
+  then?: (data: DbData, created: Ticket) => void,
+): Promise<Ticket> {
   const { ticket, cards, source } = await db.update((data) => {
     check?.(data)
     const project = openProject(data, input.projectId)
@@ -302,6 +317,7 @@ export async function createTicket(db: MockDb, hub: MockHub, input: NewTicket, c
     // The message it was made from names it from now on (its task chip).
     const source = created.linkedMessageId ? data.messages.find((m) => m.id === created.linkedMessageId) : undefined
     if (source && !source.linkedTicketKeys.includes(key)) source.linkedTicketKeys.push(key)
+    then?.(data, created)
     return { ticket: created, cards: clone(postTaskEvents(data, null, created)), source: source && { channelId: source.channelId, messageId: source.id } }
   })
   hub.publish({ type: 'ticketUpdated', ticket: clone(ticket) })

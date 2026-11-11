@@ -14,6 +14,8 @@ const upload = vi.fn<(projectId: string, file: File) => Promise<Attachment>>()
 let manages = true
 
 vi.mock('@/api/tickets', () => ({ useCreateTask: () => create, useUpdateTask: () => update }))
+const addNew = { mutate: vi.fn(), isPending: false, error: null }
+vi.mock('@/api/taskLists', () => ({ useAddNewToTaskList: () => addNew }))
 vi.mock('@/api/files', () => ({ uploadTaskFile: (projectId: string, file: File) => upload(projectId, file) }))
 // The editor itself is tested in the browser; here it's a stand-in that hands files over and records what it's told.
 const editor = vi.hoisted(() => ({ insertFile: vi.fn(), removeFile: vi.fn() }))
@@ -46,6 +48,8 @@ window.matchMedia ??= ((media: string) => ({ matches: false, media, addEventList
 beforeEach(() => {
   manages = true
   create.mutate.mockReset()
+  addNew.mutate.mockReset()
+  announced.mockReset()
   update.mutate.mockReset()
   upload.mockReset()
   editor.insertFile.mockReset()
@@ -236,6 +240,22 @@ describe('TaskSheet tells who opened it about a new task (UX Phase 1, 1.5)', () 
     fireEvent.change(screen.getByRole('textbox', { name: /Title/ }), { target: { value: 'Login v2' } })
     save()
     expect(onCreated).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('TaskSheet onto a channel’s task list (task list §6)', () => {
+  it('saves through the channel’s list instead of creating it alone, and says both', () => {
+    const onCreated = vi.fn()
+    const onClose = vi.fn()
+    addNew.mutate.mockImplementation((_input, opts: { onSuccess: (t: TaskView) => void }) => opts.onSuccess({ key: 'NEX-111' } as TaskView))
+    render(<TaskSheet project={project} phases={[]} sprints={[]} users={[]} onto={{ channelId: 'c-frontend' }} onCreated={onCreated} onClose={onClose} />)
+    fireEvent.change(screen.getByRole('textbox', { name: /Title/ }), { target: { value: 'New badge' } })
+    save()
+    expect(create.mutate).not.toHaveBeenCalled()
+    expect(addNew.mutate).toHaveBeenCalledWith({ channelId: 'c-frontend', input: expect.objectContaining({ projectId: 'p-nex', title: 'New badge' }) }, expect.anything())
+    expect(onCreated).toHaveBeenCalledWith({ key: 'NEX-111' })
+    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(announced).toHaveBeenCalledWith('Task NEX-111 created and added to the task list.')
   })
 })
 

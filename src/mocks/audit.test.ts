@@ -90,6 +90,7 @@ const RECORDED: Record<string, Recorded> = {
   'tasks.archive': r(status('archived', 'task'), (a) => a.tasks.archive('NEX-102')),
   'tasks.restore': r(status('restored', 'task'), (a) => a.tasks.restore('NEX-102'), (a) => a.tasks.archive('NEX-102')),
   'tasks.create': r(data('created', 'task'), (a) => a.tasks.create(newTask)),
+  'taskLists.addNew': r(data('created', 'task'), (a) => a.taskLists.addNew('c-p-nex', newTask)),
   'tasks.update': r(data('changed', 'task'), (a) => a.tasks.update('NEX-102', { priority: 'urgent' })),
   'tasks.moveTo': r(status('changed', 'task'), (a) => a.tasks.moveTo('NEX-102', 'inProgress', 0)),
   'time.addManual': r(data('created', 'timeEntry'), (a) => a.time.addManual(manual)),

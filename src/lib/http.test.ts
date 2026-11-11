@@ -51,12 +51,15 @@ describe('createHttpApi', () => {
     await api.taskLists.get('c-1')
     await api.taskLists.add('c-1', 'NEX-1')
     await api.taskLists.remove('c-1', 'NEX-1')
+    await api.taskLists.addNew('c-1', { projectId: 'p1', title: 'T' } as never)
     expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url}`)).toEqual([
       'GET /api/channels/c-1/task-list',
       'POST /api/channels/c-1/task-list',
       'DELETE /api/channels/c-1/task-list/NEX-1',
+      'POST /api/channels/c-1/task-list/new',
     ])
     expect(JSON.parse(String(calls[1].init?.body))).toEqual({ taskKey: 'NEX-1' })
+    expect(JSON.parse(String(calls[3].init?.body))).toEqual({ projectId: 'p1', title: 'T' })
   })
 
   it('maps the M2 time calls to their routes, methods and bodies', async () => {

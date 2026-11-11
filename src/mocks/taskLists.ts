@@ -1,13 +1,14 @@
-import type { Api, ChannelTask, TaskListEntry, Ticket } from '@/api/types'
+import type { Api, ChannelTask, TaskListEntry } from '@/api/types'
 import { ApiError } from '@/lib/apiError'
 import { columnsOf } from '@/lib/boardColumns'
 import { checkCanWrite, readableChannel } from './chat'
 import type { DbData, MockDb } from './db'
-import { isOverdue } from './derive'
+import { isOverdue, taskView } from './derive'
 import { delay } from './latency'
 import { openProject } from './projects'
 import type { MockHub } from './realtime'
 import { badRequest, clone } from './shared'
+import { checkNewTask, createTicket } from './tickets'
 
 /** The most tasks one channel's list holds (task list §4.2). */
 export const TASK_LIST_MAX = 200
@@ -19,10 +20,10 @@ export function listChannel(data: DbData, channelId: string) {
   return channel
 }
 
-/** Room on the channel's list for this task: not on it yet, and under the limit. */
-export function checkRoom(data: DbData, channelId: string, task: Pick<Ticket, 'id'>) {
+/** Room on the channel's list: under the limit, and this task (when it exists yet) not on it. */
+export function checkRoom(data: DbData, channelId: string, taskId: string | null) {
   const rows = data.channelTasks.filter((r) => r.channelId === channelId)
-  if (rows.some((r) => r.taskId === task.id)) throw new ApiError({ title: 'Conflict', status: 409, detail: 'That task is already on this list.' })
+  if (taskId && rows.some((r) => r.taskId === taskId)) throw new ApiError({ title: 'Conflict', status: 409, detail: 'That task is already on this list.' })
   if (rows.length >= TASK_LIST_MAX) throw badRequest(`A task list holds up to ${TASK_LIST_MAX} tasks.`)
 }
 
@@ -68,13 +69,33 @@ export function taskListsApi(db: MockDb, hub: MockHub, now: () => Date): Api['ta
         if (task.archivedAt) throw badRequest('This task is archived. Restore it first.')
         const project = openProject(data, task.projectId)
         if (project.workspaceId !== channel.workspaceId) throw badRequest('That task is in another workspace.')
-        checkRoom(data, channelId, task)
+        checkRoom(data, channelId, task.id)
         const row: ChannelTask = { id: crypto.randomUUID(), channelId, taskId: task.id, addedBy: me.id, addedAt: now().toISOString() }
         data.channelTasks.push(row)
         return entryOf(data, row, now())!
       })
       changed(channelId)
       return clone(entry)
+    },
+    async addNew(channelId, input) {
+      await delay()
+      // The task and its row are one write: a refusal from either part leaves neither (task list §4.2, R2).
+      const created = await createTicket(
+        db,
+        hub,
+        { ...input, linkedChannelId: channelId },
+        now,
+        (data) => {
+          checkCanWrite(data, listChannel(data, channelId))
+          checkNewTask(data, input)
+          checkRoom(data, channelId, null)
+        },
+        (data, task) => {
+          data.channelTasks.push({ id: crypto.randomUUID(), channelId, taskId: task.id, addedBy: data.currentUserId, addedAt: now().toISOString() })
+        },
+      )
+      changed(channelId)
+      return taskView(created, await db.read(), now())
     },
     async remove(channelId, taskKey) {
       await delay()

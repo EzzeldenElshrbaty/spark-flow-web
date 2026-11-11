@@ -92,3 +92,47 @@ describe('a channel’s task list (chat spec 6.14, task list §4)', () => {
     expect(await keys('c-frontend')).toEqual(['NEX-106', 'NEX-105', 'NEX-103', 'MOB-103'])
   })
 })
+
+describe('making a task on the list (task list §6, R2)', () => {
+  const input = { projectId: 'p-nex', title: 'Ship the list', descriptionBody: [], status: '', priority: 'low' as const, storyPoints: null, assigneeId: null, sprintId: null }
+  const counts = async () => {
+    const d = await db.read()
+    return [d.tickets.length, d.channelTasks.length, d.counters['p-nex']]
+  }
+
+  it('makes the task in the channel and puts it on the list, recorded once', async () => {
+    const before = (await db.read()).audit.length
+    const task = await api.taskLists.addNew('c-frontend', input)
+    expect(task).toMatchObject({ title: 'Ship the list', linkedChannelId: 'c-frontend', linkedMessageId: null, projectId: 'p-nex' })
+    expect((await keys('c-frontend')).at(-1)).toBe(task.key)
+    const made = (await db.read()).audit.slice(before).filter((e) => e.action === 'created' && e.record?.type === 'task')
+    expect(made).toHaveLength(1)
+    expect(events).toContainEqual({ type: 'channelChanged', channelId: 'c-frontend' })
+  })
+
+  it('makes neither the task nor the row when either part is refused', async () => {
+    db.actAs('u-3')
+    const was = await counts()
+    await expect(api.taskLists.addNew('c-frontend', input)).rejects.toMatchObject({ status: 403 })
+    expect(await counts()).toEqual(was)
+    db.actAs('u-1')
+    await db.update((d) => {
+      for (let i = d.channelTasks.filter((r) => r.channelId === 'c-frontend').length; i < 200; i++)
+        d.channelTasks.push({ id: `ct-x${i}`, channelId: 'c-frontend', taskId: `t-gone-${i}`, addedBy: 'u-1', addedAt: new Date().toISOString() })
+    })
+    const full = await counts()
+    expect(await detail(api.taskLists.addNew('c-frontend', input))).toBe('A task list holds up to 200 tasks.')
+    expect(await counts()).toEqual(full)
+    expect(await detail(api.taskLists.addNew('c-dm-1', input))).toBe('Task lists are for channels.')
+  })
+
+  it('a message’s task comes from its project’s own chat only', async () => {
+    const data = await db.read()
+    const own = data.messages.find((m) => m.channelId === 'c-p-nex' && !m.deletedAt && !m.broadcast && !m.taskEvent && !m.commentId)!
+    const elsewhere = data.messages.find((m) => m.channelId === 'c-frontend' && !m.deletedAt)!
+    const task = await api.taskLists.addNew('c-p-nex', { ...input, linkedMessageId: own.id })
+    expect(task.linkedMessageId).toBe(own.id)
+    expect(await keys('c-p-nex')).toContain(task.key)
+    expect(await detail(api.taskLists.addNew('c-frontend', { ...input, linkedMessageId: elsewhere.id }))).toBe('This message isn’t in the project’s chat.')
+  })
+})
