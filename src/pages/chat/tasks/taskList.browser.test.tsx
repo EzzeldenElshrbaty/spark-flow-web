@@ -7,6 +7,7 @@ import { axeProblems } from '@/test/axe'
 import { renderApp } from '@/test/app'
 import { answersTouch } from '@/test/touch'
 import { sidewaysScroll } from '@/test/uxChecks'
+import { focusEditor } from '@/pages/chat/composer/focusEditor.testkit'
 
 // A channel's task list (task list spec §5): #frontend-dev's seeded list holds MOB-103 (late), NEX-105, NEX-106 (by due
 // date) and, done, NEX-103.
@@ -138,5 +139,55 @@ describe('the Task list tab', () => {
     await userEvent.tab({ shift: true })
     await userEvent.keyboard(' ')
     await waitFor(async () => expect(await category('NEX-106')).toBe('done'))
+  })
+})
+
+describe('adding tasks to the list (task list §6)', () => {
+  it('+ Task list in a channel’s box opens its Task list tab', async () => {
+    const app = await renderApp({ path: '/w/engineering/c/c-backend', as: 'admin', theme: 'light', size: 'desktop' })
+    await app.settled()
+    await userEvent.click(screen.getByRole('button', { name: 'Attach' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: /Task list/ }))
+    await app.settled()
+    expect(new URLSearchParams(app.router.state.location.search).get('tab')).toBe('tasks')
+    expect(screen.getByText('No tasks on this list yet.')).toBeTruthy()
+  })
+
+  it('Add an existing task adds what I pick, once, however fast I pick it (Review Focus 3)', async () => {
+    const app = await renderApp({ path: LIST, as: 'admin', theme: 'light', size: 'desktop' })
+    await app.settled()
+    await userEvent.click(screen.getByRole('button', { name: 'Add an existing task' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Add an existing task' })
+    await userEvent.type(within(dialog).getByRole('searchbox', { name: 'Find a task' }), 'audit log')
+    const pick = await within(dialog).findByRole('button', { name: /^NEX-110 / })
+    await userEvent.dblClick(pick)
+    await waitFor(() => expect(within(dialog).getByRole('button', { name: /^NEX-110 .* · On the list$/ })).toBeTruthy())
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Done' }))
+    await app.settled()
+    expect((await api.taskLists.get('c-frontend')).entries.filter((e) => e.task.key === 'NEX-110')).toHaveLength(1)
+    expect(screen.getByRole('link', { name: 'Audit log for workspace role changes' })).toBeTruthy()
+  })
+
+  it('New task on the tab makes the task and puts it on the list', async () => {
+    const app = await renderApp({ path: LIST, as: 'admin', theme: 'light', size: 'desktop' })
+    await app.settled()
+    await userEvent.click(screen.getByRole('button', { name: 'New task' }))
+    await userEvent.type(await screen.findByRole('textbox', { name: /Title/ }), 'Keep the list in order')
+    await userEvent.click(screen.getByRole('button', { name: /Save task/ }))
+    await app.settled()
+    expect(await screen.findByRole('link', { name: 'Keep the list in order' })).toBeTruthy()
+  })
+
+  it('/task in a channel puts the new task on its list, and the tab appears', async () => {
+    const app = await renderApp({ path: '/w/engineering/c/c-backend', as: 'admin', theme: 'light', size: 'desktop' })
+    await app.settled()
+    expect(screen.queryByRole('tab', { name: /Task list/ })).toBeNull()
+    await focusEditor(screen.getByRole('textbox', { name: /Message #backend/ }))
+    await userEvent.keyboard('/task Rotate the queue keys')
+    await userEvent.keyboard('{Enter}')
+    await userEvent.click(await screen.findByRole('button', { name: /Save task/ }))
+    await app.settled()
+    expect(await screen.findByRole('tab', { name: 'Task list 1' })).toBeTruthy()
+    expect((await api.taskLists.get('c-backend')).entries.map((e) => e.task.title)).toEqual(['Rotate the queue keys'])
   })
 })

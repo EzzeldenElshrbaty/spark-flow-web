@@ -43,6 +43,7 @@ import { ChannelIntroRow } from '@/pages/chat/ChannelIntroRow'
 import { askToLeave } from '@/lib/unsavedChanges'
 import { ChannelPins } from '@/pages/chat/PinsTab'
 import { ChannelTaskList } from '@/pages/chat/tasks/ChannelTaskList'
+import { AddTaskDialog } from '@/pages/chat/tasks/AddTaskDialog'
 import { useTaskList } from '@/api/taskLists'
 import { listCounts } from '@/lib/taskList'
 import { ChannelFiles } from '@/pages/chat/files/FilesTab'
@@ -101,6 +102,9 @@ export function ChannelView({ channelId, hideTabs = [] }: { channelId: string | 
   if (openDetails !== null && openDetails.in !== channelId) setOpenDetails(null)
   const details = openDetails?.details ?? null
   const setDetails = (next: OpenDetails | null) => setOpenDetails(next ? { in: channelId, details: next } : null)
+  // The channel Add an existing task was opened in (task list §6): it closes when Back or a link moves on.
+  const [addingIn, setAddingIn] = useState<string | null>(null)
+  if (addingIn !== null && addingIn !== channelId) setAddingIn(null)
   // /remind: the words to be reminded of, while Set a reminder is open.
   const [reminding, setReminding] = useState<string | null>(null)
   // The channel the template picker was opened in: it closes when Back or a link moves to another (polish pass).
@@ -184,7 +188,8 @@ export function ChannelView({ channelId, hideTabs = [] }: { channelId: string | 
         </div>
       ) : tab === 'tasks' ? (
         <div className="sf flex min-h-0 flex-1 flex-col">
-          <ChannelTaskList channel={current} people={people} canPost={canPost === true && canWrite === true} onNewTask={fromMessage.newTask} />
+          <ChannelTaskList channel={current} people={people} canPost={canPost === true && canWrite === true} onNewTask={fromMessage.newTask} onAddExisting={() => setAddingIn(current.id)} />
+          {addingIn === current.id && <AddTaskDialog channel={current} me={persona.id} onClose={() => setAddingIn(null)} />}
         </div>
       ) : (
       <PaneFeed
@@ -223,6 +228,8 @@ export function ChannelView({ channelId, hideTabs = [] }: { channelId: string | 
               placeholder={`Message ${title}`}
               uploads={uploads}
               commandUi={{ openDetails: (on, options) => setDetails({ tab: on, ...options }), newTask: fromMessage.fromCommand, whyNoTask: fromMessage.whyNoTask, remind: setReminding }}
+              // + Task list opens the channel's Task list tab (task list §6); a conversation has none.
+              onTaskList={current.kind === 'channel' && !hideTabs.includes('tasks') ? () => setTab('tasks') : undefined}
               onTyping={() => realtime.sendTyping(current.id, persona.id)}
               // Shown at once and sent in the background (spec 6.2), with its files; a failure shows on the message, with Retry.
               onSend={async (body) => {
@@ -577,6 +584,7 @@ function ChannelComposer({
   onEditLast,
   onSendSnippet,
   commandUi,
+  onTaskList,
 }: {
   channel: Channel
   placeholder: string
@@ -587,6 +595,7 @@ function ChannelComposer({
   onEditLast: () => void
   onSendSnippet: (file: Attachment, message: Body) => Promise<unknown>
   commandUi: ChannelCommandUi
+  onTaskList?: () => void
 }) {
   const drafts = useDrafts(channel.workspaceId)
   const saveDraft = useDraftSaver()
@@ -633,6 +642,7 @@ function ChannelComposer({
       directory={directory}
       slash={slash}
       onSnippet={snippet.open}
+      onTaskList={onTaskList}
       linkPreview={composerLinkPreview}
       autoFocus={arrived}
       files={{

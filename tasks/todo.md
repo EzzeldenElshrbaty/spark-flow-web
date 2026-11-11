@@ -3280,3 +3280,19 @@ Branch `fix/task-description-top` from dev cfb9692.
       now add Members' time as the Admin
 - [x] Browser check: Youssef's Add time asks Person; Mariam's panel has Start timer only
 - [x] Gates: lint, tsc, `npm test` 3,227/3,227, `npm run test:ux` 1,000/1,000
+
+# Channel task list (chat spec §6.14) — 11 Nov 2026, approved (Native)
+
+Branch `feat/task-list` from dev 63af2d6. Spec `docs/superpowers/specs/2026-11-11-channel-task-list-design.md`, plan
+`docs/superpowers/plans/2026-11-11-channel-task-list.md`. User answers Q1–Q8 "Yes, recommended": real Flow tasks by
+reference; Pro as a tag only; channels only (project channels too); tasks made in a channel join its list; open tasks by
+due date with Done folded, no dragging; the checkbox moves to Done and back for whoever may change the task; templates
+unchanged; the tab shows once the list has a task or is opened.
+
+- [x] Task 1 — `channelTasks` (DB v36), `api.taskLists` get/add/remove, migration 35 and the seeded #frontend-dev list,
+      delete-for-good clean-up, query keys, http, contract Slice TL
+- [x] Task 2 — `addNew` (task and row in one write), the task sheet's `onto`, /task and Create task join the list
+      (plus the security review's workspace check on `addNew`)
+- [x] Task 3 — the Task list tab: rows, order, checkbox, Done fold, phone rows, the project page's Chat tab hides it
+- [x] Task 4 — Add an existing task, + menu "Task list · Pro", layers, help, rules
+- [ ] Final review, fixes, gates (lint, tsc, npm test, test:ux, build:prototype)

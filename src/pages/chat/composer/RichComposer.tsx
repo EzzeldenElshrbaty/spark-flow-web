@@ -11,13 +11,14 @@ import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPl
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import { $findMatchingParent } from '@lexical/utils'
-import { IconAt, IconCalendarEvent, IconChevronDown, IconClock, IconCode, IconFiles, IconLetterCase, IconMicrophone, IconMoodSmile, IconPlus, IconSend, IconSlash, IconUpload, IconVideo, IconX } from '@tabler/icons-react'
+import { IconAt, IconCalendarEvent, IconChevronDown, IconClock, IconCode, IconFiles, IconLetterCase, IconListCheck, IconMicrophone, IconMoodSmile, IconPlus, IconSend, IconSlash, IconUpload, IconVideo, IconX } from '@tabler/icons-react'
 import clsx from 'clsx'
 import { $createTextNode, $getSelection, $insertNodes, $isRangeSelection, $setSelection, type BaseSelection, type EditorState, type LexicalEditor } from 'lexical'
 import { useCallback, useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react'
 import { Button, IconButton } from '@/components/sf/Button'
 import { Icon } from '@/components/sf/Icon'
 import { Menu, MenuItem, MenuSeparator } from '@/components/sf/Menu'
+import { Tag } from '@/components/sf/Badge'
 import { Popover } from '@/components/sf/Popover'
 import { Tooltip } from '@/components/sf/Tooltip'
 import { acceptedFiles } from '@/lib/fileTypes'
@@ -112,6 +113,7 @@ export function RichComposer({
   onSchedule,
   slash,
   onSnippet,
+  onTaskList,
   linkPreview,
 }: {
   /** send: the channel's box; edit: a message's body being edited in place, with Cancel and Save (spec 6.3). */
@@ -142,6 +144,8 @@ export function RichComposer({
   slash?: ComposerSlash
   /** Text snippet (spec 6.9): the box's text goes into it; true once it's made, and the box empties. */
   onSnippet?: (text: string) => Promise<boolean>
+  /** Task list in the Attach menu (chat spec 6.8, task list §6): a channel's box opens its Task list tab. */
+  onTaskList?: () => void
   /**
    * The first link's preview above the box (spec 6.3), shown once typing pauses; `onRemove` (its ×) sends the message
    * without it. The composer decides which link and keeps the choice; the page renders the card.
@@ -179,6 +183,7 @@ export function RichComposer({
         onSchedule={onSchedule}
         slash={slash}
         onSnippet={onSnippet}
+        onTaskList={onTaskList}
         linkPreview={linkPreview}
       />
     </LexicalComposer>
@@ -205,7 +210,7 @@ function useSettled(value: string | null, ms: number): string | null {
   return settled === value ? value : null
 }
 
-function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEditLast, onDraft, onTyping, error, directory, autoFocus, showFormatting = true, files, allowEmpty = false, onSchedule, slash, onSnippet, linkPreview }: Parameters<typeof RichComposer>[0]) {
+function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEditLast, onDraft, onTyping, error, directory, autoFocus, showFormatting = true, files, allowEmpty = false, onSchedule, slash, onSnippet, onTaskList, linkPreview }: Parameters<typeof RichComposer>[0]) {
   const editing = mode === 'edit'
   const [editor] = useLexicalComposerContext()
   const boxRef = useRef<HTMLDivElement>(null)
@@ -496,6 +501,13 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
                       {RECORD_LABELS[kind]}
                     </MenuItem>
                   ))}
+                {onTaskList && <MenuSeparator />}
+                {onTaskList && (
+                  // Pro is a tag only: nothing is locked while there are no plans (task list §2 Q2, chat spec §13 Q7).
+                  <MenuItem icon={IconListCheck} onSelect={onTaskList}>
+                    Task list <Tag>Pro</Tag>
+                  </MenuItem>
+                )}
               </Menu>
               <input
                 ref={picker}
