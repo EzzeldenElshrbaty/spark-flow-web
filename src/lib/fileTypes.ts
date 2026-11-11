@@ -11,7 +11,7 @@ const videoTypes = ['.mp4', '.webm', '.mov']
 /** Download only. HTML is never opened in the app: it would run as a page. */
 const downloadTypes = [
   '.docx', '.xlsx', '.pptx', '.doc', '.xls', '.ppt', '.rtf', '.tsv', '.odt', '.ods', '.odp', '.pages', '.numbers', '.key',
-  '.html', '.htm', '.zip', '.rar', '.7z', '.ai', '.psd', '.eps', '.fig', '.sketch', '.heic', '.tif', '.tiff', '.mp3', '.wav', '.m4a',
+  '.html', '.htm', '.zip', '.rar', '.7z', '.ai', '.psd', '.eps', '.fig', '.sketch', '.heic', '.tif', '.tiff', '.mp3', '.wav', '.m4a', '.ogg',
 ]
 
 const extension = (name: string) => {
@@ -86,7 +86,9 @@ export function pastedName(mimeType: string, at = new Date()) {
 }
 
 /** The Files tab's types (spec 6.1): what a file is, for its filter and its icon. */
-export type FileKind = 'image' | 'pdf' | 'document' | 'snippet' | 'video' | 'other'
+export type FileKind = 'image' | 'pdf' | 'document' | 'snippet' | 'audio' | 'video' | 'other'
+
+const audioTypes = ['.mp3', '.m4a', '.wav', '.ogg']
 
 const documentTypes = [
   '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.rtf', '.odt', '.ods', '.odp', '.pages', '.numbers', '.key',
@@ -99,6 +101,8 @@ export function fileKind(file: { name: string; mimeType: string; snippet?: unkno
   const type = extension(file.name)
   if (imageTypes.includes(type)) return 'image'
   if (type === '.pdf') return 'pdf'
+  // Before video: a voice message is a .webm too (chat spec 6.9).
+  if (audioTypes.includes(type) || file.mimeType.startsWith('audio/')) return 'audio'
   if (videoTypes.includes(type) || file.mimeType.startsWith('video/')) return 'video'
   if (documentTypes.includes(type)) return 'document'
   return 'other'

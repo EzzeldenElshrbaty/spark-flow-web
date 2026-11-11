@@ -212,6 +212,38 @@ describe('slice 6 review minors (mock)', () => {
   })
 })
 
+describe('a voice or video message (chat spec 6.9): a chat file with clip data', () => {
+  const bars = Array.from({ length: 48 }, (_, i) => (i % 10) / 10)
+  const voice = (over: Partial<{ kind: 'voice' | 'video'; durationMs: number; waveform: number[] }> = {}) => ({ kind: 'voice' as const, durationMs: 42_000, waveform: bars, ...over })
+
+  it('keeps its clip, titled by its kind', async () => {
+    const sent = await api.files.uploadForChat('c-backend', file('Voice message.webm', 'opus', 'audio/webm'), { clip: voice() })
+    expect(sent).toMatchObject({ title: 'Voice message', clip: voice(), snippet: null })
+    const video = await api.files.uploadForChat('c-backend', file('Video message.mp4', 'mp4', 'video/mp4'), { clip: voice({ kind: 'video', waveform: [] }) })
+    expect(video).toMatchObject({ title: 'Video message', clip: { kind: 'video', durationMs: 42_000, waveform: [] } })
+    expect((await upload('scope.pdf')).clip).toBeNull()
+  })
+
+  it('refuses a recording in another format, too long, or with a bad waveform', async () => {
+    const refuse = (name: string, type: string, clip: object, detail: string, extra: object = {}) =>
+      expect(api.files.uploadForChat('c-backend', file(name, 'x', type), { clip, ...extra } as never), detail).rejects.toMatchObject({ status: 400, detail })
+    await refuse('a.wav', 'audio/wav', voice(), 'That recording’s format isn’t supported.')
+    await refuse('a.webm', 'video/webm', voice(), 'That recording’s format isn’t supported.')
+    await refuse('a.webm', 'audio/webm', voice({ durationMs: 301_001 }), 'Voice messages can be up to 5 minutes.')
+    await refuse('a.mp4', 'video/mp4', voice({ kind: 'video', durationMs: 121_001, waveform: [] }), 'Video messages can be up to 2 minutes.')
+    await refuse('a.webm', 'audio/webm', voice({ durationMs: 0 }), 'That recording can’t be added.')
+    await refuse('a.webm', 'audio/webm', voice({ waveform: bars.slice(1) }), 'That recording can’t be added.')
+    await refuse('a.webm', 'audio/webm', voice({ waveform: [...bars.slice(1), 1.2] }), 'That recording can’t be added.')
+    await refuse('a.mp4', 'video/mp4', voice({ kind: 'video' }), 'That recording can’t be added.')
+    await refuse('a.txt', 'text/plain', voice(), 'That recording can’t be added.', { snippet: { language: 'sql' } })
+  })
+
+  it('takes a recording right at its limit, with a second to spare', async () => {
+    const sent = await api.files.uploadForChat('c-backend', file('a.webm', 'x', 'audio/webm'), { clip: voice({ durationMs: 301_000 }) })
+    expect(sent.clip?.durationMs).toBe(301_000)
+  })
+})
+
 describe('a text snippet (spec 6.9): a .txt chat file with a language', () => {
   it('keeps its language, and its title is the name without .txt', async () => {
     const uploaded = await api.files.uploadForChat('c-backend', file('explain-query.txt', 'SELECT 1;', 'text/plain'), { snippet: { language: 'sql' } })

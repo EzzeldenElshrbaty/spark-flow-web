@@ -16,7 +16,7 @@ window.matchMedia ??= ((media: string) => ({ matches: false, media, addEventList
 
 const pdf: Attachment = {
   id: 'a1', name: 'Scope v3.pdf', mimeType: 'application/pdf', size: 188_416, createdAt: '2026-10-28T09:00:00.000Z',
-  uploadedBy: 'u-2', title: 'Scope v3.pdf', description: '', scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null, snippet: null, folderId: null,
+  uploadedBy: 'u-2', title: 'Scope v3.pdf', description: '', scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null, snippet: null, clip: null, folderId: null,
 }
 const link = 'http://localhost/w/engineering/c/c-backend?message=m1'
 

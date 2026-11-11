@@ -13,7 +13,7 @@ const people = [
 ] as User[]
 const file = (id: string, name: string, over: Partial<Attachment> = {}): Attachment => ({
   id, name, title: name, description: '', mimeType: 'application/pdf', size: 188_416, createdAt: '2026-10-28T09:00:00.000Z', uploadedBy: 'u-2',
-  scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null, snippet: null, folderId: null, ...over,
+  scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null, snippet: null, clip: null, folderId: null, ...over,
 })
 const items: ChannelFile[] = [
   { file: file('a1', 'scope.pdf'), senderId: 'u-2', at: '2026-10-28T09:00:00.000Z', messageId: 'm1', replyId: null },

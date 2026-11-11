@@ -382,7 +382,7 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
       },
       removeFromProject: (projectId, fileId) => send('DELETE', `/api/projects/${enc(projectId)}/files/${enc(fileId)}`),
       // Three steps (spec §8): an upload link for the bytes, the bytes straight to storage, then complete (type check, scan).
-      uploadForChat: (channelId, file, { snippet, ...options } = {}) => uploadInSteps({ channelId }, file, options, snippet && { snippet }),
+      uploadForChat: (channelId, file, { snippet, clip, ...options } = {}) => uploadInSteps({ channelId }, file, options, { ...(snippet && { snippet }), ...(clip && { clip }) }),
       uploadForTask: (projectId, file, options = {}) => uploadInSteps({ projectId }, file, options),
       shareable: (workspaceId, q) => get(`/api/workspaces/${enc(workspaceId)}/files${query({ q })}`),
       inChannel: (channelId, filter) => get(`/api/channels/${enc(channelId)}/files${query(filter)}`),

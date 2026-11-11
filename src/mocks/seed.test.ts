@@ -266,3 +266,18 @@ describe('channels (chat spec 6.14, the intro)', () => {
     }
   })
 })
+
+describe('the seeded voice message (chat spec 6.9)', () => {
+  it('Nour’s m-g04 in #general carries a 4-second voice note', () => {
+    const message = data.messages.find((m) => m.id === 'm-g04')!
+    expect(message.channelId).toBe('c-general')
+    expect(message.senderId).toBe('u-2')
+    const [voice] = message.attachments
+    expect(voice!.mimeType).toBe('audio/wav')
+    expect(voice!.clip).toMatchObject({ kind: 'voice', durationMs: 4000 })
+    expect(voice!.clip!.waveform).toHaveLength(48)
+    expect(voice!.clip!.waveform.every((v) => v >= 0 && v <= 1)).toBe(true)
+    expect(files[voice!.id]?.mimeType).toBe('audio/wav')
+    expect(data.attachments.every((a) => a.clip === null || a.id === voice!.id)).toBe(true)
+  })
+})

@@ -1,10 +1,10 @@
-import { FileArchive, FileCode, FileImage, FileText, FileVideo, type LucideIcon } from 'lucide-react'
+import { FileArchive, FileAudio, FileCode, FileImage, FileText, FileVideo, type LucideIcon } from 'lucide-react'
 import type { Attachment, ProjectFileFilter, ProjectFileSource } from '@/api/types'
 import { fileKind, type FileKind } from '@/lib/fileTypes'
 
-const ICONS: Record<FileKind, LucideIcon> = { image: FileImage, pdf: FileText, document: FileText, snippet: FileCode, video: FileVideo, other: FileArchive }
+const ICONS: Record<FileKind, LucideIcon> = { image: FileImage, pdf: FileText, document: FileText, snippet: FileCode, audio: FileAudio, video: FileVideo, other: FileArchive }
 
-/** A file's type icon (lucide), by its kind: a picture, a page, code, a film, anything else. */
+/** A file's type icon (lucide), by its kind: a picture, a page, code, a sound, a film, anything else. */
 export const fileIcon = (file: Pick<Attachment, 'name' | 'mimeType'> & { snippet?: unknown }): LucideIcon => ICONS[fileKind(file)]
 
 /** The Files tab's From chips (`?from=`). */

@@ -612,3 +612,19 @@ Design: `docs/superpowers/specs/2026-11-11-channel-intro-and-templates-design.md
 
 - **No new routes.** Pick a template saves through `PUT /api/channels/:id/page`, with save's rules. Link a project adds a bookmark through `POST /api/channels/:id/bookmarks`, titled with the project's name, at the absolute address of its Overview.
 - **Bookmarks to Flow:** a bookmark on the app's own origin is accepted even when its host has no dot (a development server), and the client opens it inside the app.
+
+## Phase 4 · Slice VM: voice and video messages (spec 6.9)
+
+A recording is an ordinary chat file with clip data beside `snippet`. Nothing else changes: the same upload steps, size
+limit, scan, posting rights and `fileIds` on send.
+
+| Field | Where | Shape | Notes |
+|---|---|---|---|
+| `clip` | `POST /api/files/upload-url` body (chat uploads only) | `{ kind: 'voice' \| 'video', durationMs, waveform }` | Leave it out for any other file; never with `snippet`. |
+| `clip` | every `Attachment` | the same, or `null` | `null` for every file that isn't a recording. |
+
+- **Formats:** voice `audio/webm`, `audio/mp4`, `audio/ogg`; video `video/webm`, `video/mp4` (the type before any `;codecs=`). Otherwise `400` "That recording’s format isn’t supported."
+- **Length:** work it out from the file itself (for example with ffprobe at `complete`); never trust `durationMs` as sent. Voice up to 5 minutes and video up to 2, with 1 s of slack: otherwise `400` "Voice messages can be up to 5 minutes." / "Video messages can be up to 2 minutes." Store the length you measured.
+- **Waveform:** voice exactly 48 numbers from 0 to 1; video `[]`. Keep it as sent once the shape passes; otherwise `400` "That recording can’t be added." (also for `clip` with `snippet`, a missing or zero length, or an unknown `kind`).
+- **Title:** "Voice message" or "Video message".
+- **Playback:** clients read the length from `clip.durationMs`, since a browser's WebM recording may not carry one; serve the bytes with `Accept-Ranges` so seeking works.
