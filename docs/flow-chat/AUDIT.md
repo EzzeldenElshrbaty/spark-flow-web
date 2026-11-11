@@ -785,8 +785,8 @@ Paths are under `src/pages/chat/` unless they start with `src/`.
 | 6.8-98 | 6.8 Attach menu | Upload from your computer (⌘U) | Done | composer/RichComposer.tsx:329-331 (`hint` ⌘U or Ctrl+U, opens the file picker); test :326 | | 2 | — |
 | 6.8-99 | 6.8 Attach menu | Add from Flow files | Not started (later phase) | not in the menu (RichComposer.tsx:328-332); tasks/todo.md:752 "Waits" for the Files tab | | 3 | M |
 | 6.8-100 | 6.8 Attach menu | Text snippet (⌘⇧↵) | Not started (later phase) | not in the menu; see 6.9 snippet items | | 3 | L |
-| 6.8-101 | 6.8 Attach menu | Separator, then Task list | Not started (later phase) | not in the menu | | 4 | L |
-| 6.8-102 | 6.8 Attach menu | Task list carries a Pro tag | OPEN | spec §13 item 7 (plan gating: which features are Pro) | | 4 | S |
+| 6.8-101 | 6.8 Attach menu | Separator, then Task list | Built (task list, 11 Nov 2026) | `RichComposer.tsx` Attach menu, `onTaskList` | | 4 | L |
+| 6.8-102 | 6.8 Attach menu | Task list carries a Pro tag | Built (task list, 11 Nov 2026) | a Pro `Tag` only; nothing is locked while §13 item 7 is open | | 4 | S |
 | 6.8-103 | 6.8 Attach menu | Page | Not started (later phase) | not in the menu; the channel Page tab is Phase 4 | | 4 | L |
 | 6.8-104 | 6.8 Attach menu | Run an automation | Not started (later phase) | not in the menu | | 4 | L |
 | 6.8-105 | 6.8 Attach menu | Separator, then "Turn on GIFs for your team" (admin only) | Not started (later phase) | not in the menu | | 3 | M |
@@ -1089,7 +1089,7 @@ Repo: `/Users/ezzelden/Work/ezz/WORK/Spark/DEV/Spark_Flow/spark-flow-web`. Read-
 | 6.14-26 | 6.14 New channel | Template card: Project kickoff (page, task list, weekly check-in automation) | Not started (later phase) | none | | 4 | M |
 | 6.14-27 | 6.14 New channel | Template card: Incident (timeline page, action items, status form) | Not started (later phase) | none | | 4 | M |
 | 6.14-28 | 6.14 New channel | Template card: Release (checklist page, "post when a task ships" automation) | Not started (later phase) | none | | 4 | M |
-| 6.14-29 | 6.14 Task list / Automations | Task list (Pro): entry point from the attach menu and templates | OPEN | Attach menu has only "Upload from your computer" (`RichComposer.tsx:328-331`); Pro gating is §13 Q7 | Needs its own spec and the plan-gating decision | 4 | M |
+| 6.14-29 | 6.14 Task list / Automations | Task list (Pro): entry point from the attach menu and templates | Built (task list, 11 Nov 2026) | `docs/superpowers/specs/2026-11-11-channel-task-list-design.md`: the Task list tab, the + menu item; templates unchanged | Pro gating is still §13 Q7 | 4 | M |
 | 6.14-30 | 6.14 Task list / Automations | Automations: entry point from the attach menu and templates | Not started (later phase) | none | Needs its own spec before it is built | 4 | M |
 | 6.15-01 | 6.15 Toast | Ink 950 in both themes | Done | `Toast.tsx:72` `bg-sf-ink-950 text-sf-white`; dark adds the 1px `ink-700` ring as the reference | | 0 | — |
 | 6.15-02 | 6.15 Toast | `radius-lg` | Done | `Toast.tsx:72` `rounded-sf-lg` | | 0 | — |

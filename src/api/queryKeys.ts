@@ -135,8 +135,9 @@ function dataKeysFor(event: RealtimeEvent): QueryKey[] {
         ['projects', 'files'],
       ]
     case 'projectChanged':
-      // Summaries and task lists live under 'tickets'; phases, deliverables and project time under 'projects'.
-      return [['tickets'], ['projects'], ['dashboard'], qk.projectHistory(event.projectId)]
+      // Summaries and task lists live under 'tickets'; phases, deliverables and project time under 'projects'. A board's
+      // columns or an archived project change what every channel's task list shows (final review).
+      return [['tickets'], ['projects'], ['dashboard'], qk.projectHistory(event.projectId), qk.taskListAll()]
     case 'pageSaved':
       // A save inside my 10-minute run changes that history entry's body too.
       return [qk.page(event.channelId), qk.pageHistory(event.channelId), qk.pageVersions(event.channelId)]

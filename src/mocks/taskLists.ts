@@ -20,11 +20,31 @@ export function listChannel(data: DbData, channelId: string) {
   return channel
 }
 
-/** Room on the channel's list: under the limit, and this task (when it exists yet) not on it. */
+/** Whether the row's task shows on the list: it exists, and neither it nor its project is archived. */
+const shows = (data: DbData, row: ChannelTask) => {
+  const task = data.tickets.find((t) => t.id === row.taskId)
+  return Boolean(task && !task.archivedAt && !data.projects.find((p) => p.id === task.projectId)?.archivedAt)
+}
+
+/**
+ * Room on the channel's list: under the limit, counting only the tasks it shows (final review: hidden archived ones
+ * don't fill it), and this task (when it exists yet) not on it.
+ */
 export function checkRoom(data: DbData, channelId: string, taskId: string | null) {
   const rows = data.channelTasks.filter((r) => r.channelId === channelId)
   if (taskId && rows.some((r) => r.taskId === taskId)) throw new ApiError({ title: 'Conflict', status: 409, detail: 'That task is already on this list.' })
-  if (rows.length >= TASK_LIST_MAX) throw badRequest(`A task list holds up to ${TASK_LIST_MAX} tasks.`)
+  if (rows.filter((r) => shows(data, r)).length >= TASK_LIST_MAX) throw badRequest(`A task list holds up to ${TASK_LIST_MAX} tasks.`)
+}
+
+/** Whether a check passes, for a join that is only wanted when allowed (`addNew`'s `optional`). */
+const passes = (check: () => unknown) => {
+  try {
+    check()
+    return true
+  } catch (error) {
+    if (error instanceof ApiError) return false
+    throw error
+  }
 }
 
 /** A row as the list shows it, with its task's live fields; null while the task (or its project) is archived or gone. */
@@ -77,9 +97,12 @@ export function taskListsApi(db: MockDb, hub: MockHub, now: () => Date): Api['ta
       changed(channelId)
       return clone(entry)
     },
-    async addNew(channelId, input) {
+    async addNew(channelId, input, options) {
       await delay()
-      // The task and its row are one write: a refusal from either part leaves neither (task list §4.2, R2).
+      // The task and its row are one write: a refusal from either part leaves neither (task list §4.2, R2). With
+      // `optional` (/task, Create task) the row is made only where it may be: a full list, or a channel I may not post
+      // in, still gets the task, just not on the list (final review).
+      let join = true
       const created = await createTicket(
         db,
         hub,
@@ -87,14 +110,18 @@ export function taskListsApi(db: MockDb, hub: MockHub, now: () => Date): Api['ta
         now,
         (data) => {
           const channel = listChannel(data, channelId)
-          checkCanWrite(data, channel)
           checkNewTask(data, input)
           // A list holds its own workspace's tasks, whichever way they come (security review).
           if (openProject(data, input.projectId).workspaceId !== channel.workspaceId) throw badRequest('That task is in another workspace.')
-          checkRoom(data, channelId, null)
+          const joining = () => {
+            checkCanWrite(data, channel)
+            checkRoom(data, channelId, null)
+          }
+          if (options?.optional) join = passes(joining)
+          else joining()
         },
         (data, task) => {
-          data.channelTasks.push({ id: crypto.randomUUID(), channelId, taskId: task.id, addedBy: data.currentUserId, addedAt: now().toISOString() })
+          if (join) data.channelTasks.push({ id: crypto.randomUUID(), channelId, taskId: task.id, addedBy: data.currentUserId, addedAt: now().toISOString() })
         },
       )
       changed(channelId)

@@ -26,6 +26,16 @@ afterEach(() => hub.close())
 
 const detail = (promise: Promise<unknown>) => promise.then(() => '', (e: { detail?: string }) => e.detail)
 const keys = async (channelId: string) => (await api.taskLists.get(channelId)).entries.map((e) => e.task.key)
+/** Puts made-up tasks on a channel's list until it shows `upTo` (archived ones, when `archived`, don't show). */
+const fill = (channelId: string, upTo: number, archived = false) =>
+  db.update((d) => {
+    const model = d.tickets.find((t) => t.key === 'NEX-110')!
+    const shown = d.channelTasks.filter((r) => r.channelId === channelId).length
+    for (let i = shown; i < upTo; i++) {
+      d.tickets.push({ ...model, id: `t-fill-${channelId}-${i}`, key: `FILL-${i}`, archivedAt: archived ? new Date().toISOString() : null })
+      d.channelTasks.push({ id: `ct-fill-${channelId}-${i}`, channelId, taskId: `t-fill-${channelId}-${i}`, addedBy: 'u-1', addedAt: new Date().toISOString() })
+    }
+  })
 
 describe('a channel’s task list (chat spec 6.14, task list §4)', () => {
   it('reads #frontend-dev’s seeded list in the order added, each task live', async () => {
@@ -57,10 +67,7 @@ describe('a channel’s task list (chat spec 6.14, task list §4)', () => {
   })
 
   it('holds up to 200 tasks', async () => {
-    await db.update((d) => {
-      for (let i = d.channelTasks.filter((r) => r.channelId === 'c-frontend').length; i < 200; i++)
-        d.channelTasks.push({ id: `ct-x${i}`, channelId: 'c-frontend', taskId: `t-gone-${i}`, addedBy: 'u-1', addedAt: new Date().toISOString() })
-    })
+    await fill('c-frontend', 200)
     expect(await detail(api.taskLists.add('c-frontend', 'NEX-110'))).toBe('A task list holds up to 200 tasks.')
   })
 
@@ -116,10 +123,7 @@ describe('making a task on the list (task list §6, R2)', () => {
     await expect(api.taskLists.addNew('c-frontend', input)).rejects.toMatchObject({ status: 403 })
     expect(await counts()).toEqual(was)
     db.actAs('u-1')
-    await db.update((d) => {
-      for (let i = d.channelTasks.filter((r) => r.channelId === 'c-frontend').length; i < 200; i++)
-        d.channelTasks.push({ id: `ct-x${i}`, channelId: 'c-frontend', taskId: `t-gone-${i}`, addedBy: 'u-1', addedAt: new Date().toISOString() })
-    })
+    await fill('c-frontend', 200)
     const full = await counts()
     expect(await detail(api.taskLists.addNew('c-frontend', input))).toBe('A task list holds up to 200 tasks.')
     expect(await counts()).toEqual(full)
@@ -140,5 +144,31 @@ describe('making a task on the list (task list §6, R2)', () => {
     expect(task.linkedMessageId).toBe(own.id)
     expect(await keys('c-p-nex')).toContain(task.key)
     expect(await detail(api.taskLists.addNew('c-frontend', { ...input, linkedMessageId: elsewhere.id }))).toBe('This message isn’t in the project’s chat.')
+  })
+})
+
+describe('final review fixes (task list)', () => {
+  const input = { projectId: 'p-nex', title: 'From chat', descriptionBody: [], status: '', priority: 'low' as const, storyPoints: null, assigneeId: null, sprintId: null }
+
+  it('counts only the tasks the list shows toward 200: archived ones don’t', async () => {
+    await fill('c-frontend', 200, true)
+    const entry = await api.taskLists.add('c-frontend', 'NEX-110')
+    expect(entry.task.key).toBe('NEX-110')
+  })
+
+  it('/task and Create task still make the task when the list is full; it just isn’t on the list', async () => {
+    await fill('c-frontend', 200)
+    const task = await api.taskLists.addNew('c-frontend', input, { optional: true })
+    expect(task.title).toBe('From chat')
+    expect(await keys('c-frontend')).not.toContain(task.key)
+    expect(await detail(api.taskLists.addNew('c-frontend', input))).toBe('A task list holds up to 200 tasks.')
+  })
+
+  it('…and when I may not post in the channel, as someone who manages the project’s tasks', async () => {
+    await db.update((d) => void (d.channels.find((c) => c.id === 'c-p-nex')!.whoCanPost = 'admins'))
+    db.actAs('u-2')
+    const task = await api.taskLists.addNew('c-p-nex', input, { optional: true })
+    expect(await keys('c-p-nex')).not.toContain(task.key)
+    await expect(api.taskLists.addNew('c-p-nex', input)).rejects.toMatchObject({ status: 403 })
   })
 })

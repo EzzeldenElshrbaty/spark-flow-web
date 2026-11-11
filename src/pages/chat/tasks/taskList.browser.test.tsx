@@ -105,8 +105,8 @@ describe('the Task list tab', () => {
     expect(screen.queryByRole('menuitem', { name: /Remove from list/ })).toBeNull()
     await userEvent.keyboard('{Escape}')
     // Mariam has NEX-106; MOB-103 is Ahmed's, on a project she doesn't manage.
-    expect(box('Mark NEX-106 done').disabled).toBe(false)
-    expect(box('Mark MOB-103 done').disabled).toBe(true)
+    expect(box('Mark NEX-106 done').getAttribute('aria-disabled')).toBeNull()
+    expect(box('Mark MOB-103 done').getAttribute('aria-disabled')).toBe('true')
   })
 
   it('isn’t in a project’s own Chat tab: the project’s Tasks tab is there', async () => {
@@ -189,5 +189,45 @@ describe('adding tasks to the list (task list §6)', () => {
     await app.settled()
     expect(await screen.findByRole('tab', { name: 'Task list 1' })).toBeTruthy()
     expect((await api.taskLists.get('c-backend')).entries.map((e) => e.task.title)).toEqual(['Rotate the queue keys'])
+  })
+})
+
+describe('final review fixes (task list)', () => {
+  it('on a laptop with the task panel open, a title still has room', async () => {
+    const app = await renderApp({ path: `${LIST}&ticket=NEX-106`, as: 'admin', theme: 'light', size: 'laptop' })
+    await app.settled()
+    await screen.findByRole('complementary', { name: 'Task' })
+    for (const name of [MOB_103, NEX_105, NEX_106]) expect(screen.getByRole('link', { name }).getBoundingClientRect().width, name).toBeGreaterThanOrEqual(160)
+    expect(sidewaysScroll()).toBeNull()
+  })
+
+  it('Space ticks a task and focus moves to the next one, not to the page', async () => {
+    const app = await renderApp({ path: LIST, as: 'pm', theme: 'light', size: 'desktop' })
+    await app.settled()
+    box('Mark NEX-105 done').focus()
+    await userEvent.keyboard(' ')
+    await waitFor(() => expect(document.activeElement).toBe(box('Mark NEX-106 done')))
+  })
+
+  it('Remove from list moves focus to the next task', async () => {
+    const app = await renderApp({ path: LIST, as: 'admin', theme: 'light', size: 'desktop' })
+    await app.settled()
+    await userEvent.click(screen.getByRole('button', { name: 'Task actions for NEX-105' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: /Remove from list/ }))
+    await waitFor(() => expect(document.activeElement).toBe(box('Mark NEX-106 done')))
+  })
+
+  it('a checkbox I can’t use says why: by keyboard, to a screen reader and on a tap', async () => {
+    const app = await renderApp({ path: LIST, as: 'member', theme: 'light', size: 'phone' })
+    await app.settled()
+    const mob = box('Mark MOB-103 done')
+    mob.focus()
+    expect(document.activeElement).toBe(mob)
+    const why = document.getElementById(mob.getAttribute('aria-describedby')!)
+    expect(why?.textContent).toBe('Only the project’s manager or the task’s assignee can change its status.')
+    // Playwright won't click a control marked aria-disabled; a person's tap still reaches it.
+    await userEvent.click(tickBox('Mark MOB-103 done'), { force: true })
+    expect((await screen.findByRole('alert')).textContent).toBe('Only the project’s manager or the task’s assignee can change its status.')
+    expect(await category('MOB-103')).toBe('todo')
   })
 })

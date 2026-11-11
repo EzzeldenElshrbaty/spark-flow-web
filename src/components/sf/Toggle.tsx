@@ -48,6 +48,9 @@ export function Checkbox({
   onChange,
   children,
   disabled = false,
+  unavailable = false,
+  describedBy,
+  id,
   title,
   className,
 }: {
@@ -55,24 +58,35 @@ export function Checkbox({
   onChange: (checked: boolean) => void
   children: ReactNode
   disabled?: boolean
-  /** Shown on hover: why it's off, say (the task list's checkbox). */
+  /**
+   * Off, yet still reachable by Tab, so what `describedBy` says can be read (the task list's checkbox, final review).
+   * `onChange` still fires: the owner says why, or ignores it.
+   */
+  unavailable?: boolean
+  describedBy?: string
+  id?: string
+  /** Shown on hover: why it's off, say. */
   title?: string
   className?: string
 }) {
+  const off = disabled || unavailable
   return (
     <label
       title={title}
       className={clsx(
         'sf-small inline-flex items-center gap-2 text-sf-text-secondary',
-        disabled ? 'cursor-not-allowed' : 'cursor-pointer',
+        off ? 'cursor-not-allowed' : 'cursor-pointer',
         className,
       )}
     >
       <input
+        id={id}
         type="checkbox"
         className="peer sr-only"
         checked={checked}
         disabled={disabled}
+        aria-disabled={unavailable || undefined}
+        aria-describedby={describedBy}
         onChange={(event) => onChange(event.target.checked)}
       />
       <span
@@ -80,6 +94,7 @@ export function Checkbox({
         className={clsx(
           'inline-grid size-4 flex-none place-items-center rounded-sf-sm border text-sf-on-accent peer-focus-visible:shadow-[var(--focus-ring)]',
           checked ? 'border-sf-accent-fill bg-sf-accent-fill' : 'border-sf-line-strong bg-sf-surface',
+          off && 'opacity-50',
         )}
       >
         {checked && <Icon icon={IconCheck} size={14} />}

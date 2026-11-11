@@ -70,7 +70,8 @@ export function useTaskFromMessage(
       sprints={sprints.data ?? []}
       users={users.data ?? []}
       draft={opened.draft}
-      {...(listed && channelId && { onto: { channelId } })}
+      // What /task and Create task make joins the list only where it may; the tab's New task is the list's own (final review).
+      {...(listed && channelId && { onto: opened.from === 'list' ? { channelId } : { channelId, optional: true } })}
       {...(opened.picked && {
         projectChoice: { projects: mine ?? [], onPick: (id: string) => setOpened({ ...opened, picked: mine?.find((p) => p.id === id) ?? opened.picked }) },
       })}

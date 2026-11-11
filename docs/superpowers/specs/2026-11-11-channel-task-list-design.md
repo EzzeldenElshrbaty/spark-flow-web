@@ -231,6 +231,17 @@ taskLists: {
 - `UX_PAGES` gains `'c/c-frontend?tab=tasks'`; `src/layers.browser.test.tsx` gains "Add an existing task" (modal) and
   "New task from the task list" (sheet, "Discard this new task?").
 
+## 9a. Final review changes (11 Nov 2026)
+
+- /task and Create task join the list with `optional`: a full list, or a channel I may not post in, still gets the task,
+  just not the row (`?optional=true` on `…/task-list/new`). Only tasks the list shows count toward 200.
+- `projectChanged` refreshes every list too (a column renamed or retyped, a project archived).
+- Unticking goes to the board's To do column, or the first To do-type column when that one was given another type.
+- A checkbox I can't use stays a Tab stop (`aria-disabled`), with its reason as its description and said on a tap;
+  focus moves to the next task after a tick or a removal; a refusal on a row is read out.
+- Rows lay out by the list column's own width, so the task panel beside the list doesn't squeeze the titles: columns from
+  36rem with titles on up to two lines, the assignee's name from 44rem, two-line rows below.
+
 ## 10. Not in this change
 
 Dragging to reorder, custom columns or fields, more than one list per channel, lists in DMs, templates that make tasks

@@ -1,4 +1,5 @@
-import type { TaskListEntry } from '@/api/types'
+import type { Project, TaskListEntry } from '@/api/types'
+import { columnOf, firstOf } from '@/lib/boardColumns'
 
 const added = (a: TaskListEntry, b: TaskListEntry) => a.addedAt.localeCompare(b.addedAt)
 /** Soonest due first, no date last; the same date (or none) by when added. */
@@ -28,4 +29,13 @@ export function orderTaskList(entries: readonly TaskListEntry[]): { open: TaskLi
 export function listCounts(entries: readonly TaskListEntry[]): { open: number; done: number } {
   const done = entries.filter((e) => e.task.category === 'done').length
   return { open: entries.length - done, done }
+}
+
+/**
+ * Where unticking a task puts it (task list §2 Q6): the board's To do column, where new tasks start; or, when that
+ * column was given another type, the first column of the To do type (final review).
+ */
+export function reopenColumn(project: Pick<Project, 'board'>): string {
+  const todo = columnOf(project, 'todo')
+  return todo?.category === 'todo' ? todo.id : firstOf(project, 'todo').id
 }

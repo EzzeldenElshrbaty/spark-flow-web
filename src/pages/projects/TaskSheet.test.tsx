@@ -259,6 +259,17 @@ describe('TaskSheet onto a channel’s task list (task list §6)', () => {
   })
 })
 
+describe('TaskSheet onto a channel’s list, optionally (final review)', () => {
+  it('a task made from chat joins the list only where it may, and says only that it was created', () => {
+    addNew.mutate.mockImplementation((_input, opts: { onSuccess: (t: TaskView) => void }) => opts.onSuccess({ key: 'NEX-112' } as TaskView))
+    render(<TaskSheet project={project} phases={[]} sprints={[]} users={[]} onto={{ channelId: 'c-p-nex', optional: true }} onClose={vi.fn()} />)
+    fireEvent.change(screen.getByRole('textbox', { name: /Title/ }), { target: { value: 'From chat' } })
+    save()
+    expect(addNew.mutate).toHaveBeenCalledWith({ channelId: 'c-p-nex', input: expect.objectContaining({ title: 'From chat' }), optional: true }, expect.anything())
+    expect(announced).toHaveBeenCalledWith('Task NEX-112 created.')
+  })
+})
+
 describe('TaskSheet checks as you fix (UX Phase 4, 4.4)', () => {
   it('the title error shows on Save, leaves once a title is typed, and Enter in the title saves', () => {
     render(<TaskSheet project={project} phases={[]} sprints={[]} users={[]} onCreated={() => {}} onClose={() => {}} />)

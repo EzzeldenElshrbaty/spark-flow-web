@@ -45,7 +45,7 @@ describe('keysForEvent', () => {
     expect(keysForEvent({ type: 'notificationCreated', userId: 'u1' })).toEqual([qk.activityAll(), qk.mentions()])
     // A file's title, description or deletion changes its details; the messages showing it get messageChanged too.
     expect(keysForEvent({ type: 'fileChanged', fileId: 'a1' })).toEqual([qk.fileDetails('a1'), ['chat', 'files'], ['folders'], ['projects', 'files'], ['tickets'], qk.auditAll()])
-    expect(keysForEvent({ type: 'projectChanged', projectId: 'p1' })).toEqual([['tickets'], ['projects'], ['dashboard'], qk.projectHistory('p1'), qk.auditAll(), qk.archiveAll()])
+    expect(keysForEvent({ type: 'projectChanged', projectId: 'p1' })).toEqual([['tickets'], ['projects'], ['dashboard'], qk.projectHistory('p1'), qk.taskListAll(), qk.auditAll(), qk.archiveAll()])
   })
 })
 
@@ -114,5 +114,7 @@ describe('keysForEvent and channel task lists (task list §4.3)', () => {
     expect(qk.taskListAll()).toEqual(['chat', 'taskList'])
     expect(keysForEvent({ type: 'channelChanged', channelId: 'c1' })).toContainEqual(qk.taskList('c1'))
     expect(keysForEvent({ type: 'ticketUpdated', ticket: { ...t, projectId: 'p1', key: 'NEX-1' } })).toContainEqual(qk.taskListAll())
+    // A board's column renamed or retyped, or a project archived, changes what every list shows (final review).
+    expect(keysForEvent({ type: 'projectChanged', projectId: 'p1' })).toContainEqual(qk.taskListAll())
   })
 })

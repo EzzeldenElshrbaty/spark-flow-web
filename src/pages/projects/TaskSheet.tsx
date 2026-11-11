@@ -88,8 +88,11 @@ export function TaskSheet({
    * the sheet on that project; what I wrote stays, and what belongs to a project (status, phase, sprint) starts over.
    */
   projectChoice?: { projects: Pick<Project, 'id' | 'name'>[]; onPick: (projectId: string) => void }
-  /** A new task made in a channel goes on that channel's task list too, in the same write (task list §6). */
-  onto?: { channelId: string }
+  /**
+   * A new task made in a channel goes on that channel's task list too, in the same write (task list §6). `optional`
+   * (/task, Create task): only where the list has room and I may post; the task is made either way.
+   */
+  onto?: { channelId: string; optional?: boolean }
   /** A new task was saved: the opener shows it (UX Phase 1, 1.5), before the sheet closes. */
   onCreated?: (task: TaskView) => void
   onClose: () => void
@@ -195,9 +198,9 @@ export function TaskSheet({
         onCreated?.(created)
         onClose()
         // Read out once the sheet has closed (UX Phase 5A, 5.12).
-        announce(onto ? `Task ${created.key} created and added to the task list.` : `Task ${created.key} created.`)
+        announce(onto && !onto.optional ? `Task ${created.key} created and added to the task list.` : `Task ${created.key} created.`)
       }
-      if (onto) addNew.mutate({ channelId: onto.channelId, input }, { onSuccess })
+      if (onto) addNew.mutate({ channelId: onto.channelId, input, ...(onto.optional && { optional: true }) }, { onSuccess })
       else createAlone.mutate(input, { onSuccess })
     }
   }

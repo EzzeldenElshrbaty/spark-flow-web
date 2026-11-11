@@ -127,13 +127,13 @@ describe('useTaskFromMessage: tasks made in a channel join its list (task list Â
     const { result } = inChannel('c-p-nex')
     act(() => result.current.fromCommand!.open({ title: 'Fix login', assigneeId: null }))
     render(<>{result.current.sheet}</>, { wrapper })
-    expect(shown.props?.onto).toEqual({ channelId: 'c-p-nex' })
+    expect(shown.props?.onto).toEqual({ channelId: 'c-p-nex', optional: true })
     cleanup()
     const again = inChannel('c-p-nex').result
     const message = { id: 'm1', channelId: 'c-p-nex', content: 'Crash on save' } as ChatMessage
     act(() => again.current.fromFile!({ title: 'crash.log' } as Attachment, message))
     render(<>{again.current.sheet}</>, { wrapper })
-    expect(shown.props?.onto).toEqual({ channelId: 'c-p-nex' })
+    expect(shown.props?.onto).toEqual({ channelId: 'c-p-nex', optional: true })
     expect(shown.props?.draft).toMatchObject({ title: 'crash.log', linkedMessageId: 'm1' })
   })
 

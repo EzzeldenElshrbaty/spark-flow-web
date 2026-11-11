@@ -641,7 +641,7 @@ task-view rule: every live task of the channel's workspace may be added and is s
 |---|---|---|
 | `GET /api/channels/{id}/task-list` | — | `TaskList` `{ channelId, entries: TaskListEntry[] }` |
 | `POST /api/channels/{id}/task-list` | `{ taskKey }` | `TaskListEntry` |
-| `POST /api/channels/{id}/task-list/new` | a `NewTicket` | the task (`TaskView`), made by `POST /tasks`' rules with `linkedChannelId` = the channel, and on the list, in one transaction |
+| `POST /api/channels/{id}/task-list/new` | a `NewTicket` | the task (`TaskView`), made by `POST /tasks`' rules with `linkedChannelId` = the channel, and on the list, in one transaction. With `?optional=true` (/task, Create task) the task is made either way and goes on the list only when it has room and the caller may post there |
 | `DELETE /api/channels/{id}/task-list/{taskKey}` | — | `204` |
 
 - **Shapes:** `TaskListEntry = { id, addedBy, addedAt, task }`; `task` is the chip's `TaskRef` plus `id`, `projectId`,
@@ -650,7 +650,8 @@ task-view rule: every live task of the channel's workspace may be added and is s
 - **Refusals** (`detail` is the sentence shown): a DM `400` "Task lists are for channels."; an unknown task `404` "That task
   no longer exists."; an archived task `400` "This task is archived. Restore it first."; an archived project `400` "This
   project is archived. Restore it first."; another workspace's task `400` "That task is in another workspace."; already on
-  the list `409` "That task is already on this list."; 200 rows `400` "A task list holds up to 200 tasks."; removing a
+  the list `409` "That task is already on this list."; 200 tasks shown (archived ones don't count) `400` "A task list holds up to
+  200 tasks."; removing a
   task that isn't there `404` "That task isn’t on this list."; plus the channel's own (`403`/`404` to read, "This channel
   is archived.", Only admins). `…/new` refuses as `POST /tasks` does, and then makes neither the task nor the row.
 - **Events:** each write sends `channelChanged` for the channel; clients refresh every task list on `ticketUpdated`, so a

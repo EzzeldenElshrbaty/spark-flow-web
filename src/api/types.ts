@@ -1163,9 +1163,10 @@ export interface Api {
     add(channelId: string, taskKey: string): Promise<TaskListEntry>
     /**
      * Makes a task by `tasks.create`'s rules, with `linkedChannelId` = the channel, and adds it, in one write. Returns
-     * the task, as `tasks.create` does.
+     * the task, as `tasks.create` does. `optional` (/task, Create task): the task is made either way, and goes on the
+     * list only when it has room and I may post here.
      */
-    addNew(channelId: string, input: NewTicket): Promise<TaskView>
+    addNew(channelId: string, input: NewTicket, options?: { optional?: boolean }): Promise<TaskView>
     remove(channelId: string, taskKey: string): Promise<void>
   }
   /**

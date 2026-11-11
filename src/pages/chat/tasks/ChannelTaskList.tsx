@@ -1,5 +1,5 @@
 import { IconChevronDown, IconChevronRight, IconPlus } from '@tabler/icons-react'
-import { useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { useProjectSummaries } from '@/api/projects'
 import { useRemoveFromTaskList, useTaskList } from '@/api/taskLists'
@@ -8,12 +8,12 @@ import type { Channel, TaskListEntry, User } from '@/api/types'
 import { announce } from '@/components/sf/Announcer'
 import { Button } from '@/components/sf/Button'
 import { Icon } from '@/components/sf/Icon'
-import { firstOf, startColumn } from '@/lib/boardColumns'
+import { firstOf } from '@/lib/boardColumns'
 import { withInspector } from '@/lib/inspector'
-import { listCounts, orderTaskList } from '@/lib/taskList'
+import { listCounts, orderTaskList, reopenColumn } from '@/lib/taskList'
 import { usePermission } from '@/lib/usePermission'
 import { useReadOnlyLine } from '@/pages/chat/useCanPost'
-import { TaskListRow } from './TaskListRow'
+import { taskCheckboxId, TaskListRow } from './TaskListRow'
 
 const CANT_TICK = 'Only the project’s manager or the task’s assignee can change its status.'
 const message = (error: unknown) => (error instanceof Error ? error.message : 'Couldn’t change that. Try again.')
@@ -48,6 +48,19 @@ export function ChannelTaskList({
   const [showDone, setShowDone] = useState(false)
   const [saving, setSaving] = useState<ReadonlySet<string>>(new Set())
   const [errors, setErrors] = useState<Readonly<Record<string, string>>>({})
+  // Where focus goes once a tick or a removal has redrawn the list (final review): the first of these ids on the page.
+  // A row that moves to the folded Done list, or leaves, would otherwise drop focus to the page.
+  const ids = useId()
+  const doneToggle = `${ids}-done`
+  const top = `${ids}-top`
+  const [focusTo, setFocusTo] = useState<readonly string[] | null>(null)
+  useEffect(() => {
+    if (!focusTo) return
+    const target = focusTo.map((id) => document.getElementById(id)).find(Boolean)
+    if (!target) return
+    target.focus()
+    setFocusTo(null)
+  }, [focusTo, list.data])
 
   if (list.isError)
     return (
@@ -87,26 +100,46 @@ export function ChannelTaskList({
     const may = check('task.manage', { project }) || check('task.updateOwnStatus', { project, taskAssigneeId: entry.task.assigneeId })
     return may ? null : CANT_TICK
   }
+  /** The rows around one in its list, nearest first: where focus goes when it leaves. */
+  const around = (entry: TaskListEntry) => {
+    const rows = entry.task.category === 'done' ? done : open
+    const at = rows.findIndex((e) => e.id === entry.id)
+    return [rows[at + 1], rows[at - 1]].flatMap((e) => (e ? [taskCheckboxId(e.task.key)] : []))
+  }
   const tick = (entry: TaskListEntry, toDone: boolean) => {
     const project = projectOf(entry)
     const { key } = entry.task
     if (!project || saving.has(key)) return
     busy(key, true)
     say(key, null)
+    // Done folds the task away: focus goes to the next open one. Reopened, it's back in the open list: focus follows it.
+    const then = toDone ? [...around(entry), doneToggle, top] : [taskCheckboxId(key), top]
     move.mutate(
-      { key, status: toDone ? firstOf(project, 'done').id : startColumn(project), index: 0 },
+      { key, status: toDone ? firstOf(project, 'done').id : reopenColumn(project), index: 0 },
       {
-        onSuccess: () => announce(toDone ? `${key} marked done.` : `${key} reopened.`),
+        onSuccess: () => {
+          announce(toDone ? `${key} marked done.` : `${key} reopened.`)
+          setFocusTo(then)
+        },
         onError: (error) => say(key, message(error)),
         onSettled: () => busy(key, false),
       },
     )
   }
-  const takeOff = (key: string) =>
+  const takeOff = (entry: TaskListEntry) => {
+    const { key } = entry.task
+    const then = [...around(entry), doneToggle, top]
     remove.mutate(
       { channelId: channel.id, taskKey: key },
-      { onSuccess: () => announce(`${key} removed from the task list.`), onError: (error) => say(key, message(error)) },
+      {
+        onSuccess: () => {
+          announce(`${key} removed from the task list.`)
+          setFocusTo(then)
+        },
+        onError: (error) => say(key, message(error)),
+      },
     )
+  }
   const row = (entry: TaskListEntry) => {
     const { key } = entry.task
     return (
@@ -121,17 +154,18 @@ export function ChannelTaskList({
         link={`?${withInspector(params, { kind: 'ticket', key }).toString()}`}
         onTick={(toDone) => tick(entry, toDone)}
         onOpen={() => setParams((prev) => withInspector(prev, { kind: 'ticket', key }))}
-        onRemove={canPost ? () => takeOff(key) : undefined}
+        onRemove={canPost ? () => takeOff(entry) : undefined}
       />
     )
   }
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">
-      <div className="mx-auto w-full max-w-[760px] pb-6">
+      {/* The rows follow this column's width, not the screen's: the task panel beside it narrows it (final review). */}
+      <div id={top} tabIndex={-1} className="@container mx-auto w-full max-w-[760px] pb-6 outline-none">
         <div className="flex flex-wrap items-center gap-2 px-4 py-3 sm:px-6">
           {entries.length > 0 && (
-            <p className="sf-meta m-0 me-auto text-sf-text-secondary tabular-nums max-md:basis-full">
+            <p className="sf-meta m-0 me-auto text-sf-text-secondary tabular-nums @max-[36rem]:basis-full">
               {counts.open} open · {counts.done} done
             </p>
           )}
@@ -161,6 +195,7 @@ export function ChannelTaskList({
               <>
                 <button
                   type="button"
+                  id={doneToggle}
                   aria-expanded={showDone}
                   onClick={() => setShowDone((was) => !was)}
                   className="sf-focus sf-ui-medium mt-2 flex items-center gap-1 rounded-sf-md px-4 py-2 text-sf-text-secondary hover:text-sf-text max-md:min-h-11 sm:px-6"

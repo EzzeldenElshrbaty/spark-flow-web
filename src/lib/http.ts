@@ -305,7 +305,7 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
     taskLists: {
       get: (channelId) => get(`/api/channels/${enc(channelId)}/task-list`),
       add: (channelId, taskKey) => send('POST', `/api/channels/${enc(channelId)}/task-list`, { taskKey }),
-      addNew: (channelId, input) => send('POST', `/api/channels/${enc(channelId)}/task-list/new`, input),
+      addNew: (channelId, input, options) => send('POST', `/api/channels/${enc(channelId)}/task-list/new${options?.optional ? '?optional=true' : ''}`, input),
       remove: (channelId, taskKey) => send<void>('DELETE', `/api/channels/${enc(channelId)}/task-list/${enc(taskKey)}`),
     },
     pages: {

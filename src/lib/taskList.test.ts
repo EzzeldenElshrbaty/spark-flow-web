@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { StatusCategory, TaskListEntry } from '@/api/types'
-import { listCounts, orderTaskList } from './taskList'
+import { listCounts, orderTaskList, reopenColumn } from './taskList'
 
 const entry = (key: string, addedAt: string, dueAt: string | null, category: StatusCategory = 'todo'): TaskListEntry => ({
   id: `ct-${key}`, addedBy: 'u-1', addedAt,
@@ -27,5 +27,18 @@ describe('a task list’s order (task list §2 Q5)', () => {
   it('counts what’s open and what’s done', () => {
     expect(listCounts(list)).toEqual({ open: 5, done: 2 })
     expect(listCounts([])).toEqual({ open: 0, done: 0 })
+  })
+})
+
+describe('where unticking puts a task (final review)', () => {
+  it('the To do column; or, when that column was given the Done type, the first column of the To do type', () => {
+    expect(reopenColumn({})).toBe('todo')
+    const board = [
+      { id: 'backlog', label: 'Ideas', category: 'todo' as const },
+      { id: 'todo', label: 'Shipped', category: 'done' as const },
+      { id: 'inProgress', label: 'Doing', category: 'inProgress' as const },
+      { id: 'done', label: 'Done', category: 'done' as const },
+    ]
+    expect(reopenColumn({ board })).toBe('backlog')
   })
 })

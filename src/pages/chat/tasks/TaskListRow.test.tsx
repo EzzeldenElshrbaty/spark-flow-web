@@ -42,11 +42,18 @@ describe('a task list row (task list §5)', () => {
   it('says why the checkbox is off, and is off while it saves', () => {
     row({ entry: entry('NEX-105'), cantTick: CANT })
     const box = screen.getByRole('checkbox', { name: 'Mark NEX-105 done' }) as HTMLInputElement
-    expect(box.disabled).toBe(true)
+    // Still reachable by Tab, so the reason can be read (final review).
+    expect(box.disabled).toBe(false)
+    expect(box.getAttribute('aria-disabled')).toBe('true')
+    expect(document.getElementById(box.getAttribute('aria-describedby')!)!.textContent).toBe(CANT)
     expect(box.closest('label')!.getAttribute('title')).toBe(CANT)
     cleanup()
-    row({ entry: entry('NEX-105'), saving: true })
-    expect((screen.getByRole('checkbox', { name: 'Mark NEX-105 done' }) as HTMLInputElement).disabled).toBe(true)
+    const onTick = vi.fn()
+    row({ entry: entry('NEX-105'), saving: true, onTick })
+    const saving = screen.getByRole('checkbox', { name: 'Mark NEX-105 done' })
+    expect(saving.getAttribute('aria-disabled')).toBe('true')
+    fireEvent.click(saving)
+    expect(onTick).not.toHaveBeenCalled()
   })
 
   it('opens the task from its title, and offers Remove from list only to whoever may post', () => {
@@ -63,8 +70,8 @@ describe('a task list row (task list §5)', () => {
     expect(screen.queryByRole('menuitem', { name: /Remove from list/ })).toBeNull()
   })
 
-  it('shows its error as a sentence on the row', () => {
+  it('shows its error as a sentence on the row, read out (final review)', () => {
     row({ entry: entry('NEX-105'), error: 'This task is archived. Restore it first.' })
-    expect(screen.getByText('This task is archived. Restore it first.')).toBeTruthy()
+    expect(screen.getByRole('alert').textContent).toBe('This task is archived. Restore it first.')
   })
 })

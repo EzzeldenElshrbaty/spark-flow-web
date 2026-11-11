@@ -15,7 +15,9 @@ export function useAddToTaskList() {
 
 /** A new task, made in the channel and put on its list in one write (task list §6). */
 export function useAddNewToTaskList() {
-  return useMutation({ mutationFn: ({ channelId, input }: { channelId: string; input: NewTicket }) => api.taskLists.addNew(channelId, input) })
+  return useMutation({
+    mutationFn: ({ channelId, input, optional }: { channelId: string; input: NewTicket; optional?: boolean }) => api.taskLists.addNew(channelId, input, optional ? { optional } : undefined),
+  })
 }
 
 export function useRemoveFromTaskList() {
