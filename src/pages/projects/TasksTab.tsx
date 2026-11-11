@@ -1,10 +1,10 @@
 import clsx from 'clsx'
 import { Columns3, IterationCw, List } from 'lucide-react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { useSetBoard } from '@/api/projects'
 import { useArchivedTasks, useSprints, useTickets, useUpdateTask, useMoveTask } from '@/api/tickets'
-import type { BoardColumn, Phase, ProjectSummary, TaskView, TicketPatch, User } from '@/api/types'
+import type { BoardColumn, Phase, ProjectSummary, Sprint, TaskView, TicketPatch, User } from '@/api/types'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { selectClass } from '@/components/ui/Field'
 import { FilterBar } from '@/components/ui/FilterBar'
@@ -17,7 +17,10 @@ import { useRole } from '@/lib/useRole'
 import { useParamState } from '@/lib/searchParams'
 import { BacklogSkeleton, ProjectBacklog } from '@/pages/projects/ProjectBacklog'
 import { BoardSkeleton, ProjectBoard } from '@/pages/projects/ProjectBoard'
-import { SprintPlan } from '@/pages/projects/sprints/SprintPlan'
+import { CompleteSprintSheet } from '@/pages/projects/sprints/CompleteSprintSheet'
+import { DeleteSprintSheet } from '@/pages/projects/sprints/DeleteSprintSheet'
+import { SprintPlan, type SprintActions } from '@/pages/projects/sprints/SprintPlan'
+import { SprintSheet } from '@/pages/projects/sprints/SprintSheet'
 import { byOrder } from './phases'
 import { activeFilters, filtersFrom, filterTasks, matchesQuery, PRIORITIES, sortOf, sortTasks, sprintPlanTasks, staleArchivedParam, TASK_SORTS, taskQueryFrom, validSprint, viewOf } from './taskFilters'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
@@ -51,6 +54,24 @@ function ViewSwitch({ view, agile }: { view: ProjectView; agile: boolean }) {
       options={views.filter(([value]) => agile || value !== 'sprints').map(([value, label, icon]) => ({ value, label, icon, iconOnlyOnPhone: true }))}
     />
   )
+}
+
+/** The sprint sheet that's open: Create sprint, or one of a sprint's own (its Edit, Start, Complete and Delete). */
+type SprintSheetState = { kind: 'create' } | { kind: 'edit' | 'start' | 'complete' | 'remove'; sprint: Sprint }
+
+/** The open sprint sheet. Complete and Delete count the project's tasks, whatever the filters. */
+function SprintSheets({ state, project, sprints, tasks, onClose }: { state: SprintSheetState; project: ProjectSummary; sprints: Sprint[]; tasks: TaskView[]; onClose: () => void }) {
+  switch (state.kind) {
+    case 'create':
+      return <SprintSheet mode="create" project={project} sprints={sprints} tasks={tasks} onClose={onClose} />
+    case 'edit':
+    case 'start':
+      return <SprintSheet mode={state.kind} sprint={state.sprint} project={project} sprints={sprints} tasks={tasks} onClose={onClose} />
+    case 'complete':
+      return <CompleteSprintSheet sprint={state.sprint} sprints={sprints} tasks={tasks} onClose={onClose} />
+    case 'remove':
+      return <DeleteSprintSheet sprint={state.sprint} tasks={tasks} onClose={onClose} />
+  }
 }
 
 /** The Tasks tab: Board | List (| Sprints), phase chips and (agile) a sprint select. Every choice lives in the URL. */
@@ -110,6 +131,18 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
   const check = usePermission()
   const update = useUpdateTask()
   const moveTask = useMoveTask()
+  // Whoever may manage the project's tasks (an Admin or its manager) plans its sprints; for everyone else the view has
+  // no sprint buttons.
+  const [sprintSheet, setSprintSheet] = useState<SprintSheetState | null>(null)
+  const sprintActions: SprintActions = check('task.manage', { project })
+    ? {
+        create: () => setSprintSheet({ kind: 'create' }),
+        edit: (sprint) => setSprintSheet({ kind: 'edit', sprint }),
+        start: (sprint) => setSprintSheet({ kind: 'start', sprint }),
+        complete: (sprint) => setSprintSheet({ kind: 'complete', sprint }),
+        remove: (sprint) => setSprintSheet({ kind: 'remove', sprint }),
+      }
+    : null
   const canMove = (t: TaskView) => check('task.updateOwnStatus', { project, taskAssigneeId: t.assigneeId })
   const move = (t: TaskView, patch: TicketPatch) => update.mutateAsync({ key: t.key, patch })
   const setBoard = useSetBoard()
@@ -155,8 +188,7 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
   else if (view === 'board') body = (
       <ProjectBoard tickets={shown} allTickets={tickets.data ?? []} users={people} canMove={canMove} onMove={move} onMoveTo={(t, status, index, visibleKeys) => moveTask.mutateAsync({ key: t.key, status, index, visibleKeys })} error={(update.error ?? moveTask.error)?.message ?? null} board={project.board} onBoard={onBoard} projectId={project.id} countOf={(id) => columnTaskCount(tickets.data ?? [], archivedAll, id)} />
     )
-  // Task 5 gives managers the sprint actions (the sheets); until then nobody gets them.
-  else if (view === 'sprints') body = <SprintPlan project={project} tasks={shown} allTasks={all} sprints={sprints.data ?? []} users={people} actions={null} />
+  else if (view === 'sprints') body = <SprintPlan project={project} tasks={shown} allTasks={all} sprints={sprints.data ?? []} users={people} actions={sprintActions} />
   else if (shown.length === 0 && active > 0)
     body = <EmptyState onClear={clear}>{query.q?.trim() ? `No tasks match “${query.q.trim()}”.` : 'No tasks match these filters.'}</EmptyState>
   else body = <ProjectBacklog tasks={sortTasks(shown, sort)} order={sort === 'board' ? 'board' : 'given'} phases={phases} users={people} board={project.board} />
@@ -224,6 +256,7 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
         {view === 'list' && select('Sort', 'sort', sort === 'attention' ? '' : sort, TASK_SORTS.map(({ value, label }) => [value === 'attention' ? '' : value, label]))}
       </FilterBar>
       {body}
+      {sprintSheet && <SprintSheets state={sprintSheet} project={project} sprints={sprints.data ?? []} tasks={all} onClose={() => setSprintSheet(null)} />}
       {showArchived && archived.length > 0 && (
         <section aria-label="Archived tasks" className="mt-6 opacity-75">
           <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-fg-muted">Archived</h2>

@@ -11,14 +11,13 @@ import { columnLabel } from '@/lib/boardColumns'
 import { formatDayMonth } from '@/lib/format'
 import { sprintDays } from '@/lib/sprints'
 import { TicketRow } from '@/pages/projects/TicketRow'
+import { count } from './count'
 import type { SprintActions } from './SprintPlan'
 
 /** Where a task can be moved: an active or planned sprint, or Backlog (`sprintId` null). */
 export type MoveTarget = { zone: string; name: string; sprintId: string | null }
 /** The row (by task key) whose Move to or drag handle takes focus once it's drawn. */
 export type RowFocus = { key: string; control: 'move' | 'drag' }
-
-const count = (n: number, one: string) => `${n} ${n === 1 ? one : `${one}s`}`
 
 /** A row's Move to: the other active and planned sprints and Backlog, in a MenuPanel (a bottom sheet on phones). */
 function MoveTo({ task, targets, onMove, triggerRef }: { task: TaskView; targets: MoveTarget[]; onMove: (task: TaskView, sprintId: string | null) => void; triggerRef: RefObject<HTMLButtonElement | null> }) {

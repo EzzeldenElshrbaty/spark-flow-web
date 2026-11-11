@@ -1,8 +1,9 @@
 import '@/index.css'
 import { screen, waitFor, within } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { focusables } from '@/components/sf/layers'
+import { api } from '@/lib/api'
 import { axeProblems } from '@/test/axe'
 import { renderApp } from '@/test/app'
 import { AUDIT_TAGS, untilQuiet } from '@/test/uxChecks'
@@ -23,7 +24,8 @@ type Layer = {
   /** Opens it; returns where focus must come back to (the button, or the menu's trigger). */
   open: () => Promise<HTMLElement>
   kind: 'sheet' | 'modal'
-  /** A form: makes a change and returns a check that it's still there. */
+  /** A form: makes a change and returns a check that it's still there. A sheet without one is a confirm: nothing to lose,
+   * so Esc leaves it open and Cancel closes it without a question. */
   change?: (dialog: HTMLElement) => Promise<() => boolean>
   question?: string
   /** The button that cancels (Manage phases has Done). */
@@ -71,6 +73,16 @@ const fill = (label: string, value: string) => async (dialog: HTMLElement) => {
   return () => field.isConnected && field.value === value
 }
 
+/** Completes the running Sprint 14, so that Sprint 15 may start (one sprint runs at a time). */
+async function completeRunningSprint() {
+  await mainButton('Complete sprint')
+  const sheet = await screen.findByRole('dialog', { name: 'Complete sprint' })
+  await userEvent.click(within(sheet).getByRole('button', { name: 'Complete sprint' }))
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Complete sprint' })).toBeNull())
+}
+
+const SPRINTS = '/w/engineering/p/NEX/tasks?view=sprints'
+
 const LAYERS: Layer[] = [
   { name: 'New task', path: '/w/engineering/p/NEX/tasks', open: () => mainButton('New task'), kind: 'sheet', change: typeInto('Title'), question: 'Discard this new task?' },
   {
@@ -87,6 +99,22 @@ const LAYERS: Layer[] = [
   { name: 'Manage phases', path: '/w/engineering/p/NEX/overview', open: () => viaMenu('More actions', 'Manage phases'), kind: 'sheet', change: typeInto('New phase name'), question: 'Discard your changes?', cancel: 'Done' },
   { name: 'Add column', path: '/w/engineering/p/NEX/tasks?view=board', open: () => mainButton('Add column'), kind: 'sheet', change: typeInto('Name'), question: 'Discard this new column?' },
   { name: 'Column details', path: '/w/engineering/p/NEX/tasks?view=board', open: () => viaMenu('Column actions: To do', 'Change type'), kind: 'sheet', change: typeInto('Name'), question: 'Discard your changes?' },
+  { name: 'Create sprint', path: SPRINTS, open: () => mainButton('Create sprint'), kind: 'sheet', change: typeInto('Name'), question: 'Discard this new sprint?' },
+  { name: 'Edit sprint', path: SPRINTS, open: () => viaMenu('Sprint actions: Sprint 14', 'Edit sprint'), kind: 'sheet', change: typeInto('Name'), question: 'Discard your changes?' },
+  {
+    name: 'Start sprint',
+    path: SPRINTS,
+    // Start is offered only while none runs: Sprint 14 completes first, then Sprint 15's Start opens.
+    open: async () => {
+      await completeRunningSprint()
+      return mainButton('Start sprint')
+    },
+    kind: 'sheet',
+    change: typeInto('Name'),
+    question: 'Discard your changes?',
+  },
+  { name: 'Complete sprint', path: SPRINTS, open: () => mainButton('Complete sprint'), kind: 'sheet' },
+  { name: 'Delete Sprint 15?', path: SPRINTS, open: () => viaMenu('Sprint actions: Sprint 15', 'Delete sprint'), kind: 'sheet' },
   { name: 'Add time', path: '/w/engineering/p/NEX/time', open: () => mainButton('Add time'), kind: 'sheet', change: typeInto('Note'), question: 'Discard this time entry?' },
   { name: 'Add person', path: '/w/engineering/settings/users', open: () => mainButton('Add person'), kind: 'sheet', change: typeInto('Name'), question: 'Discard this new person?' },
   { name: 'Edit Mariam Fathy', path: '/w/engineering/settings/users', open: () => mainButton(/^Mariam Fathy/), kind: 'sheet', change: typeInto('Name'), question: 'Discard your changes?' },
@@ -149,6 +177,13 @@ async function tabStaysInside(dialog: HTMLElement) {
 }
 
 describe('every sheet and dialog from the keyboard', () => {
+  // Each starts from fresh seed data, as the Admin (the only one who may reset it): Start sprint saves a change.
+  beforeEach(async () => {
+    await api.auth.signOut().catch(() => {})
+    localStorage.setItem('spark-flow.session', 'u-1')
+    await api.db.reset()
+  })
+
   for (const layer of LAYERS) {
     it(layer.name, async () => {
       const app = await renderApp({ path: layer.path, as: 'admin', theme: 'light', size: 'desktop' })
@@ -179,6 +214,10 @@ describe('every sheet and dialog from the keyboard', () => {
 
         await userEvent.click(within(dialog).getByRole('button', { name: layer.cancel ?? 'Cancel' }))
         await userEvent.click(await within(dialog).findByRole('button', { name: 'Discard' }))
+      } else if (layer.kind === 'sheet') {
+        await userEvent.keyboard('{Escape}')
+        expect(screen.getByRole('dialog', { name: layer.name }), 'Esc leaves a confirm sheet open').toBeTruthy()
+        await userEvent.click(within(dialog).getByRole('button', { name: layer.cancel ?? 'Cancel' }))
       } else {
         await userEvent.keyboard('{Escape}')
       }
