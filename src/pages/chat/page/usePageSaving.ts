@@ -36,6 +36,10 @@ export function createPageSaver(deps: SaverDeps) {
   let latest: PageBody = []
   let pending: PageBody | null = null
   let sending = false
+  /** The save on its way, settled either way: what `drain` waits for. */
+  let inflight: Promise<unknown> = Promise.resolve()
+  /** This tab holds the page (its claim or save said so): only then does leaving let it go. */
+  let held = false
   let timer: ReturnType<typeof setTimeout> | null = null
   let lastClaim = -Infinity
   let snapshot: SaverSnapshot = { state: 'idle', error: null, dirty: false }
@@ -55,6 +59,7 @@ export function createPageSaver(deps: SaverDeps) {
     lastClaim = Date.now()
     try {
       const hold = await deps.claim()
+      held = hold?.userId === deps.me
       if (hold && hold.userId !== deps.me && Date.parse(hold.until) > Date.now() && !stopped()) {
         stop()
         set({ state: 'conflict', error: `${deps.nameOf(hold.userId)} started editing first. Your last changes aren’t saved.` })
@@ -72,8 +77,11 @@ export function createPageSaver(deps: SaverDeps) {
     pending = null
     set({ state: 'saving', error: null })
     try {
-      const view = await deps.save(body, base)
+      const sent = deps.save(body, base)
+      inflight = sent.catch(() => {})
+      const view = await sent
       base = view.version
+      held = true
       sending = false
       if (stopped()) return set({})
       set({ state: pending === null ? 'saved' : 'saving' })
@@ -81,7 +89,10 @@ export function createPageSaver(deps: SaverDeps) {
       if (pending !== null && !timer) await flush()
     } catch (error) {
       sending = false
+      // Typed while it was on its way: the refusal was for the older text (polish pass).
+      const newer = pending !== null && pending !== body
       pending ??= body
+      if (newer && error instanceof ApiError && error.status === 400) return flush()
       if (error instanceof ApiError && error.status === 409) set({ state: 'conflict', error: error.detail ?? error.title })
       else if (error instanceof ApiError && (error.status === 400 || error.status === 403)) set({ state: 'invalid', error: error.detail ?? error.title })
       else set({ state: 'failed', error: NETWORK_SENTENCE })
@@ -100,8 +111,19 @@ export function createPageSaver(deps: SaverDeps) {
       stop()
       timer = setTimeout(() => void flush(), PAGE_SAVE_AFTER_MS)
     },
-    /** Saves now (the editor lost focus, Try again, leaving). */
+    /** Saves now (the editor lost focus, Try again). */
     flush,
+    /** Leaving: waits for the save on its way, then sends what's left. */
+    async drain() {
+      while (sending) await inflight
+      await flush()
+    },
+    /** I may no longer edit: saving stops with `sentence`, and my text stays for Copy my changes (as a 409). */
+    lose(sentence: string) {
+      stop()
+      set({ state: 'conflict', error: sentence })
+    },
+    held: () => held,
     /** My editor now holds the page at `version` (Load the latest, or someone else's save while I had no changes). */
     loadLatest(version: number) {
       stop()
@@ -128,7 +150,8 @@ export type PageSaver = ReturnType<typeof createPageSaver>
 
 /**
  * The Page tab's saving (chat spec 6.14 §6.4): the saver above on the page's api, its state for the page bar. Leaving
- * the tab saves what's left and lets the page go.
+ * the tab saves what's left and lets the page go if this tab held it; closing the browser tab lets it go when
+ * everything is saved, or saves what's left (polish pass).
  */
 export function usePageSaving({ channelId, view, me, nameOf }: { channelId: string; view: PageView | undefined; me: string; nameOf: (userId: string) => string }) {
   const save = useSavePage()
@@ -157,17 +180,26 @@ export function usePageSaving({ channelId, view, me, nameOf }: { channelId: stri
     }
   }, [saver, view])
 
-  // Leaving: what's left goes, then the page is let go (best effort; the hold ends by itself after 60 s).
+  // Leaving: what's left goes once the save on its way has landed, then the page is let go if this tab held it (best
+  // effort; the hold ends by itself after 60 s).
   const releaseRef = useRef(release.mutate)
   useEffect(() => {
     releaseRef.current = release.mutate
   })
-  useEffect(
-    () => () => {
-      void saver.flush().finally(() => releaseRef.current(channelId))
+  useEffect(() => {
+    const hide = () => {
+      if (!saver.snapshot().dirty && saver.held()) releaseRef.current(channelId)
+      else void saver.flush()
+    }
+    addEventListener('pagehide', hide)
+    return () => {
+      removeEventListener('pagehide', hide)
+      const leaving = saver.drain()
       saver.dispose()
-    },
-    [saver, channelId],
-  )
+      void leaving.finally(() => {
+        if (saver.held()) releaseRef.current(channelId)
+      })
+    }
+  }, [saver, channelId])
   return { ...snapshot, saver }
 }

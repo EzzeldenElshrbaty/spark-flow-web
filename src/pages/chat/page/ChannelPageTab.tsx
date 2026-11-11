@@ -20,6 +20,9 @@ import { PageHistory } from './PageHistory'
 import { PageReader } from './PageReader'
 import { usePageSaving } from './usePageSaving'
 
+const LOAD_FAILED = 'Couldn’t load the latest page. Check your connection.'
+const LOST_RIGHTS = 'You can’t edit this page anymore. Your last changes aren’t saved.'
+
 /** Pulse lines while the page loads: no spinner. */
 function PageSkeleton() {
   return (
@@ -113,14 +116,9 @@ function LoadedPage({ channel, view, people, me, mayEdit }: { channel: Channel; 
     const ask = (event: BeforeUnloadEvent) => {
       if (dirty.current) event.preventDefault()
     }
-    const hide = () => void saver.flush()
     addEventListener('beforeunload', ask)
-    addEventListener('pagehide', hide)
-    return () => {
-      removeEventListener('beforeunload', ask)
-      removeEventListener('pagehide', hide)
-    }
-  }, [saver])
+    return () => removeEventListener('beforeunload', ask)
+  }, [])
 
   const { workspace } = useCurrentWorkspace()
   const projectKeys = useProjectKeys(channel.workspaceId)
@@ -131,6 +129,7 @@ function LoadedPage({ channel, view, people, me, mayEdit }: { channel: Channel; 
 
   const latestPage = useLatestPage()
   const [copied, setCopied] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const copyMine = () =>
     void navigator.clipboard.writeText(saver.myText()).then(
       () => {
@@ -141,13 +140,26 @@ function LoadedPage({ channel, view, people, me, mayEdit }: { channel: Channel; 
     )
   const loadLatest = async () => {
     setCopied(false)
-    reload(await latestPage(channel.id))
+    setLoadError(null)
+    try {
+      reload(await latestPage(channel.id))
+    } catch {
+      // My text stays; the sentence says why nothing changed (polish pass).
+      setLoadError(LOAD_FAILED)
+      announce(LOAD_FAILED)
+    }
   }
 
   const [showHistory, setShowHistory] = useState(false)
   const conflict = saving.state === 'conflict'
+  // I may no longer edit (the channel archived, or I left it) with changes the page doesn't have: my editor stays,
+  // read-only, with Copy my changes, as after a 409 (polish pass).
+  const lost = !mayEdit && (saving.dirty || conflict)
+  useEffect(() => {
+    if (!mayEdit && saver.snapshot().dirty && saver.snapshot().state !== 'conflict') saver.lose(LOST_RIGHTS)
+  }, [mayEdit, saver])
   // Someone else holds the page and I have nothing waiting: I read it, live.
-  const reading = !mayEdit || (heldBy !== null && !saving.dirty && !conflict)
+  const reading = mayEdit ? heldBy !== null && !saving.dirty && !conflict : !lost
   const line = heldBy && !conflict ? `${heldBy} is editing` : saving.state === 'saving' ? 'Saving…' : saving.state === 'saved' ? 'Saved' : view.updatedAt && view.updatedBy ? `Saved ${timeAgo(view.updatedAt)} by ${view.updatedBy === me ? 'you' : nameOf(view.updatedBy)}` : ''
   const errorActions = conflict ? (
     <>
@@ -168,7 +180,7 @@ function LoadedPage({ channel, view, people, me, mayEdit }: { channel: Channel; 
     <div className="flex min-h-0 flex-1 flex-col">
       <PageBar
         line={line}
-        error={saving.error}
+        error={loadError ?? saving.error}
         errorActions={errorActions}
         editors={view.editors}
         people={people}

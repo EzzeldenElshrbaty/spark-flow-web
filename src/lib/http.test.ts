@@ -41,6 +41,8 @@ describe('createHttpApi', () => {
     ])
     expect(JSON.parse(String(calls[1].init?.body))).toEqual({ body: [], baseVersion: 2 })
     expect(JSON.parse(String(calls[6].init?.body))).toEqual({ versionId: 'v1', baseVersion: 3 })
+    // Letting the page go may be the last thing a closing tab does (polish pass).
+    expect(calls[3].init?.keepalive).toBe(true)
   })
 
   it('maps the M2 time calls to their routes, methods and bodies', async () => {

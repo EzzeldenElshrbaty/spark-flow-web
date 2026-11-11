@@ -128,4 +128,62 @@ describe('saving a channel’s page (chat spec 6.14 §6.4)', () => {
     await vi.advanceTimersByTimeAsync(0)
     expect(save).toHaveBeenLastCalledWith(body('ab'), 1)
   })
+
+  // Polish pass (P1): a tab lets go only of a hold it has, and only once what it sent has landed.
+  it('holds the page only once my claim or save says so', async () => {
+    const { claim, saver } = setup()
+    expect(saver.held()).toBe(false)
+    claim.mockResolvedValueOnce(hold('u-2'))
+    saver.change(body('a'))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(saver.held()).toBe(false)
+    saver.loadLatest(1)
+    await vi.advanceTimersByTimeAsync(5000)
+    saver.change(body('b'))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(saver.held()).toBe(true)
+  })
+
+  it('drain waits for a save on its way, then sends what’s left', async () => {
+    const { save, saver } = setup()
+    let land: (v: PageView) => void = () => {}
+    save.mockImplementationOnce(() => new Promise((resolve) => (land = resolve)))
+    saver.change(body('a'))
+    await vi.advanceTimersByTimeAsync(1000)
+    saver.change(body('ab'))
+    let drained = false
+    void saver.drain().then(() => (drained = true))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(drained).toBe(false)
+    land(view(1))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(save).toHaveBeenLastCalledWith(body('ab'), 1)
+    expect(drained).toBe(true)
+  })
+
+  // Polish pass (P3): the refusal was for the older text; the newer one may well be fine.
+  it('a newer edit waiting behind a 400 goes at once', async () => {
+    const { save, saver, last } = setup()
+    let refuse: (e: unknown) => void = () => {}
+    save.mockImplementationOnce(() => new Promise((_, reject) => (refuse = reject)))
+    saver.change(body('too long'))
+    await vi.advanceTimersByTimeAsync(1000)
+    saver.change(body('short'))
+    await vi.advanceTimersByTimeAsync(1000)
+    refuse(refusal(400, 'This page is too long. Shorten it to save.'))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(save).toHaveBeenLastCalledWith(body('short'), 0)
+    expect(last()).toEqual({ state: 'saved', error: null, dirty: false })
+  })
+
+  // Polish pass (P9): losing edit rights stops saving and keeps my text, as a conflict does.
+  it('lose stops saving with its sentence and keeps my text', async () => {
+    const { save, saver, last } = setup()
+    saver.change(body('Mine'))
+    saver.lose('You can’t edit this page anymore. Your last changes aren’t saved.')
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(save).not.toHaveBeenCalled()
+    expect(last()).toEqual({ state: 'conflict', error: 'You can’t edit this page anymore. Your last changes aren’t saved.', dirty: true })
+    expect(saver.myText()).toBe('Mine')
+  })
 })

@@ -234,6 +234,71 @@ describe('the channel’s page (chat spec 6.14)', () => {
     expect(within(people).getByRole('option', { name: /Nour El-Sayed/ })).toBeTruthy()
   })
 
+  it('a tab that never claimed the page leaves my other tab’s hold alone (polish pass)', async () => {
+    const otherTab = await asPerson('u-1')
+    await otherTab.pages.editing('c-general')
+    const app = await renderApp({ path: PAGE, as: 'admin', theme: 'light', size: 'desktop' })
+    await app.settled()
+    await screen.findByRole('textbox', { name: 'Channel page' })
+    const release = vi.spyOn(api.pages, 'stopEditing')
+    await userEvent.click(screen.getByRole('tab', { name: 'Messages' }))
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    expect(release).not.toHaveBeenCalled()
+    expect((await api.pages.get('c-general')).editing?.userId).toBe('u-1')
+  })
+
+  it('leaving after typing lets my hold go once the save has landed (polish pass)', async () => {
+    const app = await renderApp({ path: PAGE, as: 'admin', theme: 'light', size: 'desktop' })
+    await app.settled()
+    await focusEditor(editor())
+    await userEvent.keyboard('Mine')
+    await waitFor(() => expect(bar().textContent).toContain('Saved'), { timeout: 3000 })
+    await userEvent.click(screen.getByRole('tab', { name: 'Messages' }))
+    await waitFor(async () => expect((await api.pages.get('c-general')).editing).toBeNull(), { timeout: 3000 })
+  })
+
+  it('closing the browser tab lets my hold go when everything is saved (polish pass)', async () => {
+    const app = await renderApp({ path: PAGE, as: 'admin', theme: 'light', size: 'desktop' })
+    await app.settled()
+    await focusEditor(editor())
+    await userEvent.keyboard('Mine')
+    await waitFor(() => expect(bar().textContent).toContain('Saved'), { timeout: 3000 })
+    const release = vi.spyOn(api.pages, 'stopEditing')
+    dispatchEvent(new PageTransitionEvent('pagehide'))
+    await waitFor(() => expect(release).toHaveBeenCalledWith('c-general'))
+  })
+
+  it('Load the latest failing says so (polish pass)', async () => {
+    const app = await renderApp({ path: PAGE, as: 'admin', theme: 'light', size: 'desktop' })
+    await app.settled()
+    const otherTab = await asPerson('u-1')
+    await focusEditor(editor())
+    await userEvent.keyboard('Mine')
+    await otherTab.pages.save('c-general', { body: text('Other tab'), baseVersion: 0 })
+    await waitFor(() => expect(within(bar()).getByRole('button', { name: 'Load the latest' })).toBeTruthy(), { timeout: 3000 })
+    vi.spyOn(api.pages, 'get').mockRejectedValue(new TypeError('Failed to fetch'))
+    await userEvent.click(within(bar()).getByRole('button', { name: 'Load the latest' }))
+    await waitFor(() => expect(bar().textContent).toContain('Couldn’t load the latest page. Check your connection.'))
+    expect(editor().textContent).toBe('Mine')
+    vi.restoreAllMocks()
+  })
+
+  it('losing edit rights keeps my unsaved text, read-only, with Copy my changes (polish pass)', async () => {
+    const made = await api.chat.createChannel({ workspaceId: 'ws-eng', name: 'launch-week', topic: '', isPrivate: false, memberIds: [] })
+    const app = await renderApp({ path: `/w/engineering/c/${made.id}?tab=page`, as: 'admin', theme: 'light', size: 'desktop' })
+    await app.settled()
+    vi.spyOn(api.pages, 'save').mockRejectedValue(new TypeError('Failed to fetch'))
+    await focusEditor(editor())
+    await userEvent.keyboard('Mine')
+    await waitFor(() => expect(bar().textContent).toContain('Couldn’t save the page.'), { timeout: 3000 })
+    await api.chat.archiveChannel(made.id, 'Launch is over')
+    await waitFor(() => expect(bar().textContent).toContain('You can’t edit this page anymore. Your last changes aren’t saved.'), { timeout: 3000 })
+    expect(editor().textContent).toBe('Mine')
+    expect(editor().getAttribute('contenteditable')).toBe('false')
+    expect(within(bar()).getByRole('button', { name: 'Copy my changes' })).toBeTruthy()
+    vi.restoreAllMocks()
+  })
+
   it('axe finds no serious problems', async () => {
     await api.pages.save('c-general', {
       body: [
