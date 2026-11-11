@@ -55,8 +55,8 @@ type Sprint = { id; projectId; name; goal; startDate; endDate; state: 'planned' 
 
 ```ts
 type SprintEvent =
-  | { kind: 'started'; sprintId: string; name: string; goal: string; endDate: string; tasks: number; points: number }
-  | { kind: 'completed'; sprintId: string; name: string; done: number; total: number; movedTo: string | null; moved: number }
+  | { kind: 'started'; projectKey: string; sprintId: string; name: string; goal: string; endDate: string; tasks: number; points: number }
+  | { kind: 'completed'; projectKey: string; sprintId: string; name: string; done: number; total: number; movedTo: string | null; moved: number }
 ```
 
 The card keeps the names and numbers as they were (renaming a sprint later doesn't change old cards). `movedTo` is the
@@ -98,6 +98,10 @@ none has a number.
 | Complete a sprint that isn't active | 400 | Only the running sprint can be completed. |
 | `moveTo` isn't a planned sprint of the project | 400 | Move the tasks to a planned sprint of this project. |
 | Delete a sprint that isn't planned | 400 | Only a planned sprint can be deleted. |
+| A task moved into a closed sprint (task sheet, stale tab) | 400 | That sprint is closed. Pick a planned or running one. |
+
+Archived tasks don't count: not toward "empty" on start, the totals, or "not done", and Complete leaves them where
+they are.
 
 **Each write also:**
 
@@ -105,8 +109,9 @@ none has a number.
   `sprint.removed`, with `subject` = the sprint's name and `count` = tasks moved (complete, remove). The moved tasks'
   own `task.changed` entries come from the normal task write.
 - **Audit:** `recordOf.sprint(sprint, project)` ("Sprint 15 · Nexus Core"), `RECORD_TYPES.sprint = 'Sprints'`.
-  Create, update and remove are group `data`; start and complete are group `status`. The five calls are listed as
-  recorded in `src/mocks/audit.test.ts`.
+  Create, update and remove are `created` / `changed` / `deleted` in group `data`; start and complete are `changed` in
+  group `status` with a detail ("Started · ends 25 Nov", "Completed · 18 of 23 tasks done · 5 moved to Sprint 15"),
+  so the Audit log needs no new action names. The five calls are listed as recorded in `src/mocks/audit.test.ts`.
 - **Live:** publishes `projectChanged` (the bridge already invalidates on it) and `ticketUpdated` for each moved task.
 - **Chat:** start and complete post a `sprintEvent` card in the project channel (`postSprintEvent` beside
   `postTaskEvents` in `src/mocks/taskEvents.ts`). The card mentions nobody and can't be edited or deleted (the same

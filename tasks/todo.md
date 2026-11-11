@@ -3280,3 +3280,16 @@ Branch `fix/task-description-top` from dev cfb9692.
       now add Members' time as the Admin
 - [x] Browser check: Youssef's Add time asks Person; Mariam's panel has Start timer only
 - [x] Gates: lint, tsc, `npm test` 3,227/3,227, `npm run test:ux` 1,000/1,000
+
+## Sprints — create, plan, start, complete (11 Nov 2026)
+
+Spec `docs/superpowers/specs/2026-11-11-sprints-design.md` (Q1–Q7 "Yes, recommended"), plan
+`docs/superpowers/plans/2026-11-11-sprints.md`. Branch `feat/sprints` in `.worktrees/sprints`, dev 63af2d6 merged in.
+
+- [ ] 1. Sprint rules (`lib/sprints.ts`)
+- [ ] 2. `api.sprints`: types, mock, HTTP, history, audit, card data, closed-sprint rule
+- [ ] 3. The sprint card in chat
+- [ ] 4. The Sprints view in the Tasks tab
+- [ ] 5. Sprint sheets (create, edit, start, complete, delete)
+- [ ] 6. The Board opens on the active sprint
+- [ ] 7. Help, UX matrix, journey, CLAUDE.md, gates, final review
