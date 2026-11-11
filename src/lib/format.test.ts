@@ -63,3 +63,10 @@ describe('dates through one place (UX Phase 3, 3.4)', () => {
     expect(dayTicks(days)).toEqual(['30 Oct', '31', '1 Nov', '2'])
   })
 })
+
+describe('formatClipLength (chat spec 6.9)', () => {
+  it('shows m:ss', async () => {
+    const { formatClipLength } = await import('./format')
+    expect([0, 42_400, 245_000, 750_000].map(formatClipLength)).toEqual(['0:00', '0:42', '4:05', '12:30'])
+  })
+})

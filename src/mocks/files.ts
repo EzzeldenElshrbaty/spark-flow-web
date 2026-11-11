@@ -1,4 +1,4 @@
-import type { Api, Attachment, ChatMessage, FileDetails, ProjectFile, ProjectFileRow, ProjectFileSource, ShareableFile, StoredFile, UploadFile, UploadOptions } from '@/api/types'
+import type { Api, Attachment, ChatMessage, Clip, FileDetails, ProjectFile, ProjectFileRow, ProjectFileSource, ShareableFile, StoredFile, UploadFile, UploadOptions } from '@/api/types'
 import { fileDescriptionError, fileTitleError } from '@/lib/fileDetails'
 import { isAcceptedFile, maxFileMb } from '@/lib/fileTypes'
 import { checkCanWrite, findChannel, postMessage, readableChannel } from './chat'
@@ -12,6 +12,7 @@ import { ApiError } from '@/lib/apiError'
 import { can } from '@/lib/permissions'
 import { logActivity } from './activity'
 import { CODE_LANGUAGES } from '@/lib/codeTokens'
+import { clipMaxMs, clipTitle, WAVE_BARS } from '@/lib/clips'
 import { fileKind } from '@/lib/fileTypes'
 import { filePlace } from './saved'
 import { badRequest, clone, currentUser, newId, notFound, requireCan } from './shared'
@@ -43,6 +44,23 @@ function checkSnippet(file: { name: string }, language: string) {
   if (!/\.txt$/i.test(file.name)) throw badRequest('A snippet is a .txt file.')
 }
 
+const CLIP_TYPES: Record<Clip['kind'], string[]> = { voice: ['audio/webm', 'audio/mp4', 'audio/ogg'], video: ['video/webm', 'video/mp4'] }
+/** The second a clip may run past its limit: the recorder stops at it, give or take a frame. */
+const CLIP_SLACK_MS = 1_000
+
+/** A voice or video message (chat spec 6.9): a format it records in, within its length, with a waveform for voice only. */
+function checkClip(file: { type: string }, clip: Clip, snippet: unknown) {
+  const unusable = () => badRequest('That recording can’t be added.')
+  if (snippet || (clip.kind !== 'voice' && clip.kind !== 'video')) throw unusable()
+  if (!CLIP_TYPES[clip.kind].includes(file.type.split(';')[0]!.trim())) throw badRequest('That recording’s format isn’t supported.')
+  if (!Number.isFinite(clip.durationMs) || clip.durationMs < 1) throw unusable()
+  if (clip.durationMs > clipMaxMs(clip.kind) + CLIP_SLACK_MS)
+    throw badRequest(clip.kind === 'voice' ? 'Voice messages can be up to 5 minutes.' : 'Video messages can be up to 2 minutes.')
+  const bars = Array.isArray(clip.waveform) ? clip.waveform : null
+  const wanted = clip.kind === 'voice' ? WAVE_BARS : 0
+  if (!bars || bars.length !== wanted || !bars.every((v) => typeof v === 'number' && v >= 0 && v <= 1)) throw unusable()
+}
+
 export function checkUpload(file: { size: number; name: string }) {
   if (file.size === 0) throw badRequest('That file is empty.')
   if (file.size > maxFileMb * 1024 * 1024) throw badRequest(`Files can be up to ${maxFileMb} MB.`)
@@ -68,10 +86,11 @@ export async function withSavedBytes<T>(db: MockDb, bytes: [id: string, blob: Bl
 }
 
 /** A new file's record: titled after itself, no description, checked clean (the prototype has no scanner). */
-export function fileRecord(file: { name: string; type: string; size: number }, uploadedBy: string, at: string, snippet: Attachment['snippet'] = null): Attachment {
+export function fileRecord(file: { name: string; type: string; size: number }, uploadedBy: string, at: string, snippet: Attachment['snippet'] = null, clip: Attachment['clip'] = null): Attachment {
+  const title = clip ? clipTitle(clip.kind) : snippet ? file.name.replace(/\.txt$/i, '') : file.name
   return {
     id: newId('a'), name: file.name, mimeType: file.type || 'application/octet-stream', size: file.size, createdAt: at,
-    uploadedBy, title: snippet ? file.name.replace(/\.txt$/i, '') : file.name, description: '', scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null, snippet, folderId: null,
+    uploadedBy, title, description: '', scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null, snippet, clip, folderId: null,
   }
 }
 
@@ -174,7 +193,13 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
    * them, then its record, after `recheck` passes on the data the write sees. Only its uploader may use it until a
    * message or a task names it.
    */
-  const uploadUnlinked = async (file: UploadFile, uploaderId: string, { onProgress, signal }: UploadOptions, snippet: Attachment['snippet'], recheck: (data: DbData) => void) => {
+  const uploadUnlinked = async (
+    file: UploadFile,
+    uploaderId: string,
+    { onProgress, signal }: UploadOptions,
+    { snippet = null, clip = null }: { snippet?: Attachment['snippet']; clip?: Attachment['clip'] },
+    recheck: (data: DbData) => void,
+  ) => {
     throwIfCancelled(signal)
     // The bytes go up in steps, as the browser reports them.
     for (const step of [0.25, 0.5, 0.75]) {
@@ -182,7 +207,7 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
       await delay()
       throwIfCancelled(signal)
     }
-    const record = fileRecord(file, uploaderId, now().toISOString(), snippet)
+    const record = fileRecord(file, uploaderId, now().toISOString(), snippet, clip)
     // complete: the prototype has no scanner, so a finished upload is clean.
     const stored = await withSavedBytes(db, [[record.id, file]], () => {
       throwIfCancelled(signal)
@@ -275,14 +300,16 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
       if (orphan) await db.deleteFile(orphan)
       hub.publish({ type: 'filesChanged', projectId })
     },
-    async uploadForChat(channelId, file, { onProgress, signal, snippet } = {}) {
+    async uploadForChat(channelId, file, { onProgress, signal, snippet, clip } = {}) {
       await delay()
       // upload-url: whoever may post in the channel, under the files rules.
       const before = await db.read()
       const me = checkCanWrite(before, findChannel(before, channelId))
       checkUpload(file)
-      if (snippet) checkSnippet(file, snippet.language)
-      return uploadUnlinked(file, me.id, { onProgress, signal }, snippet ? { language: snippet.language } : null, (data) => checkCanWrite(data, findChannel(data, channelId)))
+      if (clip) checkClip(file, clip, snippet)
+      else if (snippet) checkSnippet(file, snippet.language)
+      const extra = { snippet: snippet ? { language: snippet.language } : null, clip: clip ? { kind: clip.kind, durationMs: clip.durationMs, waveform: [...clip.waveform] } : null }
+      return uploadUnlinked(file, me.id, { onProgress, signal }, extra, (data) => checkCanWrite(data, findChannel(data, channelId)))
     },
     async uploadForTask(projectId, file, { onProgress, signal } = {}) {
       await delay()
@@ -290,7 +317,7 @@ export function filesApi(db: MockDb, hub: MockHub, now: () => Date): Api['files'
       const before = await db.read()
       const me = requireCan(before, 'task.manage', openProject(before, projectId))
       checkUpload(file)
-      return uploadUnlinked(file, me.id, { onProgress, signal }, null, (data) => requireCan(data, 'task.manage', openProject(data, projectId)))
+      return uploadUnlinked(file, me.id, { onProgress, signal }, {}, (data) => requireCan(data, 'task.manage', openProject(data, projectId)))
     },
     async inProject(projectId, { from, type, cursor }) {
       await delay()

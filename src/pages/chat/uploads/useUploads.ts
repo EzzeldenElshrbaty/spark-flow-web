@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { uploadChatFile } from '@/api/files'
 import { uploadProgress } from '@/pages/chat/uploads/uploadProgress'
-import type { Attachment } from '@/api/types'
+import type { Attachment, Clip } from '@/api/types'
 import { MAX_MESSAGE_FILES } from '@/lib/fileDetails'
 import { acceptFiles } from '@/lib/fileTypes'
 import { errorText } from '@/pages/chat/usePicked'
@@ -13,6 +13,8 @@ export type Upload = {
   retryable: boolean
   /** Added from Flow files (spec 6.8): already uploaded, so no bytes and no progress. */
   existing?: boolean
+  /** A voice or video message recorded in the composer (chat spec 6.9): uploaded with its clip data. */
+  clip?: Clip
 }
 
 const filesWord = (n: number) => (n === 1 ? '1 file' : `${n} files`)
@@ -33,10 +35,10 @@ export function useUploads(channelId: string) {
   const patch = (key: string, change: Partial<Upload>) => setItems((list) => list.map((i) => (i.key === key ? { ...i, ...change } : i)))
 
   const start = useCallback(
-    (key: string, file: File) => {
+    (key: string, file: File, clip?: Clip) => {
       const controller = new AbortController()
       controllers.current.set(key, controller)
-      uploadChatFile(channelId, file, { signal: controller.signal, onProgress: (progress) => uploadProgress.set(key, progress) }).then(
+      uploadChatFile(channelId, file, { signal: controller.signal, onProgress: (progress) => uploadProgress.set(key, progress), ...(clip && { clip }) }).then(
         // Only a file the scan passed is ready to send (spec 6.9); a blocked one can only be removed.
         (uploaded) =>
           patch(
@@ -73,6 +75,15 @@ export function useUploads(channelId: string) {
     setItems((list) => [...list, ...fresh.map(({ key, file }) => ({ key, file, status: 'uploading' as const, progress: 0, uploaded: null, error: null, retryable: true }))])
     for (const { key, file } of fresh) start(key, file)
   }
+  /** A recording from the composer (chat spec 6.9): the same rules as a picked file (10 at most), with its clip. */
+  const addClip = (file: File, clip: Clip) => {
+    const { files, refused: why } = acceptFiles(items.map((i) => i.file), [file], MAX_MESSAGE_FILES)
+    setRefused(why)
+    if (!files.includes(file)) return
+    const key = `u${++uploadKeys}`
+    setItems((list) => [...list, { key, file, status: 'uploading' as const, progress: 0, uploaded: null, error: null, retryable: true, clip }])
+    start(key, file, clip)
+  }
   /** Add from Flow files (spec 6.8): files already uploaded join the tray ready, once each, 10 at most with the rest. */
   const addExisting = (picked: Attachment[]) => {
     const fresh = picked.filter((a, i) => picked.findIndex((b) => b.id === a.id) === i && !items.some((item) => item.uploaded?.id === a.id))
@@ -94,7 +105,7 @@ export function useUploads(channelId: string) {
     const item = items.find((i) => i.key === key)
     if (!item) return
     patch(key, { status: 'uploading', progress: 0, error: null })
-    start(key, item.file)
+    start(key, item.file, item.clip)
   }
   /** After a send: the tray empties, or (with `keys`) loses just the cards that went, keeping any added meanwhile. */
   const clear = (keys?: string[]) => {
@@ -118,7 +129,7 @@ export function useUploads(channelId: string) {
         ? 'Remove the files that were blocked.'
         : null
   const ready = items.flatMap((i) => (i.status === 'ready' && i.uploaded ? [i.uploaded] : []))
-  return { items, refused, add, addExisting, remove, retry, clear, waiting, ready }
+  return { items, refused, add, addClip, addExisting, remove, retry, clear, waiting, ready }
 }
 
 export type Uploads = ReturnType<typeof useUploads>

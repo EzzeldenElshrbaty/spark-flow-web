@@ -3177,7 +3177,8 @@ critical findings; 2 important ones and 7 re-graded minors fixed in one pass, ea
 - The reader's table box is a group, not a landmark, named "Table" when its header is empty.
 - A test now covers leaving while a save is on its way (the release waits for it).
 
-Gates: lint clean, tsc clean, npm test 3,189/3,189, test:ux 1,000/1,000, build:prototype ok. Not pushed; not on dev.
+Gates: lint clean, tsc clean, npm test 3,189/3,189, test:ux 1,000/1,000, build:prototype ok. On dev (5864a03, after
+dev was merged in twice; 3,203 tests and test:ux 1,000 on the merge), 11 Nov 2026.
 
 Rulings: a page mention stays after its person leaves (Q1, chat's rule); the keepalive release to another origin
 needs a CORS preflight and stays best effort (the hold ends by itself after 60 s); a dev-server reload lets the page go
@@ -3204,6 +3205,49 @@ see keeps the plain card.
 - [x] `TaskCard` with an optional last line; `TaskEventCard` uses it
 - [x] Browser check: /task in #sela-booking, then a move; desktop light, 390 px dark; the card opens the panel
 - [x] Gates: lint, tsc, `npm test` 3,172/3,172
+
+# Voice and video messages (chat spec §6.9) — 11 Nov 2026, approved (Native)
+
+Branch `feat/voice-messages` from dev e86d1c6. Spec `docs/superpowers/specs/2026-11-11-voice-and-video-messages-design.md`,
+plan `docs/superpowers/plans/2026-11-11-voice-and-video-messages.md`. User answers Q1–Q7 "Yes, recommended": voice and
+video together; the record buttons after @ from md, in the + menu on phones, in channel and thread boxes; an sf Modal
+recorder (record, check, Re-record, Attach); voice 5 minutes, video 2; a waveform player for voice, inline video;
+uploaded audio stays a file card; no playback speed or transcript yet.
+
+- [x] Task 1 — clip data on chat files (DB v35), the Audio kind, the seeded voice note on m-g04, contract Slice VM
+- [x] Task 2 — `lib/recorder.ts`, with a real recording through Chromium's fake devices
+- [x] Task 3 — the voice player and clips in messages
+- [x] Task 4 — the record dialog, Modal `keepLabel`
+- [x] Task 5 — the composer's buttons and menu items, the tray, help and rules
+- [x] Final review, fixes, gates (lint, tsc, npm test, test:ux, build:prototype)
+
+## Review — voice and video messages
+
+Five task commits (62047cc, 42261d5, 53102b9, 9771712, 6dca6ec), each test-first. Final Opus review: no critical
+findings; 5 important and 12 re-graded minors fixed in one pass, each RED→GREEN:
+- The waveform's 48 bars spread over the slider, so a click seeks where the bar is and no bar is cut off on a phone; the
+  slider answers touch; a failed play says "Couldn’t play this voice message."; right to left, ArrowLeft moves forward.
+- The file action pill sits above a voice card, off the player; a voice message's label is "Voice message".
+- The project Files tab offers Audio (audio files had dropped out of Other); the contract lists `type=audio` and `.ogg`.
+- The recorder releases the microphone when it can't start, keeps a limit-stopped recording at the limit even in a
+  slow tab, resumes a suspended AudioContext (Safari); tests now cover a device going away, an instant Stop and a
+  waveform that isn't flat.
+- The dialog makes one recording on a double Stop (and keeps the limit's note when Stop races it), keeps focus on Cancel
+  while it asks, and Attach puts focus back in the box, so Enter sends.
+- Migration 34 fills `clip` in deleted messages kept for Undo; the spec says the dialog is a centred box on phones.
+- Found by the gates: the dialog's first open now returns focus to its opener (Cancel focuses only after Re-record or
+  Try again), and the voice player draws at once from its clip data instead of replacing a placeholder when the file's
+  address arrives (the late height change made the message list log ResizeObserver loop errors on #general).
+
+Gates: lint clean, tsc clean, npm test 3,271/3,271, test:ux 1,000/1,000, build:prototype ok. Not pushed; not on dev.
+
+Rulings: the browser test is `recorder.browser.test.tsx` (the browser project's pattern); the layers check holds the
+recorder at "asking"; reduced motion leaves out the level meter; a defensive `resume()` for Safari's audio.
+
+Manual check left: record a 30-second voice message in Chrome and seek mid-waveform before and during play (a Chrome
+WebM recording has no seek index; tests play the seeded WAV).
+
+Deferred minor: a file dropped on the open record dialog lands in the composer's tray behind it.
 
 # The task panel shows all of a task — 11 Nov 2026, approved ("Yes, build it")
 

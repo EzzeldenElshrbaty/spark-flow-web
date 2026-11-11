@@ -24,7 +24,7 @@ function image(width: number, height: number): Attachment {
   urls[id] = canvas.toDataURL('image/png')
   return {
     id, name: `${id}.png`, mimeType: 'image/png', size: 4096, createdAt: '2026-10-28T09:00:00.000Z',
-    uploadedBy: 'u-2', title: `${id}.png`, description: '', scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null, snippet: null, folderId: null,
+    uploadedBy: 'u-2', title: `${id}.png`, description: '', scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null, snippet: null, clip: null, folderId: null,
   }
 }
 

@@ -335,3 +335,15 @@ describe('33 → 34 (who made a channel)', () => {
     ])
   })
 })
+
+describe('34 → 35', () => {
+  it('files say they are not voice or video messages (chat spec 6.9), wherever they are kept', () => {
+    const doc = { version: 34, currentUserId: 'u-1', attachments: [{ id: 'a1' }], messages: [{ attachments: [{ id: 'a1' }] }], replies: [{ attachments: [{ id: 'a2' }] }], trash: [{ snapshot: { attachments: [{ id: 'a3' }] } }] }
+    const out = migrate(doc, 35) as { attachments: { clip: unknown }[]; messages: { attachments: { clip: unknown }[] }[]; replies: { attachments: { clip: unknown }[] }[]; trash: { snapshot: { attachments: { clip: unknown }[] } }[] }
+    expect(out.attachments[0].clip).toBeNull()
+    expect(out.messages[0].attachments[0].clip).toBeNull()
+    expect(out.replies[0].attachments[0].clip).toBeNull()
+    // A deleted message kept for Undo too (final review).
+    expect(out.trash[0].snapshot.attachments[0].clip).toBeNull()
+  })
+})

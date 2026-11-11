@@ -24,7 +24,7 @@ import type {
   User,
 } from '@/api/types'
 import { DB_VERSION, type SeedResult } from './db'
-import { checklistTxt, screenshotPng, scopePdf } from './seedFiles'
+import { checklistTxt, screenshotPng, scopePdf, voiceNoteWav } from './seedFiles'
 import { localDay } from '@/lib/dates'
 import { DEFAULT_TIMEOUT_HOURS } from '@/lib/hours'
 import { DEFAULT_WORK_HOURS } from '@/lib/workHours'
@@ -534,10 +534,10 @@ export function seed(now: Date): SeedResult {
   ].map(([userId, hourlyCost]) => ({ id: `r-${userId}`, userId: userId as string, hourlyCost: hourlyCost as number, currency: 'EGP', effectiveFrom: '1970-01-01T00:00:00.000Z' }))
 
   // ── Files, comments and bugs ────────────────────────────────────────────
-  const fileOf = (id: string, name: string, mimeType: string, base64: string, createdAt: string, uploadedBy: string) => ({
+  const fileOf = (id: string, name: string, mimeType: string, base64: string, createdAt: string, uploadedBy: string, clip: Attachment['clip'] = null) => ({
     attachment: {
-      id, name, mimeType, size: base64Size(base64), createdAt, uploadedBy, title: name, description: '', scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null,
-    snippet: null, folderId: null,
+      id, name, mimeType, size: base64Size(base64), createdAt, uploadedBy, title: clip ? 'Voice message' : name, description: '', scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null,
+    snippet: null, clip, folderId: null,
     } satisfies Attachment,
     bytes: { mimeType, base64 },
   })
@@ -547,6 +547,13 @@ export function seed(now: Date): SeedResult {
     fileOf('a-mob-checklist', 'release-2.4.0-checklist.txt', 'text/plain', checklistTxt, ago(3), 'u-4'),
     fileOf('a-nex-101-flow', 'token-rotation.pdf', 'application/pdf', scopePdf, ago(7, 4), 'u-2'),
   ]
+  // Nour's note on the NEX-103 fix in #general carries a voice message (chat spec 6.9), so the player shows in the
+  // prototype. On an existing message: #general's order and seq numbers stay as they were.
+  const g04 = messages.find((m) => m.id === 'm-g04')!
+  const waveform = Array.from({ length: 48 }, (_, i) => Math.round((0.35 + 0.6 * Math.abs(Math.sin(i / 3))) * 100) / 100)
+  const voiceNote = fileOf('a-voice-g04', 'Voice message.wav', 'audio/wav', voiceNoteWav(), g04.createdAt, 'u-2', { kind: 'voice', durationMs: 4000, waveform })
+  files.push(voiceNote)
+  g04.attachments = [voiceNote.attachment]
   const attachments = files.map((f) => f.attachment)
   const projectFiles: ProjectFile[] = [
     { id: 'pf-mob-1', projectId: 'p-mob', attachmentId: 'a-mob-scope', uploadedBy: 'u-9', createdAt: ago(36) },

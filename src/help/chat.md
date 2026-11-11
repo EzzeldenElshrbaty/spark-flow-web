@@ -20,6 +20,14 @@ A channel’s name at the top opens its details: topic, people, and who can post
 
 Write `@` to mention someone (they’re told), `@NEX-101` for a task, `@NEX` for a project, or `@all` for everyone in the channel.
 
+## Voice and video messages
+
+- In a channel or a thread, select **Record a voice message** or **Record a video message** next to @ in the box. On a phone they’re in the **+** menu.
+- The first time, your browser asks to use your microphone or camera. If you said no, allow it in your browser’s site settings, then select **Try again**.
+- **Stop** ends the recording. Play it back, then select **Re-record** or **Attach**. It goes into the box like a file, and you can send it with or without text.
+- A voice message can be up to 5 minutes and a video message up to 2. Recording stops by itself at the limit.
+- A voice message plays from its waveform: select play, or select a point on the waveform to jump there. With the keyboard, the arrow keys move 5 seconds, and Home and End go to the start and the end. Only one plays at a time.
+
 ## Shortcuts
 
 Write `/` at the start of a message for shortcuts:

@@ -73,7 +73,7 @@ describe('more file types (2026-11-08)', () => {
     expect(fileKind({ name: 'logo.svg', mimeType: 'image/svg+xml' })).toBe('image')
     for (const name of ['letter.rtf', 'rows.tsv', 'spec.odt', 'plan.ods', 'deck.odp', 'brief.pages', 'budget.numbers', 'pitch.key', 'notes.md', 'data.json', 'feed.xml', 'page.html'])
       expect(fileKind({ name, mimeType: '' })).toBe('document')
-    for (const name of ['call.mp3', 'ui.fig', 'art.eps', 'all.7z']) expect(fileKind({ name, mimeType: '' })).toBe('other')
+    for (const name of ['ui.fig', 'art.eps', 'all.7z']) expect(fileKind({ name, mimeType: '' })).toBe('other')
   })
 
   it('the short hint (UX Phase 4, 4.9) says the kinds in one line, with the size', async () => {
@@ -98,5 +98,14 @@ describe('downloadUrl', () => {
   it('leaves blob: addresses alone (the download attribute works on them)', async () => {
     const { downloadUrl } = await import('@/lib/fileTypes')
     expect(downloadUrl('blob:http://localhost/a1')).toBe('blob:http://localhost/a1')
+  })
+})
+
+describe('audio files (chat spec 6.9)', () => {
+  it('a voice message is audio, even as .webm; video stays video', async () => {
+    const { fileKind } = await import('@/lib/fileTypes')
+    expect(fileKind({ name: 'Voice message.webm', mimeType: 'audio/webm' })).toBe('audio')
+    expect(fileKind({ name: 'Voice message.webm', mimeType: 'video/webm' })).toBe('video')
+    for (const name of ['call.mp3', 'memo.m4a', 'take.wav', 'note.ogg']) expect(fileKind({ name, mimeType: '' }), name).toBe('audio')
   })
 })

@@ -16,7 +16,7 @@ window.matchMedia ??= ((media: string) => ({ matches: false, media, addEventList
 
 const pdf: Attachment = {
   id: 'a1', name: 'Scope v3.pdf', mimeType: 'application/pdf', size: 188_416, createdAt: '2026-10-28T09:00:00.000Z',
-  uploadedBy: 'u-2', title: 'Scope v3.pdf', description: '', scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null, snippet: null, folderId: null,
+  uploadedBy: 'u-2', title: 'Scope v3.pdf', description: '', scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null, snippet: null, clip: null, folderId: null,
 }
 const link = 'http://localhost/w/engineering/c/c-backend?message=m1'
 
@@ -290,5 +290,35 @@ describe('Add to folder (spec 6.9 file menu)', () => {
       fireEvent.click(dialog.getByRole('button', { name: 'Create and add' }))
     })
     expect(create).toHaveBeenCalledWith(pdf, 'Designs')
+  })
+})
+
+describe('voice and video messages in a message (chat spec 6.9)', () => {
+  const voice: Attachment = { ...pdf, id: 'a-v', name: 'Voice message.webm', mimeType: 'audio/webm', title: 'Voice message', clip: { kind: 'voice', durationMs: 42_000, waveform: Array(48).fill(0.5) } }
+  const video: Attachment = { ...pdf, id: 'a-m', name: 'Video message.mp4', mimeType: 'video/mp4', title: 'Video message', clip: { kind: 'video', durationMs: 42_000, waveform: [] } }
+  const mp3: Attachment = { ...pdf, id: 'a-3', name: 'call.mp3', mimeType: 'audio/mpeg', title: 'call.mp3' }
+  const plays = (types: string[]) => vi.spyOn(HTMLMediaElement.prototype, 'canPlayType').mockImplementation((type) => (types.includes(type) ? 'maybe' : ''))
+  afterEach(() => vi.restoreAllMocks())
+
+  it('a voice message gets the player', () => {
+    plays(['audio/webm'])
+    render(<MessageFiles attachments={[voice]} link={link} />)
+    expect(screen.getByRole('button', { name: 'Play voice message' })).toBeTruthy()
+    // Its label is its kind, said once; the player shows the length (final review).
+    expect(screen.getByRole('button', { name: 'Voice message' })).toBeTruthy()
+  })
+
+  it('a video message plays inline, labelled with its length', () => {
+    plays(['video/mp4'])
+    const { container } = render(<MessageFiles attachments={[video]} link={link} />)
+    expect(container.querySelector('video')).not.toBeNull()
+    expect(screen.getByRole('button', { name: 'Video message · 0:42 · Video message' })).toBeTruthy()
+  })
+
+  it('an uploaded .mp3, or a voice message the browser can’t play, stays a file card', () => {
+    plays([])
+    render(<MessageFiles attachments={[mp3, voice]} link={link} />)
+    expect(screen.queryByRole('button', { name: 'Play voice message' })).toBeNull()
+    expect(screen.getAllByText(/^(call\.mp3|Voice message)$/).length).toBeGreaterThanOrEqual(2)
   })
 })

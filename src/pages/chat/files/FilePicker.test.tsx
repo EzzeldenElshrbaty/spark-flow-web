@@ -5,7 +5,7 @@ import type { Attachment, ShareableFile } from '@/api/types'
 import { FilePicker } from '@/pages/chat/files/FilePicker'
 
 const file = (id: string, name: string): Attachment =>
-  ({ id, name, title: name, description: '', mimeType: 'application/pdf', size: 188_416, createdAt: '2026-10-28T09:00:00.000Z', uploadedBy: 'u-1', scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null, snippet: null, folderId: null })
+  ({ id, name, title: name, description: '', mimeType: 'application/pdf', size: 188_416, createdAt: '2026-10-28T09:00:00.000Z', uploadedBy: 'u-1', scanStatus: 'clean', thumbUrl: null, previewUrl: null, deletedAt: null, snippet: null, clip: null, folderId: null })
 let shown: ShareableFile[] = []
 const asked: (string | undefined)[] = []
 vi.mock('@/api/files', () => ({

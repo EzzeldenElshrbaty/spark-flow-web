@@ -640,6 +640,19 @@ describe('uploading a chat file over HTTP (spec §8)', () => {
     expect(calls[0]).toBe('{"channelId":"c1","name":"q.txt","size":9,"mimeType":"text/plain","snippet":{"language":"sql"}}')
   })
 
+  it('a voice message sends its clip with the upload link request (chat spec 6.9)', async () => {
+    const calls: string[] = []
+    const fetchFn = (async (url: string, init?: RequestInit) => {
+      calls.push(String(init?.body))
+      const body = url.endsWith('/upload-url') ? { file: { id: 'a1' }, uploadUrl: 'https://storage.example/put/a1' } : { id: 'a1' }
+      return new Response(JSON.stringify(body), { status: 200 })
+    }) as typeof fetch
+    const api = createHttpApi(fetchFn, fakeXhr().make)
+    const blob = Object.assign(new Blob(['ogg'], { type: 'audio/webm' }), { name: 'Voice message.webm' })
+    await api.files.uploadForChat('c1', blob, { clip: { kind: 'voice', durationMs: 4000, waveform: [0.5] } })
+    expect(JSON.parse(calls[0]!)).toMatchObject({ channelId: 'c1', clip: { kind: 'voice', durationMs: 4000, waveform: [0.5] } })
+  })
+
   it('a refused upload of the bytes says so', async () => {
     const fetchFn = (async () => new Response(JSON.stringify({ file: { id: 'a1' }, uploadUrl: 'https://storage.example/put/a1' }), { status: 200 })) as typeof fetch
     const api = createHttpApi(fetchFn, fakeXhr(403).make)

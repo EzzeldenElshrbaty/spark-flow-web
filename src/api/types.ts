@@ -283,9 +283,17 @@ export type Attachment = {
   deletedAt: string | null
   /** A text snippet (spec 6.9): a .txt file shown as code in this language; null for any other file. */
   snippet: { language: CodeLanguage } | null
+  /** A voice or video message (chat spec 6.9): recorded in the browser; null for any other file. */
+  clip: Clip | null
   /** The workspace folder it's filed in (spec 6.9 Add to folder, §7 folder_id); null for none. */
   folderId: string | null
 }
+/**
+ * A voice or video message's data (chat spec 6.9): its length, and for voice 48 bar heights (0–1) drawn while
+ * recording; `[]` for video. A player takes the length from here, never from the media (WebM may not say).
+ */
+export type Clip = { kind: 'voice' | 'video'; durationMs: number; waveform: number[] }
+export type ClipKind = Clip['kind']
 /** A workspace folder for files (spec 6.9): one per file, shared by everyone in the workspace. */
 export type Folder = { id: string; workspaceId: string; name: string; createdBy: string; createdAt: string }
 /** A snippet's Type (spec 6.9). */
@@ -1058,7 +1066,7 @@ export interface Api {
      * checks its type and scans it. A cancelled upload saves nothing and rejects with an AbortError.
      */
     /** `snippet`: the file is a text snippet in that language (spec 6.9); its title is its name without .txt. */
-    uploadForChat(channelId: string, file: UploadFile, options?: UploadOptions & { snippet?: { language: CodeLanguage } }): Promise<Attachment>
+    uploadForChat(channelId: string, file: UploadFile, options?: UploadOptions & { snippet?: { language: CodeLanguage }; clip?: Clip }): Promise<Attachment>
     /**
      * Uploads a file for a task of `projectId` before the task is saved, in the same three steps: whoever edits the
      * project's tasks, while it isn't archived. It's the uploader's alone until a task names it in `attachmentIds`.

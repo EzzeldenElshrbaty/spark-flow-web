@@ -115,6 +115,12 @@ export function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+/** A voice or video message's length (chat spec 6.9): "0:42", "4:05", "12:30". */
+export function formatClipLength(ms: number) {
+  const total = Math.floor(ms / 1000)
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`
+}
+
 /** Value for an <input type="datetime-local"> from a Date. */
 export function toLocalInput(date: Date) {
   const pad = (value: number) => String(value).padStart(2, '0')

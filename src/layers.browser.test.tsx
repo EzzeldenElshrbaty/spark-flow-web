@@ -1,11 +1,15 @@
 import '@/index.css'
 import { screen, waitFor, within } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { focusables } from '@/components/sf/layers'
 import { axeProblems } from '@/test/axe'
 import { renderApp } from '@/test/app'
 import { AUDIT_TAGS, untilQuiet } from '@/test/uxChecks'
+
+// Record a voice message waits at "Waiting for your microphone…" here, so it checks as a plain modal; the discard
+// question it asks once something is recorded is RecordDialog.test.tsx's.
+vi.mock('@/lib/recorder', async (original) => ({ ...(await original<typeof import('@/lib/recorder')>()), canRecord: () => true, startRecording: () => new Promise(() => {}) }))
 
 // UX Phase 6, 6.1: every sheet and dialog from the keyboard, as the Admin at 1440 in light. Each one takes focus, keeps
 // Tab inside, passes axe, and gives focus back to what opened it. A form sheet keeps what was typed when Esc is pressed
@@ -117,6 +121,7 @@ const LAYERS: Layer[] = [
   { name: 'Add a bookmark', path: '/w/engineering/c/c-general', open: () => anyButton('Add a bookmark'), kind: 'modal' },
   { name: 'Page history', path: '/w/engineering/c/c-general?tab=page', open: () => anyButton('History'), kind: 'modal' },
   { name: 'Pick a template', path: '/w/engineering/c/c-general', open: () => fromIntro('Pick a template'), kind: 'modal' },
+  { name: 'Record a voice message', path: '/w/engineering/c/c-general', open: () => anyButton('Record a voice message'), kind: 'modal' },
   {
     name: 'Jump to a date',
     path: '/w/engineering/c/c-general',

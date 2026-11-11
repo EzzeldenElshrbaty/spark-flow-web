@@ -1,4 +1,4 @@
-import { IconChevronDown, IconCode, IconFile, IconFileText, IconFileTypePdf, IconMovie, IconPhoto, type TablerIcon } from '@tabler/icons-react'
+import { IconChevronDown, IconCode, IconFile, IconFileText, IconFileTypePdf, IconHeadphones, IconMovie, IconPhoto, type TablerIcon } from '@tabler/icons-react'
 import { useMemo, useState } from 'react'
 import { useChannelFiles } from '@/api/files'
 import { useFolders } from '@/api/folders'
@@ -22,6 +22,7 @@ const TYPES: { id: FileKind; label: string; icon: TablerIcon }[] = [
   { id: 'document', label: 'Documents', icon: IconFileText },
   { id: 'snippet', label: 'Snippets', icon: IconCode },
   { id: 'video', label: 'Videos', icon: IconMovie },
+  { id: 'audio', label: 'Audio', icon: IconHeadphones },
   { id: 'other', label: 'Other', icon: IconFile },
 ]
 const DATES: { id: FilesDate; label: string }[] = [
