@@ -3239,6 +3239,8 @@ findings; 5 important and 12 re-graded minors fixed in one pass, each RED→GREE
   Try again), and the voice player draws at once from its clip data instead of replacing a placeholder when the file's
   address arrives (the late height change made the message list log ResizeObserver loop errors on #general).
 
+Gates: lint clean, tsc clean, npm test 3,271/3,271, test:ux 1,000/1,000, build:prototype ok. Not pushed; not on dev.
+
 Rulings: the browser test is `recorder.browser.test.tsx` (the browser project's pattern); the layers check holds the
 recorder at "asking"; reduced motion leaves out the level meter; a defensive `resume()` for Safari's audio.
 
