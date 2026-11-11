@@ -51,3 +51,18 @@ describe('one scroll, no tabs', () => {
     expect(within(panel()).getByRole('heading', { level: 3, name: 'History' })).toBeTruthy()
   })
 })
+
+describe('Open in project', () => {
+  it('goes from a channel to the task on its project’s board, with the panel open', async () => {
+    const app = await renderApp({ path: `/w/engineering/c/c-frontend?ticket=${TASK}`, as: 'admin', theme: 'light', size: 'desktop' })
+    await app.settled()
+    const link = within(panel()).getByRole('link', { name: 'Open in project' })
+    expect(link.getAttribute('href')).toBe(`${paths.project('engineering', 'NEX', 'tasks')}?ticket=${TASK}`)
+  })
+
+  it('isn’t offered on that board already', async () => {
+    const app = await renderApp({ path: `/w/engineering/p/NEX/tasks?ticket=${TASK}`, as: 'admin', theme: 'light', size: 'desktop' })
+    await app.settled()
+    expect(within(panel()).queryByRole('link', { name: 'Open in project' })).toBeNull()
+  })
+})

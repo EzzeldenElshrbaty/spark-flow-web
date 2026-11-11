@@ -1,6 +1,6 @@
-import { Archive, Clock, Pencil, Play } from 'lucide-react'
+import { Archive, ArrowUpRight, Clock, Pencil, Play } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
-import { Link } from 'react-router'
+import { Link, useLocation } from 'react-router'
 import { noteDownload } from '@/api/audit'
 import { useChannels } from '@/api/chat'
 import { useComments } from '@/api/comments'
@@ -22,6 +22,7 @@ import { InspectorFrame, InspectorSkeleton, TitleSkeleton, type InspectorBodyPro
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { ApiError } from '@/lib/api'
 import { formatDate } from '@/lib/format'
+import { withInspector } from '@/lib/inspector'
 import { paths } from '@/lib/paths'
 import { useCanLog } from '@/lib/useCanLog'
 import { usePermission } from '@/lib/usePermission'
@@ -62,6 +63,7 @@ function Person({ name }: { name: string | null }) {
  */
 export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: string } & InspectorBodyProps) {
   const { workspace } = useCurrentWorkspace()
+  const { pathname } = useLocation()
   const ticket = useTicket(ticketKey)
   const users = useUsers(workspace?.id)
   // By key (a task key starts with its project's), so an archived project's tasks still open; the list leaves those out.
@@ -296,8 +298,21 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
     )
   }
 
+  // The task on its project's board, with this panel open: offered everywhere but that board.
+  const board = project && workspace ? paths.project(workspace.slug, project.key, 'tasks') : null
+  const openInProject = board && pathname !== board && (
+    <Link
+      to={`${board}?${withInspector(new URLSearchParams(), { kind: 'ticket', key: ticketKey }).toString()}`}
+      className="rounded-md p-1 text-fg-muted hover:bg-surface-muted hover:text-fg max-md:touch-target"
+      aria-label="Open in project"
+      title="Open in project"
+    >
+      <ArrowUpRight className="size-5 rtl:-scale-x-100" />
+    </Link>
+  )
+
   return (
-    <InspectorFrame label="Task" eyebrow={eyebrow} title={title} onClose={onClose}>
+    <InspectorFrame label="Task" eyebrow={eyebrow} title={title} onClose={onClose} actions={openInProject || undefined}>
       {body}
     </InspectorFrame>
   )
