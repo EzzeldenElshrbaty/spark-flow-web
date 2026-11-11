@@ -23,6 +23,9 @@ export const qk = {
   pins: (channelId: string) => ['chat', 'pins', channelId],
   folders: (workspaceId: string) => ['folders', workspaceId],
   bookmarks: (channelId: string) => ['chat', 'bookmarks', channelId],
+  /** A channel's task list (chat spec 6.14). */
+  taskList: (channelId: string) => ['chat', 'taskList', channelId],
+  taskListAll: () => ['chat', 'taskList'],               // prefix of every channel's task list
   // Each under its own root: a hold changing (pageEditing) reloads the page, not its history.
   page: (channelId: string) => ['chat', 'page', channelId],
   pageHistory: (channelId: string) => ['chat', 'pageHistory', channelId],
@@ -115,7 +118,8 @@ function dataKeysFor(event: RealtimeEvent): QueryKey[] {
       // Project summaries (progress, overdue) and the dashboard are worked out from tasks too.
       return [
         qk.tickets(event.ticket.projectId), qk.archivedTickets(event.ticket.projectId), qk.ticket(event.ticket.key), qk.taskHistory(event.ticket.key), qk.projectHistory(event.ticket.projectId),
-        ['tickets', 'projects'], ['tickets', 'project'], ['dashboard'], qk.taskRefsAll(),
+        // A task's status, assignee or due date shows on every channel's list that holds it (task list §4.3).
+        ['tickets', 'projects'], ['tickets', 'project'], ['dashboard'], qk.taskRefsAll(), qk.taskListAll(),
         // Task news for the assignee (UX Phase 2, 2.3): the bell and Activity.
         qk.mentions(), qk.activityAll(),
       ]
@@ -141,7 +145,7 @@ function dataKeysFor(event: RealtimeEvent): QueryKey[] {
     case 'channelChanged':
       // Leaving, removal, archiving and privacy decide what my mentions and Activity may show; inviting and revoking
       // change its Invited list (spec 6.10).
-      return [qk.channelsAll(), qk.channel(event.channelId), qk.mentions(), qk.activityAll(), qk.invitations(event.channelId), qk.pins(event.channelId), qk.bookmarks(event.channelId), qk.threadsAll()]
+      return [qk.channelsAll(), qk.channel(event.channelId), qk.mentions(), qk.activityAll(), qk.invitations(event.channelId), qk.pins(event.channelId), qk.bookmarks(event.channelId), qk.taskList(event.channelId), qk.threadsAll()]
     case 'commentAdded':
       return [qk.comments(event.taskKey), qk.mentions(), qk.activityAll(), qk.taskHistory(event.taskKey), qk.projectHistory(event.projectId), qk.files(event.projectId)]
     case 'ratesChanged':

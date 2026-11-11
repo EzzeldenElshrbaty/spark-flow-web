@@ -35,6 +35,7 @@ import type { StoredMemberState } from './db'
 import { projectPeopleIds } from '@/lib/projectPeople'
 import { builtInRoles } from './roles'
 import { seedAuditHistory } from './audit'
+import { channelTasksFrom } from './channelTasks'
 
 // ── Builders and derived-field helpers ────────────────────────────────────
 // Everything below is pure: the same `now` always gives the same data (no Math.random, no Date.now).
@@ -568,6 +569,18 @@ export function seed(now: Date): SeedResult {
     { id: 'cm-006', taskId: 't-elm-104', projectId: 'p-elm', authorId: 'u-5', kind: 'bug', body: 'Credit note 0042: VAT shows +140 EGP instead of -140 EGP.', attachmentIds: [], createdAt: ago(37) },
   ]
 
+  // Channel task lists (chat spec 6.14): a task made from a channel's message is on that channel's list, and Mariam
+  // keeps three more on #frontend-dev's (one done, one late, one of a second project).
+  const fromLinks = channelTasksFrom({ projects, channels, tickets })
+  const idOf = new Map(tickets.map((t) => [t.key, t.id]))
+  const listStart = Date.parse(fromLinks.find((r) => r.channelId === 'c-frontend')!.addedAt)
+  const channelTasks = [
+    ...fromLinks,
+    ...['NEX-105', 'NEX-103', 'MOB-103'].map((key, i) => ({
+      id: `ct-${idOf.get(key)!}`, channelId: 'c-frontend', taskId: idOf.get(key)!, addedBy: 'u-3', addedAt: new Date(listStart + (i + 1) * 3_600_000).toISOString(),
+    })),
+  ]
+
   const data = {
     version: DB_VERSION,
     currentUserId: 'u-1',
@@ -604,6 +617,7 @@ export function seed(now: Date): SeedResult {
     pins: [],
     folders: [],
     bookmarks: [],
+    channelTasks,
     pages: [],
     pageVersions: [],
     pageMentions: [],

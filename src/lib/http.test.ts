@@ -45,6 +45,20 @@ describe('createHttpApi', () => {
     expect(calls[3].init?.keepalive).toBe(true)
   })
 
+  it('maps a channel’s task list calls (task list §4.3)', async () => {
+    const { calls, fetchFn } = recordingFetch()
+    const api = createHttpApi(fetchFn)
+    await api.taskLists.get('c-1')
+    await api.taskLists.add('c-1', 'NEX-1')
+    await api.taskLists.remove('c-1', 'NEX-1')
+    expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url}`)).toEqual([
+      'GET /api/channels/c-1/task-list',
+      'POST /api/channels/c-1/task-list',
+      'DELETE /api/channels/c-1/task-list/NEX-1',
+    ])
+    expect(JSON.parse(String(calls[1].init?.body))).toEqual({ taskKey: 'NEX-1' })
+  })
+
   it('maps the M2 time calls to their routes, methods and bodies', async () => {
     const { calls, fetchFn } = recordingFetch()
     const api = createHttpApi(fetchFn)

@@ -163,6 +163,9 @@ export function archiveApi(db: MockDb, hub: MockHub, now: () => Date = () => new
         data.attachments = data.attachments.filter((a) => !orphans.includes(a.id))
         if (project) {
           audit(data, { action: 'deleted', group: 'status', record: recordOf.project(project), detail })
+          // Its tasks leave every channel's task list (task list §4.2).
+          const gone = new Set(data.tickets.filter((t) => t.projectId === project.id).map((t) => t.id))
+          data.channelTasks = data.channelTasks.filter((r) => !gone.has(r.taskId))
           data.tickets = data.tickets.filter((t) => t.projectId !== project.id)
           data.comments = data.comments.filter((c) => c.projectId !== project.id)
           data.phases = data.phases.filter((p) => p.projectId !== project.id)
@@ -179,6 +182,7 @@ export function archiveApi(db: MockDb, hub: MockHub, now: () => Date = () => new
         }
         audit(data, { action: 'deleted', group: 'status', record: recordOf.task(task!), detail })
         data.tickets = data.tickets.filter((t) => t.id !== task!.id)
+        data.channelTasks = data.channelTasks.filter((r) => r.taskId !== task!.id)
         data.comments = data.comments.filter((c) => c.taskId !== task!.id)
         data.activity = data.activity.filter((a) => a.taskKey !== task!.key)
         return { projectId: task!.projectId, orphans }

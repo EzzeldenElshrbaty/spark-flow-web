@@ -629,3 +629,32 @@ limit, scan, posting rights and `fileIds` on send.
 - **Title:** "Voice message" or "Video message".
 - **Kinds and types:** a file of an `audio/*` type, or `.mp3`, `.m4a`, `.wav` or `.ogg`, is `audio` in every Files list's `type` filter (channel and project), checked before `video`. `.ogg` is now an accepted upload everywhere.
 - **Playback:** clients read the length from `clip.durationMs`, since a browser's WebM recording may not carry one; serve the bytes with `Accept-Ranges` so seeking works.
+
+## Phase 4 · Slice TL: channel task lists (spec 6.14)
+
+Each channel (`kind: 'channel'`, project channels included; never a DM) has one task list: rows that point at real
+tasks, in the order added. Anyone who can read the channel reads it; whoever may post in it (the composer's rule,
+including Only admins and an archived channel) adds and removes tasks. Removing never touches the task. There is no
+task-view rule: every live task of the channel's workspace may be added and is shown.
+
+| Call | Body | Answer |
+|---|---|---|
+| `GET /api/channels/{id}/task-list` | — | `TaskList` `{ channelId, entries: TaskListEntry[] }` |
+| `POST /api/channels/{id}/task-list` | `{ taskKey }` | `TaskListEntry` |
+| `POST /api/channels/{id}/task-list/new` | a `NewTicket` | the task (`TaskView`), made by `POST /tasks`' rules with `linkedChannelId` = the channel, and on the list, in one transaction |
+| `DELETE /api/channels/{id}/task-list/{taskKey}` | — | `204` |
+
+- **Shapes:** `TaskListEntry = { id, addedBy, addedAt, task }`; `task` is the chip's `TaskRef` plus `id`, `projectId`,
+  `dueAt` and `overdue` (past its due date and not done). A task that is archived, or whose project is, is left out until
+  restored, then shows in its place again.
+- **Refusals** (`detail` is the sentence shown): a DM `400` "Task lists are for channels."; an unknown task `404` "That task
+  no longer exists."; an archived task `400` "This task is archived. Restore it first."; an archived project `400` "This
+  project is archived. Restore it first."; another workspace's task `400` "That task is in another workspace."; already on
+  the list `409` "That task is already on this list."; 200 rows `400` "A task list holds up to 200 tasks."; removing a
+  task that isn't there `404` "That task isn’t on this list."; plus the channel's own (`403`/`404` to read, "This channel
+  is archived.", Only admins). `…/new` refuses as `POST /tasks` does, and then makes neither the task nor the row.
+- **Events:** each write sends `channelChanged` for the channel; clients refresh every task list on `ticketUpdated`, so a
+  status, assignee or due date changed anywhere shows at once.
+- **Clean-up:** deleting a task (or a project) for good removes its rows.
+- **Audit:** adding and removing are the channel's content, like pins and bookmarks, and aren't recorded; `…/new` records
+  the task's creation as `POST /tasks` does.
