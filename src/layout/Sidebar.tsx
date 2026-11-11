@@ -34,7 +34,7 @@ import type { Project, SidebarSection } from '@/api/types'
 import { SortableSideList } from '@/layout/SortableSideList'
 import { Icon } from '@/components/sf/Icon'
 import { WorkspaceModeSwitch } from '@/layout/ModeSwitch'
-import { NewTaskButton } from '@/layout/NewTaskButton'
+import { NewButton } from '@/layout/NewButton'
 import { useSidebarGroups, type ChannelRow } from '@/layout/useSidebarGroups'
 import { useWorkspaceMode } from '@/layout/useWorkspaceMode'
 import { countNoun, projectOrderFrom, sidebarRowState } from '@/lib/channels'
@@ -613,7 +613,7 @@ export function SidebarHeader({ collapsed = false, onNavigate }: { collapsed?: b
   return (
     <div className={clsx('sf flex h-14 flex-none items-center gap-1 ps-2 pe-3', collapsed && 'justify-center px-0')}>
       <Logo collapsed={collapsed} onClick={onNavigate} />
-      {!collapsed && workspace && side === 'projects' && <NewTaskButton />}
+      {!collapsed && workspace && side === 'projects' && <NewButton />}
       {!collapsed && workspace && side === 'chat' && (
         <>
           <IconButton label="New message" icon={IconEdit} tone="compose" className="ms-auto" onClick={() => setNewMessage(true)} />

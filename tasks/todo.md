@@ -3109,6 +3109,18 @@ Deferred minors (from the final review):
 
 On dev (32e7f6a, 11 Nov 2026).
 
+# New project in the + menu — 11 Nov 2026, approved ("Yes, recommended")
+
+Branch `feat/new-project-menu` from dev 32e7f6a. The + by the logo (`layout/NewTaskButton.tsx` → `layout/NewButton.tsx`)
+offers New project first for whoever may create one (`project.create`: Admin, Sales), then New task in each project
+that takes my tasks. One choice opens its sheet at once (Sales on no project gets New project straight away); the
+sheet opens over the page I'm on, Save opens the new project, Cancel leaves me where I was.
+
+- [x] Tests first (`layout/NewButton.test.tsx`: order, one task project becomes a choice, create only, keys, Save, Cancel)
+- [x] `NewButton` with `NewProjectSheet` (the Projects page's `ProjectSheet`)
+- [x] Browser check: desktop light and dark, 390 px
+- [x] Gates: lint, tsc, `npm test` 3,158/3,158
+
 # Chat polish pass: the Page tab's and the intro's deferred minors — 11 Nov 2026, approved (Native)
 
 Branch `fix/chat-polish` from dev 32e7f6a. User answers Q1–Q5 "Yes, recommended": a page mention stays after the person
