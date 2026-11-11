@@ -72,4 +72,16 @@ describe('describeActivity', () => {
     expect(describeActivity(e({ ...col, kind: 'file.removed', subject: 'scope.pdf' }), ctx())).toBe('Nour removed the file scope.pdf')
     expect(describeActivity(e({ ...col, kind: 'deliverable.removed', subject: 'API docs' }), ctx())).toBe('Nour removed the deliverable API docs')
   })
+
+  it('a sprint: created, changed, started, completed and deleted, with the tasks it moved', () => {
+    const sprint = (kind: ActivityEntry['kind'], subject: string, count?: number) => describeActivity(e({ taskKey: null, kind, subject, count }), ctx())
+    expect(sprint('sprint.added', 'Sprint 16')).toBe('Nour created Sprint 16')
+    expect(sprint('sprint.changed', 'Sprint 16')).toBe('Nour changed Sprint 16')
+    expect(sprint('sprint.started', 'Sprint 15')).toBe('Nour started Sprint 15')
+    expect(sprint('sprint.completed', 'Sprint 14', 5)).toBe('Nour completed Sprint 14 · 5 tasks moved')
+    expect(sprint('sprint.completed', 'Sprint 14', 1)).toBe('Nour completed Sprint 14 · 1 task moved')
+    expect(sprint('sprint.completed', 'Sprint 14', 0)).toBe('Nour completed Sprint 14')
+    expect(sprint('sprint.removed', 'Sprint 16', 3)).toBe('Nour deleted Sprint 16 · 3 tasks to the backlog')
+    expect(sprint('sprint.removed', 'Sprint 16', 0)).toBe('Nour deleted Sprint 16')
+  })
 })

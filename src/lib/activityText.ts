@@ -25,6 +25,7 @@ const FIELD_NAMES: Record<string, string> = {
 }
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+const tasks = (n: number) => `${n} ${n === 1 ? 'task' : 'tasks'}`
 const typeName = (category: string | null) => CATEGORIES.find((c) => c.category === category)?.label ?? '—'
 
 /** One side of a change, as a person reads it; — when empty. */
@@ -125,5 +126,16 @@ export function describeActivity(entry: ActivityEntry, ctx: ActivityContext): st
       return `${who} removed the deliverable ${entry.subject}`
     case 'file.removed':
       return `${who} removed the file ${entry.subject}`
+    // A sprint's name says it's a sprint: "Nour started Sprint 15".
+    case 'sprint.added':
+      return `${who} created ${entry.subject}`
+    case 'sprint.changed':
+      return `${who} changed ${entry.subject}`
+    case 'sprint.started':
+      return `${who} started ${entry.subject}`
+    case 'sprint.completed':
+      return `${who} completed ${entry.subject}${entry.count ? ` · ${tasks(entry.count)} moved` : ''}`
+    case 'sprint.removed':
+      return `${who} deleted ${entry.subject}${entry.count ? ` · ${tasks(entry.count)} to the backlog` : ''}`
   }
 }

@@ -277,9 +277,10 @@ function messageRecord(row: Row, channel: StoredChannel) {
 
 const forbiddenOwn = () => new ApiError({ title: 'Forbidden', status: 403, detail: 'You can only change your own messages.' })
 
-/** Cards (a comment's, a task event's), system messages and deleted rows stay as they are. */
+/** Cards (a comment's, a task event's, a sprint's), system messages and deleted rows stay as they are. */
 function checkPlain(row: Row) {
-  if (row.deletedAt || ('commentId' in row && row.commentId) || ('taskEvent' in row && row.taskEvent) || ('system' in row && row.system)) throw badRequest("This message can’t be changed.")
+  if (row.deletedAt || ('commentId' in row && row.commentId) || ('taskEvent' in row && row.taskEvent) || ('sprintEvent' in row && row.sprintEvent) || ('system' in row && row.system))
+    throw badRequest("This message can’t be changed.")
 }
 
 /** Keys of tasks someone made from this message: an edit keeps them linked even when the text no longer says them. */
@@ -736,7 +737,7 @@ export function chatApi(db: MockDb, hub: MockHub): Api['chat'] {
       const mine = (r: { senderId: string; channelId: string; deletedAt?: string | null }) => r.senderId === me && here.has(r.channelId) && !r.deletedAt
       // A reply also sent to the channel is listed once, as the reply.
       const items: SentItem[] = [
-        ...data.messages.filter((m) => mine(m) && !m.system && !m.broadcast && !m.commentId && !m.taskEvent).map((m) => ({ target: { kind: 'message' as const, id: m.id }, channelId: m.channelId, rootId: null, text: rowText(m), createdAt: m.createdAt })),
+        ...data.messages.filter((m) => mine(m) && !m.system && !m.broadcast && !m.commentId && !m.taskEvent && !m.sprintEvent).map((m) => ({ target: { kind: 'message' as const, id: m.id }, channelId: m.channelId, rootId: null, text: rowText(m), createdAt: m.createdAt })),
         ...data.replies.filter(mine).map((r) => ({ target: { kind: 'reply' as const, id: r.id }, channelId: r.channelId, rootId: r.messageId, text: rowText(r), createdAt: r.createdAt })),
       ]
       return items.filter((i) => i.text).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, SENT_MAX)
@@ -832,7 +833,7 @@ export type AddReplyInput = { messageId: string; content: string; body?: Body; a
  * Adds a message from the current user inside a transaction; mentions and ticket keys come from the text. `extra`
  * carries what only some messages have (the comment a card stands for).
  */
-export function postMessage(data: DbData, input: SendMessageInput, extra: Partial<Pick<ChatMessage, 'commentId' | 'taskEvent' | 'system'>> = {}): ChatMessage {
+export function postMessage(data: DbData, input: SendMessageInput, extra: Partial<Pick<ChatMessage, 'commentId' | 'taskEvent' | 'sprintEvent' | 'system'>> = {}): ChatMessage {
   const channel = findChannel(data, input.channelId)
   const lastInChannel = data.messages.reduce((t, m) => (m.channelId === channel.id && m.createdAt > t ? m.createdAt : t), '')
   const createdAt = stamp(lastInChannel)

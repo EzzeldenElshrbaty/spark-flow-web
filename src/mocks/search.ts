@@ -46,8 +46,8 @@ function messageRows(data: DbData, readable: Set<string>, q: ParsedQuery, r: Sea
   }
   const rows: Row[] = []
   for (const m of data.messages) {
-    // System lines and task cards aren't anyone's words; a reply's channel copy is found as the reply.
-    if (m.system || m.taskEvent || m.broadcast) continue
+    // System lines and task and sprint cards aren't anyone's words; a reply's channel copy is found as the reply.
+    if (m.system || m.taskEvent || m.sprintEvent || m.broadcast) continue
     if (!keep(m, false, m.threadCount > 0)) continue
     const text = bodyText(m.body)
     rows.push({ row: m, score: relevance(text, q), hit: { kind: 'message', target: { kind: 'message', id: m.id }, channelId: m.channelId, rootId: null, senderId: m.senderId, text, createdAt: m.createdAt } })

@@ -27,6 +27,7 @@ export const api: Api = {
   get tickets() { return resolve().tickets },
   get projects() { return resolve().projects },
   get phases() { return resolve().phases },
+  get sprints() { return resolve().sprints },
   get deliverables() { return resolve().deliverables },
   get tasks() { return resolve().tasks },
   get teams() { return resolve().teams },

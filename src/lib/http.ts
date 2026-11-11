@@ -181,7 +181,6 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
     },
     tickets: {
       // One name for tasks on the wire: /tasks, for reads as for writes.
-      sprints: (projectId) => get(`/api/projects/${enc(projectId)}/sprints`),
       list: (projectId, opts) => get(`/api/projects/${enc(projectId)}/tasks${opts?.archived ? '?archived=true' : ''}`),
       get: (key) => get(`/api/tasks/${enc(key)}`),
       resolve: (keys) => (keys.length ? get(`/api/tasks/resolve?keys=${keys.map(enc).join(',')}`) : Promise.resolve([])),
@@ -203,6 +202,14 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
       update: (id, patch) => send('PATCH', `/api/phases/${enc(id)}`, patch),
       remove: (id) => send<void>('DELETE', `/api/phases/${enc(id)}`),
       reorder: (projectId, ids) => send('PUT', `/api/projects/${enc(projectId)}/phases/order`, { ids }),
+    },
+    sprints: {
+      list: (projectId) => get(`/api/projects/${enc(projectId)}/sprints`),
+      create: (input) => send('POST', `/api/projects/${enc(input.projectId)}/sprints`, input),
+      update: (id, patch) => send('PATCH', `/api/sprints/${enc(id)}`, patch),
+      start: (id, input) => send('POST', `/api/sprints/${enc(id)}/start`, input),
+      complete: (id, input) => send('POST', `/api/sprints/${enc(id)}/complete`, input),
+      remove: (id) => send<void>('DELETE', `/api/sprints/${enc(id)}`),
     },
     deliverables: {
       list: (projectId) => get(`/api/projects/${enc(projectId)}/deliverables`),

@@ -1,4 +1,4 @@
-import type { ChatMessage, Project, TaskEvent, Ticket } from '@/api/types'
+import type { ChatMessage, Project, SprintEvent, TaskEvent, Ticket } from '@/api/types'
 import { categoryOf, columnLabel } from '@/lib/boardColumns'
 import { postMessage } from './chat'
 import type { DbData } from './db'
@@ -46,4 +46,16 @@ export function postTaskEvents(data: DbData, before: Ticket | null, after: Ticke
     card.linkedTicketKeys = [after.key]
     return card
   })
+}
+
+/**
+ * Posts a sprint's card (started, completed) in its project's chat, inside the caller's transaction. `text` is kept for
+ * search and excerpts; the card mentions nobody and names no task, whatever the goal says.
+ */
+export function postSprintEvent(data: DbData, project: Project, event: SprintEvent, text: string): ChatMessage {
+  const card = postMessage(data, { channelId: project.channelId, content: text }, { sprintEvent: event })
+  card.mentions = []
+  card.linkedTicketKeys = []
+  delete card.hereIds
+  return card
 }

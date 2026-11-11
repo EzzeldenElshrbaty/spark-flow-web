@@ -280,6 +280,11 @@ describe('createHttpApi', () => {
     await api.phases.update('ph1', { name: 'QA 2' })
     await api.phases.remove('ph1')
     await api.phases.reorder('p1', ['ph2', 'ph1'])
+    await api.sprints.create({ projectId: 'p1' })
+    await api.sprints.update('s1', { goal: 'Ship it.' })
+    await api.sprints.start('s1', { name: 'Sprint 2', goal: '', startDate: 's', endDate: 'e' })
+    await api.sprints.complete('s1', { moveTo: 'new' })
+    await api.sprints.remove('s1')
     await api.deliverables.list('p1')
     await api.deliverables.create({ projectId: 'p1', phaseId: null, title: 'T', dueDate: 'd' })
     await api.deliverables.update('d1', { doneAt: 'x' })
@@ -299,6 +304,11 @@ describe('createHttpApi', () => {
       'PATCH /api/phases/ph1',
       'DELETE /api/phases/ph1',
       'PUT /api/projects/p1/phases/order',
+      'POST /api/projects/p1/sprints',
+      'PATCH /api/sprints/s1',
+      'POST /api/sprints/s1/start',
+      'POST /api/sprints/s1/complete',
+      'DELETE /api/sprints/s1',
       'GET /api/projects/p1/deliverables',
       'POST /api/projects/p1/deliverables',
       'PATCH /api/deliverables/d1',
@@ -312,7 +322,9 @@ describe('createHttpApi', () => {
     expect(JSON.parse(String(calls[3].init?.body))).toEqual({ name: 'M' })
     expect(calls[3].init?.headers).toMatchObject({ 'Content-Type': 'application/json' })
     expect(JSON.parse(String(calls[8].init?.body))).toEqual({ ids: ['ph2', 'ph1'] })
-    expect(calls[17].init?.body).toBeInstanceOf(FormData)
+    expect(JSON.parse(String(calls[11].init?.body))).toEqual({ name: 'Sprint 2', goal: '', startDate: 's', endDate: 'e' })
+    expect(JSON.parse(String(calls[12].init?.body))).toEqual({ moveTo: 'new' })
+    expect(calls.at(-1)!.init?.body).toBeInstanceOf(FormData)
   })
 
   it('reactions are a set (PUT) and an unset (DELETE) by emoji, and a reply carries its client id (spec §8)', async () => {
@@ -451,7 +463,7 @@ describe('createHttpApi', () => {
     await api.chat.replies('m1')
     await api.chat.markRead('c1')
     await api.projects.list('w1')
-    await api.tickets.sprints('p1')
+    await api.sprints.list('p1')
     await api.tickets.list('p1')
     await api.tickets.get('NEX-101')
     expect(calls.map((c) => `${c.init?.method ?? 'GET'} ${c.url}`)).toEqual([

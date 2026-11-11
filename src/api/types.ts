@@ -169,6 +169,13 @@ export type Sprint = {
   id: string; projectId: string; name: string; goal: string
   startDate: string; endDate: string; state: SprintState
 }
+/** A new planned sprint; what's left out takes the defaults (the next name, no goal, two weeks after the last sprint). */
+export type NewSprint = { projectId: string; name?: string; goal?: string; startDate?: string; endDate?: string }
+export type SprintPatch = Partial<Pick<Sprint, 'name' | 'goal' | 'startDate' | 'endDate'>>
+/** What the Start sheet confirmed. */
+export type StartSprint = Pick<Sprint, 'name' | 'goal' | 'startDate' | 'endDate'>
+/** A completed sprint, how many unfinished tasks moved, and the sprint they moved to (null: the backlog). */
+export type CompletedSprint = { sprint: Sprint; moved: number; next: Sprint | null }
 
 /** The id of the task's column on its project's board (the defaults are backlog, todo, inProgress, inReview, done). */
 export type TicketStatus = string
@@ -393,6 +400,8 @@ export type ChatMessage = {
   commentId?: string
   /** Set on the card a task change posts in its project's chat. */
   taskEvent?: TaskEvent
+  /** Set on the card starting or completing a sprint posts in its project's chat. */
+  sprintEvent?: SprintEvent
   /** Set once the author deletes it: the row stays (its thread too) with its text, files, mentions and reactions gone. */
   deletedAt?: string | null
   /**
@@ -496,6 +505,14 @@ export type SystemEvent =
 /** `statusLabel` is the column's name when the card was posted (renaming or deleting it later doesn't change the card). */
 export type TaskEvent = { key: string; kind: 'created' | 'assigned' | 'status' | 'done'; status?: TicketStatus; statusLabel?: string; assigneeId?: string }
 
+/**
+ * What a sprint card says, as it was when posted (renaming the sprint later doesn't change it). `movedTo` is the name of
+ * the sprint the unfinished tasks moved to, or null for the backlog.
+ */
+export type SprintEvent =
+  | { kind: 'started'; projectKey: string; sprintId: string; name: string; goal: string; endDate: string; tasks: number; points: number }
+  | { kind: 'completed'; projectKey: string; sprintId: string; name: string; done: number; total: number; movedTo: string | null; moved: number }
+
 /** What a project's history records. */
 export type ActivityKind =
   | 'task.created' | 'task.changed' | 'task.moved' | 'task.archived' | 'task.restored'
@@ -504,15 +521,16 @@ export type ActivityKind =
   | 'phase.added' | 'phase.changed' | 'phase.removed'
   | 'project.changed' | 'deliverable.added' | 'deliverable.changed'
   | 'file.removed' | 'deliverable.removed' | 'project.archived' | 'project.restored'
+  | 'sprint.added' | 'sprint.changed' | 'sprint.started' | 'sprint.completed' | 'sprint.removed'
 /** One field's change; labels are snapshots (a column, phase or sprint may be gone by the time it is read). */
 export type FieldChange = { field: string; from: string | null; to: string | null; fromLabel?: string; toLabel?: string }
 /** One line of history: who did what to which task (or the board, a phase, a deliverable), and when. Never edited. */
 export type ActivityEntry = {
   id: string; projectId: string; taskKey: string | null; actorId: string; at: string; kind: ActivityKind
   changes: FieldChange[]
-  /** The column, phase or deliverable's name, or a comment's kind ('comment' | 'bug'). */
+  /** The column, phase, sprint or deliverable's name, or a comment's kind ('comment' | 'bug'). */
   subject?: string
-  /** How many tasks a column delete moved. */
+  /** How many tasks a column delete moved; a sprint's complete or delete, how many tasks it moved. */
   count?: number
 }
 
@@ -946,7 +964,6 @@ export interface Api {
     setMuted(id: string, muted: boolean): Promise<Channel>
   }
   tickets: {
-    sprints(projectId: string): Promise<Sprint[]>
     /** The project's tasks; archived ones only with `archived: true` (and then only those). */
     list(projectId: string, opts?: { archived?: boolean }): Promise<TaskView[]>
     /** Also finds an archived task, so old links still open it. */
@@ -976,6 +993,20 @@ export interface Api {
     update(id: string, patch: PhasePatch): Promise<Phase>
     remove(id: string): Promise<void>
     reorder(projectId: string, ids: string[]): Promise<Phase[]>
+  }
+  /** An agile project's sprints; an Admin or the project's manager changes them (`task.manage`). */
+  sprints: {
+    /** Active first, then planned by start date, then closed newest first. */
+    list(projectId: string): Promise<Sprint[]>
+    create(input: NewSprint): Promise<Sprint>
+    /** A planned or active sprint. */
+    update(id: string, patch: SprintPatch): Promise<Sprint>
+    /** Planned → active with what the sheet confirmed: one active at a time, and not an empty one. */
+    start(id: string, input: StartSprint): Promise<Sprint>
+    /** Active → closed; unfinished tasks move to a planned sprint, a new one (`'new'`) or the backlog (null). */
+    complete(id: string, input: { moveTo: string | 'new' | null }): Promise<CompletedSprint>
+    /** A planned sprint only; its tasks go to the backlog. */
+    remove(id: string): Promise<void>
   }
   deliverables: {
     list(projectId: string): Promise<Deliverable[]>

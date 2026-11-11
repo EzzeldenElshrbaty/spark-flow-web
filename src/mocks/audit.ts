@@ -1,4 +1,4 @@
-import type { AuditAction, AuditChange, AuditEvent, AuditGroup, AuditRecord, AuditResult, Channel, Phase, Project, Role, StoredChannel, Team, Ticket, TimeEntry, User } from '@/api/types'
+import type { AuditAction, AuditChange, AuditEvent, AuditGroup, AuditRecord, AuditResult, Channel, Phase, Project, Role, Sprint, StoredChannel, Team, Ticket, TimeEntry, User } from '@/api/types'
 import { chainEvent, GENESIS } from '@/lib/auditChain'
 import { formatDate, formatTime } from '@/lib/format'
 import type { DbData } from './db'
@@ -119,6 +119,8 @@ export const recordOf = {
   project: (p: Pick<Project, 'id' | 'name'>): AuditRecord => ({ type: 'project', id: p.id, name: p.name }),
   task: (t: Pick<Ticket, 'key' | 'title'>): AuditRecord => ({ type: 'task', id: t.key, name: `${t.key} · ${t.title}` }),
   phase: (ph: Pick<Phase, 'id' | 'name'>, project: Pick<Project, 'name'> | undefined): AuditRecord => ({ type: 'phase', id: ph.id, name: project ? `${ph.name} · ${project.name}` : ph.name }),
+  /** "Sprint 15 · Nexus Core". */
+  sprint: (s: Pick<Sprint, 'id' | 'name'>, project: Pick<Project, 'name'>): AuditRecord => ({ type: 'sprint', id: s.id, name: `${s.name} · ${project.name}` }),
   deliverable: (d: { id: string; title: string }, project: Pick<Project, 'name'> | undefined): AuditRecord => ({ type: 'deliverable', id: d.id, name: project ? `${d.title} · ${project.name}` : d.title }),
   channel: (c: Pick<StoredChannel | Channel, 'id' | 'name' | 'kind'>): AuditRecord => ({ type: 'channel', id: c.id, name: c.kind === 'dm' ? 'A direct message' : `#${c.name ?? ''}` }),
   role: (r: Pick<Role, 'id' | 'name'>): AuditRecord => ({ type: 'role', id: r.id, name: r.name }),
@@ -138,6 +140,7 @@ export const RECORD_TYPES: Record<string, string> = {
   project: 'Projects',
   task: 'Tasks',
   phase: 'Phases',
+  sprint: 'Sprints',
   deliverable: 'Deliverables',
   team: 'Teams',
   channel: 'Channels',
@@ -159,7 +162,7 @@ export const RECORD_TYPES: Record<string, string> = {
 /** A stored time, as the server writes them; text that only starts like one stays text. */
 const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/
 /** Fields that hold a day, stored as its midnight: shown without a time. */
-const DAYS = new Set(['dueDate', 'startDate', 'dueAt'])
+const DAYS = new Set(['dueDate', 'startDate', 'endDate', 'dueAt'])
 const LONG = 80
 
 /** "onHold" → "On hold", "inProgress" → "In progress": a stored choice as people read it. */

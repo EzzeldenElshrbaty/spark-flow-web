@@ -41,12 +41,6 @@ function findTicket(data: DbData, key: string): Ticket {
 
 export function ticketsApi(db: MockDb, now: () => Date): Api['tickets'] {
   return {
-    async sprints(projectId) {
-      await delay()
-      const data = await db.read()
-      findProject(data, projectId)
-      return data.sprints.filter((s) => s.projectId === projectId)
-    },
     async list(projectId, opts) {
       await delay()
       const data = await db.read()
@@ -144,7 +138,12 @@ function checkTaskInput(data: DbData, projectId: string, input: Partial<TicketPa
     requireActive(data, [input.assigneeId])
     if (!projectPeopleIds(project, data.users).has(input.assigneeId)) throw badRequest('Pick someone on the project.')
   }
-  if (input.sprintId != null && data.sprints.find((s) => s.id === input.sprintId)?.projectId !== projectId) throw badRequest('That sprint belongs to another project.')
+  if (input.sprintId != null) {
+    const sprint = data.sprints.find((s) => s.id === input.sprintId)
+    if (sprint?.projectId !== projectId) throw badRequest('That sprint belongs to another project.')
+    // Into a closed sprint, from the task sheet or a stale tab; a task done in it keeps it through other edits.
+    if (sprint.state === 'closed' && input.sprintId !== ticket?.sprintId) throw badRequest('That sprint is closed. Pick a planned or running one.')
+  }
   if (input.storyPoints != null && (!Number.isFinite(input.storyPoints) || input.storyPoints < 0)) throw badRequest('Story points are a number, 0 or more.')
   if (input.dueAt != null && !isDate(input.dueAt)) throw badRequest('Pick a due date.')
   if (input.rank !== undefined && !Number.isFinite(input.rank)) throw badRequest('That position on the board is not a number.')

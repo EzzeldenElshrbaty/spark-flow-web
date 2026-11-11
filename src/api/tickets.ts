@@ -13,7 +13,7 @@ export function useProjects(workspaceId: string | undefined) {
 /** One project by its key (such as NEX), from its workspace's list; null when there is no such project. */
 
 export function useSprints(projectId: string | undefined) {
-  return useQuery({ queryKey: qk.sprints(projectId ?? ''), queryFn: () => api.tickets.sprints(projectId!), retry, enabled: Boolean(projectId) })
+  return useQuery({ queryKey: qk.sprints(projectId ?? ''), queryFn: () => api.sprints.list(projectId!), retry, enabled: Boolean(projectId) })
 }
 
 export function useTickets(projectId: string | undefined) {

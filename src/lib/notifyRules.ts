@@ -71,11 +71,12 @@ export function pausePresets(now: Date): { label: string; until: string }[] {
 }
 
 /**
- * Whether a row is someone's own words, which keywords can match: not what the channel itself says, a task's card or
- * a comment's card, nor a reply's copy in the channel (the reply is the one that counts). The bell and desktop agree.
+ * Whether a row is someone's own words, which keywords can match: not what the channel itself says, a task's or a
+ * sprint's card or a comment's card, nor a reply's copy in the channel (the reply is the one that counts). The bell and
+ * desktop agree.
  */
-export const keywordable = (row: { system?: unknown; taskEvent?: unknown; commentId?: unknown; broadcast?: unknown }): boolean =>
-  !row.system && !row.taskEvent && !row.commentId && !row.broadcast
+export const keywordable = (row: { system?: unknown; taskEvent?: unknown; sprintEvent?: unknown; commentId?: unknown; broadcast?: unknown }): boolean =>
+  !row.system && !row.taskEvent && !row.sprintEvent && !row.commentId && !row.broadcast
 
 /** Whether a message's mentions reach me: by name, @channel, or the @here that reached me when it was sent. */
 const reachesMe = (row: { mentions: Mention[]; hereIds?: string[] }, meId: string) =>
@@ -89,7 +90,7 @@ const reachesMe = (row: { mentions: Mention[]; hereIds?: string[] }, meId: strin
  * reply in a thread I muted counts as at Mentions and keywords whatever the level.
  */
 export function notifies(
-  row: { senderId: string; body: Body; mentions: Mention[]; hereIds?: string[]; system?: unknown; taskEvent?: unknown; commentId?: unknown; broadcast?: unknown },
+  row: { senderId: string; body: Body; mentions: Mention[]; hereIds?: string[]; system?: unknown; taskEvent?: unknown; sprintEvent?: unknown; commentId?: unknown; broadcast?: unknown },
   channel: { kind: ChannelKind; notifyLevel: NotifyLevel; muted: boolean },
   meId: string,
   prefs: Pick<Preferences, 'keywords' | 'dndUntil' | 'dndSchedule'>,

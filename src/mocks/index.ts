@@ -27,6 +27,7 @@ import { startScheduler } from './scheduler'
 import { seed } from './seed'
 import { openStore } from './store'
 import { projectsApi } from './projects'
+import { sprintsApi } from './sprints'
 import { teamsApi } from './teams'
 import { commentsApi } from './comments'
 import { dashboardApi } from './dashboard'
@@ -69,6 +70,7 @@ export function createMockApi(db: MockDb, hub: MockHub, now: () => Date = () => 
     chat: chatApi(db, hub),
     tickets: ticketsApi(db, now),
     ...projectParts,
+    sprints: sprintsApi(db, hub, now),
     tasks: tasksApi(db, hub, now),
     teams: teamsApi(db, hub),
     time: timeApi(db, hub, now),

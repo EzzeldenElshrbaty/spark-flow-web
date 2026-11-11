@@ -106,6 +106,7 @@ describe('notifies (what reaches me outside the app, spec 6.11)', () => {
   it('a keyword only in someone’s own words, as the bell counts it: not a task’s or a comment’s card', () => {
     const p = prefs({ keywords: ['deploy'] })
     expect(notifies(row('Fix deploy pipeline', { taskEvent: { kind: 'done' } }), channel(), me, p, now)).toBe(false)
+    expect(notifies(row('Started Sprint 15: deploy on Friday', { sprintEvent: { kind: 'started' } }), channel(), me, p, now)).toBe(false)
     expect(notifies(row('deploy notes', { commentId: 'cm-1' }), channel(), me, p, now)).toBe(false)
     expect(notifies(row('deploy notes'), channel(), me, p, now)).toBe(true)
   })

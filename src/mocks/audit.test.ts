@@ -84,6 +84,16 @@ const RECORDED: Record<string, Recorded> = {
     const ids = (await a.phases.list('p-nex')).map((p) => p.id)
     return a.phases.reorder('p-nex', [...ids].reverse())
   }),
+  'sprints.create': r(data('created', 'sprint'), (a) => a.sprints.create({ projectId: 'p-nex' })),
+  'sprints.update': r(data('changed', 'sprint'), (a) => a.sprints.update('s-nex-2', { goal: 'Ship the audit log.' })),
+  'sprints.remove': r(data('deleted', 'sprint'), (a) => a.sprints.remove('s-nex-2')),
+  // Sprint 14 runs in the seed: it's completed first, so Sprint 15 may start.
+  'sprints.start': r(
+    status('changed', 'sprint'),
+    (a) => a.sprints.start('s-nex-2', { name: 'Sprint 15', goal: 'Ship the audit log.', startDate: '2026-11-01T00:00:00.000Z', endDate: '2026-11-14T23:59:59.999Z' }),
+    (a) => a.sprints.complete('s-nex-1', { moveTo: null }),
+  ),
+  'sprints.complete': r(status('changed', 'sprint'), (a) => a.sprints.complete('s-nex-1', { moveTo: 's-nex-2' })),
   'deliverables.create': r(data('created', 'deliverable'), (a) => a.deliverables.create({ projectId: 'p-nex', title: 'API docs', phaseId: null, dueDate: '2026-11-12T00:00:00.000Z' })),
   'deliverables.update': r(data('changed', 'deliverable'), (a) => a.deliverables.update('d-nex-1', { title: 'Token rotation on staging' })),
   'deliverables.remove': r(data('deleted', 'deliverable'), (a) => a.deliverables.remove('d-nex-1')),
@@ -186,13 +196,13 @@ const NOT_RECORDED: Record<string, string> = {
   'chat.setStarred': MINE,
   'chat.setMuted': MINE,
   'chat.setNotifyLevel': MINE,
-  'tickets.sprints': READ,
   'tickets.list': READ,
   'tickets.get': READ,
   'tickets.resolve': READ,
   'projects.list': READ,
   'projects.get': READ,
   'phases.list': READ,
+  'sprints.list': READ,
   'deliverables.list': READ,
   'teams.list': READ,
   'time.list': READ,
