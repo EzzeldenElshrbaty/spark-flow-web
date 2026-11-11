@@ -1,8 +1,9 @@
 import { DndContext, DragOverlay, pointerWithin, rectIntersection, type Announcements, type CollisionDetection, type DragEndEvent } from '@dnd-kit/core'
 import { Plus } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useUpdateTask } from '@/api/tickets'
 import type { ProjectSummary, Sprint, TaskView, User } from '@/api/types'
+import { announce } from '@/components/sf/Announcer'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { columnLabel, columnsOf } from '@/lib/boardColumns'
@@ -10,9 +11,10 @@ import { SPACE_DRAG_KEYS, useDragSensors, zoneKeyboardCoordinates } from '@/lib/
 import { sortSprints, sprintTotals } from '@/lib/sprints'
 import { useNow } from '@/lib/useNow'
 import { usePermission } from '@/lib/usePermission'
+import { prunePending, withPending, type PendingMoves } from '@/pages/projects/boardMove'
 import { TicketRow } from '@/pages/projects/TicketRow'
 import { sprintPlanTasks } from '@/pages/projects/taskFilters'
-import { SprintSection, type MoveTarget } from './SprintSection'
+import { SprintSection, type MoveTarget, type RowFocus } from './SprintSection'
 
 /** What a manager can do to sprints (the sheets, Task 5); null for everyone else, and then no sprint buttons show. */
 export type SprintActions = { create(): void; edit(s: Sprint): void; start(s: Sprint): void; complete(s: Sprint): void; remove(s: Sprint): void } | null
@@ -40,37 +42,53 @@ export function SprintPlan({ project, tasks, allTasks, sprints, users, actions }
   const sensors = useDragSensors(SPACE_DRAG_KEYS, zoneKeyboardCoordinates)
   // "4 days left" turns over at midnight.
   const now = useNow(60_000)
-  // Moves still saving, by task key: shown at once, until the save (and the reload after it) lands or fails.
-  const [pending, setPending] = useState<Record<string, string | null>>({})
+  // Moves shown at once, as the board's drops: each until the server's copy of its task changes (the save landed, or
+  // someone else moved it) or its save fails. Not until the save's promise settles: a live update can restart the
+  // reload, and the row would jump back for a moment (and lose focus).
+  const [pending, setPending] = useState<PendingMoves>({})
+  const live = useMemo(() => prunePending(pending, allTasks), [pending, allTasks])
+  useEffect(() => {
+    if (Object.keys(live).length !== Object.keys(pending).length) setPending(live)
+  }, [live, pending])
   const [error, setError] = useState<string | null>(null)
   const [dragging, setDragging] = useState<string | null>(null)
+  // A moved row is drawn afresh in its new section (and again if a refusal puts it back): this is the control it
+  // takes focus on once it's there, its Move to after a pick or its handle after a drop (UX Phase 5A).
+  const [focus, setFocus] = useState<RowFocus | null>(null)
 
   const open = sortSprints(sprints).filter((s) => s.state !== 'closed')
   const zoneOf = (t: TaskView) => (t.sprintId && open.some((s) => s.id === t.sprintId) ? ZONE + t.sprintId : BACKLOG)
   const personOf = (id: string | null) => (id ? (users.find((u) => u.id === id)?.name ?? 'Unknown person') : null)
   const nameOf = (zone: string | number) => (zone === BACKLOG ? 'Backlog' : (open.find((s) => ZONE + s.id === zone)?.name ?? ''))
-  const moved = (list: TaskView[]) => list.map((t) => (t.key in pending ? { ...t, sprintId: pending[t.key] ?? null } : t))
   // In board order, as the List: the project's columns, then rank.
   const columns = columnsOf(project).map((c) => c.id)
-  const rows = sprintPlanTasks(moved(tasks), sprints).sort((a, b) => columns.indexOf(a.status) - columns.indexOf(b.status) || a.rank - b.rank)
-  const all = moved(allTasks)
+  const rows = sprintPlanTasks(withPending(tasks, live), sprints).sort((a, b) => columns.indexOf(a.status) - columns.indexOf(b.status) || a.rank - b.rank)
+  const all = withPending(allTasks, live)
   const backlogCount = sprintPlanTasks(all, sprints).filter((t) => !t.archivedAt && zoneOf(t) === BACKLOG).length
   const targets: MoveTarget[] = [...open.map((s) => ({ zone: ZONE + s.id, name: s.name, sprintId: s.id })), { zone: BACKLOG, name: 'Backlog', sprintId: null }]
 
-  const move = (task: TaskView, sprintId: string | null) => {
+  /** Moves a task to a sprint (null: Backlog), from its Move to or a drag; `control` keeps focus with the row. */
+  const move = (task: TaskView, sprintId: string | null, control: RowFocus['control']) => {
     setError(null)
-    setPending((p) => ({ ...p, [task.key]: sprintId }))
-    update
-      .mutateAsync({ key: task.key, patch: { sprintId } })
-      .catch((e: Error) => setError(e.message))
-      .finally(() =>
-        // A later move of the same task keeps its own.
+    setPending((p) => ({ ...p, [task.key]: { patch: { sprintId }, updatedAt: task.updatedAt } }))
+    // A done task sent to Backlog leaves the view (done tasks in no sprint aren't listed): nothing to focus there.
+    if (sprintId !== null || task.category !== 'done') setFocus({ key: task.key, control })
+    update.mutateAsync({ key: task.key, patch: { sprintId } }).then(
+      () => {
+        // A drop says so itself ("Dropped NEX-108 in Sprint 15.").
+        if (control === 'move') announce(sprintId ? `Moved ${task.key} to ${open.find((s) => s.id === sprintId)?.name ?? 'the sprint'}.` : `Moved ${task.key} to the backlog.`)
+      },
+      (e: Error) => {
+        // Back where it was (unless it has moved again since), saying why, with focus following it there.
         setPending((p) => {
-          if (p[task.key] !== sprintId) return p
-          const { [task.key]: _done, ...rest } = p
+          if (p[task.key]?.patch.sprintId !== sprintId) return p
+          const { [task.key]: _failed, ...rest } = p
           return rest
-        }),
-      )
+        })
+        setError(e.message)
+        setFocus({ key: task.key, control })
+      },
+    )
   }
 
   const announcements: Announcements = {
@@ -84,7 +102,7 @@ export function SprintPlan({ project, tasks, allTasks, sprints, users, actions }
     const task = rows.find((t) => t.key === active.id)
     // A drop on its own section changes nothing: there's no order inside a section.
     if (!task || !over || over.id === zoneOf(task)) return
-    move(task, over.id === BACKLOG ? null : String(over.id).slice(ZONE.length))
+    move(task, over.id === BACKLOG ? null : String(over.id).slice(ZONE.length), 'drag')
   }
   const held = dragging ? rows.find((t) => t.key === dragging) : undefined
   const create = actions && (
@@ -106,7 +124,9 @@ export function SprintPlan({ project, tasks, allTasks, sprints, users, actions }
         users={users}
         canMove={canMove}
         targets={targets}
-        onMove={move}
+        onMove={(task, sprintId) => move(task, sprintId, 'move')}
+        focus={focus}
+        onFocused={() => setFocus(null)}
         actions={actions}
         running={open.some((s) => s.state === 'active')}
       />

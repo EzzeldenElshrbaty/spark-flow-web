@@ -2,6 +2,7 @@ import '@/index.css'
 import { screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
+import { announce } from '@/components/sf/Announcer'
 import { api } from '@/lib/api'
 import { useUiStore } from '@/lib/uiStore'
 import { renderApp } from '@/test/app'
@@ -19,11 +20,15 @@ beforeEach(async () => {
   // The tab's remembered phase and view outlive a file (the UI store's, kept in memory too): a phase picked earlier
   // would hide rows here.
   useUiStore.setState({ lastFilters: {}, lastProjectView: {} })
+  // So is what the app last said.
+  announce('')
 })
 
 const PATH = '/w/engineering/p/NEX/tasks?view=sprints'
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 const section = (name: string) => screen.getByRole('region', { name })
+/** What the app's live regions say now (the Announcer is one of them). */
+const said = () => [...document.querySelectorAll('[role="status"]')].map((el) => el.textContent ?? '')
 const keysIn = (name: string) => within(section(name)).queryAllByRole('link').map((a) => /[A-Z]+-\d+/.exec(a.textContent ?? '')?.[0])
 
 /** A mouse drag from `from`'s middle to `to`'s, in steps, with the pointer and mouse events a browser sends (as the sidebar's test). */
@@ -87,8 +92,9 @@ describe('planning a sprint (sprints spec §6.1)', () => {
     await vi.waitFor(() => expect(keysIn('Sprint 15')).toEqual(['NEX-108', 'NEX-110']))
     await app.settled()
     expect((await api.tickets.get('NEX-108')).sprintId).toBe('s-nex-2')
-    // The board's words, said once it's dropped.
+    // The board's words, said once it's dropped; focus stays on the handle, now in Sprint 15.
     await vi.waitFor(() => expect(document.body.textContent).toContain('Dropped NEX-108 in Sprint 15.'))
+    await vi.waitFor(() => expect(document.activeElement).toBe(within(section('Sprint 15')).getByRole('button', { name: 'Drag NEX-108' })))
   })
 
   it('on a 390 px phone, Move to moves it', async () => {
@@ -105,6 +111,25 @@ describe('planning a sprint (sprints spec §6.1)', () => {
     await vi.waitFor(() => expect(keysIn('Sprint 15')).toEqual(['NEX-108', 'NEX-110']))
     await app.settled()
     expect((await api.tickets.get('NEX-108')).sprintId).toBe('s-nex-2')
+    // Focus follows the row onto its Move to in Sprint 15, and the move is said once (UX Phase 5A).
+    expect(document.activeElement).toBe(within(section('Sprint 15')).getByRole('button', { name: 'Move to: NEX-108' }))
+    expect(said()).toContain('Moved NEX-108 to Sprint 15.')
     expect(app.consoleErrors).toEqual([])
+  })
+
+  it('a refused Move to puts the row back, says why, and keeps focus on its Move to', async () => {
+    const app = await renderApp({ path: PATH, as: 'pm', theme: 'light', size: 'phone' })
+    await app.settled()
+    vi.spyOn(api.tasks, 'update').mockRejectedValueOnce(new Error('That sprint is closed. Pick a planned or running one.'))
+    const moveTo = screen.getByRole('button', { name: 'Move to: NEX-108' })
+    moveTo.scrollIntoView({ block: 'center' })
+    await userEvent.click(moveTo)
+    await userEvent.click(within(screen.getByRole('menu', { name: 'Move NEX-108 to' })).getByRole('menuitem', { name: 'Sprint 15' }))
+    await vi.waitFor(() => expect(screen.getByRole('alert').textContent).toBe('That sprint is closed. Pick a planned or running one.'))
+    await app.settled()
+    expect(keysIn('Backlog')).toContain('NEX-108')
+    expect(document.activeElement).toBe(within(section('Backlog')).getByRole('button', { name: 'Move to: NEX-108' }))
+    expect(said().join(' ')).not.toContain('Moved NEX-108')
+    vi.restoreAllMocks()
   })
 })

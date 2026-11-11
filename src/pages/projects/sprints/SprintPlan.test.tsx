@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ProjectSummary, Sprint, TaskView, User } from '@/api/types'
+import { announce, Announcer } from '@/components/sf/Announcer'
 import { sprintDays } from '@/lib/sprints'
 import { SprintPlan, type SprintActions } from './SprintPlan'
 
@@ -54,15 +55,19 @@ function mount({ tasks = TASKS, allTasks = TASKS, sprints = [s14, s15, s13], act
   return render(
     <MemoryRouter initialEntries={['/w/engineering/p/NEX/tasks?view=sprints']}>
       <SprintPlan project={project} tasks={tasks} allTasks={allTasks} sprints={sprints} users={users} actions={actions} />
+      <Announcer />
     </MemoryRouter>,
   )
 }
 
 const section = (name: string) => screen.getByRole('region', { name })
+/** What the live regions say now: the app's Announcer, and the drag's own. */
+const said = () => screen.getAllByRole('status').map((el) => el.textContent ?? '')
 const keysIn = (name: string) => within(section(name)).queryAllByRole('link').map((a) => /[A-Z]+-\d+/.exec(a.textContent ?? '')![0])
 
 beforeEach(() => {
   vi.useFakeTimers({ now: NOW, toFake: ['Date'] })
+  announce('')
   manager = true
 })
 afterEach(() => {
@@ -181,10 +186,33 @@ describe('Move to (sprints spec §6.1)', () => {
     expect(within(menu).getAllByRole('menuitem').map((i) => i.textContent?.trim())).toEqual(['Sprint 14', 'Sprint 15', 'Sprint 16'])
     await act(async () => fireEvent.click(within(menu).getByRole('menuitem', { name: 'Sprint 15' })))
     expect(mutateAsync).toHaveBeenCalledWith({ key: 'NEX-108', patch: { sprintId: 's-nex-2' } })
+    // Said once it's saved (UX Phase 5A).
+    expect(said()).toContain('Moved NEX-108 to Sprint 15.')
     menu = openMoveTo('NEX-102')
     expect(within(menu).getAllByRole('menuitem').map((i) => i.textContent?.trim())).toEqual(['Sprint 15', 'Sprint 16', 'Backlog'])
     await act(async () => fireEvent.click(within(menu).getByRole('menuitem', { name: 'Backlog' })))
     expect(mutateAsync).toHaveBeenLastCalledWith({ key: 'NEX-102', patch: { sprintId: null } })
+    expect(said()).toContain('Moved NEX-102 to the backlog.')
+  })
+
+  it('a saved move holds, with focus on its Move to, until the task’s new copy arrives (no jump back)', async () => {
+    const view = mount()
+    const menu = openMoveTo('NEX-108')
+    // The save resolves before the reload brings the new copy (a live update can restart it).
+    await act(async () => fireEvent.click(within(menu).getByRole('menuitem', { name: 'Sprint 15' })))
+    const moveTo = within(section('Sprint 15')).getByRole('button', { name: 'Move to: NEX-108' })
+    expect(document.activeElement).toBe(moveTo)
+    const saved = TASKS.map((t) => (t.key === 'NEX-108' ? { ...t, sprintId: 's-nex-2', updatedAt: '2026-11-11T10:00:00.000Z' } : t))
+    view.rerender(
+      <MemoryRouter initialEntries={['/w/engineering/p/NEX/tasks?view=sprints']}>
+        <SprintPlan project={project} tasks={saved} allTasks={saved} sprints={[s14, s15, s13]} users={users} actions={null} />
+        <Announcer />
+      </MemoryRouter>,
+    )
+    expect(keysIn('Sprint 15')).toEqual(['NEX-108', 'NEX-110'])
+    // The same button all along: the row was never drawn again.
+    expect(document.activeElement).toBe(moveTo)
+    expect(moveTo.isConnected).toBe(true)
   })
 
   it('shows the move at once, and a refused move goes back and says why', async () => {
@@ -194,9 +222,14 @@ describe('Move to (sprints spec §6.1)', () => {
     const menu = openMoveTo('NEX-108')
     await act(async () => fireEvent.click(within(menu).getByRole('menuitem', { name: 'Sprint 15' })))
     expect(keysIn('Sprint 15')).toEqual(['NEX-108', 'NEX-110'])
+    // Focus follows the row to its new section, onto its Move to.
+    expect(document.activeElement).toBe(within(section('Sprint 15')).getByRole('button', { name: 'Move to: NEX-108' }))
     await act(async () => refuse(new Error('That sprint is closed. Pick a planned or running one.')))
     expect(keysIn('Backlog')).toEqual(['NEX-108', 'NEX-109'])
     expect(screen.getByRole('alert').textContent).toBe('That sprint is closed. Pick a planned or running one.')
+    // And back with it.
+    expect(document.activeElement).toBe(within(section('Backlog')).getByRole('button', { name: 'Move to: NEX-108' }))
+    expect(said().join(' ')).not.toContain('Moved')
   })
 })
 

@@ -1,7 +1,7 @@
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import clsx from 'clsx'
 import { ArrowRightLeft, GripVertical, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
-import { useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState, type RefObject } from 'react'
 import type { BoardColumn, Sprint, TaskView, User } from '@/api/types'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -15,13 +15,14 @@ import type { SprintActions } from './SprintPlan'
 
 /** Where a task can be moved: an active or planned sprint, or Backlog (`sprintId` null). */
 export type MoveTarget = { zone: string; name: string; sprintId: string | null }
+/** The row (by task key) whose Move to or drag handle takes focus once it's drawn. */
+export type RowFocus = { key: string; control: 'move' | 'drag' }
 
 const count = (n: number, one: string) => `${n} ${n === 1 ? one : `${one}s`}`
 
 /** A row's Move to: the other active and planned sprints and Backlog, in a MenuPanel (a bottom sheet on phones). */
-function MoveTo({ task, targets, onMove }: { task: TaskView; targets: MoveTarget[]; onMove: (task: TaskView, sprintId: string | null) => void }) {
+function MoveTo({ task, targets, onMove, triggerRef }: { task: TaskView; targets: MoveTarget[]; onMove: (task: TaskView, sprintId: string | null) => void; triggerRef: RefObject<HTMLButtonElement | null> }) {
   const [open, setOpen] = useState(false)
-  const triggerRef = useRef<HTMLButtonElement>(null)
   return (
     <>
       <IconButton ref={triggerRef} label={`Move to: ${task.key}`} title="Move to" icon={ArrowRightLeft} size="sm" touch className="me-2" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((v) => !v)} />
@@ -46,19 +47,60 @@ function MoveTo({ task, targets, onMove }: { task: TaskView; targets: MoveTarget
   )
 }
 
-/** One task: a drag handle from `md` up and Move to for whoever may plan; the row itself opens the task. */
-function SprintRow({ task, assignee, statusName, canMove, targets, onMove }: { task: TaskView; assignee: string | null; statusName?: string; canMove: boolean; targets: MoveTarget[]; onMove: (task: TaskView, sprintId: string | null) => void }) {
+/**
+ * One task: a drag handle from `md` up and Move to for whoever may plan; the row itself opens the task. A moved row is
+ * a new one in its new section, so `focusOn` puts focus back on the control that moved it (UX Phase 5A).
+ */
+function SprintRow({
+  task,
+  assignee,
+  statusName,
+  canMove,
+  targets,
+  onMove,
+  focusOn,
+  onFocused,
+}: {
+  task: TaskView
+  assignee: string | null
+  statusName?: string
+  canMove: boolean
+  targets: MoveTarget[]
+  onMove: (task: TaskView, sprintId: string | null) => void
+  focusOn: RowFocus['control'] | null
+  onFocused: () => void
+}) {
   const { setNodeRef, setActivatorNodeRef, attributes, listeners, isDragging } = useDraggable({ id: task.key, disabled: !canMove })
+  const handleRef = useRef<HTMLButtonElement | null>(null)
+  const moveRef = useRef<HTMLButtonElement>(null)
+  // Only when asked: onFocused is a new function each render.
+  useEffect(() => {
+    if (!focusOn) return
+    ;(focusOn === 'drag' ? handleRef : moveRef).current?.focus()
+    onFocused()
+  }, [focusOn])
   return (
     <li ref={setNodeRef} className={clsx('flex items-center', isDragging && 'opacity-40')}>
       {canMove && (
         // Phones move with Move to: a press and hold would fight the scroll on a narrow row.
-        <IconButton ref={setActivatorNodeRef} label={`Drag ${task.key}`} title="Drag to another sprint" icon={GripVertical} size="sm" className="ms-2 cursor-grab touch-none max-md:hidden" {...attributes} {...listeners} />
+        <IconButton
+          ref={(node) => {
+            setActivatorNodeRef(node)
+            handleRef.current = node
+          }}
+          label={`Drag ${task.key}`}
+          title="Drag to another sprint"
+          icon={GripVertical}
+          size="sm"
+          className="ms-2 cursor-grab touch-none max-md:hidden"
+          {...attributes}
+          {...listeners}
+        />
       )}
       <div className="min-w-0 flex-1">
         <TicketRow ticket={task} assignee={assignee} variant="row" statusName={statusName} statusCategory={task.category} />
       </div>
-      {canMove && <MoveTo task={task} targets={targets} onMove={onMove} />}
+      {canMove && <MoveTo task={task} targets={targets} onMove={onMove} triggerRef={moveRef} />}
     </li>
   )
 }
@@ -104,6 +146,8 @@ export function SprintSection({
   canMove,
   targets,
   onMove,
+  focus,
+  onFocused,
   actions,
   running,
 }: {
@@ -119,6 +163,9 @@ export function SprintSection({
   /** Every place a task can go; each row leaves out its own. */
   targets: MoveTarget[]
   onMove: (task: TaskView, sprintId: string | null) => void
+  /** The moved row to focus once it's drawn here. */
+  focus: RowFocus | null
+  onFocused: () => void
   actions: SprintActions
   /** A sprint is active, so no other can start. */
   running: boolean
@@ -136,7 +183,7 @@ export function SprintSection({
     list = (
       <ul className="divide-y divide-line-subtle">
         {rows.map((task) => (
-          <SprintRow key={task.id} task={task} assignee={nameOf(task.assigneeId)} statusName={board && columnLabel({ board }, task.status)} canMove={canMove} targets={others} onMove={onMove} />
+          <SprintRow key={task.id} task={task} assignee={nameOf(task.assigneeId)} statusName={board && columnLabel({ board }, task.status)} canMove={canMove} targets={others} onMove={onMove} focusOn={focus?.key === task.key ? focus.control : null} onFocused={onFocused} />
         ))}
       </ul>
     )
