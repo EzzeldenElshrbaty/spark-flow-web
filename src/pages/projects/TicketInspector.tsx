@@ -162,6 +162,23 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
             )}
           </div>
         )}
+        {/* What the task is comes first, in its own box (11 Nov 2026): the description, then the task's files. */}
+        <section aria-labelledby="task-description" className="mb-4 rounded-xl border border-line bg-surface-muted p-4">
+          <h3 id="task-description" className="text-xs font-medium uppercase tracking-wide text-fg-tertiary">
+            Description
+          </h3>
+          <div className="mt-1.5">
+            <DescriptionView body={t.descriptionBody} files={t.attachments} onOpen={(file) => void openDescriptionFile(file)} />
+          </div>
+          {openError && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{openError}</p>}
+          {t.attachments.length > 0 && (
+            <>
+              <h3 className="mt-4 text-xs font-medium uppercase tracking-wide text-fg-tertiary">Attachments · {t.attachments.length}</h3>
+              <AttachmentView attachments={t.attachments} />
+            </>
+          )}
+        </section>
+        {viewing && <FileViewer files={[viewing]} onClose={closeViewer} onDownload={() => noteDownload(viewing.id)} />}
         <dl className="divide-y divide-line-subtle text-sm">
           <Field label="Status">
             {canStatus && !t.archivedAt ? (
@@ -257,18 +274,6 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
         )}
         {start.error && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{(start.error as Error).message}</p>}
         {addingTime && <AddTimeSheet projectId={t.projectId} taskId={t.id} onClose={() => setAddingTime(false)} />}
-        <h3 className="mt-5 text-xs font-medium uppercase tracking-wide text-fg-muted">Description</h3>
-        <div className="mt-1.5">
-          <DescriptionView body={t.descriptionBody} files={t.attachments} onOpen={(file) => void openDescriptionFile(file)} />
-        </div>
-        {openError && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{openError}</p>}
-        {viewing && <FileViewer files={[viewing]} onClose={closeViewer} onDownload={() => noteDownload(viewing.id)} />}
-        {t.attachments.length > 0 && (
-          <>
-            <h3 className="mt-5 text-xs font-medium uppercase tracking-wide text-fg-muted">Attachments · {t.attachments.length}</h3>
-            <AttachmentView attachments={t.attachments} />
-          </>
-        )}
         {/* Archived meanwhile (another tab): the sheet goes, since none of its edits could be saved. */}
         {editing && project && !archived && (
           <TaskSheet project={project} phases={phases.data ?? []} sprints={sprints.data ?? []} users={users.data ?? []} task={t} onClose={() => setEditing(false)} />

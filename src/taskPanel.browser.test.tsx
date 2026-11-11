@@ -103,3 +103,14 @@ describe('Expand panel', () => {
     await waitFor(() => expect(Math.round(sheet.getBoundingClientRect().height)).toBe(window.innerHeight))
   })
 })
+
+describe('the description comes first', () => {
+  it('sits in its own box above the fields, with the task’s files', async () => {
+    const app = await renderApp({ path: `/w/engineering/p/NEX/tasks?ticket=${TASK}`, as: 'admin', theme: 'light', size: 'desktop' })
+    await app.settled()
+    const box = within(panel()).getByRole('region', { name: 'Description' })
+    expect(box.textContent).toContain('Cap it at 99+')
+    // Before the fields: Status follows it.
+    expect(box.compareDocumentPosition(row('Status')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+})
