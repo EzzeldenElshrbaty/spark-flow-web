@@ -7,7 +7,7 @@ export function appPath(url: string, origin: string = globalThis.location?.origi
     const parsed = new URL(url)
     if (!origin || !['http:', 'https:'].includes(parsed.protocol) || parsed.origin !== origin) return null
     // A path that starts "//" (a backslash parses to "/") is another site to a router link: it stays a plain link.
-    if (/^\/\//.test(parsed.pathname) || /\\|%5c/i.test(parsed.pathname)) return null
+    if (parsed.pathname.startsWith('//') || /\\|%5c/i.test(parsed.pathname)) return null
     return `${parsed.pathname}${parsed.search}${parsed.hash}`
   } catch {
     return null

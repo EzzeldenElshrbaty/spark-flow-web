@@ -668,6 +668,15 @@ describe('Channel details › Tabs (spec 6.10): the channel’s bookmarks', () =
     expect(onRemoveBookmark).toHaveBeenCalledWith('b1')
   })
 
+  it('a bookmark to Flow opens inside Flow; any other in a new tab (polish pass)', () => {
+    const flow = { ...bookmarks[0]!, id: 'b2', title: 'Nexus Core', url: `${window.location.origin}/w/engineering/p/NEX/overview` }
+    show({ tab: 'tabs', bookmarks: [...bookmarks, flow] })
+    const inFlow = screen.getByRole('link', { name: 'Nexus Core' })
+    expect(inFlow.getAttribute('href')).toBe('/w/engineering/p/NEX/overview')
+    expect(inFlow.getAttribute('target')).toBeNull()
+    expect(screen.getByRole('link', { name: 'Runbook' }).getAttribute('target')).toBe('_blank')
+  })
+
   it('says when there are none; read-only without the handlers', () => {
     show({ tab: 'tabs', bookmarks: [] })
     expect(screen.getByText('No bookmarks yet. Add one with + after the channel’s tabs.')).toBeTruthy()

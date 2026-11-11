@@ -10,6 +10,7 @@ import type { ChatMessage, Page, User } from '@/api/types'
 import type { PendingMessage } from '@/lib/sendQueue'
 import { parseBody } from '@/lib/messageBody'
 import { MessageList } from '@/pages/chat/MessageList'
+import { buildRows } from '@/pages/chat/messageRows'
 import { useEditing } from '@/pages/chat/editingStore'
 
 // Scrolling needs real layout, so these run in Chromium (the `browser` test project), with the app's CSS.
@@ -24,7 +25,11 @@ const users: User[] = [
   { id: 'u-2', name: 'Nour El-Sayed' },
 ] as User[]
 
+// The real row builder, watched: a test counts how often the list rebuilds its rows.
+vi.mock('@/pages/chat/messageRows', { spy: true })
+
 const PAGE = 30
+const NONE: PendingMessage[] = []
 const start = Date.UTC(2026, 9, 28, 8, 0)
 
 /** A channel of `count` messages, alternating authors every 3 so some rows group and some don't. */
@@ -71,7 +76,7 @@ function Harness({
   onMarkRead = vi.fn(),
   focusSeq = null,
   jumped = false,
-  pending = [],
+  pending = NONE,
   onLatest = vi.fn(),
   holdRead = false,
   onMarkUnread,
@@ -485,6 +490,23 @@ describe('the intro row (chat spec 6.14)', () => {
     expect(await screen.findByText('Intro')).toBeTruthy()
     expect(await screen.findByText('Hello channel')).toBeTruthy()
     expect(screen.getByRole('button', { name: /Retry/ })).toBeTruthy()
+  })
+
+  it('a jump to the very beginning shows the intro, not just the first message (polish pass)', async () => {
+    mount({ data: channel(25), focusSeq: 1, intro: <p>Intro</p> })
+    await still()
+    const intro = (await screen.findByText('Intro')).getBoundingClientRect()
+    expect(intro.top).toBeGreaterThanOrEqual(list().getBoundingClientRect().top)
+    expect(list().scrollTop).toBe(0)
+  })
+
+  it('a new intro element with the same channel doesn’t rebuild the rows (polish pass)', async () => {
+    const view = mount({ data: channel(5), intro: <p>Intro</p> })
+    await still()
+    const built = vi.mocked(buildRows).mock.calls.length
+    view.update({ intro: <p>Intro</p> })
+    await still()
+    expect(vi.mocked(buildRows).mock.calls.length).toBe(built)
   })
 
   it('the intro sits above the first day divider', async () => {

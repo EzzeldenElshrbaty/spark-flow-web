@@ -571,7 +571,7 @@ Rules:
 | Files I may share | `GET /api/workspaces/:id/files?q` | | `ShareableFile[]` (`{ file, channelId, projectId }`), 30 at most: mine; an Admin's, any they can see |
 | Folders | `GET` / `POST /api/workspaces/:id/folders` | `{ name }` | `Folder[]` by name / the folder (`400` "Name the folder.", "There’s a folder called X already.") |
 | File in a folder | `PATCH /api/files/:id` | `{ folderId }` (or `null`) | the file; whoever may edit its details; `400` "That folder doesn’t exist." |
-| Bookmarks | `GET` / `POST /api/channels/:id/bookmarks`, `PATCH` / `DELETE /api/bookmarks/:id` | `{ title, url }` | http or https only (`400` "Use a web address (https://…)."); an empty title takes the host; whoever may post |
+| Bookmarks | `GET` / `POST /api/channels/:id/bookmarks`, `PATCH` / `DELETE /api/bookmarks/:id` | `{ title, url }` | http or https only (`400` "Use a web address (https://…)."); an empty title takes the host; an address the channel already has is refused (`409` "That link is already a bookmark here."); whoever may post |
 | Save a file | `PUT /api/saved` | `{ target: { kind: "file", id } }` | the saved item; its view carries `file` and `messageId` (where it was first shared that I can read) |
 
 - **Records:** `Attachment.folderId` (null for none); a message's `pin: { by, at }` is worked out on read (absent when not pinned); deleting a message unpins it.

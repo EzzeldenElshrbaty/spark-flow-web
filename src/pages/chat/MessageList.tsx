@@ -42,6 +42,9 @@ const estimate = (row: MessageListRow) => (row.kind === 'intro' ? 160 : row.kind
 
 type MessagesQuery = UseInfiniteQueryResult<InfiniteData<Page<ChatMessage>, unknown>>
 
+
+/** No messages on their way: one array, so a render without any doesn't rebuild the rows (polish pass). */
+const NO_PENDING: PendingMessage[] = []
 /**
  * A channel's messages (spec 6.2): virtualized, opened at the newest message (or at the New line when more than a
  * screen is unread), older pages load as the top comes near and the view stays put. Day sections with a sticky
@@ -68,7 +71,7 @@ export function MessageList({
   onJump,
   onLatest,
   scope,
-  pending = [],
+  pending = NO_PENDING,
   onRetry,
   onDiscard,
   intro,
@@ -119,9 +122,11 @@ export function MessageList({
     return pending.filter((p) => !arrived.has(p.clientId))
   }, [pending, messages, hasNewer])
   const pendingById = useMemo(() => new Map(shownPending.map((p) => [pendingId(p.clientId), p])), [shownPending])
+  // Whether there is an intro, not the element: a parent's render makes a new one (polish pass).
+  const hasIntro = Boolean(intro)
   const rows = useMemo(
-    () => buildRows([...messages, ...shownPending.map((p) => asMessage(p, meId))], { newAfterSeq, meId, hasOlder, now: new Date(), intro: Boolean(intro) }),
-    [messages, shownPending, newAfterSeq, meId, hasOlder, intro],
+    () => buildRows([...messages, ...shownPending.map((p) => asMessage(p, meId))], { newAfterSeq, meId, hasOlder, now: new Date(), intro: hasIntro }),
+    [messages, shownPending, newAfterSeq, meId, hasOlder, hasIntro],
   )
   // On open, older pages load until my first unread message is among them (a few at most), so the list can open there.
   const catchingUp =
@@ -212,7 +217,9 @@ export function MessageList({
   const focusIndex = focusSeq === null ? -1 : rows.findIndex((r) => r.kind === 'message' && r.message.seq >= focusSeq)
   const scrollToFocus = () => {
     if (focusIndex < 0) return false
-    virtualizer.scrollToIndex(focusIndex, { align: 'start' })
+    // The first message of the channel: the intro above it shows too ("The very beginning", polish pass).
+    const fromIntro = rows[0]?.kind === 'intro' && rows.slice(0, focusIndex).every((r) => r.kind !== 'message')
+    virtualizer.scrollToIndex(fromIntro ? 0 : focusIndex, { align: 'start' })
     const row = rows[focusIndex]
     if (row.kind === 'message') setJumped({ seq: row.message.seq, phase: 'on' })
     atBottomRef.current = false

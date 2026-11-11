@@ -39,6 +39,14 @@ describe('bookmarks (spec 6.1 tabs row +, §7 Bookmark)', () => {
     expect((await api.bookmarks.list('c-backend')).map((b) => b.title)).toEqual(['grafana.spark-sys.com'])
   })
 
+  it('the same address twice in one channel is refused (polish pass)', async () => {
+    await api.bookmarks.add('c-backend', { title: 'Runbook', url: 'https://wiki.spark-sys.com/runbook' })
+    await expect(api.bookmarks.add('c-backend', { title: 'Again', url: 'https://wiki.spark-sys.com/runbook' })).rejects.toMatchObject({
+      status: 409, detail: 'That link is already a bookmark here.',
+    })
+    expect((await api.bookmarks.add('c-general', { title: 'Runbook', url: 'https://wiki.spark-sys.com/runbook' })).channelId).toBe('c-general')
+  })
+
   it('only http and https links, never javascript: or data:', async () => {
     for (const url of ['javascript:alert(1)', 'data:text/html,hi', 'ftp://x.y', '', 'not a link']) {
       await expect(api.bookmarks.add('c-backend', { title: 'x', url }), url).rejects.toMatchObject({ status: 400, detail: 'Use a web address (https://…).' })
