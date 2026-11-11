@@ -1,3 +1,4 @@
+import clsx from 'clsx'
 import { Archive, ArrowUpRight, Clock, Maximize2, Minimize2, Pencil, Play } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router'
@@ -40,11 +41,12 @@ import { isPastDue } from '@/lib/dates'
 import { columnLabel, columnsOf } from '@/lib/boardColumns'
 import { DEFAULT_COLUMNS } from '@/lib/statuses'
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+/** One field: its label over its value, in half a row (`span`: the whole row). */
+function Field({ label, span = false, children }: { label: string; span?: boolean; children: ReactNode }) {
   return (
-    <div className="grid grid-cols-[6.5rem_1fr] items-center gap-3 py-2.5">
-      <dt className="text-fg-muted">{label}</dt>
-      <dd className="min-w-0 break-words text-fg">{children}</dd>
+    <div className={clsx('min-w-0', span && 'col-span-2')}>
+      <dt className="text-xs text-fg-muted">{label}</dt>
+      <dd className="mt-1 min-w-0 break-words text-fg">{children}</dd>
     </div>
   )
 }
@@ -146,12 +148,13 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
           </div>
         )}
         {(t.type === 'bug' || t.overdue || t.overEstimate || (canManage && !archived)) && (
-          <div className="mb-3 flex items-center gap-2">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
             {t.type === 'bug' && <BugPill />}
             {t.overdue && <OverduePill />}
             {t.overEstimate && <OverEstimatePill />}
             {canManage && !archived && (
-              <span className="ms-auto flex items-center gap-2">
+              // Never squeezed: beside the pills when they fit, on their own line when they don't.
+              <span className="ms-auto flex shrink-0 items-center gap-2 whitespace-nowrap">
                 <Button variant="ghost" onClick={() => setArchiving(true)}>
                   <Archive className="size-4" /> Archive task
                 </Button>
@@ -179,7 +182,8 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
           )}
         </section>
         {viewing && <FileViewer files={[viewing]} onClose={closeViewer} onDownload={() => noteDownload(viewing.id)} />}
-        <dl className="divide-y divide-line-subtle text-sm">
+        {/* Two to a row (11 Nov 2026), in pairs that belong together; Hours and Made from take the whole row. */}
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
           <Field label="Status">
             {canStatus && !t.archivedAt ? (
               <select
@@ -200,15 +204,6 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
             )}
             {update.error && <span className="mt-1 block text-xs text-red-600 dark:text-red-400">{(update.error as Error).message}</span>}
           </Field>
-          {project && workspace && (
-            <Field label="Project">
-              <Link to={paths.project(workspace.slug, project.key)} className="font-medium text-accent hover:underline">
-                {project.name}
-              </Link>
-            </Field>
-          )}
-          <Field label="Type">{t.type === 'bug' ? 'Bug' : 'Task'}</Field>
-          <Field label="Phase">{phase?.name ?? '—'}</Field>
           <Field label="Priority">
             <PriorityPill priority={t.priority} />
           </Field>
@@ -218,26 +213,30 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
           <Field label="Reporter">
             <Person name={nameOf(t.reporterId)} />
           </Field>
+          <Field label="Project">
+            {project && workspace ? (
+              <Link to={paths.project(workspace.slug, project.key)} className="font-medium text-accent hover:underline">
+                {project.name}
+              </Link>
+            ) : (
+              '—'
+            )}
+          </Field>
+          <Field label="Phase">{phase?.name ?? '—'}</Field>
+          <Field label="Type">{t.type === 'bug' ? 'Bug' : 'Task'}</Field>
           <Field label="Due">
             <span className={t.dueAt && t.category !== 'done' && isPastDue(t.dueAt, new Date()) ? 'tabular-nums text-red-600 dark:text-red-400' : 'tabular-nums'}>{t.dueAt ? formatDate(t.dueAt) : '—'}</span>
           </Field>
-          <Field label="Hours">
+          <Field label="Hours" span>
             <span className="tabular-nums">{hoursLabel(t.loggedHours, t.estimateHours)}</span>
-            <span className="block text-xs text-fg-muted">logged / estimate</span>
+            <span className="ms-2 text-xs text-fg-muted">logged / estimate</span>
           </Field>
-          {t.sprintId && <Field label="Sprint">{sprint?.name ?? (sprints.isLoading ? <span aria-hidden className="inline-block h-3 w-20 animate-pulse rounded bg-surface-strong align-middle" /> : '—')}</Field>}
-          {t.storyPoints !== null && (
-            <Field label="Points">
-              <span className="tabular-nums">{t.storyPoints}</span>
-            </Field>
-          )}
-          {/* The chat message the task was made from (Create task, /task), where I can see its channel. */}
-          {source?.name && workspace && t.linkedMessageId && (
-            <Field label="Made from">
-              <Link to={paths.message(workspace.slug, source.id, t.linkedMessageId)} className="font-medium text-accent hover:underline">
-                A message in #{source.name}
-              </Link>
-            </Field>
+          {/* Agile: Sprint and Points as a pair, either one — when it has none. */}
+          {(t.sprintId || t.storyPoints !== null) && (
+            <>
+              <Field label="Sprint">{t.sprintId ? (sprint?.name ?? (sprints.isLoading ? <span aria-hidden className="inline-block h-3 w-20 animate-pulse rounded bg-surface-strong align-middle" /> : '—')) : '—'}</Field>
+              <Field label="Points">{t.storyPoints !== null ? <span className="tabular-nums">{t.storyPoints}</span> : '—'}</Field>
+            </>
           )}
           <Field label="Created">
             <span className="tabular-nums">{formatDate(t.createdAt)}</span>
@@ -245,6 +244,14 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
           <Field label="Updated">
             <span className="tabular-nums">{formatDate(t.updatedAt)}</span>
           </Field>
+          {/* The chat message the task was made from (Create task, /task), where I can see its channel. */}
+          {source?.name && workspace && t.linkedMessageId && (
+            <Field label="Made from" span>
+              <Link to={paths.message(workspace.slug, source.id, t.linkedMessageId)} className="font-medium text-accent hover:underline">
+                A message in #{source.name}
+              </Link>
+            </Field>
+          )}
         </dl>
         <ConfirmDeleteSheet
           open={archiving}

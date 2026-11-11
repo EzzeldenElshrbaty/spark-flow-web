@@ -114,3 +114,18 @@ describe('the description comes first', () => {
     expect(box.compareDocumentPosition(row('Status')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 })
+
+describe('the fields, two to a row', () => {
+  it('pairs the fields side by side, and gives a long one the whole row', async () => {
+    const app = await renderApp({ path: `/w/engineering/p/NEX/tasks?ticket=${TASK}`, as: 'admin', theme: 'light', size: 'desktop' })
+    await app.settled()
+    const cell = (label: string) => within(panel()).getByText(label, { selector: 'dt' }).parentElement!.getBoundingClientRect()
+    // Status | Priority, Assignee | Reporter, Project | Phase, Type | Due, Hours, Sprint | Points, Created | Updated, Made from.
+    for (const [first, second] of [['Status', 'Priority'], ['Assignee', 'Reporter'], ['Project', 'Phase'], ['Type', 'Due'], ['Sprint', 'Points'], ['Created', 'Updated']]) {
+      expect(cell(second).top).toBe(cell(first).top)
+      expect(cell(second).left).toBeGreaterThan(cell(first).left)
+    }
+    expect(cell('Hours').width).toBeGreaterThan(cell('Type').width * 1.5)
+    expect(cell('Made from').width).toBeGreaterThan(cell('Type').width * 1.5)
+  })
+})

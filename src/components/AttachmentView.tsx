@@ -61,7 +61,7 @@ function One({ attachment }: { attachment: Attachment }) {
     )
   return (
     <>
-      <button type="button" onClick={() => setViewing(true)} disabled={!url} className="flex max-w-full items-center gap-2 rounded-lg border border-line px-3 py-2 text-start text-sm hover:bg-surface-muted disabled:opacity-60">
+      <button type="button" onClick={() => setViewing(true)} disabled={!url} className="flex max-w-full items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-start text-sm hover:bg-surface-muted disabled:opacity-60">
         <FileText className="size-4 shrink-0 text-fg-muted" />
         <span className="min-w-0 truncate text-fg">{attachment.name}</span>
         <span className="shrink-0 text-xs text-fg-muted">{sizeText(attachment.size)}</span>
