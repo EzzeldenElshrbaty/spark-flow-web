@@ -38,3 +38,16 @@ describe('the task panel’s fields', () => {
     expect(within(panel()).queryByText('Made from', { selector: 'dt' })).toBeNull()
   })
 })
+
+describe('one scroll, no tabs', () => {
+  it('shows the details, the comments and the history together', async () => {
+    // NEX-101 has one comment from Youssef.
+    const app = await renderApp({ path: '/w/engineering/p/NEX/tasks?ticket=NEX-101', as: 'admin', theme: 'light', size: 'desktop' })
+    await app.settled()
+    expect(within(panel()).queryByRole('tablist')).toBeNull()
+    expect(row('Status')).toBeTruthy()
+    expect(within(panel()).getByRole('heading', { level: 3, name: 'Comments · 1' })).toBeTruthy()
+    expect(within(panel()).getByText('Approved once the 30-second window test passes.')).toBeTruthy()
+    expect(within(panel()).getByRole('heading', { level: 3, name: 'History' })).toBeTruthy()
+  })
+})

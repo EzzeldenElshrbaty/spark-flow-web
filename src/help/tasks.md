@@ -24,7 +24,7 @@ Click a task to open it at the side. You can change its fields if your role allo
 
 Its description shows as written, with its files: click one to open it, and **Download** is in the viewer. **Attachments · N** lists the task’s files. Files are added and removed in **Edit task**.
 
-Below is its activity: comments and bugs, with files. Write `@` to mention someone, `@NEX-101` for a task, or `@NEX` for a project. A comment or bug also posts a card in the project’s chat.
+Its fields name the project, and on agile projects the sprint and points; **Made from** links to the chat message a task was made from. Below, in the same scroll, are its **Comments**: comments and bugs, with files. Write `@` to mention someone, `@NEX-101` for a task, or `@NEX` for a project. A comment or bug also posts a card in the project’s chat. Last is its **History**: every change, newest first.
 
 **Archive task** asks why, then hides it from the board. Its time stays in reports.
 

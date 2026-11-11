@@ -1,4 +1,3 @@
-import clsx from 'clsx'
 import { Archive, Clock, Pencil, Play } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
@@ -79,7 +78,6 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
   const [archiving, setArchiving] = useState(false)
   const archive = useArchiveTask()
   const restore = useRestoreTask()
-  const [tab, setTab] = useState<'details' | 'activity' | 'history'>('details')
   // A file opened from the description, in the viewer (Download inside, noted in the audit log).
   const [viewing, setViewing] = useState<{ id: string; name: string; url: string; sizeKb: number } | null>(null)
   const [openError, setOpenError] = useState<string | null>(null)
@@ -96,7 +94,8 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
     if (viewing) URL.revokeObjectURL(viewing.url)
     setViewing(null)
   }
-  const history = useTaskHistory(ticketKey, tab === 'history')
+  // Details, comments and history in one scroll (11 Nov 2026), so history loads with the panel.
+  const history = useTaskHistory(ticketKey, true)
   const comments = useComments(ticketKey)
   const myDay = useMyDay()
   const start = useStartTimer()
@@ -270,44 +269,29 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
       </>
     )
     const count = comments.data?.length ?? 0
+    const section = 'mt-6 border-t border-line-subtle pt-4'
+    const heading = 'text-xs font-medium uppercase tracking-wide text-fg-muted'
     body = (
       <>
-        <div className="-mt-1 mb-3 flex gap-1 border-b border-line" role="tablist" aria-label="Task">
-          {(
-            [
-              ['details', 'Details'],
-              ['activity', 'Comments'],
-              ['history', 'History'],
-            ] as const
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              role="tab"
-              aria-selected={tab === value}
-              onClick={() => setTab(value)}
-              className={clsx(
-                'relative flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-medium transition-colors',
-                "after:absolute after:inset-x-2 after:-bottom-px after:h-0.5 after:rounded-full after:bg-brand-500 after:transition-transform after:duration-200 after:content-['']",
-                tab === value ? 'text-fg after:scale-x-100' : 'text-fg-muted after:scale-x-0 hover:text-fg',
-              )}
-            >
-              {label}
-              {value === 'activity' && count > 0 && <span className="rounded-full bg-surface-muted px-1.5 py-0.5 text-[11px] leading-none tabular-nums text-fg-tertiary">{count}</span>}
-            </button>
-          ))}
-        </div>
-        {tab === 'details' ? (
-          details
-        ) : tab === 'activity' ? (
+        {details}
+        <section className={section} aria-labelledby="task-comments">
+          <h3 id="task-comments" className={`mb-3 ${heading}`}>
+            Comments{count > 0 && ` · ${count}`}
+          </h3>
           <TaskActivity task={t} project={project} users={users.data ?? []} />
-        ) : history.isError ? (
-          <QueryError what="History" onRetry={() => void history.refetch()} />
-        ) : !history.data ? (
-          <div className="h-24 animate-pulse rounded-lg bg-surface-muted" aria-hidden />
-        ) : (
-          <HistoryList entries={history.data} users={users.data ?? []} project={project} phases={phases.data ?? []} withKey={false} />
-        )}
+        </section>
+        <section className={section} aria-labelledby="task-history">
+          <h3 id="task-history" className={`mb-3 ${heading}`}>
+            History
+          </h3>
+          {history.isError ? (
+            <QueryError what="History" onRetry={() => void history.refetch()} />
+          ) : !history.data ? (
+            <div className="h-24 animate-pulse rounded-lg bg-surface-muted" aria-hidden />
+          ) : (
+            <HistoryList entries={history.data} users={users.data ?? []} project={project} phases={phases.data ?? []} withKey={false} />
+          )}
+        </section>
       </>
     )
   }
