@@ -194,7 +194,7 @@ function LoadedPage({ channel, view, people, me, mayEdit }: { channel: Channel; 
           <PageEditor key={editorKey} initial={view.body} editable={!conflict} directory={directory} onChange={saver.change} onBlur={() => void saver.flush()} />
         )}
       </div>
-      {showHistory && <PageHistory channelId={channel.id} ctx={ctx} people={people} mayEdit={mayEdit} currentVersion={view.version} onClose={() => setShowHistory(false)} />}
+      {showHistory && <PageHistory channelId={channel.id} scope={scope} people={people} mayEdit={mayEdit} currentVersion={view.version} onClose={() => setShowHistory(false)} />}
       <Modal
         open={asked !== null}
         onClose={() => answer('stay')}

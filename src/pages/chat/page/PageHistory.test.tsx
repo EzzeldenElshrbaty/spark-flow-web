@@ -3,11 +3,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { PageVersionSummary, PageView, User } from '@/api/types'
+import type { PageVersionSummary, PageView, TaskRef, User } from '@/api/types'
 import { announce, Announcer } from '@/components/sf/Announcer'
 import { api, ApiError } from '@/lib/api'
 import type { PageBody } from '@/lib/pageBody'
-import type { BodyContext } from '@/pages/chat/MessageBody'
+import type { BodyScope } from '@/pages/chat/useBodyContext'
 import { PageHistory } from './PageHistory'
 
 window.matchMedia ??= ((media: string) => ({ matches: false, media, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia
@@ -16,7 +16,7 @@ const users = [
   { id: 'u-1', name: 'Youssef Abdelrahman' },
   { id: 'u-2', name: 'Nour El-Sayed' },
 ] as User[]
-const ctx: BodyContext = { users, tasks: new Map(), projectKeys: new Set(), ws: 'engineering', workspaceId: 'ws-eng' }
+const scope: BodyScope = { users, projectKeys: new Set(['NEX']), ws: 'engineering', workspaceId: 'ws-eng' }
 const text = (t: string): PageBody => [{ type: 'p', children: [{ type: 'text', text: t }] }]
 const twoDaysAgo = new Date(Date.now() - 2 * 24 * 3_600_000).toISOString()
 const versions: PageVersionSummary[] = [
@@ -43,7 +43,7 @@ function mount(mayEdit = true) {
     <QueryClientProvider client={client}>
       <MemoryRouter>
         <Announcer />
-        <PageHistory channelId="c-general" ctx={ctx} people={users} mayEdit={mayEdit} currentVersion={3} onClose={onClose} />
+        <PageHistory channelId="c-general" scope={scope} people={users} mayEdit={mayEdit} currentVersion={3} onClose={onClose} />
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -68,6 +68,20 @@ describe('PageHistory (chat spec 6.14 §6.5)', () => {
     expect(await within(dialog).findByText('Oldest')).toBeTruthy()
     expect(within(dialog).queryByRole('textbox')).toBeNull()
     expect(within(dialog).queryByRole('button', { name: 'Restore this version' })).toBeNull()
+  })
+
+  it('a task named only in an older version shows as its chip (polish pass)', async () => {
+    vi.mocked(api.pages.version).mockImplementation(async (_channelId, id) => ({
+      ...versions.find((v) => v.id === id)!,
+      body: id === 'v1' ? [{ type: 'p', children: [{ type: 'text', text: 'See ' }, { type: 'task', key: 'NEX-12' }] }] : text('Newest'),
+    }))
+    const task = { key: 'NEX-12', title: 'Ship it', statusLabel: 'To do', category: 'todo', projectKey: 'NEX', projectName: 'Nexus Core', assigneeId: null } as TaskRef
+    const resolve = vi.spyOn(api.tickets, 'resolve').mockResolvedValue([task])
+    const dialog = mount()
+    const [, oldest] = await rows(dialog)
+    fireEvent.click(oldest!)
+    expect(await within(dialog).findByRole('link', { name: /NEX-12/ })).toBeTruthy()
+    expect(resolve).toHaveBeenCalledWith(['NEX-12'])
   })
 
   it('offers Restore only on an older version', async () => {

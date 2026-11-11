@@ -55,5 +55,5 @@ A channel’s history starts with where it began: its name, who made it and when
 - **Formatting:** the row above the page sets headings, lists, bold and italic, and adds a checklist or a table. `#`, `##`, `###`, `-`, `1.` and `[ ]` at the start of a line work too.
 - **Mentions and tasks:** @ names someone, who hears about it in Activity. **Link a task** puts a task on the page.
 - **If someone saved first:** your text stays where it is. **Copy my changes** keeps it, and **Load the latest** shows the page as it is now.
-- **History** lists every version. Pick one to read it, and **Restore this version** saves it as the newest; nothing newer is lost.
+- **History** lists the page’s versions, newest first: one person’s edits within 10 minutes are one version, and the newest 100 are kept. Pick one to read it, and **Restore this version** saves it as the newest; nothing newer is lost.
 - **Copy link** copies the page’s address.

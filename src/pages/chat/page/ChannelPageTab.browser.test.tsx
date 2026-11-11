@@ -133,6 +133,25 @@ describe('the channel’s page (chat spec 6.14)', () => {
     )
   })
 
+  it('the table menu stops at 10 columns and says why (polish pass)', async () => {
+    const app = await renderApp({ path: PAGE, as: 'admin', theme: 'light', size: 'desktop' })
+    await app.settled()
+    await focusEditor(editor())
+    await userEvent.click(screen.getByRole('button', { name: 'Table' }))
+    const addColumn = async () => {
+      await userEvent.click(screen.getByRole('button', { name: 'Table' }))
+      return screen.findByRole('menuitem', { name: /^Add column after/ })
+    }
+    for (let n = 3; n < 10; n++) {
+      await userEvent.click(await addColumn())
+      await waitFor(() => expect(within(editor()).getAllByRole('columnheader')).toHaveLength(n + 1))
+    }
+    const item = await addColumn()
+    expect(item.getAttribute('aria-disabled')).toBe('true')
+    expect(item.textContent).toContain('10 columns at most')
+    expect(screen.getByRole('menuitem', { name: /^Add row below/ }).getAttribute('aria-disabled')).toBeNull()
+  })
+
   it('a reader who can’t post sees the view and No page yet.', async () => {
     await api.chat.updateChannel('c-general', { whoCanPost: 'admins' })
     const app = await renderApp({ path: PAGE, as: 'member', theme: 'light', size: 'desktop' })

@@ -14,12 +14,13 @@ import {
 import { $findMatchingParent } from '@lexical/utils'
 import { IconBold, IconChevronDown, IconItalic, IconListCheck, IconSquareCheck, IconTable, type TablerIcon } from '@tabler/icons-react'
 import clsx from 'clsx'
-import { $createParagraphNode, $getSelection, $isRangeSelection, $isRootOrShadowRoot, FORMAT_TEXT_COMMAND, type LexicalNode } from 'lexical'
+import { $createParagraphNode, $getSelection, $isElementNode, $isRangeSelection, $isRootOrShadowRoot, FORMAT_TEXT_COMMAND, type LexicalNode } from 'lexical'
 import { useEffect, useState, type KeyboardEvent } from 'react'
 import { IconButton } from '@/components/sf/Button'
 import { Icon } from '@/components/sf/Icon'
 import { Menu, MenuItem } from '@/components/sf/Menu'
 import { isRtl } from '@/components/sf/layers'
+import { MAX_TABLE_COLUMNS, MAX_TABLE_ROWS } from '@/lib/pageBody'
 
 type Style = 'paragraph' | HeadingTagType | 'bullet' | 'number' | 'check'
 const STYLE_NAMES: Record<Exclude<Style, 'check' | 'h4' | 'h5' | 'h6'>, string> = {
@@ -30,21 +31,26 @@ const STYLE_NAMES: Record<Exclude<Style, 'check' | 'h4' | 'h5' | 'h6'>, string> 
   bullet: 'Bulleted list',
   number: 'Numbered list',
 }
-type State = { style: Style; bold: boolean; italic: boolean; inTable: boolean }
+/** `rows` and `columns`: the size of the table the caret is in (0 outside one). */
+type State = { style: Style; bold: boolean; italic: boolean; inTable: boolean; rows: number; columns: number }
+const EMPTY: State = { style: 'paragraph', bold: false, italic: false, inTable: false, rows: 0, columns: 0 }
 
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
 const mod = isMac ? '⌘' : 'Ctrl'
 
 function $toolbarState(): State {
   const selection = $getSelection()
-  if (!$isRangeSelection(selection)) return { style: 'paragraph', bold: false, italic: false, inTable: false }
+  if (!$isRangeSelection(selection)) return EMPTY
   const anchor = selection.anchor.getNode()
   const top = $findMatchingParent(anchor, (n: LexicalNode) => $isRootOrShadowRoot(n.getParent())) ?? anchor
   const inTable = Boolean($findMatchingParent(anchor, $isTableCellNode))
   // Inside a table, the block is the cell's paragraph, not the table.
   const block = inTable ? ($findMatchingParent(anchor, (n) => $isTableCellNode(n.getParent())) ?? anchor) : top
   const style: Style = $isListNode(block) ? (block.getListType() as 'bullet' | 'number' | 'check') : $isHeadingNode(block) ? block.getTag() : 'paragraph'
-  return { style, bold: selection.hasFormat('bold'), italic: selection.hasFormat('italic'), inTable }
+  const table = inTable ? $findMatchingParent(anchor, $isTableNode) : null
+  const firstRow = table?.getFirstChild()
+  const columns = firstRow && $isElementNode(firstRow) ? firstRow.getChildrenSize() : 0
+  return { style, bold: selection.hasFormat('bold'), italic: selection.hasFormat('italic'), inTable, rows: table?.getChildrenSize() ?? 0, columns }
 }
 
 // One Tab stop for the row; arrow keys, Home and End move along it (as the message toolbar).
@@ -58,7 +64,7 @@ const phoneSize = 'max-md:size-11'
  */
 export function PageToolbar({ onLinkTask }: { onLinkTask: () => void }) {
   const [editor] = useLexicalComposerContext()
-  const [state, setState] = useState<State>({ style: 'paragraph', bold: false, italic: false, inTable: false })
+  const [state, setState] = useState<State>(EMPTY)
   const [active, setActive] = useState(0)
   useEffect(() => editor.registerUpdateListener(({ editorState }) => editorState.read(() => setState($toolbarState()))), [editor])
 
@@ -122,6 +128,9 @@ export function PageToolbar({ onLinkTask }: { onLinkTask: () => void }) {
     </button>
   )
 
+  const rowRoom = state.rows >= MAX_TABLE_ROWS ? { disabled: true, hint: `${MAX_TABLE_ROWS} rows at most` } : {}
+  const columnRoom = state.columns >= MAX_TABLE_COLUMNS ? { disabled: true, hint: `${MAX_TABLE_COLUMNS} columns at most` } : {}
+
   return (
     <div
       role="toolbar"
@@ -145,10 +154,11 @@ export function PageToolbar({ onLinkTask }: { onLinkTask: () => void }) {
       )}
       {state.inTable ? (
         <Menu label="Table" trigger={(props) => menuButton(4, 'Table', IconTable, props)}>
-          <MenuItem onSelect={() => inTable(() => $insertTableRowAtSelection(false))}>Add row above</MenuItem>
-          <MenuItem onSelect={() => inTable(() => $insertTableRowAtSelection(true))}>Add row below</MenuItem>
-          <MenuItem onSelect={() => inTable(() => $insertTableColumnAtSelection(false))}>Add column before</MenuItem>
-          <MenuItem onSelect={() => inTable(() => $insertTableColumnAtSelection(true))}>Add column after</MenuItem>
+          {/* At the page's limits the adds say why, rather than let the save refuse the page (polish pass). */}
+          <MenuItem {...rowRoom} onSelect={() => inTable(() => $insertTableRowAtSelection(false))}>Add row above</MenuItem>
+          <MenuItem {...rowRoom} onSelect={() => inTable(() => $insertTableRowAtSelection(true))}>Add row below</MenuItem>
+          <MenuItem {...columnRoom} onSelect={() => inTable(() => $insertTableColumnAtSelection(false))}>Add column before</MenuItem>
+          <MenuItem {...columnRoom} onSelect={() => inTable(() => $insertTableColumnAtSelection(true))}>Add column after</MenuItem>
           <MenuItem onSelect={() => inTable(() => $deleteTableRowAtSelection())}>Delete row</MenuItem>
           <MenuItem onSelect={() => inTable(() => $deleteTableColumnAtSelection())}>Delete column</MenuItem>
           <MenuItem

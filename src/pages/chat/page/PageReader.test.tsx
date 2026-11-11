@@ -43,6 +43,13 @@ describe('PageReader (chat spec 6.14)', () => {
     expect(screen.getAllByRole('cell').map((c) => c.textContent)).toEqual(['C', 'D'])
   })
 
+  it('a wide table’s scroll box is a Tab stop named by its header (polish pass)', () => {
+    show([{ type: 'table', rows: [[t('Role'), t('Person')], [t('PM'), t('')]] }])
+    const box = screen.getByRole('region', { name: 'Table: Role, Person' })
+    expect(box.tabIndex).toBe(0)
+    expect(box.querySelector('table')).not.toBeNull()
+  })
+
   it('chips render as in messages', () => {
     show([{ type: 'p', children: [{ type: 'user', id: 'u-2', name: 'Nour' }, { type: 'text', text: ' owns ' }, { type: 'task', key: 'NEX-999' }] }])
     expect(screen.getByText('@Nour El-Sayed')).toBeTruthy()
