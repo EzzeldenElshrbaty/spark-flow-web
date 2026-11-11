@@ -142,6 +142,16 @@ describe('one editor at a time', () => {
     expect((await api.pages.save('c-general', { body: text('Mine'), baseVersion: 0 })).version).toBe(1)
   })
 
+  it('each renewal publishes the hold again, so readers hear it go on (polish pass)', async () => {
+    await asNour()
+    await api.pages.editing('c-general')
+    later(5_000)
+    events = []
+    await api.pages.editing('c-general')
+    const until = new Date(now.getTime() + MINUTE).toISOString()
+    expect(pageEvents()).toEqual([{ type: 'pageEditing', channelId: 'c-general', userId: 'u-2', until }])
+  })
+
   it('stopEditing lets the page go at once', async () => {
     await asNour()
     await api.pages.editing('c-general')

@@ -1,5 +1,5 @@
 import { IconHistory } from '@tabler/icons-react'
-import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLatestPage, usePage } from '@/api/pages'
 import type { Channel, PageView, User } from '@/api/types'
 import { announce } from '@/components/sf/Announcer'
@@ -18,6 +18,7 @@ import { PageBar } from './PageBar'
 import { PageEditor } from './PageEditor'
 import { PageHistory } from './PageHistory'
 import { PageReader } from './PageReader'
+import { useLiveHold } from './useLiveHold'
 import { usePageSaving } from './usePageSaving'
 
 const LOAD_FAILED = 'Couldn’t load the latest page. Check your connection.'
@@ -32,20 +33,6 @@ function PageSkeleton() {
       ))}
     </div>
   )
-}
-
-/** The hold while it lasts; re-renders when it runs out, so "… is editing" goes by itself. */
-function useLiveHold(view: PageView | undefined) {
-  const [, tick] = useReducer((n: number) => n + 1, 0)
-  const until = view?.editing?.until
-  useEffect(() => {
-    if (!until) return
-    const ms = Date.parse(until) - Date.now()
-    if (ms <= 0) return
-    const timer = setTimeout(tick, ms + 50)
-    return () => clearTimeout(timer)
-  }, [until])
-  return view?.editing && Date.parse(view.editing.until) > Date.now() ? view.editing : null
 }
 
 /**
@@ -77,7 +64,7 @@ function LoadedPage({ channel, view, people, me, mayEdit }: { channel: Channel; 
   const nameOf = (id: string) => people.find((u) => u.id === id)?.name ?? 'Someone'
   const saving = usePageSaving({ channelId: channel.id, view, me, nameOf })
   const { saver } = saving
-  const hold = useLiveHold(view)
+  const hold = useLiveHold(view.editing)
   const heldBy = hold && hold.userId !== me ? nameOf(hold.userId) : null
 
   // The editor starts from the page as it is when it mounts (after someone else's hold too: final review); a new key

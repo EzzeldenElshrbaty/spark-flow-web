@@ -116,15 +116,16 @@ export function pagesApi(db: MockDb, hub: MockHub, now: () => Date): Api['pages'
     },
     async editing(channelId) {
       await delay()
-      const { editing, changed } = await db.update((data) => {
+      const { editing, mine } = await db.update((data) => {
         const me = editor(data, channelId)
         const page = pageFor(data, channelId, me.id)
         const holder = holdOf(page)
-        if (holder && holder.userId !== me.id) return { editing: holder, changed: false }
+        if (holder && holder.userId !== me.id) return { editing: holder, mine: false }
         hold(page, me.id)
-        return { editing: page.editing!, changed: !holder }
+        return { editing: page.editing!, mine: true }
       })
-      if (changed) hub.publish({ type: 'pageEditing', channelId, userId: editing.userId, until: editing.until })
+      // Each claim of mine, a renewal too, is news: readers time the hold from when they hear of it (polish pass).
+      if (mine) hub.publish({ type: 'pageEditing', channelId, userId: editing.userId, until: editing.until })
       return { editing: clone(editing) }
     },
     async stopEditing(channelId) {

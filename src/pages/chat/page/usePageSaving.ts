@@ -58,9 +58,10 @@ export function createPageSaver(deps: SaverDeps) {
     if (Date.now() - lastClaim < PAGE_CLAIM_EVERY_MS) return
     lastClaim = Date.now()
     try {
+      // The server answers only a live hold: no clock of mine is asked (polish pass).
       const hold = await deps.claim()
       held = hold?.userId === deps.me
-      if (hold && hold.userId !== deps.me && Date.parse(hold.until) > Date.now() && !stopped()) {
+      if (hold && hold.userId !== deps.me && !stopped()) {
         stop()
         set({ state: 'conflict', error: `${deps.nameOf(hold.userId)} started editing first. Your last changes aren’t saved.` })
       }

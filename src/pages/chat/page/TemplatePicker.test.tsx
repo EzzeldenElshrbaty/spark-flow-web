@@ -106,6 +106,15 @@ describe('TemplatePicker (chat spec 6.14 §6)', () => {
     expect(save).not.toHaveBeenCalled()
   })
 
+  it('a hold the server reports counts even when my clock says it ended (polish pass)', async () => {
+    vi.mocked(api.pages.get).mockResolvedValue({ ...view(2), editing: { userId: 'u-2', until: new Date(Date.now() - 60_000).toISOString() } })
+    const save = vi.spyOn(api.pages, 'save')
+    const dialog = mount()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Use template' }))
+    expect(await within(dialog).findByText('Nour El-Sayed is editing the page. Try again when they’re done.')).toBeTruthy()
+    expect(save).not.toHaveBeenCalled()
+  })
+
   it('cancelling while the page is read saves nothing (final review)', async () => {
     let answer: (v: PageView) => void = () => {}
     vi.mocked(api.pages.get).mockImplementation(() => new Promise((resolve) => (answer = resolve)))

@@ -95,6 +95,15 @@ describe('saving a channel’s page (chat spec 6.14 §6.4)', () => {
     expect(save).not.toHaveBeenCalled()
   })
 
+  it('a hold the claim reports stops me even when my clock says it ended (polish pass)', async () => {
+    const { save, claim, saver, last } = setup()
+    claim.mockResolvedValueOnce({ userId: 'u-2', until: new Date(Date.now() - 60_000).toISOString() })
+    saver.change(body('Mine'))
+    await vi.advanceTimersByTimeAsync(2000)
+    expect(last().state).toBe('conflict')
+    expect(save).not.toHaveBeenCalled()
+  })
+
   it('a network failure retries at the next pause', async () => {
     const { save, saver, last } = setup()
     save.mockRejectedValueOnce(new TypeError('Failed to fetch'))

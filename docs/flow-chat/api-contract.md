@@ -599,7 +599,7 @@ Design: `docs/superpowers/specs/2026-11-10-channel-page-tab-design.md`.
 - **Versions:** one person's saves within 10 minutes of their first make one history entry (its `savedAt` is the last); another person, or a save after that, starts a new one. The newest 100 are kept. A restore always starts its own entry and never removes newer ones. Saving the same body again changes nothing.
 - **Mentions:** a save that names someone who wasn't named before (and isn't the saver, can read the channel and is active) stores a mention for them, with the text of the block that names them, cut to 120 characters. It shows in `GET /api/mentions` (`source: "page"`) and Activity (`kind: "mention"`, `page: true`, `messageId: null`) while they can read the channel, and shares their mention read state. It opens `/w/:ws/c/:channelId?tab=page`.
 - **Audit:** page saves, claims and restores are not in the audit log; the page's history is their record.
-- **Events:** `page.saved` (`pageSaved`, `{ channelId, version, userId }`) after a save or restore; `page.editing` (`pageEditing`, `{ channelId, userId, until }`, `userId` and `until` null when let go) when the holder changes; `notification.created` to each person newly mentioned.
+- **Events:** `page.saved` (`pageSaved`, `{ channelId, version, userId }`) after a save or restore; `page.editing` (`pageEditing`, `{ channelId, userId, until }`, `userId` and `until` null when let go) when the holder changes and on every renewal (a reader times the hold from when it last heard of it, never by comparing `until` with its own clock); `DELETE …/page/editing` is sent with `keepalive`, as a closing tab's last call; `notification.created` to each person newly mentioned.
 
 ## Phase 4 · Slice CI: channel intro (spec 6.14)
 
