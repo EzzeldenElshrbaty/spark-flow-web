@@ -3204,3 +3204,20 @@ see keeps the plain card.
 - [x] `TaskCard` with an optional last line; `TaskEventCard` uses it
 - [x] Browser check: /task in #sela-booking, then a move; desktop light, 390 px dark; the card opens the panel
 - [x] Gates: lint, tsc, `npm test` 3,172/3,172
+
+# The task panel shows all of a task — 11 Nov 2026, approved ("Yes, build it")
+
+Branch `feat/task-panel` from dev e86d1c6. Asked for: every field, no tabs, a way to the task's board, a bigger panel.
+
+- [x] Fields: Project (link), Points (agile, when set), Made from (link to the source message, where I can see its
+      channel) — d60d800
+- [x] One scroll: Details, then Comments · N, then History (loads with the panel); the walkthrough's tab clicks
+      went — fcb86d8
+- [x] Open in project (↗) in the header, not on that board itself — 0d9f1ff
+- [x] Expand panel / Shrink panel: 40rem over the page as a modal at every width (beside the page it squeezed the top
+      bar at 1440 px), the whole screen on a phone; kept per person (`uiStore.wideTaskPanel`) — 2f3e65c
+- [x] Tests: `src/taskPanel.browser.test.tsx` (7); tasks help updated
+- [x] Browser check: NEX-106 from #frontend-dev at 1440 px, normal and wide
+- [x] Gates: lint, tsc clean; `npm run test:ux` 1,000/1,000; `npm test` 3,215/3,216 — the one failure,
+      `ProjectBoard.browser.test.tsx` "Tab reaches a card’s link" (board only, untouched here), passed 3/3 on its own:
+      flaky under the full run's load
