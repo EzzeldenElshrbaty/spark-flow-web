@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { formatClock, formatHours, formatTime } from '@/lib/format'
 import { entryHours } from '@/lib/hours'
+import { useCanAddTime } from '@/lib/useCanAddTime'
 import { useNow } from '@/lib/useNow'
 import { StartTimerDialog } from '@/layout/StartTimerDialog'
 import { TimerControls, timerClock } from '@/layout/TimerBar'
@@ -81,10 +82,14 @@ function Entries({ day, label }: { day: MyDay; label: Label }) {
 
 /**
  * Home's Today card (timer slice 3): my timer and its buttons, or Start timer, then today's entries and their hours,
- * with Add time. Starting a timer is the whole start of the day: there's no check-in, plan or check-out.
+ * with Add time for an Admin or a project's manager (11 Nov 2026). Starting a timer is the whole start of the day:
+ * there's no check-in, plan or check-out.
  */
 export function TodayCard({ day, label }: { day: MyDay; label: Label }) {
   const [adding, setAdding] = useState(false)
+  const canAddTime = useCanAddTime()
+  const { projects } = useLogTargets('')
+  const mayAdd = projects.some((project) => canAddTime(project))
   const now = useNow(day.timer ? 60_000 : 0)
   const summary = daySummary(day.entries, now)
   return (
@@ -92,9 +97,11 @@ export function TodayCard({ day, label }: { day: MyDay; label: Label }) {
       <CardHeader
         title={`Today · ${formatHours(summary.hours)}`}
         action={
-          <button type="button" onClick={() => setAdding(true)} className="inline-flex items-center gap-1 text-sm font-medium text-accent hover:text-accent-strong">
-            <Clock className="size-4" /> Add time
-          </button>
+          mayAdd && (
+            <button type="button" onClick={() => setAdding(true)} className="inline-flex items-center gap-1 text-sm font-medium text-accent hover:text-accent-strong">
+              <Clock className="size-4" /> Add time
+            </button>
+          )
         }
       />
       <div className="space-y-4 p-5">

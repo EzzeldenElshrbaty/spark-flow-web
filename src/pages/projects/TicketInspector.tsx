@@ -1,7 +1,9 @@
 import clsx from 'clsx'
-import { Archive, Clock, Pencil, Play } from 'lucide-react'
+import { Archive, ArrowUpRight, Clock, Maximize2, Minimize2, Pencil, Play } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
+import { Link, useLocation } from 'react-router'
 import { noteDownload } from '@/api/audit'
+import { useChannels } from '@/api/chat'
 import { useComments } from '@/api/comments'
 import { openFile, usePhases, useProjectSummary } from '@/api/projects'
 import { useArchiveTask, useRestoreTask, useSprints, useTicket, useUpdateTask } from '@/api/tickets'
@@ -21,7 +23,12 @@ import { InspectorFrame, InspectorSkeleton, TitleSkeleton, type InspectorBodyPro
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { ApiError } from '@/lib/api'
 import { formatDate } from '@/lib/format'
+import { withInspector } from '@/lib/inspector'
+import { paths } from '@/lib/paths'
+import { useCanAddTime } from '@/lib/useCanAddTime'
 import { useCanLog } from '@/lib/useCanLog'
+import { useRole } from '@/lib/useRole'
+import { useUiStore } from '@/lib/uiStore'
 import { usePermission } from '@/lib/usePermission'
 import { TaskSheet } from '@/pages/projects/TaskSheet'
 import { AddTimeSheet } from '@/pages/time/AddTimeSheet'
@@ -35,11 +42,12 @@ import { isPastDue } from '@/lib/dates'
 import { columnLabel, columnsOf } from '@/lib/boardColumns'
 import { DEFAULT_COLUMNS } from '@/lib/statuses'
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+/** One field: its label over its value, in half a row (`span`: the whole row). */
+function Field({ label, span = false, children }: { label: string; span?: boolean; children: ReactNode }) {
   return (
-    <div className="grid grid-cols-[6.5rem_1fr] items-center gap-3 py-2.5">
-      <dt className="text-fg-muted">{label}</dt>
-      <dd className="min-w-0 break-words text-fg">{children}</dd>
+    <div className={clsx('min-w-0', span && 'col-span-2')}>
+      <dt className="text-xs text-fg-muted">{label}</dt>
+      <dd className="mt-1 min-w-0 break-words text-fg">{children}</dd>
     </div>
   )
 }
@@ -60,21 +68,27 @@ function Person({ name }: { name: string | null }) {
  */
 export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: string } & InspectorBodyProps) {
   const { workspace } = useCurrentWorkspace()
+  const { pathname } = useLocation()
+  const { persona } = useRole()
+  const wide = useUiStore((state) => Boolean(state.wideTaskPanel[persona.id]))
+  const setWide = useUiStore((state) => state.setWideTaskPanel)
   const ticket = useTicket(ticketKey)
   const users = useUsers(workspace?.id)
   // By key (a task key starts with its project's), so an archived project's tasks still open; the list leaves those out.
   const projectQuery = useProjectSummary(workspace?.id, ticketKey.split('-')[0])
   const sprints = useSprints(ticket.data?.projectId)
+  // The channels I can see, for "Made from": a private channel I'm not in isn't named.
+  const channels = useChannels(workspace?.id)
   const phases = usePhases(ticket.data?.projectId)
   const update = useUpdateTask()
   const check = usePermission()
   const canLog = useCanLog()
+  const canAddTime = useCanAddTime()
   const [editing, setEditing] = useState(false)
   const [addingTime, setAddingTime] = useState(false)
   const [archiving, setArchiving] = useState(false)
   const archive = useArchiveTask()
   const restore = useRestoreTask()
-  const [tab, setTab] = useState<'details' | 'activity' | 'history'>('details')
   // A file opened from the description, in the viewer (Download inside, noted in the audit log).
   const [viewing, setViewing] = useState<{ id: string; name: string; url: string; sizeKb: number } | null>(null)
   const [openError, setOpenError] = useState<string | null>(null)
@@ -91,7 +105,8 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
     if (viewing) URL.revokeObjectURL(viewing.url)
     setViewing(null)
   }
-  const history = useTaskHistory(ticketKey, tab === 'history')
+  // Details, comments and history in one scroll (11 Nov 2026), so history loads with the panel.
+  const history = useTaskHistory(ticketKey, true)
   const comments = useComments(ticketKey)
   const myDay = useMyDay()
   const start = useStartTimer()
@@ -119,6 +134,7 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
     const canManage = project ? check('task.manage', { project }) : false
     const canStatus = project ? check('task.updateOwnStatus', { project, taskAssigneeId: t.assigneeId }) : false
     const archived = Boolean(t.archivedAt)
+    const source = t.linkedChannelId && t.linkedMessageId ? channels.data?.find((c) => c.id === t.linkedChannelId) : undefined
     const details = (
       <>
         {archived && (
@@ -134,12 +150,13 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
           </div>
         )}
         {(t.type === 'bug' || t.overdue || t.overEstimate || (canManage && !archived)) && (
-          <div className="mb-3 flex items-center gap-2">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
             {t.type === 'bug' && <BugPill />}
             {t.overdue && <OverduePill />}
             {t.overEstimate && <OverEstimatePill />}
             {canManage && !archived && (
-              <span className="ms-auto flex items-center gap-2">
+              // Never squeezed: beside the pills when they fit, on their own line when they don't.
+              <span className="ms-auto flex shrink-0 items-center gap-2 whitespace-nowrap">
                 <Button variant="ghost" onClick={() => setArchiving(true)}>
                   <Archive className="size-4" /> Archive task
                 </Button>
@@ -150,7 +167,25 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
             )}
           </div>
         )}
-        <dl className="divide-y divide-line-subtle text-sm">
+        {/* What the task is comes first, in its own box (11 Nov 2026): the description, then the task's files. */}
+        <section aria-labelledby="task-description" className="mb-4 rounded-xl border border-line bg-surface-muted p-4">
+          <h3 id="task-description" className="text-xs font-medium uppercase tracking-wide text-fg-tertiary">
+            Description
+          </h3>
+          <div className="mt-1.5">
+            <DescriptionView body={t.descriptionBody} files={t.attachments} onOpen={(file) => void openDescriptionFile(file)} />
+          </div>
+          {openError && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{openError}</p>}
+          {t.attachments.length > 0 && (
+            <>
+              <h3 className="mt-4 text-xs font-medium uppercase tracking-wide text-fg-tertiary">Attachments · {t.attachments.length}</h3>
+              <AttachmentView attachments={t.attachments} />
+            </>
+          )}
+        </section>
+        {viewing && <FileViewer files={[viewing]} onClose={closeViewer} onDownload={() => noteDownload(viewing.id)} />}
+        {/* Two to a row (11 Nov 2026), in pairs that belong together; Hours and Made from take the whole row. */}
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
           <Field label="Status">
             {canStatus && !t.archivedAt ? (
               <select
@@ -171,8 +206,6 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
             )}
             {update.error && <span className="mt-1 block text-xs text-red-600 dark:text-red-400">{(update.error as Error).message}</span>}
           </Field>
-          <Field label="Type">{t.type === 'bug' ? 'Bug' : 'Task'}</Field>
-          <Field label="Phase">{phase?.name ?? '—'}</Field>
           <Field label="Priority">
             <PriorityPill priority={t.priority} />
           </Field>
@@ -182,20 +215,45 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
           <Field label="Reporter">
             <Person name={nameOf(t.reporterId)} />
           </Field>
+          <Field label="Project">
+            {project && workspace ? (
+              <Link to={paths.project(workspace.slug, project.key)} className="font-medium text-accent hover:underline">
+                {project.name}
+              </Link>
+            ) : (
+              '—'
+            )}
+          </Field>
+          <Field label="Phase">{phase?.name ?? '—'}</Field>
+          <Field label="Type">{t.type === 'bug' ? 'Bug' : 'Task'}</Field>
           <Field label="Due">
             <span className={t.dueAt && t.category !== 'done' && isPastDue(t.dueAt, new Date()) ? 'tabular-nums text-red-600 dark:text-red-400' : 'tabular-nums'}>{t.dueAt ? formatDate(t.dueAt) : '—'}</span>
           </Field>
-          <Field label="Hours">
+          <Field label="Hours" span>
             <span className="tabular-nums">{hoursLabel(t.loggedHours, t.estimateHours)}</span>
-            <span className="block text-xs text-fg-muted">logged / estimate</span>
+            <span className="ms-2 text-xs text-fg-muted">logged / estimate</span>
           </Field>
-          {t.sprintId && <Field label="Sprint">{sprint?.name ?? (sprints.isLoading ? <span aria-hidden className="inline-block h-3 w-20 animate-pulse rounded bg-surface-strong align-middle" /> : '—')}</Field>}
+          {/* Agile: Sprint and Points as a pair, either one — when it has none. */}
+          {(t.sprintId || t.storyPoints !== null) && (
+            <>
+              <Field label="Sprint">{t.sprintId ? (sprint?.name ?? (sprints.isLoading ? <span aria-hidden className="inline-block h-3 w-20 animate-pulse rounded bg-surface-strong align-middle" /> : '—')) : '—'}</Field>
+              <Field label="Points">{t.storyPoints !== null ? <span className="tabular-nums">{t.storyPoints}</span> : '—'}</Field>
+            </>
+          )}
           <Field label="Created">
             <span className="tabular-nums">{formatDate(t.createdAt)}</span>
           </Field>
           <Field label="Updated">
             <span className="tabular-nums">{formatDate(t.updatedAt)}</span>
           </Field>
+          {/* The chat message the task was made from (Create task, /task), where I can see its channel. */}
+          {source?.name && workspace && t.linkedMessageId && (
+            <Field label="Made from" span>
+              <Link to={paths.message(workspace.slug, source.id, t.linkedMessageId)} className="font-medium text-accent hover:underline">
+                A message in #{source.name}
+              </Link>
+            </Field>
+          )}
         </dl>
         <ConfirmDeleteSheet
           open={archiving}
@@ -208,9 +266,10 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
           onConfirm={(reason) => archive.mutateAsync({ key: t.key, reason })}
           onClose={() => setArchiving(false)}
         />
-        {!archived && canLog(project) && (
+        {/* The timer for everyone on the project; Add time for an Admin or its manager only (11 Nov 2026). */}
+        {!archived && (canLog(project) || canAddTime(project)) && (
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          {t.category !== 'done' &&
+          {canLog(project) && t.category !== 'done' &&
             (timerForTask(myDay.data?.timer, t.id) ? (
               <TimerControls timer={timerForTask(myDay.data?.timer, t.id)!} layout="card" />
             ) : (
@@ -218,25 +277,15 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
                 <Play className="size-4" /> {start.isPending ? 'Starting…' : 'Start timer'}
               </Button>
             ))}
-          <Button variant="ghost" onClick={() => setAddingTime(true)}>
-            <Clock className="size-4" /> Add time
-          </Button>
+          {canAddTime(project) && (
+            <Button variant="ghost" onClick={() => setAddingTime(true)}>
+              <Clock className="size-4" /> Add time
+            </Button>
+          )}
         </div>
         )}
         {start.error && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{(start.error as Error).message}</p>}
         {addingTime && <AddTimeSheet projectId={t.projectId} taskId={t.id} onClose={() => setAddingTime(false)} />}
-        <h3 className="mt-5 text-xs font-medium uppercase tracking-wide text-fg-muted">Description</h3>
-        <div className="mt-1.5">
-          <DescriptionView body={t.descriptionBody} files={t.attachments} onOpen={(file) => void openDescriptionFile(file)} />
-        </div>
-        {openError && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{openError}</p>}
-        {viewing && <FileViewer files={[viewing]} onClose={closeViewer} onDownload={() => noteDownload(viewing.id)} />}
-        {t.attachments.length > 0 && (
-          <>
-            <h3 className="mt-5 text-xs font-medium uppercase tracking-wide text-fg-muted">Attachments · {t.attachments.length}</h3>
-            <AttachmentView attachments={t.attachments} />
-          </>
-        )}
         {/* Archived meanwhile (another tab): the sheet goes, since none of its edits could be saved. */}
         {editing && project && !archived && (
           <TaskSheet project={project} phases={phases.data ?? []} sprints={sprints.data ?? []} users={users.data ?? []} task={t} onClose={() => setEditing(false)} />
@@ -244,50 +293,60 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
       </>
     )
     const count = comments.data?.length ?? 0
+    const section = 'mt-6 border-t border-line-subtle pt-4'
+    const heading = 'text-xs font-medium uppercase tracking-wide text-fg-muted'
     body = (
       <>
-        <div className="-mt-1 mb-3 flex gap-1 border-b border-line" role="tablist" aria-label="Task">
-          {(
-            [
-              ['details', 'Details'],
-              ['activity', 'Comments'],
-              ['history', 'History'],
-            ] as const
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              role="tab"
-              aria-selected={tab === value}
-              onClick={() => setTab(value)}
-              className={clsx(
-                'relative flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-medium transition-colors',
-                "after:absolute after:inset-x-2 after:-bottom-px after:h-0.5 after:rounded-full after:bg-brand-500 after:transition-transform after:duration-200 after:content-['']",
-                tab === value ? 'text-fg after:scale-x-100' : 'text-fg-muted after:scale-x-0 hover:text-fg',
-              )}
-            >
-              {label}
-              {value === 'activity' && count > 0 && <span className="rounded-full bg-surface-muted px-1.5 py-0.5 text-[11px] leading-none tabular-nums text-fg-tertiary">{count}</span>}
-            </button>
-          ))}
-        </div>
-        {tab === 'details' ? (
-          details
-        ) : tab === 'activity' ? (
+        {details}
+        <section className={section} aria-labelledby="task-comments">
+          <h3 id="task-comments" className={`mb-3 ${heading}`}>
+            Comments{count > 0 && ` · ${count}`}
+          </h3>
           <TaskActivity task={t} project={project} users={users.data ?? []} />
-        ) : history.isError ? (
-          <QueryError what="History" onRetry={() => void history.refetch()} />
-        ) : !history.data ? (
-          <div className="h-24 animate-pulse rounded-lg bg-surface-muted" aria-hidden />
-        ) : (
-          <HistoryList entries={history.data} users={users.data ?? []} project={project} phases={phases.data ?? []} withKey={false} />
-        )}
+        </section>
+        <section className={section} aria-labelledby="task-history">
+          <h3 id="task-history" className={`mb-3 ${heading}`}>
+            History
+          </h3>
+          {history.isError ? (
+            <QueryError what="History" onRetry={() => void history.refetch()} />
+          ) : !history.data ? (
+            <div className="h-24 animate-pulse rounded-lg bg-surface-muted" aria-hidden />
+          ) : (
+            <HistoryList entries={history.data} users={users.data ?? []} project={project} phases={phases.data ?? []} withKey={false} />
+          )}
+        </section>
       </>
     )
   }
 
+  // The header's own controls, in the kit look of its Close.
+  const headerButton = 'rounded-md p-1 text-fg-muted hover:bg-surface-muted hover:text-fg max-md:touch-target'
+  // The task on its project's board, with this panel open: offered everywhere but that board.
+  const board = project && workspace ? paths.project(workspace.slug, project.key, 'tasks') : null
+  const openInProject = board && pathname !== board && (
+    <Link
+      to={`${board}?${withInspector(new URLSearchParams(), { kind: 'ticket', key: ticketKey }).toString()}`}
+      className={headerButton}
+      aria-label="Open in project"
+      title="Open in project"
+    >
+      <ArrowUpRight className="size-5 rtl:-scale-x-100" />
+    </Link>
+  )
+
+  const sizeLabel = wide ? 'Shrink panel' : 'Expand panel'
+  const actions = (
+    <>
+      <button type="button" className={headerButton} aria-label={sizeLabel} title={sizeLabel} onClick={() => setWide(persona.id, !wide)}>
+        {wide ? <Minimize2 className="size-5" /> : <Maximize2 className="size-5" />}
+      </button>
+      {openInProject}
+    </>
+  )
+
   return (
-    <InspectorFrame label="Task" eyebrow={eyebrow} title={title} onClose={onClose}>
+    <InspectorFrame label="Task" eyebrow={eyebrow} title={title} onClose={onClose} actions={actions} wide={wide}>
       {body}
     </InspectorFrame>
   )

@@ -23,7 +23,7 @@ One timer runs at a time: starting another stops the last.
 - **Switch task**, while paused, starts the timer on another task.
 - A paused timer clears at the end of the day.
 
-The timer also shows in the top bar (and above the bottom bar on phones), so you can pause or stop it from any page. **Add time** logs time you didn’t time. See [Time](help:time) for the rules.
+The timer also shows in the top bar (and above the bottom bar on phones), so you can pause or stop it from any page. **Add time** logs time nobody timed, for an Admin or a project’s manager. See [Time](help:time) for the rules.
 
 ## My tasks
 

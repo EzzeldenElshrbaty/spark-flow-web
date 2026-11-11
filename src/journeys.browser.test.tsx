@@ -81,10 +81,9 @@ describe.each(SETUPS)('Member (Mariam) at %s in %s', (size, theme) => {
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Start timer' })).toBeNull())
     await waitFor(() => expect(timer(size)?.textContent).toContain('NEX-106'))
 
-    // A comment with a file, in the task's panel.
+    // A comment with a file, in the task's panel (one scroll: details, comments, history).
     await go(app, '/w/engineering/p/NEX/tasks?ticket=NEX-106', 'Nexus Core')
     const panel = size === 'phone' ? await dialog('Task') : await screen.findByRole('complementary', { name: 'Task' })
-    await userEvent.click(within(panel).getByRole('tab', { name: /^Comments/ }))
     await userEvent.fill(await within(panel).findByRole('combobox', { name: 'Write a comment' }), 'Checked on staging, notes attached.')
     await userEvent.upload(within(panel).getByLabelText('Add images, video or files (up to 5)'), new File(['steps'], 'notes.txt', { type: 'text/plain' }))
     await userEvent.click(within(panel).getByRole('button', { name: 'Post comment' }))
@@ -92,7 +91,6 @@ describe.each(SETUPS)('Member (Mariam) at %s in %s', (size, theme) => {
     expect(await within(panel).findByRole('button', { name: /^notes\.txt/ })).toBeTruthy()
 
     // She moves it on, and stops the timer from the panel (on a phone the panel covers the timer bar).
-    await userEvent.click(within(panel).getByRole('tab', { name: 'Details' }))
     await userEvent.selectOptions(await within(panel).findByRole('combobox', { name: 'Status' }), 'In progress')
     await waitFor(() => expect((within(panel).getByRole('combobox', { name: 'Status' }) as HTMLSelectElement).value).toBe('inProgress'))
     await userEvent.click(await within(panel).findByRole('button', { name: 'Stop' }))

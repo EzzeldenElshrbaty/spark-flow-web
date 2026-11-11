@@ -172,8 +172,8 @@ describe('editing time', () => {
   })
 
   it("someone else's entry is refused; an admin may change it", async () => {
-    await api.users.viewAs('u-8') // Tarek
-    const his = await api.time.addManual(entry(at(6), at(7), 't-mob-104'))
+    // Tarek's entry, added by the Admin (manual time is the Admin's or the manager's to add).
+    const his = await api.time.addManual({ ...entry(at(6), at(7), 't-mob-104'), userId: 'u-8' })
     await api.users.viewAs('u-3') // Mariam, a member
     await expect(api.time.update(his.id, { note: 'mine' })).rejects.toMatchObject({ status: 403, detail: 'You can only change your own time.' })
     await expect(api.time.remove(his.id)).rejects.toMatchObject({ status: 403 })
@@ -244,7 +244,8 @@ describe('time on projects you are on', () => {
   it("starting a timer or adding time on a project you aren't on is refused", async () => {
     await api.users.viewAs('u-8') // Tarek: Mobile App only
     await expect(api.time.start({ taskId: 't-nex-102' })).rejects.toMatchObject({ status: 403, detail: "You’re not on this project." })
-    await expect(api.time.addManual(entry(at(6), at(7), 't-nex-102'))).rejects.toMatchObject({ status: 403, detail: "You’re not on this project." })
+    // A Member adds no time at all (11 Nov 2026).
+    await expect(api.time.addManual(entry(at(6), at(7), 't-nex-102'))).rejects.toMatchObject({ status: 403, detail: 'Only an Admin or the project’s manager can add time.' })
     await api.users.viewAs('u-9') // Karim, sales, not on Nexus Core
     await expect(api.time.start({ taskId: 't-nex-102' })).rejects.toMatchObject({ status: 403 })
   })
@@ -481,7 +482,7 @@ describe('my timer goes by when entries end (timer slice 2 app check)', () => {
 describe('adding time for someone else (add time for)', () => {
   // Yesterday 01:00–02:00: before any seeded timer that day.
   const forMariam = (userId = 'u-3', h = 1) => ({ projectId: 'p-nex', startedAt: at(h, 0, -1).toISOString(), endedAt: at(h + 1, 0, -1).toISOString(), note: 'Pairing', userId })
-  const FOR_MANAGERS = 'You can only add time for others on projects you manage.'
+  const ONLY_MANAGERS = 'Only an Admin or the project’s manager can add time.'
 
   it('an Admin adds time for someone on any project; it is theirs, marked who added it', async () => {
     const entry = await api.time.addManual(forMariam())
@@ -493,14 +494,20 @@ describe('adding time for someone else (add time for)', () => {
   it("a project's manager adds time for its people, and not on a project they don't manage", async () => {
     await api.users.viewAs('u-2') // Nour manages Nexus Core
     expect(await api.time.addManual(forMariam())).toMatchObject({ userId: 'u-3', addedBy: 'u-2' })
-    await expect(api.time.addManual({ ...forMariam('u-8'), projectId: 'p-mob' })).rejects.toMatchObject({ status: 403, detail: FOR_MANAGERS })
+    await expect(api.time.addManual({ ...forMariam('u-8'), projectId: 'p-mob' })).rejects.toMatchObject({ status: 403, detail: ONLY_MANAGERS })
   })
 
-  it("a Member can't add time for someone else; for themselves it's as before, with no addedBy", async () => {
+  it("a Member adds no time at all, for anyone or for themselves: they use the timer (11 Nov 2026)", async () => {
     await api.users.viewAs('u-3')
-    await expect(api.time.addManual(forMariam('u-5'))).rejects.toMatchObject({ status: 403, detail: FOR_MANAGERS })
-    const own = await api.time.addManual(forMariam('u-3'))
-    expect(own.userId).toBe('u-3')
+    await expect(api.time.addManual(forMariam('u-5'))).rejects.toMatchObject({ status: 403, detail: ONLY_MANAGERS })
+    await expect(api.time.addManual(forMariam('u-3'))).rejects.toMatchObject({ status: 403, detail: ONLY_MANAGERS })
+    await expect(api.time.addManual({ ...forMariam('u-3'), userId: undefined })).rejects.toMatchObject({ status: 403, detail: ONLY_MANAGERS })
+  })
+
+  it("a project's manager adds their own time there too, with no addedBy", async () => {
+    await api.users.viewAs('u-2')
+    const own = await api.time.addManual(forMariam('u-2'))
+    expect(own.userId).toBe('u-2')
     expect('addedBy' in own).toBe(false)
   })
 

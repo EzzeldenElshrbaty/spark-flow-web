@@ -165,14 +165,11 @@ function checkOn(data: DbData, projectId: string) {
 }
 
 /**
- * Adding time for `person` on a project (add time for): I may (an Admin, or its manager), and they're active and on it
- * (or may log on every project).
+ * Adding time for `person` on a project (add time for), once I may add time there (an Admin, or its manager; checked
+ * first): they're active and on it (or may log on every project).
  */
 function checkFor(data: DbData, person: User, projectId: string) {
-  const me = currentUser(data)
   const project = findProject(data, projectId)
-  if (!can('time.logFor', { userId: me.id, grants: grantsFor(data, me), project }))
-    throw new ApiError({ title: 'Forbidden', status: 403, detail: 'You can only add time for others on projects you manage.' })
   requireActive(data, [person.id])
   if (!can('time.logOn', { userId: person.id, grants: grantsFor(data, person), project, userTeamIds: person.teamIds }))
     throw badRequest('You can only add time for the people on this project.')
@@ -332,11 +329,16 @@ export function timeApi(db: MockDb, hub: MockHub, now: () => Date): Api['time'] 
       await delay()
       const stored = await db.update((data) => {
         const me = requireCan(data, 'time.logOwn')
-        // Whose time: mine, or someone else's for an Admin or the project's manager (add time for).
+        const target = 'taskId' in input ? { taskId: input.taskId } : { projectId: input.projectId }
+        // Manual time is added by an Admin or the project's manager only, for themselves or its people; everyone
+        // else uses the timer (11 Nov 2026).
+        const project = findProject(data, resolveTarget(data, target).projectId)
+        if (!can('time.logFor', { userId: me.id, grants: grantsFor(data, me), project }))
+          throw new ApiError({ title: 'Forbidden', status: 403, detail: 'Only an Admin or the project’s manager can add time.' })
+        // Whose time: mine, or someone on the project's.
         const person = !input.userId || input.userId === me.id ? me : data.users.find((u) => u.id === input.userId)
         if (!person) throw notFound('User', input.userId!)
         const forOther = person.id !== me.id
-        const target = 'taskId' in input ? { taskId: input.taskId } : { projectId: input.projectId }
         if (forOther) checkFor(data, person, resolveTarget(data, target).projectId)
         const start = new Date(input.startedAt).getTime()
         const end = new Date(input.endedAt).getTime()
