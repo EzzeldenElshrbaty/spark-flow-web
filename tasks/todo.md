@@ -3281,6 +3281,44 @@ Branch `fix/task-description-top` from dev cfb9692.
 - [x] Browser check: Youssef's Add time asks Person; Mariam's panel has Start timer only
 - [x] Gates: lint, tsc, `npm test` 3,227/3,227, `npm run test:ux` 1,000/1,000
 
+# Channel task list (chat spec §6.14) — 11 Nov 2026, approved (Native)
+
+Branch `feat/task-list` from dev 63af2d6. Spec `docs/superpowers/specs/2026-11-11-channel-task-list-design.md`, plan
+`docs/superpowers/plans/2026-11-11-channel-task-list.md`. User answers Q1–Q8 "Yes, recommended": real Flow tasks by
+reference; Pro as a tag only; channels only (project channels too); tasks made in a channel join its list; open tasks by
+due date with Done folded, no dragging; the checkbox moves to Done and back for whoever may change the task; templates
+unchanged; the tab shows once the list has a task or is opened.
+
+- [x] Task 1 — `channelTasks` (DB v36), `api.taskLists` get/add/remove, migration 35 and the seeded #frontend-dev list,
+      delete-for-good clean-up, query keys, http, contract Slice TL
+- [x] Task 2 — `addNew` (task and row in one write), the task sheet's `onto`, /task and Create task join the list
+      (plus the security review's workspace check on `addNew`)
+- [x] Task 3 — the Task list tab: rows, order, checkbox, Done fold, phone rows, the project page's Chat tab hides it
+- [x] Task 4 — Add an existing task, + menu "Task list · Pro", layers, help, rules
+- [x] Final review, fixes, gates (lint, tsc, npm test, test:ux, build:prototype)
+
+## Review — channel task list
+
+Four task commits (63f1dda, 2971b8b, 571b73b, 3fa643c), each test-first, plus the security review's workspace check on
+`addNew` (a069802). Final Opus review: no critical findings; 4 important and 3 minors re-graded by effect fixed in one
+pass, each RED→GREEN:
+- Rows lay out by the list column's width (`@container`), so titles keep their room beside the task panel; titles wrap
+  to two lines, the assignee's name shows from 44rem.
+- Focus moves to the next task after a tick or a removal, instead of dropping to the page.
+- A checkbox I can't use stays a Tab stop with its reason as its description, dimmed, and says why on a tap; a refusal on
+  a row is read out.
+- /task and Create task join the list only when it has room and I may post (`optional`), so a full list never blocks
+  making a task; only shown tasks count toward 200.
+- `projectChanged` refreshes every list; unticking on a board whose To do column was retyped goes to the first To do-type
+  column.
+- AUDIT rows 6.8-101, 6.8-102 and 6.14-29 say Built.
+
+Deferred minors: Add an existing task ignores a second pick while one saves, can flash "No tasks match" while tasks
+load, leaves the status out of each result's name, and doesn't guide when I have no open tasks; a reader who can't post
+sees "Add tasks this channel is working on." in an empty list.
+
+Gates: lint and tsc clean, npm test 3,353/3,353, test:ux 1,032/1,032, build:prototype ok. Not pushed; not on dev.
+
 ## Sprints — create, plan, start, complete (11 Nov 2026)
 
 Spec `docs/superpowers/specs/2026-11-11-sprints-design.md` (Q1–Q7 "Yes, recommended"), plan

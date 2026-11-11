@@ -25,7 +25,7 @@ export type BodyContext = {
 const pill = 'rounded-sf-sm bg-sf-surface-mention px-0.5 font-medium text-sf-accent'
 
 /** open = hollow ring, in review = warning, done = success (spec 6.3). */
-function StatusDot({ category }: { category: StatusCategory }) {
+export function StatusDot({ category }: { category: StatusCategory }) {
   return (
     <span
       aria-hidden

@@ -1,5 +1,6 @@
 import { lazy, Suspense, useRef, useState } from 'react'
 import { useCreateTask, useUpdateTask } from '@/api/tickets'
+import { useAddNewToTaskList } from '@/api/taskLists'
 import { uploadTaskFile } from '@/api/files'
 import type { Attachment, NewTicket, Phase, Priority, Project, Sprint, TaskType, TaskView, TicketStatus, User } from '@/api/types'
 import { Button } from '@/components/ui/Button'
@@ -71,6 +72,7 @@ export function TaskSheet({
   task,
   draft,
   projectChoice,
+  onto,
   onCreated,
   onClose,
 }: {
@@ -86,6 +88,11 @@ export function TaskSheet({
    * the sheet on that project; what I wrote stays, and what belongs to a project (status, phase, sprint) starts over.
    */
   projectChoice?: { projects: Pick<Project, 'id' | 'name'>[]; onPick: (projectId: string) => void }
+  /**
+   * A new task made in a channel goes on that channel's task list too, in the same write (task list §6). `optional`
+   * (/task, Create task): only where the list has room and I may post; the task is made either way.
+   */
+  onto?: { channelId: string; optional?: boolean }
   /** A new task was saved: the opener shows it (UX Phase 1, 1.5), before the sheet closes. */
   onCreated?: (task: TaskView) => void
   onClose: () => void
@@ -93,7 +100,9 @@ export function TaskSheet({
   const check = usePermission()
   const canManage = check('task.manage', { project })
   const canStatus = canManage || check('task.updateOwnStatus', { project, taskAssigneeId: task?.assigneeId ?? null })
-  const create = useCreateTask()
+  const createAlone = useCreateTask()
+  const addNew = useAddNewToTaskList()
+  const create = onto ? addNew : createAlone
   const update = useUpdateTask()
   // What the sheet opened with, to tell whether closing would throw anything away (UX Phase 1, 1.2).
   const [initial] = useState(() => valuesOf(task, project.currentPhaseId ?? null, startColumn(project), draft))
@@ -183,19 +192,17 @@ export function TaskSheet({
       const patch = savePatch({ ...was, attachmentIds: was.attachments.map((a) => a.id) }, fields, true)
       if (Object.keys(patch).length === 0) onClose()
       else update.mutate({ key: task.key, patch }, { onSuccess: savedTask })
+    } else {
+      const input = { ...fields, projectId: project.id, storyPoints: null, linkedChannelId: draft?.linkedChannelId, linkedMessageId: draft?.linkedMessageId } satisfies NewTicket
+      const onSuccess = (created: TaskView) => {
+        onCreated?.(created)
+        onClose()
+        // Read out once the sheet has closed (UX Phase 5A, 5.12).
+        announce(onto && !onto.optional ? `Task ${created.key} created and added to the task list.` : `Task ${created.key} created.`)
+      }
+      if (onto) addNew.mutate({ channelId: onto.channelId, input, ...(onto.optional && { optional: true }) }, { onSuccess })
+      else createAlone.mutate(input, { onSuccess })
     }
-    else
-      create.mutate(
-        { ...fields, projectId: project.id, storyPoints: null, linkedChannelId: draft?.linkedChannelId, linkedMessageId: draft?.linkedMessageId } satisfies NewTicket,
-        {
-          onSuccess: (created) => {
-            onCreated?.(created)
-            onClose()
-            // Read out once the sheet has closed (UX Phase 5A, 5.12).
-            announce(`Task ${created.key} created.`)
-          },
-        },
-      )
   }
 
   return (

@@ -42,6 +42,10 @@ import { TemplatePicker } from '@/pages/chat/page/TemplatePicker'
 import { ChannelIntroRow } from '@/pages/chat/ChannelIntroRow'
 import { askToLeave } from '@/lib/unsavedChanges'
 import { ChannelPins } from '@/pages/chat/PinsTab'
+import { ChannelTaskList } from '@/pages/chat/tasks/ChannelTaskList'
+import { AddTaskDialog } from '@/pages/chat/tasks/AddTaskDialog'
+import { useTaskList } from '@/api/taskLists'
+import { listCounts } from '@/lib/taskList'
 import { ChannelFiles } from '@/pages/chat/files/FilesTab'
 import { useFlowFilePicker } from '@/pages/chat/files/FilePicker'
 import { usePins } from '@/api/pins'
@@ -82,7 +86,7 @@ export function ChannelView({ channelId, hideTabs = [] }: { channelId: string | 
   const queue = useSendQueue()
   const queryClient = useQueryClient()
   const readOnly = useReadOnlyLine(channel.data)
-  const fromMessage = useTaskFromMessage(channelId, workspace?.id)
+  const fromMessage = useTaskFromMessage(channelId, workspace?.id, channel.data?.kind === 'channel')
   const projects = useProjectSummaries(workspace?.id)
   const realtime = useRealtime()
   // The composer's tray (spec 6.9): its own per channel.
@@ -98,6 +102,9 @@ export function ChannelView({ channelId, hideTabs = [] }: { channelId: string | 
   if (openDetails !== null && openDetails.in !== channelId) setOpenDetails(null)
   const details = openDetails?.details ?? null
   const setDetails = (next: OpenDetails | null) => setOpenDetails(next ? { in: channelId, details: next } : null)
+  // The channel Add an existing task was opened in (task list §6): it closes when Back or a link moves on.
+  const [addingIn, setAddingIn] = useState<string | null>(null)
+  if (addingIn !== null && addingIn !== channelId) setAddingIn(null)
   // /remind: the words to be reminded of, while Set a reminder is open.
   const [reminding, setReminding] = useState<string | null>(null)
   // The channel the template picker was opened in: it closes when Back or a link moves to another (polish pass).
@@ -179,6 +186,11 @@ export function ChannelView({ channelId, hideTabs = [] }: { channelId: string | 
         <div className="sf flex min-h-0 flex-1 flex-col">
           <ChannelPageTab channel={current} people={people} me={persona.id} />
         </div>
+      ) : tab === 'tasks' ? (
+        <div className="sf flex min-h-0 flex-1 flex-col">
+          <ChannelTaskList channel={current} people={people} canPost={canPost === true && canWrite === true} onNewTask={fromMessage.newTask} onAddExisting={() => setAddingIn(current.id)} />
+          {addingIn === current.id && <AddTaskDialog channel={current} me={persona.id} onClose={() => setAddingIn(null)} />}
+        </div>
       ) : (
       <PaneFeed
         key={current.id}
@@ -216,6 +228,8 @@ export function ChannelView({ channelId, hideTabs = [] }: { channelId: string | 
               placeholder={`Message ${title}`}
               uploads={uploads}
               commandUi={{ openDetails: (on, options) => setDetails({ tab: on, ...options }), newTask: fromMessage.fromCommand, whyNoTask: fromMessage.whyNoTask, remind: setReminding }}
+              // + Task list opens the channel's Task list tab (task list §6); a conversation has none.
+              onTaskList={current.kind === 'channel' && !hideTabs.includes('tasks') ? () => setTab('tasks') : undefined}
               onTyping={() => realtime.sendTyping(current.id, persona.id)}
               // Shown at once and sent in the background (spec 6.2), with its files; a failure shows on the message, with Retry.
               onSend={async (body) => {
@@ -319,6 +333,9 @@ function ChannelTop({
   const [archiving, setArchiving] = useState(false)
   // The Pins tab's count (spec 6.1).
   const pins = usePins(channel.id)
+  // The Task list tab, while it has a task or is open, with its open tasks' count (task list §5).
+  const tasks = useTaskList(channel.kind === 'channel' ? channel.id : undefined)
+  const taskEntries = tasks.data?.entries ?? []
   // Bookmarks after the tabs, and in Channel details › Tabs (spec 6.1, 6.10): whoever may post manages them.
   const bookmarks = useBookmarks(channel.id)
   const addBookmark = useAddBookmark()
@@ -371,6 +388,8 @@ function ChannelTop({
         onChange={onTab}
         panelId={panelId}
         pinCount={pins.data?.length}
+        taskCount={listCounts(taskEntries).open}
+        showTasks={taskEntries.length > 0 || tab === 'tasks'}
         hidden={hideTabs}
         bookmarks={bookmarks.data}
         onAddBookmark={addBookmarkTo}
@@ -565,6 +584,7 @@ function ChannelComposer({
   onEditLast,
   onSendSnippet,
   commandUi,
+  onTaskList,
 }: {
   channel: Channel
   placeholder: string
@@ -575,6 +595,7 @@ function ChannelComposer({
   onEditLast: () => void
   onSendSnippet: (file: Attachment, message: Body) => Promise<unknown>
   commandUi: ChannelCommandUi
+  onTaskList?: () => void
 }) {
   const drafts = useDrafts(channel.workspaceId)
   const saveDraft = useDraftSaver()
@@ -621,6 +642,7 @@ function ChannelComposer({
       directory={directory}
       slash={slash}
       onSnippet={snippet.open}
+      onTaskList={onTaskList}
       linkPreview={composerLinkPreview}
       autoFocus={arrived}
       files={{

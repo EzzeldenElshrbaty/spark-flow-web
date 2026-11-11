@@ -188,6 +188,23 @@ describe('deleting for good (slice 4)', () => {
     expect(await db.getFile(shared.attachmentId)).not.toBeNull()
   })
 
+  it('a task deleted for good leaves every task list; so do a deleted project’s tasks (task list §4.2)', async () => {
+    const task = await fresh()
+    await api.taskLists.add('c-frontend', task.key)
+    await api.tasks.archive(task.key, 'Parked')
+    const project = await api.projects.create({ workspaceId: 'ws-eng', key: 'TLX', name: 'List test', description: '', clientName: '', links: [], managerId: 'u-1', memberIds: ['u-1'], teamIds: [], methodology: 'waterfall', startDate: '2026-10-01', dueDate: '2026-12-01' })
+    const other = await api.tasks.create({ projectId: project.id, title: 'On a list', descriptionBody: [], status: '', priority: 'low', storyPoints: null, assigneeId: null, sprintId: null })
+    await api.taskLists.add('c-backend', other.key)
+    await api.projects.archive(project.id, 'Test over')
+    clock = new Date(clock.getTime() + 366 * DAY)
+    await api.archive.deleteForGood('task', task.key)
+    await api.archive.deleteForGood('project', project.id)
+    const rows = (await db.read()).channelTasks
+    expect(rows.some((r) => r.taskId === task.id)).toBe(false)
+    expect(rows.some((r) => r.taskId === other.id)).toBe(false)
+    expect(rows.some((r) => r.channelId === 'c-frontend')).toBe(true)
+  })
+
   it('never a project or task with time logged on it, never a channel, never something not archived', async () => {
     clock = new Date(clock.getTime() + 400 * DAY)
     await api.projects.archive('p-mob')

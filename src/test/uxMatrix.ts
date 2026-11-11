@@ -32,6 +32,7 @@ export const UX_PAGES: string[] = [
   'p/NEX/files',
   'c/c-general',
   'c/c-general?tab=page',
+  'c/c-frontend?tab=tasks',
   'activity',
   'threads',
   'search?q=login',

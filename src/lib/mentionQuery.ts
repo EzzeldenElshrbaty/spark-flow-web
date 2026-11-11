@@ -33,9 +33,10 @@ export function mentionOptions(
   from: { users: User[]; projects: { key: string; name: string }[]; tasks: { key: string; title: string }[] },
   /**
    * `here: false` where @here reaches nobody (a task comment: its people aren't a channel's); `groups: false` where
-   * neither @channel nor @here belongs (a channel's page, chat spec 6.14); `only: 'task'` for its Link a task.
+   * neither @channel nor @here belongs (a channel's page, chat spec 6.14); `only: 'task'` for its Link a task. `limit`
+   * (8 unless said) is how many come back: a task list's Add an existing task shows 20.
    */
-  opts: { here?: boolean; groups?: boolean; only?: 'task' } = {},
+  opts: { here?: boolean; groups?: boolean; only?: 'task'; limit?: number } = {},
 ): MentionOption[] {
   const options: MentionOption[] = []
   const q = query.toLowerCase()
@@ -48,7 +49,7 @@ export function mentionOptions(
     for (const p of from.projects) if (matches(query, p.key, p.name)) options.push({ kind: 'project', key: p.key, name: p.name })
   }
   for (const t of from.tasks) if (matches(query, t.key, t.title)) options.push({ kind: 'task', key: t.key, title: t.title })
-  return options.slice(0, MAX_OPTIONS)
+  return options.slice(0, opts.limit ?? MAX_OPTIONS)
 }
 
 const tokenOf = (option: MentionOption) =>

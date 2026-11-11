@@ -18,8 +18,10 @@ vi.mock('@/lib/recorder', async (original) => ({ ...(await original<typeof impor
 // first, and Keep editing keeps the text and the focus in the dialog.
 
 type Layer = {
-  /** The dialog's accessible name. */
+  /** The dialog's accessible name, and the test's. */
   name: string
+  /** The dialog's name when the test needs its own (the task list's New task is the same sheet as a project's). */
+  dialog?: string
   path: string
   /** Opens it; returns where focus must come back to (the button, or the menu's trigger). */
   open: () => Promise<HTMLElement>
@@ -148,6 +150,9 @@ const LAYERS: Layer[] = [
   { name: 'Start timer', path: '/w/engineering/c/c-general', open: () => anyButton('Start timer'), kind: 'modal' },
   { name: 'Add a bookmark', path: '/w/engineering/c/c-general', open: () => anyButton('Add a bookmark'), kind: 'modal' },
   { name: 'Page history', path: '/w/engineering/c/c-general?tab=page', open: () => anyButton('History'), kind: 'modal' },
+  // A channel's task list (task list §6).
+  { name: 'Add an existing task', path: '/w/engineering/c/c-frontend?tab=tasks', open: () => mainButton('Add an existing task'), kind: 'modal' },
+  { name: 'New task from the task list', dialog: 'New task', path: '/w/engineering/c/c-frontend?tab=tasks', open: () => mainButton('New task'), kind: 'sheet', change: typeInto('Title'), question: 'Discard this new task?' },
   { name: 'Pick a template', path: '/w/engineering/c/c-general', open: () => fromIntro('Pick a template'), kind: 'modal' },
   { name: 'Record a voice message', path: '/w/engineering/c/c-general', open: () => anyButton('Record a voice message'), kind: 'modal' },
   {
@@ -189,7 +194,7 @@ describe('every sheet and dialog from the keyboard', () => {
       const app = await renderApp({ path: layer.path, as: 'admin', theme: 'light', size: 'desktop' })
       await app.settled()
       const opener = await layer.open()
-      const dialog = await screen.findByRole('dialog', { name: layer.name })
+      const dialog = await screen.findByRole('dialog', { name: layer.dialog ?? layer.name })
       await waitFor(() => expect(inside(dialog), 'focus moves into the dialog').toBe(true))
 
       await tabStaysInside(dialog)
@@ -221,7 +226,7 @@ describe('every sheet and dialog from the keyboard', () => {
       } else {
         await userEvent.keyboard('{Escape}')
       }
-      await waitFor(() => expect(screen.queryByRole('dialog', { name: layer.name })).toBeNull())
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: layer.dialog ?? layer.name })).toBeNull())
       await waitFor(() => expect(document.activeElement, 'focus returns to what opened it').toBe(opener))
     }, 30_000)
   }

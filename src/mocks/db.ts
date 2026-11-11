@@ -32,6 +32,7 @@ import type {
   Pin,
   Folder,
   Bookmark,
+  ChannelTask,
   PageVersion,
   StoredPage,
   StoredPageMention,
@@ -45,7 +46,7 @@ export { memorySession } from './actor'
 import { migrate } from './migrations'
 import type { MockStore } from './store'
 
-export const DB_VERSION = 35 // 2: the company-system document (spec §3); 3: mention read state; 4: channel reads per person; 5: typed columns, history; 6: rate history; 7: message seq, channel member state; 8: message bodies; 9: drafts; 10: deleted messages kept for Undo; 11: thread follows; 12: activity items, channel levels; 13: channel description, who can post; 14: email invites, default channels; 15: file details (uploader, title, description, scan); 16: reminders, scheduled messages; 17: reminders on saved items; 18: text snippets; 19: /remind notes; 20: pins, folders, bookmarks; 21: sidebar order; 22: sidebar order ids (projects too); 23: notification preferences, levels that follow the default; 24: roles as records, people with roleIds; 25: the audit log; 26: settings (archive retention), Manage archived records for Admin; 27: visits, working hours; 28: why a timer entry ended (pause, stop); 29: the timer timeout; 30: check-ins go, attendance comes from timer entries; 31: task files, formatted task descriptions; 32: single-key shortcuts preference; 33: channel pages, their versions and mentions; 34: who made each channel, and when; 35: voice and video messages
+export const DB_VERSION = 36 // 2: the company-system document (spec §3); 3: mention read state; 4: channel reads per person; 5: typed columns, history; 6: rate history; 7: message seq, channel member state; 8: message bodies; 9: drafts; 10: deleted messages kept for Undo; 11: thread follows; 12: activity items, channel levels; 13: channel description, who can post; 14: email invites, default channels; 15: file details (uploader, title, description, scan); 16: reminders, scheduled messages; 17: reminders on saved items; 18: text snippets; 19: /remind notes; 20: pins, folders, bookmarks; 21: sidebar order; 22: sidebar order ids (projects too); 23: notification preferences, levels that follow the default; 24: roles as records, people with roleIds; 25: the audit log; 26: settings (archive retention), Manage archived records for Admin; 27: visits, working hours; 28: why a timer entry ended (pause, stop); 29: the timer timeout; 30: check-ins go, attendance comes from timer entries; 31: task files, formatted task descriptions; 32: single-key shortcuts preference; 33: channel pages, their versions and mentions; 34: who made each channel, and when; 35: voice and video messages; 36: channel task lists
 /** Phase 1+2 kept the mock database in localStorage under keys starting with this. */
 const LEGACY_PREFIX = 'spark-flow.mockdb.v1'
 
@@ -104,6 +105,8 @@ export type DbData = {
   folders: Folder[]
   /** Links in channels' tabs rows (spec §7 Bookmark). */
   bookmarks: Bookmark[]
+  /** Tasks on channels' task lists (chat spec 6.14), in the order added. */
+  channelTasks: ChannelTask[]
   /** Channels' pages (chat spec 6.14), their versions (newest 100 each) and the mentions their saves made. */
   pages: StoredPage[]
   pageVersions: PageVersion[]
@@ -177,7 +180,7 @@ export interface MockDb {
 
 const COLLECTIONS = [
   'users', 'workspaces', 'projects', 'sprints', 'tickets', 'channels', 'messages', 'replies',
-  'teams', 'phases', 'deliverables', 'comments', 'attachments', 'projectFiles', 'timeEntries', 'rates', 'activity', 'drafts', 'trash', 'threadFollows', 'notifications', 'invitations', 'saved', 'scheduled', 'pins', 'folders', 'bookmarks', 'pages', 'pageVersions', 'pageMentions', 'sidebarOrders', 'notificationPrefs', 'roles', 'audit', 'visits',
+  'teams', 'phases', 'deliverables', 'comments', 'attachments', 'projectFiles', 'timeEntries', 'rates', 'activity', 'drafts', 'trash', 'threadFollows', 'notifications', 'invitations', 'saved', 'scheduled', 'pins', 'folders', 'bookmarks', 'channelTasks', 'pages', 'pageVersions', 'pageMentions', 'sidebarOrders', 'notificationPrefs', 'roles', 'audit', 'visits',
 ] as const
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>

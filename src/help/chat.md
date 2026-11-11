@@ -65,3 +65,14 @@ A channel’s history starts with where it began: its name, who made it and when
 - **If someone saved first:** your text stays where it is. **Copy my changes** keeps it, and **Load the latest** shows the page as it is now.
 - **History** lists the page’s versions, newest first: one person’s edits within 10 minutes are one version, and the newest 100 are kept. Pick one to read it, and **Restore this version** saves it as the newest; nothing newer is lost.
 - **Copy link** copies the page’s address.
+
+## The channel’s task list
+
+**Task list** keeps the tasks a channel is working on, with each task’s status, assignee and due date as they are now. It holds real Flow tasks: the same ones as on their projects’ boards.
+
+- **Opening it:** select **Task list** in the channel’s tabs, or **Task list** in the **+** menu of the message box. The tab shows once the list has a task.
+- **Adding tasks:** whoever can post in the channel adds them. **New task** creates a task and puts it on the list; **Add an existing task** finds one by its key or a word of its title. A task you create here with `/task` or **Create task** joins the list too, when the list has room and you can post in the channel.
+- **Done:** tick a task to move it to its project’s Done column, and untick it to move it back to To do. Its project’s manager and its assignee can do this. Done tasks fold under **Done** at the end of the list.
+- **Order:** open tasks come by due date, soonest first; tasks with no due date come last.
+- **Removing:** **Remove from list** in a task’s ⋯ menu takes it off the list. The task itself stays on its project.
+- **Pro:** Task list is marked Pro. Everyone can use it for now.

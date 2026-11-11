@@ -2,6 +2,7 @@ import { DEFAULT_WORK_HOURS } from '@/lib/workHours'
 import { DEFAULT_TIMEOUT_HOURS } from '@/lib/hours'
 import { descriptionText, parseBody, textBody } from '@/lib/messageBody'
 import { DEFAULT_COLUMNS } from '@/lib/statuses'
+import { channelTasksFrom } from './channelTasks'
 
 /**
  * Steps that bring an older saved document up to date, keyed by the version each upgrades from. A step changes the
@@ -26,6 +27,10 @@ const V24_ROLES = [
 ]
 
 export const migrations: Record<number, (doc: Record<string, unknown>) => void> = {
+  // 36: channel task lists (chat spec 6.14); a task made from a channel's message starts on that channel's list.
+  35: (doc) => {
+    if (!Array.isArray(doc.channelTasks)) doc.channelTasks = channelTasksFrom(doc)
+  },
   // 35: files say whether they're a voice or video message (chat spec 6.9); none were.
   34: (doc) => {
     const list = (value: unknown) => (Array.isArray(value) ? (value as Record<string, unknown>[]).filter(Boolean) : [])

@@ -1,5 +1,6 @@
 import { pagesApi } from './pages'
 import { bookmarksApi } from './bookmarks'
+import { taskListsApi } from './taskLists'
 import { foldersApi } from './folders'
 import { pinsApi } from './pins'
 import { threadsApi } from './threads'
@@ -89,6 +90,7 @@ export function createMockApi(db: MockDb, hub: MockHub, now: () => Date = () => 
     roles: rolesApi(db, hub),
     folders: foldersApi(db),
     bookmarks: bookmarksApi(db, hub),
+    taskLists: taskListsApi(db, hub, now),
     pages: pagesApi(db, hub, now),
     dashboard: dashboardApi(db, now),
     files: filesApi(db, hub, now),

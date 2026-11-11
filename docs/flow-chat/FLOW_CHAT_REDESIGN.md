@@ -605,6 +605,7 @@ Each view has a 52px header with a `title`, an optional tabs row, and a scrollin
     - Incident: timeline page, action items and status form.
     - Release: checklist page and "post when a task ships" automation.
 - **Task list (Pro) and Automations:** in this phase they are only entry points from the attach menu and templates. Each needs its own spec before it is built.
+  - Built (task list, 11 Nov 2026): every channel has one task list of real Flow tasks (`docs/superpowers/specs/2026-11-11-channel-task-list-design.md`): a Task list tab (shown once it has a task, or opened from the + menu's "Task list · Pro") with each task's live status, assignee and due date, open tasks by due date and Done folded. Whoever may post adds tasks (New task, Add an existing task) and removes them; /task and Create task from a message or file put the new task on the list; ticking moves a task to its project's first Done column and unticking to To do, for its manager or assignee. Pro is a tag only. Automations and templates that make tasks wait.
 
 ### 6.15 Toasts and tooltips
 

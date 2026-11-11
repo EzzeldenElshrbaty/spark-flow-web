@@ -309,6 +309,12 @@ export function createHttpApi(fetchFn?: typeof fetch, makeXhr: () => XMLHttpRequ
       update: (id, patch) => send('PATCH', `/api/bookmarks/${enc(id)}`, patch),
       remove: (id) => send<void>('DELETE', `/api/bookmarks/${enc(id)}`),
     },
+    taskLists: {
+      get: (channelId) => get(`/api/channels/${enc(channelId)}/task-list`),
+      add: (channelId, taskKey) => send('POST', `/api/channels/${enc(channelId)}/task-list`, { taskKey }),
+      addNew: (channelId, input, options) => send('POST', `/api/channels/${enc(channelId)}/task-list/new${options?.optional ? '?optional=true' : ''}`, input),
+      remove: (channelId, taskKey) => send<void>('DELETE', `/api/channels/${enc(channelId)}/task-list/${enc(taskKey)}`),
+    },
     pages: {
       get: (channelId) => get(`/api/channels/${enc(channelId)}/page`),
       save: (channelId, input) => send('PUT', `/api/channels/${enc(channelId)}/page`, input),

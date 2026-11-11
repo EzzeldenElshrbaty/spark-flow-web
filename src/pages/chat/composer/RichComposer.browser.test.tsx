@@ -393,6 +393,23 @@ describe('files in the composer (spec 6.8 Attach menu, 6.9 tray, slice 6)', () =
     click.mockRestore()
   })
 
+  it('a channel’s Attach menu ends with Task list, tagged Pro, after a separator (task list §6)', async () => {
+    const onTaskList = vi.fn()
+    await ready({ files: files(), onTaskList })
+    await userEvent.click(screen.getByRole('button', { name: 'Attach' }))
+    const item = screen.getByRole('menuitem', { name: /Task list/ })
+    expect(item.textContent).toContain('Pro')
+    expect(item.previousElementSibling?.getAttribute('role')).toBe('separator')
+    await userEvent.click(item)
+    expect(onTaskList).toHaveBeenCalledOnce()
+  })
+
+  it('without onTaskList (a DM, a thread) there is no Task list item', async () => {
+    await ready({ files: files() })
+    await userEvent.click(screen.getByRole('button', { name: 'Attach' }))
+    expect(screen.queryByRole('menuitem', { name: /Task list/ })).toBeNull()
+  })
+
   it('a pasted image becomes a file named after when it was pasted', async () => {
     const onAdd = vi.fn()
     const { editor } = await ready({ files: files({ onAdd }) })

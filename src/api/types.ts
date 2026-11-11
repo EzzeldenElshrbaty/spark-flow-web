@@ -212,6 +212,14 @@ export type TaskRef = {
   projectKey: string; projectName: string; assigneeId: string | null
 }
 
+/** A task on a channel's task list (chat spec 6.14, DB v36): the row, not the task. */
+export type ChannelTask = { id: string; channelId: string; taskId: string; addedBy: string; addedAt: string }
+/** One task as a channel's list shows it: the chip's fields plus what the row needs. */
+export type TaskListTask = TaskRef & { id: string; projectId: string; dueAt: string | null; overdue: boolean }
+export type TaskListEntry = { id: string; addedBy: string; addedAt: string; task: TaskListTask }
+/** A channel's task list: every live task on it (archived ones left out), in the order added. */
+export type TaskList = { channelId: string; entries: TaskListEntry[] }
+
 /** `attachments`: the task's files, in its order, leaving out deleted ones. */
 export type TaskView = Task & {
   loggedHours: number
@@ -1175,6 +1183,22 @@ export interface Api {
     add(channelId: string, bookmark: { title: string; url: string }): Promise<Bookmark>
     update(id: string, patch: { title?: string; url?: string }): Promise<Bookmark>
     remove(id: string): Promise<void>
+  }
+  /**
+   * A channel's task list (chat spec 6.14): real tasks, by reference. Anyone who can read the channel reads it; whoever
+   * may post in it adds and removes tasks. Removing takes a task off the list only.
+   */
+  taskLists: {
+    get(channelId: string): Promise<TaskList>
+    /** An existing task of the channel's workspace, added last. */
+    add(channelId: string, taskKey: string): Promise<TaskListEntry>
+    /**
+     * Makes a task by `tasks.create`'s rules, with `linkedChannelId` = the channel, and adds it, in one write. Returns
+     * the task, as `tasks.create` does. `optional` (/task, Create task): the task is made either way, and goes on the
+     * list only when it has room and I may post here.
+     */
+    addNew(channelId: string, input: NewTicket, options?: { optional?: boolean }): Promise<TaskView>
+    remove(channelId: string, taskKey: string): Promise<void>
   }
   /**
    * A channel's page (chat spec 6.14): whoever may post edits it, one person at a time. Typing claims it for 60 s

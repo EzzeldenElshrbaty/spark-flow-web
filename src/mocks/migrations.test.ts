@@ -347,3 +347,27 @@ describe('34 → 35', () => {
     expect(out.trash[0].snapshot.attachments[0].clip).toBeNull()
   })
 })
+
+describe('35 → 36 (channel task lists)', () => {
+  it('a task made from a channel’s message is on that channel’s list; one made from a DM isn’t', () => {
+    const doc = {
+      version: 35, currentUserId: 'u-1',
+      projects: [{ id: 'p1', workspaceId: 'w1' }],
+      channels: [{ id: 'c1', workspaceId: 'w1', kind: 'channel' }, { id: 'd1', workspaceId: 'w1', kind: 'dm' }, { id: 'c2', workspaceId: 'w2', kind: 'channel' }],
+      tickets: [
+        { id: 't1', projectId: 'p1', reporterId: 'u-2', createdAt: '2026-11-01T10:00:00.000Z', linkedChannelId: 'c1' },
+        { id: 't2', projectId: 'p1', reporterId: 'u-2', createdAt: '2026-11-01T11:00:00.000Z', linkedChannelId: 'd1' },
+        { id: 't3', projectId: 'p1', reporterId: 'u-2', createdAt: '2026-11-01T12:00:00.000Z', linkedChannelId: 'c2' },
+        { id: 't4', projectId: 'p1', reporterId: 'u-2', createdAt: '2026-11-01T13:00:00.000Z', linkedChannelId: null },
+      ],
+    }
+    const out = migrate(doc, 36) as { channelTasks: unknown[] }
+    expect(out.channelTasks).toEqual([{ id: 'ct-t1', channelId: 'c1', taskId: 't1', addedBy: 'u-2', addedAt: '2026-11-01T10:00:00.000Z' }])
+  })
+
+  it('keeps a list that is already there', () => {
+    const rows = [{ id: 'ct-x', channelId: 'c1', taskId: 't9', addedBy: 'u-1', addedAt: '2026-11-01T10:00:00.000Z' }]
+    const out = migrate({ version: 35, currentUserId: 'u-1', projects: [], channels: [], tickets: [], channelTasks: rows }, 36) as { channelTasks: unknown[] }
+    expect(out.channelTasks).toEqual(rows)
+  })
+})

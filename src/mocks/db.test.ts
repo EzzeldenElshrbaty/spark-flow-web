@@ -37,6 +37,7 @@ const emptyData = (): DbData => ({
   pins: [],
   folders: [],
   bookmarks: [],
+  channelTasks: [],
   pages: [],
   pageVersions: [],
   pageMentions: [],

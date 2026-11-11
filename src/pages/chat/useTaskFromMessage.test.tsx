@@ -3,7 +3,7 @@ import { act, cleanup, render, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { MemoryRouter, useLocation } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ProjectSummary } from '@/api/types'
+import type { Attachment, ChatMessage, ProjectSummary } from '@/api/types'
 import type { TaskSheet } from '@/pages/projects/TaskSheet'
 import { useTaskFromMessage } from '@/pages/chat/useTaskFromMessage'
 
@@ -38,7 +38,7 @@ const wrapper = ({ children }: { children: ReactNode }) => (
     <Where />
   </MemoryRouter>
 )
-const inChannel = (channelId: string) => renderHook(() => useTaskFromMessage(channelId, 'ws-eng'), { wrapper })
+const inChannel = (channelId: string, listed = true) => renderHook(() => useTaskFromMessage(channelId, 'ws-eng', listed), { wrapper })
 
 beforeEach(() => {
   projects = [nexus, mobile]
@@ -119,5 +119,46 @@ describe('useTaskFromMessage: /task in a channel or DM with no project', () => {
     expect(inChannel('c-general').result.current.fromCommand).toBeUndefined()
     projects = undefined
     expect(inChannel('c-general').result.current.whyNoTask).toBeUndefined()
+  })
+})
+
+describe('useTaskFromMessage: tasks made in a channel join its list (task list §6, R2)', () => {
+  it('in a channel, /task and Create task from a file go onto its list', () => {
+    const { result } = inChannel('c-p-nex')
+    act(() => result.current.fromCommand!.open({ title: 'Fix login', assigneeId: null }))
+    render(<>{result.current.sheet}</>, { wrapper })
+    expect(shown.props?.onto).toEqual({ channelId: 'c-p-nex', optional: true })
+    cleanup()
+    const again = inChannel('c-p-nex').result
+    const message = { id: 'm1', channelId: 'c-p-nex', content: 'Crash on save' } as ChatMessage
+    act(() => again.current.fromFile!({ title: 'crash.log' } as Attachment, message))
+    render(<>{again.current.sheet}</>, { wrapper })
+    expect(shown.props?.onto).toEqual({ channelId: 'c-p-nex', optional: true })
+    expect(shown.props?.draft).toMatchObject({ title: 'crash.log', linkedMessageId: 'm1' })
+  })
+
+  it('in a DM, nothing goes onto a list', () => {
+    const { result } = inChannel('c-dm-1', false)
+    act(() => result.current.fromCommand!.open({ title: 'Fix login', assigneeId: null }))
+    render(<>{result.current.sheet}</>, { wrapper })
+    expect(shown.props?.onto).toBeUndefined()
+  })
+
+  it('New task from the list: an empty sheet on my first project, nothing posted and no panel', () => {
+    manages.add('p-mob')
+    const { result } = inChannel('c-general')
+    act(() => result.current.newTask!())
+    render(<>{result.current.sheet}</>, { wrapper })
+    expect(shown.props?.onto).toEqual({ channelId: 'c-general' })
+    expect(shown.props?.draft).toMatchObject({ title: '' })
+    expect(shown.props?.projectChoice?.projects.map((p) => p.id)).toEqual(['p-nex', 'p-mob'])
+    expect(shown.props?.onCreated).toBeUndefined()
+  })
+
+  it('New task is there only where /task is', () => {
+    expect(inChannel('c-p-nex').result.current.newTask).toBeDefined()
+    expect(inChannel('c-p-mob').result.current.newTask).toBeUndefined()
+    manages.clear()
+    expect(inChannel('c-general').result.current.newTask).toBeUndefined()
   })
 })

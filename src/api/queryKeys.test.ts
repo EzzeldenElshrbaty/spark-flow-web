@@ -31,7 +31,7 @@ describe('keysForEvent', () => {
     expect(keysForEvent({ type: 'commentAdded', taskKey: 'NEX-1', projectId: 'p1' })).toEqual([qk.comments('NEX-1'), qk.mentions(), qk.activityAll(), qk.taskHistory('NEX-1'), qk.projectHistory('p1'), qk.files('p1')])
     expect(keysForEvent({ type: 'ticketUpdated', ticket: { ...t, projectId: 'p1', key: 'NEX-1' } })).toEqual([
       qk.tickets('p1'), qk.archivedTickets('p1'), qk.ticket('NEX-1'), qk.taskHistory('NEX-1'), qk.projectHistory('p1'),
-      ['tickets', 'projects'], ['tickets', 'project'], ['dashboard'], qk.taskRefsAll(), qk.mentions(), qk.activityAll(), qk.auditAll(), qk.archiveAll(),
+      ['tickets', 'projects'], ['tickets', 'project'], ['dashboard'], qk.taskRefsAll(), qk.taskListAll(), qk.mentions(), qk.activityAll(), qk.auditAll(), qk.archiveAll(),
     ])
     expect(keysForEvent({ type: 'timeLogged', userId: 'u1', projectId: 'p1' })).toEqual([qk.myDay(), ['tickets'], ['projects', 'time'], ['dashboard'], ['time', 'report'], ['attendance'], qk.auditAll()])
     expect(keysForEvent({ type: 'userTyping', channelId: 'c1', userId: 'u2' })).toEqual([])
@@ -40,12 +40,12 @@ describe('keysForEvent', () => {
     // Inviting and revoking change the channel's Invited list (spec 6.10) too.
     expect(keysForEvent({ type: 'pageSaved', channelId: 'c1', version: 2, userId: 'u-1' })).toEqual([qk.page('c1'), qk.pageHistory('c1'), qk.pageVersions('c1')])
     expect(keysForEvent({ type: 'pageEditing', channelId: 'c1', userId: null, until: null })).toEqual([qk.page('c1')])
-    expect(keysForEvent({ type: 'channelChanged', channelId: 'c1' })).toEqual([qk.channelsAll(), qk.channel('c1'), qk.mentions(), qk.activityAll(), qk.invitations('c1'), qk.pins('c1'), qk.bookmarks('c1'), qk.threadsAll(), qk.auditAll(), qk.archiveAll()])
+    expect(keysForEvent({ type: 'channelChanged', channelId: 'c1' })).toEqual([qk.channelsAll(), qk.channel('c1'), qk.mentions(), qk.activityAll(), qk.invitations('c1'), qk.pins('c1'), qk.bookmarks('c1'), qk.taskList('c1'), qk.threadsAll(), qk.auditAll(), qk.archiveAll()])
     // Activity (spec 6.12) refreshes when something is stored for me, a mention included, not on every new message.
     expect(keysForEvent({ type: 'notificationCreated', userId: 'u1' })).toEqual([qk.activityAll(), qk.mentions()])
     // A file's title, description or deletion changes its details; the messages showing it get messageChanged too.
     expect(keysForEvent({ type: 'fileChanged', fileId: 'a1' })).toEqual([qk.fileDetails('a1'), ['chat', 'files'], ['folders'], ['projects', 'files'], ['tickets'], qk.auditAll()])
-    expect(keysForEvent({ type: 'projectChanged', projectId: 'p1' })).toEqual([['tickets'], ['projects'], ['dashboard'], qk.projectHistory('p1'), qk.auditAll(), qk.archiveAll()])
+    expect(keysForEvent({ type: 'projectChanged', projectId: 'p1' })).toEqual([['tickets'], ['projects'], ['dashboard'], qk.projectHistory('p1'), qk.taskListAll(), qk.auditAll(), qk.archiveAll()])
   })
 })
 
@@ -105,5 +105,16 @@ describe('keysForEvent (M10)', () => {
     expect(keysForEvent({ type: 'rolesChanged' })).toEqual([[]])
     // Someone added, edited or deactivated (slice 3): names and pickers show everywhere.
     expect(keysForEvent({ type: 'peopleChanged' })).toEqual([[]])
+  })
+})
+
+describe('keysForEvent and channel task lists (task list §4.3)', () => {
+  it('a channel’s change refreshes its list; a change to any task refreshes every list', () => {
+    expect(qk.taskList('c1')).toEqual(['chat', 'taskList', 'c1'])
+    expect(qk.taskListAll()).toEqual(['chat', 'taskList'])
+    expect(keysForEvent({ type: 'channelChanged', channelId: 'c1' })).toContainEqual(qk.taskList('c1'))
+    expect(keysForEvent({ type: 'ticketUpdated', ticket: { ...t, projectId: 'p1', key: 'NEX-1' } })).toContainEqual(qk.taskListAll())
+    // A board's column renamed or retyped, or a project archived, changes what every list shows (final review).
+    expect(keysForEvent({ type: 'projectChanged', projectId: 'p1' })).toContainEqual(qk.taskListAll())
   })
 })
