@@ -30,10 +30,12 @@ import { useNoHover, usePhone } from '@/components/sf/usePhone'
 import { FileViewer } from '@/components/ui/FileViewer'
 import { viewedFile } from '@/lib/fileView'
 import { downloadUrl, fileSubline, previewOf } from '@/lib/fileTypes'
+import { clipLabel } from '@/lib/clips'
 import { useFileActions } from '@/pages/chat/files/FileActions'
 import { NewFolderDialog } from '@/pages/chat/files/NewFolderDialog'
 import { canMakeTask } from '@/pages/chat/taskDraft'
 import { snippetLabel, SnippetView, useSnippetText } from '@/pages/chat/snippets/SnippetCard'
+import { VoicePlayer } from '@/pages/chat/clips/VoicePlayer'
 
 const COPIED_MS = 2000
 
@@ -49,7 +51,7 @@ export function download(url: string, name: string) {
 }
 
 /** "PDF": a file's type, from its extension, as the label above its card says. */
-const typeLabel = (a: Attachment) => (a.snippet ? snippetLabel(a) : a.name.includes('.') ? a.name.split('.').pop()!.toUpperCase() : 'File')
+const typeLabel = (a: Attachment) => (a.clip ? clipLabel(a.clip) : a.snippet ? snippetLabel(a) : a.name.includes('.') ? a.name.split('.').pop()!.toUpperCase() : 'File')
 
 /**
  * The action pill on a file (spec 6.9): Download, Share, Details and More, which holds Create task from file, Copy
@@ -246,8 +248,10 @@ function Live({ attachment, link, message, pending }: { attachment: Attachment; 
   const [viewing, setViewing] = useState(false)
   // Images the browser shows (not HEIC), and videos it can play; anything else is a file card that opens it.
   const playable = attachment.mimeType.startsWith('video/') && typeof document !== 'undefined' && document.createElement('video').canPlayType(attachment.mimeType) !== ''
+  // A voice message the browser can play gets its player (chat spec 6.9); any other audio stays a file card.
+  const voice = attachment.clip?.kind === 'voice' && typeof document !== 'undefined' && document.createElement('audio').canPlayType(attachment.mimeType) !== ''
   const preview = previewOf(attachment.name)
-  const kind = preview === 'image' ? 'image' : playable ? 'video' : 'file'
+  const kind = voice ? 'voice' : preview === 'image' ? 'image' : playable ? 'video' : 'file'
   const open = () => setViewing(true)
   // An office file opens through the preview the backend converted it to (spec 6.9); Download still saves the file.
   const viewed = viewedFile(attachment, url)
@@ -289,6 +293,15 @@ function Live({ attachment, link, message, pending }: { attachment: Attachment; 
         </button>
         <FileActionsPill attachment={attachment} url={url} link={link} message={message} pending={pending} />
       </div>
+    )
+  else if (kind === 'voice')
+    body = url ? (
+      <div className="group/file relative w-fit max-w-full">
+        <VoicePlayer src={url} clip={attachment.clip!} />
+        <FileActionsPill attachment={attachment} url={url} link={link} message={message} pending={pending} />
+      </div>
+    ) : (
+      <span className="block h-11 w-[min(380px,100%)] animate-pulse rounded-sf-lg bg-sf-surface-hover" />
     )
   else if (kind === 'video')
     body = url ? (
