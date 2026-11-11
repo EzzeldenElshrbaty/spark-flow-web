@@ -102,6 +102,17 @@ describe('the channel intro (chat spec 6.14)', () => {
     expect(screen.queryByRole('dialog', { name: 'Pick a template' })).toBeNull()
   })
 
+  it('Channel details close when the channel changes (final review)', async () => {
+    const { app, made } = await newChannel()
+    await userEvent.click(screen.getByRole('button', { name: 'Add a description' }))
+    await screen.findByRole('textbox', { name: 'Description' })
+    await app.router.navigate('/w/engineering/c/c-general')
+    await waitFor(() => expect(screen.queryByRole('textbox', { name: 'Description' })).toBeNull())
+    await app.router.navigate(`/w/engineering/c/${made.id}`)
+    await screen.findByRole('heading', { level: 2, name: /launch-week/ })
+    expect(screen.queryByRole('textbox', { name: 'Description' })).toBeNull()
+  })
+
   it('Edit description opens About editing it', async () => {
     await newChannel()
     await userEvent.click(screen.getByRole('button', { name: 'Add a description' }))

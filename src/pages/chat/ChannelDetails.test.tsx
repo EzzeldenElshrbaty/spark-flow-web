@@ -677,6 +677,15 @@ describe('Channel details › Tabs (spec 6.10): the channel’s bookmarks', () =
     expect(screen.getByRole('link', { name: 'Runbook' }).getAttribute('target')).toBe('_blank')
   })
 
+  it('following a bookmark to Flow closes the details (final review)', () => {
+    const flow = { ...bookmarks[0]!, id: 'b2', title: 'Nexus Core', url: `${window.location.origin}/w/engineering/p/NEX/overview` }
+    const { onClose } = show({ tab: 'tabs', bookmarks: [...bookmarks, flow] })
+    fireEvent.click(screen.getByRole('link', { name: 'Runbook' }))
+    expect(onClose).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('link', { name: 'Nexus Core' }))
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
   it('says when there are none; read-only without the handlers', () => {
     show({ tab: 'tabs', bookmarks: [] })
     expect(screen.getByText('No bookmarks yet. Add one with + after the channel’s tabs.')).toBeTruthy()

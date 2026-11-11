@@ -276,6 +276,28 @@ describe('the channel’s page (chat spec 6.14)', () => {
     await waitFor(async () => expect((await api.pages.get('c-general')).editing).toBeNull(), { timeout: 3000 })
   })
 
+  it('leaving while a save is on its way lets the hold go only after it lands (final review)', async () => {
+    const app = await renderApp({ path: PAGE, as: 'admin', theme: 'light', size: 'desktop' })
+    await app.settled()
+    const save = api.pages.save.bind(api.pages)
+    let land = () => {}
+    vi.spyOn(api.pages, 'save').mockImplementationOnce(async (...args) => {
+      await new Promise<void>((resolve) => (land = resolve))
+      return save(...args)
+    })
+    await focusEditor(editor())
+    await userEvent.keyboard('Mine')
+    await waitFor(() => expect(bar().textContent).toContain('Saving…'), { timeout: 3000 })
+    const release = vi.spyOn(api.pages, 'stopEditing')
+    await userEvent.click(screen.getByRole('tab', { name: 'Messages' }))
+    await userEvent.click(within(await screen.findByRole('dialog', { name: 'Leave without saving the page?' })).getByRole('button', { name: 'Leave without saving' }))
+    await new Promise((resolve) => setTimeout(resolve, 200))
+    expect(release).not.toHaveBeenCalled()
+    land()
+    await waitFor(() => expect(release).toHaveBeenCalledWith('c-general'))
+    expect((await api.pages.get('c-general')).body).toEqual(text('Mine'))
+  })
+
   it('closing the browser tab lets my hold go when everything is saved (polish pass)', async () => {
     const app = await renderApp({ path: PAGE, as: 'admin', theme: 'light', size: 'desktop' })
     await app.settled()

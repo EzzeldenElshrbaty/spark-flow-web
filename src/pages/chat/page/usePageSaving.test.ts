@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PageHold, PageView } from '@/api/types'
 import { ApiError } from '@/lib/apiError'
-import type { PageBody } from '@/lib/pageBody'
+import { PAGE_HOLD_MS, type PageBody } from '@/lib/pageBody'
 import { createPageSaver, type SaverSnapshot } from './usePageSaving'
 
 const body = (text: string): PageBody => [{ type: 'p', children: [{ type: 'text', text }] }]
@@ -186,6 +186,61 @@ describe('saving a channel’s page (chat spec 6.14 §6.4)', () => {
   })
 
   // Polish pass (P9): losing edit rights stops saving and keeps my text, as a conflict does.
+  const LOST = 'You can’t edit this page anymore. Your last changes aren’t saved.'
+
+  it('a save refused after I lost my rights keeps me stopped (final review)', async () => {
+    const { save, saver, last } = setup()
+    let refuse: (e: unknown) => void = () => {}
+    save.mockImplementationOnce(() => new Promise((_, reject) => (refuse = reject)))
+    saver.change(body('Mine'))
+    await vi.advanceTimersByTimeAsync(1000)
+    saver.lose(LOST)
+    refuse(refusal(400, 'This channel is archived.'))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(last()).toEqual({ state: 'conflict', error: LOST, dirty: true })
+  })
+
+  it('a save that lands after I lost my rights says it’s saved (final review)', async () => {
+    const { save, saver, last } = setup()
+    let land: (v: PageView) => void = () => {}
+    save.mockImplementationOnce(() => new Promise((resolve) => (land = resolve)))
+    saver.change(body('Mine'))
+    await vi.advanceTimersByTimeAsync(1000)
+    saver.lose(LOST)
+    land(view(1))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(last()).toEqual({ state: 'saved', error: null, dirty: false })
+  })
+
+  it('my hold runs out by itself, and a 409 or letting go ends it (final review)', async () => {
+    const { save, saver } = setup()
+    saver.change(body('a'))
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(saver.held()).toBe(true)
+    await vi.advanceTimersByTimeAsync(PAGE_HOLD_MS)
+    expect(saver.held()).toBe(false)
+    saver.change(body('b'))
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(saver.held()).toBe(true)
+    saver.letGo()
+    expect(saver.held()).toBe(false)
+    save.mockRejectedValueOnce(refusal(409, 'Nour El-Sayed saved changes before you. Your last changes aren’t saved.'))
+    saver.change(body('c'))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(saver.held()).toBe(true)
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(saver.held()).toBe(false)
+  })
+
+  it('letting go lets the next change claim at once (final review)', async () => {
+    const { claim, saver } = setup()
+    saver.change(body('a'))
+    expect(claim).toHaveBeenCalledTimes(1)
+    saver.letGo()
+    saver.change(body('ab'))
+    expect(claim).toHaveBeenCalledTimes(2)
+  })
+
   it('lose stops saving with its sentence and keeps my text', async () => {
     const { save, saver, last } = setup()
     saver.change(body('Mine'))

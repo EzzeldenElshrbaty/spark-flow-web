@@ -61,7 +61,8 @@ export function bookmarksApi(db: MockDb, hub: MockHub): Api['bookmarks'] {
       const bookmark = await db.update((data) => {
         const found = mine(data, id)
         const next = checked(patch, found)
-        checkNew(data, found.channelId, next.url, found.id)
+        // Only a new address is checked: a rename keeps working on twins made before the rule (final review).
+        if (next.url !== found.url) checkNew(data, found.channelId, next.url, found.id)
         Object.assign(found, next)
         return found
       })

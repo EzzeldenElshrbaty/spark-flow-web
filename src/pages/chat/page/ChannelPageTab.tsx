@@ -57,14 +57,14 @@ export function ChannelPageTab({ channel, people, me }: { channel: Channel; peop
       </div>
     )
   if (!page.data || canWrite === null) return <PageSkeleton />
-  return <LoadedPage key={channel.id} channel={channel} view={page.data} people={people} me={me} mayEdit={canWrite && !isArchived(channel)} />
+  return <LoadedPage key={channel.id} channel={channel} view={page.data} receivedAt={page.dataUpdatedAt} people={people} me={me} mayEdit={canWrite && !isArchived(channel)} />
 }
 
-function LoadedPage({ channel, view, people, me, mayEdit }: { channel: Channel; view: PageView; people: User[]; me: string; mayEdit: boolean }) {
+function LoadedPage({ channel, view, receivedAt, people, me, mayEdit }: { channel: Channel; view: PageView; receivedAt: number; people: User[]; me: string; mayEdit: boolean }) {
   const nameOf = (id: string) => people.find((u) => u.id === id)?.name ?? 'Someone'
   const saving = usePageSaving({ channelId: channel.id, view, me, nameOf })
   const { saver } = saving
-  const hold = useLiveHold(view.editing)
+  const hold = useLiveHold(view.editing, receivedAt)
   const heldBy = hold && hold.userId !== me ? nameOf(hold.userId) : null
 
   // The editor starts from the page as it is when it mounts (after someone else's hold too: final review); a new key

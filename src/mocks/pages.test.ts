@@ -110,7 +110,8 @@ describe('saving', () => {
     const view = await api.pages.save('c-general', { body: text('Same'), baseVersion: 1 })
     expect(view.version).toBe(1)
     expect(await api.pages.history('c-general')).toHaveLength(1)
-    expect(pageEvents()).toEqual([])
+    // No pageSaved; it renews my hold, which readers hear (final review).
+    expect(pageEvents()).toEqual([{ type: 'pageEditing', channelId: 'c-general', userId: 'u-1', until: view.editing!.until }])
   })
 
   it('editors lists distinct savers, newest first', async () => {

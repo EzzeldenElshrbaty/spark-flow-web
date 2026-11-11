@@ -57,9 +57,11 @@ function PageBlockView({ block, ctx }: { block: PageBlock; ctx: BodyContext }) {
       )
     case 'table': {
       const [head, ...rows] = block.rows
-      // A Tab stop, so a wide table scrolls from the keyboard too; named by its header row (polish pass).
+      // A Tab stop, so a wide table scrolls from the keyboard too (polish pass); a group named by its header row, or
+      // plain "Table", never a landmark (final review).
+      const named = head!.map(inlineText).filter((text) => text.trim() !== '')
       return (
-        <div role="region" aria-label={`Table: ${head!.map(inlineText).join(', ')}`} tabIndex={0} className="sf-focus my-2 overflow-x-auto rounded-sf-sm">
+        <div role="group" aria-label={named.length > 0 ? `Table: ${named.join(', ')}` : 'Table'} tabIndex={0} className="sf-focus my-2 overflow-x-auto rounded-sf-sm">
           <table className="border-collapse">
             <thead>
               <tr>

@@ -47,6 +47,12 @@ describe('bookmarks (spec 6.1 tabs row +, §7 Bookmark)', () => {
     expect((await api.bookmarks.add('c-general', { title: 'Runbook', url: 'https://wiki.spark-sys.com/runbook' })).channelId).toBe('c-general')
   })
 
+  it('a bookmark made twice before that rule can still be renamed (final review)', async () => {
+    const first = await api.bookmarks.add('c-backend', { title: 'Runbook', url: 'https://wiki.spark-sys.com/runbook' })
+    await db.update((data) => void data.bookmarks.push({ ...first, id: 'b-twin', title: 'Runbook again' }))
+    expect((await api.bookmarks.update('b-twin', { title: 'Old runbook' })).title).toBe('Old runbook')
+  })
+
   it('only http and https links, never javascript: or data:', async () => {
     for (const url of ['javascript:alert(1)', 'data:text/html,hi', 'ftp://x.y', '', 'not a link']) {
       await expect(api.bookmarks.add('c-backend', { title: 'x', url }), url).rejects.toMatchObject({ status: 400, detail: 'Use a web address (https://…).' })

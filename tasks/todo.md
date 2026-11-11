@@ -3116,15 +3116,41 @@ leaves (chat's rule, no change); the server refuses the same bookmark address tw
 opens the Add people dialog; readers time a hold from when they last heard of it, and each renewal publishes
 `pageEditing`; Native with one final Opus review.
 
-- [ ] Task 1 — page saving: let go of the hold only if this tab held it, after the save on its way (P1); try to let go
+- [x] Task 1 — page saving: let go of the hold only if this tab held it, after the save on its way (P1); try to let go
       when the browser tab closes (P2); a newer edit waiting behind a 400 goes at once (P3); Load the latest failing
       says so (P7); losing edit rights keeps my unsaved text, read-only, with Copy my changes (P9).
-- [ ] Task 2 — hold timing: each renewal publishes `pageEditing`; readers time the hold from when they heard of it (P8).
-- [ ] Task 3 — reader, History, toolbar, help: History links tasks named only in older versions (P4); the reader's wide
+- [x] Task 2 — hold timing: each renewal publishes `pageEditing`; readers time the hold from when they heard of it (P8).
+- [x] Task 3 — reader, History, toolbar, help: History links tasks named only in older versions (P4); the reader's wide
       table is a Tab stop (P5); the table menu stops at 10 columns and 100 rows, saying why (P6); help describes History
       as it is (P10).
-- [ ] Task 4 — channel intro: "The very beginning" shows the intro (I1); Link a project waits for bookmarks and a pick
+- [x] Task 4 — channel intro: "The very beginning" shows the intro (I1); Link a project waits for bookmarks and a pick
       counts at once; the server refuses a duplicate address (I2); Add people opens the dialog (I3); the template picker
       closes when the channel changes (I4); rows rebuild only when they change (I5); Details › Tabs opens Flow bookmarks
       in Flow (I6).
-- [ ] Final review, fixes, gates (lint, tsc, npm test, test:ux, build:prototype).
+- [x] Final review, fixes, gates (lint, tsc, npm test, test:ux, build:prototype).
+
+## Review — chat polish pass
+
+Four task commits (08e380c, adf5153, 0a0522b, 49d0366), each fix with a test that failed first. Final Opus review: no
+critical findings; 2 important ones and 7 re-graded minors fixed in one pass, each RED→GREEN:
+- A save refused after losing edit rights no longer makes the editor editable again; one that lands says Saved.
+- A cached hold isn't news: readers time it from when its page arrived (`dataUpdatedAt`), not from when the tab mounted.
+- A save with nothing new renews the hold and now publishes `pageEditing`, as the contract says.
+- `held` runs out 60 s after my last claim or save, a 409 ends it, and letting go on `pagehide` resets it.
+- Renaming one of two bookmarks with the same address still works (only a new address is checked).
+- Channel details close when a Flow bookmark is followed, and when the channel changes.
+- The reader's table box is a group, not a landmark, named "Table" when its header is empty.
+- A test now covers leaving while a save is on its way (the release waits for it).
+
+Rulings: a page mention stays after its person leaves (Q1, chat's rule); the keepalive release to another origin
+needs a CORS preflight and stays best effort (the hold ends by itself after 60 s); a dev-server reload lets the page go
+(development only).
+
+Deferred minors (from the final review):
+- Closing the tab with unsaved text sends the save without keepalive (the browser's leave prompt is the guard).
+- Each hold renewal makes readers refetch the whole page; the event could be written into the cache instead.
+- Getting edit rights back while in the "can’t edit" state keeps the page read-only until Load the latest.
+- A quick remount while a save is on its way can say "another tab" (existing behaviour).
+- Link a project: a background refetch between a pick and its save, or the intro row scrolling away, can offer the
+  project again (the server answers 409); picking the last linkable project drops focus to the page.
+- Every reader table is a Tab stop, even when it fits.

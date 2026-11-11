@@ -11,8 +11,11 @@ export function BookmarksPanel({
   bookmarks,
   onUpdate,
   onRemove,
+  onFollow,
 }: {
   bookmarks: Bookmark[]
+  /** A bookmark to Flow was followed: the details close (final review). */
+  onFollow?: () => void
   onUpdate?: (id: string, patch: { title: string }) => Promise<unknown>
   onRemove?: (id: string) => Promise<unknown>
 }) {
@@ -51,7 +54,7 @@ export function BookmarksPanel({
               </>
             ) : (
               <>
-                <BookmarkLink url={b.url} className="sf-focus sf-ui min-w-0 flex-1 truncate rounded-sf-sm text-sf-accent underline">
+                <BookmarkLink url={b.url} onFollow={onFollow} className="sf-focus sf-ui min-w-0 flex-1 truncate rounded-sf-sm text-sf-accent underline">
                   {b.title}
                 </BookmarkLink>
                 <span className="sf-meta hidden min-w-0 max-w-48 truncate text-sf-text-muted sm:inline">{new URL(b.url).hostname}</span>

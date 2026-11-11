@@ -93,7 +93,11 @@ export function ChannelView({ channelId, hideTabs = [] }: { channelId: string | 
   useEffect(() => void loadComposer(), [])
   const panelId = useId()
   // Channel details: from the header, and from /invite and /topic in the box (spec 6.8).
-  const [details, setDetails] = useState<OpenDetails | null>(null)
+  // Channel details belong to the channel they were opened in: they close when Back or a link moves on (final review).
+  const [openDetails, setOpenDetails] = useState<{ in: string | undefined; details: OpenDetails } | null>(null)
+  if (openDetails !== null && openDetails.in !== channelId) setOpenDetails(null)
+  const details = openDetails?.details ?? null
+  const setDetails = (next: OpenDetails | null) => setOpenDetails(next ? { in: channelId, details: next } : null)
   // /remind: the words to be reminded of, while Set a reminder is open.
   const [reminding, setReminding] = useState<string | null>(null)
   // The channel the template picker was opened in: it closes when Back or a link moves to another (polish pass).

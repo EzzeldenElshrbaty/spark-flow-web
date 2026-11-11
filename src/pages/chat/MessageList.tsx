@@ -42,9 +42,9 @@ const estimate = (row: MessageListRow) => (row.kind === 'intro' ? 160 : row.kind
 
 type MessagesQuery = UseInfiniteQueryResult<InfiniteData<Page<ChatMessage>, unknown>>
 
-
 /** No messages on their way: one array, so a render without any doesn't rebuild the rows (polish pass). */
 const NO_PENDING: PendingMessage[] = []
+
 /**
  * A channel's messages (spec 6.2): virtualized, opened at the newest message (or at the New line when more than a
  * screen is unread), older pages load as the top comes near and the view stays put. Day sections with a sticky

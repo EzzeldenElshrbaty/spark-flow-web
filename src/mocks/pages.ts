@@ -149,12 +149,14 @@ export function pagesApi(db: MockDb, hub: MockHub, now: () => Date): Api['pages'
         checkTurn(data, page, me.id, baseVersion, false)
         if (page.version > 0 && same(page.body, valid)) {
           hold(page, me.id)
-          return { view: viewOf(data, channelId), named: null }
+          return { view: viewOf(data, channelId), named: null, renewed: true }
         }
         const named = write(data, page, valid, me.id, false)
         return { view: viewOf(data, channelId), named }
       })
       if (result.named) published(channelId, result.view.version, result.view.updatedBy!, result.named)
+      // Nothing new to save still renews my hold: readers hear it, as they hear a claim (final review).
+      if ('renewed' in result) hub.publish({ type: 'pageEditing', channelId, userId: result.view.editing!.userId, until: result.view.editing!.until })
       return clone(result.view)
     },
     async history(channelId) {
