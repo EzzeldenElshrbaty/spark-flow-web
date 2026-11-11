@@ -259,18 +259,31 @@ describe('the Board opens on the active sprint (sprints spec §6.3)', () => {
   }
   const sprintSelect = () => screen.getByRole('combobox', { name: 'Sprint' }) as HTMLSelectElement
 
-  it('an agile project’s Board opens on Sprint 14 and writes ?sprint=s-nex-1 into the address', async () => {
+  // The default isn't written into the address (it would outlive the sprint), so the Board follows the running sprint.
+  it('an agile project’s Board opens on Sprint 14 and leaves the address without a sprint', async () => {
     plan()
     const router = await open('?view=board', agile)
-    expect(router.state.location.search).toBe('?view=board&sprint=s-nex-1')
-    // Written in place, so Back still leaves the page.
-    expect(router.state.historyAction).toBe('REPLACE')
+    expect(router.state.location.search).toBe('?view=board')
+    expect(router.state.historyAction).toBe('POP')
     expect(sprintSelect().value).toBe('s-nex-1')
     expect(screen.getByText('Board NEX-1')).toBeTruthy()
     expect(screen.getByRole('status').textContent).toBe('Showing 1 of 3 tasks · Clear filters')
     cleanup()
     await open('?view=list', agile)
     expect(screen.getByText('List NEX-1')).toBeTruthy()
+  })
+
+  it('when the running sprint changes, the Board follows it: Sprint 15 after Sprint 14, with no sprint in the address', async () => {
+    plan()
+    // As the Sprints view opens, then Sprint 14 is completed and Sprint 15 started.
+    const router = await open('?view=sprints', agile)
+    expect(router.state.location.search).toBe('?view=sprints')
+    sprints = [sprint('s-nex-1', 'Sprint 14', 'closed'), sprint('s-nex-2', 'Sprint 15', 'active')]
+    await act(async () => fireEvent.click(screen.getByRole('radio', { name: 'Board' })))
+    expect(router.state.location.search).toBe('?view=board')
+    expect(sprintSelect().value).toBe('s-nex-2')
+    expect(screen.getByText('Board NEX-2')).toBeTruthy()
+    expect(screen.getByRole('status').textContent).toBe('Showing 1 of 3 tasks · Clear filters')
   })
 
   it('the address wins: a sprint in it stays, and a remembered sprint comes before the active one', async () => {
@@ -287,8 +300,9 @@ describe('the Board opens on the active sprint (sprints spec §6.3)', () => {
     plan()
     const router = await open('?view=board', agile)
     await act(async () => fireEvent.change(sprintSelect(), { target: { value: '' } }))
+    // The address had no sprint, so choosing All sprints changes it by nothing and adds no step.
     expect(router.state.location.search).toBe('?view=board')
-    expect(router.state.historyAction).toBe('PUSH')
+    expect(router.state.historyAction).toBe('POP')
     expect(screen.getByText('Board NEX-1 NEX-2 NEX-3')).toBeTruthy()
     expect(useUiStore.getState().lastFilters.NEX?.sprint).toBe('')
     cleanup()
@@ -300,12 +314,51 @@ describe('the Board opens on the active sprint (sprints spec §6.3)', () => {
 
   it('Clear filters takes the opening sprint off too, and it stays off', async () => {
     plan()
-    const router = await open('?view=list', agile)
-    expect(router.state.location.search).toBe('?view=list&sprint=s-nex-1')
+    for (const view of ['list', 'board'] as const) {
+      const router = await open(`?view=${view}`, agile)
+      expect(sprintSelect().value).toBe('s-nex-1')
+      await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Clear filters' })))
+      expect(router.state.location.search).toBe(`?view=${view}`)
+      expect(sprintSelect().value).toBe('')
+      expect(screen.getByText(`${view === 'list' ? 'List' : 'Board'} NEX-1 NEX-2 NEX-3`)).toBeTruthy()
+      // Taking a sprint filter off is a pick: All sprints.
+      expect(useUiStore.getState().lastFilters.NEX).toEqual({ sprint: '' })
+      cleanup()
+      useUiStore.setState({ lastFilters: {} })
+    }
+  })
+
+  // '' means All sprints was chosen; what isn't that choice leaves the remembered sprint as it was.
+  it('Clear filters with no sprint filter on keeps the remembered sprint as it was', async () => {
+    // Only a planned sprint: nothing is filtered, nothing remembered.
+    sprints = [sprint('s-nex-2', 'Sprint 15', 'planned')]
+    tasks = [task('NEX-1', { priority: 'high' }), task('NEX-2')]
+    await open('?view=list&priority=high', agile)
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Clear filters' })))
-    expect(router.state.location.search).toBe('?view=list')
-    expect(screen.getByText('List NEX-1 NEX-2 NEX-3')).toBeTruthy()
-    expect(useUiStore.getState().lastFilters.NEX).toEqual({ sprint: '' })
+    expect(useUiStore.getState().lastFilters.NEX?.sprint).toBeUndefined()
+    cleanup()
+    // A remembered All sprints stays All sprints, though a sprint is active now.
+    plan()
+    useUiStore.getState().setProjectFilters('NEX', { sprint: '' })
+    await open('?view=list&priority=high', agile)
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Clear filters' })))
+    expect(useUiStore.getState().lastFilters.NEX?.sprint).toBe('')
+  })
+
+  it('Clear filters in the Sprints view isn’t a choice of All sprints: the Board still opens on the active sprint', async () => {
+    plan()
+    const phases = [phase('ph-1', 1), phase('ph-2', 2)]
+    const router = await open('?view=sprints&phase=ph-1', agile, phases)
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Clear filters' })))
+    expect(router.state.location.search).not.toContain('phase')
+    expect(useUiStore.getState().lastFilters.NEX?.sprint).toBeUndefined()
+    await act(async () => fireEvent.click(screen.getByRole('radio', { name: 'Board' })))
+    expect(sprintSelect().value).toBe('s-nex-1')
+    expect(screen.getByText('Board NEX-1')).toBeTruthy()
+    cleanup()
+    // Reopened, still the active sprint, and still not in the address.
+    expect((await open('?view=board', agile, phases)).state.location.search).toBe('?view=board')
+    expect(sprintSelect().value).toBe('s-nex-1')
   })
 
   it('picking a phase keeps the sprint on screen, but never pins the sprint that was only the default', async () => {
@@ -313,7 +366,7 @@ describe('the Board opens on the active sprint (sprints spec §6.3)', () => {
     const phases = [phase('ph-1', 1), phase('ph-2', 2)]
     const router = await open('?view=board', agile, phases)
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Phase 2' })))
-    expect(router.state.location.search).toBe('?view=board&sprint=s-nex-1&phase=ph-2')
+    expect(router.state.location.search).toBe('?view=board&phase=ph-2')
     // The active sprint stays unremembered: when Sprint 15 starts, the tab follows it.
     expect(useUiStore.getState().lastFilters.NEX).toEqual({ phase: 'ph-2', sprint: undefined })
     // A sprint picked by hand is remembered with the phase.
@@ -327,11 +380,35 @@ describe('the Board opens on the active sprint (sprints spec §6.3)', () => {
     expect(useUiStore.getState().lastFilters.NEX).toEqual({ phase: 'ph-2', sprint: '' })
   })
 
+  it('a phase picked while no sprint is on screen doesn’t choose All sprints: a sprint that starts later opens the Board', async () => {
+    const phases = [phase('ph-1', 1), phase('ph-2', 2)]
+    // Only a planned sprint, so nothing is filtered.
+    sprints = [sprint('s-nex-2', 'Sprint 15', 'planned')]
+    tasks = [task('NEX-1', { sprintId: 's-nex-2' }), task('NEX-2')]
+    await open('?view=board', agile, phases)
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Phase 2' })))
+    expect(useUiStore.getState().lastFilters.NEX).toEqual({ phase: 'ph-2', sprint: undefined })
+    expect(useUiStore.getState().lastFilters.NEX?.sprint).toBeUndefined()
+    cleanup()
+    // Sprint 15 starts.
+    sprints = [sprint('s-nex-2', 'Sprint 15', 'active')]
+    const router = await open('?view=board', agile, phases)
+    expect(router.state.location.search).toBe('?view=board&phase=ph-2')
+    expect(sprintSelect().value).toBe('s-nex-2')
+    cleanup()
+    // An unknown ?sprint= is no sprint on screen either.
+    useUiStore.setState({ lastFilters: {} })
+    await open('?view=board&sprint=s-gone', agile, phases)
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Phase 1' })))
+    expect(useUiStore.getState().lastFilters.NEX?.sprint).toBeUndefined()
+  })
+
   it('an active sprint past its end still opens the Board on it', async () => {
     sprints = [sprint('s-nex-1', 'Sprint 14', 'active', { startDate: '2026-09-01T00:00:00.000Z', endDate: '2026-09-14T23:59:59.999Z' })]
     tasks = [task('NEX-1', { sprintId: 's-nex-1' }), task('NEX-2')]
     const router = await open('?view=board', agile)
-    expect(router.state.location.search).toBe('?view=board&sprint=s-nex-1')
+    expect(router.state.location.search).toBe('?view=board')
+    expect(sprintSelect().value).toBe('s-nex-1')
     expect(screen.getByText('Board NEX-1')).toBeTruthy()
   })
 
@@ -355,19 +432,24 @@ describe('the Board opens on the active sprint (sprints spec §6.3)', () => {
     expect(screen.getByText('List NEX-1 NEX-2')).toBeTruthy()
   })
 
-  it('a stale person in the address is dropped, and the opening sprint still lands in it', async () => {
+  it('a stale person in the address is dropped, and a remembered sprint still lands in it', async () => {
     plan()
+    useUiStore.getState().setProjectFilters('NEX', { sprint: 's-nex-2' })
     const router = await open('?view=list&assignee=u-gone', agile, [], [{ id: 'u-2', name: 'Nour' } as User])
-    expect(router.state.location.search).toBe('?view=list&sprint=s-nex-1')
+    expect(router.state.location.search).toBe('?view=list&sprint=s-nex-2')
     expect(router.state.historyAction).toBe('REPLACE')
   })
 
-  it('writes nothing into the address while the sprints are still loading', async () => {
+  it('shows every task while the sprints are still loading, then the active sprint’s', async () => {
     tasks = [task('NEX-1', { sprintId: 's-nex-1' }), task('NEX-2')]
     sprints = undefined
     const router = await open('?view=board', agile)
     expect(router.state.location.search).toBe('?view=board')
-    expect(router.state.historyAction).toBe('POP')
     expect(screen.getByText('Board NEX-1 NEX-2')).toBeTruthy()
+    // They load (the next render has them).
+    sprints = [sprint('s-nex-1', 'Sprint 14', 'active')]
+    await act(async () => fireEvent.click(screen.getByRole('radio', { name: 'List' })))
+    expect(router.state.location.search).toBe('?view=list')
+    expect(screen.getByText('List NEX-1')).toBeTruthy()
   })
 })
