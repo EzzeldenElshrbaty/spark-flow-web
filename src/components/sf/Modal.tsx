@@ -14,10 +14,10 @@ export function useModalClose() {
 }
 
 /** A dialog's Cancel: closes it, asking "Discard …?" first when its form has changes. */
-export function ModalCancelButton({ children = 'Cancel', disabled, touch }: { children?: ReactNode; disabled?: boolean; touch?: boolean }) {
+export function ModalCancelButton({ children = 'Cancel', disabled, touch, autoFocus }: { children?: ReactNode; disabled?: boolean; touch?: boolean; autoFocus?: boolean }) {
   const close = useModalClose()
   return (
-    <Button touch={touch} onClick={close} disabled={disabled}>
+    <Button touch={touch} onClick={close} disabled={disabled} autoFocus={autoFocus}>
       {children}
     </Button>
   )

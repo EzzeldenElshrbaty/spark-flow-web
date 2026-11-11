@@ -304,7 +304,8 @@ describe('voice and video messages in a message (chat spec 6.9)', () => {
     plays(['audio/webm'])
     render(<MessageFiles attachments={[voice]} link={link} />)
     expect(screen.getByRole('button', { name: 'Play voice message' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Voice message · 0:42 · Voice message' })).toBeTruthy()
+    // Its label is its kind, said once; the player shows the length (final review).
+    expect(screen.getByRole('button', { name: 'Voice message' })).toBeTruthy()
   })
 
   it('a video message plays inline, labelled with its length', () => {

@@ -84,4 +84,31 @@ describe('VoicePlayer (chat spec 6.9 sf-clip)', () => {
     expect(screen.getAllByRole('button', { name: 'Play voice message' })).toHaveLength(1)
     expect(screen.getAllByRole('button', { name: 'Pause voice message' })).toHaveLength(1)
   })
+
+  it('a click on the waveform seeks to that point (final review)', () => {
+    const { container } = render(<VoicePlayer src="blob:voice" clip={clip} />)
+    vi.spyOn(slider(), 'getBoundingClientRect').mockReturnValue({ left: 100, right: 300, width: 200, top: 0, bottom: 28, height: 28, x: 100, y: 0, toJSON: () => ({}) })
+    fireEvent.pointerDown(slider(), { clientX: 200 })
+    expect(container.querySelector('audio')!.currentTime).toBe(21)
+  })
+
+  it('right to left, ArrowLeft moves forward (final review)', () => {
+    const { container } = render(
+      <div dir="rtl" style={{ direction: 'rtl' }}>
+        <VoicePlayer src="blob:voice" clip={clip} />
+      </div>,
+    )
+    fireEvent.keyDown(slider(), { key: 'ArrowLeft' })
+    expect(container.querySelector('audio')!.currentTime).toBe(5)
+    fireEvent.keyDown(slider(), { key: 'ArrowRight' })
+    expect(container.querySelector('audio')!.currentTime).toBe(0)
+  })
+
+  it('a recording that won’t play says so, and lets another play (final review)', async () => {
+    vi.mocked(HTMLMediaElement.prototype.play).mockRejectedValueOnce(new DOMException('no', 'NotSupportedError'))
+    render(<VoicePlayer src="blob:voice" clip={clip} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Play voice message' }))
+    expect(await screen.findByText('Couldn’t play this voice message.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Play voice message' })).toBeTruthy()
+  })
 })

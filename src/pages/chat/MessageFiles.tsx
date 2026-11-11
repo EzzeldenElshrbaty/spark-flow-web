@@ -51,7 +51,8 @@ export function download(url: string, name: string) {
 }
 
 /** "PDF": a file's type, from its extension, as the label above its card says. */
-const typeLabel = (a: Attachment) => (a.clip ? clipLabel(a.clip) : a.snippet ? snippetLabel(a) : a.name.includes('.') ? a.name.split('.').pop()!.toUpperCase() : 'File')
+// A voice message's label is its kind: the player shows its length (final review); a video's says both.
+const typeLabel = (a: Attachment) => (a.clip?.kind === 'voice' ? 'Voice message' : a.clip ? clipLabel(a.clip) : a.snippet ? snippetLabel(a) : a.name.includes('.') ? a.name.split('.').pop()!.toUpperCase() : 'File')
 
 /**
  * The action pill on a file (spec 6.9): Download, Share, Details and More, which holds Create task from file, Copy
@@ -65,11 +66,14 @@ function FileActionsPill({
   message,
   pending = false,
   copyText,
+  above = false,
 }: {
   attachment: Attachment
   url: string | null
   link?: string
   message?: ChatMessage | ThreadReply
+  /** Above the card's end instead of inside it: a voice message's player has no room for it (final review). */
+  above?: boolean
   /** The message is still on its way: only Download (nothing else has anything to act on yet). */
   pending?: boolean
   /** A snippet's code: Copy snippet puts it on the clipboard (spec 6.9). */
@@ -105,7 +109,7 @@ function FileActionsPill({
   // Add to folder ▸ (spec 6.9): whoever may edit the file's details files it; a refusal is said beside the pill.
   const fileIn = (folderId: string | null) => actions?.folders?.set(attachment, folderId).catch((e: Error) => setSaid(e.message || "Couldn’t file it. Try again."))
   return (
-    <div className="absolute end-2 top-2 flex items-center gap-1">
+    <div className={clsx('absolute flex items-center gap-1', above ? 'end-0 bottom-full mb-1' : 'end-2 top-2')}>
       <span role="status" className="sf-meta rounded-sf-sm bg-sf-surface-raised px-1 text-sf-text-muted empty:hidden">
         {said}
       </span>
@@ -262,7 +266,7 @@ function Live({ attachment, link, message, pending }: { attachment: Attachment; 
     <button
       type="button"
       aria-expanded={shown}
-      aria-label={`${typeLabel(attachment)} · ${attachment.title}`}
+      aria-label={typeLabel(attachment) === attachment.title ? attachment.title : `${typeLabel(attachment)} · ${attachment.title}`}
       onClick={() => setShown((s) => !s)}
       className="sf-focus inline-flex w-fit items-center gap-0.5 rounded-sf-sm font-sf text-[12px]/[16px] text-sf-text-muted hover:text-sf-text-secondary max-md:min-h-11 max-md:min-w-11"
     >
@@ -298,7 +302,7 @@ function Live({ attachment, link, message, pending }: { attachment: Attachment; 
     body = url ? (
       <div className="group/file relative w-fit max-w-full">
         <VoicePlayer src={url} clip={attachment.clip!} />
-        <FileActionsPill attachment={attachment} url={url} link={link} message={message} pending={pending} />
+        <FileActionsPill attachment={attachment} url={url} link={link} message={message} pending={pending} above />
       </div>
     ) : (
       <span className="block h-11 w-[min(380px,100%)] animate-pulse rounded-sf-lg bg-sf-surface-hover" />

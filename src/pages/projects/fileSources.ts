@@ -24,6 +24,7 @@ export const TYPE_OPTIONS: readonly [FileKind | '', string][] = [
   ['document', 'Documents'],
   ['snippet', 'Snippets'],
   ['video', 'Videos'],
+  ['audio', 'Audio'],
   ['other', 'Other'],
 ]
 

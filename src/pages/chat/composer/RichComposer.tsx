@@ -546,7 +546,17 @@ function Inner({ mode = 'send', placeholder, initialBody, onSend, onCancel, onEd
               ))}
             </>
           )}
-          {recording && files?.onRecorded && <RecordDialog kind={recording} onAttach={files.onRecorded} onClose={() => setRecording(null)} />}
+          {recording && files?.onRecorded && (
+            <RecordDialog
+              kind={recording}
+              onAttach={(file, clip) => {
+                files.onRecorded?.(file, clip)
+                // Back in the box: Enter sends it, rather than opening the recorder again (final review).
+                editor.focus()
+              }}
+              onClose={() => setRecording(null)}
+            />
+          )}
           {slash && (
             <>
               <span aria-hidden className="mx-1 h-4 w-px flex-none bg-sf-line" />

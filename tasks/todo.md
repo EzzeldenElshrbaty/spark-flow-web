@@ -3219,5 +3219,28 @@ uploaded audio stays a file card; no playback speed or transcript yet.
 - [x] Task 3 — the voice player and clips in messages
 - [x] Task 4 — the record dialog, Modal `keepLabel`
 - [x] Task 5 — the composer's buttons and menu items, the tray, help and rules
-- [ ] Final review, fixes, gates (lint, tsc, npm test, test:ux, build:prototype)
+- [x] Final review, fixes, gates (lint, tsc, npm test, test:ux, build:prototype)
+
+## Review — voice and video messages
+
+Five task commits (62047cc, 42261d5, 53102b9, 9771712, 6dca6ec), each test-first. Final Opus review: no critical
+findings; 5 important and 12 re-graded minors fixed in one pass, each RED→GREEN:
+- The waveform's 48 bars spread over the slider, so a click seeks where the bar is and no bar is cut off on a phone; the
+  slider answers touch; a failed play says "Couldn’t play this voice message."; right to left, ArrowLeft moves forward.
+- The file action pill sits above a voice card, off the player; a voice message's label is "Voice message".
+- The project Files tab offers Audio (audio files had dropped out of Other); the contract lists `type=audio` and `.ogg`.
+- The recorder releases the microphone when it can't start, keeps a limit-stopped recording at the limit even in a
+  slow tab, resumes a suspended AudioContext (Safari); tests now cover a device going away, an instant Stop and a
+  waveform that isn't flat.
+- The dialog makes one recording on a double Stop (and keeps the limit's note when Stop races it), keeps focus on Cancel
+  while it asks, and Attach puts focus back in the box, so Enter sends.
+- Migration 34 fills `clip` in deleted messages kept for Undo; the spec says the dialog is a centred box on phones.
+
+Rulings: the browser test is `recorder.browser.test.tsx` (the browser project's pattern); the layers check holds the
+recorder at "asking"; reduced motion leaves out the level meter; a defensive `resume()` for Safari's audio.
+
+Manual check left: record a 30-second voice message in Chrome and seek mid-waveform before and during play (a Chrome
+WebM recording has no seek index; tests play the seeded WAV).
+
+Deferred minor: a file dropped on the open record dialog lands in the composer's tray behind it.
 

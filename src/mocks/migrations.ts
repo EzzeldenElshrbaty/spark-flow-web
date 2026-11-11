@@ -26,7 +26,6 @@ const V24_ROLES = [
 ]
 
 export const migrations: Record<number, (doc: Record<string, unknown>) => void> = {
-  // 34: who made each channel, and when (chat spec 6.14, the intro): dated by its first message, its maker unknown.
   // 35: files say whether they're a voice or video message (chat spec 6.9); none were.
   34: (doc) => {
     const list = (value: unknown) => (Array.isArray(value) ? (value as Record<string, unknown>[]).filter(Boolean) : [])
@@ -35,7 +34,9 @@ export const migrations: Record<number, (doc: Record<string, unknown>) => void> 
     }
     for (const file of list(doc.attachments)) fill(file)
     for (const row of [...list(doc.messages), ...list(doc.replies)]) for (const file of list(row.attachments)) fill(file)
+    for (const entry of list(doc.trash)) for (const file of list((entry.snapshot as Record<string, unknown> | undefined)?.attachments)) fill(file)
   },
+  // 34: who made each channel, and when (chat spec 6.14, the intro): dated by its first message, its maker unknown.
   33: (doc) => {
     if (!Array.isArray(doc.channels)) return
     const messages = Array.isArray(doc.messages) ? (doc.messages as Record<string, unknown>[]) : []

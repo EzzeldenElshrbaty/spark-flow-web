@@ -1,10 +1,11 @@
 import '@/index.css'
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { api } from '@/lib/api'
 import { renderApp } from '@/test/app'
 import { axeProblems } from '@/test/axe'
+import { answersTouch } from '@/test/touch'
 
 // The seeded voice message (Nour's m-g04 in #general, a 4-second WAV), in the whole app, as Youssef (Admin).
 
@@ -14,8 +15,8 @@ beforeEach(async () => {
   await api.db.reset()
 })
 
-async function openGeneral(theme: 'light' | 'dark' = 'light') {
-  const app = await renderApp({ path: '/w/engineering/c/c-general', as: 'admin', theme, size: 'desktop' })
+async function openGeneral(theme: 'light' | 'dark' = 'light', size: 'desktop' | 'phone' = 'desktop') {
+  const app = await renderApp({ path: '/w/engineering/c/c-general', as: 'admin', theme, size })
   await app.settled()
   const play = await screen.findByRole('button', { name: 'Play voice message' }, { timeout: 3000 })
   play.scrollIntoView({ block: 'center' })
@@ -40,5 +41,21 @@ describe('a voice message in the channel (chat spec 6.9)', () => {
       await openGeneral(theme)
       expect(await axeProblems(), theme).toEqual([])
     }
+  })
+
+  it('on a phone every bar fits the slider, the slider answers touch, and the file pill stays off the player (final review)', async () => {
+    const play = await openGeneral('dark', 'phone')
+    const card = play.parentElement!
+    const slider = within(card).getByRole('slider', { name: 'Position' })
+    const box = slider.getBoundingClientRect()
+    const bars = [...slider.querySelectorAll('[data-bar]')].map((bar) => bar.getBoundingClientRect())
+    expect(bars).toHaveLength(48)
+    expect(bars.every((b) => b.left >= box.left - 0.5 && b.right <= box.right + 0.5)).toBe(true)
+    // The bars run the slider's width, so a seek lands where the bar is.
+    expect(bars.at(-1)!.right).toBeGreaterThan(box.right - 4)
+    expect(answersTouch(slider)).toEqual([true, true, true, true])
+    const pill = screen.getByRole('group', { name: 'Voice message.wav actions' }).getBoundingClientRect()
+    const player = card.getBoundingClientRect()
+    expect(pill.bottom <= player.top || pill.top >= player.bottom).toBe(true)
   })
 })

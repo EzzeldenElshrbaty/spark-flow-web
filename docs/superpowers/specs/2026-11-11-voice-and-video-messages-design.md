@@ -19,7 +19,7 @@ light and dark, on a 390 px phone.
 2. **Entry points:** Record a video message and Record a voice message in the composer's action row after a divider
    (spec order: + · Aa · emoji · @ | video · voice), from `md` up; on phones they are items in the + (Attach) menu. In the
    channel box and a thread's reply box (both take files); never in a message being edited or in task comments.
-3. **Recorder:** an sf `Modal` (full-screen on phones): recording with a timer and a level meter or the camera's picture,
+3. **Recorder:** an sf `Modal` (on phones a centred box nearly the screen's width): recording with a timer and a level meter or the camera's picture,
    Stop; then a preview with Re-record and Attach. Cancel asks first when something was recorded.
 4. **Limits:** voice up to 5 minutes, video up to 2 minutes at 720p (about 20 MB, under the 25 MB file limit). At the
    limit it stops by itself and says so.
@@ -134,7 +134,7 @@ while recording, "Keep the recording" once stopped.
 - Re-record discards the recording and starts again (no question: the person asked for it).
 - Attach closes the dialog and adds the file to the composer's tray with its `clip`; focus returns to the composer.
 - Said once each (`announce`): "Recording started.", "Recording stopped, 0:42.", the error sentence. Nothing per second.
-- Phones: full screen (Modal's own rule); buttons 44 px (`touch`).
+- Phones: the sf `Modal`, which is a centred box nearly the screen's width (it isn't a full-screen sheet); buttons 44 px (`touch`). (Corrected in the final review.)
 
 ## 7. The composer
 

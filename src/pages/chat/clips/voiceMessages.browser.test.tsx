@@ -57,6 +57,9 @@ describe('voice and video messages from the composer (chat spec 6.9)', () => {
     expect(video.compareDocumentPosition(voice) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     const before = screen.queryAllByRole('button', { name: 'Play voice message' }).length
     await recordVoice(() => userEvent.click(voice))
+    // Focus is back in the box, so Enter sends rather than recording again (final review).
+    await waitFor(() => expect((document.activeElement as HTMLElement | null)?.isContentEditable).toBe(true))
+    expect(document.activeElement?.closest('[data-composer]')).not.toBeNull()
     await waitFor(async () => expect((await trayCard()).textContent).toContain('Voice message · 0:04'), { timeout: 3000 })
     await userEvent.click(screen.getByRole('button', { name: 'Send' }))
     await waitFor(() => expect(screen.queryAllByRole('button', { name: 'Play voice message' }).length).toBe(before + 1), { timeout: 3000 })

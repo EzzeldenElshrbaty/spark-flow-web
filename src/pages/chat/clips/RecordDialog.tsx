@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState } from 'react'
+import { Fragment, useEffect, useReducer, useRef, useState } from 'react'
 import type { Clip, ClipKind } from '@/api/types'
 import { announce } from '@/components/sf/Announcer'
 import { Button } from '@/components/sf/Button'
@@ -50,12 +50,23 @@ export function RecordDialog({ kind, start = startRecording, onAttach, onClose }
   useEffect(() => {
     const controller = new AbortController()
     let live = true
+    // One stop per attempt: a second Stop, or Stop racing the limit, reuses it (one preview URL) and keeps the limit's
+    // note (final review).
+    let stopping: Promise<Recording> | null = null
+    let limitHit = false
     const finish = async (atLimit: boolean) => {
+      if (atLimit) limitHit = true
       const recorder = recorderRef.current
       if (!recorder || !live) return
-      const recording = await recorder.stop()
+      const first = !stopping
+      stopping ??= recorder.stop()
+      const recording = await stopping
       if (!live) return
-      setState({ step: 'stopped', recording, url: URL.createObjectURL(recording.blob), atLimit })
+      if (!first) {
+        if (limitHit) setState((s) => (s.step === 'stopped' ? { ...s, atLimit: true } : s))
+        return
+      }
+      setState({ step: 'stopped', recording, url: URL.createObjectURL(recording.blob), atLimit: limitHit })
       announce(`Recording stopped, ${formatClipLength(recording.durationMs)}.`)
     }
     finishRef.current = finish
@@ -119,7 +130,8 @@ export function RecordDialog({ kind, start = startRecording, onAttach, onClose }
   let footer
   if (state.step === 'asking') {
     body = <p className="sf-ui text-sf-text-secondary">Waiting for your {device}…</p>
-    footer = <ModalCancelButton touch />
+    // Focus stays in the dialog while the browser asks, after Re-record and Try again too (final review).
+    footer = <ModalCancelButton touch autoFocus />
   } else if (state.step === 'recording') {
     body = (
       <div className="flex flex-col items-center gap-4">
@@ -206,7 +218,8 @@ export function RecordDialog({ kind, start = startRecording, onAttach, onClose }
       dirty={state.step === 'recording' || state.step === 'stopped'}
       discardQuestion="Discard the recording?"
       keepLabel={state.step === 'recording' ? 'Keep recording' : 'Keep the recording'}
-      footer={footer}
+      // A new footer per state and attempt: its focused button mounts, so autoFocus puts focus on it.
+      footer={<Fragment key={`${state.step}-${attempt}`}>{footer}</Fragment>}
     >
       {body}
     </Modal>

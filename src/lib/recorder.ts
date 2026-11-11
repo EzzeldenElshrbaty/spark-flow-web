@@ -108,6 +108,8 @@ export async function startRecording(kind: ClipKind, opts: { maxMs: number; onLi
     analyser = context.createAnalyser()
     analyser.fftSize = 1024
     context.createMediaStreamSource(stream).connect(analyser)
+    // Safari may make it suspended after the permission prompt: a flat meter and an empty waveform otherwise.
+    void context.resume().catch(() => {})
   } catch {
     context = null
     analyser = null
@@ -134,10 +136,11 @@ export async function startRecording(kind: ClipKind, opts: { maxMs: number; onLi
     tracksOff()
     void context?.close().catch(() => {})
   }
-  const finish = (): Promise<Recording> => {
+  const finish = (atLimit = false): Promise<Recording> => {
     if (finished) return finished
     endedAt = Date.now()
-    const durationMs = Math.max(1, endedAt - started)
+    // Stopped by its limit, it is the limit long, even when a hidden tab ran the timer late (final review).
+    const durationMs = Math.max(1, atLimit ? Math.min(opts.maxMs, endedAt - started) : endedAt - started)
     const mimeType = (recorder.mimeType || picked).split(';')[0]!.trim()
     finished = new Promise<Recording>((resolve) => {
       const done = () => {
@@ -153,7 +156,7 @@ export async function startRecording(kind: ClipKind, opts: { maxMs: number; onLi
     return finished
   }
   const limit = setTimeout(() => {
-    if (!cancelled) void finish().then(() => opts.onLimit())
+    if (!cancelled) void finish(true).then(() => opts.onLimit())
   }, opts.maxMs)
   // A device unplugged, or its permission taken back: stop as if Stop was pressed, keeping what was recorded.
   for (const track of stream.getTracks())
@@ -161,12 +164,19 @@ export async function startRecording(kind: ClipKind, opts: { maxMs: number; onLi
       if (!cancelled && !finished) void finish().then(() => opts.onEnded?.())
     })
 
-  recorder.start(250)
+  try {
+    recorder.start(250)
+  } catch (error) {
+    // Nothing records: the microphone and camera go off at once, not when the limit would have come (final review).
+    cancelled = true
+    release()
+    throw recordErrorOf(error)
+  }
   return {
     stream,
     level: () => current,
     elapsedMs: () => (endedAt ?? Date.now()) - started,
-    stop: finish,
+    stop: () => finish(),
     cancel() {
       if (cancelled) return
       cancelled = true
