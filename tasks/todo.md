@@ -3143,3 +3143,16 @@ and never a private one he isn't in. Opening one he hasn't joined shows Join cha
       Nour's new public and private channels) and as Member (`src/projectChannels.browser.test.tsx`)
 - [x] Browser check: Youssef left #frontend-dev, it stays under Channels and opens with Join channel; rejoined
 - [x] Gates: lint, tsc, `npm test` 3,166/3,166
+
+# Task change cards look like the task's card — 11 Nov 2026, approved ("Yes, recommended")
+
+Branch `feat/task-event-card` from dev 9e3db19. A task change in its project's chat (Created, Assigned, Moved, Done,
+e.g. after /task) showed a key chip, a badge and a line, with only the chip clickable. It now shows as the card a
+mention gets (`TaskCard` in `MessageBody.tsx`, which `TaskUnfurl` also uses): title, live status, project and assignee,
+one link to the task's panel, with the badge and "to Nour El-Sayed" / "to In review" on its last line. A task I can't
+see keeps the plain card.
+
+- [x] Tests first (`pages/chat/TaskEventCard.test.tsx`: the card, one link, Assigned and Moved lines, Done, plain card)
+- [x] `TaskCard` with an optional last line; `TaskEventCard` uses it
+- [x] Browser check: /task in #sela-booking, then a move; desktop light, 390 px dark; the card opens the panel
+- [x] Gates: lint, tsc, `npm test` 3,172/3,172

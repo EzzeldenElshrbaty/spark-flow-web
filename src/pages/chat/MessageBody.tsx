@@ -59,8 +59,11 @@ export function TaskChip({ task }: { task: TaskRef }) {
   )
 }
 
-/** The first task a message names, as a card under its body (spec 6.3). */
-export function TaskUnfurl({ task, users }: { task: TaskRef; users: User[] }) {
+/**
+ * A task as a card that opens it (spec 6.3): title, live status and project, the assignee. `children` is a last line
+ * under them, such as what a task change did; the mention's card has none.
+ */
+export function TaskCard({ task, users, children }: { task: TaskRef; users: User[]; children?: ReactNode }) {
   const to = useTaskLink()
   const assignee = users.find((u) => u.id === task.assigneeId)
   return (
@@ -79,10 +82,16 @@ export function TaskUnfurl({ task, users }: { task: TaskRef; users: User[] }) {
             <bdi dir="ltr">{task.key}</bdi> · {task.statusLabel} · {task.projectName}
           </span>
         </span>
+        {children && <span className="mt-1.5 flex min-w-0 items-center gap-2">{children}</span>}
       </span>
       {assignee && <Avatar id={assignee.id} name={assignee.name} size={28} />}
     </Link>
   )
+}
+
+/** The first task a message names, as a card under its body (spec 6.3). */
+export function TaskUnfurl({ task, users }: { task: TaskRef; users: User[] }) {
+  return <TaskCard task={task} users={users} />
 }
 
 function marked(text: string, marks: Mark[] | undefined, key: number): ReactNode {
