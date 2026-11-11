@@ -141,12 +141,16 @@ export function staleArchivedParam(asked: boolean, archivedCount: number | undef
 
 /**
  * The Tasks tab's phase and sprint: each from the address when it's there, else the one last picked on this project
- * (so picking a phase doesn't drop a remembered sprint).
+ * (so picking a phase doesn't drop a remembered sprint). With no sprint in either, an agile project's is its active one
+ * (`activeSprintId`); a remembered '' is a pick too, All sprints, and keeps the tab from jumping back (sprints spec §6.3).
  */
-export function filtersFrom(params: URLSearchParams, last: { phase?: string; sprint?: string } | undefined): { phase: string | null; sprint: string | null } {
+export function filtersFrom(
+  params: URLSearchParams,
+  last: { phase?: string; sprint?: string } | undefined,
+  activeSprintId: string | null,
+): { phase: string | null; sprint: string | null } {
   return {
     phase: params.has('phase') ? params.get('phase') : (last?.phase ?? null),
-    sprint: params.has('sprint') ? params.get('sprint') : (last?.sprint ?? null),
+    sprint: params.has('sprint') ? params.get('sprint') : last?.sprint === undefined ? activeSprintId : last.sprint || null,
   }
 }
-

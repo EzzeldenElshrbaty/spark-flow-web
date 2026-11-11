@@ -116,5 +116,14 @@ describe('task filters', () => {
     expect(useUiStore.getState().lastFilters.NEX).toEqual({ phase: 'ph1', sprint: undefined })
     expect(useUiStore.getState().lastFilters.MOB).toBeUndefined()
   })
+
+  // Sprints spec §6.3: '' is a choice (All sprints); no sprint at all is none made yet, and only '' survives a reload.
+  it('an empty sprint is kept as All sprints, which a missing one is not', () => {
+    useUiStore.getState().setProjectFilters('NEX', { sprint: '' })
+    const saved = JSON.parse(JSON.stringify(useUiStore.getState().lastFilters)) as Record<string, { sprint?: string }>
+    expect(saved.NEX).toEqual({ sprint: '' })
+    useUiStore.getState().setProjectFilters('NEX', { phase: 'ph1', sprint: undefined })
+    expect('sprint' in JSON.parse(JSON.stringify(useUiStore.getState().lastFilters.NEX))).toBe(false)
+  })
 })
 

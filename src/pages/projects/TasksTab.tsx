@@ -87,34 +87,25 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
   // The address wins; without phase or sprint in it, the tab reopens on the last ones picked here.
   const lastFilters = useUiStore((state) => state.lastFilters[project.key])
   const setProjectFilters = useUiStore((state) => state.setProjectFilters)
-  const picked = filtersFrom(params, lastFilters)
+  // On an agile project the sprint is the running one until the address or a pick says otherwise; nothing is written while sprints load.
+  const activeSprintId = (agile && sprints.data?.find((s) => s.state === 'active')?.id) || null
+  const picked = filtersFrom(params, lastFilters, activeSprintId)
   const phase = phases.some((p) => p.id === picked.phase) ? picked.phase : null
   const sprint = agile ? validSprint(picked.sprint, sprints.data ?? []) : null
   // The Sprints view shows every open sprint: the address's sprint stays there for Board and List, but filters nothing.
   const sprintFilter = view === 'sprints' ? null : sprint
 
-  // A remembered phase or sprint is written into the address as the tab opens (replacing the entry), so Back after
-  // another pick returns to it (UX Phase 6).
-  useEffect(() => {
-    if ((params.has('phase') || !phase) && (params.has('sprint') || !sprint)) return
-    setParams(
-      (prev) => {
-        const next = new URLSearchParams(prev)
-        if (phase && !next.has('phase')) next.set('phase', phase)
-        if (sprint && !next.has('sprint')) next.set('sprint', sprint)
-        return next
-      },
-      { replace: true },
-    )
-  }, [params, phase, sprint, setParams])
-
   // Remember the view shown so the tab reopens it.
   useEffect(() => setProjectView(project.key, view), [view, project.key, setProjectView])
 
-  // A phase or sprint pick (or clearing it) is remembered for this project, so the tab reopens on it.
+  // A phase or sprint pick (or clearing it) is remembered for this project, so the tab reopens on it. On an agile
+  // project All sprints is remembered as '' (a choice, not "none yet"), except in a phase pick on the active sprint
+  // that nobody chose, which stays unremembered so the tab follows whichever sprint is active next.
   const setFilter = (key: 'phase' | 'sprint', value: string | null) => {
     setParam(key, value)
-    setProjectFilters(project.key, { phase: phase ?? undefined, sprint: sprint ?? undefined, [key]: value ?? undefined })
+    const byDefault = sprint !== null && sprint === activeSprintId && lastFilters?.sprint === undefined
+    const kept = { phase: phase ?? undefined, sprint: !agile || byDefault ? undefined : (sprint ?? '') }
+    setProjectFilters(project.key, key === 'phase' ? { ...kept, phase: value ?? undefined } : { ...kept, sprint: value ?? '' })
   }
   // A choice is a step Back undoes (UX Phase 2, 2.7); a correction the page makes itself replaces the entry.
   const setParam = (key: string, value: string | null, replace = false) =>
@@ -158,7 +149,8 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
   const active = activeFilters(query, { phase, sprint: sprintFilter })
   const clear = () => {
     setFilters({ q: null, assignee: null, priority: null, type: null, phase: null, sprint: null })
-    setProjectFilters(project.key, {})
+    // Clearing the sprint is a pick too, or the active sprint would come straight back.
+    setProjectFilters(project.key, agile ? { sprint: '' } : {})
   }
   const all = tickets.data ?? []
   const shown = filterTasks(all, { phase, sprint: sprintFilter }).filter((t) => matchesQuery(t, query, persona.id))
@@ -179,6 +171,22 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
   useEffect(() => {
     if (staleAssignee) setParam('assignee', null, true)
   }, [staleAssignee])
+  // A remembered phase or sprint, or the active sprint, is written into the address as the tab opens (replacing the
+  // entry), so Back after another pick returns to it (UX Phase 6). It waits for the corrections above: each builds its
+  // address from the one it rendered with, so written together the last would undo the first.
+  useEffect(() => {
+    if (staleArchived || staleAssignee) return
+    if ((params.has('phase') || !phase) && (params.has('sprint') || !sprint)) return
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        if (phase && !next.has('phase')) next.set('phase', phase)
+        if (sprint && !next.has('sprint')) next.set('sprint', sprint)
+        return next
+      },
+      { replace: true },
+    )
+  }, [params, phase, sprint, staleArchived, staleAssignee, setParams])
   const archived = filterTasks(archivedAll, { phase, sprint })
   const showArchived = showArchivedAsked && archived.length > 0
   let body

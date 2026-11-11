@@ -20,7 +20,7 @@ type UiState = {
   lastByMode: PlacesByMode                       // workspace slug → last path on each side, Projects and Chat (spec 5.5)
   lastMode: Record<string, WorkspaceMode>        // workspace slug → the side last opened, for pages both sides share
   lastProjectView: Record<string, ProjectView>   // project key → board, list or sprints on its Tasks tab
-  lastFilters: Record<string, { phase?: string; sprint?: string }> // project key → its Tasks tab's last phase and sprint
+  lastFilters: Record<string, { phase?: string; sprint?: string }> // project key → its Tasks tab's last phase and sprint ('' sprint = All sprints, a pick; none = the active sprint)
   recentTimers: Record<string, string[]>         // `${userId}:${workspaceId}` → what timers last ran on, newest first (UX Phase 4, 4.3)
   typing: Record<string, Typer[]>                // channel id → who is typing; never persisted
   helpOpen: boolean                              // the page help panel (slice 6): kept across pages, not reloads

@@ -104,9 +104,28 @@ describe('loggableTasks', () => {
 describe('filtersFrom', () => {
   it('each filter comes from the address when it is there, else from memory', () => {
     const last = { phase: 'ph-old', sprint: 's2' }
-    expect(filtersFrom(new URLSearchParams(''), last)).toEqual({ phase: 'ph-old', sprint: 's2' })
-    expect(filtersFrom(new URLSearchParams('phase=design'), last)).toEqual({ phase: 'design', sprint: 's2' })
-    expect(filtersFrom(new URLSearchParams('sprint=s1'), undefined)).toEqual({ phase: null, sprint: 's1' })
+    expect(filtersFrom(new URLSearchParams(''), last, null)).toEqual({ phase: 'ph-old', sprint: 's2' })
+    expect(filtersFrom(new URLSearchParams('phase=design'), last, null)).toEqual({ phase: 'design', sprint: 's2' })
+    expect(filtersFrom(new URLSearchParams('sprint=s1'), undefined, null)).toEqual({ phase: null, sprint: 's1' })
+  })
+
+  // Sprints spec §6.3: an agile project's sprint is the active one until the address or a remembered pick says otherwise.
+  it('the sprint is the active one when neither the address nor memory has one', () => {
+    expect(filtersFrom(new URLSearchParams(), undefined, 's-nex-1').sprint).toBe('s-nex-1')
+    expect(filtersFrom(new URLSearchParams(), { phase: 'ph1' }, 's-nex-1').sprint).toBe('s-nex-1')
+    expect(filtersFrom(new URLSearchParams('phase=design'), undefined, 's-nex-1')).toEqual({ phase: 'design', sprint: 's-nex-1' })
+    expect(filtersFrom(new URLSearchParams(), undefined, null).sprint).toBeNull()
+  })
+
+  it('a remembered All sprints (stored as an empty string) is a choice: no sprint, not the active one', () => {
+    expect(filtersFrom(new URLSearchParams(), { sprint: '' }, 's-nex-1').sprint).toBeNull()
+    expect(filtersFrom(new URLSearchParams(), { phase: 'ph1', sprint: '' }, 's-nex-1')).toEqual({ phase: 'ph1', sprint: null })
+  })
+
+  it('the address and a remembered sprint both win over the active one', () => {
+    expect(filtersFrom(new URLSearchParams('sprint=s-nex-2'), undefined, 's-nex-1').sprint).toBe('s-nex-2')
+    expect(filtersFrom(new URLSearchParams('sprint=s-nex-2'), { sprint: '' }, 's-nex-1').sprint).toBe('s-nex-2')
+    expect(filtersFrom(new URLSearchParams(), { sprint: 's-nex-2' }, 's-nex-1').sprint).toBe('s-nex-2')
   })
 })
 
