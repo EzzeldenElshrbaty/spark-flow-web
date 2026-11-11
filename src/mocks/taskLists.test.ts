@@ -126,6 +126,12 @@ describe('making a task on the list (task list §6, R2)', () => {
     expect(await detail(api.taskLists.addNew('c-dm-1', input))).toBe('Task lists are for channels.')
   })
 
+  it('refuses a project of another workspace, as adding an existing task does, and makes nothing', async () => {
+    const was = await (async () => (await db.read()).tickets.length)()
+    expect(await detail(api.taskLists.addNew('c-frontend', { ...input, projectId: 'p-brd' }))).toBe('That task is in another workspace.')
+    expect((await db.read()).tickets.length).toBe(was)
+  })
+
   it('a message’s task comes from its project’s own chat only', async () => {
     const data = await db.read()
     const own = data.messages.find((m) => m.channelId === 'c-p-nex' && !m.deletedAt && !m.broadcast && !m.taskEvent && !m.commentId)!

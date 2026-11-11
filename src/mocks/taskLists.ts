@@ -86,8 +86,11 @@ export function taskListsApi(db: MockDb, hub: MockHub, now: () => Date): Api['ta
         { ...input, linkedChannelId: channelId },
         now,
         (data) => {
-          checkCanWrite(data, listChannel(data, channelId))
+          const channel = listChannel(data, channelId)
+          checkCanWrite(data, channel)
           checkNewTask(data, input)
+          // A list holds its own workspace's tasks, whichever way they come (security review).
+          if (openProject(data, input.projectId).workspaceId !== channel.workspaceId) throw badRequest('That task is in another workspace.')
           checkRoom(data, channelId, null)
         },
         (data, task) => {
