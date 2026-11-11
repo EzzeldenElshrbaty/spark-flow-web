@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Phase, TaskView } from '@/api/types'
-import { isDueToday, myTaskTiles, activeFilters, filtersFrom, filterTasks, groupByPhase, loggableTasks, matchesQuery, myOpenTasks, sortTasks, staleArchivedParam, taskQueryFrom, validSprint, viewOf } from './taskFilters'
+import { isDueToday, myTaskTiles, activeFilters, filtersFrom, filterTasks, groupByPhase, loggableTasks, matchesQuery, myOpenTasks, sortTasks, sprintPlanTasks, staleArchivedParam, taskQueryFrom, validSprint, viewOf } from './taskFilters'
 
 const t = (over: Partial<TaskView>): TaskView =>
   ({ id: over.key ?? 'x', key: 'P-1', status: 'todo', category: over.status === 'done' ? 'done' : 'todo', phaseId: null, sprintId: null, assigneeId: null, dueAt: null, overdue: false, overEstimate: false, rank: 0, ...over }) as TaskView
@@ -45,11 +45,32 @@ describe('myOpenTasks', () => {
 
 describe('viewOf and validSprint', () => {
   it('an old saved view (backlog) or none falls back to the board; the address wins', () => {
-    expect(viewOf(null, 'backlog')).toBe('board')
-    expect(viewOf(null, undefined)).toBe('board')
-    expect(viewOf(null, 'list')).toBe('list')
-    expect(viewOf('list', 'board')).toBe('list')
-    expect(viewOf('nonsense', 'list')).toBe('list')
+    expect(viewOf(null, 'backlog', false)).toBe('board')
+    expect(viewOf(null, undefined, false)).toBe('board')
+    expect(viewOf(null, 'list', false)).toBe('list')
+    expect(viewOf('list', 'board', false)).toBe('list')
+    expect(viewOf('nonsense', 'list', false)).toBe('list')
+  })
+  it('Sprints is a view on agile projects only; elsewhere it falls back to the board (sprints spec §6.1)', () => {
+    expect(viewOf('sprints', undefined, true)).toBe('sprints')
+    expect(viewOf(null, 'sprints', true)).toBe('sprints')
+    expect(viewOf('sprints', undefined, false)).toBe('board')
+    expect(viewOf(null, 'sprints', false)).toBe('board')
+    // Asked for on a waterfall project, it opens the board, whatever was last shown there.
+    expect(viewOf('sprints', 'list', false)).toBe('board')
+    expect(viewOf(null, 'sprints', false)).toBe('board')
+  })
+  it('the Sprints view lists tasks in an active or planned sprint, and unfinished ones in no sprint', () => {
+    const sprints = [{ id: 's-a', state: 'active' as const }, { id: 's-p', state: 'planned' as const }, { id: 's-c', state: 'closed' as const }]
+    const tasks = [
+      t({ key: 'A', sprintId: 's-a', status: 'done' }),
+      t({ key: 'P', sprintId: 's-p' }),
+      t({ key: 'C', sprintId: 's-c' }),
+      t({ key: 'B' }),
+      t({ key: 'D', status: 'done' }),
+      t({ key: 'G', sprintId: 's-gone' }),
+    ]
+    expect(sprintPlanTasks(tasks, sprints).map((x) => x.key)).toEqual(['A', 'P', 'B', 'G'])
   })
   it('an unknown sprint id is ignored', () => {
     const sprints = [{ id: 's-1' }, { id: 's-2' }]

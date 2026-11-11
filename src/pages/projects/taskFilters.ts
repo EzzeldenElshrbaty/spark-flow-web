@@ -1,5 +1,6 @@
-import type { Phase, Priority, TaskType, TaskView } from '@/api/types'
+import type { Phase, Priority, Sprint, TaskType, TaskView } from '@/api/types'
 import { localDay } from '@/lib/dates'
+import type { ProjectView } from '@/lib/uiStore'
 import { byOrder } from './phases'
 
 export type TaskFilter = { phase?: string | null; sprint?: string | null }
@@ -101,9 +102,28 @@ const orders: Record<Exclude<TaskSort, 'board'>, (a: TaskView, b: TaskView) => n
 /** Tasks in a List order; board order keeps the order given. */
 export const sortTasks = (tasks: TaskView[], sort: TaskSort) => (sort === 'board' ? [...tasks] : [...tasks].sort(orders[sort]))
 
-/** The Tasks tab's view: the address first, else the saved one if it is still a view (old saves said 'backlog'). */
-export const viewOf = (asked: string | null, saved: string | undefined): 'board' | 'list' =>
-  asked === 'board' || asked === 'list' ? asked : saved === 'list' || saved === 'board' ? saved : 'board'
+/**
+ * The Tasks tab's view: the address first, else the saved one if it is still a view (old saves said 'backlog').
+ * Sprints is a view on agile projects only; asked for elsewhere, it opens the board (sprints spec §6.1).
+ */
+export function viewOf(asked: string | null, saved: string | undefined, agile: boolean): ProjectView {
+  const isView = (v: string | null | undefined): v is ProjectView => v === 'board' || v === 'list' || (agile && v === 'sprints')
+  if (isView(asked)) return asked
+  if (asked === 'sprints') return 'board'
+  return isView(saved) ? saved : 'board'
+}
+
+/**
+ * The tasks the Sprints view lists: those in an active or planned sprint, and unfinished ones in no sprint (or in one
+ * that's gone). Closed sprints aren't shown there; the sprint filter still opens them.
+ */
+export function sprintPlanTasks<T extends Pick<TaskView, 'sprintId' | 'category'>>(tasks: T[], sprints: Pick<Sprint, 'id' | 'state'>[]): T[] {
+  const state = new Map(sprints.map((s) => [s.id, s.state]))
+  return tasks.filter((t) => {
+    const of = t.sprintId ? state.get(t.sprintId) : undefined
+    return of ? of !== 'closed' : t.category !== 'done'
+  })
+}
 
 /** A sprint filter only counts when that sprint exists, as an unknown phase doesn't. */
 export const validSprint = (id: string | null, sprints: { id: string }[]) => (id && sprints.some((s) => s.id === id) ? id : null)

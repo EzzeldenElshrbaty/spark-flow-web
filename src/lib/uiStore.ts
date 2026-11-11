@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware'
 import { modeOf, type PlacesByMode, type WorkspaceMode } from '@/lib/workspaceMode'
 
-export type ProjectView = 'board' | 'list' // the Tasks tab's view
+export type ProjectView = 'board' | 'list' | 'sprints' // the Tasks tab's view (Sprints on agile projects only)
 export type Typer = { userId: string; until: number }
 
 /** How long someone stays "typing" after their last keystroke event. */
@@ -19,7 +19,7 @@ type UiState = {
   lastVisited: Record<string, string>            // workspace slug → last path opened in it
   lastByMode: PlacesByMode                       // workspace slug → last path on each side, Projects and Chat (spec 5.5)
   lastMode: Record<string, WorkspaceMode>        // workspace slug → the side last opened, for pages both sides share
-  lastProjectView: Record<string, ProjectView>   // project key → board or list on its Tasks tab
+  lastProjectView: Record<string, ProjectView>   // project key → board, list or sprints on its Tasks tab
   lastFilters: Record<string, { phase?: string; sprint?: string }> // project key → its Tasks tab's last phase and sprint
   recentTimers: Record<string, string[]>         // `${userId}:${workspaceId}` → what timers last ran on, newest first (UX Phase 4, 4.3)
   typing: Record<string, Typer[]>                // channel id → who is typing; never persisted

@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { Columns3, List } from 'lucide-react'
+import { Columns3, IterationCw, List } from 'lucide-react'
 import { useEffect } from 'react'
 import { useSearchParams } from 'react-router'
 import { useSetBoard } from '@/api/projects'
@@ -17,18 +17,22 @@ import { useRole } from '@/lib/useRole'
 import { useParamState } from '@/lib/searchParams'
 import { BacklogSkeleton, ProjectBacklog } from '@/pages/projects/ProjectBacklog'
 import { BoardSkeleton, ProjectBoard } from '@/pages/projects/ProjectBoard'
+import { SprintPlan } from '@/pages/projects/sprints/SprintPlan'
 import { byOrder } from './phases'
-import { activeFilters, filtersFrom, filterTasks, matchesQuery, PRIORITIES, sortOf, sortTasks, staleArchivedParam, TASK_SORTS, taskQueryFrom, validSprint, viewOf } from './taskFilters'
+import { activeFilters, filtersFrom, filterTasks, matchesQuery, PRIORITIES, sortOf, sortTasks, sprintPlanTasks, staleArchivedParam, TASK_SORTS, taskQueryFrom, validSprint, viewOf } from './taskFilters'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
 
 const views = [
   ['board', 'Board', Columns3],
   ['list', 'List', List],
+  ['sprints', 'Sprints', IterationCw],
 ] as const
 
-
-/** Board | List, the raised pill on a muted track (UX Phase 3: one segmented control). A pick is a step Back undoes; the filters stay. */
-function ViewSwitch({ view }: { view: ProjectView }) {
+/**
+ * Board | List (| Sprints on agile projects), the raised pill on a muted track (UX Phase 3: one segmented control). A
+ * pick is a step Back undoes; the filters stay.
+ */
+function ViewSwitch({ view, agile }: { view: ProjectView; agile: boolean }) {
   const [, setParams] = useSearchParams()
   return (
     <SegmentedControl
@@ -44,19 +48,19 @@ function ViewSwitch({ view }: { view: ProjectView }) {
           { replace: Boolean(how?.keys) },
         )
       }
-      options={views.map(([value, label, icon]) => ({ value, label, icon, iconOnlyOnPhone: true }))}
+      options={views.filter(([value]) => agile || value !== 'sprints').map(([value, label, icon]) => ({ value, label, icon, iconOnlyOnPhone: true }))}
     />
   )
 }
 
-/** The Tasks tab: Board | List, phase chips and (agile) a sprint select. Every choice lives in the URL. */
+/** The Tasks tab: Board | List (| Sprints), phase chips and (agile) a sprint select. Every choice lives in the URL. */
 export function TasksTab({ project, people, phases }: { project: ProjectSummary; people: User[]; phases: Phase[] }) {
   const [params, setParams] = useSearchParams()
   const lastView = useUiStore((state) => state.lastProjectView[project.key])
   const setProjectView = useUiStore((state) => state.setProjectView)
   const asked = params.get('view')
-  const view: ProjectView = viewOf(asked, lastView)
   const agile = project.methodology === 'agile'
+  const view: ProjectView = viewOf(asked, lastView, agile)
   const tickets = useTickets(project.id)
   const sprints = useSprints(agile ? project.id : undefined)
   // The address wins; without phase or sprint in it, the tab reopens on the last ones picked here.
@@ -65,6 +69,8 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
   const picked = filtersFrom(params, lastFilters)
   const phase = phases.some((p) => p.id === picked.phase) ? picked.phase : null
   const sprint = agile ? validSprint(picked.sprint, sprints.data ?? []) : null
+  // The Sprints view shows every open sprint: the address's sprint stays there for Board and List, but filters nothing.
+  const sprintFilter = view === 'sprints' ? null : sprint
 
   // A remembered phase or sprint is written into the address as the tab opens (replacing the entry), so Back after
   // another pick returns to it (UX Phase 6).
@@ -116,13 +122,15 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
   const [, setFilters] = useParamState({ typed: ['q'] })
   const query = taskQueryFrom(params)
   const sort = sortOf(params.get('sort'))
-  const active = activeFilters(query, { phase, sprint })
+  const active = activeFilters(query, { phase, sprint: sprintFilter })
   const clear = () => {
     setFilters({ q: null, assignee: null, priority: null, type: null, phase: null, sprint: null })
     setProjectFilters(project.key, {})
   }
   const all = tickets.data ?? []
-  const shown = filterTasks(all, { phase, sprint }).filter((t) => matchesQuery(t, query, persona.id))
+  const shown = filterTasks(all, { phase, sprint: sprintFilter }).filter((t) => matchesQuery(t, query, persona.id))
+  // The Sprints view counts what it lists (no closed sprints, no finished tasks outside a sprint).
+  const counted = view === 'sprints' ? { shown: sprintPlanTasks(shown, sprints.data ?? []).length, total: sprintPlanTasks(all, sprints.data ?? []).length } : { shown: shown.length, total: all.length }
   // The list can also show the archived tasks, below the others, kept in ?archived=1.
   // Showing archived tasks only makes sense while there are some (the toggle goes when the last one is restored).
   const showArchivedAsked = view === 'list' && params.get('archived') === '1'
@@ -142,10 +150,13 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
   const showArchived = showArchivedAsked && archived.length > 0
   let body
   if (tickets.isError) body = <QueryError what="Tasks" onRetry={() => void tickets.refetch()} />
-  else if (tickets.isPending) body = view === 'board' ? <BoardSkeleton /> : <BacklogSkeleton />
+  else if (view === 'sprints' && sprints.isError) body = <QueryError what="Sprints" onRetry={() => void sprints.refetch()} />
+  else if (tickets.isPending || (view === 'sprints' && sprints.isPending)) body = view === 'board' ? <BoardSkeleton /> : <BacklogSkeleton />
   else if (view === 'board') body = (
       <ProjectBoard tickets={shown} allTickets={tickets.data ?? []} users={people} canMove={canMove} onMove={move} onMoveTo={(t, status, index, visibleKeys) => moveTask.mutateAsync({ key: t.key, status, index, visibleKeys })} error={(update.error ?? moveTask.error)?.message ?? null} board={project.board} onBoard={onBoard} projectId={project.id} countOf={(id) => columnTaskCount(tickets.data ?? [], archivedAll, id)} />
     )
+  // Task 5 gives managers the sprint actions (the sheets); until then nobody gets them.
+  else if (view === 'sprints') body = <SprintPlan project={project} tasks={shown} allTasks={all} sprints={sprints.data ?? []} users={people} actions={null} />
   else if (shown.length === 0 && active > 0)
     body = <EmptyState onClear={clear}>{query.q?.trim() ? `No tasks match “${query.q.trim()}”.` : 'No tasks match these filters.'}</EmptyState>
   else body = <ProjectBacklog tasks={sortTasks(shown, sort)} order={sort === 'board' ? 'board' : 'given'} phases={phases} users={people} board={project.board} />
@@ -178,7 +189,7 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
           </div>
         )}
         <div className="ms-auto flex items-center gap-2">
-          {agile && (
+          {agile && view !== 'sprints' && (
             <select className={clsx(selectClass, 'w-44')} aria-label="Sprint" value={sprint ?? ''} onChange={(e) => setFilter('sprint', e.target.value || null)}>
               <option value="">All sprints</option>
               {(sprints.data ?? []).map((s) => (
@@ -193,10 +204,10 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
               Show archived ({archived.length})
             </button>
           )}
-          <ViewSwitch view={view} />
+          <ViewSwitch view={view} agile={agile} />
         </div>
       </div>
-      <FilterBar sticky={false} shown={shown.length} total={tickets.data ? all.length : undefined} noun={['task', 'tasks']} active={active} onClear={clear}>
+      <FilterBar sticky={false} shown={counted.shown} total={tickets.data ? counted.total : undefined} noun={['task', 'tasks']} active={active} onClear={clear}>
         <SearchBox label="Search tasks" placeholder="Search keys and titles…" value={query.q ?? ''} onChange={(q) => setFilters({ q })} className="col-span-2 sm:min-w-48 sm:flex-1" />
         {select('Assignee', 'assignee', query.assignee, [
           ['', 'Anyone'],
