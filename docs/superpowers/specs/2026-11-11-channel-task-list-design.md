@@ -86,8 +86,11 @@ taskLists: {
   get(channelId: string): Promise<TaskList>
   /** Adds an existing task of the channel's workspace; whoever may post in the channel. */
   add(channelId: string, taskKey: string): Promise<TaskListEntry>
-  /** Makes a task by `tasks.create`'s rules, with `linkedChannelId` = the channel, and adds it, in one write. */
-  addNew(channelId: string, input: NewTicket): Promise<TaskListEntry>
+  /**
+   * Makes a task by `tasks.create`'s rules, with `linkedChannelId` = the channel, and adds it, in one write. Returns the
+   * task, as `tasks.create` does (the task sheet and its openers take a `TaskView`).
+   */
+  addNew(channelId: string, input: NewTicket): Promise<TaskView>
   /** Takes a task off the list; the task itself stays. */
   remove(channelId: string, taskKey: string): Promise<void>
 }
