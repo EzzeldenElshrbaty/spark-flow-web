@@ -47,7 +47,8 @@ type Sprint = { id; projectId; name; goal; startDate; endDate; state: 'planned' 
 
 - Dates are ISO strings like the seed's. The sheets pick days; `startDate` is the local start of the first day and
   `endDate` the local end of the last day, so a two-week sprint is 14 days inclusive.
-- A planned sprint has proposed dates; Start confirms or changes them.
+- A planned sprint has proposed dates. Start opens on today and keeps the planned length (§6.2); both dates stay
+  editable.
 - A closed sprint keeps its dates. When it was completed is in the project's history (§5).
 - A task keeps one `sprintId` (null = backlog). Moving it writes a normal task change, so its history reads
   "Sprint: Sprint 14 → Sprint 15".

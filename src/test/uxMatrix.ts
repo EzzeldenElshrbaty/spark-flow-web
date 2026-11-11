@@ -26,6 +26,7 @@ export const UX_PAGES: string[] = [
   'p/NEX/overview',
   'p/NEX/tasks',
   'p/NEX/tasks?ticket=NEX-101',
+  'p/NEX/tasks?view=sprints',
   'p/NEX/chat',
   'p/NEX/time',
   'p/NEX/history',

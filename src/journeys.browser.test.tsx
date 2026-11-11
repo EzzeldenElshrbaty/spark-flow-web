@@ -179,6 +179,53 @@ describe.each(SETUPS)('PM (Nour) at %s in %s', (size, theme) => {
     )
     expect(within(screen.getByRole('group', { name: 'Page' })).getByText('Saved')).toBeTruthy()
   }, 90_000)
+
+  it('plans, starts and completes a sprint as the project’s manager', async () => {
+    const app = await renderApp({ path: '/w/engineering/p/NEX/tasks?view=sprints', as: 'pm', theme, size })
+    await app.settled()
+    const section = (name: string) => screen.findByRole('region', { name })
+
+    // Sprint 14 is over: its 2 done tasks stay with it, and the 5 unfinished go to Sprint 15, the next planned one.
+    await press('button', 'Complete sprint', await section('Sprint 14'))
+    const complete = await dialog('Complete sprint')
+    expect(within(complete).getByText('2 tasks done · 5 not done')).toBeTruthy()
+    const target = within(complete).getByRole('combobox', { name: 'Move the 5 unfinished tasks to' }) as HTMLSelectElement
+    expect(target.selectedOptions[0]?.textContent).toBe('Sprint 15')
+    await userEvent.click(within(complete).getByRole('button', { name: 'Complete sprint' }))
+    expect(await said('Sprint 14 completed.')).toBeTruthy()
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Sprint 14' })).toBeNull())
+
+    // NEX-108 joins it from the backlog with Move to, the way at every size (a phone has no drag handle).
+    await press('button', 'Move to: NEX-108', await section('Backlog'))
+    await userEvent.click(within(await screen.findByRole('menu', { name: 'Move NEX-108 to' })).getByRole('menuitem', { name: 'Sprint 15' }))
+    expect(await said('Moved NEX-108 to Sprint 15.')).toBeTruthy()
+    await app.settled()
+
+    // Sprint 15 starts on today with its 7 tasks: NEX-110, the 5 from Sprint 14 and NEX-108.
+    await press('button', 'Start sprint', await section('Sprint 15'))
+    const start = await dialog('Start sprint')
+    expect(within(start).getByText(/^7 tasks · \d+ points$/)).toBeTruthy()
+    const now = new Date()
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+    expect((within(start).getByLabelText(/^Start/, { selector: 'input' }) as HTMLInputElement).value).toBe(today)
+    await userEvent.click(within(start).getByRole('button', { name: 'Start sprint' }))
+    expect(await said('Sprint 15 started.')).toBeTruthy()
+    expect(within(await section('Sprint 15')).getByText('Active')).toBeTruthy()
+
+    // The project's chat has both cards.
+    await go(app, '/w/engineering/p/NEX/chat', 'Nexus Core')
+    expect(await said('Sprint 14 completed · 2 of 7 tasks done')).toBeTruthy()
+    expect(await said(/^Sprint 15 started · ends /)).toBeTruthy()
+
+    // The Board opens on the running sprint, worked out as it opens and never written into the address.
+    await go(app, '/w/engineering/p/NEX/tasks', 'Nexus Core')
+    await userEvent.click(await screen.findByRole('radio', { name: 'Board' }))
+    const sprint = (await seen('combobox', 'Sprint')) as HTMLSelectElement
+    await waitFor(() => expect(sprint.selectedOptions[0]?.textContent).toBe('Sprint 15'))
+    expect(new URLSearchParams(app.router.state.location.search).get('view')).toBe('board')
+    expect(new URLSearchParams(app.router.state.location.search).has('sprint')).toBe(false)
+    expect(app.consoleErrors).toEqual([])
+  }, 90_000)
 })
 
 describe.each(SETUPS)('Admin (Youssef) at %s in %s', (size, theme) => {

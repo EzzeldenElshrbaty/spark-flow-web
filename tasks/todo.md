@@ -3319,15 +3319,41 @@ sees "Add tasks this channel is working on." in an empty list.
 
 Gates: lint and tsc clean, npm test 3,353/3,353, test:ux 1,032/1,032, build:prototype ok. Not pushed; not on dev.
 
-## Sprints — create, plan, start, complete (11 Nov 2026)
+# Sprints — create, plan, start, complete — 11 Nov 2026, approved (Q1–Q7 "Yes, recommended")
 
-Spec `docs/superpowers/specs/2026-11-11-sprints-design.md` (Q1–Q7 "Yes, recommended"), plan
-`docs/superpowers/plans/2026-11-11-sprints.md`. Branch `feat/sprints` in `.worktrees/sprints`, dev 63af2d6 merged in.
+Spec `docs/superpowers/specs/2026-11-11-sprints-design.md`, plan `docs/superpowers/plans/2026-11-11-sprints.md`. Branch
+`feat/sprints` in `.worktrees/sprints`; dev 63af2d6 merged in at the start, dev 154fc27 (channel task lists) before
+Task 7.
 
-- [ ] 1. Sprint rules (`lib/sprints.ts`)
-- [ ] 2. `api.sprints`: types, mock, HTTP, history, audit, card data, closed-sprint rule
-- [ ] 3. The sprint card in chat
-- [ ] 4. The Sprints view in the Tasks tab
-- [ ] 5. Sprint sheets (create, edit, start, complete, delete)
-- [ ] 6. The Board opens on the active sprint
-- [ ] 7. Help, UX matrix, journey, CLAUDE.md, gates, final review
+- [x] 1. Sprint rules (`lib/sprints.ts`) — 7bb7bf5
+- [x] 2. `api.sprints`: types, mock, HTTP, history, audit, card data, closed-sprint rule — bbd59e0
+- [x] 3. The sprint card in chat — 83ac823
+- [x] 4. The Sprints view in the Tasks tab — 6530068, fc84ca2
+- [x] 5. Sprint sheets (create, edit, start, complete, delete); Start opens on today, keeping the planned length — b2c058e,
+      f00053b
+- [x] 6. The Board opens on the active sprint, worked out and never written into the address — 1096024, eea3637
+- [x] 7. Help, UX matrix, journey, CLAUDE.md, gates
+- [ ] Final review of the whole branch, fixes, then ask before landing on dev
+
+## Review — sprints
+
+Seven tasks, each test-first and reviewed, plus 5b (Start opens on today, the user's "Yes, today"). Decisions made on
+the way: the Board's default sprint is worked out on every render, never written into the address or remembered (spec
+§6.3), so the Board follows the running sprint; an archived project's refusal is the codebase's 400 ("This project is
+archived. Restore it first."), as phases and deliverables; a new sprint's dates start today once the last one's end has
+passed.
+
+Task 7:
+- Help: Board and tasks has a Sprints section (create, plan, start, complete, who can); the board paragraph says Board
+  and List open on the running sprint.
+- `p/NEX/tasks?view=sprints` joined `UX_PAGES` (33 pages); a PM walkthrough plans, starts and completes a sprint
+  (complete Sprint 14 into Sprint 15, Move to NEX-108, start Sprint 15, both cards in NEX's chat, the Board on Sprint 15
+  with no `sprint` in the address), at 1440 light and 390 dark.
+- The History tab's Board chip shows the five `sprint.*` kinds (they plan the board's work, as phases do).
+- Spec §4: Start opens on today and keeps the planned length. CLAUDE.md has a Sprints rule.
+
+Deferred minors are in the SDD ledger (`.superpowers/sdd/2026-11-11-sprints/progress.md`, local, not in git); the
+keyboard drag race on a long manager page (Space within ~300 ms of ↑ while dnd-kit scrolls) is for the final review.
+
+Gates (after the dev merge and Task 7): lint and tsc clean, npm test 3,501/3,501, test:ux 1,064/1,064,
+build:prototype ok. Not pushed; not on dev.

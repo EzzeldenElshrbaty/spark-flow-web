@@ -14,14 +14,14 @@ export function emptyNote(show: HistoryShow, hasMore: boolean, whoName?: string)
 }
 
 /**
- * The project History tab's chips: tasks, the board (columns, phases, deliverables, the project) or comments; and
- * `who`, one person's entries (UX Phase 4, 4.10).
+ * The project History tab's chips: tasks, the board (columns, phases, sprints, deliverables, the project) or comments;
+ * and `who`, one person's entries (UX Phase 4, 4.10). Sprints plan the board's work, as phases do, so they're Board's.
  */
 export function historyFilter(entries: ActivityEntry[], show: HistoryShow, who = ''): ActivityEntry[] {
   const theirs = who ? entries.filter((e) => e.actorId === who) : entries
   if (show === 'tasks') return theirs.filter((e) => e.kind.startsWith('task.'))
   if (show === 'comments') return theirs.filter((e) => e.kind.startsWith('comment.'))
-  if (show === 'board') return theirs.filter((e) => /^(column|phase|deliverable)\./.test(e.kind) || e.kind === 'project.changed')
+  if (show === 'board') return theirs.filter((e) => /^(column|phase|sprint|deliverable)\./.test(e.kind) || e.kind === 'project.changed')
   return theirs
 }
 

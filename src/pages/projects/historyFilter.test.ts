@@ -12,6 +12,15 @@ describe('historyFilter', () => {
     expect(historyFilter(all, 'board').map((x) => x.kind)).toEqual(['column.added', 'phase.changed', 'deliverable.added', 'project.changed'])
     expect(historyFilter(all, 'comments').map((x) => x.kind)).toEqual(['comment.added'])
   })
+
+  it('a sprint’s history is Board’s: sprints plan the board’s work, as phases do (sprints spec §5)', () => {
+    const sprints = (['sprint.added', 'sprint.changed', 'sprint.started', 'sprint.completed', 'sprint.removed'] as ActivityKind[]).map(e)
+    const mixed = [...all, ...sprints]
+    expect(historyFilter(mixed, 'board').map((x) => x.kind)).toEqual(['column.added', 'phase.changed', 'deliverable.added', 'project.changed', ...sprints.map((x) => x.kind)])
+    expect(historyFilter(mixed, 'tasks').map((x) => x.kind)).toEqual(['task.created', 'task.moved'])
+    expect(historyFilter(mixed, 'comments').map((x) => x.kind)).toEqual(['comment.added'])
+    expect(historyFilter(mixed, 'all')).toHaveLength(12)
+  })
 })
 
 describe('emptyNote', () => {
