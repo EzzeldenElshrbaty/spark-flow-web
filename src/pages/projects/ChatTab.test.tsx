@@ -18,7 +18,7 @@ describe('the project Chat tab', () => {
       </MemoryRouter>,
     )
     // One Files list per project (UX Phase 2, 2.5): the project's Files tab, which has a Chat filter.
-    expect(await screen.findByText('Channel view of c-p-nex without files')).toBeTruthy()
+    expect(await screen.findByText('Channel view of c-p-nex without files, tasks')).toBeTruthy()
     // It fills what's left, but never below a floor: on a short screen the page scrolls to it instead (final review).
     expect((container.firstElementChild as HTMLElement).className.split(' ')).toEqual(expect.arrayContaining(['flex-1', 'min-h-[18rem]']))
   })

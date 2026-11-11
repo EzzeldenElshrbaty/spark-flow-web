@@ -7,15 +7,15 @@ const pairs = (cases: UxCase[], key: (c: UxCase) => string) => new Set(cases.map
 
 describe('uxCases', () => {
   it('the whole matrix is every page × role × theme × size, plus Sign in in every theme and size', () => {
-    expect(UX_PAGES).toHaveLength(31)
-    expect(uxCases('full')).toHaveLength(31 * 4 * 2 * 4 + 8)
+    expect(UX_PAGES).toHaveLength(32)
+    expect(uxCases('full')).toHaveLength(32 * 4 * 2 * 4 + 8)
   })
 
   it('the pairwise set is every page as every role once, plus Sign in twice', () => {
     const cases = uxCases('pairwise')
-    expect(cases).toHaveLength(126)
+    expect(cases).toHaveLength(130)
     const signedIn = cases.filter((c) => c.as)
-    expect(pairs(signedIn, (c) => `${c.path}|${c.as}`).size).toBe(124)
+    expect(pairs(signedIn, (c) => `${c.path}|${c.as}`).size).toBe(128)
   })
 
   it('pairwise, each page gets both themes and all four sizes', () => {

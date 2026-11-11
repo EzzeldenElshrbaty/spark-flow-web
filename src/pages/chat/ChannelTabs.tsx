@@ -1,4 +1,4 @@
-import { IconFileText, IconFiles, IconLink, IconMessage, IconPin, IconPlus } from '@tabler/icons-react'
+import { IconFileText, IconFiles, IconLink, IconListCheck, IconMessage, IconPin, IconPlus } from '@tabler/icons-react'
 import { useState } from 'react'
 import type { Bookmark, Channel } from '@/api/types'
 import { IconButton } from '@/components/sf/Button'
@@ -8,18 +8,19 @@ import { usePhone } from '@/components/sf/usePhone'
 import { AddBookmarkDialog } from '@/pages/chat/AddBookmarkDialog'
 import { BookmarkLink } from '@/pages/chat/BookmarkLink'
 
-export type ChannelTab = 'messages' | 'files' | 'pins' | 'page'
+export type ChannelTab = 'messages' | 'files' | 'pins' | 'page' | 'tasks'
 
 const ALL: TabItem<ChannelTab>[] = [
   { id: 'messages', label: 'Messages', icon: IconMessage },
   { id: 'files', label: 'Files', icon: IconFiles },
   { id: 'pins', label: 'Pins', icon: IconPin },
   { id: 'page', label: 'Page', icon: IconFileText },
+  { id: 'tasks', label: 'Task list', icon: IconListCheck },
 ]
 
-/** The views a channel has (spec 6.1). A conversation has no Page. */
+/** The views a channel has (spec 6.1). A conversation has no Page and no Task list (chat spec 6.14). */
 export function channelTabs(channel: Pick<Channel, 'kind'>) {
-  return ALL.filter((t) => t.id !== 'page' || channel.kind === 'channel')
+  return ALL.filter((t) => (t.id !== 'page' && t.id !== 'tasks') || channel.kind === 'channel')
 }
 
 /** The tab a `?tab=` value opens: one the channel has, else Messages. */
@@ -38,6 +39,8 @@ export function ChannelTabs({
   onChange,
   panelId,
   pinCount,
+  taskCount,
+  showTasks = false,
   bookmarks = [],
   onAddBookmark,
   hidden = [],
@@ -48,6 +51,9 @@ export function ChannelTabs({
   panelId: string
   /** Pins (count), once the pins are in (spec 6.1). */
   pinCount?: number
+  /** Task list (count of open tasks), shown while the list has a task or is open (task list §2 Q8). */
+  taskCount?: number
+  showTasks?: boolean
   bookmarks?: Bookmark[]
   /** + Add a bookmark, where I may post. */
   onAddBookmark?: (bookmark: { title: string; url: string }) => Promise<unknown>
@@ -56,7 +62,9 @@ export function ChannelTabs({
 }) {
   const [adding, setAdding] = useState(false)
   const phone = usePhone()
-  const tabs = channelTabs(channel).filter((t) => !hidden.includes(t.id)).map((t) => (t.id === 'pins' && pinCount ? { ...t, count: pinCount } : t))
+  const tabs = channelTabs(channel)
+    .filter((t) => !hidden.includes(t.id) && (t.id !== 'tasks' || showTasks))
+    .map((t) => (t.id === 'pins' && pinCount ? { ...t, count: pinCount } : t.id === 'tasks' && taskCount ? { ...t, count: taskCount } : t))
   return (
     <div className="flex min-w-0 items-center max-md:flex-col max-md:items-stretch">
       <div className="min-w-0 flex-none">

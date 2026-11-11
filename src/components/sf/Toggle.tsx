@@ -48,17 +48,24 @@ export function Checkbox({
   onChange,
   children,
   disabled = false,
+  title,
+  className,
 }: {
   checked: boolean
   onChange: (checked: boolean) => void
   children: ReactNode
   disabled?: boolean
+  /** Shown on hover: why it's off, say (the task list's checkbox). */
+  title?: string
+  className?: string
 }) {
   return (
     <label
+      title={title}
       className={clsx(
         'sf-small inline-flex items-center gap-2 text-sf-text-secondary',
         disabled ? 'cursor-not-allowed' : 'cursor-pointer',
+        className,
       )}
     >
       <input

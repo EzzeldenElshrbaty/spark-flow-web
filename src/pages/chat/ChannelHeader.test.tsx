@@ -236,8 +236,8 @@ describe('the channel bell (spec 6.11)', () => {
 })
 
 describe('channel tabs (spec 6.1)', () => {
-  it('a channel has Messages, Files, Pins and Page; a DM has no Page', () => {
-    expect(channelTabs(backend).map((t) => t.id)).toEqual(['messages', 'files', 'pins', 'page'])
+  it('a channel has Messages, Files, Pins, Page and Task list; a DM has no Page or Task list', () => {
+    expect(channelTabs(backend).map((t) => t.id)).toEqual(['messages', 'files', 'pins', 'page', 'tasks'])
     expect(channelTabs({ ...backend, kind: 'dm' }).map((t) => t.id)).toEqual(['messages', 'files', 'pins'])
   })
 

@@ -42,6 +42,9 @@ import { TemplatePicker } from '@/pages/chat/page/TemplatePicker'
 import { ChannelIntroRow } from '@/pages/chat/ChannelIntroRow'
 import { askToLeave } from '@/lib/unsavedChanges'
 import { ChannelPins } from '@/pages/chat/PinsTab'
+import { ChannelTaskList } from '@/pages/chat/tasks/ChannelTaskList'
+import { useTaskList } from '@/api/taskLists'
+import { listCounts } from '@/lib/taskList'
 import { ChannelFiles } from '@/pages/chat/files/FilesTab'
 import { useFlowFilePicker } from '@/pages/chat/files/FilePicker'
 import { usePins } from '@/api/pins'
@@ -178,6 +181,10 @@ export function ChannelView({ channelId, hideTabs = [] }: { channelId: string | 
       ) : tab === 'page' ? (
         <div className="sf flex min-h-0 flex-1 flex-col">
           <ChannelPageTab channel={current} people={people} me={persona.id} />
+        </div>
+      ) : tab === 'tasks' ? (
+        <div className="sf flex min-h-0 flex-1 flex-col">
+          <ChannelTaskList channel={current} people={people} canPost={canPost === true && canWrite === true} onNewTask={fromMessage.newTask} />
         </div>
       ) : (
       <PaneFeed
@@ -319,6 +326,9 @@ function ChannelTop({
   const [archiving, setArchiving] = useState(false)
   // The Pins tab's count (spec 6.1).
   const pins = usePins(channel.id)
+  // The Task list tab, while it has a task or is open, with its open tasks' count (task list §5).
+  const tasks = useTaskList(channel.kind === 'channel' ? channel.id : undefined)
+  const taskEntries = tasks.data?.entries ?? []
   // Bookmarks after the tabs, and in Channel details › Tabs (spec 6.1, 6.10): whoever may post manages them.
   const bookmarks = useBookmarks(channel.id)
   const addBookmark = useAddBookmark()
@@ -371,6 +381,8 @@ function ChannelTop({
         onChange={onTab}
         panelId={panelId}
         pinCount={pins.data?.length}
+        taskCount={listCounts(taskEntries).open}
+        showTasks={taskEntries.length > 0 || tab === 'tasks'}
         hidden={hideTabs}
         bookmarks={bookmarks.data}
         onAddBookmark={addBookmarkTo}
