@@ -3235,6 +3235,9 @@ findings; 5 important and 12 re-graded minors fixed in one pass, each RED→GREE
 - The dialog makes one recording on a double Stop (and keeps the limit's note when Stop races it), keeps focus on Cancel
   while it asks, and Attach puts focus back in the box, so Enter sends.
 - Migration 34 fills `clip` in deleted messages kept for Undo; the spec says the dialog is a centred box on phones.
+- Found by the gates: the dialog's first open now returns focus to its opener (Cancel focuses only after Re-record or
+  Try again), and the voice player draws at once from its clip data instead of replacing a placeholder when the file's
+  address arrives (the late height change made the message list log ResizeObserver loop errors on #general).
 
 Rulings: the browser test is `recorder.browser.test.tsx` (the browser project's pattern); the layers check holds the
 recorder at "asking"; reduced motion leaves out the level meter; a defensive `resume()` for Safari's audio.

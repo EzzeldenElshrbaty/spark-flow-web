@@ -130,8 +130,9 @@ export function RecordDialog({ kind, start = startRecording, onAttach, onClose }
   let footer
   if (state.step === 'asking') {
     body = <p className="sf-ui text-sf-text-secondary">Waiting for your {device}…</p>
-    // Focus stays in the dialog while the browser asks, after Re-record and Try again too (final review).
-    footer = <ModalCancelButton touch autoFocus />
+    // After Re-record or Try again, focus stays in the dialog on Cancel while the browser asks (final review). Not on
+    // the first open: the Modal notes what opened it first, and focuses itself.
+    footer = <ModalCancelButton touch autoFocus={attempt > 0} />
   } else if (state.step === 'recording') {
     body = (
       <div className="flex flex-col items-center gap-4">

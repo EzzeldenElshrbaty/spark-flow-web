@@ -15,7 +15,7 @@ const PLAY_FAILED = 'Couldn’t play this voice message.'
  * position slider, and the time. The length comes from `clip.durationMs`, never from the media: a browser's WebM
  * recording may not carry one. One plays at a time across the page.
  */
-export function VoicePlayer({ src, clip }: { src: string; clip: Clip }) {
+export function VoicePlayer({ src, clip }: { src: string | null; clip: Clip }) {
   const id = useId()
   const audio = useRef<HTMLAudioElement>(null)
   const [playing, setPlaying] = useState(false)
@@ -39,7 +39,8 @@ export function VoicePlayer({ src, clip }: { src: string; clip: Clip }) {
   }
   const toggle = () => {
     const element = audio.current
-    if (!element) return
+    // Before the file's address has arrived there is nothing to play yet.
+    if (!element || !src) return
     if (playing) element.pause()
     else {
       setFailed(false)
@@ -97,8 +98,9 @@ export function VoicePlayer({ src, clip }: { src: string; clip: Clip }) {
           aria-valuetext={`${formatClipLength(position * 1000)} of ${formatClipLength(clip.durationMs)}`}
           onKeyDown={onKey}
           onPointerDown={onPointer}
-          // The bars spread over the slider's whole width, so a click seeks where the bar is (final review).
-          className="sf-focus flex h-7 min-w-0 flex-1 cursor-pointer items-center justify-between rounded-sf-sm max-md:touch-target"
+          // The bars spread over the slider's whole width, so a click seeks where the bar is (final review); on phones the
+          // slider is 44 px tall itself.
+          className="sf-focus flex h-7 min-w-0 flex-1 cursor-pointer items-center justify-between rounded-sf-sm max-md:h-11"
         >
           {clip.waveform.map((value, i, bars) => {
             const played = fraction >= 1 || i / Math.max(1, bars.length - 1) < fraction
@@ -116,7 +118,7 @@ export function VoicePlayer({ src, clip }: { src: string; clip: Clip }) {
         <span className="sf-meta flex-none text-sf-text-secondary tabular-nums">{formatClipLength(playing || position > 0 ? position * 1000 : clip.durationMs)}</span>
         <audio
           ref={audio}
-          src={src}
+          src={src ?? undefined}
           preload="none"
           onPlay={() => setPlaying(true)}
           onPause={() => {

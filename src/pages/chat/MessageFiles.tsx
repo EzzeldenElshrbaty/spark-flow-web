@@ -299,13 +299,13 @@ function Live({ attachment, link, message, pending }: { attachment: Attachment; 
       </div>
     )
   else if (kind === 'voice')
-    body = url ? (
-      <div className="group/file relative w-fit max-w-full">
+    // The player is drawn at once from its clip data (length, waveform), never swapped in for a placeholder when the
+    // file's address arrives: a late change of height kept the message list re-measuring (final review).
+    body = (
+      <div className="group/file relative w-[380px] max-w-full">
         <VoicePlayer src={url} clip={attachment.clip!} />
         <FileActionsPill attachment={attachment} url={url} link={link} message={message} pending={pending} above />
       </div>
-    ) : (
-      <span className="block h-11 w-[min(380px,100%)] animate-pulse rounded-sf-lg bg-sf-surface-hover" />
     )
   else if (kind === 'video')
     body = url ? (
