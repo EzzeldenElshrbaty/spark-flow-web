@@ -25,6 +25,7 @@ import { ApiError } from '@/lib/api'
 import { formatDate } from '@/lib/format'
 import { withInspector } from '@/lib/inspector'
 import { paths } from '@/lib/paths'
+import { useCanAddTime } from '@/lib/useCanAddTime'
 import { useCanLog } from '@/lib/useCanLog'
 import { useRole } from '@/lib/useRole'
 import { useUiStore } from '@/lib/uiStore'
@@ -82,6 +83,7 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
   const update = useUpdateTask()
   const check = usePermission()
   const canLog = useCanLog()
+  const canAddTime = useCanAddTime()
   const [editing, setEditing] = useState(false)
   const [addingTime, setAddingTime] = useState(false)
   const [archiving, setArchiving] = useState(false)
@@ -264,9 +266,10 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
           onConfirm={(reason) => archive.mutateAsync({ key: t.key, reason })}
           onClose={() => setArchiving(false)}
         />
-        {!archived && canLog(project) && (
+        {/* The timer for everyone on the project; Add time for an Admin or its manager only (11 Nov 2026). */}
+        {!archived && (canLog(project) || canAddTime(project)) && (
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          {t.category !== 'done' &&
+          {canLog(project) && t.category !== 'done' &&
             (timerForTask(myDay.data?.timer, t.id) ? (
               <TimerControls timer={timerForTask(myDay.data?.timer, t.id)!} layout="card" />
             ) : (
@@ -274,9 +277,11 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
                 <Play className="size-4" /> {start.isPending ? 'Starting…' : 'Start timer'}
               </Button>
             ))}
-          <Button variant="ghost" onClick={() => setAddingTime(true)}>
-            <Clock className="size-4" /> Add time
-          </Button>
+          {canAddTime(project) && (
+            <Button variant="ghost" onClick={() => setAddingTime(true)}>
+              <Clock className="size-4" /> Add time
+            </Button>
+          )}
         </div>
         )}
         {start.error && <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">{(start.error as Error).message}</p>}

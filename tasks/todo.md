@@ -3221,3 +3221,18 @@ Branch `feat/task-panel` from dev e86d1c6. Asked for: every field, no tabs, a wa
 - [x] Gates: lint, tsc clean; `npm run test:ux` 1,000/1,000; `npm test` 3,215/3,216 — the one failure,
       `ProjectBoard.browser.test.tsx` "Tab reaches a card’s link" (board only, untouched here), passed 3/3 on its own:
       flaky under the full run's load
+
+# Task panel follow-ups and Add time for managers only — 11 Nov 2026, approved
+
+Branch `fix/task-description-top` from dev cfb9692.
+
+- [x] Description first, in a tinted box with the task's files, above the fields — 5b6a114
+- [x] Fields two to a row (Status | Priority, Assignee | Reporter, Project | Phase, Type | Due, Hours, Sprint |
+      Points, Created | Updated, Made from); Archive/Edit task keep to one line; attachment chips get `bg-surface`
+      (their size text fell under 4.5:1 in the tinted box) — 0c0348b
+- [x] Add time: Admin or the project's manager only, everywhere ("Everywhere", "Must pick"): `addManual` needs
+      `time.logFor` for any entry; Add time hidden by `useCanAddTime` (task panel, Today card, Time tab); the sheet
+      lists only those projects and asks Person (Choose…, Me, people) every time; help and CLAUDE.md; six older tests
+      now add Members' time as the Admin
+- [x] Browser check: Youssef's Add time asks Person; Mariam's panel has Start timer only
+- [x] Gates: lint, tsc, `npm test` 3,227/3,227, `npm run test:ux` 1,000/1,000

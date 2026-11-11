@@ -76,17 +76,17 @@ describe('dashboard', () => {
     const estimates = data.tickets.filter((t) => t.projectId === 'p-nex').reduce((s, t) => s + (t.estimateHours ?? 0), 0)
     expect(nex.estimateHours).toBeCloseTo(estimates)
 
-    await as('u-3')
+    // Manual time is the Admin's or the manager's to add (11 Nov 2026): the Admin adds Mariam's.
+    await as('u-1')
     const day = (offset: number, h: number) => {
       const d = new Date()
       d.setDate(d.getDate() + offset)
       d.setHours(h, 0, 0, 0)
       return d.toISOString()
     }
-    await api.time.addManual({ projectId: 'p-nex', startedAt: day(-10, 6), endedAt: day(-10, 8), note: 'old' })
+    await api.time.addManual({ projectId: 'p-nex', startedAt: day(-10, 6), endedAt: day(-10, 8), note: 'old', userId: 'u-3' })
     const before3 = before.find((p) => p.key === 'NEX')!.week.find((w) => w.userId === 'u-3')?.hours ?? 0
-    await api.time.addManual({ projectId: 'p-nex', startedAt: day(-1, 5), endedAt: day(-1, 7), note: 'yesterday' })
-    await as('u-1')
+    await api.time.addManual({ projectId: 'p-nex', startedAt: day(-1, 5), endedAt: day(-1, 7), note: 'yesterday', userId: 'u-3' })
     const after3 = (await api.dashboard.projects('ws-eng')).find((p) => p.key === 'NEX')!.week.find((w) => w.userId === 'u-3')!.hours
     expect(after3).toBeCloseTo(before3 + 2, 1) // yesterday counts, 10 days ago doesn't
   })
@@ -197,9 +197,10 @@ describe('dashboard stats', () => {
     // Mariam (Nexus Core, El Moasser) logs 2 h yesterday; Tarek logs 3 h on Mobile App, outside her scope.
     await as('u-3')
     const mine = await api.dashboard.stats('ws-eng')
-    await api.time.addManual({ projectId: 'p-nex', startedAt: at(-1, 5), endedAt: at(-1, 7), note: 'yesterday' })
-    await as('u-8')
-    await api.time.addManual({ projectId: 'p-mob', startedAt: at(-1, 1), endedAt: at(-1, 4), note: 'not hers' })
+    // The Admin adds both (manual time is the Admin's or the manager's to add).
+    await as('u-1')
+    await api.time.addManual({ projectId: 'p-nex', startedAt: at(-1, 5), endedAt: at(-1, 7), note: 'yesterday', userId: 'u-3' })
+    await api.time.addManual({ projectId: 'p-mob', startedAt: at(-1, 1), endedAt: at(-1, 4), note: 'not hers', userId: 'u-8' })
     await as('u-3')
     const after = await api.dashboard.stats('ws-eng')
     expect(after.days[12].hours).toBeCloseTo(mine.days[12].hours + 2, 4)
@@ -211,10 +212,8 @@ describe('dashboard stats', () => {
 
   it('stats: an entry is split at local midnight, and nothing before the 14 days counts', async () => {
     const before = await api.dashboard.stats('ws-eng')
-    await as('u-3')
-    await api.time.addManual({ projectId: 'p-nex', startedAt: at(-2, 22), endedAt: at(-1, 1), note: 'late' })
-    await api.time.addManual({ projectId: 'p-nex', startedAt: at(-20, 9), endedAt: at(-20, 11), note: 'old' })
-    await as('u-1')
+    await api.time.addManual({ projectId: 'p-nex', startedAt: at(-2, 22), endedAt: at(-1, 1), note: 'late', userId: 'u-3' })
+    await api.time.addManual({ projectId: 'p-nex', startedAt: at(-20, 9), endedAt: at(-20, 11), note: 'old', userId: 'u-3' })
     const after = await api.dashboard.stats('ws-eng')
     expect(after.days[11].hours).toBeCloseTo(before.days[11].hours + 2, 4)
     expect(after.days[12].hours).toBeCloseTo(before.days[12].hours + 1, 4)

@@ -33,33 +33,45 @@ const field = (label: string) => screen.getByLabelText(new RegExp(`^${label}( \\
 const pick = (label: string, value: string) => fireEvent.change(field(label), { target: { value } })
 const options = (label: string) => within(field(label)).getAllByRole('option').map((o) => o.textContent)
 
-describe('Add time for someone else', () => {
-  it("shows Person only on a project I may add time for others on: Me, then its active people by name", () => {
+describe('Add time: whose time, picked every time (11 Nov 2026)', () => {
+  it('lists only the projects I may add time on (an Admin, or their manager)', () => {
     render(<AddTimeSheet onClose={() => {}} />)
-    expect(screen.queryByLabelText('Person')).toBeNull()
-    pick('Project', 'p-nex')
-    expect(options('Person')).toEqual(['Me', 'Mariam Fathy', 'Salma Ibrahim'])
-    pick('Project', 'p-mob')
-    expect(screen.queryByLabelText('Person')).toBeNull()
+    expect(options('Project')).toEqual(['Choose…', 'Nexus Core'])
   })
 
-  it('sends the chosen person; Me sends none, and changing project goes back to Me', () => {
+  it('asks whose time it is: Choose…, Me, then the project’s active people by name', () => {
+    render(<AddTimeSheet onClose={() => {}} />)
+    pick('Project', 'p-nex')
+    expect(options('Person')).toEqual(['Choose…', 'Me', 'Mariam Fathy', 'Salma Ibrahim'])
+    expect((field('Person') as HTMLSelectElement).value).toBe('')
+  })
+
+  it('Save without a person says “Choose who this time is for.” and sends nothing', () => {
+    render(<AddTimeSheet onClose={() => {}} />)
+    pick('Project', 'p-nex')
+    fireEvent.click(screen.getByRole('button', { name: 'Add time' }))
+    expect(screen.getByText('Choose who this time is for.')).toBeTruthy()
+    expect(add).not.toHaveBeenCalled()
+  })
+
+  it('sends the chosen person, Me as my own id; changing project asks again', () => {
     render(<AddTimeSheet onClose={() => {}} />)
     pick('Project', 'p-nex')
     pick('Person', 'u-3')
     fireEvent.click(screen.getByRole('button', { name: 'Add time' }))
     expect(add.mock.calls[0]![0]).toMatchObject({ projectId: 'p-nex', userId: 'u-3' })
-    pick('Project', 'p-mob')
+    pick('Person', 'u-2')
+    fireEvent.click(screen.getByRole('button', { name: 'Add time' }))
+    expect(add.mock.calls[1]![0]).toMatchObject({ projectId: 'p-nex', userId: 'u-2' })
+    pick('Project', '')
     pick('Project', 'p-nex')
     expect((field('Person') as HTMLSelectElement).value).toBe('')
-    fireEvent.click(screen.getByRole('button', { name: 'Add time' }))
-    expect('userId' in add.mock.calls[1]![0]).toBe(false)
   })
 
   it('editing an entry has no Person: it stays whose it is', () => {
     const entry = { id: 'te-1', userId: 'u-3', addedBy: 'u-2', projectId: 'p-nex', taskId: null, startedAt: '2026-11-05T08:00:00.000Z', endedAt: '2026-11-05T09:00:00.000Z', source: 'manual' as const, note: '', endReason: null }
     render(<AddTimeSheet entry={entry} onClose={() => {}} />)
-    expect(screen.queryByLabelText('Person')).toBeNull()
+    expect(screen.queryByLabelText(/^Person/)).toBeNull()
   })
 })
 

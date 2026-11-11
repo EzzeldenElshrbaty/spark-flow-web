@@ -18,9 +18,10 @@ import { useLogTargets } from './useLogTargets'
 import { announce } from '@/components/sf/Announcer'
 
 /**
- * Add time after the fact: a task (or the project as a whole), the day, start and end, and a note. An Admin, or the
- * project's manager, also picks whose time it is (add time for). With an `entry`, the same form fixes that entry,
- * which stays whose it is. The form checks what it can; the server also refuses time that overlaps.
+ * Add time after the fact, for an Admin or the project's manager only (11 Nov 2026): a task (or the project as a
+ * whole), whose time it is (Me or someone on the project, picked every time), the day, start and end, and a note.
+ * With an `entry`, the same form fixes that entry, which stays whose it is. The form checks what it can; the server
+ * also refuses time that overlaps.
  */
 export function AddTimeSheet({ projectId: forProject, taskId, entry, onClose }: { projectId?: string; taskId?: string; entry?: TimeEntry; onClose: () => void }) {
   // Editing keeps the entry's project; its task, day, times and note can change.
@@ -34,18 +35,19 @@ export function AddTimeSheet({ projectId: forProject, taskId, entry, onClose }: 
   // Closing with changes asks first (UX Phase 1, 1.2).
   const dirty = JSON.stringify(values) !== JSON.stringify(initial)
   // Errors show from the first Save and follow each change after it (UX Phase 4, 4.4).
-  const { errors, attempt, formRef } = useFormCheck(manualEntryErrors(values, new Date()))
-  // Only projects I'm on (or every one, for an Admin): the server refuses the others.
-  const { projects, tasks: listed } = useLogTargets(values.projectId, entry?.projectId)
+  const { errors, attempt, formRef } = useFormCheck(manualEntryErrors(values, new Date(), !entry))
+  // Projects I'm on (or every one, for an Admin); a new entry only where I may add time (an Admin, or its manager).
+  const check = usePermission()
+  const { projects: loggable, tasks: listed } = useLogTargets(values.projectId, entry?.projectId)
+  const projects = entry ? loggable : loggable.filter((project) => check('time.logFor', { project }))
   // An entry's own task stays pickable even once archived (the list leaves archived tasks out).
   const own = useArchivedTasks(values.projectId || undefined, Boolean(entry?.taskId)).data?.find((t) => t.id === entry?.taskId)
   const tasks = own ? [...listed, own] : listed
   const set = <K extends keyof ManualEntryValues>(k: K, v: ManualEntryValues[K]) => setValues((s) => ({ ...s, [k]: v }))
   const fixedTask = taskId ? tasks.find((t) => t.id === taskId) : undefined
   const project = projects.find((p) => p.id === values.projectId)
-  // Whose time (add time for): Me, then the project's active people, for an Admin or the project's manager.
+  // Whose time: Me, then the project's active people, picked for every new entry.
   const { persona } = useRole()
-  const check = usePermission()
   const { workspace } = useCurrentWorkspace()
   const users = useUsers(workspace?.id).data
   const forOthers = !entry && project !== undefined && check('time.logFor', { project })
@@ -124,9 +126,10 @@ export function AddTimeSheet({ projectId: forProject, taskId, entry, onClose }: 
           </Field>
         )}
         {forOthers && (
-          <Field label="Person">
-            <select className={selectClass} value={values.userId ?? ''} onChange={(e) => set('userId', e.target.value)}>
-              <option value="">Me</option>
+          <Field label="Person" required error={errors.person}>
+            <select className={selectClass} value={values.userId ?? ''} aria-invalid={Boolean(errors.person)} onChange={(e) => set('userId', e.target.value)}>
+              <option value="">Choose…</option>
+              <option value={persona.id}>Me</option>
               {people.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.name}

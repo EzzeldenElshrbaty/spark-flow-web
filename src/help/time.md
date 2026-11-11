@@ -18,13 +18,13 @@ Press **Start timer** in the top bar and pick a task: yours come first, then rec
 
 ## Adding time
 
-**Add time** logs time you didn’t time: pick a task or a whole project, the start and end, and a note if you like. An entry can’t overlap another of yours, end in the future or run over 12 hours.
+**Add time** logs time nobody timed. Only people who can see and change everyone’s time, and a project’s manager on that project, add time; everyone else logs their time with the timer. Pick a task or a whole project, whose time it is under **Person**, the start and end, and a note if you like. An entry can’t overlap another of that person’s, end in the future or run over 12 hours.
 
 You can change or delete your own entries once they’ve stopped. People who can see and change everyone’s time can change anyone’s.
 
 ## Adding time for someone else
 
-People who can see and change everyone’s time, and a project’s manager on that project, can add time for someone else. After the project and task, pick them under **Person**: the list has **Me**, then the project’s people. The same rules apply as if they had added it themselves, so it can’t overlap their other entries.
+After the project and task, pick whose time it is under **Person**, every time: the list has **Me**, then the project’s people. The same rules apply as if they had added it themselves, so it can’t overlap their other entries.
 
 The entry is theirs, and says who added it ("Added by Nour El-Sayed"). Whoever added it can also change or delete it.
 

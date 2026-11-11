@@ -3,15 +3,19 @@ import { localDay } from '@/lib/dates'
 
 /** `userId`: whose time, when I add it for someone else (add time for); empty or absent for mine. */
 export type ManualEntryValues = { day: string /* YYYY-MM-DD */; start: string /* HH:mm */; end: string; note: string; taskId: string | null; projectId: string; userId?: string }
-export type ManualEntryErrors = Partial<Record<'end' | 'note' | 'task', string>>
+export type ManualEntryErrors = Partial<Record<'end' | 'note' | 'task' | 'person', string>>
 
 const HOUR = 3_600_000
 const at = (day: string, time: string) => new Date(`${day}T${time}:00`) // local time, as the person typed it
 
-/** The Add time form's own checks, worded like the server's; the server alone checks overlaps. */
-export function manualEntryErrors(v: ManualEntryValues, now: Date): ManualEntryErrors {
+/**
+ * The Add time form's own checks, worded like the server's; the server alone checks overlaps. `needsPerson`: a new
+ * entry names whose time it is, every time (11 Nov 2026).
+ */
+export function manualEntryErrors(v: ManualEntryValues, now: Date, needsPerson = false): ManualEntryErrors {
   const errors: ManualEntryErrors = {}
   if (!v.projectId) errors.task = 'Pick a project.'
+  else if (needsPerson && !v.userId) errors.person = 'Choose who this time is for.'
   const start = at(v.day, v.start).getTime()
   const end = at(v.day, v.end).getTime()
   if (!Number.isFinite(start) || !Number.isFinite(end) || end === start) errors.end = 'The end is before the start.'

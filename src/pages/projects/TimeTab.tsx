@@ -13,7 +13,7 @@ import { entryHours } from '@/lib/hours'
 import { useNow } from '@/lib/useNow'
 import { rateAt } from '@/lib/rates'
 import { taskLabel } from '@/lib/taskLabel'
-import { useCanLog } from '@/lib/useCanLog'
+import { useCanAddTime } from '@/lib/useCanAddTime'
 import { usePermission } from '@/lib/usePermission'
 import { useRole } from '@/lib/useRole'
 import { AddTimeSheet } from '@/pages/time/AddTimeSheet'
@@ -22,7 +22,7 @@ import { emptyTimeText, showPrivacyNote, timeHeading, totalsByPerson } from './t
 
 const tenth = (n: number) => Math.round(n * 10) / 10
 
-/** Time logged on the project: totals per person, then every entry, newest first. Cost for admins only; "Add time" logs your own. */
+/** Time logged on the project: totals per person, then every entry, newest first. Cost for admins only; "Add time" for an Admin or the project's manager. */
 export function TimeTab({ project, people }: { project: ProjectSummary; people: User[] }) {
   const time = useProjectTime(project.id)
   // Archived tasks keep their time, so their rows still name them.
@@ -30,14 +30,14 @@ export function TimeTab({ project, people }: { project: ProjectSummary; people: 
   const tasks = [...(useTickets(project.id).data ?? []), ...archivedTasks]
   const now = useNow(60_000)
   const [adding, setAdding] = useState(false)
-  const canLog = useCanLog()(project)
+  const canAddTime = useCanAddTime()(project)
   const { loading } = useRole()
   const check = usePermission()
   const everyone = check('time.seeTeam', { project })
   const addBar = (
     <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
       {showPrivacyNote(everyone, loading) && <p className="me-auto text-sm text-fg-muted">Only you and the project’s manager see your entries.</p>}
-      {canLog && (
+      {canAddTime && (
         <Button variant="secondary" onClick={() => setAdding(true)}>
           <Clock className="size-4" /> Add time
         </Button>
