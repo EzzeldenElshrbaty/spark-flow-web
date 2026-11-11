@@ -147,8 +147,11 @@ they are.
 ### 6.2 Sheets (all `Sheet`; join `src/layers.browser.test.tsx`)
 
 - **Create or edit sprint:** Name, Start, End, Goal. Save creates or saves; edit keeps the state.
-- **Start sprint:** the same fields, filled from the planned sprint, plus "12 tasks · 31 points". Start sprint is its
-  primary button. Errors sit under their field (`useFormCheck`); server refusals (one running, empty) are the form's own.
+- **Start sprint:** the same fields, plus "12 tasks · 31 points". Name and goal are filled from the planned sprint;
+  Start is today and End is today plus the planned sprint's length (its local days from planned start to planned end,
+  both counted: a sprint planned for 20 Nov – 4 Dec is 15 days, so started on 12 Nov it runs 12 Nov – 26 Nov). Both
+  dates stay editable. Start sprint is its primary button. Errors sit under their field (`useFormCheck`); server
+  refusals (one running, empty) are the form's own.
 - **Complete sprint:** "18 tasks done · 5 not done". When some aren't done: "Move the 5 unfinished tasks to" with a
   select: the next planned sprint first (default), the other planned sprints, "A new sprint", "Backlog". Complete
   sprint is its primary button. With nothing unfinished the select isn't shown.
@@ -160,7 +163,8 @@ or "Sprint 14 completed."
 ### 6.3 The Board and List (Q4)
 
 On an agile project, when the address has no `sprint` and none is remembered for the project, the sprint filter is the
-active sprint, written into the address like a remembered pick. Choosing "All sprints" is remembered as a choice
+active sprint, worked out each time and never written into the address or remembered, so the Board follows the running
+sprint (a person's own pick is written and remembered). Choosing "All sprints" is remembered as a choice
 (stored as `''`), so the tab doesn't jump back. With no active sprint nothing changes.
 
 ### 6.4 Chat card

@@ -14,6 +14,21 @@ import { count } from './count'
 const dayOf = (iso: string) => toLocalInput(new Date(iso)).slice(0, 10)
 
 /**
+ * The days Start sprint opens on: today, for as long as the sprint was planned. A sprint planned for 20 Nov – 4 Dec is 15
+ * days, both counted, so started on 12 Nov it ends on 26 Nov. Whole local days, so a clock change can't shift them.
+ */
+function startingToday(sprint: Sprint, now: Date): { startDay: string; endDay: string } {
+  const utc = (day: string) => {
+    const [year, month, date] = day.split('-').map(Number)
+    return Date.UTC(year!, month! - 1, date)
+  }
+  const days = Math.max(1, Math.round((utc(dayOf(sprint.endDate)) - utc(dayOf(sprint.startDate))) / 86_400_000) + 1)
+  // Noon, so that adding days to the date lands on the right local day wherever a clock changes.
+  const last = new Date(now.getFullYear(), now.getMonth(), now.getDate() + days - 1, 12)
+  return { startDay: toLocalInput(now).slice(0, 10), endDay: toLocalInput(last).slice(0, 10) }
+}
+
+/**
  * A picked day as the sprint stores it: its start is the start of the local day and its end the end (23:59:59.999) of
  * the local day, as `defaultSprintDates` makes them. An empty or unreadable day is '' (`sprintErrors` refuses it).
  */
@@ -33,16 +48,20 @@ type Props = {
 
 /**
  * Create sprint (the next name, two weeks after the last one), Edit sprint (its name, dates and goal; the state stays)
- * and Start sprint (the same fields, confirmed, with what the sprint holds). Errors sit under their field from the
- * first Save; what the server refuses (one already running, an empty sprint) is the form's own sentence.
+ * and Start sprint (the same fields, confirmed, with what the sprint holds; it opens on today, for the planned length).
+ * Errors sit under their field from the first Save; what the server refuses (one already running, an empty sprint) is
+ * the form's own sentence.
  */
 export function SprintSheet({ mode, project, sprint, sprints, tasks, onClose }: Props) {
   const create = useCreateSprint()
   const update = useUpdateSprint()
   const start = useStartSprint()
   const [opened] = useState(() => {
+    const now = new Date()
+    // A sprint starts when it's started: its name and goal as planned, its days from today, as long as it was planned for.
+    if (mode === 'start') return { name: sprint.name, goal: sprint.goal, ...startingToday(sprint, now) }
     if (sprint) return { name: sprint.name, goal: sprint.goal, startDay: dayOf(sprint.startDate), endDay: dayOf(sprint.endDate) }
-    const dates = defaultSprintDates(sprints, new Date())
+    const dates = defaultSprintDates(sprints, now)
     return { name: nextSprintName(sprints.map((s) => s.name)), goal: '', startDay: dayOf(dates.startDate), endDay: dayOf(dates.endDate) }
   })
   const [name, setName] = useState(opened.name)

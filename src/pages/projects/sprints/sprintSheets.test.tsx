@@ -231,13 +231,14 @@ describe('Edit sprint', () => {
 })
 
 describe('Start sprint', () => {
-  it('fills from Sprint 15, shows its “3 tasks · 8 points”, and its primary button is “Start sprint”', () => {
+  it('fills name and goal from Sprint 15, shows its “3 tasks · 8 points”, and its primary button is “Start sprint”', () => {
     mountSheet('start')
     expect(screen.getByRole('dialog', { name: 'Start sprint' })).toBeTruthy()
     expect(nameField().value).toBe('Sprint 15')
     expect(goalField().value).toBe('Audit log for role changes.')
-    expect(startField().value).toBe('2026-11-18')
-    expect(endField().value).toBe('2026-12-01')
+    // Today (Thu 12 Nov), for the 14 days Sprint 15 was planned for (18 Nov – 1 Dec, both counted).
+    expect(startField().value).toBe('2026-11-12')
+    expect(endField().value).toBe('2026-11-25')
     expect(screen.getByText('3 tasks · 8 points')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Start sprint' }).className).toContain('bg-brand-500')
   })
@@ -258,10 +259,59 @@ describe('Start sprint', () => {
     click('Start sprint')
     expect(start.mutate.mock.calls[0]![0]).toEqual({
       id: 's-nex-2',
-      input: { name: 'Sprint 15', goal: 'Audit log, then the load test.', startDate: new Date(2026, 10, 18).toISOString(), endDate: new Date(2026, 11, 2, 23, 59, 59, 999).toISOString() },
+      input: { name: 'Sprint 15', goal: 'Audit log, then the load test.', startDate: new Date(2026, 10, 12).toISOString(), endDate: new Date(2026, 11, 2, 23, 59, 59, 999).toISOString() },
     })
     expect(onClose).toHaveBeenCalledTimes(1)
     expect(said()).toBe('Sprint 15 started.')
+  })
+
+  // The user's decision of 12 Nov 2026: a sprint starts when it's started, and keeps the length it was planned for.
+  it('Start sprint opens on today and keeps the planned length', () => {
+    succeeds(start)
+    const planned = { ...s15, startDate: day(20), endDate: end(4, 11) }
+    mountSheet('start', { sprint: planned, sprints: [s14, planned] })
+    // 20 Nov – 4 Dec is 15 days, both counted: from today, 12 Nov, that's 12 Nov – 26 Nov.
+    expect(startField().value).toBe('2026-11-12')
+    expect(endField().value).toBe('2026-11-26')
+    expect(nameField().value).toBe('Sprint 15')
+    expect(goalField().value).toBe('Audit log for role changes.')
+    click('Start sprint')
+    expect(start.mutate.mock.calls[0]![0]).toEqual({
+      id: 's-nex-2',
+      input: { name: 'Sprint 15', goal: 'Audit log for role changes.', startDate: new Date(2026, 10, 12).toISOString(), endDate: new Date(2026, 10, 26, 23, 59, 59, 999).toISOString() },
+    })
+  })
+
+  it('a planned sprint whose start has passed opens on today too', () => {
+    const late = { ...s15, startDate: day(1), endDate: end(14) }
+    mountSheet('start', { sprint: late, sprints: [s14, late] })
+    // 1 Nov – 14 Nov is 14 days: 12 Nov – 25 Nov.
+    expect(startField().value).toBe('2026-11-12')
+    expect(endField().value).toBe('2026-11-25')
+  })
+
+  it('a one-day sprint ends the day it starts, and a long one carries across the month', () => {
+    const oneDay = { ...s15, startDate: day(18), endDate: end(18) }
+    mountSheet('start', { sprint: oneDay, sprints: [s14, oneDay] })
+    expect(startField().value).toBe('2026-11-12')
+    expect(endField().value).toBe('2026-11-12')
+    cleanup()
+    // 18 Nov – 31 Dec is 44 days: 12 Nov + 43 days is 25 Dec.
+    const long = { ...s15, startDate: day(18), endDate: end(31, 11) }
+    mountSheet('start', { sprint: long, sprints: [s14, long] })
+    expect(endField().value).toBe('2026-12-25')
+  })
+
+  it('the dates it opens on aren’t a change: Cancel closes without asking until one is edited', () => {
+    const onClose = mountSheet('start')
+    click('Cancel')
+    expect(onClose).toHaveBeenCalledTimes(1)
+    cleanup()
+    const again = mountSheet('start')
+    type(endField(), '2026-12-01')
+    click('Cancel')
+    expect(screen.getByText('Discard your changes?')).toBeTruthy()
+    expect(again).not.toHaveBeenCalled()
   })
 
   it('a 409 shows its sentence on the form and the sheet stays open', () => {
