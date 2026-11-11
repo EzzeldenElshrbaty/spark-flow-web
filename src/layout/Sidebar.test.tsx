@@ -14,7 +14,7 @@ vi.mock('@/layout/useCurrentWorkspace', () => ({ useCurrentWorkspace: () => ({ w
 vi.mock('@/lib/useRole', () => ({ useRole: () => ({ grants: ALL_PERMISSIONS, persona: { id: 'u-1', roleIds: ['admin'], grants: ALL_PERMISSIONS } }) }))
 let allow = (_action: string) => true
 vi.mock('@/lib/usePermission', () => ({ usePermission: () => (action: string) => allow(action) }))
-vi.mock('@/layout/NewTaskButton', () => ({ NewTaskButton: () => <button type="button">New task</button> }))
+vi.mock('@/layout/NewButton', () => ({ NewButton: () => <button type="button">New task</button> }))
 vi.mock('@/layout/useGoToMode', () => ({ useGoToMode: () => () => true }))
 const setOrder = vi.fn()
 let customOrder = { starred: false, channels: false, projects: false }
