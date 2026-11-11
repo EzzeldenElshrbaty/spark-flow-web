@@ -67,7 +67,13 @@ export default defineConfig(({ mode }) => {
             include: ['src/**/*.browser.test.tsx'],
             // One file at a time: they share one browser tab, and focus (which editors and scrolling need) is one too.
             fileParallelism: false,
-            browser: { enabled: true, headless: true, provider: playwright(), instances: [{ browser: 'chromium' }] },
+            // Chromium's fake microphone and camera, allowed without a prompt: voice and video messages record for real.
+            browser: {
+              enabled: true,
+              headless: true,
+              provider: playwright({ launchOptions: { args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] } }),
+              instances: [{ browser: 'chromium' }],
+            },
           },
         },
       ],
