@@ -3120,3 +3120,15 @@ sheet opens over the page I'm on, Save opens the new project, Cancel leaves me w
 - [x] `NewButton` with `NewProjectSheet` (the Projects page's `ProjectSheet`)
 - [x] Browser check: desktop light and dark, 390 px
 - [x] Gates: lint, tsc, `npm test` 3,158/3,158
+
+# Project channels list only chats I may write in — 11 Nov 2026, approved ("Yes, recommended")
+
+Branch `fix/project-channels-mine` from dev 9823599. Reported: Hossam (Member, Backend team) saw #el-moasser under
+Project channels though only its project's people may write there. Project channels mirrored the Projects side, which
+lists every project; the sidebar comment still said anyone who sees a project may post in its chat.
+
+- [x] Tests first: `withoutReadOnlyChats`, `projectOrderFrom` keeps unlisted projects in place (`lib/channels.test.ts`);
+      whole app as Member and Admin, and a starred read-only chat (`src/projectChannels.browser.test.tsx`)
+- [x] `useSidebarGroups` leaves out project chats where `collab.post` is false, unless starred; comments and CLAUDE.md
+- [x] Browser check: Hossam sees nexus-core and mobile-app, #el-moasser still opens read-only; Youssef sees every one
+- [x] Gates: lint, tsc, `npm test` 3,163/3,163

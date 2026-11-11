@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Channel, MentionItem } from '@/api/types'
 import { FLOWBOT_ID } from '@/lib/flowbot'
-import { channelLabel, channelSections, chatCount, projectOrderFrom, countNoun, onlyAdminsLine, cantWriteLine, inWorkspace, mutedLast, mustJoin, readOnlyFor, sidebarChannels, sidebarRowState, sortChannels, unreadMentions, unreadTaskMentions } from '@/lib/channels'
+import { channelLabel, channelSections, chatCount, projectOrderFrom, countNoun, onlyAdminsLine, cantWriteLine, inWorkspace, mutedLast, mustJoin, readOnlyFor, sidebarChannels, sidebarRowState, sortChannels, unreadMentions, unreadTaskMentions, withoutReadOnlyChats } from '@/lib/channels'
 import { seed } from '@/mocks/seed'
 
 const data = seed(new Date('2026-10-26T09:00:00Z')).data
@@ -134,6 +134,20 @@ describe('channelSections (spec 5.1: Channels, then Project channels)', () => {
   it('turns a drop there into the Projects side’s order, by project', () => {
     const list = [{ id: 'p-mob', channelId: 'c-p-mob' }, { id: 'p-nex', channelId: 'c-p-nex' }]
     expect(projectOrderFrom(['c-p-nex', 'c-gone', 'c-p-mob'], list)).toEqual(['p-nex', 'p-mob'])
+  })
+
+  it('keeps the projects whose chat isn’t listed there (read only, starred) in their places', () => {
+    const list = ['a', 'b', 'c', 'd'].map((x) => ({ id: `p-${x}`, channelId: `c-p-${x}` }))
+    // Only b and d are in Project channels; d is dropped above b.
+    expect(projectOrderFrom(['c-p-d', 'c-p-b'], list)).toEqual(['p-a', 'p-d', 'p-c', 'p-b'])
+  })
+})
+
+describe('withoutReadOnlyChats (Project channels list the chats I may write in)', () => {
+  const ch = (id: string, starred = false) => ({ id, starred })
+  it('leaves out a project’s chat I may only read, unless I starred it', () => {
+    const list = [ch('c-general'), ch('c-p-nex'), ch('c-p-mob'), ch('c-p-sel', true)]
+    expect(withoutReadOnlyChats(list, new Set(['c-p-mob', 'c-p-sel'])).map((c) => c.id)).toEqual(['c-general', 'c-p-nex', 'c-p-sel'])
   })
 })
 

@@ -62,9 +62,24 @@ export function channelSections<R extends { channel: Pick<Channel, 'id' | 'starr
   }
 }
 
-/** A drop in Project channels, as the Projects side's order: the one order both sides share is of projects. */
+/**
+ * A drop in Project channels, as the Projects side's order: the one order both sides share is of projects. The listed
+ * projects take their new order in the places they held; a project whose chat isn't there (one I may only read, or a
+ * starred one) keeps its place, so the Projects side moves only what was dragged.
+ */
 export function projectOrderFrom(channelIds: string[], projects: { id: string; channelId: string }[]): string[] {
-  return channelIds.flatMap((channelId) => projects.filter((p) => p.channelId === channelId).map((p) => p.id))
+  const dropped = channelIds.flatMap((channelId) => projects.filter((p) => p.channelId === channelId))
+  const listed = new Set(dropped.map((p) => p.id))
+  let next = 0
+  return projects.map((p) => (listed.has(p.id) ? dropped[next++].id : p.id))
+}
+
+/**
+ * The sidebar lists a project's chat only where I may write (11 Nov 2026): one I may only read stays out unless I
+ * starred it. Its address, the project's Chat tab and search still open it.
+ */
+export function withoutReadOnlyChats<C extends Pick<Channel, 'id' | 'starred'>>(channels: C[], readOnlyIds: Set<string>): C[] {
+  return channels.filter((c) => c.starred || !readOnlyIds.has(c.id))
 }
 
 /** Whether a channel belongs to the workspace in the URL. One from another workspace is treated as not found there. */
