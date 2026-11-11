@@ -293,6 +293,28 @@ describe('ChannelMessage parts (feature 4 follow-up)', () => {
     expect(row.querySelector('strong')?.textContent).toBe('fails')
   })
 
+  it('a sprint card draws the card, and offers nothing to change it: no Edit, Delete or Pin, and E and P do nothing', () => {
+    const pin = vi.spyOn(api.pins, 'pin').mockResolvedValue()
+    const card = message('Completed Sprint 14: 18 of 23 tasks done', {
+      senderId: 'u-1', // mine: a plain message of mine would offer Edit and Delete
+      sprintEvent: { kind: 'completed', projectKey: 'NEX', sprintId: 's-nex-1', name: 'Sprint 14', done: 18, total: 23, movedTo: 'Sprint 15', moved: 5 },
+    })
+    const row = show(card)
+    expect(row.textContent).toContain('Sprint 14 completed · 18 of 23 tasks done')
+    expect(row.textContent).toContain('5 moved to Sprint 15')
+    expect(screen.getByRole('link', { name: /Sprint 14 completed/ }).getAttribute('href')).toBe('/w/engineering/p/NEX/tasks?view=sprints')
+    fireEvent.keyDown(screen.getByRole('button', { name: 'More actions' }), { key: 'e' })
+    fireEvent.keyDown(screen.getByRole('button', { name: 'More actions' }), { key: 'p' })
+    expect(useEditing.getState().id).toBeNull()
+    expect(pin).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }))
+    // The menu is still there for what a card allows: a link to it, its text.
+    expect(screen.getByRole('menuitem', { name: 'Copy link' })).toBeTruthy()
+    expect(screen.getByRole('menuitem', { name: 'Copy text' })).toBeTruthy()
+    for (const name of ['Edit message', 'Delete message', 'Pin to channel'])
+      expect(screen.queryByRole('menuitem', { name: new RegExp(name) })).toBeNull()
+  })
+
   it('any link gets a preview card, one per message: the first link’s', async () => {
     show(message('see https://github.com/spark-sys/flow/pull/42 and https://example.com'))
     const card = await screen.findByRole('link', { name: /github\.com\/spark-sys\/flow\/pull\/42/ })

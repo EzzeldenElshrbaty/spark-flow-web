@@ -34,11 +34,14 @@ describe('canContinue (spec 6.2 grouping rule)', () => {
     expect(canContinue(msg(), sent)).toBe(false)
     expect(canContinue(sent, msg())).toBe(false)
   })
-  it('cards (task events, comments) never group, before or after', () => {
+  it('cards (task events, comments, sprints) never group, before or after', () => {
     const card = msg({ taskEvent: { key: 'NEX-1', kind: 'created' } })
     expect(canContinue(card, msg())).toBe(false)
     expect(canContinue(msg(), card)).toBe(false)
     expect(canContinue(msg(), msg({ commentId: 'k1' }))).toBe(false)
+    const sprint = msg({ sprintEvent: { kind: 'started', projectKey: 'NEX', sprintId: 's-nex-2', name: 'Sprint 15', goal: '', endDate: at(28, 9, 0), tasks: 3, points: 8 } })
+    expect(canContinue(sprint, msg())).toBe(false)
+    expect(canContinue(msg(), sprint)).toBe(false)
   })
   it('thread replies group by the same rule', () => {
     const reply = (over: Partial<ThreadReply>): ThreadReply => ({

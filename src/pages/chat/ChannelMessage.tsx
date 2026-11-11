@@ -21,6 +21,7 @@ import { MessageFiles } from '@/pages/chat/MessageFiles'
 import { MessageToolbar, ROW_HEADER } from '@/pages/chat/MessageToolbar'
 import { AuthorName, CommentCard, LinkedTasks, Reactions, ThreadSummary } from '@/pages/chat/MessageParts'
 import { composerLinkPreview, LinkPreviewCard } from '@/pages/chat/LinkPreviewCard'
+import { SprintEventCard } from '@/pages/chat/SprintEventCard'
 import { TaskEventCard } from '@/pages/chat/TaskEventCard'
 import { useEditing } from '@/pages/chat/editingStore'
 import { actionsFor, deleteNeedsConfirm } from '@/pages/chat/messageRights'
@@ -171,7 +172,7 @@ export function ChannelMessage({
   // Pin to channel (P, spec 6.5): a top-level message that's there and settled, where I may post; not a card or a line.
   const setPinned = useSetPinned()
   const pin =
-    root && canPost && !root.system && !broadcast && !root.deletedAt && !sendState && !root.commentId && !root.taskEvent
+    root && canPost && !root.system && !broadcast && !root.deletedAt && !sendState && !root.commentId && !root.taskEvent && !root.sprintEvent
       ? {
           pinned: Boolean(root.pin),
           onToggle: () =>
@@ -225,6 +226,7 @@ export function ChannelMessage({
   else if (root?.system) body = <p className="sf-small leading-[22px] text-sf-text-secondary">{systemText(root.system, (id) => users.find((u) => u.id === id)?.name ?? 'Unknown person')}</p>
   else if (root?.commentId) body = <CommentCard message={root} ctx={ctx} link={permalink} />
   else if (root?.taskEvent) body = <TaskEventCard message={root} users={users} ctx={ctx} />
+  else if (root?.sprintEvent) body = <SprintEventCard message={root} ctx={ctx} />
   else {
     const unfurl = firstTask(message.body, ctx.tasks)
     const link = firstPreviewable(message.body)

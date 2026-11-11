@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import type { ChatMessage } from '@/api/types'
+import type { ChatMessage, SprintEvent } from '@/api/types'
 import { actionsFor, deleteNeedsConfirm, lastEditable } from './messageRights'
 import { ALL_PERMISSIONS } from '@/lib/permissions'
 
+const SPRINT_CARD: SprintEvent = { kind: 'completed', projectKey: 'NEX', sprintId: 's-nex-1', name: 'Sprint 14', done: 18, total: 23, movedTo: null, moved: 5 }
 const m = (over: Partial<ChatMessage>): ChatMessage => ({ id: 'm1', senderId: 'me', content: 'hi', ...over }) as ChatMessage
 
 describe('actionsFor', () => {
@@ -15,6 +16,7 @@ describe('actionsFor', () => {
   it('a card: react only', () => {
     expect(actionsFor(m({ commentId: 'cm1' }), 'me', true)).toEqual({ react: true, edit: false, remove: false })
     expect(actionsFor(m({ taskEvent: { key: 'P-1', kind: 'created' } }), 'me', true)).toEqual({ react: true, edit: false, remove: false })
+    expect(actionsFor(m({ sprintEvent: SPRINT_CARD }), 'me', true)).toEqual({ react: true, edit: false, remove: false })
   })
   it('a deleted row: none', () => {
     expect(actionsFor(m({ deletedAt: '2026-10-28T10:00:00Z' }), 'me', true)).toEqual({ react: false, edit: false, remove: false })
@@ -28,6 +30,7 @@ describe('actionsFor an Admin (spec §9: delete is author or admin)', () => {
   it('may delete someone else’s plain message, not edit it; never a card or a system message', () => {
     expect(actionsFor(m({ senderId: 'other' }), 'me', true, ALL_PERMISSIONS)).toEqual({ react: true, edit: false, remove: true })
     expect(actionsFor(m({ senderId: 'other', commentId: 'k' }), 'me', true, ALL_PERMISSIONS)).toEqual({ react: true, edit: false, remove: false })
+    expect(actionsFor(m({ senderId: 'other', sprintEvent: SPRINT_CARD }), 'me', true, ALL_PERMISSIONS)).toEqual({ react: true, edit: false, remove: false })
     expect(actionsFor(m({ system: { kind: 'joined' } }), 'me', true, ALL_PERMISSIONS)).toEqual({ react: false, edit: false, remove: false })
   })
 })
@@ -47,6 +50,7 @@ describe('lastEditable (spec 6.3: Up in an empty composer)', () => {
       m({ id: 'b', senderId: 'other' }),
       m({ id: 'c', senderId: 'me', deletedAt: 'T' }),
       m({ id: 'd', senderId: 'me', taskEvent: { key: 'P-1', kind: 'created' } }),
+      m({ id: 'f', senderId: 'me', sprintEvent: SPRINT_CARD }),
       m({ id: 'e', senderId: 'other' }),
     ]
     expect(lastEditable(list, 'me')?.id).toBe('a')

@@ -28,6 +28,7 @@ describe('canMakeTask', () => {
     expect(canMakeTask(m('Fix it'))).toBe(true)
     expect(canMakeTask({ ...m(''), taskEvent: { key: 'NEX-1', kind: 'created' } })).toBe(false)
     expect(canMakeTask({ ...m(''), commentId: 'k1' })).toBe(false)
+    expect(canMakeTask({ ...m(''), sprintEvent: { kind: 'completed', projectKey: 'NEX', sprintId: 's-nex-1', name: 'Sprint 14', done: 1, total: 1, movedTo: null, moved: 0 } })).toBe(false)
     expect(canMakeTask({ ...m('The key expired'), broadcast: { rootId: 'm0', rootText: 'Build fails' } })).toBe(false)
   })
 })

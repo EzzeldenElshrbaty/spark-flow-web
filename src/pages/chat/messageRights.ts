@@ -8,7 +8,7 @@ import { can, type Permission } from '@/lib/permissions'
 export function actionsFor(row: ChatMessage | ThreadReply, meId: string | undefined, canPost: boolean, grants: readonly Permission[] = []) {
   const system = 'system' in row && Boolean(row.system)
   if (!canPost || row.deletedAt || system) return { react: false, edit: false, remove: false }
-  const card = ('commentId' in row && Boolean(row.commentId)) || ('taskEvent' in row && Boolean(row.taskEvent))
+  const card = ('commentId' in row && Boolean(row.commentId)) || ('taskEvent' in row && Boolean(row.taskEvent)) || ('sprintEvent' in row && Boolean(row.sprintEvent))
   // The rules are can()'s (spec §9).
   const ctx = { userId: meId ?? '', grants, authorId: row.senderId }
   return { react: true, edit: !card && meId != null && can('message.edit', ctx), remove: !card && meId != null && can('message.delete', ctx) }

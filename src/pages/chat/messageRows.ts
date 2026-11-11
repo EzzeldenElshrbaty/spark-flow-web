@@ -16,7 +16,7 @@ const GROUP_MS = 5 * 60_000
  * a neighbour (a placeholder keeps its author, so it's clear whose message is gone).
  */
 const standsAlone = (m: ChatMessage | ThreadReply) =>
-  Boolean(m.deletedAt || ('taskEvent' in m && m.taskEvent) || ('commentId' in m && m.commentId) || ('system' in m && m.system) || ('broadcast' in m && m.broadcast))
+  Boolean(m.deletedAt || ('taskEvent' in m && m.taskEvent) || ('sprintEvent' in m && m.sprintEvent) || ('commentId' in m && m.commentId) || ('system' in m && m.system) || ('broadcast' in m && m.broadcast))
 
 /**
  * Whether `next` renders as a continuation of `prev` (spec 6.2): same author, same day, at most 5 minutes later,
