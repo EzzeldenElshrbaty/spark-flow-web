@@ -3142,6 +3142,8 @@ critical findings; 2 important ones and 7 re-graded minors fixed in one pass, ea
 - The reader's table box is a group, not a landmark, named "Table" when its header is empty.
 - A test now covers leaving while a save is on its way (the release waits for it).
 
+Gates: lint clean, tsc clean, npm test 3,189/3,189, test:ux 1,000/1,000, build:prototype ok. Not pushed; not on dev.
+
 Rulings: a page mention stays after its person leaves (Q1, chat's rule); the keepalive release to another origin
 needs a CORS preflight and stays best effort (the hold ends by itself after 60 s); a dev-server reload lets the page go
 (development only).
