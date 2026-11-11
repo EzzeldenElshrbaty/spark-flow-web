@@ -3132,3 +3132,14 @@ lists every project; the sidebar comment still said anyone who sees a project ma
 - [x] `useSidebarGroups` leaves out project chats where `collab.post` is false, unless starred; comments and CLAUDE.md
 - [x] Browser check: Hossam sees nexus-core and mobile-app, #el-moasser still opens read-only; Youssef sees every one
 - [x] Gates: lint, tsc, `npm test` 3,163/3,163
+
+## Admin sees every public channel — 11 Nov 2026, approved ("Yes, public only")
+
+Same branch. Channels lists the channels I'm in plus those I may manage without being in them: `sidebarChannels`'
+`mayManage` is `channel.manage`, so whoever holds `channels.manageAll` (Admin) sees every public channel, joined or not,
+and never a private one he isn't in. Opening one he hasn't joined shows Join channel, as before.
+
+- [x] Tests first: `sidebarChannels` with `mayManage` (`lib/channels.test.ts`); whole app as Admin (left #frontend-dev,
+      Nour's new public and private channels) and as Member (`src/projectChannels.browser.test.tsx`)
+- [x] Browser check: Youssef left #frontend-dev, it stays under Channels and opens with Join channel; rejoined
+- [x] Gates: lint, tsc, `npm test` 3,166/3,166

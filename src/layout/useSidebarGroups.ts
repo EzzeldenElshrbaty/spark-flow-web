@@ -56,7 +56,9 @@ export function useSidebarGroups() {
   let projects: Project[] = projectsQuery.data ?? []
 
   // A starred channel or DM is listed once, under Starred (spec §5.1).
-  const listed = [...withoutReadOnlyChats(sidebarChannels(sorted.channels, persona.id, projectChannelIds), readOnlyChats), ...sorted.dms, ...sorted.apps].map(row)
+  // Whoever may manage every public channel (Admin) sees each of them, joined or not (11 Nov 2026).
+  const mayManage = (channel: Channel) => check('channel.manage', { channel })
+  const listed = [...withoutReadOnlyChats(sidebarChannels(sorted.channels, persona.id, projectChannelIds, mayManage), readOnlyChats), ...sorted.dms, ...sorted.apps].map(row)
 
   const mentions = unreadMentions(mentionsQuery.data, workspace?.id)
   const idOf = (r: ChannelRow) => r.channel.id

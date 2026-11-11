@@ -37,11 +37,12 @@ export function sortChannels(channels: Channel[]): { channels: Channel[]; dms: C
 }
 
 /**
- * The channels the sidebar lists: the ones I'm in, and the chats of the projects it lists; never archived ones. Other
- * public channels are found through search, where Join adds them.
+ * The channels the sidebar lists: the ones I'm in, the chats of the projects it lists, and the ones I may manage
+ * without being in them (`mayManage`: `channel.manage`, so every public one for the Admin, never a private one I'm
+ * not in); never archived ones. Anyone else finds other public channels through search, where Join adds them.
  */
-export function sidebarChannels(channels: Channel[], meId: string, projectChannelIds: Set<string>): Channel[] {
-  return channels.filter((c) => !isArchived(c) && (c.memberIds.includes(meId) || projectChannelIds.has(c.id)))
+export function sidebarChannels(channels: Channel[], meId: string, projectChannelIds: Set<string>, mayManage: (channel: Channel) => boolean = () => false): Channel[] {
+  return channels.filter((c) => !isArchived(c) && (c.memberIds.includes(meId) || projectChannelIds.has(c.id) || mayManage(c)))
 }
 
 /**

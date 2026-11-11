@@ -112,6 +112,13 @@ describe('sidebarChannels', () => {
     const list = [ch('mine', ['u1']), ch('other', ['u2']), ch('proj', ['u2']), ch('old', ['u1'], '2026-10-01T00:00:00.000Z')]
     expect(sidebarChannels(list, 'u1', new Set(['proj'])).map((c) => c.id)).toEqual(['mine', 'proj'])
   })
+
+  it('adds the channels I may manage without being in them (Admin: every public one), never an archived one', () => {
+    const priv = { ...ch('secret', ['u2']), isPrivate: true } as Channel
+    const list = [ch('mine', ['u1']), ch('other', ['u2']), priv, ch('old', ['u2'], '2026-10-01T00:00:00.000Z')]
+    const manages = (c: Channel) => !c.isPrivate
+    expect(sidebarChannels(list, 'u1', new Set(), manages).map((c) => c.id)).toEqual(['mine', 'other'])
+  })
 })
 
 describe('channelSections (spec 5.1: Channels, then Project channels)', () => {

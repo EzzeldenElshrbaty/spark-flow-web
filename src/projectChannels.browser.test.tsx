@@ -7,6 +7,7 @@ import { renderApp } from '@/test/app'
 
 // Project channels on the Chat side list the chats I may write in (11 Nov 2026): a project's chat I may only read
 // stays out of the sidebar unless I star it, and still opens from its address, the project's Chat tab and search.
+// Channels lists the channels I'm in and, for whoever may manage every public channel (Admin), every public one.
 
 // Start from a fresh seed, as the Admin, the only one who may reset it.
 beforeEach(async () => {
@@ -46,5 +47,28 @@ describe('Project channels', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Star channel' }))
     await waitFor(() => expect(section('Starred')).toContain('/w/engineering/c/c-p-mob'))
     expect(section('Project channels')).not.toContain('/w/engineering/c/c-p-mob')
+  })
+})
+
+describe('Channels', () => {
+  it('lists every public channel for the Admin, joined or not, and no private one he isn’t in', async () => {
+    await api.chat.leave('c-frontend')
+    // Nour makes one public and one private channel with Salma, without Youssef.
+    localStorage.setItem('spark-flow.session', 'u-2')
+    const open = await api.chat.createChannel({ workspaceId: 'ws-eng', name: 'ops-room', topic: '', isPrivate: false, memberIds: ['u-5'] })
+    const closed = await api.chat.createChannel({ workspaceId: 'ws-eng', name: 'ops-secret', topic: '', isPrivate: true, memberIds: ['u-5'] })
+
+    const app = await renderApp({ path: '/w/engineering/c/c-general', as: 'admin', theme: 'light', size: 'desktop' })
+    await app.settled()
+    const listed = [...section('Starred'), ...section('Channels')]
+    expect(listed).toEqual(expect.arrayContaining(['/w/engineering/c/c-frontend', `/w/engineering/c/${open.id}`]))
+    expect(listed).not.toContain(`/w/engineering/c/${closed.id}`)
+  })
+
+  it('lists only the channels a Member is in', async () => {
+    // Mariam isn’t in #backend, a public channel.
+    const app = await renderApp({ path: '/w/engineering/c/c-general', as: 'member', theme: 'light', size: 'desktop' })
+    await app.settled()
+    expect([...section('Starred'), ...section('Channels')]).not.toContain('/w/engineering/c/c-backend')
   })
 })
