@@ -1,7 +1,9 @@
 import clsx from 'clsx'
 import { Archive, Clock, Pencil, Play } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
+import { Link } from 'react-router'
 import { noteDownload } from '@/api/audit'
+import { useChannels } from '@/api/chat'
 import { useComments } from '@/api/comments'
 import { openFile, usePhases, useProjectSummary } from '@/api/projects'
 import { useArchiveTask, useRestoreTask, useSprints, useTicket, useUpdateTask } from '@/api/tickets'
@@ -21,6 +23,7 @@ import { InspectorFrame, InspectorSkeleton, TitleSkeleton, type InspectorBodyPro
 import { useCurrentWorkspace } from '@/layout/useCurrentWorkspace'
 import { ApiError } from '@/lib/api'
 import { formatDate } from '@/lib/format'
+import { paths } from '@/lib/paths'
 import { useCanLog } from '@/lib/useCanLog'
 import { usePermission } from '@/lib/usePermission'
 import { TaskSheet } from '@/pages/projects/TaskSheet'
@@ -65,6 +68,8 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
   // By key (a task key starts with its project's), so an archived project's tasks still open; the list leaves those out.
   const projectQuery = useProjectSummary(workspace?.id, ticketKey.split('-')[0])
   const sprints = useSprints(ticket.data?.projectId)
+  // The channels I can see, for "Made from": a private channel I'm not in isn't named.
+  const channels = useChannels(workspace?.id)
   const phases = usePhases(ticket.data?.projectId)
   const update = useUpdateTask()
   const check = usePermission()
@@ -119,6 +124,7 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
     const canManage = project ? check('task.manage', { project }) : false
     const canStatus = project ? check('task.updateOwnStatus', { project, taskAssigneeId: t.assigneeId }) : false
     const archived = Boolean(t.archivedAt)
+    const source = t.linkedChannelId && t.linkedMessageId ? channels.data?.find((c) => c.id === t.linkedChannelId) : undefined
     const details = (
       <>
         {archived && (
@@ -171,6 +177,13 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
             )}
             {update.error && <span className="mt-1 block text-xs text-red-600 dark:text-red-400">{(update.error as Error).message}</span>}
           </Field>
+          {project && workspace && (
+            <Field label="Project">
+              <Link to={paths.project(workspace.slug, project.key)} className="font-medium text-accent hover:underline">
+                {project.name}
+              </Link>
+            </Field>
+          )}
           <Field label="Type">{t.type === 'bug' ? 'Bug' : 'Task'}</Field>
           <Field label="Phase">{phase?.name ?? '—'}</Field>
           <Field label="Priority">
@@ -190,6 +203,19 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
             <span className="block text-xs text-fg-muted">logged / estimate</span>
           </Field>
           {t.sprintId && <Field label="Sprint">{sprint?.name ?? (sprints.isLoading ? <span aria-hidden className="inline-block h-3 w-20 animate-pulse rounded bg-surface-strong align-middle" /> : '—')}</Field>}
+          {t.storyPoints !== null && (
+            <Field label="Points">
+              <span className="tabular-nums">{t.storyPoints}</span>
+            </Field>
+          )}
+          {/* The chat message the task was made from (Create task, /task), where I can see its channel. */}
+          {source?.name && workspace && t.linkedMessageId && (
+            <Field label="Made from">
+              <Link to={paths.message(workspace.slug, source.id, t.linkedMessageId)} className="font-medium text-accent hover:underline">
+                A message in #{source.name}
+              </Link>
+            </Field>
+          )}
           <Field label="Created">
             <span className="tabular-nums">{formatDate(t.createdAt)}</span>
           </Field>
