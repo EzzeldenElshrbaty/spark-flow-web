@@ -24,6 +24,7 @@ type UiState = {
   recentTimers: Record<string, string[]>         // `${userId}:${workspaceId}` → what timers last ran on, newest first (UX Phase 4, 4.3)
   typing: Record<string, Typer[]>                // channel id → who is typing; never persisted
   helpOpen: boolean                              // the page help panel (slice 6): kept across pages, not reloads
+  wideTaskPanel: Record<string, boolean>         // user id → the task panel opens wide (Expand panel, 11 Nov 2026)
 }
 
 type UiActions = {
@@ -40,6 +41,8 @@ type UiActions = {
   noteRecentTimer: (key: string, entry: string) => void
   addTyper: (channelId: string, userId: string, now?: number) => void
   setHelpOpen: (open: boolean) => void
+  /** Expand panel / Shrink panel on the task panel, remembered for this person. */
+  setWideTaskPanel: (userId: string, wide: boolean) => void
 }
 
 export const initialUiState: UiState = {
@@ -55,6 +58,7 @@ export const initialUiState: UiState = {
   recentTimers: {},
   typing: {},
   helpOpen: false,
+  wideTaskPanel: {},
 }
 
 /** Who is still typing in a channel at `now`. Pure, so it can be tested and called from render. */
@@ -129,6 +133,7 @@ export const useUiStore = create<UiState & UiActions>()(
           }
         }),
       setHelpOpen: (open) => set({ helpOpen: open }),
+      setWideTaskPanel: (userId, wide) => set((state) => ({ wideTaskPanel: { ...state.wideTaskPanel, [userId]: wide } })),
       forgetPlaces: () => set({ lastWorkspace: null, lastVisited: {}, lastByMode: {}, lastMode: {} }),
       setProjectView: (key, view) => set((state) => ({ lastProjectView: { ...state.lastProjectView, [key]: view } })),
       setProjectFilters: (key, filters) => set((state) => ({ lastFilters: { ...state.lastFilters, [key]: filters } })),

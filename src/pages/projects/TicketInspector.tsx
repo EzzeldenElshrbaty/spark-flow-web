@@ -1,4 +1,4 @@
-import { Archive, ArrowUpRight, Clock, Pencil, Play } from 'lucide-react'
+import { Archive, ArrowUpRight, Clock, Maximize2, Minimize2, Pencil, Play } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router'
 import { noteDownload } from '@/api/audit'
@@ -25,6 +25,8 @@ import { formatDate } from '@/lib/format'
 import { withInspector } from '@/lib/inspector'
 import { paths } from '@/lib/paths'
 import { useCanLog } from '@/lib/useCanLog'
+import { useRole } from '@/lib/useRole'
+import { useUiStore } from '@/lib/uiStore'
 import { usePermission } from '@/lib/usePermission'
 import { TaskSheet } from '@/pages/projects/TaskSheet'
 import { AddTimeSheet } from '@/pages/time/AddTimeSheet'
@@ -64,6 +66,9 @@ function Person({ name }: { name: string | null }) {
 export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: string } & InspectorBodyProps) {
   const { workspace } = useCurrentWorkspace()
   const { pathname } = useLocation()
+  const { persona } = useRole()
+  const wide = useUiStore((state) => Boolean(state.wideTaskPanel[persona.id]))
+  const setWide = useUiStore((state) => state.setWideTaskPanel)
   const ticket = useTicket(ticketKey)
   const users = useUsers(workspace?.id)
   // By key (a task key starts with its project's), so an archived project's tasks still open; the list leaves those out.
@@ -298,12 +303,14 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
     )
   }
 
+  // The header's own controls, in the kit look of its Close.
+  const headerButton = 'rounded-md p-1 text-fg-muted hover:bg-surface-muted hover:text-fg max-md:touch-target'
   // The task on its project's board, with this panel open: offered everywhere but that board.
   const board = project && workspace ? paths.project(workspace.slug, project.key, 'tasks') : null
   const openInProject = board && pathname !== board && (
     <Link
       to={`${board}?${withInspector(new URLSearchParams(), { kind: 'ticket', key: ticketKey }).toString()}`}
-      className="rounded-md p-1 text-fg-muted hover:bg-surface-muted hover:text-fg max-md:touch-target"
+      className={headerButton}
       aria-label="Open in project"
       title="Open in project"
     >
@@ -311,8 +318,18 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
     </Link>
   )
 
+  const sizeLabel = wide ? 'Shrink panel' : 'Expand panel'
+  const actions = (
+    <>
+      <button type="button" className={headerButton} aria-label={sizeLabel} title={sizeLabel} onClick={() => setWide(persona.id, !wide)}>
+        {wide ? <Minimize2 className="size-5" /> : <Maximize2 className="size-5" />}
+      </button>
+      {openInProject}
+    </>
+  )
+
   return (
-    <InspectorFrame label="Task" eyebrow={eyebrow} title={title} onClose={onClose} actions={openInProject || undefined}>
+    <InspectorFrame label="Task" eyebrow={eyebrow} title={title} onClose={onClose} actions={actions} wide={wide}>
       {body}
     </InspectorFrame>
   )

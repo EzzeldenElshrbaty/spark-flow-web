@@ -20,7 +20,7 @@ The description takes formatting: bold, italic, underline, strikethrough, links,
 
 ## The task panel
 
-Click a task to open it at the side. You can change its fields if your role allows; the person it’s assigned to can always move its status. **Start timer** logs time on it.
+Click a task to open it at the side. You can change its fields if your role allows; the person it’s assigned to can always move its status. **Start timer** logs time on it. **Expand panel** makes the panel wider (the whole screen on a phone), and it opens that way next time; **Shrink panel** turns it back. **Open in project** takes you to the task on its project’s board, with the panel still open.
 
 Its description shows as written, with its files: click one to open it, and **Download** is in the viewer. **Attachments · N** lists the task’s files. Files are added and removed in **Edit task**.
 

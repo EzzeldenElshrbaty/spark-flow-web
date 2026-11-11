@@ -26,7 +26,16 @@ const OVERLAY_QUERY = '(max-width: 1279px)'
 
 /** Where the inspector sits: beside the content on wide screens (xl), sliding over from the end side on tablets and laptops (no dimming), a bottom sheet on phones. */
 const PLACE =
-  'fixed inset-x-0 bottom-0 z-40 flex h-[85vh] flex-col rounded-t-2xl border-t shadow-2xl motion-safe:animate-fade-up sm:inset-x-auto sm:end-0 sm:top-0 sm:h-full sm:w-[24rem] sm:rounded-none sm:border-s sm:border-t-0 sm:motion-safe:animate-slide-in-end xl:relative xl:z-auto xl:m-2 xl:ms-0 xl:h-auto xl:shrink-0 xl:rounded-2xl xl:border xl:shadow-lg'
+  'fixed inset-x-0 bottom-0 z-40 flex flex-col border-t shadow-2xl motion-safe:animate-fade-up sm:inset-x-auto sm:end-0 sm:top-0 sm:h-full sm:max-w-full sm:rounded-none sm:border-s sm:border-t-0 sm:motion-safe:animate-slide-in-end'
+
+/**
+ * Its size: 24rem, beside the page on wide screens (85% of a phone's height); or wide (Expand panel): 40rem over the
+ * page at every width, so the page keeps its own (its top bar isn't squeezed), and the whole screen on a phone.
+ */
+const SIZE = {
+  normal: 'h-[85vh] rounded-t-2xl sm:w-[24rem] xl:relative xl:z-auto xl:m-2 xl:ms-0 xl:h-auto xl:shrink-0 xl:rounded-2xl xl:border xl:shadow-lg',
+  wide: 'h-dvh sm:w-[40rem]',
+}
 
 /**
  * The inspector's frame, after the Spark CRM page help panel (see PLACE). The body scrolls on its own. A chat panel
@@ -44,6 +53,7 @@ export function InspectorFrame({
   actions,
   onClose,
   focusTitle = false,
+  wide = false,
   children,
 }: {
   label: string
@@ -56,6 +66,8 @@ export function InspectorFrame({
   onClose: () => void
   /** Puts focus on the title when it opens (File details, opened from a card), so the keyboard carries on here. */
   focusTitle?: boolean
+  /** Wider (40rem) beside the page and the whole screen on a phone: the task panel's Expand panel. */
+  wide?: boolean
   children: ReactNode
 }) {
   const rootRef = useRef<HTMLDivElement>(null)
@@ -80,7 +92,8 @@ export function InspectorFrame({
       cancelled = true
     }
   }, [focusAtStart, title])
-  const sheet = useMedia(OVERLAY_QUERY)
+  // Wide, it covers the page at every width, so it's a modal there too.
+  const sheet = useMedia(OVERLAY_QUERY) || wide
   // The phone's sheet is a dialog; elsewhere the panel sits beside the page. One element either way, so a resize
   // keeps what's typed in it.
   const frame = (className: string, content: ReactNode) => (
@@ -103,7 +116,7 @@ export function InspectorFrame({
   )
   if (sub !== undefined)
     return frame(
-      `sf ${PLACE} border-sf-line bg-sf-surface`,
+      `sf ${PLACE} ${SIZE[wide ? 'wide' : 'normal']} border-sf-line bg-sf-surface`,
       <>
         <header className="flex h-sf-header flex-none items-center gap-2 border-b border-sf-line ps-4 pe-2">
           <div className="flex min-w-0 flex-1 items-baseline gap-2">
@@ -117,7 +130,7 @@ export function InspectorFrame({
       </>,
     )
   return frame(
-    `${PLACE} border-line bg-surface`,
+    `${PLACE} ${SIZE[wide ? 'wide' : 'normal']} border-line bg-surface`,
     <>
       <div className="flex shrink-0 items-start gap-3 border-b border-line-subtle px-5 py-4">
         <div className="min-w-0 flex-1">
