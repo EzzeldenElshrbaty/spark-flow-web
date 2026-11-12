@@ -87,7 +87,7 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
   const sprints = useSprints(agile ? project.id : undefined)
   // The address wins; without phase or sprint in it, the tab reopens on the last ones picked here. On an agile project
   // the sprint is the running one until the address or a pick says otherwise (useTabFilters, shared with New task).
-  const { phase: pickedPhase, sprint, sprintByDefault, last: lastFilters } = useTabFilters(project, sprints.data)
+  const { phase: pickedPhase, sprint, sprintByDefault, running, last: lastFilters } = useTabFilters(project, sprints.data)
   const setProjectFilters = useUiStore((state) => state.setProjectFilters)
   const phase = phases.some((p) => p.id === pickedPhase) ? pickedPhase : null
   // The Sprints view shows every open sprint: the address's sprint stays there for Board and List, but filters nothing.
@@ -99,11 +99,15 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
   // A phase or sprint pick (or clearing it) is remembered for this project, so the tab reopens on it. On an agile
   // project All sprints is remembered as '' (a choice, not "none yet"). What isn't a pick of the sprint leaves the
   // remembered one as it was; a sprint that is only the default (the active one) isn't remembered by a phase pick.
+  // The running sprint is never remembered, by either: picking it is choosing the default, which leaves the address,
+  // so the tab follows the running sprint again when another starts (Ruling 11).
   const setFilter = (key: 'phase' | 'sprint', value: string | null) => {
+    const follows = key === 'sprint' && value !== null && value === running
     // Choosing what the address already says (All sprints, with the default sprint not in it) adds no step.
-    if ((params.get(key) ?? '') !== (value ?? '')) setParam(key, value)
-    const kept = { phase: phase ?? undefined, sprint: sprint !== null && !sprintByDefault ? sprint : lastFilters?.sprint }
-    setProjectFilters(project.key, key === 'phase' ? { ...kept, phase: value ?? undefined } : { ...kept, sprint: value ?? '' })
+    if (follows ? params.has('sprint') : (params.get(key) ?? '') !== (value ?? '')) setParam(key, follows ? null : value)
+    const shown = sprint !== null && !sprintByDefault ? sprint : lastFilters?.sprint
+    const kept = { phase: phase ?? undefined, sprint: shown === running ? undefined : shown }
+    setProjectFilters(project.key, key === 'phase' ? { ...kept, phase: value ?? undefined } : { ...kept, sprint: follows ? undefined : (value ?? '') })
   }
   // A choice is a step Back undoes (UX Phase 2, 2.7); a correction the page makes itself replaces the entry.
   const setParam = (key: string, value: string | null, replace = false) =>

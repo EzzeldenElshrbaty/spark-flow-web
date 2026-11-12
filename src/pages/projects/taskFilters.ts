@@ -141,17 +141,20 @@ export function staleArchivedParam(asked: boolean, archivedCount: number | undef
 }
 
 /**
- * The Tasks tab's phase and sprint: each from the address when it's there, else the one last picked on this project
- * (so picking a phase doesn't drop a remembered sprint). With no sprint in either, an agile project's is its active one
- * (`activeSprintId`); a remembered '' is a pick too, All sprints, and keeps the tab from jumping back (sprints spec §6.3).
+ * The Tasks tab's phase and sprint (sprints spec §6.3): each from the address when it's there, else the one last picked
+ * on this project (so picking a phase doesn't drop a remembered sprint). With no sprint in either, an agile project's
+ * is its running one (`running`), by default (`sprintByDefault`); a remembered '' is a pick too, All sprints, and keeps
+ * the tab from jumping back, but a remembered sprint that's gone (deleted) is no pick (Ruling 11). `sprints` are the
+ * project's (none on a waterfall project, or while they load); the sprint is one of them, or null for All sprints.
  */
 export function filtersFrom(
   params: URLSearchParams,
   last: { phase?: string; sprint?: string } | undefined,
-  activeSprintId: string | null,
-): { phase: string | null; sprint: string | null } {
-  return {
-    phase: params.has('phase') ? params.get('phase') : (last?.phase ?? null),
-    sprint: params.has('sprint') ? params.get('sprint') : last?.sprint === undefined ? activeSprintId : last.sprint || null,
-  }
+  sprints: Pick<Sprint, 'id' | 'state'>[],
+): { phase: string | null; sprint: string | null; sprintByDefault: boolean; running: string | null } {
+  const remembered = last?.sprint === '' || validSprint(last?.sprint ?? null, sprints) ? last?.sprint : undefined
+  const sprintByDefault = !params.has('sprint') && remembered === undefined
+  const running = sprints.find((s) => s.state === 'active')?.id ?? null
+  const sprint = params.has('sprint') ? params.get('sprint') : sprintByDefault ? running : remembered || null
+  return { phase: params.has('phase') ? params.get('phase') : (last?.phase ?? null), sprint: validSprint(sprint, sprints), sprintByDefault, running }
 }

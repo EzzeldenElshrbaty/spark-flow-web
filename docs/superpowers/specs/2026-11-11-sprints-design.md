@@ -164,10 +164,16 @@ or "Sprint 14 completed."
 
 ### 6.3 The Board and List (Q4)
 
-On an agile project, when the address has no `sprint` and none is remembered for the project, the sprint filter is the
-active sprint, worked out each time and never written into the address or remembered, so the Board follows the running
-sprint (a person's own pick is written and remembered). Choosing "All sprints" is remembered as a choice
-(stored as `''`), so the tab doesn't jump back. With no active sprint nothing changes.
+On an agile project, when the address has no `sprint` and none is remembered for the project (or the one remembered no
+longer exists), the sprint filter is the active sprint, worked out each time and never written into the address or
+remembered, so the Board follows the running sprint. A person's own pick of another sprint is written and remembered;
+picking the running sprint is choosing the default, so it leaves the address and nothing is remembered, and the Board
+keeps following the running sprint (Ruling 11). Choosing "All sprints" is remembered as a choice (stored as `''`), so
+the tab doesn't jump back. With no active sprint nothing changes.
+
+A new task made from the project page starts in the sprint the Board and List show when it's running or planned (still
+a choice in the sheet), so it stays on the Board it was made on. Open in project opens the Board on the task's sprint,
+or with `sprint=` (All sprints for that visit, not remembered) for a task in none.
 
 ### 6.4 Chat card
 

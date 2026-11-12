@@ -104,33 +104,45 @@ describe('loggableTasks', () => {
 })
 
 describe('filtersFrom', () => {
+  const s14 = { id: 's-nex-1', state: 'active' as const }
+  const s15 = { id: 's-nex-2', state: 'planned' as const }
+  const s2 = { id: 's2', state: 'planned' as const }
+  const s1 = { id: 's1', state: 'planned' as const }
+
   it('each filter comes from the address when it is there, else from memory', () => {
     const last = { phase: 'ph-old', sprint: 's2' }
-    expect(filtersFrom(new URLSearchParams(''), last, null)).toEqual({ phase: 'ph-old', sprint: 's2' })
-    expect(filtersFrom(new URLSearchParams('phase=design'), last, null)).toEqual({ phase: 'design', sprint: 's2' })
-    expect(filtersFrom(new URLSearchParams('sprint=s1'), undefined, null)).toEqual({ phase: null, sprint: 's1' })
+    expect(filtersFrom(new URLSearchParams(''), last, [s1, s2])).toEqual({ phase: 'ph-old', sprint: 's2', sprintByDefault: false, running: null })
+    expect(filtersFrom(new URLSearchParams('phase=design'), last, [s1, s2])).toMatchObject({ phase: 'design', sprint: 's2' })
+    expect(filtersFrom(new URLSearchParams('sprint=s1'), undefined, [s1, s2])).toMatchObject({ phase: null, sprint: 's1', sprintByDefault: false })
   })
 
   // Sprints spec §6.3: an agile project's sprint is the active one until the address or a remembered pick says otherwise.
-  it('the sprint is the active one when neither the address nor memory has one', () => {
-    expect(filtersFrom(new URLSearchParams(), undefined, 's-nex-1').sprint).toBe('s-nex-1')
-    expect(filtersFrom(new URLSearchParams(), { phase: 'ph1' }, 's-nex-1').sprint).toBe('s-nex-1')
-    expect(filtersFrom(new URLSearchParams('phase=design'), undefined, 's-nex-1')).toEqual({ phase: 'design', sprint: 's-nex-1' })
-    expect(filtersFrom(new URLSearchParams(), undefined, null).sprint).toBeNull()
+  it('with no sprint in the address or memory, it is the active sprint, by default', () => {
+    expect(filtersFrom(new URLSearchParams(), undefined, [s14, s15])).toEqual({ phase: null, sprint: 's-nex-1', sprintByDefault: true, running: 's-nex-1' })
+    expect(filtersFrom(new URLSearchParams(), { phase: 'ph1' }, [s14, s15]).sprint).toBe('s-nex-1')
+    expect(filtersFrom(new URLSearchParams('phase=design'), undefined, [s14, s15])).toMatchObject({ phase: 'design', sprint: 's-nex-1' })
+    expect(filtersFrom(new URLSearchParams(), undefined, [s15])).toMatchObject({ sprint: null, sprintByDefault: true, running: null })
   })
 
   it('a remembered All sprints (stored as an empty string) is a choice: no sprint, not the active one', () => {
-    expect(filtersFrom(new URLSearchParams(), { sprint: '' }, 's-nex-1').sprint).toBeNull()
-    expect(filtersFrom(new URLSearchParams(), { phase: 'ph1', sprint: '' }, 's-nex-1')).toEqual({ phase: 'ph1', sprint: null })
+    expect(filtersFrom(new URLSearchParams(), { sprint: '' }, [s14, s15])).toMatchObject({ sprint: null, sprintByDefault: false })
+    expect(filtersFrom(new URLSearchParams(), { phase: 'ph1', sprint: '' }, [s14, s15])).toMatchObject({ phase: 'ph1', sprint: null })
   })
 
   it('the address and a remembered sprint both win over the active one', () => {
-    expect(filtersFrom(new URLSearchParams('sprint=s-nex-2'), undefined, 's-nex-1').sprint).toBe('s-nex-2')
-    expect(filtersFrom(new URLSearchParams('sprint=s-nex-2'), { sprint: '' }, 's-nex-1').sprint).toBe('s-nex-2')
-    expect(filtersFrom(new URLSearchParams(), { sprint: 's-nex-2' }, 's-nex-1').sprint).toBe('s-nex-2')
+    expect(filtersFrom(new URLSearchParams('sprint=s-nex-2'), undefined, [s14, s15]).sprint).toBe('s-nex-2')
+    expect(filtersFrom(new URLSearchParams('sprint=s-nex-2'), { sprint: '' }, [s14, s15]).sprint).toBe('s-nex-2')
+    expect(filtersFrom(new URLSearchParams(), { sprint: 's-nex-2' }, [s14, s15])).toMatchObject({ sprint: 's-nex-2', sprintByDefault: false })
+    // An empty sprint in the address is All sprints for this visit.
+    expect(filtersFrom(new URLSearchParams('sprint='), { sprint: 's-nex-2' }, [s14, s15])).toMatchObject({ sprint: null, sprintByDefault: false })
+  })
+
+  // Ruling 11 (sprints final review).
+  it('a remembered sprint that’s gone is no pick: the active one, by default; an unknown one in the address is no sprint', () => {
+    expect(filtersFrom(new URLSearchParams(), { sprint: 's-gone' }, [s14, s15])).toMatchObject({ sprint: 's-nex-1', sprintByDefault: true })
+    expect(filtersFrom(new URLSearchParams('sprint=s-gone'), undefined, [s14, s15])).toMatchObject({ sprint: null, sprintByDefault: false })
   })
 })
-
 
 describe('myOpenTasks order (UX Phase 1, 1.1)', () => {
   it('overdue first, then over estimate, then the nearest due date', () => {

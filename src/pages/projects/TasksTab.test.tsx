@@ -329,6 +329,59 @@ describe('the Board opens on the active sprint (sprints spec §6.3)', () => {
     expect(screen.getByText('Board NEX-1 NEX-2 NEX-3')).toBeTruthy()
   })
 
+  // Ruling 11 (sprints final review): picking the running sprint is choosing the default, so the tab keeps following it.
+  it('picking the running sprint is no pick: pick Sprint 15, then Sprint 14 again, and the Board follows Sprint 15 once it starts', async () => {
+    plan()
+    const router = await open('?view=board', agile)
+    await act(async () => fireEvent.change(sprintSelect(), { target: { value: 's-nex-2' } }))
+    expect(router.state.location.search).toBe('?view=board&sprint=s-nex-2')
+    expect(useUiStore.getState().lastFilters.NEX?.sprint).toBe('s-nex-2')
+    await act(async () => fireEvent.change(sprintSelect(), { target: { value: 's-nex-1' } }))
+    // Out of the address (it's the default) and not remembered; the pick is still a step Back undoes.
+    expect(router.state.location.search).toBe('?view=board')
+    expect(router.state.historyAction).toBe('PUSH')
+    expect(useUiStore.getState().lastFilters.NEX).toEqual({ phase: undefined, sprint: undefined })
+    expect(sprintSelect().value).toBe('s-nex-1')
+    expect(screen.getByText('Board NEX-1')).toBeTruthy()
+    cleanup()
+    // Sprint 14 completes and Sprint 15 starts.
+    sprints = [sprint('s-nex-1', 'Sprint 14', 'closed'), sprint('s-nex-2', 'Sprint 15', 'active')]
+    const reopened = await open('?view=board', agile)
+    expect(reopened.state.location.search).toBe('?view=board')
+    expect(sprintSelect().value).toBe('s-nex-2')
+    expect(screen.getByText('Board NEX-2')).toBeTruthy()
+  })
+
+  it('picking the running sprint from All sprints, or where the address names it, is no pick either', async () => {
+    plan()
+    useUiStore.getState().setProjectFilters('NEX', { sprint: '' })
+    await open('?view=board', agile)
+    await act(async () => fireEvent.change(sprintSelect(), { target: { value: 's-nex-1' } }))
+    expect(useUiStore.getState().lastFilters.NEX?.sprint).toBeUndefined()
+    expect(sprintSelect().value).toBe('s-nex-1')
+    cleanup()
+    // Open in project for a task in no sprint (`sprint=`), then the running sprint picked.
+    const router = await open('?view=board&sprint=', agile)
+    await act(async () => fireEvent.change(sprintSelect(), { target: { value: 's-nex-1' } }))
+    expect(router.state.location.search).toBe('?view=board')
+    expect(sprintSelect().value).toBe('s-nex-1')
+    cleanup()
+    // Open in project for a task in Sprint 14, then a phase picked: the running sprint isn't pinned by it.
+    const phases = [phase('ph-1', 1)]
+    await open('?view=board&sprint=s-nex-1', agile, phases)
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Phase 1' })))
+    expect(useUiStore.getState().lastFilters.NEX).toEqual({ phase: 'ph-1', sprint: undefined })
+  })
+
+  it('a remembered sprint that’s gone (deleted) is no pick: the Board opens on the running sprint', async () => {
+    plan()
+    useUiStore.getState().setProjectFilters('NEX', { sprint: 's-gone' })
+    const router = await open('?view=board', agile)
+    expect(router.state.location.search).toBe('?view=board')
+    expect(sprintSelect().value).toBe('s-nex-1')
+    expect(screen.getByText('Board NEX-1')).toBeTruthy()
+  })
+
   it('Clear filters takes the opening sprint off too, and it stays off', async () => {
     plan()
     for (const view of ['list', 'board'] as const) {
