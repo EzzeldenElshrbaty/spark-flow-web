@@ -20,12 +20,12 @@ The description takes formatting: bold, italic, underline, strikethrough, links,
 
 ## Sprints
 
-On an agile project, **Sprints** plans the work: the running sprint first, then each planned sprint, then **Backlog**, the unfinished tasks in no sprint. Each sprint shows its dates, the days left while it runs, its goal, and its tasks and points.
+On an agile project, **Sprints** plans the work: the running sprint first, then each planned sprint, then **Backlog**, the unfinished tasks in no running or planned sprint. Each sprint shows its dates, the days left while it runs, its goal, and its tasks and points.
 
 An Admin or the project’s manager runs the sprints; everyone on the project sees the same list.
 
 - **Create sprint** adds the next one (Sprint 16 after Sprint 15), two weeks long, starting after the last.
-- To plan a sprint, drag a task by its handle into it, or use the task’s **Move to** (the way on a phone). From the keyboard, Space on the handle picks a task up, the arrow keys move it, and Space puts it down.
+- To plan a sprint, drag a task by its handle into it, or use the task’s **Move to** (the way on a phone). From the keyboard, Space on the handle picks a task up, ↑ and ↓ move it, and Space puts it down.
 - **Start sprint** confirms the name, goal and dates. It opens on today and keeps the length the sprint was planned for. One sprint runs at a time, and it needs a task to start.
 - **Complete sprint** keeps the done tasks with it and moves the rest to the next planned sprint, another planned one, a new sprint or the backlog.
 - **⋯** edits a sprint. A planned sprint can also be deleted there; its tasks go to the backlog.

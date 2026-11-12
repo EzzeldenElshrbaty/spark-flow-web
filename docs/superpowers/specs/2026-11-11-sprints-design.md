@@ -88,7 +88,7 @@ none has a number.
 |---|---|---|
 | Not Admin or the project's manager | 403 | Only an Admin or the project’s manager can change sprints. |
 | Waterfall project | 400 | Sprints are for agile projects. |
-| Archived project | 403 | The same sentence: `task.manage` is frozen on an archived project (`FROZEN`), as every project write. |
+| Archived project | 400 | This project is archived. Restore it first. (Checked first, as every project write; Ruling 1.) |
 | Name empty / over 60 | 400 | Give the sprint a name. / Keep the name under 60 characters. |
 | Goal over 500 | 400 | Keep the goal under 500 characters. |
 | End not after start | 400 | The end date must be after the start date. |
@@ -100,6 +100,7 @@ none has a number.
 | `moveTo` isn't a planned sprint of the project | 400 | Move the tasks to a planned sprint of this project. |
 | Delete a sprint that isn't planned | 400 | Only a planned sprint can be deleted. |
 | A task moved into a closed sprint (task sheet, stale tab) | 400 | That sprint is closed. Pick a planned or running one. |
+| A task moved into a sprint that's gone (deleted while a sheet or tab offered it) | 400 | That sprint no longer exists. |
 
 Archived tasks don't count: not toward "empty" on start, the totals, or "not done", and Complete leaves them where
 they are.
