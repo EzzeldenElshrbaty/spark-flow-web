@@ -174,7 +174,7 @@ describe('who sees what (sprints spec §6.1)', () => {
     expect(screen.getAllByRole('button', { name: /^Drag NEX-/ })).toHaveLength(11)
     expect(screen.getAllByRole('button', { name: /^Move to: NEX-/ })).toHaveLength(11)
     // No sprint actions until someone may change sprints.
-    expect(screen.queryByRole('button', { name: /Start sprint|Complete sprint|Sprint actions/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^(Start|Complete) |Sprint actions/ })).toBeNull()
   })
 })
 
@@ -256,15 +256,27 @@ describe('sprint actions (sprints spec §6.1; the sheets are Task 5’s)', () =>
   it('Start sprint shows on a planned sprint only while none is active; Complete sprint on the active one', () => {
     const actions = fakeActions()
     mount({ actions })
-    expect(screen.queryByRole('button', { name: 'Start sprint' })).toBeNull()
-    fireEvent.click(within(section('Sprint 14')).getByRole('button', { name: 'Complete sprint' }))
+    expect(screen.queryByRole('button', { name: /^Start / })).toBeNull()
+    fireEvent.click(within(section('Sprint 14')).getByRole('button', { name: 'Complete Sprint 14' }))
     expect(actions.complete).toHaveBeenCalledWith(s14)
     cleanup()
     mount({ sprints: [{ ...s14, state: 'closed' }, s15, s16], actions })
-    expect(screen.queryByRole('button', { name: 'Complete sprint' })).toBeNull()
-    expect(screen.getAllByRole('button', { name: 'Start sprint' })).toHaveLength(2)
-    fireEvent.click(within(section('Sprint 15')).getByRole('button', { name: 'Start sprint' }))
+    expect(screen.queryByRole('button', { name: /^Complete / })).toBeNull()
+    expect(screen.getAllByRole('button', { name: /^Start / }).map((b) => b.getAttribute('aria-label'))).toEqual(['Start Sprint 15', 'Start Sprint 16'])
+    fireEvent.click(within(section('Sprint 15')).getByRole('button', { name: 'Start Sprint 15' }))
     expect(actions.start).toHaveBeenCalledWith(s15)
+  })
+
+  // Sprints final review: two planned sprints have two Starts; each names its sprint, and its words stay in its name.
+  it('each Start and Complete names its sprint, keeping the words it shows', () => {
+    mount({ sprints: [s14, s15], actions: fakeActions() })
+    const complete = within(section('Sprint 14')).getByRole('button', { name: 'Complete Sprint 14' })
+    expect(complete.textContent).toBe('Complete sprint')
+    cleanup()
+    mount({ sprints: [{ ...s14, state: 'closed' }, s15], actions: fakeActions() })
+    const start = within(section('Sprint 15')).getByRole('button', { name: 'Start Sprint 15' })
+    expect(start.textContent).toBe('Start sprint')
+    for (const button of [complete, start]) expect(button.getAttribute('aria-label')!.toLowerCase()).toContain(button.textContent!.toLowerCase())
   })
 
   it('⋯ holds Edit sprint, and Delete sprint on a planned sprint only', () => {

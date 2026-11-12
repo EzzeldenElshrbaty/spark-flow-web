@@ -219,13 +219,14 @@ export function SprintSection({
           )}
           {sprint && actions && (
             <div className="ms-auto flex items-center gap-1.5">
+              {/* Each names its sprint (two planned sprints have two Starts); the words shown stay in the name. */}
               {sprint.state === 'planned' && !running && (
-                <Button variant="secondary" className="py-1.5 max-md:touch-target" onClick={() => actions.start(sprint)}>
+                <Button variant="secondary" className="py-1.5 max-md:touch-target" aria-label={`Start ${sprint.name}`} onClick={() => actions.start(sprint)}>
                   Start sprint
                 </Button>
               )}
               {sprint.state === 'active' && (
-                <Button variant="secondary" className="py-1.5 max-md:touch-target" onClick={() => actions.complete(sprint)}>
+                <Button variant="secondary" className="py-1.5 max-md:touch-target" aria-label={`Complete ${sprint.name}`} onClick={() => actions.complete(sprint)}>
                   Complete sprint
                 </Button>
               )}

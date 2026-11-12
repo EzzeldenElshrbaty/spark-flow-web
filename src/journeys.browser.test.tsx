@@ -186,7 +186,7 @@ describe.each(SETUPS)('PM (Nour) at %s in %s', (size, theme) => {
     const section = (name: string) => screen.findByRole('region', { name })
 
     // Sprint 14 is over: its 2 done tasks stay with it, and the 5 unfinished go to Sprint 15, the next planned one.
-    await press('button', 'Complete sprint', await section('Sprint 14'))
+    await press('button', 'Complete Sprint 14', await section('Sprint 14'))
     const complete = await dialog('Complete sprint')
     expect(within(complete).getByText('2 tasks done · 5 not done')).toBeTruthy()
     const target = within(complete).getByRole('combobox', { name: 'Move the 5 unfinished tasks to' }) as HTMLSelectElement
@@ -202,7 +202,7 @@ describe.each(SETUPS)('PM (Nour) at %s in %s', (size, theme) => {
     await app.settled()
 
     // Sprint 15 starts on today with its 7 tasks: NEX-110, the 5 from Sprint 14 and NEX-108.
-    await press('button', 'Start sprint', await section('Sprint 15'))
+    await press('button', 'Start Sprint 15', await section('Sprint 15'))
     const start = await dialog('Start sprint')
     expect(within(start).getByText(/^7 tasks · \d+ points$/)).toBeTruthy()
     const now = new Date()

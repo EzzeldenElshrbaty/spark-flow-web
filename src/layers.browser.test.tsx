@@ -77,7 +77,7 @@ const fill = (label: string, value: string) => async (dialog: HTMLElement) => {
 
 /** Completes the running Sprint 14, so that Sprint 15 may start (one sprint runs at a time). */
 async function completeRunningSprint() {
-  await mainButton('Complete sprint')
+  await mainButton('Complete Sprint 14')
   const sheet = await screen.findByRole('dialog', { name: 'Complete sprint' })
   await userEvent.click(within(sheet).getByRole('button', { name: 'Complete sprint' }))
   await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Complete sprint' })).toBeNull())
@@ -109,13 +109,13 @@ const LAYERS: Layer[] = [
     // Start is offered only while none runs: Sprint 14 completes first, then Sprint 15's Start opens.
     open: async () => {
       await completeRunningSprint()
-      return mainButton('Start sprint')
+      return mainButton('Start Sprint 15')
     },
     kind: 'sheet',
     change: typeInto('Name'),
     question: 'Discard your changes?',
   },
-  { name: 'Complete sprint', path: SPRINTS, open: () => mainButton('Complete sprint'), kind: 'sheet' },
+  { name: 'Complete sprint', path: SPRINTS, open: () => mainButton('Complete Sprint 14'), kind: 'sheet' },
   { name: 'Delete Sprint 15?', path: SPRINTS, open: () => viaMenu('Sprint actions: Sprint 15', 'Delete sprint'), kind: 'sheet' },
   { name: 'Add time', path: '/w/engineering/p/NEX/time', open: () => mainButton('Add time'), kind: 'sheet', change: typeInto('Note'), question: 'Discard this time entry?' },
   { name: 'Add person', path: '/w/engineering/settings/users', open: () => mainButton('Add person'), kind: 'sheet', change: typeInto('Name'), question: 'Discard this new person?' },

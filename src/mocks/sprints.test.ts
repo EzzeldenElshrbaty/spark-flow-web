@@ -271,6 +271,17 @@ describe('tasks and closed sprints', () => {
     expect(await api.tasks.update('NEX-103', { sprintId: 's-nex-1', priority: 'low' })).toMatchObject({ sprintId: 's-nex-1', priority: 'low' })
     expect(await api.tasks.update('NEX-109', { sprintId: 's-nex-2' })).toMatchObject({ sprintId: 's-nex-2' })
   })
+
+  // Sprints final review: a sheet or tab left open after its sprint was deleted.
+  it('refuses a sprint that no longer exists: "That sprint no longer exists."', async () => {
+    await asNour()
+    await api.sprints.remove('s-nex-2')
+    const gone = { status: 400, detail: 'That sprint no longer exists.' }
+    await expect(api.tasks.update('NEX-109', { sprintId: 's-nex-2' })).rejects.toMatchObject(gone)
+    await expect(api.tasks.create({ projectId: 'p-nex', title: 'Late', descriptionBody: [], status: '', priority: 'low', storyPoints: null, assigneeId: null, sprintId: 's-nex-2' })).rejects.toMatchObject(gone)
+    // Another project's sprint is still that.
+    await expect(api.tasks.update('NEX-109', { sprintId: 's-brd-1' })).rejects.toMatchObject({ status: 400, detail: 'That sprint belongs to another project.' })
+  })
 })
 
 describe('sprint cards in the project’s chat', () => {

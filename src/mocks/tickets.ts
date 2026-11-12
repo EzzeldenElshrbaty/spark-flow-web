@@ -140,7 +140,9 @@ function checkTaskInput(data: DbData, projectId: string, input: Partial<TicketPa
   }
   if (input.sprintId != null) {
     const sprint = data.sprints.find((s) => s.id === input.sprintId)
-    if (sprint?.projectId !== projectId) throw badRequest('That sprint belongs to another project.')
+    // Deleted while a sheet or tab still offered it.
+    if (!sprint) throw badRequest('That sprint no longer exists.')
+    if (sprint.projectId !== projectId) throw badRequest('That sprint belongs to another project.')
     // Into a closed sprint, from the task sheet or a stale tab; a task done in it keeps it through other edits.
     if (sprint.state === 'closed' && input.sprintId !== ticket?.sprintId) throw badRequest('That sprint is closed. Pick a planned or running one.')
   }

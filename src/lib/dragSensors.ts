@@ -30,12 +30,13 @@ export const zoneKeyboardCoordinates: KeyboardCoordinateGetter = (event, { conte
  * click stays a click), touch after a 250ms press and hold (a swipe still scrolls), and the keyboard. `keys` changes
  * the keyboard's keys where Enter already means something (a link); `coordinates` where the arrows go (item to item by
  * default). Mouse and touch have a sensor each: one for all pointers would take a finger after 5px too, before the
- * hold could count (slice Y review).
+ * hold could count (slice Y review). A zone at a time, the page scrolls to the next zone at once, not smoothly: a
+ * smooth scroll is still on its way when a Space right after drops, and the row would land where it was (Ruling 12).
  */
 export function useDragSensors(keys?: KeyboardSensorOptions['keyboardCodes'], coordinates: KeyboardCoordinateGetter = sortableKeyboardCoordinates) {
   return useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: coordinates, ...(keys && { keyboardCodes: keys }) }),
+    useSensor(KeyboardSensor, { coordinateGetter: coordinates, ...(keys && { keyboardCodes: keys }), ...(coordinates === zoneKeyboardCoordinates && { scrollBehavior: 'auto' as const }) }),
   )
 }

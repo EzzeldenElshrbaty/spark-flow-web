@@ -31,15 +31,6 @@ const section = (name: string) => screen.getByRole('region', { name })
 const said = () => [...document.querySelectorAll('[role="status"]')].map((el) => el.textContent ?? '')
 const keysIn = (name: string) => within(section(name)).queryAllByRole('link').map((a) => /[A-Z]+-\d+/.exec(a.textContent ?? '')?.[0])
 
-/** Resolves once the page has stopped scrolling: a section's top holds still for 100 ms. */
-async function scrolledToRest() {
-  let last = Number.NaN
-  for (let top = section('Sprint 15').getBoundingClientRect().top; top !== last; top = section('Sprint 15').getBoundingClientRect().top) {
-    last = top
-    await wait(100)
-  }
-}
-
 /** A mouse drag from `from`'s middle to `to`'s, in steps, with the pointer and mouse events a browser sends (as the sidebar's test). */
 async function drag(from: HTMLElement, to: HTMLElement) {
   const a = from.getBoundingClientRect()
@@ -115,9 +106,8 @@ describe('planning a sprint (sprints spec §6.1)', () => {
     handle.focus()
     await userEvent.keyboard(' ')
     await userEvent.keyboard('{ArrowUp}')
-    // Down the page the sensor scrolls to the zone rather than moving the row, smoothly: the Space that drops waits for
-    // it to arrive (a manager's page is longer, with Create sprint and each section's buttons).
-    await scrolledToRest()
+    // Down the page the sensor scrolls to the zone rather than moving the row (a manager's page is longer, with Create
+    // sprint and each section's buttons); it jumps there at once, so Space right after drops where the row is shown.
     await userEvent.keyboard(' ')
     await vi.waitFor(() => expect(keysIn('Sprint 15')).toEqual(['NEX-108', 'NEX-110']))
     await app.settled()
