@@ -296,6 +296,23 @@ describe('the Board opens on the active sprint (sprints spec §6.3)', () => {
     expect((await open('?view=board', agile)).state.location.search).toBe('?view=board&sprint=s-nex-2')
   })
 
+  // Open in project, for a task in no sprint (sprints final review).
+  it('an empty sprint in the address is All sprints for this visit: not remembered, and Clear filters keeps it', async () => {
+    plan()
+    const router = await open('?view=board&sprint=&priority=high', agile)
+    expect(router.state.location.search).toBe('?view=board&sprint=&priority=high')
+    expect(sprintSelect().value).toBe('')
+    expect(useUiStore.getState().lastFilters.NEX).toBeUndefined()
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Clear filters' })))
+    expect(router.state.location.search).toBe('?view=board&sprint=')
+    expect(screen.getByText('Board NEX-1 NEX-2 NEX-3')).toBeTruthy()
+    expect(useUiStore.getState().lastFilters.NEX?.sprint).toBeUndefined()
+    cleanup()
+    // Opened again without it, the tab is on the running sprint.
+    await open('?view=board', agile)
+    expect(sprintSelect().value).toBe('s-nex-1')
+  })
+
   it('choosing All sprints is remembered: reopening the tab stays on All sprints', async () => {
     plan()
     const router = await open('?view=board', agile)

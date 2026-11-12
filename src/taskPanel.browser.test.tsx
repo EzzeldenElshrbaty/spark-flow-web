@@ -16,7 +16,7 @@ beforeEach(async () => {
   localStorage.setItem('spark-flow.session', 'u-1')
   await api.db.reset()
   // The panel's size outlives a test (it's the UI store's, kept in memory too).
-  useUiStore.setState({ wideTaskPanel: {} })
+  useUiStore.setState({ wideTaskPanel: {}, lastFilters: {}, lastProjectView: {} })
 })
 
 /** NEX-106: an agile task (Sprint 14, 3 points) made from a message in #frontend-dev. */
@@ -57,11 +57,28 @@ describe('one scroll, no tabs', () => {
 })
 
 describe('Open in project', () => {
-  it('goes from a channel to the task on its project’s board, with the panel open', async () => {
+  it('goes from a channel to the task on its project’s board, on the task’s sprint, with the panel open', async () => {
     const app = await renderApp({ path: `/w/engineering/c/c-frontend?ticket=${TASK}`, as: 'admin', theme: 'light', size: 'desktop' })
     await app.settled()
     const link = within(panel()).getByRole('link', { name: 'Open in project' })
-    expect(link.getAttribute('href')).toBe(`${paths.project('engineering', 'NEX', 'tasks')}?ticket=${TASK}`)
+    expect(link.getAttribute('href')).toBe(`${paths.project('engineering', 'NEX', 'tasks')}?sprint=s-nex-1&ticket=${TASK}`)
+    // A waterfall project's board has no sprints.
+    await app.router.navigate('/w/engineering/c/c-frontend?ticket=SEL-101')
+    await app.settled()
+    expect(within(panel()).getByRole('link', { name: 'Open in project' }).getAttribute('href')).toBe(`${paths.project('engineering', 'SEL', 'tasks')}?ticket=SEL-101`)
+  })
+
+  // Sprints final review: the Board opens on the running sprint, so a task in no sprint opens it on All sprints, for
+  // this visit only (not remembered).
+  it('shows a backlog task on the Board: All sprints for this visit, not remembered', async () => {
+    const app = await renderApp({ path: '/w/engineering/c/c-frontend?ticket=NEX-108', as: 'admin', theme: 'light', size: 'desktop' })
+    await app.settled()
+    await userEvent.click(within(panel()).getByRole('link', { name: 'Open in project' }))
+    await app.settled()
+    expect(new URLSearchParams(app.router.state.location.search).get('sprint')).toBe('')
+    expect((await screen.findByRole('combobox', { name: 'Sprint' }) as HTMLSelectElement).value).toBe('')
+    expect(within(screen.getByRole('region', { name: /^Backlog: / })).getByRole('link', { name: /NEX-108/ })).toBeTruthy()
+    expect(useUiStore.getState().lastFilters.NEX?.sprint).toBeUndefined()
   })
 
   it('isn’t offered on that board already', async () => {

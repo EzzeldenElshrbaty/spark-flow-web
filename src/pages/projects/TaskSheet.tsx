@@ -48,7 +48,7 @@ type Values = {
 /** What a new task starts from when it is made from somewhere else (a chat message). */
 export type TaskDraft = Pick<NewTicket, 'title' | 'descriptionBody'> & Partial<Pick<NewTicket, 'linkedChannelId' | 'linkedMessageId' | 'assigneeId'>>
 
-const valuesOf = (task: TaskView | undefined, phaseId: string | null, firstStatus: string, draft?: TaskDraft): Values => ({
+const valuesOf = (task: TaskView | undefined, phaseId: string | null, firstStatus: string, draft?: TaskDraft, sprintId?: string | null): Values => ({
   title: task?.title ?? draft?.title ?? '',
   type: task?.type ?? 'task',
   phaseId: (task ? task.phaseId : phaseId) ?? '',
@@ -57,7 +57,7 @@ const valuesOf = (task: TaskView | undefined, phaseId: string | null, firstStatu
   assigneeId: task?.assigneeId ?? draft?.assigneeId ?? '',
   due: task?.dueAt ? task.dueAt.slice(0, 10) : '',
   estimate: task?.estimateHours != null ? String(task.estimateHours) : '',
-  sprintId: task?.sprintId ?? '',
+  sprintId: (task ? task.sprintId : sprintId) ?? '',
 })
 
 /**
@@ -68,6 +68,7 @@ export function TaskSheet({
   project,
   phases,
   sprints,
+  sprintId,
   users,
   task,
   draft,
@@ -79,6 +80,8 @@ export function TaskSheet({
   project: Project & { currentPhaseId?: string | null }
   phases: Phase[]
   sprints: Sprint[]
+  /** The sprint a new task starts in (the one the Tasks tab shows), still a choice; none by default. */
+  sprintId?: string | null
   users: User[]
   task?: TaskView
   /** Starts a new task from these values and links it back to where it came from. */
@@ -105,7 +108,7 @@ export function TaskSheet({
   const create = onto ? addNew : createAlone
   const update = useUpdateTask()
   // What the sheet opened with, to tell whether closing would throw anything away (UX Phase 1, 1.2).
-  const [initial] = useState(() => valuesOf(task, project.currentPhaseId ?? null, startColumn(project), draft))
+  const [initial] = useState(() => valuesOf(task, project.currentPhaseId ?? null, startColumn(project), draft, sprintId))
   const [values, setValues] = useState(initial)
   // A Project field's pick (projectChoice) brings another project: its own status, phase and sprint start over.
   const [shownProject, setShownProject] = useState(project.id)

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Attachment, Project, TaskView } from '@/api/types'
+import type { Attachment, Project, Sprint, TaskView } from '@/api/types'
 import { textBody } from '@/lib/messageBody'
 import { TaskSheet } from './TaskSheet'
 
@@ -368,3 +368,33 @@ describe('a save is read out (UX Phase 5A, 5.12)', () => {
   })
 })
 
+
+describe('a new task’s sprint (sprints final review)', () => {
+  const agile = { ...project, methodology: 'agile' } as Project
+  const sprints = [
+    { id: 's-nex-1', projectId: 'p-nex', name: 'Sprint 14', goal: '', startDate: '2026-11-03T00:00:00.000Z', endDate: '2026-11-16T23:59:59.999Z', state: 'active' },
+    { id: 's-nex-2', projectId: 'p-nex', name: 'Sprint 15', goal: '', startDate: '2026-11-17T00:00:00.000Z', endDate: '2026-11-30T23:59:59.999Z', state: 'planned' },
+  ] as Sprint[]
+  const sprintField = () => screen.getByRole('combobox', { name: 'Sprint' }) as HTMLSelectElement
+
+  it('starts in the sprint it’s given and saves it there; it stays a choice', () => {
+    render(<TaskSheet project={agile} phases={[]} sprints={sprints} users={[]} sprintId="s-nex-1" onClose={vi.fn()} />)
+    expect(sprintField().value).toBe('s-nex-1')
+    fireEvent.change(screen.getByRole('textbox', { name: /Title/ }), { target: { value: 'New badge' } })
+    save()
+    expect(create.mutate.mock.calls[0]![0]).toMatchObject({ projectId: 'p-nex', title: 'New badge', sprintId: 's-nex-1' })
+    cleanup()
+    render(<TaskSheet project={agile} phases={[]} sprints={sprints} users={[]} sprintId="s-nex-1" onClose={vi.fn()} />)
+    fireEvent.change(sprintField(), { target: { value: '' } })
+    fireEvent.change(screen.getByRole('textbox', { name: /Title/ }), { target: { value: 'Later' } })
+    save()
+    expect(create.mutate.mock.calls[1]![0]).toMatchObject({ title: 'Later', sprintId: null })
+  })
+
+  it('isn’t a change to throw away: closing the sheet asks nothing', () => {
+    const onClose = vi.fn()
+    render(<TaskSheet project={agile} phases={[]} sprints={sprints} users={[]} sprintId="s-nex-2" onClose={onClose} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+})

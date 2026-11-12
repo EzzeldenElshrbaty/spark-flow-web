@@ -22,7 +22,8 @@ import { DeleteSprintSheet } from '@/pages/projects/sprints/DeleteSprintSheet'
 import { SprintPlan, type SprintActions } from '@/pages/projects/sprints/SprintPlan'
 import { SprintSheet } from '@/pages/projects/sprints/SprintSheet'
 import { byOrder } from './phases'
-import { activeFilters, filtersFrom, filterTasks, matchesQuery, PRIORITIES, sortOf, sortTasks, sprintPlanTasks, staleArchivedParam, TASK_SORTS, taskQueryFrom, validSprint, viewOf } from './taskFilters'
+import { activeFilters, filterTasks, matchesQuery, PRIORITIES, sortOf, sortTasks, sprintPlanTasks, staleArchivedParam, TASK_SORTS, taskQueryFrom, viewOf } from './taskFilters'
+import { useTabFilters } from './useTabFilters'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
 
 const views = [
@@ -84,17 +85,11 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
   const view: ProjectView = viewOf(asked, lastView, agile)
   const tickets = useTickets(project.id)
   const sprints = useSprints(agile ? project.id : undefined)
-  // The address wins; without phase or sprint in it, the tab reopens on the last ones picked here.
-  const lastFilters = useUiStore((state) => state.lastFilters[project.key])
+  // The address wins; without phase or sprint in it, the tab reopens on the last ones picked here. On an agile project
+  // the sprint is the running one until the address or a pick says otherwise (useTabFilters, shared with New task).
+  const { phase: pickedPhase, sprint, sprintByDefault, last: lastFilters } = useTabFilters(project, sprints.data)
   const setProjectFilters = useUiStore((state) => state.setProjectFilters)
-  // On an agile project the sprint is the running one until the address or a pick says otherwise. That default is
-  // worked out on every render and never written into the address or remembered, so the tab follows the running sprint
-  // when it changes (Sprint 15 starts after Sprint 14); only a pick stays.
-  const activeSprintId = (agile && sprints.data?.find((s) => s.state === 'active')?.id) || null
-  const picked = filtersFrom(params, lastFilters, activeSprintId)
-  const phase = phases.some((p) => p.id === picked.phase) ? picked.phase : null
-  const sprint = agile ? validSprint(picked.sprint, sprints.data ?? []) : null
-  const sprintByDefault = !params.has('sprint') && lastFilters?.sprint === undefined
+  const phase = phases.some((p) => p.id === pickedPhase) ? pickedPhase : null
   // The Sprints view shows every open sprint: the address's sprint stays there for Board and List, but filters nothing.
   const sprintFilter = view === 'sprints' ? null : sprint
 
@@ -151,7 +146,9 @@ export function TasksTab({ project, people, phases }: { project: ProjectSummary;
   const sort = sortOf(params.get('sort'))
   const active = activeFilters(query, { phase, sprint: sprintFilter })
   const clear = () => {
-    setFilters({ q: null, assignee: null, priority: null, type: null, phase: null, sprint: null })
+    // An empty sprint in the address (Open in project, for a task in no sprint) is already All sprints: it stays, or
+    // the running sprint would come back.
+    setFilters({ q: null, assignee: null, priority: null, type: null, phase: null, ...(params.get('sprint') !== '' && { sprint: null }) })
     // Taking a sprint filter off is a pick (All sprints), or the active sprint would come straight back; with none on,
     // the remembered sprint stays as it was.
     setProjectFilters(project.key, { sprint: sprintFilter !== null ? '' : lastFilters?.sprint })

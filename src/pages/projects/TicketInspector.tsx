@@ -322,11 +322,14 @@ export function TicketInspector({ ticketKey, onClose, closeTo }: { ticketKey: st
 
   // The header's own controls, in the kit look of its Close.
   const headerButton = 'rounded-md p-1 text-fg-muted hover:bg-surface-muted hover:text-fg max-md:touch-target'
-  // The task on its project's board, with this panel open: offered everywhere but that board.
+  // The task on its project's board, with this panel open: offered everywhere but that board. An agile board opens on
+  // the task's sprint, or on All sprints for this visit (`sprint=`, not remembered) for a task in none, so the task is
+  // there (the board's default is the running sprint).
   const board = project && workspace ? paths.project(workspace.slug, project.key, 'tasks') : null
+  const onBoard = new URLSearchParams(project?.methodology === 'agile' && ticket.data ? { sprint: ticket.data.sprintId ?? '' } : {})
   const openInProject = board && pathname !== board && (
     <Link
-      to={`${board}?${withInspector(new URLSearchParams(), { kind: 'ticket', key: ticketKey }).toString()}`}
+      to={`${board}?${withInspector(onBoard, { kind: 'ticket', key: ticketKey }).toString()}`}
       className={headerButton}
       aria-label="Open in project"
       title="Open in project"

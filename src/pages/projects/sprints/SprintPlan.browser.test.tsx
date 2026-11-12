@@ -1,5 +1,5 @@
 import '@/index.css'
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { announce } from '@/components/sf/Announcer'
@@ -143,5 +143,26 @@ describe('planning a sprint (sprints spec §6.1)', () => {
     expect(document.activeElement).toBe(within(section('Backlog')).getByRole('button', { name: 'Move to: NEX-108' }))
     expect(said().join(' ')).not.toContain('Moved NEX-108')
     vi.restoreAllMocks()
+  })
+})
+
+// Sprints final review: the Board opens on the running sprint, so a task made there starts in it and stays in view.
+describe('a new task on the Board (sprints spec §6.3)', () => {
+  it('made on Sprint 14’s Board, it’s in Sprint 14 and shows on the Board', async () => {
+    const app = await renderApp({ path: '/w/engineering/p/NEX/tasks?view=board', as: 'pm', theme: 'light', size: 'desktop' })
+    await app.settled()
+    expect((screen.getByRole('combobox', { name: 'Sprint' }) as HTMLSelectElement).value).toBe('s-nex-1')
+    await userEvent.click(within(screen.getByRole('main')).getByRole('button', { name: 'New task' }))
+    const sheet = await screen.findByRole('dialog', { name: 'New task' })
+    expect((within(sheet).getByRole('combobox', { name: 'Sprint' }) as HTMLSelectElement).value).toBe('s-nex-1')
+    await userEvent.fill(within(sheet).getByRole('textbox', { name: /^Title/ }), 'Rotate the signing keys')
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Save task' }))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'New task' })).toBeNull())
+    await app.settled()
+    const made = (await api.tickets.list('p-nex')).find((t) => t.title === 'Rotate the signing keys')!
+    expect(made.sprintId).toBe('s-nex-1')
+    const onBoard = screen.getAllByRole('region', { name: /: \d+ tasks?$/ }).flatMap((column) => within(column).queryAllByRole('link', { name: new RegExp(made.key) }))
+    expect(onBoard).toHaveLength(1)
+    expect(app.consoleErrors).toEqual([])
   })
 })

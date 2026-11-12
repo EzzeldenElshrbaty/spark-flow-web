@@ -3,6 +3,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { Sprint } from '@/api/types'
+import { useUiStore } from '@/lib/uiStore'
 import { ProjectPage } from './ProjectPage'
 
 // UX Phase 2, 2.7: a project's sheets live in the address: a link opens one, Back closes it.
@@ -11,17 +13,20 @@ const project = {
   id: 'p-nex', key: 'NEX', name: 'Nexus Core', status: 'active', methodology: 'waterfall', clientName: 'Spark', managerId: 'u-2', memberIds: [], teamIds: [],
   links: [], startDate: '2026-10-01T00:00:00.000Z', dueDate: '2026-12-01T00:00:00.000Z', channelId: 'c-p-nex', currentPhaseId: null, archivedAt: null,
 }
+// The project shown, and its sprints (an agile one's).
+let shown = project
+let sprints: Sprint[] = []
 vi.mock('@/layout/useCurrentWorkspace', () => ({ useCurrentWorkspace: () => ({ workspace: { id: 'ws-eng', slug: 'engineering', name: 'Spark Engineering' } }) }))
 let allowed = true
 vi.mock('@/lib/usePermission', () => ({ usePermission: () => () => allowed }))
 vi.mock('@/api/projects', () => ({
-  useProjectSummary: () => ({ data: project, isPending: false, isError: false }),
+  useProjectSummary: () => ({ data: shown, isPending: false, isError: false }),
   usePhases: () => ({ data: [], isPending: false, isError: false }),
   useTeams: () => ({ data: [] }),
   useArchiveProject: () => ({ mutateAsync: vi.fn() }),
   useRestoreProject: () => ({ mutate: vi.fn(), isPending: false, error: null }),
 }))
-vi.mock('@/api/tickets', () => ({ useSprints: () => ({ data: [] }), useTickets: () => ({ data: [] }) }))
+vi.mock('@/api/tickets', () => ({ useSprints: () => ({ data: sprints }), useTickets: () => ({ data: [] }) }))
 vi.mock('@/api/users', () => ({ useMe: () => ({ data: { id: 'u-2', teamIds: [] } }), useUsers: () => ({ data: [] }) }))
 const { sheet } = vi.hoisted(() => ({
   sheet:
@@ -34,7 +39,17 @@ const { sheet } = vi.hoisted(() => ({
       </div>
     ),
 }))
-vi.mock('./TaskSheet', () => ({ TaskSheet: sheet('New task') }))
+// New task says which sprint it starts in.
+vi.mock('./TaskSheet', () => ({
+  TaskSheet: ({ sprintId, onClose }: { sprintId?: string | null; onClose: () => void }) => (
+    <div role="dialog" aria-label="New task">
+      <p>Starts in {sprintId ?? 'no sprint'}</p>
+      <button type="button" onClick={onClose}>
+        Cancel
+      </button>
+    </div>
+  ),
+}))
 vi.mock('./ProjectSheet', () => ({ ProjectSheet: sheet('Edit project') }))
 vi.mock('./PhasesSheet', () => ({ PhasesSheet: sheet('Manage phases') }))
 vi.mock('./OverviewTab', () => ({ OverviewTab: () => <p>Overview</p> }))
@@ -44,10 +59,13 @@ window.matchMedia ??= ((media: string) => ({ matches: false, media, addEventList
 afterEach(() => {
   cleanup()
   allowed = true
+  shown = project
+  sprints = []
+  useUiStore.setState({ lastFilters: {} })
 })
 
-const at = (search: string) => {
-  const router = createMemoryRouter([{ path: '/w/:ws/p/:projectKey/:tab', element: <ProjectPage /> }], { initialEntries: [`/w/engineering/p/NEX/overview${search}`] })
+const at = (search: string, tab = 'overview') => {
+  const router = createMemoryRouter([{ path: '/w/:ws/p/:projectKey/:tab', element: <ProjectPage /> }], { initialEntries: [`/w/engineering/p/NEX/${tab}${search}`] })
   render(
     <QueryClientProvider client={new QueryClient()}>
       <RouterProvider router={router} />
@@ -87,5 +105,50 @@ describe('a project’s sheets in the address (UX Phase 2, 2.7)', () => {
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Cancel' })))
     expect(router.state.location.search).toBe('')
     expect(router.state.historyAction).toBe('REPLACE')
+  })
+})
+
+// Sprints final review: a task made from an agile project's page starts in the sprint its Board and List show, so it
+// doesn't leave the Board it was made on.
+describe('New task on an agile project starts in the Tasks tab’s sprint', () => {
+  const sprint = (id: string, name: string, state: Sprint['state']): Sprint => ({ id, projectId: 'p-nex', name, goal: '', startDate: '2026-11-03T00:00:00.000Z', endDate: '2026-11-16T23:59:59.999Z', state })
+  const agile = () => {
+    shown = { ...project, methodology: 'agile' }
+    sprints = [sprint('s-nex-1', 'Sprint 14', 'active'), sprint('s-nex-2', 'Sprint 15', 'planned'), sprint('s-nex-0', 'Sprint 13', 'closed')]
+  }
+  const startsIn = () => screen.getByRole('dialog', { name: 'New task' }).querySelector('p')!.textContent
+
+  it('the running sprint by default, from the Tasks tab and from Overview', () => {
+    agile()
+    at('?new=task', 'tasks')
+    expect(startsIn()).toBe('Starts in s-nex-1')
+    cleanup()
+    at('?new=task')
+    expect(startsIn()).toBe('Starts in s-nex-1')
+  })
+
+  it('the sprint in the address or the one remembered, when it’s planned or running', () => {
+    agile()
+    at('?view=board&sprint=s-nex-2&new=task', 'tasks')
+    expect(startsIn()).toBe('Starts in s-nex-2')
+    cleanup()
+    useUiStore.getState().setProjectFilters('NEX', { sprint: 's-nex-2' })
+    at('?new=task', 'tasks')
+    expect(startsIn()).toBe('Starts in s-nex-2')
+  })
+
+  it('no sprint on All sprints, on a closed sprint, or on a waterfall project', () => {
+    agile()
+    useUiStore.getState().setProjectFilters('NEX', { sprint: '' })
+    at('?new=task', 'tasks')
+    expect(startsIn()).toBe('Starts in no sprint')
+    cleanup()
+    at('?sprint=s-nex-0&new=task', 'tasks')
+    expect(startsIn()).toBe('Starts in no sprint')
+    cleanup()
+    useUiStore.setState({ lastFilters: {} })
+    shown = project
+    at('?new=task', 'tasks')
+    expect(startsIn()).toBe('Starts in no sprint')
   })
 })

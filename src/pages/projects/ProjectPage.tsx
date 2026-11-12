@@ -26,6 +26,7 @@ import { stagesOf } from './phases'
 import { TaskSheet } from './TaskSheet'
 import { ChatTab, OpenInChatLink } from './ChatTab'
 import { TasksTab } from './TasksTab'
+import { useTabFilters } from './useTabFilters'
 import { HistoryTab } from '@/pages/projects/HistoryTab'
 import { FilesTab } from '@/pages/projects/FilesTab'
 import { TimeTab } from './TimeTab'
@@ -93,6 +94,10 @@ export function ProjectPage() {
   const check = usePermission()
   const now = useMemo(() => new Date(), [])
   const sprints = useSprints(project?.methodology === 'agile' ? project.id : undefined)
+  // A new task starts in the sprint the Tasks tab's Board and List show, when a task may join it (running or planned),
+  // so it doesn't leave the Board it was made on; it stays a choice in the sheet.
+  const { sprint: tabSprint } = useTabFilters(project, sprints.data)
+  const newTaskSprint = sprints.data?.find((s) => s.id === tabSprint && s.state !== 'closed')?.id ?? null
   // The sheets live in the address (UX Phase 2, 2.7): ?new=task, ?edit=project, ?phases=1; a link opens one and Back
   // closes it. Archiving stays in the page (it asks once and acts).
   const [params, setAddress] = useParamState({ sheets: ['new', 'edit', 'phases'] })
@@ -262,6 +267,7 @@ export function ProjectPage() {
           project={project}
           phases={phaseList}
           sprints={sprints.data ?? []}
+          sprintId={newTaskSprint}
           users={people}
           // The new task opens in its panel on this tab (UX Phase 1, 1.5).
           onCreated={(task) => {
