@@ -31,7 +31,7 @@ const collision: CollisionDetection = (args) => {
 
 /**
  * The Sprints view (sprints spec §6.1, agile projects): the active sprint, the planned ones by start date, then
- * Backlog (unfinished tasks in no sprint). Whoever may manage the project's tasks moves a task between sections by
+ * Backlog (unfinished tasks in no open sprint). Whoever may manage the project's tasks moves a task between sections by
  * dragging its handle (mouse, touch, or Space and ↑ ↓) or with its Move to; a move shows at once and goes back if it's
  * refused. `tasks` are the rows the filters leave; `allTasks` give each section's totals.
  */

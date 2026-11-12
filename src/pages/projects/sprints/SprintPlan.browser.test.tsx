@@ -77,6 +77,24 @@ describe('planning a sprint (sprints spec §6.1)', () => {
     expect(app.consoleErrors).toEqual([])
   })
 
+  // Sprints final review: reopened after its sprint closed, a task is to plan again.
+  it('a task left unfinished in a closed sprint is in Backlog, and drags into Sprint 15', async () => {
+    // Sprint 14 completes (its unfinished tasks go to Sprint 15), then NEX-103, done in it, is reopened.
+    await api.sprints.complete('s-nex-1', { moveTo: 's-nex-2' })
+    await api.tasks.update('NEX-103', { status: 'todo' })
+    const app = await renderApp({ path: PATH, as: 'pm', theme: 'light', size: 'desktop' })
+    await app.settled()
+    expect(keysIn('Backlog')).toEqual(['NEX-108', 'NEX-109', 'NEX-103'])
+    // Both in view: Backlog in the middle, Sprint 15's last row above it.
+    section('Backlog').scrollIntoView({ block: 'center' })
+    await drag(screen.getByRole('button', { name: 'Drag NEX-103' }), within(section('Sprint 15')).getAllByRole('link').at(-1)!)
+    await vi.waitFor(() => expect(keysIn('Sprint 15')).toContain('NEX-103'))
+    await app.settled()
+    expect(keysIn('Backlog')).toEqual(['NEX-108', 'NEX-109'])
+    expect((await api.tickets.get('NEX-103')).sprintId).toBe('s-nex-2')
+    expect(app.consoleErrors).toEqual([])
+  })
+
   it('a drop back on the row’s own section changes nothing', async () => {
     const app = await renderApp({ path: PATH, as: 'pm', theme: 'light', size: 'desktop' })
     await app.settled()

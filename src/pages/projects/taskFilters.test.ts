@@ -60,17 +60,19 @@ describe('viewOf and validSprint', () => {
     expect(viewOf('sprints', 'list', false)).toBe('board')
     expect(viewOf(null, 'sprints', false)).toBe('board')
   })
-  it('the Sprints view lists tasks in an active or planned sprint, and unfinished ones in no sprint', () => {
+  it('the Sprints view lists tasks in an active or planned sprint, and unfinished ones in no open sprint', () => {
     const sprints = [{ id: 's-a', state: 'active' as const }, { id: 's-p', state: 'planned' as const }, { id: 's-c', state: 'closed' as const }]
     const tasks = [
       t({ key: 'A', sprintId: 's-a', status: 'done' }),
       t({ key: 'P', sprintId: 's-p' }),
+      // Left unfinished in a closed sprint (reopened, unticked, restored): it's to plan again (sprints final review).
       t({ key: 'C', sprintId: 's-c' }),
+      t({ key: 'CD', sprintId: 's-c', status: 'done' }),
       t({ key: 'B' }),
       t({ key: 'D', status: 'done' }),
       t({ key: 'G', sprintId: 's-gone' }),
     ]
-    expect(sprintPlanTasks(tasks, sprints).map((x) => x.key)).toEqual(['A', 'P', 'B', 'G'])
+    expect(sprintPlanTasks(tasks, sprints).map((x) => x.key)).toEqual(['A', 'P', 'C', 'B', 'G'])
   })
   it('an unknown sprint id is ignored', () => {
     const sprints = [{ id: 's-1' }, { id: 's-2' }]

@@ -129,8 +129,9 @@ they are.
   view (it stays for when the person goes back to Board or List); search, assignee, priority, type and phase still
   narrow the rows.
 - **Sections, top to bottom:** the active sprint, each planned sprint (by start date), then **Backlog**: unfinished
-  tasks with no sprint. Done tasks with no sprint aren't listed. Closed sprints aren't shown here; the sprint filter
-  still opens them.
+  tasks in no open sprint (none, or a closed one: a task reopened, unticked or restored after its sprint closed is to
+  plan again). Done tasks with no sprint aren't listed. Closed sprints aren't shown here; the sprint filter still opens
+  them.
 - **Section header:** name, an Active or Planned badge, dates ("3 Nov – 17 Nov"), "4 days left" on the active sprint
   ("Ended 2 days ago" past its end), the goal, and totals from the sprint's own tasks, whatever the filters:
   "12 tasks · 31 points" (active adds "· 18 points done"). Backlog says "Tasks in no sprint" and its count.

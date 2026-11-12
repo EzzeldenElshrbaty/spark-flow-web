@@ -33,7 +33,8 @@ const task = (key: string, status: keyof typeof category, sprintId: string | nul
   ({ id: key, key, title: `Task ${key}`, status, category: category[status], sprintId, storyPoints, phaseId: null, assigneeId: null, priority: 'medium', type: 'task', dueAt: null, overdue: false, overEstimate: false, rank, loggedHours: 0, estimateHours: null, archivedAt: null, updatedAt: '2026-11-01T00:00:00.000Z' }) as unknown as TaskView
 
 // As the seed: Sprint 14 has NEX-101…107 (23 points, NEX-103 and NEX-104 done: 4 points), Sprint 15 has NEX-110,
-// NEX-108 and NEX-109 are in no sprint. Plus a done task in no sprint and one in the closed Sprint 13.
+// NEX-108 and NEX-109 are in no sprint. Plus a done task in no sprint, and NEX-112, left unfinished in the closed
+// Sprint 13 (reopened since): it's Backlog's.
 const TASKS = [
   task('NEX-101', 'inReview', 's-nex-1', 5),
   task('NEX-102', 'todo', 's-nex-1', 3),
@@ -95,7 +96,7 @@ describe('the Sprints view’s sections (sprints spec §6.1)', () => {
     expect(planned.queryByText(/left|Ended/)).toBeNull()
     const backlog = within(section('Backlog'))
     expect(backlog.getByText('Tasks in no sprint')).toBeTruthy()
-    expect(backlog.getByText('2 tasks')).toBeTruthy()
+    expect(backlog.getByText('3 tasks')).toBeTruthy()
     expect(screen.queryByRole('region', { name: 'Sprint 13' })).toBeNull()
   })
 
@@ -109,11 +110,14 @@ describe('the Sprints view’s sections (sprints spec §6.1)', () => {
     expect(keysIn('Sprint 14')).toEqual(['NEX-102', 'NEX-106', 'NEX-107', 'NEX-101', 'NEX-105', 'NEX-103', 'NEX-104'])
   })
 
-  it('Backlog lists unfinished tasks with no sprint only', () => {
-    mount()
-    expect(keysIn('Backlog')).toEqual(['NEX-108', 'NEX-109'])
+  it('Backlog lists unfinished tasks in no open sprint: none, or a closed one (sprints final review)', () => {
+    // NEX-113 was done in Sprint 13: it stays with it, out of the view.
+    const withDone = [...TASKS, task('NEX-113', 'done', 's-nex-0', 1, 5000)]
+    mount({ tasks: withDone, allTasks: withDone })
+    expect(keysIn('Backlog')).toEqual(['NEX-108', 'NEX-109', 'NEX-112'])
+    expect(within(section('Backlog')).getByText('3 tasks')).toBeTruthy()
     expect(screen.queryByText('Task NEX-111')).toBeNull()
-    expect(screen.queryByText('Task NEX-112')).toBeNull()
+    expect(screen.queryByText('Task NEX-113')).toBeNull()
   })
 
   it('section totals ignore the filters; rows follow them', () => {
@@ -125,7 +129,7 @@ describe('the Sprints view’s sections (sprints spec §6.1)', () => {
     expect(within(section('Sprint 15')).getByText('No tasks match these filters.')).toBeTruthy()
     expect(within(section('Sprint 15')).getByText('1 task · 5 points')).toBeTruthy()
     expect(keysIn('Backlog')).toEqual(['NEX-108'])
-    expect(within(section('Backlog')).getByText('2 tasks')).toBeTruthy()
+    expect(within(section('Backlog')).getByText('3 tasks')).toBeTruthy()
   })
 
   it('an empty planned sprint shows “Drag tasks here, or use a task’s Move to.”', () => {
@@ -167,8 +171,8 @@ describe('who sees what (sprints spec §6.1)', () => {
 
   it('a manager gets a drag handle and Move to on every row', () => {
     mount()
-    expect(screen.getAllByRole('button', { name: /^Drag NEX-/ })).toHaveLength(10)
-    expect(screen.getAllByRole('button', { name: /^Move to: NEX-/ })).toHaveLength(10)
+    expect(screen.getAllByRole('button', { name: /^Drag NEX-/ })).toHaveLength(11)
+    expect(screen.getAllByRole('button', { name: /^Move to: NEX-/ })).toHaveLength(11)
     // No sprint actions until someone may change sprints.
     expect(screen.queryByRole('button', { name: /Start sprint|Complete sprint|Sprint actions/ })).toBeNull()
   })
@@ -193,6 +197,16 @@ describe('Move to (sprints spec §6.1)', () => {
     await act(async () => fireEvent.click(within(menu).getByRole('menuitem', { name: 'Backlog' })))
     expect(mutateAsync).toHaveBeenLastCalledWith({ key: 'NEX-102', patch: { sprintId: null } })
     expect(said()).toContain('Moved NEX-102 to the backlog.')
+  })
+
+  it('a task left in a closed sprint moves from Backlog into an open one (sprints final review)', async () => {
+    mount()
+    const menu = openMoveTo('NEX-112')
+    expect(within(menu).getAllByRole('menuitem').map((i) => i.textContent?.trim())).toEqual(['Sprint 14', 'Sprint 15'])
+    await act(async () => fireEvent.click(within(menu).getByRole('menuitem', { name: 'Sprint 15' })))
+    expect(mutateAsync).toHaveBeenCalledWith({ key: 'NEX-112', patch: { sprintId: 's-nex-2' } })
+    expect(keysIn('Sprint 15')).toEqual(['NEX-110', 'NEX-112'])
+    expect(keysIn('Backlog')).toEqual(['NEX-108', 'NEX-109'])
   })
 
   it('a saved move holds, with focus on its Move to, until the task’s new copy arrives (no jump back)', async () => {
@@ -225,7 +239,7 @@ describe('Move to (sprints spec §6.1)', () => {
     // Focus follows the row to its new section, onto its Move to.
     expect(document.activeElement).toBe(within(section('Sprint 15')).getByRole('button', { name: 'Move to: NEX-108' }))
     await act(async () => refuse(new Error('That sprint is closed. Pick a planned or running one.')))
-    expect(keysIn('Backlog')).toEqual(['NEX-108', 'NEX-109'])
+    expect(keysIn('Backlog')).toEqual(['NEX-108', 'NEX-109', 'NEX-112'])
     expect(screen.getByRole('alert').textContent).toBe('That sprint is closed. Pick a planned or running one.')
     // And back with it.
     expect(document.activeElement).toBe(within(section('Backlog')).getByRole('button', { name: 'Move to: NEX-108' }))

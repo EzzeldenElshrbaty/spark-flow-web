@@ -114,14 +114,15 @@ export function viewOf(asked: string | null, saved: string | undefined, agile: b
 }
 
 /**
- * The tasks the Sprints view lists: those in an active or planned sprint, and unfinished ones in no sprint (or in one
- * that's gone). Closed sprints aren't shown there; the sprint filter still opens them.
+ * The tasks the Sprints view lists: those in an active or planned sprint, and unfinished ones in no open sprint — none,
+ * one that's gone, or a closed one (a task reopened, unticked or restored after its sprint closed), which Backlog shows
+ * to plan again. Closed sprints aren't shown there; the sprint filter still opens them.
  */
 export function sprintPlanTasks<T extends Pick<TaskView, 'sprintId' | 'category'>>(tasks: T[], sprints: Pick<Sprint, 'id' | 'state'>[]): T[] {
   const state = new Map(sprints.map((s) => [s.id, s.state]))
   return tasks.filter((t) => {
     const of = t.sprintId ? state.get(t.sprintId) : undefined
-    return of ? of !== 'closed' : t.category !== 'done'
+    return of && of !== 'closed' ? true : t.category !== 'done'
   })
 }
 
